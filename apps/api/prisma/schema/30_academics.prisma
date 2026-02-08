@@ -1,0 +1,47 @@
+model Class {
+  id           String                @id @default(cuid())
+  schoolId     String
+  name         String
+  year         String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students     Student[]
+  assignments  TeacherClassSubject[]
+  grades       Grade[]
+
+  @@unique([schoolId, name, year])
+  @@index([schoolId])
+}
+
+model Subject {
+  id           String                @id @default(cuid())
+  schoolId     String
+  name         String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments  TeacherClassSubject[]
+  grades       Grade[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model TeacherClassSubject {
+  id            String   @id @default(cuid())
+  schoolId      String
+  teacherUserId String
+  classId       String
+  subjectId     String
+  createdAt     DateTime @default(now())
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherUser   User     @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
+  class         Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherUserId, classId, subjectId])
+  @@index([schoolId])
+  @@index([classId])
+  @@index([subjectId])
+}

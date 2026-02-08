@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "School Live",
+    "slug": "school-live",
+    "scheme": "school-live",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android", "web"],
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

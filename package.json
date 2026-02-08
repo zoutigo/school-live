@@ -1,0 +1,24 @@
+{
+  "name": "school-live",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Monorepo School Live (API, Web, Mobile)",
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "db:schema:gen": "bash apps/api/prisma/scripts/generate-schema.sh",
+    "db:generate": "npm run db:schema:gen && npm run -w @school-live/api prisma:generate",
+    "db:migrate": "npm run db:schema:gen && npm run -w @school-live/api prisma:migrate:dev",
+    "build": "npm run -ws build --if-present",
+    "dev": "npm run -ws dev --if-present",
+    "lint": "npm run -ws lint --if-present",
+    "typecheck": "npm run -ws typecheck --if-present",
+    "test": "npm run -ws test --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}

@@ -1,0 +1,24 @@
+model Grade {
+  id            String   @id @default(cuid())
+  schoolId      String
+  studentId     String
+  classId       String
+  subjectId     String
+  teacherUserId String
+  value         Float
+  maxValue      Float
+  term          Term
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class         Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherUser   User     @relation("GradeTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([classId])
+  @@index([subjectId])
+  @@index([teacherUserId])
+}

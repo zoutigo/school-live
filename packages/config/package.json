@@ -1,0 +1,11 @@
+{
+  "name": "@school-live/config",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./eslint/base": "./eslint/base.cjs",
+    "./tsconfig/base": "./tsconfig/base.json",
+    "./env/schema": "./env/schema.ts"
+  }
+}

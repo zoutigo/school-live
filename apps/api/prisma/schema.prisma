@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  PARENT
+  STUDENT
+}
+
+enum Term {
+  TERM_1
+  TERM_2
+  TERM_3
+}
+
+
+model School {
+  id           String                @id @default(cuid())
+  slug         String                @unique
+  name         String
+  logoUrl      String?
+  primaryColor String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  users        User[]
+  students     Student[]
+  teachers     Teacher[]
+  classes      Class[]
+  subjects     Subject[]
+  assignments  TeacherClassSubject[]
+  grades       Grade[]
+}
+
+model User {
+  id             String         @id @default(cuid())
+  schoolId       String
+  email          String?
+  phone          String?
+  passwordHash   String
+  role           Role
+  firstName      String
+  lastName       String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherProfile Teacher?
+  studentProfile Student?
+  parentLinks    ParentStudent[] @relation("ParentLinks")
+  gradesGiven    Grade[]        @relation("GradeTeacher")
+  teachingAssignments TeacherClassSubject[]
+  refreshTokens  RefreshToken[]
+
+  @@unique([schoolId, email])
+  @@index([schoolId])
+}
+
+model RefreshToken {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+
+model Student {
+  id           String          @id @default(cuid())
+  schoolId     String
+  userId       String?         @unique
+  firstName    String
+  lastName     String
+  classId      String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  class        Class?          @relation(fields: [classId], references: [id], onDelete: SetNull)
+  parentLinks  ParentStudent[] @relation("StudentLinks")
+  grades       Grade[]
+
+  @@index([schoolId])
+  @@index([classId])
+}
+
+model ParentStudent {
+  id           String   @id @default(cuid())
+  schoolId     String
+  parentUserId String
+  studentId    String
+  createdAt    DateTime @default(now())
+  parent       User     @relation("ParentLinks", fields: [parentUserId], references: [id], onDelete: Cascade)
+  student      Student  @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+}
+
+model Teacher {
+  id        String   @id @default(cuid())
+  schoolId  String
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+
+model Class {
+  id           String                @id @default(cuid())
+  schoolId     String
+  name         String
+  year         String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students     Student[]
+  assignments  TeacherClassSubject[]
+  grades       Grade[]
+
+  @@unique([schoolId, name, year])
+  @@index([schoolId])
+}
+
+model Subject {
+  id           String                @id @default(cuid())
+  schoolId     String
+  name         String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments  TeacherClassSubject[]
+  grades       Grade[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model TeacherClassSubject {
+  id            String   @id @default(cuid())
+  schoolId      String
+  teacherUserId String
+  classId       String
+  subjectId     String
+  createdAt     DateTime @default(now())
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherUser   User     @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
+  class         Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherUserId, classId, subjectId])
+  @@index([schoolId])
+  @@index([classId])
+  @@index([subjectId])
+}
+
+
+model Grade {
+  id            String   @id @default(cuid())
+  schoolId      String
+  studentId     String
+  classId       String
+  subjectId     String
+  teacherUserId String
+  value         Float
+  maxValue      Float
+  term          Term
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class         Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherUser   User     @relation("GradeTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([classId])
+  @@index([subjectId])
+  @@index([teacherUserId])
+}
+
+
+// Reserved for future shared indexes, comments and data notes.
+
+
