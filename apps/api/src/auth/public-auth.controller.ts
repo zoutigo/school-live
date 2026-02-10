@@ -1,0 +1,64 @@
+import { Body, Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
+import { clearAuthCookies, setAuthCookies } from './auth-cookies.js';
+import { CurrentUser } from './decorators/current-user.decorator.js';
+import type { AuthenticatedUser } from './auth.types.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
+import { FirstPasswordChangeDto } from './dto/first-password-change.dto.js';
+import { LoginDto } from './dto/login.dto.js';
+import { ProfileSetupDto } from './dto/profile-setup.dto.js';
+import { ProfileSetupOptionsDto } from './dto/profile-setup-options.dto.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { AuthService } from './auth.service.js';
+
+@Controller('auth')
+export class PublicAuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Post('login')
+  async login(@Body() payload: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const authResponse = await this.authService.login(payload.email, payload.password);
+    const csrfToken = setAuthCookies(res, authResponse, process.env.NODE_ENV === 'production');
+    return { ...authResponse, csrfToken };
+  }
+
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {
+    clearAuthCookies(res, process.env.NODE_ENV === 'production');
+    return { success: true };
+  }
+
+  @Post('first-password-change')
+  firstPasswordChange(@Body() payload: FirstPasswordChangeDto) {
+    return this.authService.firstPasswordChange(
+      payload.email,
+      payload.temporaryPassword,
+      payload.newPassword
+    );
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  changePassword(@CurrentUser() user: AuthenticatedUser, @Body() payload: ChangePasswordDto) {
+    return this.authService.changePassword(user.id, payload.currentPassword, payload.newPassword);
+  }
+
+  @Get('profile-setup/options')
+  profileSetupOptions(@Query() query: ProfileSetupOptionsDto) {
+    return this.authService.getProfileSetupOptions(query.email);
+  }
+
+  @Post('profile-setup')
+  profileSetup(@Body() payload: ProfileSetupDto) {
+    return this.authService.completeProfileSetup({
+      email: payload.email,
+      password: payload.password,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      birthDate: payload.birthDate,
+      answers: payload.answers,
+      parentClassId: payload.parentClassId,
+      parentStudentId: payload.parentStudentId
+    });
+  }
+}

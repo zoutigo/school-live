@@ -7,12 +7,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
+enum PlatformRole {
   SUPER_ADMIN
+  ADMIN
+  SALES
+  SUPPORT
+}
+
+enum SchoolRole {
   SCHOOL_ADMIN
+  SCHOOL_MANAGER
+  SCHOOL_ACCOUNTANT
   TEACHER
   PARENT
   STUDENT
+}
+
+enum RecoveryQuestionKey {
+  MOTHER_MAIDEN_NAME
+  FAVORITE_SPORT
+  FAVORITE_TEACHER
+  BIRTH_CITY
+  CHILDHOOD_NICKNAME
+  FAVORITE_BOOK
 }
 
 enum Term {

@@ -1,7 +1,7 @@
 model Student {
   id           String          @id @default(cuid())
   schoolId     String
-  userId       String?         @unique
+  userId       String?
   firstName    String
   lastName     String
   classId      String?
@@ -15,6 +15,7 @@ model Student {
 
   @@index([schoolId])
   @@index([classId])
+  @@unique([schoolId, userId])
 }
 
 model ParentStudent {
@@ -34,11 +35,25 @@ model ParentStudent {
 model Teacher {
   id        String   @id @default(cuid())
   schoolId  String
-  userId    String   @unique
+  userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+  @@unique([schoolId, userId])
+}
+
+model UserRecoveryAnswer {
+  id          String              @id @default(cuid())
+  userId      String
+  questionKey RecoveryQuestionKey
+  answerHash  String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionKey])
+  @@index([userId])
 }

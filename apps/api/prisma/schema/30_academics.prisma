@@ -1,17 +1,33 @@
+model ClassGroup {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes   Class[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
 model Class {
   id           String                @id @default(cuid())
   schoolId     String
+  classGroupId String?
   name         String
   year         String
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
   school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classGroup   ClassGroup?           @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
   students     Student[]
   assignments  TeacherClassSubject[]
   grades       Grade[]
 
-  @@unique([schoolId, name, year])
+  @@unique([schoolId, classGroupId, name, year])
   @@index([schoolId])
+  @@index([classGroupId])
 }
 
 model Subject {

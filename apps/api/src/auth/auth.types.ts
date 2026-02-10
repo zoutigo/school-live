@@ -1,16 +1,28 @@
-export type Role = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STUDENT';
+export type PlatformRole = 'SUPER_ADMIN' | 'ADMIN' | 'SALES' | 'SUPPORT';
+export type SchoolRole =
+  | 'SCHOOL_ADMIN'
+  | 'SCHOOL_MANAGER'
+  | 'SCHOOL_ACCOUNTANT'
+  | 'TEACHER'
+  | 'PARENT'
+  | 'STUDENT';
+export type AppRole = PlatformRole | SchoolRole;
 
 export interface JwtPayload {
   sub: string;
-  schoolId: string;
-  role: Role;
 }
 
 export interface AuthenticatedUser {
   id: string;
-  schoolId: string;
-  role: Role;
+  platformRoles: PlatformRole[];
+  memberships: Array<{
+    schoolId: string;
+    role: SchoolRole;
+  }>;
+  profileCompleted: boolean;
   email?: string | null;
+  phone?: string | null;
+  avatarUrl?: string | null;
   firstName: string;
   lastName: string;
 }
@@ -19,4 +31,6 @@ export interface AuthResponse {
   accessToken: string;
   tokenType: 'Bearer';
   expiresIn: number;
+  schoolSlug: string | null;
+  csrfToken?: string;
 }

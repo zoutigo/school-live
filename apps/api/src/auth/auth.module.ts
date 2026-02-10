@@ -6,7 +6,9 @@ import { AccessModule } from '../access/access.module.js';
 import { SchoolsModule } from '../schools/schools.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { GlobalMeController } from './global-me.controller.js';
 import { MeController } from './me.controller.js';
+import { PublicAuthController } from './public-auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 
 @Module({
@@ -25,7 +27,7 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
       })
     })
   ],
-  controllers: [AuthController, MeController],
+  controllers: [AuthController, MeController, PublicAuthController, GlobalMeController],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService]
 })

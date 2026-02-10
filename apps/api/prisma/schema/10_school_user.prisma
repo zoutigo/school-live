@@ -6,7 +6,8 @@ model School {
   primaryColor String?
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
-  users        User[]
+  memberships  SchoolMembership[]
+  classGroups  ClassGroup[]
   students     Student[]
   teachers     Teacher[]
   classes      Class[]
@@ -16,26 +17,55 @@ model School {
 }
 
 model User {
-  id             String         @id @default(cuid())
-  schoolId       String
-  email          String?
-  phone          String?
-  passwordHash   String
-  role           Role
-  firstName      String
-  lastName       String
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  school         School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacherProfile Teacher?
-  studentProfile Student?
-  parentLinks    ParentStudent[] @relation("ParentLinks")
-  gradesGiven    Grade[]        @relation("GradeTeacher")
+  id                 String                   @id @default(cuid())
+  email              String                   @unique
+  phone              String?
+  avatarUrl          String?
+  passwordHash       String
+  mustChangePassword Boolean                  @default(false)
+  profileCompleted   Boolean                  @default(true)
+  recoveryBirthDate  DateTime?
+  recoveryClassId    String?
+  recoveryStudentId  String?
+  firstName          String                   @map("firstname")
+  lastName           String                   @map("lastname")
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  platformRoles      PlatformRoleAssignment[]
+  memberships        SchoolMembership[]
+  teacherProfiles    Teacher[]
+  studentProfiles    Student[]
+  parentLinks        ParentStudent[]          @relation("ParentLinks")
+  gradesGiven        Grade[]                  @relation("GradeTeacher")
   teachingAssignments TeacherClassSubject[]
-  refreshTokens  RefreshToken[]
+  refreshTokens      RefreshToken[]
+  recoveryAnswers    UserRecoveryAnswer[]
+}
 
-  @@unique([schoolId, email])
+model PlatformRoleAssignment {
+  id        String       @id @default(cuid())
+  userId    String
+  role      PlatformRole
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role])
+}
+
+model SchoolMembership {
+  id        String    @id @default(cuid())
+  userId    String
+  schoolId  String
+  role      SchoolRole
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, schoolId, role])
   @@index([schoolId])
+  @@index([role])
 }
 
 model RefreshToken {

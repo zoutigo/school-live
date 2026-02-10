@@ -16,6 +16,7 @@ export class SchoolScopeGuard implements CanActivate {
       user?: AuthenticatedUser;
       params: Record<string, string>;
       schoolId?: string;
+      schoolRoles?: AuthenticatedUser['memberships'][number]['role'][];
     }>();
 
     const schoolSlug = req.params?.schoolSlug;
@@ -26,13 +27,16 @@ export class SchoolScopeGuard implements CanActivate {
 
     const scopedSchoolId = await this.schoolResolver.resolveSchoolIdBySlug(schoolSlug);
     req.schoolId = scopedSchoolId;
+    req.schoolRoles = req.user.memberships
+      .filter((membership) => membership.schoolId === scopedSchoolId)
+      .map((membership) => membership.role);
 
-    if (req.user.role === 'SUPER_ADMIN') {
+    if (req.user.platformRoles.includes('SUPER_ADMIN') || req.user.platformRoles.includes('ADMIN')) {
       return true;
     }
 
-    if (req.user.schoolId !== scopedSchoolId) {
-      throw new ForbiddenException('School scope mismatch');
+    if (!req.schoolRoles.length) {
+      throw new ForbiddenException('User is not bound to a school');
     }
 
     return true;
