@@ -1,49 +1,82 @@
 import {
   ForbiddenException,
   Injectable,
-  NotFoundException
-} from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service.js';
-import type { AuthenticatedUser, SchoolRole } from '../auth/auth.types.js';
-import type { CreateGradeDto } from './dto/create-grade.dto.js';
-import type { ListGradesDto } from './dto/list-grades.dto.js';
-import type { UpdateGradeDto } from './dto/update-grade.dto.js';
+  NotFoundException,
+} from "@nestjs/common";
+import type { Prisma } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service.js";
+import type { AuthenticatedUser, SchoolRole } from "../auth/auth.types.js";
+import type { CreateGradeDto } from "./dto/create-grade.dto.js";
+import type { ListGradesDto } from "./dto/list-grades.dto.js";
+import type { UpdateGradeDto } from "./dto/update-grade.dto.js";
 
 @Injectable()
 export class GradesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(user: AuthenticatedUser, schoolId: string, payload: CreateGradeDto) {
+  async create(
+    user: AuthenticatedUser,
+    schoolId: string,
+    payload: CreateGradeDto,
+  ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
 
+    const classEntity = await this.ensureClassInSchool(
+      payload.classId,
+      effectiveSchoolId,
+    );
     await this.ensureStudentInSchool(payload.studentId, effectiveSchoolId);
-    await this.ensureClassInSchool(payload.classId, effectiveSchoolId);
+    await this.ensureStudentEnrollment(
+      payload.studentId,
+      payload.classId,
+      classEntity.schoolYearId,
+      effectiveSchoolId,
+    );
     await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId);
+    await this.ensureSubjectAllowedForClass(
+      payload.classId,
+      payload.subjectId,
+      effectiveSchoolId,
+    );
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, 'TEACHER')) {
-      await this.ensureTeacherAssignment(user.id, effectiveSchoolId, payload.classId, payload.subjectId);
+    if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
+      await this.ensureTeacherAssignment(
+        user.id,
+        effectiveSchoolId,
+        payload.classId,
+        payload.subjectId,
+        classEntity.schoolYearId,
+      );
     }
 
     return this.prisma.grade.create({
       data: {
         schoolId: effectiveSchoolId,
+        schoolYearId: classEntity.schoolYearId,
         studentId: payload.studentId,
         classId: payload.classId,
         subjectId: payload.subjectId,
         teacherUserId: user.id,
         value: payload.value,
         maxValue: payload.maxValue,
-        term: payload.term
-      }
+        term: payload.term,
+      },
     });
   }
 
-  async list(user: AuthenticatedUser, schoolId: string, filters: ListGradesDto) {
+  async list(
+    user: AuthenticatedUser,
+    schoolId: string,
+    filters: ListGradesDto,
+  ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const where: Prisma.GradeWhereInput = {
-      schoolId: effectiveSchoolId
+      schoolId: effectiveSchoolId,
     };
+
+    if (filters.schoolYearId) {
+      where.schoolYearId = filters.schoolYearId;
+    }
 
     if (filters.studentId) {
       where.studentId = filters.studentId;
@@ -58,20 +91,26 @@ export class GradesService {
     }
 
     if (
-      this.hasPlatformRole(user, 'SUPER_ADMIN') ||
-      this.hasSchoolRole(user, effectiveSchoolId, 'SCHOOL_ADMIN') ||
-      this.hasSchoolRole(user, effectiveSchoolId, 'SCHOOL_MANAGER')
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER")
     ) {
-      return this.prisma.grade.findMany({ where, orderBy: { createdAt: 'desc' } });
+      return this.prisma.grade.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+      });
     }
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, 'TEACHER')) {
+    if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
       const assignments = await this.prisma.teacherClassSubject.findMany({
         where: {
           schoolId: effectiveSchoolId,
-          teacherUserId: user.id
+          teacherUserId: user.id,
+          ...(filters.schoolYearId
+            ? { schoolYearId: filters.schoolYearId }
+            : {}),
         },
-        select: { classId: true, subjectId: true }
+        select: { classId: true, subjectId: true },
       });
 
       if (!assignments.length) {
@@ -82,23 +121,23 @@ export class GradesService {
         ...where,
         OR: assignments.map((assignment) => ({
           classId: assignment.classId,
-          subjectId: assignment.subjectId
-        }))
+          subjectId: assignment.subjectId,
+        })),
       };
 
       return this.prisma.grade.findMany({
         where: teacherScopedWhere,
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       });
     }
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, 'PARENT')) {
+    if (this.hasSchoolRole(user, effectiveSchoolId, "PARENT")) {
       const links = await this.prisma.parentStudent.findMany({
         where: {
           schoolId: effectiveSchoolId,
-          parentUserId: user.id
+          parentUserId: user.id,
         },
-        select: { studentId: true }
+        select: { studentId: true },
       });
 
       if (!links.length) {
@@ -108,19 +147,19 @@ export class GradesService {
       return this.prisma.grade.findMany({
         where: {
           ...where,
-          studentId: { in: links.map((link) => link.studentId) }
+          studentId: { in: links.map((link) => link.studentId) },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       });
     }
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, 'STUDENT')) {
+    if (this.hasSchoolRole(user, effectiveSchoolId, "STUDENT")) {
       const student = await this.prisma.student.findFirst({
         where: {
           schoolId: effectiveSchoolId,
-          userId: user.id
+          userId: user.id,
         },
-        select: { id: true }
+        select: { id: true },
       });
 
       if (!student) {
@@ -130,28 +169,39 @@ export class GradesService {
       return this.prisma.grade.findMany({
         where: {
           ...where,
-          studentId: student.id
+          studentId: student.id,
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       });
     }
 
-    throw new ForbiddenException('Unsupported role');
+    throw new ForbiddenException("Unsupported role");
   }
 
-  async update(user: AuthenticatedUser, schoolId: string, gradeId: string, payload: UpdateGradeDto) {
+  async update(
+    user: AuthenticatedUser,
+    schoolId: string,
+    gradeId: string,
+    payload: UpdateGradeDto,
+  ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
 
     const grade = await this.prisma.grade.findFirst({
-      where: { id: gradeId, schoolId: effectiveSchoolId }
+      where: { id: gradeId, schoolId: effectiveSchoolId },
     });
 
     if (!grade) {
-      throw new NotFoundException('Grade not found');
+      throw new NotFoundException("Grade not found");
     }
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, 'TEACHER')) {
-      await this.ensureTeacherAssignment(user.id, effectiveSchoolId, grade.classId, grade.subjectId);
+    if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
+      await this.ensureTeacherAssignment(
+        user.id,
+        effectiveSchoolId,
+        grade.classId,
+        grade.subjectId,
+        grade.schoolYearId,
+      );
     }
 
     return this.prisma.grade.update({
@@ -159,8 +209,8 @@ export class GradesService {
       data: {
         value: payload.value,
         maxValue: payload.maxValue,
-        term: payload.term
-      }
+        term: payload.term,
+      },
     });
   }
 
@@ -170,25 +220,30 @@ export class GradesService {
     const grade = await this.prisma.grade.findFirst({
       where: {
         id: gradeId,
-        schoolId: effectiveSchoolId
-      }
+        schoolId: effectiveSchoolId,
+      },
     });
 
     if (!grade) {
-      throw new NotFoundException('Grade not found');
+      throw new NotFoundException("Grade not found");
     }
 
     return this.prisma.grade.delete({ where: { id: grade.id } });
   }
 
-  private getEffectiveSchoolId(user: AuthenticatedUser, scopedSchoolId: string): string {
-    if (this.hasPlatformRole(user, 'SUPER_ADMIN')) {
+  private getEffectiveSchoolId(
+    user: AuthenticatedUser,
+    scopedSchoolId: string,
+  ): string {
+    if (this.hasPlatformRole(user, "SUPER_ADMIN")) {
       return scopedSchoolId;
     }
 
-    const hasMembership = user.memberships.some((membership) => membership.schoolId === scopedSchoolId);
+    const hasMembership = user.memberships.some(
+      (membership) => membership.schoolId === scopedSchoolId,
+    );
     if (!hasMembership) {
-      throw new ForbiddenException('User is not bound to a school');
+      throw new ForbiddenException("User is not bound to a school");
     }
 
     return scopedSchoolId;
@@ -198,61 +253,151 @@ export class GradesService {
     teacherUserId: string,
     schoolId: string,
     classId: string,
-    subjectId: string
+    subjectId: string,
+    schoolYearId: string,
   ) {
     const assignment = await this.prisma.teacherClassSubject.findFirst({
       where: {
         schoolId,
+        schoolYearId,
         teacherUserId,
         classId,
-        subjectId
+        subjectId,
       },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!assignment) {
-      throw new ForbiddenException('Teacher is not assigned to this class/subject');
+      throw new ForbiddenException(
+        "Teacher is not assigned to this class/subject",
+      );
     }
   }
 
   private async ensureStudentInSchool(studentId: string, schoolId: string) {
     const student = await this.prisma.student.findFirst({
       where: { id: studentId, schoolId },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
+  }
+
+  private async ensureStudentEnrollment(
+    studentId: string,
+    classId: string,
+    schoolYearId: string,
+    schoolId: string,
+  ) {
+    const enrollment = await this.prisma.enrollment.findFirst({
+      where: {
+        schoolId,
+        schoolYearId,
+        studentId,
+        classId,
+        status: "ACTIVE",
+      },
+      select: { id: true },
+    });
+
+    if (enrollment) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      "Student is not enrolled in this class for the school year",
+    );
   }
 
   private async ensureClassInSchool(classId: string, schoolId: string) {
     const classFound = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
-      select: { id: true }
+      select: { id: true, schoolYearId: true },
     });
 
     if (!classFound) {
-      throw new NotFoundException('Class not found');
+      throw new NotFoundException("Class not found");
+    }
+
+    return classFound;
+  }
+
+  private async ensureSubjectAllowedForClass(
+    classId: string,
+    subjectId: string,
+    schoolId: string,
+  ) {
+    const [classEntity, override] = await this.prisma.$transaction([
+      this.prisma.class.findFirst({
+        where: { id: classId, schoolId },
+        select: {
+          curriculumId: true,
+          curriculum: {
+            select: {
+              subjects: {
+                where: { subjectId },
+                select: { id: true },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.classSubjectOverride.findFirst({
+        where: { schoolId, classId, subjectId },
+        select: { action: true },
+      }),
+    ]);
+
+    if (!classEntity) {
+      throw new NotFoundException("Class not found");
+    }
+
+    if (override?.action === "REMOVE") {
+      throw new ForbiddenException("Subject is not allowed for this class");
+    }
+
+    if (override?.action === "ADD") {
+      return;
+    }
+
+    if (!classEntity.curriculumId) {
+      return;
+    }
+
+    const isInCurriculum = (classEntity.curriculum?.subjects?.length ?? 0) > 0;
+    if (!isInCurriculum) {
+      throw new ForbiddenException("Subject is not in the class curriculum");
     }
   }
 
   private async ensureSubjectInSchool(subjectId: string, schoolId: string) {
     const subject = await this.prisma.subject.findFirst({
       where: { id: subjectId, schoolId },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!subject) {
-      throw new NotFoundException('Subject not found');
+      throw new NotFoundException("Subject not found");
     }
   }
 
-  private hasPlatformRole(user: AuthenticatedUser, role: AuthenticatedUser['platformRoles'][number]) {
+  private hasPlatformRole(
+    user: AuthenticatedUser,
+    role: AuthenticatedUser["platformRoles"][number],
+  ) {
     return user.platformRoles.includes(role);
   }
 
-  private hasSchoolRole(user: AuthenticatedUser, schoolId: string, role: SchoolRole) {
-    return user.memberships.some((membership) => membership.schoolId === schoolId && membership.role === role);
+  private hasSchoolRole(
+    user: AuthenticatedUser,
+    schoolId: string,
+    role: SchoolRole,
+  ) {
+    return user.memberships.some(
+      (membership) =>
+        membership.schoolId === schoolId && membership.role === role,
+    );
   }
 }

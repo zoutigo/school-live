@@ -1,6 +1,6 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import nodemailer from 'nodemailer';
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import nodemailer from "nodemailer";
 
 @Injectable()
 export class MailService {
@@ -12,24 +12,27 @@ export class MailService {
     temporaryPassword: string;
     schoolSlug: string | null;
   }) {
-    const host = this.configService.get<string>('SMTP_HOST');
-    const port = Number(this.configService.get<string>('SMTP_PORT') ?? 465);
-    const user = this.configService.get<string>('SMTP_USER');
-    const pass = this.configService.get<string>('SMTP_PASS');
-    const secure = String(this.configService.get<string>('SMTP_SECURE') ?? 'true') === 'true';
-    const from = this.configService.get<string>('MAIL_FROM') ?? user;
+    const host = this.configService.get<string>("SMTP_HOST");
+    const port = Number(this.configService.get<string>("SMTP_PORT") ?? 465);
+    const user = this.configService.get<string>("SMTP_USER");
+    const pass = this.configService.get<string>("SMTP_PASS");
+    const secure =
+      String(this.configService.get<string>("SMTP_SECURE") ?? "true") ===
+      "true";
+    const from = this.configService.get<string>("MAIL_FROM") ?? user;
 
     if (!host || !user || !pass || !from) {
-      throw new InternalServerErrorException('SMTP configuration missing');
+      throw new InternalServerErrorException("SMTP configuration missing");
     }
 
-    const webUrl = this.configService.get<string>('WEB_URL') ?? 'http://localhost:3000';
+    const webUrl =
+      this.configService.get<string>("WEB_URL") ?? "http://localhost:3000";
     const loginUrl = payload.schoolSlug
       ? `${webUrl}/schools/${payload.schoolSlug}/login`
       : `${webUrl}/`;
     const firstPasswordParams = new URLSearchParams({ email: payload.to });
     if (payload.schoolSlug) {
-      firstPasswordParams.set('schoolSlug', payload.schoolSlug);
+      firstPasswordParams.set("schoolSlug", payload.schoolSlug);
     }
     const firstPasswordUrl = `${webUrl}/first-password?${firstPasswordParams.toString()}`;
 
@@ -37,24 +40,24 @@ export class MailService {
       host,
       port,
       secure,
-      auth: { user, pass }
+      auth: { user, pass },
     });
 
     await transporter.sendMail({
       from,
       to: payload.to,
-      subject: 'School-Live - Votre compte a ete cree',
+      subject: "School-Live - Votre compte a ete cree",
       text: [
         `Bonjour ${payload.firstName},`,
-        '',
-        'Votre compte School-Live a ete cree.',
+        "",
+        "Votre compte School-Live a ete cree.",
         `Mot de passe provisoire: ${payload.temporaryPassword}`,
-        '',
+        "",
         `1) Connectez-vous ici: ${loginUrl}`,
         `2) Changez obligatoirement votre mot de passe ici: ${firstPasswordUrl}`,
-        '',
-        'Apres changement de mot de passe, reconnectez-vous normalement.'
-      ].join('\n'),
+        "",
+        "Apres changement de mot de passe, reconnectez-vous normalement.",
+      ].join("\n"),
       html: `
 <!doctype html>
 <html lang="fr">
@@ -125,7 +128,7 @@ export class MailService {
     </table>
   </body>
 </html>
-      `
+      `,
     });
   }
 }

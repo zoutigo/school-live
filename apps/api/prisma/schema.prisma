@@ -38,74 +38,72 @@ enum Term {
   TERM_3
 }
 
-model School {
-  id           String                @id @default(cuid())
-  slug         String                @unique
-  name         String
-  logoUrl      String?
-  primaryColor String?
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
-  memberships  SchoolMembership[]
-  classGroups  ClassGroup[]
-  students     Student[]
-  teachers     Teacher[]
-  classes      Class[]
-  subjects     Subject[]
-  assignments  TeacherClassSubject[]
-  grades       Grade[]
+enum EnrollmentStatus {
+  ACTIVE
+  TRANSFERRED
+  WITHDRAWN
+  GRADUATED
 }
 
-model ClassGroup {
-  id        String   @id @default(cuid())
-  schoolId  String
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classes   Class[]
+enum OverrideAction {
+  ADD
+  REMOVE
+}
 
-  @@unique([schoolId, name])
-  @@index([schoolId])
+
+model School {
+  id                 String                @id @default(cuid())
+  slug               String                @unique
+  name               String
+  logoUrl            String?
+  primaryColor       String?
+  activeSchoolYearId String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  activeSchoolYear   SchoolYear?           @relation("ActiveSchoolYear", fields: [activeSchoolYearId], references: [id], onDelete: SetNull)
+  schoolYears        SchoolYear[]          @relation("SchoolYears")
+  memberships        SchoolMembership[]
+  classGroups        ClassGroup[]
+  students           Student[]
+  teachers           Teacher[]
+  classes            Class[]
+  subjects           Subject[]
+  assignments        TeacherClassSubject[]
+  grades             Grade[]
+  enrollments        Enrollment[]
+  classSubjectOverrides ClassSubjectOverride[]
+  academicLevels     AcademicLevel[]
+  tracks             Track[]
+  curriculums        Curriculum[]
+  curriculumSubjects CurriculumSubject[]
+
+  @@index([activeSchoolYearId])
 }
 
 model User {
-  id                  String                   @id @default(cuid())
-  email               String                   @unique
-  phone               String?
-  avatarUrl           String?
-  passwordHash        String
-  mustChangePassword  Boolean                  @default(false)
-  profileCompleted    Boolean                  @default(true)
-  recoveryBirthDate   DateTime?
-  recoveryClassId     String?
-  recoveryStudentId   String?
-  firstName           String                   @map("firstname")
-  lastName            String                   @map("lastname")
-  createdAt           DateTime                 @default(now())
-  updatedAt           DateTime                 @updatedAt
-  platformRoles       PlatformRoleAssignment[]
-  memberships         SchoolMembership[]
-  teacherProfiles     Teacher[]
-  studentProfiles     Student[]
-  parentLinks         ParentStudent[]          @relation("ParentLinks")
-  gradesGiven         Grade[]                  @relation("GradeTeacher")
+  id                 String                   @id @default(cuid())
+  email              String                   @unique
+  phone              String?
+  avatarUrl          String?
+  passwordHash       String
+  mustChangePassword Boolean                  @default(false)
+  profileCompleted   Boolean                  @default(true)
+  recoveryBirthDate  DateTime?
+  recoveryClassId    String?
+  recoveryStudentId  String?
+  firstName          String                   @map("firstname")
+  lastName           String                   @map("lastname")
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  platformRoles      PlatformRoleAssignment[]
+  memberships        SchoolMembership[]
+  teacherProfiles    Teacher[]
+  studentProfiles    Student[]
+  parentLinks        ParentStudent[]          @relation("ParentLinks")
+  gradesGiven        Grade[]                  @relation("GradeTeacher")
   teachingAssignments TeacherClassSubject[]
-  refreshTokens       RefreshToken[]
-  recoveryAnswers     UserRecoveryAnswer[]
-}
-
-model UserRecoveryAnswer {
-  id          String              @id @default(cuid())
-  userId      String
-  questionKey RecoveryQuestionKey
-  answerHash  String
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, questionKey])
-  @@index([userId])
+  refreshTokens      RefreshToken[]
+  recoveryAnswers    UserRecoveryAnswer[]
 }
 
 model PlatformRoleAssignment {
@@ -120,14 +118,14 @@ model PlatformRoleAssignment {
 }
 
 model SchoolMembership {
-  id        String     @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   schoolId  String
   role      SchoolRole
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  school    School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([userId, schoolId, role])
   @@index([schoolId])
@@ -135,18 +133,19 @@ model SchoolMembership {
 }
 
 model RefreshToken {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   userId       String
-  tokenHash    String    @unique
+  tokenHash    String   @unique
   expiresAt    DateTime
   revokedAt    DateTime?
   replacedById String?
-  createdAt    DateTime  @default(now())
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
 }
+
 
 model Student {
   id          String          @id @default(cuid())
@@ -154,18 +153,37 @@ model Student {
   userId      String?
   firstName   String
   lastName    String
-  classId     String?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  class       Class?          @relation(fields: [classId], references: [id], onDelete: SetNull)
   parentLinks ParentStudent[] @relation("StudentLinks")
   grades      Grade[]
+  enrollments Enrollment[]
 
-  @@unique([schoolId, userId])
   @@index([schoolId])
+  @@unique([schoolId, userId])
+}
+
+model Enrollment {
+  id           String           @id @default(cuid())
+  schoolId     String
+  schoolYearId String
+  studentId    String
+  classId      String
+  status       EnrollmentStatus @default(ACTIVE)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  school       School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear   SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class        Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolYearId, studentId])
+  @@index([schoolId])
+  @@index([schoolYearId])
   @@index([classId])
+  @@index([studentId])
 }
 
 model ParentStudent {
@@ -191,64 +209,218 @@ model Teacher {
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([schoolId])
   @@unique([schoolId, userId])
-  @@index([schoolId])
 }
 
-model Class {
-  id          String                @id @default(cuid())
-  schoolId    String
-  classGroupId String?
-  name        String
-  year        String
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  school      School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classGroup  ClassGroup?           @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
-  students    Student[]
-  assignments TeacherClassSubject[]
-  grades      Grade[]
+model UserRecoveryAnswer {
+  id          String              @id @default(cuid())
+  userId      String
+  questionKey RecoveryQuestionKey
+  answerHash  String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([schoolId, classGroupId, name, year])
-  @@index([schoolId])
-  @@index([classGroupId])
+  @@unique([userId, questionKey])
+  @@index([userId])
 }
 
-model Subject {
-  id          String                @id @default(cuid())
-  schoolId    String
-  name        String
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  school      School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  assignments TeacherClassSubject[]
-  grades      Grade[]
+
+model ClassGroup {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes   Class[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
 }
 
-model TeacherClassSubject {
-  id            String   @id @default(cuid())
-  schoolId      String
-  teacherUserId String
-  classId       String
-  subjectId     String
-  createdAt     DateTime @default(now())
-  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacherUser   User     @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
-  class         Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+model SchoolYear {
+  id                  String                @id @default(cuid())
+  schoolId            String
+  label               String
+  startsAt            DateTime?
+  endsAt              DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  school              School                @relation("SchoolYears", fields: [schoolId], references: [id], onDelete: Cascade)
+  activeForSchools    School[]              @relation("ActiveSchoolYear")
+  classes             Class[]
+  enrollments         Enrollment[]
+  teachingAssignments TeacherClassSubject[]
+  grades              Grade[]
 
-  @@unique([teacherUserId, classId, subjectId])
+  @@unique([schoolId, label])
+  @@index([schoolId])
+}
+
+model AcademicLevel {
+  id          String       @id @default(cuid())
+  schoolId    String
+  code        String
+  label       String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes     Class[]
+  curriculums Curriculum[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model Track {
+  id          String       @id @default(cuid())
+  schoolId    String
+  code        String
+  label       String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes     Class[]
+  curriculums Curriculum[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model Curriculum {
+  id              String              @id @default(cuid())
+  schoolId        String
+  name            String
+  academicLevelId String
+  trackId         String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  school          School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel       @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+  track           Track?              @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  classes         Class[]
+  subjects        CurriculumSubject[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@index([academicLevelId])
+  @@index([trackId])
+}
+
+model CurriculumSubject {
+  id           String     @id @default(cuid())
+  schoolId     String
+  curriculumId String
+  subjectId    String
+  isMandatory  Boolean    @default(true)
+  coefficient  Float?
+  weeklyHours  Float?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  curriculum   Curriculum @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  subject      Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([curriculumId, subjectId])
+  @@index([schoolId])
+  @@index([subjectId])
+}
+
+model Class {
+  id              String                @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  classGroupId    String?
+  academicLevelId String?
+  trackId         String?
+  curriculumId    String?
+  name            String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  school          School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear            @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  classGroup      ClassGroup?           @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+  academicLevel   AcademicLevel?        @relation(fields: [academicLevelId], references: [id], onDelete: SetNull)
+  track           Track?                @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  curriculum      Curriculum?           @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  enrollments     Enrollment[]
+  assignments     TeacherClassSubject[]
+  grades          Grade[]
+  subjectOverrides ClassSubjectOverride[]
+
+  @@unique([schoolId, schoolYearId, classGroupId, name])
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([classGroupId])
+  @@index([academicLevelId])
+  @@index([trackId])
+  @@index([curriculumId])
+}
+
+model Subject {
+  id           String                @id @default(cuid())
+  schoolId     String
+  name         String
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments  TeacherClassSubject[]
+  grades       Grade[]
+  curriculumSubjects CurriculumSubject[]
+  classOverrides ClassSubjectOverride[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model ClassSubjectOverride {
+  id                    String         @id @default(cuid())
+  schoolId              String
+  classId               String
+  subjectId             String
+  action                OverrideAction
+  coefficientOverride   Float?
+  weeklyHoursOverride   Float?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  school                School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class                 Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject               Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId])
   @@index([schoolId])
   @@index([classId])
   @@index([subjectId])
 }
 
+model TeacherClassSubject {
+  id            String     @id @default(cuid())
+  schoolId      String
+  schoolYearId  String
+  teacherUserId String
+  classId       String
+  subjectId     String
+  createdAt     DateTime   @default(now())
+  school        School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  teacherUser   User       @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
+  class         Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolYearId, teacherUserId, classId, subjectId])
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([classId])
+  @@index([subjectId])
+}
+
+
 model Grade {
   id            String   @id @default(cuid())
   schoolId      String
+  schoolYearId  String
   studentId     String
   classId       String
   subjectId     String
@@ -258,17 +430,22 @@ model Grade {
   term          Term
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  class         Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacherUser   User     @relation("GradeTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
+  school        School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  student       Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class         Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherUser   User       @relation("GradeTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+  @@index([schoolYearId])
   @@index([studentId])
   @@index([classId])
   @@index([subjectId])
   @@index([teacherUserId])
 }
 
+
 // Reserved for future shared indexes, comments and data notes.
+
+

@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString } from "class-validator";
 
 export class UpdateClassroomDto {
   @IsOptional()
@@ -7,9 +7,21 @@ export class UpdateClassroomDto {
 
   @IsOptional()
   @IsString()
+  schoolYearId?: string;
+
+  @IsOptional()
+  @IsString()
   name?: string;
 
   @IsOptional()
   @IsString()
-  year?: string;
+  academicLevelId?: string;
+
+  @IsOptional()
+  @IsString()
+  trackId?: string;
+
+  @IsOptional()
+  @IsString()
+  curriculumId?: string;
 }

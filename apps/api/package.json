@@ -10,9 +10,11 @@
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema prisma/schema.prisma",
+    "seed:academic:backfill": "node prisma/scripts/seed-academic-backfill.mjs",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "jest --config ./jest.config.cjs"
+    "test": "jest --config ./jest.config.cjs",
+    "test:e2e": "docker compose -f ../../docker/docker-compose.yml up -d postgres && jest --config ./jest.e2e.config.cjs --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

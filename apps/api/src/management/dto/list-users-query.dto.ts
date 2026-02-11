@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Type } from "class-transformer";
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class ListUsersQueryDto {
   @IsOptional()
@@ -8,36 +8,36 @@ export class ListUsersQueryDto {
 
   @IsOptional()
   @IsIn([
-    'SUPER_ADMIN',
-    'ADMIN',
-    'SALES',
-    'SUPPORT',
-    'SCHOOL_ADMIN',
-    'SCHOOL_MANAGER',
-    'SCHOOL_ACCOUNTANT',
-    'TEACHER',
-    'PARENT',
-    'STUDENT'
+    "SUPER_ADMIN",
+    "ADMIN",
+    "SALES",
+    "SUPPORT",
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SCHOOL_ACCOUNTANT",
+    "TEACHER",
+    "PARENT",
+    "STUDENT",
   ])
   role?:
-    | 'SUPER_ADMIN'
-    | 'ADMIN'
-    | 'SALES'
-    | 'SUPPORT'
-    | 'SCHOOL_ADMIN'
-    | 'SCHOOL_MANAGER'
-    | 'SCHOOL_ACCOUNTANT'
-    | 'TEACHER'
-    | 'PARENT'
-    | 'STUDENT';
+    | "SUPER_ADMIN"
+    | "ADMIN"
+    | "SALES"
+    | "SUPPORT"
+    | "SCHOOL_ADMIN"
+    | "SCHOOL_MANAGER"
+    | "SCHOOL_ACCOUNTANT"
+    | "TEACHER"
+    | "PARENT"
+    | "STUDENT";
 
   @IsOptional()
   @IsString()
   schoolSlug?: string;
 
   @IsOptional()
-  @IsIn(['ACTIVE', 'PASSWORD_CHANGE_REQUIRED'])
-  state?: 'ACTIVE' | 'PASSWORD_CHANGE_REQUIRED';
+  @IsIn(["ACTIVE", "PASSWORD_CHANGE_REQUIRED"])
+  state?: "ACTIVE" | "PASSWORD_CHANGE_REQUIRED";
 
   @IsOptional()
   @Type(() => Number)

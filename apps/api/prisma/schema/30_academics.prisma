@@ -11,23 +11,123 @@ model ClassGroup {
   @@index([schoolId])
 }
 
-model Class {
-  id           String                @id @default(cuid())
-  schoolId     String
-  classGroupId String?
-  name         String
-  year         String
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
-  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  classGroup   ClassGroup?           @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
-  students     Student[]
-  assignments  TeacherClassSubject[]
-  grades       Grade[]
+model SchoolYear {
+  id                  String                @id @default(cuid())
+  schoolId            String
+  label               String
+  startsAt            DateTime?
+  endsAt              DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  school              School                @relation("SchoolYears", fields: [schoolId], references: [id], onDelete: Cascade)
+  activeForSchools    School[]              @relation("ActiveSchoolYear")
+  classes             Class[]
+  enrollments         Enrollment[]
+  teachingAssignments TeacherClassSubject[]
+  grades              Grade[]
 
-  @@unique([schoolId, classGroupId, name, year])
+  @@unique([schoolId, label])
   @@index([schoolId])
+}
+
+model AcademicLevel {
+  id          String       @id @default(cuid())
+  schoolId    String
+  code        String
+  label       String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes     Class[]
+  curriculums Curriculum[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model Track {
+  id          String       @id @default(cuid())
+  schoolId    String
+  code        String
+  label       String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes     Class[]
+  curriculums Curriculum[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model Curriculum {
+  id              String              @id @default(cuid())
+  schoolId        String
+  name            String
+  academicLevelId String
+  trackId         String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  school          School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel       @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+  track           Track?              @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  classes         Class[]
+  subjects        CurriculumSubject[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+  @@index([academicLevelId])
+  @@index([trackId])
+}
+
+model CurriculumSubject {
+  id           String     @id @default(cuid())
+  schoolId     String
+  curriculumId String
+  subjectId    String
+  isMandatory  Boolean    @default(true)
+  coefficient  Float?
+  weeklyHours  Float?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  curriculum   Curriculum @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  subject      Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([curriculumId, subjectId])
+  @@index([schoolId])
+  @@index([subjectId])
+}
+
+model Class {
+  id              String                @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  classGroupId    String?
+  academicLevelId String?
+  trackId         String?
+  curriculumId    String?
+  name            String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  school          School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear            @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  classGroup      ClassGroup?           @relation(fields: [classGroupId], references: [id], onDelete: SetNull)
+  academicLevel   AcademicLevel?        @relation(fields: [academicLevelId], references: [id], onDelete: SetNull)
+  track           Track?                @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  curriculum      Curriculum?           @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  enrollments     Enrollment[]
+  assignments     TeacherClassSubject[]
+  grades          Grade[]
+  subjectOverrides ClassSubjectOverride[]
+
+  @@unique([schoolId, schoolYearId, classGroupId, name])
+  @@index([schoolId])
+  @@index([schoolYearId])
   @@index([classGroupId])
+  @@index([academicLevelId])
+  @@index([trackId])
+  @@index([curriculumId])
 }
 
 model Subject {
@@ -39,25 +139,50 @@ model Subject {
   school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   assignments  TeacherClassSubject[]
   grades       Grade[]
+  curriculumSubjects CurriculumSubject[]
+  classOverrides ClassSubjectOverride[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
 }
 
+model ClassSubjectOverride {
+  id                    String         @id @default(cuid())
+  schoolId              String
+  classId               String
+  subjectId             String
+  action                OverrideAction
+  coefficientOverride   Float?
+  weeklyHoursOverride   Float?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  school                School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class                 Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject               Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId])
+  @@index([schoolId])
+  @@index([classId])
+  @@index([subjectId])
+}
+
 model TeacherClassSubject {
-  id            String   @id @default(cuid())
+  id            String     @id @default(cuid())
   schoolId      String
+  schoolYearId  String
   teacherUserId String
   classId       String
   subjectId     String
-  createdAt     DateTime @default(now())
-  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacherUser   User     @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
-  class         Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+  school        School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  teacherUser   User       @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
+  class         Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
-  @@unique([teacherUserId, classId, subjectId])
+  @@unique([schoolYearId, teacherUserId, classId, subjectId])
   @@index([schoolId])
+  @@index([schoolYearId])
   @@index([classId])
   @@index([subjectId])
 }

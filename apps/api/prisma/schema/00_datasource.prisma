@@ -37,3 +37,15 @@ enum Term {
   TERM_2
   TERM_3
 }
+
+enum EnrollmentStatus {
+  ACTIVE
+  TRANSFERRED
+  WITHDRAWN
+  GRADUATED
+}
+
+enum OverrideAction {
+  ADD
+  REMOVE
+}

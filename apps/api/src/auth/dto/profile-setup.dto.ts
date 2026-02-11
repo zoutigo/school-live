@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsDateString,
@@ -7,25 +7,25 @@ import {
   IsOptional,
   IsString,
   MinLength,
-  ValidateNested
-} from 'class-validator';
+  ValidateNested,
+} from "class-validator";
 
 class RecoveryAnswerDto {
   @IsIn([
-    'MOTHER_MAIDEN_NAME',
-    'FAVORITE_SPORT',
-    'FAVORITE_TEACHER',
-    'BIRTH_CITY',
-    'CHILDHOOD_NICKNAME',
-    'FAVORITE_BOOK'
+    "MOTHER_MAIDEN_NAME",
+    "FAVORITE_SPORT",
+    "FAVORITE_TEACHER",
+    "BIRTH_CITY",
+    "CHILDHOOD_NICKNAME",
+    "FAVORITE_BOOK",
   ])
   questionKey!:
-    | 'MOTHER_MAIDEN_NAME'
-    | 'FAVORITE_SPORT'
-    | 'FAVORITE_TEACHER'
-    | 'BIRTH_CITY'
-    | 'CHILDHOOD_NICKNAME'
-    | 'FAVORITE_BOOK';
+    | "MOTHER_MAIDEN_NAME"
+    | "FAVORITE_SPORT"
+    | "FAVORITE_TEACHER"
+    | "BIRTH_CITY"
+    | "CHILDHOOD_NICKNAME"
+    | "FAVORITE_BOOK";
 
   @IsString()
   @MinLength(2)

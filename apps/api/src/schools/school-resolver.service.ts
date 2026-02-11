@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service.js";
 
 @Injectable()
 export class SchoolResolverService {
@@ -16,11 +16,11 @@ export class SchoolResolverService {
 
     const school = await this.prisma.school.findUnique({
       where: { slug: schoolSlug },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!school) {
-      throw new NotFoundException('School not found');
+      throw new NotFoundException("School not found");
     }
 
     this.slugToIdCache.set(schoolSlug, school.id);
@@ -35,12 +35,12 @@ export class SchoolResolverService {
         slug: true,
         name: true,
         logoUrl: true,
-        primaryColor: true
-      }
+        primaryColor: true,
+      },
     });
 
     if (!school) {
-      throw new NotFoundException('School not found');
+      throw new NotFoundException("School not found");
     }
 
     this.slugToIdCache.set(schoolSlug, school.id);

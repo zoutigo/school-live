@@ -2,47 +2,63 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotFoundException
-} from '@nestjs/common';
-import type { PlatformRole, SchoolRole } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import { z } from 'zod';
-import type { AuthenticatedUser } from '../auth/auth.types.js';
-import { MailService } from '../mail/mail.service.js';
-import { PrismaService } from '../prisma/prisma.service.js';
-import type { CreateAdminDto } from './dto/create-admin.dto.js';
-import type { CreateClassGroupDto } from './dto/create-class-group.dto.js';
-import type { CreateClassroomDto } from './dto/create-classroom.dto.js';
-import type { CreateParentStudentLinkDto } from './dto/create-parent-student-link.dto.js';
-import type { CreateSchoolDto } from './dto/create-school.dto.js';
-import type { CreateStudentDto } from './dto/create-student.dto.js';
-import type { CreateTeacherDto } from './dto/create-teacher.dto.js';
-import type { CreateUserDto } from './dto/create-user.dto.js';
-import type { ListUsersQueryDto } from './dto/list-users-query.dto.js';
-import type { UpdateClassGroupDto } from './dto/update-class-group.dto.js';
-import type { UpdateClassroomDto } from './dto/update-classroom.dto.js';
-import type { UpdateSchoolDto } from './dto/update-school.dto.js';
-import type { UpdateUserDto } from './dto/update-user.dto.js';
+  NotFoundException,
+} from "@nestjs/common";
+import type { PlatformRole, SchoolRole } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { MailService } from "../mail/mail.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
+import type { CreateAdminDto } from "./dto/create-admin.dto.js";
+import type { CreateAcademicLevelDto } from "./dto/create-academic-level.dto.js";
+import type { BulkUpdateEnrollmentStatusDto } from "./dto/bulk-update-enrollment-status.dto.js";
+import type { CreateClassGroupDto } from "./dto/create-class-group.dto.js";
+import type { CreateClassroomDto } from "./dto/create-classroom.dto.js";
+import type { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
+import type { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
+import type { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
+import type { CreateSchoolDto } from "./dto/create-school.dto.js";
+import type { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
+import type { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
+import type { CreateStudentDto } from "./dto/create-student.dto.js";
+import type { CreateTeacherDto } from "./dto/create-teacher.dto.js";
+import type { CreateTrackDto } from "./dto/create-track.dto.js";
+import type { CreateUserDto } from "./dto/create-user.dto.js";
+import type { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
+import type { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-query.dto.js";
+import type { RolloverSchoolYearDto } from "./dto/rollover-school-year.dto.js";
+import type { SetActiveSchoolYearDto } from "./dto/set-active-school-year.dto.js";
+import type { UpdateAcademicLevelDto } from "./dto/update-academic-level.dto.js";
+import type { UpdateClassGroupDto } from "./dto/update-class-group.dto.js";
+import type { UpdateClassroomDto } from "./dto/update-classroom.dto.js";
+import type { UpdateClassSubjectOverrideDto } from "./dto/update-class-subject-override.dto.js";
+import type { UpdateCurriculumDto } from "./dto/update-curriculum.dto.js";
+import type { UpdateSchoolDto } from "./dto/update-school.dto.js";
+import type { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
+import type { UpdateTrackDto } from "./dto/update-track.dto.js";
+import type { UpdateUserDto } from "./dto/update-user.dto.js";
+import type { UpsertCurriculumSubjectDto } from "./dto/upsert-curriculum-subject.dto.js";
 
-const PLATFORM_ROLES = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SUPPORT'] as const;
+const PLATFORM_ROLES = ["SUPER_ADMIN", "ADMIN", "SALES", "SUPPORT"] as const;
 const SCHOOL_ROLES = [
-  'SCHOOL_ADMIN',
-  'SCHOOL_MANAGER',
-  'SCHOOL_ACCOUNTANT',
-  'TEACHER',
-  'PARENT',
-  'STUDENT'
+  "SCHOOL_ADMIN",
+  "SCHOOL_MANAGER",
+  "SCHOOL_ACCOUNTANT",
+  "TEACHER",
+  "PARENT",
+  "STUDENT",
 ] as const;
 const CREATABLE_ROLES = [
-  'ADMIN',
-  'SALES',
-  'SUPPORT',
-  'SCHOOL_ADMIN',
-  'SCHOOL_MANAGER',
-  'SCHOOL_ACCOUNTANT',
-  'TEACHER',
-  'PARENT',
-  'STUDENT'
+  "ADMIN",
+  "SALES",
+  "SUPPORT",
+  "SCHOOL_ADMIN",
+  "SCHOOL_MANAGER",
+  "SCHOOL_ACCOUNTANT",
+  "TEACHER",
+  "PARENT",
+  "STUDENT",
 ] as const;
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 const SCHOOL_LOGO_URL_REGEX = /^\/files\/schools\/logos\/[a-zA-Z0-9-]+\.webp$/;
@@ -57,95 +73,207 @@ const createUserSchema = z.object({
     .string()
     .regex(
       PASSWORD_COMPLEXITY_REGEX,
-      'Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.'
+      "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
     ),
   role: z.enum(CREATABLE_ROLES).optional(),
-  platformRoles: z.array(z.enum(['ADMIN', 'SALES', 'SUPPORT'])).optional(),
+  platformRoles: z.array(z.enum(["ADMIN", "SALES", "SUPPORT"])).optional(),
   schoolRoles: z.array(z.enum(SCHOOL_ROLES)).optional(),
   schoolSlug: z.string().trim().min(1).optional(),
-  avatarUrl: z.string().trim().regex(USER_AVATAR_URL_REGEX).optional()
+  avatarUrl: z.string().trim().regex(USER_AVATAR_URL_REGEX).optional(),
 });
 
 const updateUserSchema = z.object({
   firstName: z.string().trim().min(1).optional(),
   lastName: z.string().trim().min(1).optional(),
   phone: z
-    .union([z.string().trim().min(6).max(30), z.literal(''), z.null()])
+    .union([z.string().trim().min(6).max(30), z.literal(""), z.null()])
     .optional()
     .transform((value) => {
-      if (value === '' || value === null) {
+      if (value === "" || value === null) {
         return null;
       }
 
       return value;
     }),
-  platformRole: z.enum(['ADMIN', 'SALES', 'SUPPORT', 'NONE']).optional(),
-  platformRoles: z.array(z.enum(['ADMIN', 'SALES', 'SUPPORT'])).optional(),
+  platformRole: z.enum(["ADMIN", "SALES", "SUPPORT", "NONE"]).optional(),
+  platformRoles: z.array(z.enum(["ADMIN", "SALES", "SUPPORT"])).optional(),
   schoolRole: z
     .enum([
-      'SCHOOL_ADMIN',
-      'SCHOOL_MANAGER',
-      'SCHOOL_ACCOUNTANT',
-      'TEACHER',
-      'PARENT',
-      'STUDENT',
-      'NONE'
+      "SCHOOL_ADMIN",
+      "SCHOOL_MANAGER",
+      "SCHOOL_ACCOUNTANT",
+      "TEACHER",
+      "PARENT",
+      "STUDENT",
+      "NONE",
     ])
     .optional(),
   schoolRoles: z.array(z.enum(SCHOOL_ROLES)).optional(),
-  role: z.enum(CREATABLE_ROLES).optional()
+  role: z.enum(CREATABLE_ROLES).optional(),
 });
 
 const createSchoolSchema = z.object({
   name: z.string().trim().min(1),
   schoolAdminEmail: z.string().trim().email(),
-  logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional()
+  logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional(),
 });
 
 const updateSchoolSchema = z.object({
   name: z.string().trim().min(1).optional(),
-  logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).nullable().optional()
+  logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).nullable().optional(),
 });
 
 const createClassGroupSchema = z.object({
-  name: z.string().trim().min(1)
+  name: z.string().trim().min(1),
 });
 
 const updateClassGroupSchema = z.object({
-  name: z.string().trim().min(1).optional()
+  name: z.string().trim().min(1).optional(),
 });
 
 const createClassroomSchema = z.object({
   classGroupId: z.string().trim().min(1),
   name: z.string().trim().min(1),
-  year: z.string().trim().min(1)
+  schoolYearId: z.string().trim().min(1).optional(),
+  academicLevelId: z.string().trim().min(1).optional(),
+  trackId: z.string().trim().min(1).optional(),
+  curriculumId: z.string().trim().min(1).optional(),
 });
 
 const updateClassroomSchema = z.object({
   classGroupId: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1).optional(),
-  year: z.string().trim().min(1).optional()
+  schoolYearId: z.string().trim().min(1).optional(),
+  academicLevelId: z.string().trim().min(1).optional(),
+  trackId: z.string().trim().min(1).optional(),
+  curriculumId: z.string().trim().min(1).optional(),
+});
+
+const createStudentEnrollmentSchema = z.object({
+  classId: z.string().trim().min(1),
+  status: z
+    .enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"])
+    .optional(),
+});
+
+const updateStudentEnrollmentSchema = z.object({
+  status: z
+    .enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"])
+    .optional(),
+});
+
+const listStudentEnrollmentsQuerySchema = z.object({
+  schoolYearId: z.string().trim().min(1).optional(),
+  classId: z.string().trim().min(1).optional(),
+  status: z
+    .enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"])
+    .optional(),
+  search: z.string().trim().optional(),
+});
+
+const bulkUpdateEnrollmentStatusSchema = z.object({
+  enrollmentIds: z.array(z.string().trim().min(1)).min(1),
+  status: z.enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"]),
+});
+
+const createClassSubjectOverrideSchema = z.object({
+  subjectId: z.string().trim().min(1),
+  action: z.enum(["ADD", "REMOVE"]),
+  coefficientOverride: z.number().min(0).optional(),
+  weeklyHoursOverride: z.number().min(0).optional(),
+});
+
+const updateClassSubjectOverrideSchema = z.object({
+  subjectId: z.string().trim().min(1).optional(),
+  action: z.enum(["ADD", "REMOVE"]).optional(),
+  coefficientOverride: z.number().min(0).optional(),
+  weeklyHoursOverride: z.number().min(0).optional(),
+});
+
+const createSchoolYearSchema = z.object({
+  label: z.string().trim().min(1),
+  startsAt: z.string().datetime().optional(),
+  endsAt: z.string().datetime().optional(),
+});
+
+const setActiveSchoolYearSchema = z.object({
+  schoolYearId: z.string().trim().min(1),
+});
+
+const rolloverSchoolYearSchema = z
+  .object({
+    sourceSchoolYearId: z.string().trim().min(1).optional(),
+    targetSchoolYearId: z.string().trim().min(1).optional(),
+    targetLabel: z.string().trim().min(1).optional(),
+    setTargetAsActive: z.boolean().optional().default(false),
+    copyAssignments: z.boolean().optional().default(true),
+    copyEnrollments: z.boolean().optional().default(false),
+  })
+  .refine((value) => value.targetSchoolYearId || value.targetLabel, {
+    message: "targetSchoolYearId or targetLabel is required",
+    path: ["targetSchoolYearId"],
+  });
+
+const createAcademicLevelSchema = z.object({
+  code: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+});
+
+const updateAcademicLevelSchema = z.object({
+  code: z.string().trim().min(1).optional(),
+  label: z.string().trim().min(1).optional(),
+});
+
+const createTrackSchema = z.object({
+  code: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+});
+
+const updateTrackSchema = z.object({
+  code: z.string().trim().min(1).optional(),
+  label: z.string().trim().min(1).optional(),
+});
+
+const createCurriculumSchema = z.object({
+  name: z.string().trim().min(1),
+  academicLevelId: z.string().trim().min(1),
+  trackId: z.string().trim().min(1).optional(),
+});
+
+const updateCurriculumSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  academicLevelId: z.string().trim().min(1).optional(),
+  trackId: z.string().trim().min(1).optional(),
+});
+
+const upsertCurriculumSubjectSchema = z.object({
+  subjectId: z.string().trim().min(1),
+  isMandatory: z.boolean().optional(),
+  coefficient: z.number().min(0).optional(),
+  weeklyHours: z.number().min(0).optional(),
 });
 
 @Injectable()
 export class ManagementService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
   ) {}
 
   async createUser(currentUser: AuthenticatedUser, payload: CreateUserDto) {
     const parsedResult = createUserSchema.safeParse(payload);
     if (!parsedResult.success) {
-      throw new BadRequestException(parsedResult.error.issues.map((issue) => issue.message).join(', '));
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
     }
     const parsed = parsedResult.data;
 
-    const isSuperAdmin = currentUser.platformRoles.includes('SUPER_ADMIN');
-    const isAdmin = isSuperAdmin || currentUser.platformRoles.includes('ADMIN');
+    const isSuperAdmin = currentUser.platformRoles.includes("SUPER_ADMIN");
+    const isAdmin = isSuperAdmin || currentUser.platformRoles.includes("ADMIN");
 
     if (!isAdmin) {
-      throw new ForbiddenException('Insufficient role');
+      throw new ForbiddenException("Insufficient role");
     }
 
     const normalizedPlatformRoles = Array.from(
@@ -154,8 +282,8 @@ export class ManagementService {
           ? parsed.platformRoles
           : parsed.role && this.isPlatformRole(parsed.role)
             ? [parsed.role]
-            : []
-      )
+            : [],
+      ),
     );
     const normalizedSchoolRoles = Array.from(
       new Set<SchoolRole>(
@@ -163,16 +291,21 @@ export class ManagementService {
           ? parsed.schoolRoles
           : parsed.role && this.isSchoolRole(parsed.role)
             ? [parsed.role]
-            : []
-      )
+            : [],
+      ),
     );
 
-    if (normalizedPlatformRoles.length === 0 && normalizedSchoolRoles.length === 0) {
-      throw new BadRequestException('At least one platformRole or schoolRole is required');
+    if (
+      normalizedPlatformRoles.length === 0 &&
+      normalizedSchoolRoles.length === 0
+    ) {
+      throw new BadRequestException(
+        "At least one platformRole or schoolRole is required",
+      );
     }
 
-    if (normalizedPlatformRoles.includes('ADMIN') && !isSuperAdmin) {
-      throw new ForbiddenException('Only SUPER_ADMIN can create ADMIN');
+    if (normalizedPlatformRoles.includes("ADMIN") && !isSuperAdmin) {
+      throw new ForbiddenException("Only SUPER_ADMIN can create ADMIN");
     }
 
     const requiresSchool = normalizedSchoolRoles.length > 0;
@@ -181,22 +314,26 @@ export class ManagementService {
 
     if (requiresSchool) {
       if (!parsed.schoolSlug) {
-        throw new BadRequestException('schoolSlug is required for school roles');
+        throw new BadRequestException(
+          "schoolSlug is required for school roles",
+        );
       }
 
       const school = await this.prisma.school.findUnique({
         where: { slug: parsed.schoolSlug },
-        select: { id: true, slug: true }
+        select: { id: true, slug: true },
       });
 
       if (!school) {
-        throw new NotFoundException('School not found');
+        throw new NotFoundException("School not found");
       }
 
       schoolId = school.id;
       schoolSlug = school.slug;
     } else if (parsed.schoolSlug) {
-      throw new BadRequestException('schoolSlug must not be provided for platform roles');
+      throw new BadRequestException(
+        "schoolSlug must not be provided for platform roles",
+      );
     }
 
     const passwordHash = await bcrypt.hash(parsed.temporaryPassword, 10);
@@ -215,8 +352,8 @@ export class ManagementService {
           normalizedPlatformRoles.length > 0
             ? {
                 createMany: {
-                  data: normalizedPlatformRoles.map((role) => ({ role }))
-                }
+                  data: normalizedPlatformRoles.map((role) => ({ role })),
+                },
               }
             : undefined,
         memberships:
@@ -225,11 +362,11 @@ export class ManagementService {
                 createMany: {
                   data: normalizedSchoolRoles.map((role) => ({
                     schoolId,
-                    role
-                  }))
-                }
+                    role,
+                  })),
+                },
               }
-            : undefined
+            : undefined,
       },
       select: {
         id: true,
@@ -239,35 +376,41 @@ export class ManagementService {
         phone: true,
         avatarUrl: true,
         platformRoles: {
-          select: { role: true }
+          select: { role: true },
         },
         memberships: {
           include: {
             school: {
               select: {
                 slug: true,
-                name: true
-              }
-            }
-          }
-        }
-      }
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     await this.mailService.sendTemporaryPasswordEmail({
       to: user.email,
       firstName: user.firstName,
       temporaryPassword: parsed.temporaryPassword,
-      schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null
+      schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
     });
 
     return this.mapUserRow(user);
   }
 
-  async updateUser(currentUser: AuthenticatedUser, userId: string, payload: UpdateUserDto) {
+  async updateUser(
+    currentUser: AuthenticatedUser,
+    userId: string,
+    payload: UpdateUserDto,
+  ) {
     const parsedResult = updateUserSchema.safeParse(payload);
     if (!parsedResult.success) {
-      throw new BadRequestException(parsedResult.error.issues.map((issue) => issue.message).join(', '));
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
     }
     const parsed = parsedResult.data;
 
@@ -281,10 +424,10 @@ export class ManagementService {
       parsed.schoolRoles === undefined &&
       parsed.role === undefined
     ) {
-      throw new BadRequestException('No fields to update');
+      throw new BadRequestException("No fields to update");
     }
 
-    const isSuperAdmin = currentUser.platformRoles.includes('SUPER_ADMIN');
+    const isSuperAdmin = currentUser.platformRoles.includes("SUPER_ADMIN");
 
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -296,30 +439,39 @@ export class ManagementService {
               select: {
                 id: true,
                 slug: true,
-                name: true
-              }
-            }
-          }
-        }
-      }
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!target) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
-    if (target.platformRoles.some((assignment) => assignment.role === 'SUPER_ADMIN')) {
-      throw new ForbiddenException('SUPER_ADMIN account cannot be modified');
+    if (
+      target.platformRoles.some(
+        (assignment) => assignment.role === "SUPER_ADMIN",
+      )
+    ) {
+      throw new ForbiddenException("SUPER_ADMIN account cannot be modified");
     }
 
-    if (target.platformRoles.some((assignment) => assignment.role === 'ADMIN') && !isSuperAdmin) {
-      throw new ForbiddenException('Only SUPER_ADMIN can modify an ADMIN account');
+    if (
+      target.platformRoles.some((assignment) => assignment.role === "ADMIN") &&
+      !isSuperAdmin
+    ) {
+      throw new ForbiddenException(
+        "Only SUPER_ADMIN can modify an ADMIN account",
+      );
     }
 
     const requestedPlatformRoles = parsed.platformRoles
       ? parsed.platformRoles
       : parsed.platformRole !== undefined
-        ? parsed.platformRole === 'NONE'
+        ? parsed.platformRole === "NONE"
           ? []
           : [parsed.platformRole]
         : parsed.role && this.isPlatformRole(parsed.role)
@@ -328,19 +480,25 @@ export class ManagementService {
     const requestedSchoolRoles = parsed.schoolRoles
       ? parsed.schoolRoles
       : parsed.schoolRole !== undefined
-        ? parsed.schoolRole === 'NONE'
+        ? parsed.schoolRole === "NONE"
           ? []
           : [parsed.schoolRole]
         : parsed.role && this.isSchoolRole(parsed.role)
           ? [parsed.role]
           : undefined;
 
-    if (requestedPlatformRoles?.includes('ADMIN') && !isSuperAdmin) {
-      throw new ForbiddenException('Only SUPER_ADMIN can assign ADMIN role');
+    if (requestedPlatformRoles?.includes("ADMIN") && !isSuperAdmin) {
+      throw new ForbiddenException("Only SUPER_ADMIN can assign ADMIN role");
     }
 
-    if (requestedSchoolRoles && requestedSchoolRoles.length > 0 && target.memberships.length === 0) {
-        throw new BadRequestException('Cannot assign a school role to a platform user without school');
+    if (
+      requestedSchoolRoles &&
+      requestedSchoolRoles.length > 0 &&
+      target.memberships.length === 0
+    ) {
+      throw new BadRequestException(
+        "Cannot assign a school role to a platform user without school",
+      );
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -349,8 +507,8 @@ export class ManagementService {
         data: {
           firstName: parsed.firstName,
           lastName: parsed.lastName,
-          phone: parsed.phone
-        }
+          phone: parsed.phone,
+        },
       });
 
       if (
@@ -360,8 +518,12 @@ export class ManagementService {
         parsed.schoolRole !== undefined ||
         parsed.schoolRoles !== undefined
       ) {
-        const effectivePlatformRoles = Array.from(new Set(requestedPlatformRoles ?? []));
-        const effectiveSchoolRoles = Array.from(new Set(requestedSchoolRoles ?? []));
+        const effectivePlatformRoles = Array.from(
+          new Set(requestedPlatformRoles ?? []),
+        );
+        const effectiveSchoolRoles = Array.from(
+          new Set(requestedSchoolRoles ?? []),
+        );
         await tx.platformRoleAssignment.deleteMany({ where: { userId } });
         await tx.schoolMembership.deleteMany({ where: { userId } });
 
@@ -369,23 +531,25 @@ export class ManagementService {
           await tx.platformRoleAssignment.createMany({
             data: effectivePlatformRoles.map((role) => ({
               userId,
-              role
-            }))
+              role,
+            })),
           });
         }
 
         if (effectiveSchoolRoles.length > 0) {
           const schoolId = target.memberships[0]?.schoolId;
           if (!schoolId) {
-            throw new BadRequestException('Missing school context for school role assignment');
+            throw new BadRequestException(
+              "Missing school context for school role assignment",
+            );
           }
 
           await tx.schoolMembership.createMany({
             data: effectiveSchoolRoles.map((role) => ({
               userId,
               schoolId,
-              role
-            }))
+              role,
+            })),
           });
         }
       }
@@ -399,12 +563,12 @@ export class ManagementService {
               school: {
                 select: {
                   slug: true,
-                  name: true
-                }
-              }
-            }
-          }
-        }
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       });
     });
 
@@ -413,34 +577,43 @@ export class ManagementService {
 
   async deleteUser(currentUser: AuthenticatedUser, userId: string) {
     if (currentUser.id === userId) {
-      throw new BadRequestException('Cannot delete your own account');
+      throw new BadRequestException("Cannot delete your own account");
     }
 
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
         platformRoles: {
-          select: { role: true }
-        }
-      }
+          select: { role: true },
+        },
+      },
     });
 
     if (!target) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
-    const isSuperAdmin = currentUser.platformRoles.includes('SUPER_ADMIN');
+    const isSuperAdmin = currentUser.platformRoles.includes("SUPER_ADMIN");
 
-    if (target.platformRoles.some((assignment) => assignment.role === 'SUPER_ADMIN')) {
-      throw new ForbiddenException('SUPER_ADMIN account cannot be deleted');
+    if (
+      target.platformRoles.some(
+        (assignment) => assignment.role === "SUPER_ADMIN",
+      )
+    ) {
+      throw new ForbiddenException("SUPER_ADMIN account cannot be deleted");
     }
 
-    if (target.platformRoles.some((assignment) => assignment.role === 'ADMIN') && !isSuperAdmin) {
-      throw new ForbiddenException('Only SUPER_ADMIN can delete an ADMIN account');
+    if (
+      target.platformRoles.some((assignment) => assignment.role === "ADMIN") &&
+      !isSuperAdmin
+    ) {
+      throw new ForbiddenException(
+        "Only SUPER_ADMIN can delete an ADMIN account",
+      );
     }
 
     await this.prisma.user.delete({
-      where: { id: userId }
+      where: { id: userId },
     });
 
     return { success: true };
@@ -448,7 +621,7 @@ export class ManagementService {
 
   async listSchools() {
     const schools = await this.prisma.school.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         slug: true,
@@ -460,10 +633,10 @@ export class ManagementService {
           select: {
             memberships: true,
             classes: true,
-            students: true
-          }
-        }
-      }
+            students: true,
+          },
+        },
+      },
     });
 
     return schools.map((school) => ({
@@ -475,7 +648,7 @@ export class ManagementService {
       updatedAt: school.updatedAt,
       usersCount: school._count.memberships,
       classesCount: school._count.classes,
-      studentsCount: school._count.students
+      studentsCount: school._count.students,
     }));
   }
 
@@ -490,20 +663,20 @@ export class ManagementService {
         createdAt: true,
         updatedAt: true,
         memberships: {
-          where: { role: 'SCHOOL_ADMIN' },
+          where: { role: "SCHOOL_ADMIN" },
           include: {
             user: {
               select: {
                 id: true,
                 firstName: true,
                 lastName: true,
-                email: true
-              }
-            }
+                email: true,
+              },
+            },
           },
           orderBy: {
-            createdAt: 'asc'
-          }
+            createdAt: "asc",
+          },
         },
         _count: {
           select: {
@@ -511,14 +684,14 @@ export class ManagementService {
             classes: true,
             students: true,
             teachers: true,
-            grades: true
-          }
-        }
-      }
+            grades: true,
+          },
+        },
+      },
     });
 
     if (!school) {
-      throw new NotFoundException('School not found');
+      throw new NotFoundException("School not found");
     }
 
     return {
@@ -533,42 +706,44 @@ export class ManagementService {
         classesCount: school._count.classes,
         studentsCount: school._count.students,
         teachersCount: school._count.teachers,
-        gradesCount: school._count.grades
+        gradesCount: school._count.grades,
       },
       schoolAdmins: school.memberships.map((membership) => ({
         id: membership.user.id,
         firstName: membership.user.firstName,
         lastName: membership.user.lastName,
-        email: membership.user.email
-      }))
+        email: membership.user.email,
+      })),
     };
   }
 
   async updateSchool(schoolId: string, payload: UpdateSchoolDto) {
     const parsedResult = updateSchoolSchema.safeParse(payload);
     if (!parsedResult.success) {
-      throw new BadRequestException(parsedResult.error.issues.map((issue) => issue.message).join(', '));
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
     }
 
     const parsed = parsedResult.data;
     if (parsed.name === undefined && parsed.logoUrl === undefined) {
-      throw new BadRequestException('No fields to update');
+      throw new BadRequestException("No fields to update");
     }
 
     const existing = await this.prisma.school.findUnique({
       where: { id: schoolId },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!existing) {
-      throw new NotFoundException('School not found');
+      throw new NotFoundException("School not found");
     }
 
     return this.prisma.school.update({
       where: { id: schoolId },
       data: {
         name: parsed.name,
-        logoUrl: parsed.logoUrl
+        logoUrl: parsed.logoUrl,
       },
       select: {
         id: true,
@@ -576,23 +751,23 @@ export class ManagementService {
         name: true,
         logoUrl: true,
         createdAt: true,
-        updatedAt: true
-      }
+        updatedAt: true,
+      },
     });
   }
 
   async deleteSchool(schoolId: string) {
     const existing = await this.prisma.school.findUnique({
       where: { id: schoolId },
-      select: { id: true, name: true }
+      select: { id: true, name: true },
     });
 
     if (!existing) {
-      throw new NotFoundException('School not found');
+      throw new NotFoundException("School not found");
     }
 
     await this.prisma.school.delete({
-      where: { id: schoolId }
+      where: { id: schoolId },
     });
 
     return { success: true };
@@ -606,15 +781,15 @@ export class ManagementService {
       teachersCount,
       gradesCount,
       adminsCount,
-      schoolAdminsCount
+      schoolAdminsCount,
     ] = await this.prisma.$transaction([
       this.prisma.school.count(),
       this.prisma.user.count(),
       this.prisma.student.count(),
       this.prisma.teacher.count(),
       this.prisma.grade.count(),
-      this.prisma.platformRoleAssignment.count({ where: { role: 'ADMIN' } }),
-      this.prisma.schoolMembership.count({ where: { role: 'SCHOOL_ADMIN' } })
+      this.prisma.platformRoleAssignment.count({ where: { role: "ADMIN" } }),
+      this.prisma.schoolMembership.count({ where: { role: "SCHOOL_ADMIN" } }),
     ]);
 
     return {
@@ -624,7 +799,7 @@ export class ManagementService {
       teachersCount,
       gradesCount,
       adminsCount,
-      schoolAdminsCount
+      schoolAdminsCount,
     };
   }
 
@@ -639,11 +814,11 @@ export class ManagementService {
       const search = query.search.trim();
       andFilters.push({
         OR: [
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { phone: { contains: search, mode: 'insensitive' } }
-        ]
+          { firstName: { contains: search, mode: "insensitive" } },
+          { lastName: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+          { phone: { contains: search, mode: "insensitive" } },
+        ],
       });
     }
 
@@ -652,17 +827,17 @@ export class ManagementService {
         andFilters.push({
           platformRoles: {
             some: {
-              role: query.role
-            }
-          }
+              role: query.role,
+            },
+          },
         });
       } else {
         andFilters.push({
           memberships: {
             some: {
-              role: query.role
-            }
-          }
+              role: query.role,
+            },
+          },
         });
       }
     }
@@ -672,16 +847,16 @@ export class ManagementService {
         memberships: {
           some: {
             school: {
-              slug: query.schoolSlug
-            }
-          }
-        }
+              slug: query.schoolSlug,
+            },
+          },
+        },
       });
     }
 
-    if (query.state === 'ACTIVE') {
+    if (query.state === "ACTIVE") {
       andFilters.push({ mustChangePassword: false });
-    } else if (query.state === 'PASSWORD_CHANGE_REQUIRED') {
+    } else if (query.state === "PASSWORD_CHANGE_REQUIRED") {
       andFilters.push({ mustChangePassword: true });
     }
 
@@ -690,28 +865,28 @@ export class ManagementService {
     const [users, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
         include: {
           platformRoles: {
             select: {
-              role: true
-            }
+              role: true,
+            },
           },
           memberships: {
             include: {
               school: {
                 select: {
                   slug: true,
-                  name: true
-                }
-              }
-            }
-          }
-        }
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       }),
-      this.prisma.user.count({ where })
+      this.prisma.user.count({ where }),
     ]);
 
     return {
@@ -720,8 +895,8 @@ export class ManagementService {
         page,
         limit,
         total,
-        totalPages: Math.max(1, Math.ceil(total / limit))
-      }
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
     };
   }
 
@@ -730,7 +905,7 @@ export class ManagementService {
       where: { id: userId },
       include: {
         platformRoles: {
-          select: { role: true }
+          select: { role: true },
         },
         memberships: {
           include: {
@@ -738,11 +913,11 @@ export class ManagementService {
               select: {
                 id: true,
                 slug: true,
-                name: true
-              }
-            }
+                name: true,
+              },
+            },
           },
-          orderBy: { createdAt: 'asc' }
+          orderBy: { createdAt: "asc" },
         },
         teacherProfiles: {
           include: {
@@ -750,10 +925,10 @@ export class ManagementService {
               select: {
                 id: true,
                 slug: true,
-                name: true
-              }
-            }
-          }
+                name: true,
+              },
+            },
+          },
         },
         studentProfiles: {
           include: {
@@ -761,17 +936,32 @@ export class ManagementService {
               select: {
                 id: true,
                 slug: true,
-                name: true
-              }
-            },
-            class: {
-              select: {
-                id: true,
                 name: true,
-                year: true
-              }
-            }
-          }
+                activeSchoolYearId: true,
+              },
+            },
+            enrollments: {
+              where: {
+                status: "ACTIVE",
+              },
+              orderBy: [{ createdAt: "desc" }],
+              select: {
+                schoolYearId: true,
+                classId: true,
+                class: {
+                  select: {
+                    id: true,
+                    name: true,
+                    schoolYear: {
+                      select: {
+                        label: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         parentLinks: {
           include: {
@@ -784,31 +974,46 @@ export class ManagementService {
                   select: {
                     id: true,
                     slug: true,
-                    name: true
-                  }
-                },
-                class: {
-                  select: {
-                    id: true,
                     name: true,
-                    year: true
-                  }
-                }
-              }
-            }
-          }
+                    activeSchoolYearId: true,
+                  },
+                },
+                enrollments: {
+                  where: {
+                    status: "ACTIVE",
+                  },
+                  orderBy: [{ createdAt: "desc" }],
+                  select: {
+                    schoolYearId: true,
+                    classId: true,
+                    class: {
+                      select: {
+                        id: true,
+                        name: true,
+                        schoolYear: {
+                          select: {
+                            label: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         _count: {
           select: {
             gradesGiven: true,
-            recoveryAnswers: true
-          }
-        }
-      }
+            recoveryAnswers: true,
+          },
+        },
+      },
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     return {
@@ -825,25 +1030,56 @@ export class ManagementService {
       platformRoles: user.platformRoles.map((assignment) => assignment.role),
       schoolMemberships: user.memberships.map((membership) => ({
         role: membership.role,
-        school: membership.school
+        school: membership.school,
       })),
       teacherProfiles: user.teacherProfiles.map((profile) => ({
         id: profile.id,
-        school: profile.school
-      })),
-      studentProfiles: user.studentProfiles.map((profile) => ({
-        id: profile.id,
         school: profile.school,
-        class: profile.class
       })),
+      studentProfiles: user.studentProfiles.map((profile) => {
+        const currentEnrollment =
+          profile.enrollments.find(
+            (enrollment) =>
+              enrollment.schoolYearId === profile.school.activeSchoolYearId,
+          ) ??
+          profile.enrollments[0] ??
+          null;
+
+        return {
+          id: profile.id,
+          school: {
+            id: profile.school.id,
+            slug: profile.school.slug,
+            name: profile.school.name,
+          },
+          class: currentEnrollment?.class ?? null,
+        };
+      }),
       parentStudents: user.parentLinks.map((link) => ({
         id: link.id,
-        student: link.student
+        student: {
+          id: link.student.id,
+          firstName: link.student.firstName,
+          lastName: link.student.lastName,
+          school: {
+            id: link.student.school.id,
+            slug: link.student.school.slug,
+            name: link.student.school.name,
+          },
+          class:
+            link.student.enrollments.find(
+              (enrollment) =>
+                enrollment.schoolYearId ===
+                link.student.school.activeSchoolYearId,
+            )?.class ??
+            link.student.enrollments[0]?.class ??
+            null,
+        },
       })),
       stats: {
         gradesGivenCount: user._count.gradesGiven,
-        recoveryAnswersCount: user._count.recoveryAnswers
-      }
+        recoveryAnswersCount: user._count.recoveryAnswers,
+      },
     };
   }
 
@@ -855,8 +1091,8 @@ export class ManagementService {
         id: true,
         firstName: true,
         lastName: true,
-        mustChangePassword: true
-      }
+        mustChangePassword: true,
+      },
     });
 
     if (!user) {
@@ -869,8 +1105,8 @@ export class ManagementService {
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
-        mustChangePassword: user.mustChangePassword
-      }
+        mustChangePassword: user.mustChangePassword,
+      },
     };
   }
 
@@ -878,14 +1114,14 @@ export class ManagementService {
     const baseSlug = this.toSchoolSlug(name);
     const baseExists =
       (await this.prisma.school.count({
-        where: { slug: baseSlug }
+        where: { slug: baseSlug },
       })) > 0;
     const suggestedSlug = await this.generateAvailableSchoolSlug(name);
 
     return {
       baseSlug,
       baseExists,
-      suggestedSlug
+      suggestedSlug,
     };
   }
 
@@ -900,17 +1136,19 @@ export class ManagementService {
         passwordHash,
         platformRoles: {
           create: {
-            role: 'ADMIN'
-          }
-        }
-      }
+            role: "ADMIN",
+          },
+        },
+      },
     });
   }
 
   async createSchoolWithSchoolAdmin(payload: CreateSchoolDto) {
     const parsedResult = createSchoolSchema.safeParse(payload);
     if (!parsedResult.success) {
-      throw new BadRequestException(parsedResult.error.issues.map((issue) => issue.message).join(', '));
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
     }
     const parsed = parsedResult.data;
 
@@ -923,26 +1161,51 @@ export class ManagementService {
       select: {
         id: true,
         firstName: true,
-        mustChangePassword: true
-      }
+        mustChangePassword: true,
+      },
     });
 
     if (existingAdminUser) {
       const result = await this.prisma.$transaction(async (tx) => {
-        const school = await tx.school.create({
+        const schoolYearLabel = this.getDefaultSchoolYearLabel();
+        const schoolYear = await tx.schoolYear.create({
           data: {
-            slug: generatedSlug,
-            name: parsed.name,
-            logoUrl: parsed.logoUrl
-          }
+            label: schoolYearLabel,
+            school: {
+              create: {
+                slug: generatedSlug,
+                name: parsed.name,
+                logoUrl: parsed.logoUrl,
+              },
+            },
+          },
+          include: {
+            school: {
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+                logoUrl: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+        });
+
+        const school = schoolYear.school;
+
+        await tx.school.update({
+          where: { id: school.id },
+          data: { activeSchoolYearId: schoolYear.id },
         });
 
         await tx.schoolMembership.create({
           data: {
             userId: existingAdminUser.id,
             schoolId: school.id,
-            role: 'SCHOOL_ADMIN'
-          }
+            role: "SCHOOL_ADMIN",
+          },
         });
 
         return { school };
@@ -953,10 +1216,10 @@ export class ManagementService {
         schoolAdmin: {
           id: existingAdminUser.id,
           email: adminEmail,
-          firstName: existingAdminUser.firstName
+          firstName: existingAdminUser.firstName,
         },
         userExisted: true,
-        setupCompleted: !existingAdminUser.mustChangePassword
+        setupCompleted: !existingAdminUser.mustChangePassword,
       };
     }
 
@@ -964,12 +1227,37 @@ export class ManagementService {
     const adminHash = await bcrypt.hash(generatedTemporaryPassword, 10);
 
     const created = await this.prisma.$transaction(async (tx) => {
-      const school = await tx.school.create({
+      const schoolYearLabel = this.getDefaultSchoolYearLabel();
+      const schoolYear = await tx.schoolYear.create({
         data: {
-          slug: generatedSlug,
-          name: parsed.name,
-          logoUrl: parsed.logoUrl
-        }
+          label: schoolYearLabel,
+          school: {
+            create: {
+              slug: generatedSlug,
+              name: parsed.name,
+              logoUrl: parsed.logoUrl,
+            },
+          },
+        },
+        include: {
+          school: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              logoUrl: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+      });
+
+      const school = schoolYear.school;
+
+      await tx.school.update({
+        where: { id: school.id },
+        data: { activeSchoolYearId: schoolYear.id },
       });
 
       const schoolAdmin = await tx.user.create({
@@ -983,10 +1271,10 @@ export class ManagementService {
           memberships: {
             create: {
               schoolId: school.id,
-              role: 'SCHOOL_ADMIN'
-            }
-          }
-        }
+              role: "SCHOOL_ADMIN",
+            },
+          },
+        },
       });
 
       return { school, schoolAdmin };
@@ -996,21 +1284,21 @@ export class ManagementService {
       to: adminEmail,
       firstName: derivedName.firstName,
       temporaryPassword: generatedTemporaryPassword,
-      schoolSlug: created.school.slug
+      schoolSlug: created.school.slug,
     });
 
     return {
       school: created.school,
       schoolAdmin: created.schoolAdmin,
       userExisted: false,
-      setupCompleted: false
+      setupCompleted: false,
     };
   }
 
   async listClassGroups(schoolId: string) {
     return this.prisma.classGroup.findMany({
       where: { schoolId },
-      orderBy: { name: 'asc' },
+      orderBy: { name: "asc" },
       select: {
         id: true,
         schoolId: true,
@@ -1019,17 +1307,19 @@ export class ManagementService {
         updatedAt: true,
         _count: {
           select: {
-            classes: true
-          }
-        }
-      }
+            classes: true,
+          },
+        },
+      },
     });
   }
 
   async createClassGroup(schoolId: string, payload: CreateClassGroupDto) {
     const parsedResult = createClassGroupSchema.safeParse(payload);
     if (!parsedResult.success) {
-      throw new BadRequestException(parsedResult.error.issues.map((issue) => issue.message).join(', '));
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
     }
 
     const parsed = parsedResult.data;
@@ -1037,34 +1327,40 @@ export class ManagementService {
     return this.prisma.classGroup.create({
       data: {
         schoolId,
-        name: parsed.name
-      }
+        name: parsed.name,
+      },
     });
   }
 
-  async updateClassGroup(schoolId: string, classGroupId: string, payload: UpdateClassGroupDto) {
+  async updateClassGroup(
+    schoolId: string,
+    classGroupId: string,
+    payload: UpdateClassGroupDto,
+  ) {
     const parsedResult = updateClassGroupSchema.safeParse(payload);
     if (!parsedResult.success) {
-      throw new BadRequestException(parsedResult.error.issues.map((issue) => issue.message).join(', '));
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
     }
     const parsed = parsedResult.data;
     if (parsed.name === undefined) {
-      throw new BadRequestException('No fields to update');
+      throw new BadRequestException("No fields to update");
     }
 
     const existing = await this.prisma.classGroup.findFirst({
       where: { id: classGroupId, schoolId },
-      select: { id: true }
+      select: { id: true },
     });
     if (!existing) {
-      throw new NotFoundException('Class group not found');
+      throw new NotFoundException("Class group not found");
     }
 
     return this.prisma.classGroup.update({
       where: { id: classGroupId },
       data: {
-        name: parsed.name
-      }
+        name: parsed.name,
+      },
     });
   }
 
@@ -1074,20 +1370,22 @@ export class ManagementService {
       include: {
         _count: {
           select: {
-            classes: true
-          }
-        }
-      }
+            classes: true,
+          },
+        },
+      },
     });
     if (!existing) {
-      throw new NotFoundException('Class group not found');
+      throw new NotFoundException("Class group not found");
     }
     if (existing._count.classes > 0) {
-      throw new BadRequestException('Cannot delete a class group that still contains classes');
+      throw new BadRequestException(
+        "Cannot delete a class group that still contains classes",
+      );
     }
 
     await this.prisma.classGroup.delete({
-      where: { id: classGroupId }
+      where: { id: classGroupId },
     });
 
     return { success: true };
@@ -1096,115 +1394,969 @@ export class ManagementService {
   async listClassrooms(schoolId: string) {
     return this.prisma.class.findMany({
       where: { schoolId },
-      orderBy: [{ year: 'asc' }, { name: 'asc' }],
+      orderBy: [{ schoolYear: { label: "asc" } }, { name: "asc" }],
       include: {
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
         classGroup: {
           select: {
             id: true,
-            name: true
-          }
+            name: true,
+          },
         },
         _count: {
           select: {
-            students: true
-          }
-        }
-      }
+            enrollments: true,
+          },
+        },
+      },
     });
   }
 
   async createClassroom(schoolId: string, payload: CreateClassroomDto) {
     const parsedResult = createClassroomSchema.safeParse(payload);
     if (!parsedResult.success) {
-      throw new BadRequestException(parsedResult.error.issues.map((issue) => issue.message).join(', '));
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
     }
     const parsed = parsedResult.data;
 
     const classGroup = await this.prisma.classGroup.findFirst({
       where: { id: parsed.classGroupId, schoolId },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!classGroup) {
-      throw new NotFoundException('Class group not found');
+      throw new NotFoundException("Class group not found");
     }
+
+    const schoolYearId =
+      parsed.schoolYearId ??
+      (await this.getActiveSchoolYearIdOrThrow(schoolId));
+    await this.ensureSchoolYearInSchool(schoolYearId, schoolId);
+    await this.ensureOptionalAcademicReferencesInSchool(
+      schoolId,
+      parsed.academicLevelId,
+      parsed.trackId,
+      parsed.curriculumId,
+    );
 
     return this.prisma.class.create({
       data: {
         schoolId,
+        schoolYearId,
         classGroupId: parsed.classGroupId,
         name: parsed.name,
-        year: parsed.year
+        academicLevelId: parsed.academicLevelId,
+        trackId: parsed.trackId,
+        curriculumId: parsed.curriculumId,
       },
       include: {
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
         classGroup: {
           select: {
             id: true,
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     });
   }
 
-  async updateClassroom(schoolId: string, classId: string, payload: UpdateClassroomDto) {
+  async updateClassroom(
+    schoolId: string,
+    classId: string,
+    payload: UpdateClassroomDto,
+  ) {
     const parsedResult = updateClassroomSchema.safeParse(payload);
     if (!parsedResult.success) {
-      throw new BadRequestException(parsedResult.error.issues.map((issue) => issue.message).join(', '));
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
     }
     const parsed = parsedResult.data;
-    if (parsed.classGroupId === undefined && parsed.name === undefined && parsed.year === undefined) {
-      throw new BadRequestException('No fields to update');
+    if (
+      parsed.classGroupId === undefined &&
+      parsed.name === undefined &&
+      parsed.schoolYearId === undefined &&
+      parsed.academicLevelId === undefined &&
+      parsed.trackId === undefined &&
+      parsed.curriculumId === undefined
+    ) {
+      throw new BadRequestException("No fields to update");
     }
 
     const existing = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
-      select: { id: true }
+      select: { id: true },
     });
     if (!existing) {
-      throw new NotFoundException('Classroom not found');
+      throw new NotFoundException("Classroom not found");
     }
 
     if (parsed.classGroupId) {
       const classGroup = await this.prisma.classGroup.findFirst({
         where: { id: parsed.classGroupId, schoolId },
-        select: { id: true }
+        select: { id: true },
       });
 
       if (!classGroup) {
-        throw new NotFoundException('Class group not found');
+        throw new NotFoundException("Class group not found");
       }
     }
+
+    if (parsed.schoolYearId) {
+      await this.ensureSchoolYearInSchool(parsed.schoolYearId, schoolId);
+    }
+
+    await this.ensureOptionalAcademicReferencesInSchool(
+      schoolId,
+      parsed.academicLevelId,
+      parsed.trackId,
+      parsed.curriculumId,
+    );
 
     return this.prisma.class.update({
       where: { id: classId },
       data: {
         classGroupId: parsed.classGroupId,
         name: parsed.name,
-        year: parsed.year
+        schoolYearId: parsed.schoolYearId,
+        academicLevelId: parsed.academicLevelId,
+        trackId: parsed.trackId,
+        curriculumId: parsed.curriculumId,
       },
       include: {
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
         classGroup: {
           select: {
             id: true,
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     });
   }
 
   async deleteClassroom(schoolId: string, classId: string) {
     const existing = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
-      select: { id: true }
+      select: { id: true },
     });
     if (!existing) {
-      throw new NotFoundException('Classroom not found');
+      throw new NotFoundException("Classroom not found");
     }
 
     await this.prisma.class.delete({
-      where: { id: classId }
+      where: { id: classId },
+    });
+
+    return { success: true };
+  }
+
+  async listClassSubjectOverrides(schoolId: string, classId: string) {
+    await this.ensureClassInSchool(classId, schoolId);
+
+    return this.prisma.classSubjectOverride.findMany({
+      where: {
+        schoolId,
+        classId,
+      },
+      orderBy: [{ createdAt: "desc" }],
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createClassSubjectOverride(
+    schoolId: string,
+    classId: string,
+    payload: CreateClassSubjectOverrideDto,
+  ) {
+    const parsedResult = createClassSubjectOverrideSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    await this.ensureClassInSchool(classId, schoolId);
+    await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+
+    return this.prisma.classSubjectOverride.upsert({
+      where: {
+        classId_subjectId: {
+          classId,
+          subjectId: parsed.subjectId,
+        },
+      },
+      update: {
+        action: parsed.action,
+        coefficientOverride: parsed.coefficientOverride,
+        weeklyHoursOverride: parsed.weeklyHoursOverride,
+      },
+      create: {
+        schoolId,
+        classId,
+        subjectId: parsed.subjectId,
+        action: parsed.action,
+        coefficientOverride: parsed.coefficientOverride,
+        weeklyHoursOverride: parsed.weeklyHoursOverride,
+      },
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateClassSubjectOverride(
+    schoolId: string,
+    classId: string,
+    overrideId: string,
+    payload: UpdateClassSubjectOverrideDto,
+  ) {
+    const parsedResult = updateClassSubjectOverrideSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    if (
+      parsed.subjectId === undefined &&
+      parsed.action === undefined &&
+      parsed.coefficientOverride === undefined &&
+      parsed.weeklyHoursOverride === undefined
+    ) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    await this.ensureClassInSchool(classId, schoolId);
+
+    const existing = await this.prisma.classSubjectOverride.findFirst({
+      where: {
+        id: overrideId,
+        schoolId,
+        classId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Class subject override not found");
+    }
+
+    if (parsed.subjectId) {
+      await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+    }
+
+    return this.prisma.classSubjectOverride.update({
+      where: {
+        id: overrideId,
+      },
+      data: {
+        subjectId: parsed.subjectId,
+        action: parsed.action,
+        coefficientOverride: parsed.coefficientOverride,
+        weeklyHoursOverride: parsed.weeklyHoursOverride,
+      },
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteClassSubjectOverride(
+    schoolId: string,
+    classId: string,
+    overrideId: string,
+  ) {
+    await this.ensureClassInSchool(classId, schoolId);
+
+    const existing = await this.prisma.classSubjectOverride.findFirst({
+      where: {
+        id: overrideId,
+        schoolId,
+        classId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Class subject override not found");
+    }
+
+    await this.prisma.classSubjectOverride.delete({
+      where: {
+        id: overrideId,
+      },
+    });
+
+    return { success: true };
+  }
+
+  async listSchoolYears(schoolId: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        activeSchoolYearId: true,
+        schoolYears: {
+          orderBy: [{ label: "desc" }],
+          select: {
+            id: true,
+            label: true,
+            startsAt: true,
+            endsAt: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: {
+              select: {
+                classes: true,
+                enrollments: true,
+                teachingAssignments: true,
+                grades: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!school) {
+      throw new NotFoundException("School not found");
+    }
+
+    return school.schoolYears.map((schoolYear) => ({
+      ...schoolYear,
+      isActive: schoolYear.id === school.activeSchoolYearId,
+    }));
+  }
+
+  async createSchoolYear(schoolId: string, payload: CreateSchoolYearDto) {
+    const parsedResult = createSchoolYearSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    const created = await this.prisma.schoolYear.create({
+      data: {
+        schoolId,
+        label: parsed.label,
+        startsAt: parsed.startsAt ? new Date(parsed.startsAt) : null,
+        endsAt: parsed.endsAt ? new Date(parsed.endsAt) : null,
+      },
+    });
+
+    return {
+      ...created,
+      isActive: false,
+    };
+  }
+
+  async setActiveSchoolYear(schoolId: string, payload: SetActiveSchoolYearDto) {
+    const parsedResult = setActiveSchoolYearSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    await this.ensureSchoolYearInSchool(parsed.schoolYearId, schoolId);
+
+    await this.prisma.school.update({
+      where: { id: schoolId },
+      data: { activeSchoolYearId: parsed.schoolYearId },
+    });
+
+    return {
+      success: true,
+      activeSchoolYearId: parsed.schoolYearId,
+    };
+  }
+
+  async rolloverSchoolYear(schoolId: string, payload: RolloverSchoolYearDto) {
+    const parsedResult = rolloverSchoolYearSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    const activeSchoolYearId =
+      await this.getActiveSchoolYearIdOrThrow(schoolId);
+    const sourceSchoolYearId = parsed.sourceSchoolYearId ?? activeSchoolYearId;
+    await this.ensureSchoolYearInSchool(sourceSchoolYearId, schoolId);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const targetSchoolYear = parsed.targetSchoolYearId
+        ? await tx.schoolYear.findFirst({
+            where: {
+              id: parsed.targetSchoolYearId,
+              schoolId,
+            },
+          })
+        : await tx.schoolYear.upsert({
+            where: {
+              schoolId_label: {
+                schoolId,
+                label: parsed.targetLabel as string,
+              },
+            },
+            create: {
+              schoolId,
+              label: parsed.targetLabel as string,
+            },
+            update: {},
+          });
+
+      if (!targetSchoolYear) {
+        throw new NotFoundException("Target school year not found");
+      }
+
+      if (targetSchoolYear.id === sourceSchoolYearId) {
+        throw new BadRequestException(
+          "Source and target school year must be different",
+        );
+      }
+
+      const sourceClasses = await tx.class.findMany({
+        where: {
+          schoolId,
+          schoolYearId: sourceSchoolYearId,
+        },
+        select: {
+          id: true,
+          classGroupId: true,
+          name: true,
+          academicLevelId: true,
+          trackId: true,
+          curriculumId: true,
+        },
+      });
+
+      const classIdMap = new Map<string, string>();
+      let createdClassesCount = 0;
+
+      for (const sourceClass of sourceClasses) {
+        const existingTargetClass = await tx.class.findFirst({
+          where: {
+            schoolId,
+            schoolYearId: targetSchoolYear.id,
+            classGroupId: sourceClass.classGroupId,
+            name: sourceClass.name,
+          },
+          select: { id: true },
+        });
+
+        if (existingTargetClass) {
+          classIdMap.set(sourceClass.id, existingTargetClass.id);
+          continue;
+        }
+
+        const createdTargetClass = await tx.class.create({
+          data: {
+            schoolId,
+            schoolYearId: targetSchoolYear.id,
+            classGroupId: sourceClass.classGroupId,
+            name: sourceClass.name,
+            academicLevelId: sourceClass.academicLevelId,
+            trackId: sourceClass.trackId,
+            curriculumId: sourceClass.curriculumId,
+          },
+          select: { id: true },
+        });
+
+        classIdMap.set(sourceClass.id, createdTargetClass.id);
+        createdClassesCount += 1;
+      }
+
+      let createdAssignmentsCount = 0;
+      if (parsed.copyAssignments) {
+        const sourceAssignments = await tx.teacherClassSubject.findMany({
+          where: {
+            schoolId,
+            schoolYearId: sourceSchoolYearId,
+          },
+          select: {
+            teacherUserId: true,
+            classId: true,
+            subjectId: true,
+          },
+        });
+
+        const assignmentRows = sourceAssignments
+          .map((assignment) => {
+            const mappedClassId = classIdMap.get(assignment.classId);
+            if (!mappedClassId) {
+              return null;
+            }
+
+            return {
+              schoolId,
+              schoolYearId: targetSchoolYear.id,
+              teacherUserId: assignment.teacherUserId,
+              classId: mappedClassId,
+              subjectId: assignment.subjectId,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => row !== null);
+
+        if (assignmentRows.length > 0) {
+          const assignmentsResult = await tx.teacherClassSubject.createMany({
+            data: assignmentRows,
+            skipDuplicates: true,
+          });
+          createdAssignmentsCount = assignmentsResult.count;
+        }
+      }
+
+      let createdEnrollmentsCount = 0;
+      if (parsed.copyEnrollments) {
+        const sourceEnrollments = await tx.enrollment.findMany({
+          where: {
+            schoolId,
+            schoolYearId: sourceSchoolYearId,
+            status: "ACTIVE",
+          },
+          select: {
+            studentId: true,
+            classId: true,
+          },
+        });
+
+        const enrollmentRows = sourceEnrollments
+          .map((enrollment) => {
+            const mappedClassId = classIdMap.get(enrollment.classId);
+            if (!mappedClassId) {
+              return null;
+            }
+
+            return {
+              schoolId,
+              schoolYearId: targetSchoolYear.id,
+              studentId: enrollment.studentId,
+              classId: mappedClassId,
+              status: "ACTIVE" as const,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => row !== null);
+
+        if (enrollmentRows.length > 0) {
+          const enrollmentsResult = await tx.enrollment.createMany({
+            data: enrollmentRows,
+            skipDuplicates: true,
+          });
+          createdEnrollmentsCount = enrollmentsResult.count;
+        }
+      }
+
+      if (parsed.setTargetAsActive) {
+        await tx.school.update({
+          where: { id: schoolId },
+          data: {
+            activeSchoolYearId: targetSchoolYear.id,
+          },
+        });
+      }
+
+      return {
+        sourceSchoolYearId,
+        targetSchoolYear: {
+          id: targetSchoolYear.id,
+          label: targetSchoolYear.label,
+        },
+        createdClassesCount,
+        createdAssignmentsCount,
+        createdEnrollmentsCount,
+        setAsActive: parsed.setTargetAsActive,
+      };
+    });
+
+    return {
+      success: true,
+      ...result,
+    };
+  }
+
+  async listAcademicLevels(schoolId: string) {
+    return this.prisma.academicLevel.findMany({
+      where: { schoolId },
+      orderBy: [{ code: "asc" }],
+      include: {
+        _count: {
+          select: {
+            classes: true,
+            curriculums: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createAcademicLevel(schoolId: string, payload: CreateAcademicLevelDto) {
+    const parsedResult = createAcademicLevelSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    return this.prisma.academicLevel.create({
+      data: {
+        schoolId,
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async updateAcademicLevel(
+    schoolId: string,
+    academicLevelId: string,
+    payload: UpdateAcademicLevelDto,
+  ) {
+    const parsedResult = updateAcademicLevelSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (parsed.code === undefined && parsed.label === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    await this.ensureAcademicLevelInSchool(academicLevelId, schoolId);
+    return this.prisma.academicLevel.update({
+      where: { id: academicLevelId },
+      data: {
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async deleteAcademicLevel(schoolId: string, academicLevelId: string) {
+    await this.ensureAcademicLevelInSchool(academicLevelId, schoolId);
+
+    await this.prisma.academicLevel.delete({
+      where: { id: academicLevelId },
+    });
+
+    return { success: true };
+  }
+
+  async listTracks(schoolId: string) {
+    return this.prisma.track.findMany({
+      where: { schoolId },
+      orderBy: [{ code: "asc" }],
+      include: {
+        _count: {
+          select: {
+            classes: true,
+            curriculums: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createTrack(schoolId: string, payload: CreateTrackDto) {
+    const parsedResult = createTrackSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    return this.prisma.track.create({
+      data: {
+        schoolId,
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async updateTrack(
+    schoolId: string,
+    trackId: string,
+    payload: UpdateTrackDto,
+  ) {
+    const parsedResult = updateTrackSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (parsed.code === undefined && parsed.label === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    await this.ensureTrackInSchool(trackId, schoolId);
+    return this.prisma.track.update({
+      where: { id: trackId },
+      data: {
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async deleteTrack(schoolId: string, trackId: string) {
+    await this.ensureTrackInSchool(trackId, schoolId);
+
+    await this.prisma.track.delete({
+      where: { id: trackId },
+    });
+
+    return { success: true };
+  }
+
+  async listCurriculums(schoolId: string) {
+    return this.prisma.curriculum.findMany({
+      where: { schoolId },
+      orderBy: [{ name: "asc" }],
+      include: {
+        academicLevel: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        track: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        _count: {
+          select: {
+            classes: true,
+            subjects: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createCurriculum(schoolId: string, payload: CreateCurriculumDto) {
+    const parsedResult = createCurriculumSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    await this.ensureAcademicLevelInSchool(parsed.academicLevelId, schoolId);
+    if (parsed.trackId) {
+      await this.ensureTrackInSchool(parsed.trackId, schoolId);
+    }
+
+    return this.prisma.curriculum.create({
+      data: {
+        schoolId,
+        name: parsed.name,
+        academicLevelId: parsed.academicLevelId,
+        trackId: parsed.trackId,
+      },
+    });
+  }
+
+  async updateCurriculum(
+    schoolId: string,
+    curriculumId: string,
+    payload: UpdateCurriculumDto,
+  ) {
+    const parsedResult = updateCurriculumSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (
+      parsed.name === undefined &&
+      parsed.academicLevelId === undefined &&
+      parsed.trackId === undefined
+    ) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+
+    if (parsed.academicLevelId) {
+      await this.ensureAcademicLevelInSchool(parsed.academicLevelId, schoolId);
+    }
+
+    if (parsed.trackId) {
+      await this.ensureTrackInSchool(parsed.trackId, schoolId);
+    }
+
+    return this.prisma.curriculum.update({
+      where: { id: curriculumId },
+      data: {
+        name: parsed.name,
+        academicLevelId: parsed.academicLevelId,
+        trackId: parsed.trackId,
+      },
+    });
+  }
+
+  async deleteCurriculum(schoolId: string, curriculumId: string) {
+    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+
+    await this.prisma.curriculum.delete({
+      where: { id: curriculumId },
+    });
+
+    return { success: true };
+  }
+
+  async listCurriculumSubjects(schoolId: string, curriculumId: string) {
+    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+
+    return this.prisma.curriculumSubject.findMany({
+      where: {
+        schoolId,
+        curriculumId,
+      },
+      orderBy: [{ subject: { name: "asc" } }],
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async upsertCurriculumSubject(
+    schoolId: string,
+    curriculumId: string,
+    payload: UpsertCurriculumSubjectDto,
+  ) {
+    const parsedResult = upsertCurriculumSubjectSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+    await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+
+    return this.prisma.curriculumSubject.upsert({
+      where: {
+        curriculumId_subjectId: {
+          curriculumId,
+          subjectId: parsed.subjectId,
+        },
+      },
+      update: {
+        isMandatory: parsed.isMandatory,
+        coefficient: parsed.coefficient,
+        weeklyHours: parsed.weeklyHours,
+      },
+      create: {
+        schoolId,
+        curriculumId,
+        subjectId: parsed.subjectId,
+        isMandatory: parsed.isMandatory ?? true,
+        coefficient: parsed.coefficient,
+        weeklyHours: parsed.weeklyHours,
+      },
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteCurriculumSubject(
+    schoolId: string,
+    curriculumId: string,
+    subjectId: string,
+  ) {
+    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+
+    const existing = await this.prisma.curriculumSubject.findFirst({
+      where: {
+        schoolId,
+        curriculumId,
+        subjectId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Curriculum subject not found");
+    }
+
+    await this.prisma.curriculumSubject.delete({
+      where: {
+        id: existing.id,
+      },
     });
 
     return { success: true };
@@ -1223,17 +2375,17 @@ export class ManagementService {
           memberships: {
             create: {
               schoolId,
-              role: 'TEACHER'
-            }
-          }
-        }
+              role: "TEACHER",
+            },
+          },
+        },
       });
 
       const teacher = await tx.teacher.create({
         data: {
           schoolId,
-          userId: user.id
-        }
+          userId: user.id,
+        },
       });
 
       return { user, teacher };
@@ -1243,11 +2395,11 @@ export class ManagementService {
   async createStudent(schoolId: string, payload: CreateStudentDto) {
     const classEntity = await this.prisma.class.findFirst({
       where: { id: payload.classId, schoolId },
-      select: { id: true }
+      select: { id: true, schoolYearId: true },
     });
 
     if (!classEntity) {
-      throw new NotFoundException('Classroom not found');
+      throw new NotFoundException("Classroom not found");
     }
 
     if (payload.email && payload.password) {
@@ -1264,10 +2416,10 @@ export class ManagementService {
             memberships: {
               create: {
                 schoolId,
-                role: 'STUDENT'
-              }
-            }
-          }
+                role: "STUDENT",
+              },
+            },
+          },
         });
 
         const student = await tx.student.create({
@@ -1275,51 +2427,443 @@ export class ManagementService {
             schoolId,
             firstName: payload.firstName,
             lastName: payload.lastName,
+            userId: user.id,
+          },
+        });
+
+        await tx.enrollment.create({
+          data: {
+            schoolId,
+            schoolYearId: classEntity.schoolYearId,
+            studentId: student.id,
             classId: payload.classId,
-            userId: user.id
-          }
+            status: "ACTIVE",
+          },
         });
 
         return { user, student };
       });
     }
 
-    return this.prisma.student.create({
-      data: {
-        schoolId,
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        classId: payload.classId
-      }
+    return this.prisma.$transaction(async (tx) => {
+      const student = await tx.student.create({
+        data: {
+          schoolId,
+          firstName: payload.firstName,
+          lastName: payload.lastName,
+        },
+      });
+
+      await tx.enrollment.create({
+        data: {
+          schoolId,
+          schoolYearId: classEntity.schoolYearId,
+          studentId: student.id,
+          classId: payload.classId,
+          status: "ACTIVE",
+        },
+      });
+
+      return student;
     });
   }
 
-  async createParentStudentLink(schoolId: string, payload: CreateParentStudentLinkDto) {
+  async listStudentsWithEnrollments(
+    schoolId: string,
+    query: ListStudentEnrollmentsQueryDto,
+  ) {
+    const parsedResult = listStudentEnrollmentsQuerySchema.safeParse(query);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    if (parsed.schoolYearId) {
+      await this.ensureSchoolYearInSchool(parsed.schoolYearId, schoolId);
+    }
+
+    if (parsed.classId) {
+      await this.ensureClassInSchool(parsed.classId, schoolId);
+    }
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+
+    const students = await this.prisma.student.findMany({
+      where: {
+        schoolId,
+        ...(parsed.search
+          ? {
+              OR: [
+                { firstName: { contains: parsed.search, mode: "insensitive" } },
+                { lastName: { contains: parsed.search, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        enrollments: {
+          where: {
+            schoolId,
+            ...(parsed.schoolYearId
+              ? { schoolYearId: parsed.schoolYearId }
+              : {}),
+            ...(parsed.classId ? { classId: parsed.classId } : {}),
+            ...(parsed.status ? { status: parsed.status } : {}),
+          },
+          orderBy: [{ schoolYear: { label: "desc" } }, { createdAt: "desc" }],
+          select: {
+            id: true,
+            schoolYearId: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            schoolYear: {
+              select: {
+                id: true,
+                label: true,
+              },
+            },
+            class: {
+              select: {
+                id: true,
+                name: true,
+                classGroup: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const hasEnrollmentFilter = Boolean(
+      parsed.schoolYearId || parsed.classId || parsed.status,
+    );
+
+    return students
+      .map((student) => ({
+        ...student,
+        currentEnrollment:
+          student.enrollments.find(
+            (enrollment) =>
+              enrollment.schoolYearId === school?.activeSchoolYearId,
+          ) ?? null,
+        enrollments: student.enrollments.map((enrollment) => ({
+          ...enrollment,
+          isCurrent: enrollment.schoolYearId === school?.activeSchoolYearId,
+        })),
+      }))
+      .filter(
+        (student) => student.enrollments.length > 0 || !hasEnrollmentFilter,
+      );
+  }
+
+  async listStudentEnrollments(schoolId: string, studentId: string) {
+    await this.ensureStudentInSchool(studentId, schoolId);
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: {
+        schoolId,
+        studentId,
+      },
+      orderBy: [{ schoolYear: { label: "desc" } }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        schoolYearId: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+            classGroup: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return enrollments.map((enrollment) => ({
+      ...enrollment,
+      isCurrent: enrollment.schoolYearId === school?.activeSchoolYearId,
+    }));
+  }
+
+  async createStudentEnrollment(
+    schoolId: string,
+    studentId: string,
+    payload: CreateStudentEnrollmentDto,
+  ) {
+    const parsedResult = createStudentEnrollmentSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    await this.ensureStudentInSchool(studentId, schoolId);
+
+    const classEntity = await this.prisma.class.findFirst({
+      where: { id: parsed.classId, schoolId },
+      select: { id: true, schoolYearId: true },
+    });
+
+    if (!classEntity) {
+      throw new NotFoundException("Classroom not found");
+    }
+
+    const status = parsed.status ?? "ACTIVE";
+
+    const enrollment = await this.prisma.enrollment.upsert({
+      where: {
+        schoolYearId_studentId: {
+          schoolYearId: classEntity.schoolYearId,
+          studentId,
+        },
+      },
+      create: {
+        schoolId,
+        schoolYearId: classEntity.schoolYearId,
+        studentId,
+        classId: classEntity.id,
+        status,
+      },
+      update: {
+        classId: classEntity.id,
+        status,
+      },
+      select: {
+        id: true,
+        schoolYearId: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+            classGroup: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+
+    return {
+      ...enrollment,
+      isCurrent: enrollment.schoolYearId === school?.activeSchoolYearId,
+    };
+  }
+
+  async bulkUpdateEnrollmentStatus(
+    schoolId: string,
+    payload: BulkUpdateEnrollmentStatusDto,
+  ) {
+    const parsedResult = bulkUpdateEnrollmentStatusSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    const existingRows = await this.prisma.enrollment.findMany({
+      where: {
+        schoolId,
+        id: {
+          in: parsed.enrollmentIds,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (existingRows.length !== parsed.enrollmentIds.length) {
+      throw new NotFoundException("One or more enrollments were not found");
+    }
+
+    const result = await this.prisma.enrollment.updateMany({
+      where: {
+        schoolId,
+        id: {
+          in: parsed.enrollmentIds,
+        },
+      },
+      data: {
+        status: parsed.status,
+      },
+    });
+
+    return {
+      success: true,
+      updatedCount: result.count,
+    };
+  }
+
+  async updateStudentEnrollment(
+    schoolId: string,
+    studentId: string,
+    enrollmentId: string,
+    payload: UpdateStudentEnrollmentDto,
+  ) {
+    const parsedResult = updateStudentEnrollmentSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    if (parsed.status === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    await this.ensureStudentInSchool(studentId, schoolId);
+
+    const existing = await this.prisma.enrollment.findFirst({
+      where: {
+        id: enrollmentId,
+        schoolId,
+        studentId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Enrollment not found");
+    }
+
+    const enrollment = await this.prisma.enrollment.update({
+      where: { id: enrollmentId },
+      data: {
+        status: parsed.status,
+      },
+      select: {
+        id: true,
+        schoolYearId: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+            classGroup: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+
+    return {
+      ...enrollment,
+      isCurrent: enrollment.schoolYearId === school?.activeSchoolYearId,
+    };
+  }
+
+  async createParentStudentLink(
+    schoolId: string,
+    payload: CreateParentStudentLinkDto,
+  ) {
     const student = await this.prisma.student.findFirst({
       where: { id: payload.studentId, schoolId },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const parentUserId = payload.parentUserId
-      ? await this.ensureExistingParentMembership(schoolId, payload.parentUserId)
+      ? await this.ensureExistingParentMembership(
+          schoolId,
+          payload.parentUserId,
+        )
       : await this.createParentUser(schoolId, payload);
 
     return this.prisma.parentStudent.create({
       data: {
         schoolId,
         parentUserId,
-        studentId: payload.studentId
-      }
+        studentId: payload.studentId,
+      },
     });
   }
 
-  private async createParentUser(schoolId: string, payload: CreateParentStudentLinkDto) {
-    if (!payload.email || !payload.password || !payload.firstName || !payload.lastName) {
-      throw new BadRequestException('Missing parent credentials or parentUserId');
+  private async createParentUser(
+    schoolId: string,
+    payload: CreateParentStudentLinkDto,
+  ) {
+    if (
+      !payload.email ||
+      !payload.password ||
+      !payload.firstName ||
+      !payload.lastName
+    ) {
+      throw new BadRequestException(
+        "Missing parent credentials or parentUserId",
+      );
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
@@ -1335,31 +2879,34 @@ export class ManagementService {
         memberships: {
           create: {
             schoolId,
-            role: 'PARENT'
-          }
-        }
-      }
+            role: "PARENT",
+          },
+        },
+      },
     });
 
     return parent.id;
   }
 
-  private async ensureExistingParentMembership(schoolId: string, parentUserId: string) {
+  private async ensureExistingParentMembership(
+    schoolId: string,
+    parentUserId: string,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: parentUserId },
       include: {
         memberships: {
           where: {
             schoolId,
-            role: 'PARENT'
+            role: "PARENT",
           },
-          select: { id: true }
-        }
-      }
+          select: { id: true },
+        },
+      },
     });
 
     if (!user) {
-      throw new NotFoundException('Parent user not found');
+      throw new NotFoundException("Parent user not found");
     }
 
     if (user.memberships.length === 0) {
@@ -1367,12 +2914,141 @@ export class ManagementService {
         data: {
           userId: parentUserId,
           schoolId,
-          role: 'PARENT'
-        }
+          role: "PARENT",
+        },
       });
     }
 
     return parentUserId;
+  }
+
+  private async getActiveSchoolYearIdOrThrow(schoolId: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+
+    if (!school?.activeSchoolYearId) {
+      throw new BadRequestException(
+        "No active school year configured for this school",
+      );
+    }
+
+    return school.activeSchoolYearId;
+  }
+
+  private async ensureSchoolYearInSchool(
+    schoolYearId: string,
+    schoolId: string,
+  ) {
+    const schoolYear = await this.prisma.schoolYear.findFirst({
+      where: { id: schoolYearId, schoolId },
+      select: { id: true },
+    });
+
+    if (!schoolYear) {
+      throw new NotFoundException("School year not found");
+    }
+  }
+
+  private async ensureClassInSchool(classId: string, schoolId: string) {
+    const classEntity = await this.prisma.class.findFirst({
+      where: { id: classId, schoolId },
+      select: { id: true },
+    });
+
+    if (!classEntity) {
+      throw new NotFoundException("Classroom not found");
+    }
+  }
+
+  private async ensureStudentInSchool(studentId: string, schoolId: string) {
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, schoolId },
+      select: { id: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException("Student not found");
+    }
+  }
+
+  private async ensureSubjectInSchool(subjectId: string, schoolId: string) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: subjectId, schoolId },
+      select: { id: true },
+    });
+
+    if (!subject) {
+      throw new NotFoundException("Subject not found");
+    }
+  }
+
+  private async ensureAcademicLevelInSchool(
+    academicLevelId: string,
+    schoolId: string,
+  ) {
+    const academicLevel = await this.prisma.academicLevel.findFirst({
+      where: { id: academicLevelId, schoolId },
+      select: { id: true },
+    });
+
+    if (!academicLevel) {
+      throw new NotFoundException("Academic level not found");
+    }
+  }
+
+  private async ensureTrackInSchool(trackId: string, schoolId: string) {
+    const track = await this.prisma.track.findFirst({
+      where: { id: trackId, schoolId },
+      select: { id: true },
+    });
+
+    if (!track) {
+      throw new NotFoundException("Track not found");
+    }
+  }
+
+  private async ensureCurriculumInSchool(
+    curriculumId: string,
+    schoolId: string,
+  ) {
+    const curriculum = await this.prisma.curriculum.findFirst({
+      where: { id: curriculumId, schoolId },
+      select: { id: true },
+    });
+
+    if (!curriculum) {
+      throw new NotFoundException("Curriculum not found");
+    }
+  }
+
+  private async ensureOptionalAcademicReferencesInSchool(
+    schoolId: string,
+    academicLevelId?: string,
+    trackId?: string,
+    curriculumId?: string,
+  ) {
+    if (academicLevelId) {
+      await this.ensureAcademicLevelInSchool(academicLevelId, schoolId);
+    }
+
+    if (trackId) {
+      await this.ensureTrackInSchool(trackId, schoolId);
+    }
+
+    if (curriculumId) {
+      await this.ensureCurriculumInSchool(curriculumId, schoolId);
+    }
+  }
+
+  private getDefaultSchoolYearLabel(now = new Date()) {
+    const year = now.getUTCFullYear();
+    const month = now.getUTCMonth() + 1;
+    const startYear = month >= 8 ? year : year - 1;
+    const endYear = startYear + 1;
+
+    return `${startYear}-${endYear}`;
   }
 
   private mapUserRow(user: {
@@ -1385,14 +3061,18 @@ export class ManagementService {
     mustChangePassword?: boolean;
     createdAt?: Date;
     platformRoles: Array<{ role: PlatformRole }>;
-    memberships: Array<{ role: SchoolRole; school?: { slug: string; name: string } | null }>;
+    memberships: Array<{
+      role: SchoolRole;
+      school?: { slug: string; name: string } | null;
+    }>;
   }) {
     const role = this.getPrimaryRole(
       user.platformRoles.map((assignment) => assignment.role),
-      user.memberships.map((membership) => membership.role)
+      user.memberships.map((membership) => membership.role),
     );
 
-    const schoolMembership = user.memberships.find((membership) => membership.school) ?? null;
+    const schoolMembership =
+      user.memberships.find((membership) => membership.school) ?? null;
 
     return {
       id: user.id,
@@ -1409,17 +3089,22 @@ export class ManagementService {
       school: schoolMembership?.school
         ? {
             slug: schoolMembership.school.slug,
-            name: schoolMembership.school.name
+            name: schoolMembership.school.name,
           }
-        : null
+        : null,
     };
   }
 
   private getPrimaryRole(
     platformRoles: PlatformRole[],
-    schoolRoles: SchoolRole[]
+    schoolRoles: SchoolRole[],
   ): PlatformRole | SchoolRole | null {
-    const platformPriority: PlatformRole[] = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SUPPORT'];
+    const platformPriority: PlatformRole[] = [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "SALES",
+      "SUPPORT",
+    ];
     for (const role of platformPriority) {
       if (platformRoles.includes(role)) {
         return role;
@@ -1427,12 +3112,12 @@ export class ManagementService {
     }
 
     const schoolPriority: SchoolRole[] = [
-      'SCHOOL_ADMIN',
-      'SCHOOL_MANAGER',
-      'SCHOOL_ACCOUNTANT',
-      'TEACHER',
-      'PARENT',
-      'STUDENT'
+      "SCHOOL_ADMIN",
+      "SCHOOL_MANAGER",
+      "SCHOOL_ACCOUNTANT",
+      "TEACHER",
+      "PARENT",
+      "STUDENT",
     ];
     for (const role of schoolPriority) {
       if (schoolRoles.includes(role)) {
@@ -1458,7 +3143,7 @@ export class ManagementService {
 
     while (true) {
       const exists = await this.prisma.school.count({
-        where: { slug: candidate }
+        where: { slug: candidate },
       });
 
       if (!exists) {
@@ -1474,38 +3159,38 @@ export class ManagementService {
 
   private toSchoolSlug(rawName: string) {
     const cleaned = rawName
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .replace(/-+/g, '-');
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .replace(/-+/g, "-");
 
-    const bounded = cleaned.slice(0, 30).replace(/-+$/g, '');
+    const bounded = cleaned.slice(0, 30).replace(/-+$/g, "");
 
     if (bounded.length >= 3) {
       return bounded;
     }
 
-    return 'school';
+    return "school";
   }
 
   private deriveNameFromEmail(email: string) {
-    const localPart = email.split('@')[0] ?? 'school.admin';
-    const safe = localPart.replace(/[^a-zA-Z0-9._-]/g, '.');
+    const localPart = email.split("@")[0] ?? "school.admin";
+    const safe = localPart.replace(/[^a-zA-Z0-9._-]/g, ".");
     const parts = safe.split(/[._-]+/).filter(Boolean);
-    const firstRaw = parts[0] ?? 'School';
-    const lastRaw = parts[1] ?? 'Admin';
+    const firstRaw = parts[0] ?? "School";
+    const lastRaw = parts[1] ?? "Admin";
 
     return {
       firstName: this.capitalizeName(firstRaw),
-      lastName: this.capitalizeName(lastRaw)
+      lastName: this.capitalizeName(lastRaw),
     };
   }
 
   private capitalizeName(value: string) {
     if (!value) {
-      return 'User';
+      return "User";
     }
 
     return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
@@ -1513,19 +3198,20 @@ export class ManagementService {
 
   private generateTemporaryPassword() {
     const dictionary = [
-      'atlas',
-      'ubuntu',
-      'vision',
-      'campus',
-      'avenir',
-      'soleil',
-      'riviera',
-      'horizon',
-      'safran',
-      'kora'
+      "atlas",
+      "ubuntu",
+      "vision",
+      "campus",
+      "avenir",
+      "soleil",
+      "riviera",
+      "horizon",
+      "safran",
+      "kora",
     ];
 
-    const word = dictionary[Math.floor(Math.random() * dictionary.length)] ?? 'campus';
+    const word =
+      dictionary[Math.floor(Math.random() * dictionary.length)] ?? "campus";
     const suffix = String(Math.floor(100 + Math.random() * 900));
     const candidate = `${this.capitalizeName(word)}${suffix}`;
 

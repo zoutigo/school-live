@@ -1,12 +1,25 @@
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from "class-validator";
 
 export class CreateClassroomDto {
   @IsString()
   classGroupId!: string;
 
+  @IsOptional()
+  @IsString()
+  schoolYearId?: string;
+
   @IsString()
   name!: string;
 
+  @IsOptional()
   @IsString()
-  year!: string;
+  academicLevelId?: string;
+
+  @IsOptional()
+  @IsString()
+  trackId?: string;
+
+  @IsOptional()
+  @IsString()
+  curriculumId?: string;
 }

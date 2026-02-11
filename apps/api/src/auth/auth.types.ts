@@ -1,11 +1,11 @@
-export type PlatformRole = 'SUPER_ADMIN' | 'ADMIN' | 'SALES' | 'SUPPORT';
+export type PlatformRole = "SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT";
 export type SchoolRole =
-  | 'SCHOOL_ADMIN'
-  | 'SCHOOL_MANAGER'
-  | 'SCHOOL_ACCOUNTANT'
-  | 'TEACHER'
-  | 'PARENT'
-  | 'STUDENT';
+  | "SCHOOL_ADMIN"
+  | "SCHOOL_MANAGER"
+  | "SCHOOL_ACCOUNTANT"
+  | "TEACHER"
+  | "PARENT"
+  | "STUDENT";
 export type AppRole = PlatformRole | SchoolRole;
 
 export interface JwtPayload {
@@ -29,7 +29,7 @@ export interface AuthenticatedUser {
 
 export interface AuthResponse {
   accessToken: string;
-  tokenType: 'Bearer';
+  tokenType: "Bearer";
   expiresIn: number;
   schoolSlug: string | null;
   csrfToken?: string;

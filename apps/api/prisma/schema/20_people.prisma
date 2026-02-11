@@ -1,21 +1,40 @@
 model Student {
-  id           String          @id @default(cuid())
-  schoolId     String
-  userId       String?
-  firstName    String
-  lastName     String
-  classId      String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user         User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  class        Class?          @relation(fields: [classId], references: [id], onDelete: SetNull)
-  parentLinks  ParentStudent[] @relation("StudentLinks")
-  grades       Grade[]
+  id          String          @id @default(cuid())
+  schoolId    String
+  userId      String?
+  firstName   String
+  lastName    String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parentLinks ParentStudent[] @relation("StudentLinks")
+  grades      Grade[]
+  enrollments Enrollment[]
 
   @@index([schoolId])
-  @@index([classId])
   @@unique([schoolId, userId])
+}
+
+model Enrollment {
+  id           String           @id @default(cuid())
+  schoolId     String
+  schoolYearId String
+  studentId    String
+  classId      String
+  status       EnrollmentStatus @default(ACTIVE)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  school       School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear   SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class        Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolYearId, studentId])
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([classId])
+  @@index([studentId])
 }
 
 model ParentStudent {

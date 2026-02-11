@@ -1,12 +1,12 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { SchoolResolverService } from './school-resolver.service.js';
+import { Controller, Get, Param } from "@nestjs/common";
+import { SchoolResolverService } from "./school-resolver.service.js";
 
-@Controller('schools/:schoolSlug')
+@Controller("schools/:schoolSlug")
 export class SchoolsController {
   constructor(private readonly schoolResolver: SchoolResolverService) {}
 
-  @Get('public')
-  getSchoolBranding(@Param('schoolSlug') schoolSlug: string) {
+  @Get("public")
+  getSchoolBranding(@Param("schoolSlug") schoolSlug: string) {
     return this.schoolResolver.getSchoolBranding(schoolSlug);
   }
 }

@@ -1,5 +1,5 @@
-import { Term } from '@prisma/client';
-import { IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
+import { Term } from "@prisma/client";
+import { IsEnum, IsNumber, IsOptional, Min } from "class-validator";
 
 export class UpdateGradeDto {
   @IsOptional()

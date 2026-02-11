@@ -1,20 +1,34 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import type { PlatformRole, RecoveryQuestionKey, SchoolRole, User } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import { PrismaService } from '../prisma/prisma.service.js';
-import type { AuthenticatedUser, AuthResponse, JwtPayload } from './auth.types.js';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import type {
+  PlatformRole,
+  RecoveryQuestionKey,
+  SchoolRole,
+  User,
+} from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { PrismaService } from "../prisma/prisma.service.js";
+import type {
+  AuthenticatedUser,
+  AuthResponse,
+  JwtPayload,
+} from "./auth.types.js";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {}
 
-  private static readonly PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+  private static readonly PASSWORD_COMPLEXITY_REGEX =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
   async login(email: string, password: string): Promise<AuthResponse> {
     const user = await this.prisma.user.findUnique({
@@ -23,51 +37,58 @@ export class AuthService {
         memberships: {
           include: {
             school: {
-              select: { slug: true }
-            }
+              select: { slug: true },
+            },
           },
-          orderBy: { createdAt: 'asc' }
-        }
-      }
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     const validPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!validPassword) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     if (user.mustChangePassword) {
       throw new ForbiddenException({
-        code: 'PASSWORD_CHANGE_REQUIRED',
+        code: "PASSWORD_CHANGE_REQUIRED",
         email: user.email,
-        schoolSlug: user.memberships[0]?.school?.slug ?? null
+        schoolSlug: user.memberships[0]?.school?.slug ?? null,
       });
     }
 
     if (!user.profileCompleted) {
       throw new ForbiddenException({
-        code: 'PROFILE_SETUP_REQUIRED',
+        code: "PROFILE_SETUP_REQUIRED",
         email: user.email,
-        schoolSlug: user.memberships[0]?.school?.slug ?? null
+        schoolSlug: user.memberships[0]?.school?.slug ?? null,
       });
     }
 
-    return this.issueAccessToken(user, user.memberships[0]?.school?.slug ?? null);
+    return this.issueAccessToken(
+      user,
+      user.memberships[0]?.school?.slug ?? null,
+    );
   }
 
-  async loginInSchool(schoolSlug: string, email: string, password: string): Promise<AuthResponse> {
+  async loginInSchool(
+    schoolSlug: string,
+    email: string,
+    password: string,
+  ): Promise<AuthResponse> {
     const school = await this.prisma.school.findUnique({
       where: { slug: schoolSlug },
-      select: { id: true }
+      select: { id: true },
     });
 
     if (!school) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     const user = await this.prisma.user.findFirst({
@@ -75,52 +96,56 @@ export class AuthService {
         email: email.toLowerCase(),
         memberships: {
           some: {
-            schoolId: school.id
-          }
-        }
+            schoolId: school.id,
+          },
+        },
       },
       include: {
         memberships: {
           where: { schoolId: school.id },
-          select: { role: true }
-        }
-      }
+          select: { role: true },
+        },
+      },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     const validPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!validPassword) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     if (user.mustChangePassword) {
       throw new ForbiddenException({
-        code: 'PASSWORD_CHANGE_REQUIRED',
+        code: "PASSWORD_CHANGE_REQUIRED",
         email: user.email,
-        schoolSlug
+        schoolSlug,
       });
     }
 
     if (!user.profileCompleted) {
       throw new ForbiddenException({
-        code: 'PROFILE_SETUP_REQUIRED',
+        code: "PROFILE_SETUP_REQUIRED",
         email: user.email,
-        schoolSlug
+        schoolSlug,
       });
     }
 
     if (user.memberships.length === 0) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     return this.issueAccessToken(user, schoolSlug);
   }
 
-  async firstPasswordChange(email: string, temporaryPassword: string, newPassword: string) {
+  async firstPasswordChange(
+    email: string,
+    temporaryPassword: string,
+    newPassword: string,
+  ) {
     const normalizedEmail = email.toLowerCase();
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -128,31 +153,36 @@ export class AuthService {
         memberships: {
           include: {
             school: {
-              select: { slug: true }
-            }
+              select: { slug: true },
+            },
           },
-          orderBy: { createdAt: 'asc' }
-        }
-      }
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     if (!user.mustChangePassword) {
-      throw new ForbiddenException('Password change is not required for this account');
+      throw new ForbiddenException(
+        "Password change is not required for this account",
+      );
     }
 
-    const validPassword = await bcrypt.compare(temporaryPassword, user.passwordHash);
+    const validPassword = await bcrypt.compare(
+      temporaryPassword,
+      user.passwordHash,
+    );
 
     if (!validPassword) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(newPassword)) {
       throw new ForbiddenException(
-        'Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.'
+        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
       );
     }
 
@@ -161,46 +191,53 @@ export class AuthService {
       where: { id: user.id },
       data: {
         passwordHash,
-        mustChangePassword: false
-      }
+        mustChangePassword: false,
+      },
     });
 
     return {
       success: true,
       email: user.email,
       schoolSlug: user.memberships[0]?.school?.slug ?? null,
-      profileSetupRequired: true
+      profileSetupRequired: true,
     };
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
-        passwordHash: true
-      }
+        passwordHash: true,
+      },
     });
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException("User not found");
     }
 
-    const validCurrentPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+    const validCurrentPassword = await bcrypt.compare(
+      currentPassword,
+      user.passwordHash,
+    );
     if (!validCurrentPassword) {
-      throw new UnauthorizedException('Mot de passe actuel invalide');
+      throw new UnauthorizedException("Mot de passe actuel invalide");
     }
 
     if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(newPassword)) {
       throw new ForbiddenException(
-        'Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.'
+        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
       );
     }
 
     const samePassword = await bcrypt.compare(newPassword, user.passwordHash);
     if (samePassword) {
       throw new ForbiddenException(
-        'Le nouveau mot de passe doit etre different du mot de passe actuel'
+        "Le nouveau mot de passe doit etre different du mot de passe actuel",
       );
     }
 
@@ -209,8 +246,8 @@ export class AuthService {
       where: { id: user.id },
       data: {
         passwordHash,
-        mustChangePassword: false
-      }
+        mustChangePassword: false,
+      },
     });
 
     return { success: true };
@@ -227,24 +264,27 @@ export class AuthService {
               select: {
                 id: true,
                 slug: true,
-                name: true
-              }
-            }
+                name: true,
+                activeSchoolYearId: true,
+              },
+            },
           },
-          orderBy: { createdAt: 'asc' }
-        }
-      }
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid account');
+      throw new UnauthorizedException("Invalid account");
     }
 
     const schoolMembership = user.memberships[0];
     const schoolId = schoolMembership?.schoolId ?? null;
+    const activeSchoolYearId =
+      schoolMembership?.school.activeSchoolYearId ?? null;
     const schoolSlug = schoolMembership?.school.slug ?? null;
     const schoolRoles = user.memberships.map((membership) => membership.role);
-    const isParent = schoolRoles.includes('PARENT');
+    const isParent = schoolRoles.includes("PARENT");
 
     if (!isParent || !schoolId) {
       return {
@@ -252,29 +292,45 @@ export class AuthService {
         schoolRoles,
         questions: this.getRecoveryQuestions(),
         classes: [],
-        students: []
+        students: [],
       };
     }
 
     const [classes, students] = await this.prisma.$transaction([
       this.prisma.class.findMany({
-        where: { schoolId },
-        select: { id: true, name: true, year: true },
-        orderBy: [{ year: 'asc' }, { name: 'asc' }]
+        where: {
+          schoolId,
+          ...(activeSchoolYearId ? { schoolYearId: activeSchoolYearId } : {}),
+        },
+        select: {
+          id: true,
+          name: true,
+          schoolYear: {
+            select: {
+              label: true,
+            },
+          },
+        },
+        orderBy: [{ schoolYear: { label: "asc" } }, { name: "asc" }],
       }),
       this.prisma.student.findMany({
         where: { schoolId },
         select: { id: true, firstName: true, lastName: true },
-        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }]
-      })
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
     ]);
 
     return {
       schoolSlug,
       schoolRoles,
       questions: this.getRecoveryQuestions(),
-      classes,
-      students
+      classes: classes.map((classroom) => ({
+        id: classroom.id,
+        name: classroom.name,
+        year: classroom.schoolYear.label,
+        schoolYearLabel: classroom.schoolYear.label,
+      })),
+      students,
     };
   }
 
@@ -293,48 +349,73 @@ export class AuthService {
       where: { email: normalizedEmail },
       include: {
         memberships: {
-          orderBy: { createdAt: 'asc' }
-        }
-      }
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid account');
+      throw new UnauthorizedException("Invalid account");
     }
 
-    const validPassword = await bcrypt.compare(input.password, user.passwordHash);
+    const validPassword = await bcrypt.compare(
+      input.password,
+      user.passwordHash,
+    );
     if (!validPassword) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
-    const uniqueQuestions = new Set(input.answers.map((answer) => answer.questionKey));
+    const uniqueQuestions = new Set(
+      input.answers.map((answer) => answer.questionKey),
+    );
     if (input.answers.length !== 3 || uniqueQuestions.size !== 3) {
-      throw new ForbiddenException('You must provide exactly 3 distinct recovery questions');
+      throw new ForbiddenException(
+        "You must provide exactly 3 distinct recovery questions",
+      );
     }
 
     const schoolMembership = user.memberships[0];
-    const schoolSlug = schoolMembership ? await this.resolveSchoolSlug(schoolMembership.schoolId) : null;
+    const schoolSlug = schoolMembership
+      ? await this.resolveSchoolSlug(schoolMembership.schoolId)
+      : null;
     const schoolRoles = user.memberships.map((membership) => membership.role);
-    const isParent = schoolRoles.includes('PARENT');
+    const isParent = schoolRoles.includes("PARENT");
 
     if (isParent) {
       if (!input.parentClassId || !input.parentStudentId || !schoolMembership) {
-        throw new ForbiddenException('Parent must select class and student');
+        throw new ForbiddenException("Parent must select class and student");
       }
 
-      const [classEntity, studentEntity] = await this.prisma.$transaction([
-        this.prisma.class.findFirst({
-          where: { id: input.parentClassId, schoolId: schoolMembership.schoolId },
-          select: { id: true }
-        }),
-        this.prisma.student.findFirst({
-          where: { id: input.parentStudentId, schoolId: schoolMembership.schoolId },
-          select: { id: true, classId: true }
-        })
-      ]);
+      const [classEntity, studentEntity, enrollment] =
+        await this.prisma.$transaction([
+          this.prisma.class.findFirst({
+            where: {
+              id: input.parentClassId,
+              schoolId: schoolMembership.schoolId,
+            },
+            select: { id: true, schoolYearId: true },
+          }),
+          this.prisma.student.findFirst({
+            where: {
+              id: input.parentStudentId,
+              schoolId: schoolMembership.schoolId,
+            },
+            select: { id: true },
+          }),
+          this.prisma.enrollment.findFirst({
+            where: {
+              schoolId: schoolMembership.schoolId,
+              classId: input.parentClassId,
+              studentId: input.parentStudentId,
+              status: "ACTIVE",
+            },
+            select: { id: true },
+          }),
+        ]);
 
-      if (!classEntity || !studentEntity || studentEntity.classId !== classEntity.id) {
-        throw new ForbiddenException('Invalid class/student selection');
+      if (!classEntity || !studentEntity || !enrollment) {
+        throw new ForbiddenException("Invalid class/student selection");
       }
     }
 
@@ -347,36 +428,36 @@ export class AuthService {
           recoveryBirthDate: new Date(input.birthDate),
           recoveryClassId: input.parentClassId ?? null,
           recoveryStudentId: input.parentStudentId ?? null,
-          profileCompleted: true
-        }
+          profileCompleted: true,
+        },
       });
 
       await tx.userRecoveryAnswer.deleteMany({
-        where: { userId: user.id }
+        where: { userId: user.id },
       });
 
       const answerRows = await Promise.all(
         input.answers.map(async (answer) => ({
           userId: user.id,
           questionKey: answer.questionKey,
-          answerHash: await bcrypt.hash(answer.answer.trim().toLowerCase(), 10)
-        }))
+          answerHash: await bcrypt.hash(answer.answer.trim().toLowerCase(), 10),
+        })),
       );
 
       await tx.userRecoveryAnswer.createMany({
-        data: answerRows
+        data: answerRows,
       });
     });
 
     return {
       success: true,
-      schoolSlug
+      schoolSlug,
     };
   }
 
   async getMe(
     userId: string,
-    schoolId: string
+    schoolId: string,
   ): Promise<AuthenticatedUser & { role: PlatformRole | SchoolRole | null }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -386,61 +467,23 @@ export class AuthService {
           where: { schoolId },
           select: {
             schoolId: true,
-            role: true
-          }
-        }
-      }
-    });
-
-    if (!user || (user.memberships.length === 0 && !user.platformRoles.some((r) => r.role === 'SUPER_ADMIN'))) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    const platformRoles = user.platformRoles.map((assignment) => assignment.role);
-    const schoolRoles = user.memberships.map((membership) => membership.role);
-
-    return {
-      id: user.id,
-      platformRoles,
-      memberships: user.memberships.map((membership) => ({
-        schoolId: membership.schoolId,
-        role: membership.role
-      })),
-      profileCompleted: user.profileCompleted,
-      role: this.getPrimaryRole(platformRoles, schoolRoles),
-      email: user.email,
-      phone: user.phone,
-      avatarUrl: user.avatarUrl,
-      firstName: user.firstName,
-      lastName: user.lastName
-    };
-  }
-
-  async getGlobalMe(
-    userId: string
-  ): Promise<AuthenticatedUser & { schoolSlug: string | null; role: PlatformRole | SchoolRole | null }> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        platformRoles: {
-          select: { role: true }
-        },
-        memberships: {
-          include: {
-            school: {
-              select: { slug: true }
-            }
+            role: true,
           },
-          orderBy: { createdAt: 'asc' }
-        }
-      }
+        },
+      },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    if (
+      !user ||
+      (user.memberships.length === 0 &&
+        !user.platformRoles.some((r) => r.role === "SUPER_ADMIN"))
+    ) {
+      throw new UnauthorizedException("User not found");
     }
 
-    const platformRoles = user.platformRoles.map((assignment) => assignment.role);
+    const platformRoles = user.platformRoles.map(
+      (assignment) => assignment.role,
+    );
     const schoolRoles = user.memberships.map((membership) => membership.role);
 
     return {
@@ -448,7 +491,7 @@ export class AuthService {
       platformRoles,
       memberships: user.memberships.map((membership) => ({
         schoolId: membership.schoolId,
-        role: membership.role
+        role: membership.role,
       })),
       profileCompleted: user.profileCompleted,
       role: this.getPrimaryRole(platformRoles, schoolRoles),
@@ -457,35 +500,95 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       firstName: user.firstName,
       lastName: user.lastName,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null
     };
   }
 
-  private async issueAccessToken(user: User, schoolSlug: string | null): Promise<AuthResponse> {
-    const expiresIn = Number(this.configService.get<string>('JWT_EXPIRES_IN') ?? 3600);
+  async getGlobalMe(userId: string): Promise<
+    AuthenticatedUser & {
+      schoolSlug: string | null;
+      role: PlatformRole | SchoolRole | null;
+    }
+  > {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        platformRoles: {
+          select: { role: true },
+        },
+        memberships: {
+          include: {
+            school: {
+              select: { slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    const platformRoles = user.platformRoles.map(
+      (assignment) => assignment.role,
+    );
+    const schoolRoles = user.memberships.map((membership) => membership.role);
+
+    return {
+      id: user.id,
+      platformRoles,
+      memberships: user.memberships.map((membership) => ({
+        schoolId: membership.schoolId,
+        role: membership.role,
+      })),
+      profileCompleted: user.profileCompleted,
+      role: this.getPrimaryRole(platformRoles, schoolRoles),
+      email: user.email,
+      phone: user.phone,
+      avatarUrl: user.avatarUrl,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+    };
+  }
+
+  private async issueAccessToken(
+    user: User,
+    schoolSlug: string | null,
+  ): Promise<AuthResponse> {
+    const expiresIn = Number(
+      this.configService.get<string>("JWT_EXPIRES_IN") ?? 3600,
+    );
 
     const payload: JwtPayload = {
-      sub: user.id
+      sub: user.id,
     };
 
     const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.get<string>('JWT_SECRET') ?? 'dev-secret-change-me',
-      expiresIn
+      secret:
+        this.configService.get<string>("JWT_SECRET") ?? "dev-secret-change-me",
+      expiresIn,
     });
 
     return {
       accessToken,
-      tokenType: 'Bearer',
+      tokenType: "Bearer",
       expiresIn,
-      schoolSlug
+      schoolSlug,
     };
   }
 
   private getPrimaryRole(
     platformRoles: PlatformRole[],
-    schoolRoles: SchoolRole[]
+    schoolRoles: SchoolRole[],
   ): PlatformRole | SchoolRole | null {
-    const platformPriority: PlatformRole[] = ['SUPER_ADMIN', 'ADMIN', 'SALES', 'SUPPORT'];
+    const platformPriority: PlatformRole[] = [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "SALES",
+      "SUPPORT",
+    ];
     for (const role of platformPriority) {
       if (platformRoles.includes(role)) {
         return role;
@@ -493,12 +596,12 @@ export class AuthService {
     }
 
     const schoolPriority: SchoolRole[] = [
-      'SCHOOL_ADMIN',
-      'SCHOOL_MANAGER',
-      'SCHOOL_ACCOUNTANT',
-      'TEACHER',
-      'PARENT',
-      'STUDENT'
+      "SCHOOL_ADMIN",
+      "SCHOOL_MANAGER",
+      "SCHOOL_ACCOUNTANT",
+      "TEACHER",
+      "PARENT",
+      "STUDENT",
     ];
     for (const role of schoolPriority) {
       if (schoolRoles.includes(role)) {
@@ -511,19 +614,19 @@ export class AuthService {
 
   private getRecoveryQuestions() {
     return [
-      { key: 'MOTHER_MAIDEN_NAME', label: 'Nom de jeune fille de votre mere' },
-      { key: 'FAVORITE_SPORT', label: 'Votre sport prefere' },
-      { key: 'FAVORITE_TEACHER', label: 'Nom de votre enseignant prefere' },
-      { key: 'BIRTH_CITY', label: 'Votre ville de naissance' },
-      { key: 'CHILDHOOD_NICKNAME', label: 'Votre surnom d enfance' },
-      { key: 'FAVORITE_BOOK', label: 'Votre livre prefere' }
+      { key: "MOTHER_MAIDEN_NAME", label: "Nom de jeune fille de votre mere" },
+      { key: "FAVORITE_SPORT", label: "Votre sport prefere" },
+      { key: "FAVORITE_TEACHER", label: "Nom de votre enseignant prefere" },
+      { key: "BIRTH_CITY", label: "Votre ville de naissance" },
+      { key: "CHILDHOOD_NICKNAME", label: "Votre surnom d enfance" },
+      { key: "FAVORITE_BOOK", label: "Votre livre prefere" },
     ] as const;
   }
 
   private async resolveSchoolSlug(schoolId: string) {
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
-      select: { slug: true }
+      select: { slug: true },
     });
 
     return school?.slug ?? null;

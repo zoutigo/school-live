@@ -1,25 +1,26 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PrismaService } from '../../prisma/prisma.service.js';
-import { ACCESS_COOKIE_NAME } from '../auth-cookies.js';
-import type { JwtPayload } from '../auth.types.js';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+import { PrismaService } from "../../prisma/prisma.service.js";
+import { ACCESS_COOKIE_NAME } from "../auth-cookies.js";
+import type { JwtPayload } from "../auth.types.js";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     configService: ConfigService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
         (req: { cookies?: Record<string, string> } | undefined) =>
-          req?.cookies?.[ACCESS_COOKIE_NAME] ?? null
+          req?.cookies?.[ACCESS_COOKIE_NAME] ?? null,
       ]),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') ?? 'dev-secret-change-me'
+      secretOrKey:
+        configService.get<string>("JWT_SECRET") ?? "dev-secret-change-me",
     });
   }
 
@@ -28,19 +29,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { id: payload.sub },
       include: {
         platformRoles: {
-          select: { role: true }
+          select: { role: true },
         },
         memberships: {
           select: {
             schoolId: true,
-            role: true
-          }
-        }
-      }
+            role: true,
+          },
+        },
+      },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException("Invalid token");
     }
 
     return {
@@ -48,14 +49,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       platformRoles: user.platformRoles.map((assignment) => assignment.role),
       memberships: user.memberships.map((membership) => ({
         schoolId: membership.schoolId,
-        role: membership.role
+        role: membership.role,
       })),
       profileCompleted: user.profileCompleted,
       email: user.email,
       phone: user.phone,
       avatarUrl: user.avatarUrl,
       firstName: user.firstName,
-      lastName: user.lastName
+      lastName: user.lastName,
     };
   }
 }

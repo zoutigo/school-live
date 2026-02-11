@@ -1,20 +1,23 @@
-import { ForbiddenException } from '@nestjs/common';
-import { GradesService } from '../src/grades/grades.service';
+import { ForbiddenException } from "@nestjs/common";
+import { GradesService } from "../src/grades/grades.service";
 
-describe('GradesService access rules', () => {
+describe("GradesService access rules", () => {
   const prisma = {
     student: { findFirst: jest.fn() },
     class: { findFirst: jest.fn() },
     subject: { findFirst: jest.fn() },
     teacherClassSubject: { findFirst: jest.fn(), findMany: jest.fn() },
+    enrollment: { findFirst: jest.fn() },
+    classSubjectOverride: { findFirst: jest.fn() },
     grade: {
       create: jest.fn(),
       findMany: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
-      delete: jest.fn()
+      delete: jest.fn(),
     },
-    parentStudent: { findMany: jest.fn() }
+    parentStudent: { findMany: jest.fn() },
+    $transaction: jest.fn(),
   };
 
   const service = new GradesService(prisma as never);
@@ -22,90 +25,104 @@ describe('GradesService access rules', () => {
   beforeEach(() => {
     Object.values(prisma).forEach((value) => {
       Object.values(value).forEach((fn) => {
-        if (typeof fn === 'function') {
+        if (typeof fn === "function") {
           fn.mockReset?.();
         }
       });
     });
 
-    prisma.student.findFirst.mockResolvedValue({ id: 'student-1' });
-    prisma.class.findFirst.mockResolvedValue({ id: 'class-1' });
-    prisma.subject.findFirst.mockResolvedValue({ id: 'subject-1' });
+    prisma.student.findFirst.mockResolvedValue({ id: "student-1" });
+    prisma.class.findFirst.mockResolvedValue({
+      id: "class-1",
+      schoolYearId: "sy-1",
+      curriculumId: null,
+    });
+    prisma.subject.findFirst.mockResolvedValue({ id: "subject-1" });
+    prisma.enrollment.findFirst.mockResolvedValue({ id: "enroll-1" });
+    prisma.classSubjectOverride.findFirst.mockResolvedValue(null);
+    prisma.$transaction.mockImplementation(
+      async (operations: Array<Promise<unknown>>) => Promise.all(operations),
+    );
   });
 
-  it('blocks teacher create when assignment missing', async () => {
+  it("blocks teacher create when assignment missing", async () => {
     prisma.teacherClassSubject.findFirst.mockResolvedValue(null);
 
     await expect(
       service.create(
         {
-          id: 'teacher-1',
-          schoolId: 'school-1',
-          role: 'TEACHER',
-          firstName: 'A',
-          lastName: 'B',
-          email: 't@test.com'
+          id: "teacher-1",
+          platformRoles: [],
+          memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+          profileCompleted: true,
+          firstName: "A",
+          lastName: "B",
+          email: "t@test.com",
         },
-        'school-1',
+        "school-1",
         {
-          studentId: 'student-1',
-          classId: 'class-1',
-          subjectId: 'subject-1',
+          studentId: "student-1",
+          classId: "class-1",
+          subjectId: "subject-1",
           value: 15,
           maxValue: 20,
-          term: 'TERM_1'
-        }
-      )
+          term: "TERM_1",
+        },
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('limits parent list to linked children', async () => {
-    prisma.parentStudent.findMany.mockResolvedValue([{ studentId: 'student-1' }]);
-    prisma.grade.findMany.mockResolvedValue([{ id: 'grade-1' }]);
+  it("limits parent list to linked children", async () => {
+    prisma.parentStudent.findMany.mockResolvedValue([
+      { studentId: "student-1" },
+    ]);
+    prisma.grade.findMany.mockResolvedValue([{ id: "grade-1" }]);
 
     await service.list(
       {
-        id: 'parent-1',
-        schoolId: 'school-1',
-        role: 'PARENT',
-        firstName: 'P',
-        lastName: 'Q',
-        email: 'p@test.com'
+        id: "parent-1",
+        platformRoles: [],
+        memberships: [{ schoolId: "school-1", role: "PARENT" }],
+        profileCompleted: true,
+        firstName: "P",
+        lastName: "Q",
+        email: "p@test.com",
       },
-      'school-1',
-      {}
+      "school-1",
+      {},
     );
 
     expect(prisma.grade.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          studentId: { in: ['student-1'] }
-        })
-      })
+          studentId: { in: ["student-1"] },
+        }),
+      }),
     );
   });
 
-  it('limits student list to own profile', async () => {
-    prisma.student.findFirst.mockResolvedValue({ id: 'student-own' });
-    prisma.grade.findMany.mockResolvedValue([{ id: 'grade-own' }]);
+  it("limits student list to own profile", async () => {
+    prisma.student.findFirst.mockResolvedValue({ id: "student-own" });
+    prisma.grade.findMany.mockResolvedValue([{ id: "grade-own" }]);
 
     await service.list(
       {
-        id: 'user-student',
-        schoolId: 'school-1',
-        role: 'STUDENT',
-        firstName: 'S',
-        lastName: 'T',
-        email: 's@test.com'
+        id: "user-student",
+        platformRoles: [],
+        memberships: [{ schoolId: "school-1", role: "STUDENT" }],
+        profileCompleted: true,
+        firstName: "S",
+        lastName: "T",
+        email: "s@test.com",
       },
-      'school-1',
-      {}
+      "school-1",
+      {},
     );
 
     expect(prisma.grade.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ studentId: 'student-own' })
-      })
+        where: expect.objectContaining({ studentId: "student-own" }),
+      }),
     );
   });
 });

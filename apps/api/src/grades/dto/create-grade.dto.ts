@@ -1,5 +1,5 @@
-import { Term } from '@prisma/client';
-import { IsEnum, IsNumber, IsString, Min } from 'class-validator';
+import { Term } from "@prisma/client";
+import { IsEnum, IsNumber, IsString, Min } from "class-validator";
 
 export class CreateGradeDto {
   @IsString()
