@@ -5,17 +5,17 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode
-} from 'react';
-import { createApiClient } from '../api/client';
+  type ReactNode,
+} from "react";
+import { createApiClient } from "../api/client";
 import {
   clearAccessToken,
   getAccessToken,
   getSchoolSlug,
   saveAccessToken,
-  saveSchoolSlug
-} from './storage';
-import type { AuthResponse, AuthUser } from './types';
+  saveSchoolSlug,
+} from "./storage";
+import type { AuthResponse, AuthUser } from "./types";
 
 type AuthContextValue = {
   isBootstrapping: boolean;
@@ -23,7 +23,10 @@ type AuthContextValue = {
   user: AuthUser | null;
   signedIn: boolean;
   selectSchool: (schoolSlug: string) => Promise<void>;
-  signInWithCredentials: (payload: { email: string; password: string }) => Promise<void>;
+  signInWithCredentials: (payload: {
+    email: string;
+    password: string;
+  }) => Promise<void>;
   fetchMe: () => Promise<AuthUser | null>;
   fetchGrades: () => Promise<unknown[]>;
   logout: () => Promise<void>;
@@ -39,7 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function loadStoredSession() {
-      const [storedSlug, storedToken] = await Promise.all([getSchoolSlug(), getAccessToken()]);
+      const [storedSlug, storedToken] = await Promise.all([
+        getSchoolSlug(),
+        getAccessToken(),
+      ]);
       setSchoolSlug(storedSlug);
       setAccessToken(storedToken);
       setIsBootstrapping(false);
@@ -52,9 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () =>
       createApiClient({
         getSchoolSlug: () => schoolSlug,
-        getToken: () => accessToken
+        getToken: () => accessToken,
       }),
-    [accessToken, schoolSlug]
+    [accessToken, schoolSlug],
   );
 
   const selectSchool = useCallback(async (slug: string) => {
@@ -67,20 +73,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithCredentials = useCallback(
     async ({ email, password }: { email: string; password: string }) => {
       if (!schoolSlug) {
-        throw new Error('School slug missing');
+        throw new Error("School slug missing");
       }
 
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001/api'}/schools/${schoolSlug}/auth/login`,
+        `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001/api"}/schools/${schoolSlug}/auth/login`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        }
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        },
       );
 
       if (!response.ok) {
-        throw new Error('Invalid credentials');
+        throw new Error("Invalid credentials");
       }
 
       const payload = (await response.json()) as AuthResponse;
@@ -88,21 +94,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await saveAccessToken(payload.accessToken);
 
       const meResponse = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001/api'}/schools/${schoolSlug}/me`,
+        `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001/api"}/schools/${schoolSlug}/me`,
         {
-          headers: { Authorization: `Bearer ${payload.accessToken}` }
-        }
+          headers: { Authorization: `Bearer ${payload.accessToken}` },
+        },
       );
 
       if (meResponse.ok) {
         setUser((await meResponse.json()) as AuthUser);
       }
     },
-    [schoolSlug]
+    [schoolSlug],
   );
 
   const fetchMe = useCallback(async () => {
-    const response = await api.request('/me');
+    const response = await api.request("/me");
 
     if (!response.ok) {
       setUser(null);
@@ -115,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [api]);
 
   const fetchGrades = useCallback(async () => {
-    const response = await api.request('/grades');
+    const response = await api.request("/grades");
 
     if (!response.ok) {
       return [];
@@ -140,9 +146,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithCredentials,
       fetchMe,
       fetchGrades,
-      logout
+      logout,
     }),
-    [accessToken, fetchGrades, fetchMe, isBootstrapping, logout, schoolSlug, selectSchool, signInWithCredentials, user]
+    [
+      accessToken,
+      fetchGrades,
+      fetchMe,
+      isBootstrapping,
+      logout,
+      schoolSlug,
+      selectSchool,
+      signInWithCredentials,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -152,7 +168,7 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error('useAuth must be used inside AuthProvider');
+    throw new Error("useAuth must be used inside AuthProvider");
   }
 
   return context;

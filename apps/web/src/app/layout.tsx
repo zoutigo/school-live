@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'School Live',
-  description: 'Plateforme scolaire type Ecole Directe'
+  title: "School-Live",
+  description: "Plateforme scolaire inspiree d EcoleDirecte",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

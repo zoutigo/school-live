@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from "react";
 
 type SchoolBranding = {
   id: string;
@@ -14,19 +14,21 @@ const SchoolContext = createContext<SchoolBranding | null>(null);
 
 export function SchoolProvider({
   branding,
-  children
+  children,
 }: {
   branding: SchoolBranding;
   children: ReactNode;
 }) {
-  return <SchoolContext.Provider value={branding}>{children}</SchoolContext.Provider>;
+  return (
+    <SchoolContext.Provider value={branding}>{children}</SchoolContext.Provider>
+  );
 }
 
 export function useSchool() {
   const value = useContext(SchoolContext);
 
   if (!value) {
-    throw new Error('useSchool must be used inside SchoolProvider');
+    throw new Error("useSchool must be used inside SchoolProvider");
   }
 
   return value;

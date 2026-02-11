@@ -1,6 +1,14 @@
-export type Role = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STUDENT';
-export type Term = 'TERM_1' | 'TERM_2' | 'TERM_3';
-export type SchoolLevel = 'primary' | 'middle' | 'high' | 'college' | 'lycee';
+export type PlatformRole = "SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT";
+export type SchoolRole =
+  | "SCHOOL_ADMIN"
+  | "SCHOOL_MANAGER"
+  | "SCHOOL_ACCOUNTANT"
+  | "TEACHER"
+  | "PARENT"
+  | "STUDENT";
+export type Role = PlatformRole | SchoolRole;
+export type Term = "TERM_1" | "TERM_2" | "TERM_3";
+export type SchoolLevel = "primary" | "middle" | "high" | "college" | "lycee";
 
 export interface User {
   id: string;

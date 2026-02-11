@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 type ClientOptions = {
   getSchoolSlug: () => string | null;
@@ -6,7 +7,7 @@ type ClientOptions = {
 };
 
 function buildSchoolPath(schoolSlug: string, path: string) {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}/schools/${schoolSlug}${normalizedPath}`;
 }
 
@@ -16,20 +17,20 @@ export function createApiClient(options: ClientOptions) {
       const schoolSlug = options.getSchoolSlug();
 
       if (!schoolSlug) {
-        throw new Error('School slug missing');
+        throw new Error("School slug missing");
       }
 
       const token = options.getToken();
       const headers = new Headers(init?.headers ?? {});
 
       if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
+        headers.set("Authorization", `Bearer ${token}`);
       }
 
       return fetch(buildSchoolPath(schoolSlug, path), {
         ...init,
-        headers
+        headers,
       });
-    }
+    },
   };
 }

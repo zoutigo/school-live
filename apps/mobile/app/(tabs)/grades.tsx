@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { FlatList, SafeAreaView, Text, View } from 'react-native';
-import { useAuth } from '../../src/auth/auth-context';
+import { useEffect, useState } from "react";
+import { FlatList, SafeAreaView, Text, View } from "react-native";
+import { useAuth } from "../../src/auth/auth-context";
 
 type Grade = {
   id: string;
@@ -20,7 +20,9 @@ export default function GradesScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, padding: 24 }}>
-      <Text style={{ fontSize: 22, fontWeight: '700', marginBottom: 12 }}>Notes</Text>
+      <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 12 }}>
+        Notes
+      </Text>
       <FlatList
         data={grades}
         keyExtractor={(item) => item.id}

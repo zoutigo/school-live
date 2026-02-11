@@ -2,11 +2,11 @@ module.exports = {
   root: false,
   env: {
     es2022: true,
-    node: true
+    node: true,
   },
   parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module'
+    ecmaVersion: "latest",
+    sourceType: "module",
   },
-  ignorePatterns: ['dist', '.next', '.expo']
+  ignorePatterns: ["dist", ".next", ".expo"],
 };

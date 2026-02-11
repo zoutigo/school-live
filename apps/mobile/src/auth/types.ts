@@ -1,4 +1,14 @@
-export type Role = 'SUPER_ADMIN' | 'SCHOOL_ADMIN' | 'TEACHER' | 'PARENT' | 'STUDENT';
+export type Role =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "SALES"
+  | "SUPPORT"
+  | "SCHOOL_ADMIN"
+  | "SCHOOL_MANAGER"
+  | "SCHOOL_ACCOUNTANT"
+  | "TEACHER"
+  | "PARENT"
+  | "STUDENT";
 
 export type AuthUser = {
   id: string;
@@ -11,6 +21,6 @@ export type AuthUser = {
 
 export type AuthResponse = {
   accessToken: string;
-  tokenType: 'Bearer';
+  tokenType: "Bearer";
   expiresIn: number;
 };

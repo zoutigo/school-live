@@ -1,7 +1,7 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from "expo-secure-store";
 
-const TOKEN_KEY = 'school_live_access_token';
-const SCHOOL_SLUG_KEY = 'school_live_school_slug';
+const TOKEN_KEY = "school_live_access_token";
+const SCHOOL_SLUG_KEY = "school_live_school_slug";
 
 export async function saveAccessToken(token: string) {
   await SecureStore.setItemAsync(TOKEN_KEY, token);

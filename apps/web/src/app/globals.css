@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply m-0 bg-background font-body text-text-primary;
+}
+
+a {
+  @apply text-primary no-underline;
+}
+
+a:hover {
+  @apply text-primary-dark;
+}

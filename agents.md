@@ -1,7 +1,9 @@
 # agents.md — SchoolLive (Next.js 16 + NestJS + React Native)
 
 ## Mission
+
 Build and maintain a multi-school platform (no subdomains) using route-based tenancy:
+
 - Web: /schools/:schoolSlug/...
 - API: /api/schools/:schoolSlug/...
 - Mobile: stores schoolSlug and calls the API using it.
@@ -11,49 +13,53 @@ Primary goals: security (school isolation), maintainability, performance, and cl
 ---
 
 ## Non-negotiables (must follow)
-1) **Never trust the client for school context**
+
+1. **Never trust the client for school context**
    - Never accept `schoolId` from the client.
    - Always derive `schoolId` from the authenticated JWT payload.
    - Always enforce that `:schoolSlug` route param maps to the same `schoolId` in the JWT (except SUPER_ADMIN).
 
-2) **Multi-tenant safety**
+2. **Multi-tenant safety**
    - Every sensitive table includes `schoolId`.
    - Every query must scope by `schoolId` from JWT.
    - Implement a `SchoolScopeGuard` (NestJS) used in every school-scoped controller.
 
-3) **Do not add new components if an existing shared component exists**
+3. **Do not add new components if an existing shared component exists**
    - Before creating any new UI component, search in:
      - `apps/web/components`
      - `packages/ui`
    - If a similar component exists, reuse or extend it.
    - If you must create a new component, ensure it is generic and reusable and add it to `packages/ui` when appropriate.
 
-4) **Backend is the source of truth**
+4. **Backend is the source of truth**
    - Frontend role gating is only for UX; authorization must be enforced on the API.
 
-5) **No duplicate business rules**
+5. **No duplicate business rules**
    - Business logic lives in the API (NestJS services).
    - Web/mobile only call API and render results.
 
-6) **No over-engineering**
+6. **No over-engineering**
    - Prefer simple RBAC + ownership checks first.
    - Introduce advanced permission tables only when truly needed.
 
 ---
 
 ## Repository structure rules
-- `apps/api`   => NestJS API + Prisma
-- `apps/web`   => Next.js 16 (App Router)
+
+- `apps/api` => NestJS API + Prisma
+- `apps/web` => Next.js 16 (App Router)
 - `apps/mobile`=> React Native / Expo
 - `packages/types` => shared TS types (DTO interfaces if needed)
-- `packages/ui`    => shared UI components (optional, grows over time)
+- `packages/ui` => shared UI components (optional, grows over time)
 
 Do not create new top-level folders without a clear reason.
 
 ---
 
 ## API (NestJS) implementation rules
+
 ### Authentication
+
 - JWT payload MUST contain:
   - `sub` (userId)
   - `schoolId`
@@ -63,13 +69,16 @@ Do not create new top-level folders without a clear reason.
   - `GET  /api/schools/:schoolSlug/me`
 
 ### Authorization
+
 - Use decorators + guards pattern:
   - `@Roles(...)` + `RolesGuard`
   - `SchoolScopeGuard` (schoolSlug must match JWT.schoolId)
   - `JwtAuthGuard`
 
 ### Ownership
+
 Implement ownership checks in services (not controllers):
+
 - TEACHER: can mutate grades only for assigned (classId, subjectId).
 - PARENT: can read grades only for linked children.
 - STUDENT: can read only own grades.
@@ -77,10 +86,12 @@ Implement ownership checks in services (not controllers):
 - SUPER_ADMIN: cross-school access for platform operations.
 
 ### DTO + Validation
+
 - Use class-validator or zod consistently for request validation.
 - Reject unknown fields when possible.
 
 ### Error handling
+
 - Use consistent HTTP errors:
   - 401 unauthenticated
   - 403 unauthorized
@@ -89,6 +100,7 @@ Implement ownership checks in services (not controllers):
 ---
 
 ## Web (Next.js) rules
+
 - All school pages live under:
   - `apps/web/app/schools/[schoolSlug]/...`
 - The layout at `apps/web/app/schools/[schoolSlug]/layout.tsx` should:
@@ -96,12 +108,14 @@ Implement ownership checks in services (not controllers):
   - provide a SchoolContext to children
 
 ### Frontend role gating
+
 - Hide nav entries based on role for UX,
 - but DO NOT rely on it for security.
 
 ---
 
 ## Mobile (React Native) rules
+
 - Must support a `SchoolSelect` screen:
   - user inputs `schoolSlug` or selects from a list
   - persist `schoolSlug` (SecureStore/AsyncStorage)
@@ -113,48 +127,55 @@ Implement ownership checks in services (not controllers):
 ---
 
 ## Prisma schema organization (readability requirement)
+
 Prisma natively expects a single `schema.prisma`.
 To keep it readable, we will author the schema in multiple themed files and generate the final `schema.prisma`.
 
 ### Source files (themed “pages”)
+
 Create these in `apps/api/prisma/schema/`:
 
-1) `00_datasource.prisma`
+1. `00_datasource.prisma`
    - generator + datasource + common enums (Role, Term, etc.)
 
-2) `10_school_user.prisma`
+2. `10_school_user.prisma`
    - School, User, authentication-related models
 
-3) `20_people.prisma`
+3. `20_people.prisma`
    - Student, Parent relationships, optional Teacher profile (if not in User)
 
-4) `30_academics.prisma`
+4. `30_academics.prisma`
    - Class, Subject, Teacher assignments pivots
 
-5) `40_grades_attendance.prisma`
+5. `40_grades_attendance.prisma`
    - Grade, Attendance (if present), Homework (optional)
 
-6) `90_indexes_notes.prisma`
+6. `90_indexes_notes.prisma`
    - optional comments, shared indexes patterns, future additions
 
 ### Generation rule
+
 - The committed, Prisma-consumed file is: `apps/api/prisma/schema.prisma`
 - It is generated by concatenating the themed files in numeric order.
 - Agents must update the themed files and then run the generation command.
 
 ### Required scripts (add to root package.json)
+
 Add scripts to regenerate schema:
+
 - `db:schema:gen` => concatenates files into `apps/api/prisma/schema.prisma`
-- `db:migrate`    => runs prisma migrate
-- `db:generate`   => prisma generate
+- `db:migrate` => runs prisma migrate
+- `db:generate` => prisma generate
 
 ### Important
+
 - Do NOT manually edit `apps/api/prisma/schema.prisma` except when bootstrapping.
 - Always edit files in `apps/api/prisma/schema/*.prisma` then regenerate.
 
 ---
 
 ## Code style & quality
+
 - Prefer explicit, readable code over clever code.
 - Keep functions small; put business rules in services.
 - Always add/adjust tests for:
@@ -165,7 +186,9 @@ Add scripts to regenerate schema:
 ---
 
 ## Deliverables expectations for each change
+
 Every PR must include:
+
 - Updated API endpoints + DTO validation
 - Updated access control (roles + school scope)
 - Migration(s) if DB changes

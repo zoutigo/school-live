@@ -92,6 +92,7 @@ docker compose -f docker/docker-compose.yml stop postgres
 
 ### Auth
 
+- `POST /api/auth/login` (landing email/password, redirection via `schoolSlug`)
 - `POST /api/schools/:schoolSlug/auth/login`
 - `GET /api/schools/:schoolSlug/me`
 - `GET /api/schools/:schoolSlug/auth/me` (alias)
@@ -106,6 +107,15 @@ docker compose -f docker/docker-compose.yml stop postgres
 - `GET /api/schools/:schoolSlug/grades`
 - `PATCH /api/schools/:schoolSlug/grades/:id`
 - `DELETE /api/schools/:schoolSlug/grades/:id`
+
+### Provisioning / Administration
+
+- `POST /api/system/admins` (`SUPER_ADMIN`)
+- `POST /api/system/schools` (`ADMIN`, `SUPER_ADMIN`) with embedded `school_admin` creation
+- `POST /api/schools/:schoolSlug/admin/classrooms` (`SCHOOL_ADMIN`, `SUPER_ADMIN`)
+- `POST /api/schools/:schoolSlug/admin/teachers` (`SCHOOL_ADMIN`, `SUPER_ADMIN`)
+- `POST /api/schools/:schoolSlug/admin/students` (`SCHOOL_ADMIN`, `SUPER_ADMIN`)
+- `POST /api/schools/:schoolSlug/admin/parent-students` (`SCHOOL_ADMIN`, `SUPER_ADMIN`)
 
 ## Controle d'acces
 

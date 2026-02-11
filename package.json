@@ -12,13 +12,21 @@
     "db:schema:gen": "bash apps/api/prisma/scripts/generate-schema.sh",
     "db:generate": "npm run db:schema:gen && npm run -w @school-live/api prisma:generate",
     "db:migrate": "npm run db:schema:gen && npm run -w @school-live/api prisma:migrate:dev",
+    "prepare": "bash scripts/setup-git-hooks.sh",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "build": "npm run -ws build --if-present",
     "dev": "npm run -ws dev --if-present",
-    "lint": "npm run -ws lint --if-present",
+    "lint": "eslint .",
     "typecheck": "npm run -ws typecheck --if-present",
-    "test": "npm run -ws test --if-present"
+    "test": "npm run -ws test --if-present",
+    "check:repo": "npm run format:check && npm run lint && npm run typecheck && npm run test"
   },
   "devDependencies": {
-    "typescript": "^5.8.0"
+    "@eslint/js": "^9.39.2",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.55.0"
   }
 }

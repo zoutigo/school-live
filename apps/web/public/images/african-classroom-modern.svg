@@ -1,0 +1,30 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="900" fill="#F8F9FA"/>
+  <rect x="80" y="80" width="1040" height="740" rx="24" fill="#FFFFFF" stroke="#E3E6E8"/>
+  <rect x="140" y="130" width="920" height="120" rx="16" fill="#0A62BF"/>
+  <circle cx="210" cy="190" r="22" fill="#FFFFFF"/>
+  <rect x="250" y="170" width="180" height="38" rx="10" fill="#FFFFFF"/>
+  <rect x="140" y="300" width="920" height="70" rx="14" fill="#F8F9FA" stroke="#E3E6E8"/>
+  <rect x="140" y="392" width="920" height="70" rx="14" fill="#F8F9FA" stroke="#E3E6E8"/>
+  <rect x="140" y="484" width="920" height="70" rx="14" fill="#F8F9FA" stroke="#E3E6E8"/>
+  <rect x="140" y="576" width="920" height="70" rx="14" fill="#F8F9FA" stroke="#E3E6E8"/>
+  <circle cx="220" cy="335" r="20" fill="#0C6CB1"/>
+  <circle cx="220" cy="427" r="20" fill="#0C6CB1"/>
+  <circle cx="220" cy="519" r="20" fill="#0C6CB1"/>
+  <circle cx="220" cy="611" r="20" fill="#0C6CB1"/>
+  <rect x="280" y="318" width="280" height="34" rx="10" fill="#212529" fill-opacity="0.08"/>
+  <rect x="280" y="410" width="300" height="34" rx="10" fill="#212529" fill-opacity="0.08"/>
+  <rect x="280" y="502" width="260" height="34" rx="10" fill="#212529" fill-opacity="0.08"/>
+  <rect x="280" y="594" width="320" height="34" rx="10" fill="#212529" fill-opacity="0.08"/>
+  <circle cx="860" cy="335" r="20" fill="#084A8A"/>
+  <circle cx="860" cy="427" r="20" fill="#084A8A"/>
+  <circle cx="860" cy="519" r="20" fill="#084A8A"/>
+  <circle cx="860" cy="611" r="20" fill="#084A8A"/>
+  <rect x="900" y="318" width="120" height="34" rx="10" fill="#0A62BF" fill-opacity="0.18"/>
+  <rect x="900" y="410" width="120" height="34" rx="10" fill="#0A62BF" fill-opacity="0.18"/>
+  <rect x="900" y="502" width="120" height="34" rx="10" fill="#0A62BF" fill-opacity="0.18"/>
+  <rect x="900" y="594" width="120" height="34" rx="10" fill="#0A62BF" fill-opacity="0.18"/>
+  <text x="140" y="730" font-family="Roboto, Arial, sans-serif" font-size="28" fill="#4A4A4A">
+    Classe moderne - Afrique
+  </text>
+</svg>
