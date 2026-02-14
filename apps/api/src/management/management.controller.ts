@@ -24,15 +24,16 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { CreateAdminDto } from "./dto/create-admin.dto.js";
 import { BulkUpdateEnrollmentStatusDto } from "./dto/bulk-update-enrollment-status.dto.js";
 import { CreateAcademicLevelDto } from "./dto/create-academic-level.dto.js";
-import { CreateClassGroupDto } from "./dto/create-class-group.dto.js";
 import { CheckSchoolSlugDto } from "./dto/check-school-slug.dto.js";
 import { CheckUserEmailDto } from "./dto/check-user-email.dto.js";
 import { CreateClassroomDto } from "./dto/create-classroom.dto.js";
 import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
+import { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
 import { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
 import { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
+import { CreateTeacherAssignmentDto } from "./dto/create-teacher-assignment.dto.js";
 import { RolloverSchoolYearDto } from "./dto/rollover-school-year.dto.js";
 import { SetActiveSchoolYearDto } from "./dto/set-active-school-year.dto.js";
 import { CreateSchoolDto } from "./dto/create-school.dto.js";
@@ -42,13 +43,16 @@ import { CreateTrackDto } from "./dto/create-track.dto.js";
 import { CreateUserDto } from "./dto/create-user.dto.js";
 import { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
 import { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-query.dto.js";
+import { ListTeacherAssignmentsQueryDto } from "./dto/list-teacher-assignments-query.dto.js";
 import { UpdateAcademicLevelDto } from "./dto/update-academic-level.dto.js";
-import { UpdateClassGroupDto } from "./dto/update-class-group.dto.js";
 import { UpdateClassroomDto } from "./dto/update-classroom.dto.js";
 import { UpdateClassSubjectOverrideDto } from "./dto/update-class-subject-override.dto.js";
 import { UpdateCurriculumDto } from "./dto/update-curriculum.dto.js";
 import { UpdateSchoolDto } from "./dto/update-school.dto.js";
+import { UpdateStudentDto } from "./dto/update-student.dto.js";
 import { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
+import { UpdateSubjectDto } from "./dto/update-subject.dto.js";
+import { UpdateTeacherAssignmentDto } from "./dto/update-teacher-assignment.dto.js";
 import { UpdateTrackDto } from "./dto/update-track.dto.js";
 import { UpdateUserDto } from "./dto/update-user.dto.js";
 import { UpsertCurriculumSubjectDto } from "./dto/upsert-curriculum-subject.dto.js";
@@ -499,46 +503,97 @@ export class ManagementController {
     );
   }
 
-  @Get("schools/:schoolSlug/admin/class-groups")
+  @Get("schools/:schoolSlug/admin/subjects")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
   @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
-  listClassGroups(@CurrentSchoolId() schoolId: string) {
-    return this.managementService.listClassGroups(schoolId);
+  listSubjects(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listSubjects(schoolId);
   }
 
-  @Post("schools/:schoolSlug/admin/class-groups")
+  @Post("schools/:schoolSlug/admin/subjects")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
   @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
-  createClassGroup(
+  createSubject(
     @CurrentSchoolId() schoolId: string,
-    @Body() payload: CreateClassGroupDto,
+    @Body() payload: CreateSubjectDto,
   ) {
-    return this.managementService.createClassGroup(schoolId, payload);
+    return this.managementService.createSubject(schoolId, payload);
   }
 
-  @Patch("schools/:schoolSlug/admin/class-groups/:classGroupId")
+  @Patch("schools/:schoolSlug/admin/subjects/:subjectId")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
   @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
-  updateClassGroup(
+  updateSubject(
     @CurrentSchoolId() schoolId: string,
-    @Param("classGroupId") classGroupId: string,
-    @Body() payload: UpdateClassGroupDto,
+    @Param("subjectId") subjectId: string,
+    @Body() payload: UpdateSubjectDto,
   ) {
-    return this.managementService.updateClassGroup(
+    return this.managementService.updateSubject(schoolId, subjectId, payload);
+  }
+
+  @Delete("schools/:schoolSlug/admin/subjects/:subjectId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  deleteSubject(
+    @CurrentSchoolId() schoolId: string,
+    @Param("subjectId") subjectId: string,
+  ) {
+    return this.managementService.deleteSubject(schoolId, subjectId);
+  }
+
+  @Get("schools/:schoolSlug/admin/teachers")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  listTeachers(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listTeachers(schoolId);
+  }
+
+  @Get("schools/:schoolSlug/admin/teacher-assignments")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  listTeacherAssignments(
+    @CurrentSchoolId() schoolId: string,
+    @Query() query: ListTeacherAssignmentsQueryDto,
+  ) {
+    return this.managementService.listTeacherAssignments(schoolId, query);
+  }
+
+  @Post("schools/:schoolSlug/admin/teacher-assignments")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  createTeacherAssignment(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: CreateTeacherAssignmentDto,
+  ) {
+    return this.managementService.createTeacherAssignment(schoolId, payload);
+  }
+
+  @Patch("schools/:schoolSlug/admin/teacher-assignments/:assignmentId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  updateTeacherAssignment(
+    @CurrentSchoolId() schoolId: string,
+    @Param("assignmentId") assignmentId: string,
+    @Body() payload: UpdateTeacherAssignmentDto,
+  ) {
+    return this.managementService.updateTeacherAssignment(
       schoolId,
-      classGroupId,
+      assignmentId,
       payload,
     );
   }
 
-  @Delete("schools/:schoolSlug/admin/class-groups/:classGroupId")
+  @Delete("schools/:schoolSlug/admin/teacher-assignments/:assignmentId")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
   @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
-  deleteClassGroup(
+  deleteTeacherAssignment(
     @CurrentSchoolId() schoolId: string,
-    @Param("classGroupId") classGroupId: string,
+    @Param("assignmentId") assignmentId: string,
   ) {
-    return this.managementService.deleteClassGroup(schoolId, classGroupId);
+    return this.managementService.deleteTeacherAssignment(
+      schoolId,
+      assignmentId,
+    );
   }
 
   @Post("schools/:schoolSlug/admin/teachers")
@@ -559,6 +614,27 @@ export class ManagementController {
     @Body() payload: CreateStudentDto,
   ) {
     return this.managementService.createStudent(schoolId, payload);
+  }
+
+  @Patch("schools/:schoolSlug/admin/students/:studentId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  updateStudent(
+    @CurrentSchoolId() schoolId: string,
+    @Param("studentId") studentId: string,
+    @Body() payload: UpdateStudentDto,
+  ) {
+    return this.managementService.updateStudent(schoolId, studentId, payload);
+  }
+
+  @Delete("schools/:schoolSlug/admin/students/:studentId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  deleteStudent(
+    @CurrentSchoolId() schoolId: string,
+    @Param("studentId") studentId: string,
+  ) {
+    return this.managementService.deleteStudent(schoolId, studentId);
   }
 
   @Get("schools/:schoolSlug/admin/students")

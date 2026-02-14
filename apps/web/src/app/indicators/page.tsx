@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
+import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -18,7 +19,7 @@ type Role =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
-type Tab = "overview" | "future";
+type Tab = "overview" | "future" | "help";
 
 type MeResponse = {
   role: Role;
@@ -104,6 +105,17 @@ export default function IndicatorsPage() {
             >
               Onglet suivant
             </button>
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Aide
+            </button>
           </div>
 
           {tab === "overview" ? (
@@ -142,11 +154,42 @@ export default function IndicatorsPage() {
                 </p>
               </Card>
             </div>
-          ) : (
+          ) : tab === "future" ? (
             <p className="text-sm text-text-secondary">
               Cet onglet servira pour les graphiques temporels (croissance,
               usage, performance).
             </p>
+          ) : (
+            <ModuleHelpTab
+              moduleName="Indicateurs"
+              moduleSummary="ce module donne une vue synthetique de la sante de la plateforme et des volumes cles."
+              actions={[
+                {
+                  name: "Consulter",
+                  purpose:
+                    "surveiller les volumes (ecoles, utilisateurs, eleves, enseignants, notes).",
+                  howTo:
+                    "ouvrir l'onglet Vue globale et lire les compteurs consolides.",
+                  moduleImpact: "aucune ecriture: lecture et suivi uniquement.",
+                  crossModuleImpact:
+                    "permet de prioriser les actions sur Ecoles, Utilisateurs, Classes ou Inscriptions.",
+                },
+                {
+                  name: "Comparer",
+                  purpose:
+                    "identifier les zones sous-utilisees ou en forte croissance.",
+                  howTo:
+                    "croiser les compteurs avec les resultats observes dans les modules operationnels.",
+                  moduleImpact:
+                    "ameliore la comprehension globale sans modifier les donnees.",
+                  crossModuleImpact:
+                    "oriente les decisions de creation, correction ou nettoyage dans les autres modules.",
+                },
+              ]}
+              tips={[
+                "Utiliser cet onglet comme point de controle rapide avant d'intervenir sur les modules metiers.",
+              ]}
+            />
           )}
         </Card>
       </div>

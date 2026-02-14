@@ -2,12 +2,12 @@
 
 import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical } from "lucide-react";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -23,7 +23,7 @@ type Role =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
-type Tab = "groups" | "classes";
+type Tab = "list" | "details" | "assignments" | "help";
 
 type MeResponse = {
   role: Role;
@@ -36,29 +36,36 @@ type SchoolOption = {
   name: string;
 };
 
-type ClassGroupRow = {
+type SchoolYearRow = {
   id: string;
-  schoolId: string;
+  label: string;
+  isActive: boolean;
+};
+
+type CurriculumRow = {
+  id: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
-  _count: {
-    classes: number;
-  };
 };
 
 type ClassroomRow = {
   id: string;
   schoolId: string;
-  classGroupId: string;
   name: string;
   schoolYear: {
     id: string;
     label: string;
   };
-  createdAt: string;
-  updatedAt: string;
-  classGroup: {
+  academicLevel: {
+    id: string;
+    code: string;
+    label: string;
+  } | null;
+  track: {
+    id: string;
+    code: string;
+    label: string;
+  } | null;
+  curriculum: {
     id: string;
     name: string;
   } | null;
@@ -67,85 +74,193 @@ type ClassroomRow = {
   };
 };
 
-type SchoolYearRow = {
+type SubjectRow = {
   id: string;
-  label: string;
-  isActive: boolean;
+  name: string;
 };
 
-const createClassGroupSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Le nom du groupe de classes est obligatoire."),
-});
+type TeacherRow = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
 
-const updateClassGroupSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Le nom du groupe de classes est obligatoire."),
-});
+type AssignmentRow = {
+  id: string;
+  schoolYearId: string;
+  teacherUserId: string;
+  classId: string;
+  subjectId: string;
+  schoolYear: { id: string; label: string };
+  teacherUser: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  class: {
+    id: string;
+    name: string;
+  };
+  subject: {
+    id: string;
+    name: string;
+  };
+};
+
+type EnrollmentRow = {
+  id: string;
+  schoolYearId: string;
+  status: "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "GRADUATED";
+  isCurrent: boolean;
+  schoolYear: { id: string; label: string };
+  class: {
+    id: string;
+    name: string;
+  };
+};
+
+type StudentRow = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  parentLinks: Array<{
+    id: string;
+    parent: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+  }>;
+  currentEnrollment: EnrollmentRow | null;
+  enrollments: EnrollmentRow[];
+};
+
+type CurriculumSubjectRow = {
+  id: string;
+  subjectId: string;
+  isMandatory: boolean;
+  coefficient: number | null;
+  weeklyHours: number | null;
+  subject: {
+    id: string;
+    name: string;
+  };
+};
+
+type ClassSubjectOverrideRow = {
+  id: string;
+  subjectId: string;
+  action: "ADD" | "REMOVE";
+  coefficientOverride: number | null;
+  weeklyHoursOverride: number | null;
+  subject: {
+    id: string;
+    name: string;
+  };
+};
+
+type EffectiveSubjectRow = {
+  subjectId: string;
+  subjectName: string;
+  coefficient: number | null;
+  weeklyHours: number | null;
+  source: "curriculum" | "override";
+};
 
 const createClassroomSchema = z.object({
-  classGroupId: z
-    .string()
-    .trim()
-    .min(1, "Le groupe de classes est obligatoire."),
   name: z.string().trim().min(1, "Le nom de la classe est obligatoire."),
   schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
+  curriculumId: z.string().trim().min(1, "Le curriculum est obligatoire."),
 });
 
 const updateClassroomSchema = z.object({
-  classGroupId: z
-    .string()
-    .trim()
-    .min(1, "Le groupe de classes est obligatoire."),
   name: z.string().trim().min(1, "Le nom de la classe est obligatoire."),
   schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
+  curriculumId: z.string().trim().optional(),
 });
+
+const createTeacherAssignmentSchema = z.object({
+  teacherUserId: z.string().trim().min(1, "L'enseignant est obligatoire."),
+  subjectId: z.string().trim().min(1, "La matiere est obligatoire."),
+});
+
+function optionalId(value: string) {
+  return value.trim() === "" ? undefined : value;
+}
 
 export default function ClassesPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("groups");
+  const [tab, setTab] = useState<Tab>("list");
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
+  const [loadingClassDetails, setLoadingClassDetails] = useState(false);
   const [role, setRole] = useState<Role | null>(null);
   const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
   const [schools, setSchools] = useState<SchoolOption[]>([]);
-  const [groups, setGroups] = useState<ClassGroupRow[]>([]);
+
   const [classrooms, setClassrooms] = useState<ClassroomRow[]>([]);
   const [schoolYears, setSchoolYears] = useState<SchoolYearRow[]>([]);
+  const [curriculums, setCurriculums] = useState<CurriculumRow[]>([]);
+  const [subjects, setSubjects] = useState<SubjectRow[]>([]);
+  const [teachers, setTeachers] = useState<TeacherRow[]>([]);
+  const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
 
-  const [groupName, setGroupName] = useState("");
-  const [classGroupId, setClassGroupId] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [classAssignments, setClassAssignments] = useState<AssignmentRow[]>([]);
+  const [classStudents, setClassStudents] = useState<StudentRow[]>([]);
+  const [classCurriculumSubjects, setClassCurriculumSubjects] = useState<
+    CurriculumSubjectRow[]
+  >([]);
+  const [classSubjectOverrides, setClassSubjectOverrides] = useState<
+    ClassSubjectOverrideRow[]
+  >([]);
+
   const [className, setClassName] = useState("");
   const [classSchoolYearId, setClassSchoolYearId] = useState("");
+  const [classCurriculumId, setClassCurriculumId] = useState("");
 
-  const [openGroupActionsId, setOpenGroupActionsId] = useState<string | null>(
-    null,
-  );
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [editGroupName, setEditGroupName] = useState("");
-
-  const [openClassActionsId, setOpenClassActionsId] = useState<string | null>(
-    null,
-  );
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
-  const [editClassGroupId, setEditClassGroupId] = useState("");
   const [editClassName, setEditClassName] = useState("");
   const [editClassSchoolYearId, setEditClassSchoolYearId] = useState("");
+  const [editClassCurriculumId, setEditClassCurriculumId] = useState("");
 
-  const [deleteTarget, setDeleteTarget] = useState<
-    | { kind: "group"; id: string; label: string }
-    | { kind: "class"; id: string; label: string }
-    | null
-  >(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [savingGroup, setSavingGroup] = useState(false);
   const [savingClass, setSavingClass] = useState(false);
-  const [submittingGroup, setSubmittingGroup] = useState(false);
   const [submittingClass, setSubmittingClass] = useState(false);
+
+  const [assignmentTeacherUserId, setAssignmentTeacherUserId] = useState("");
+  const [assignmentSubjectId, setAssignmentSubjectId] = useState("");
+  const [submittingTeacherAssignment, setSubmittingTeacherAssignment] =
+    useState(false);
+
+  const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(
+    null,
+  );
+  const [editAssignmentTeacherUserId, setEditAssignmentTeacherUserId] =
+    useState("");
+  const [editAssignmentSubjectId, setEditAssignmentSubjectId] = useState("");
+  const [savingAssignment, setSavingAssignment] = useState(false);
+
+  const [assignStudentId, setAssignStudentId] = useState("");
+  const [assignStudentStatus, setAssignStudentStatus] = useState<
+    "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "GRADUATED"
+  >("ACTIVE");
+  const [assigningStudent, setAssigningStudent] = useState(false);
+
+  const [statusDraftByEnrollmentId, setStatusDraftByEnrollmentId] = useState<
+    Record<string, "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "GRADUATED">
+  >({});
+  const [updatingEnrollmentId, setUpdatingEnrollmentId] = useState<
+    string | null
+  >(null);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -160,98 +275,163 @@ export default function ClassesPage() {
     void loadData(schoolSlug);
   }, [schoolSlug]);
 
-  async function bootstrap() {
-    const meResponse = await fetch(`${API_URL}/me`, { credentials: "include" });
-    if (!meResponse.ok) {
-      router.replace("/");
+  const selectedClass = useMemo(
+    () => classrooms.find((entry) => entry.id === selectedClassId) ?? null,
+    [classrooms, selectedClassId],
+  );
+
+  useEffect(() => {
+    if (!schoolSlug || !selectedClass) {
+      setClassAssignments([]);
+      setClassStudents([]);
+      setClassCurriculumSubjects([]);
+      setClassSubjectOverrides([]);
       return;
     }
 
-    const me = (await meResponse.json()) as MeResponse;
-    setRole(me.role);
-
-    const allowed =
-      me.role === "SUPER_ADMIN" ||
-      me.role === "ADMIN" ||
-      me.role === "SCHOOL_ADMIN";
-    if (!allowed) {
-      router.replace(
-        me.schoolSlug ? `/schools/${me.schoolSlug}/dashboard` : "/",
-      );
-      return;
-    }
-
-    if (me.role === "SCHOOL_ADMIN") {
-      if (!me.schoolSlug) {
-        setError("Aucune ecole rattachee a ce compte SCHOOL_ADMIN.");
-        setLoading(false);
-        return;
-      }
-      setSchoolSlug(me.schoolSlug);
-      setLoading(false);
-      return;
-    }
-
-    const schoolsResponse = await fetch(`${API_URL}/system/schools`, {
-      credentials: "include",
-    });
-    if (!schoolsResponse.ok) {
-      router.replace("/");
-      return;
-    }
-
-    const schoolRows = (await schoolsResponse.json()) as SchoolOption[];
-    setSchools(schoolRows);
-    setSchoolSlug(schoolRows[0]?.slug ?? null);
-    setLoading(false);
-  }
+    void loadClassDetails(schoolSlug, selectedClass);
+  }, [schoolSlug, selectedClass?.id]);
 
   function buildAdminPath(currentSchoolSlug: string, segment: string) {
     return `${API_URL}/schools/${currentSchoolSlug}/admin/${segment}`;
+  }
+
+  async function bootstrap() {
+    try {
+      const meResponse = await fetch(`${API_URL}/me`, {
+        credentials: "include",
+      });
+      if (!meResponse.ok) {
+        router.replace("/");
+        return;
+      }
+
+      const me = (await meResponse.json()) as MeResponse;
+      setRole(me.role);
+
+      const allowed =
+        me.role === "SUPER_ADMIN" ||
+        me.role === "ADMIN" ||
+        me.role === "SCHOOL_ADMIN";
+      if (!allowed) {
+        router.replace(
+          me.schoolSlug ? `/schools/${me.schoolSlug}/dashboard` : "/",
+        );
+        return;
+      }
+
+      if (me.role === "SCHOOL_ADMIN") {
+        if (!me.schoolSlug) {
+          setError("Aucune ecole rattachee a ce compte SCHOOL_ADMIN.");
+          setLoading(false);
+          return;
+        }
+        setSchoolSlug(me.schoolSlug);
+        setLoading(false);
+        return;
+      }
+
+      const schoolsResponse = await fetch(`${API_URL}/system/schools`, {
+        credentials: "include",
+      });
+      if (!schoolsResponse.ok) {
+        router.replace("/");
+        return;
+      }
+
+      const schoolRows = (await schoolsResponse.json()) as SchoolOption[];
+      setSchools(schoolRows);
+      setSchoolSlug(schoolRows[0]?.slug ?? null);
+      setLoading(false);
+    } catch {
+      setError(
+        "API indisponible. Verifiez que le serveur backend est demarre.",
+      );
+      setLoading(false);
+    }
   }
 
   async function loadData(currentSchoolSlug: string) {
     setLoadingData(true);
     setError(null);
     try {
-      const [groupsResponse, classesResponse, schoolYearsResponse] =
-        await Promise.all([
-          fetch(buildAdminPath(currentSchoolSlug, "class-groups"), {
-            credentials: "include",
-          }),
-          fetch(buildAdminPath(currentSchoolSlug, "classrooms"), {
-            credentials: "include",
-          }),
-          fetch(buildAdminPath(currentSchoolSlug, "school-years"), {
-            credentials: "include",
-          }),
-        ]);
+      const [
+        classesResponse,
+        schoolYearsResponse,
+        curriculumsResponse,
+        teachersResponse,
+        subjectsResponse,
+        studentsResponse,
+      ] = await Promise.all([
+        fetch(buildAdminPath(currentSchoolSlug, "classrooms"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "school-years"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "curriculums"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "teachers"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "subjects"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "students"), {
+          credentials: "include",
+        }),
+      ]);
 
       if (
-        !groupsResponse.ok ||
         !classesResponse.ok ||
-        !schoolYearsResponse.ok
+        !schoolYearsResponse.ok ||
+        !curriculumsResponse.ok ||
+        !teachersResponse.ok ||
+        !subjectsResponse.ok ||
+        !studentsResponse.ok
       ) {
         setError("Impossible de charger les donnees des classes.");
         return;
       }
 
-      const groupsPayload = (await groupsResponse.json()) as ClassGroupRow[];
       const classesPayload = (await classesResponse.json()) as ClassroomRow[];
       const schoolYearsPayload =
         (await schoolYearsResponse.json()) as SchoolYearRow[];
+      const curriculumsPayload =
+        (await curriculumsResponse.json()) as CurriculumRow[];
+      const teachersPayload = (await teachersResponse.json()) as TeacherRow[];
+      const subjectsPayload = (await subjectsResponse.json()) as SubjectRow[];
+      const studentsPayload = (await studentsResponse.json()) as StudentRow[];
 
-      setGroups(groupsPayload);
       setClassrooms(classesPayload);
       setSchoolYears(schoolYearsPayload);
-      if (!classGroupId && groupsPayload.length > 0) {
-        setClassGroupId(groupsPayload[0].id);
+      setCurriculums(curriculumsPayload);
+      setTeachers(teachersPayload);
+      setSubjects(subjectsPayload);
+      setAllStudents(studentsPayload);
+
+      if (!selectedClassId && classesPayload.length > 0) {
+        setSelectedClassId(classesPayload[0].id);
       }
+
+      if (
+        selectedClassId &&
+        classesPayload.length > 0 &&
+        !classesPayload.some((row) => row.id === selectedClassId)
+      ) {
+        setSelectedClassId(classesPayload[0].id);
+      }
+
       if (!classSchoolYearId && schoolYearsPayload.length > 0) {
         setClassSchoolYearId(
           schoolYearsPayload.find((schoolYear) => schoolYear.isActive)?.id ??
             schoolYearsPayload[0].id,
         );
+      }
+
+      if (!assignmentTeacherUserId && teachersPayload.length > 0) {
+        setAssignmentTeacherUserId(teachersPayload[0].userId);
       }
     } catch {
       setError("Erreur reseau.");
@@ -260,58 +440,103 @@ export default function ClassesPage() {
     }
   }
 
-  async function onCreateGroup(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setSuccess(null);
-    if (!schoolSlug) {
-      return;
-    }
-
-    const parsed = createClassGroupSchema.safeParse({ name: groupName });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
-
-    const csrfToken = getCsrfTokenCookie();
-    if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
-      router.replace("/");
-      return;
-    }
-
-    setSubmittingGroup(true);
+  async function loadClassDetails(
+    currentSchoolSlug: string,
+    classEntity: ClassroomRow,
+  ) {
+    setLoadingClassDetails(true);
     try {
-      const response = await fetch(buildAdminPath(schoolSlug, "class-groups"), {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken,
-        },
-        body: JSON.stringify(parsed.data),
+      const studentsParams = new URLSearchParams({
+        classId: classEntity.id,
+        schoolYearId: classEntity.schoolYear.id,
       });
 
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          message?: string | string[];
-        } | null;
-        const message =
-          payload?.message && Array.isArray(payload.message)
-            ? payload.message.join(", ")
-            : (payload?.message ?? "Creation impossible.");
-        setError(String(message));
+      const curriculumSubjectsPromise = classEntity.curriculum?.id
+        ? fetch(
+            buildAdminPath(
+              currentSchoolSlug,
+              `curriculums/${classEntity.curriculum.id}/subjects`,
+            ),
+            { credentials: "include" },
+          )
+        : Promise.resolve(null);
+
+      const [
+        assignmentsResponse,
+        studentsResponse,
+        overridesResponse,
+        curriculumResponse,
+      ] = await Promise.all([
+        fetch(
+          buildAdminPath(
+            currentSchoolSlug,
+            `teacher-assignments?classId=${classEntity.id}`,
+          ),
+          { credentials: "include" },
+        ),
+        fetch(
+          buildAdminPath(
+            currentSchoolSlug,
+            `students?${studentsParams.toString()}`,
+          ),
+          {
+            credentials: "include",
+          },
+        ),
+        fetch(
+          buildAdminPath(
+            currentSchoolSlug,
+            `classrooms/${classEntity.id}/subject-overrides`,
+          ),
+          { credentials: "include" },
+        ),
+        curriculumSubjectsPromise,
+      ]);
+
+      if (
+        !assignmentsResponse.ok ||
+        !studentsResponse.ok ||
+        !overridesResponse.ok
+      ) {
+        setError("Impossible de charger le detail de la classe.");
         return;
       }
 
-      setGroupName("");
-      setSuccess("Groupe de classes cree.");
-      await loadData(schoolSlug);
+      const assignmentsPayload =
+        (await assignmentsResponse.json()) as AssignmentRow[];
+      const studentsPayload = (await studentsResponse.json()) as StudentRow[];
+      const overridesPayload =
+        (await overridesResponse.json()) as ClassSubjectOverrideRow[];
+
+      let curriculumSubjectsPayload: CurriculumSubjectRow[] = [];
+      if (curriculumResponse && curriculumResponse.ok) {
+        curriculumSubjectsPayload =
+          (await curriculumResponse.json()) as CurriculumSubjectRow[];
+      }
+
+      setClassAssignments(assignmentsPayload);
+      setClassStudents(studentsPayload);
+      setClassSubjectOverrides(overridesPayload);
+      setClassCurriculumSubjects(curriculumSubjectsPayload);
+
+      const draft: Record<
+        string,
+        "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "GRADUATED"
+      > = {};
+      studentsPayload.forEach((student) => {
+        student.enrollments.forEach((enrollment) => {
+          draft[enrollment.id] = enrollment.status;
+        });
+      });
+      setStatusDraftByEnrollmentId(draft);
+
+      if (!assignStudentId && studentsPayload.length > 0) {
+        setAssignStudentId(studentsPayload[0].id);
+      }
     } catch {
       setError("Erreur reseau.");
     } finally {
-      setSubmittingGroup(false);
+      setLoadingClassDetails(false);
     }
   }
 
@@ -324,9 +549,9 @@ export default function ClassesPage() {
     }
 
     const parsed = createClassroomSchema.safeParse({
-      classGroupId,
       name: className,
       schoolYearId: classSchoolYearId,
+      curriculumId: classCurriculumId,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
@@ -349,7 +574,10 @@ export default function ClassesPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify({
+          ...parsed.data,
+          curriculumId: optionalId(parsed.data.curriculumId ?? ""),
+        }),
       });
 
       if (!response.ok) {
@@ -365,6 +593,7 @@ export default function ClassesPage() {
       }
 
       setClassName("");
+      setClassCurriculumId("");
       setSuccess("Classe creee.");
       await loadData(schoolSlug);
     } catch {
@@ -374,73 +603,11 @@ export default function ClassesPage() {
     }
   }
 
-  function startEditGroup(group: ClassGroupRow) {
-    setOpenGroupActionsId(null);
-    setEditingGroupId(group.id);
-    setEditGroupName(group.name);
-  }
-
-  async function saveGroup(groupId: string) {
-    if (!schoolSlug) {
-      return;
-    }
-    setError(null);
-    const parsed = updateClassGroupSchema.safeParse({ name: editGroupName });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
-
-    const csrfToken = getCsrfTokenCookie();
-    if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
-      router.replace("/");
-      return;
-    }
-
-    setSavingGroup(true);
-    try {
-      const response = await fetch(
-        buildAdminPath(schoolSlug, `class-groups/${groupId}`),
-        {
-          method: "PATCH",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken,
-          },
-          body: JSON.stringify(parsed.data),
-        },
-      );
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          message?: string | string[];
-        } | null;
-        const message =
-          payload?.message && Array.isArray(payload.message)
-            ? payload.message.join(", ")
-            : (payload?.message ?? "Modification impossible.");
-        setError(String(message));
-        return;
-      }
-
-      setEditingGroupId(null);
-      setSuccess("Groupe de classes modifie.");
-      await loadData(schoolSlug);
-    } catch {
-      setError("Erreur reseau.");
-    } finally {
-      setSavingGroup(false);
-    }
-  }
-
   function startEditClass(entry: ClassroomRow) {
-    setOpenClassActionsId(null);
     setEditingClassId(entry.id);
-    setEditClassGroupId(entry.classGroupId ?? "");
     setEditClassName(entry.name);
     setEditClassSchoolYearId(entry.schoolYear.id);
+    setEditClassCurriculumId(entry.curriculum?.id ?? "");
   }
 
   async function saveClass(classId: string) {
@@ -449,9 +616,9 @@ export default function ClassesPage() {
     }
     setError(null);
     const parsed = updateClassroomSchema.safeParse({
-      classGroupId: editClassGroupId,
       name: editClassName,
       schoolYearId: editClassSchoolYearId,
+      curriculumId: editClassCurriculumId,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
@@ -476,7 +643,10 @@ export default function ClassesPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify(parsed.data),
+          body: JSON.stringify({
+            ...parsed.data,
+            curriculumId: optionalId(parsed.data.curriculumId ?? ""),
+          }),
         },
       );
 
@@ -502,20 +672,6 @@ export default function ClassesPage() {
     }
   }
 
-  function askDeleteGroup(group: ClassGroupRow) {
-    setOpenGroupActionsId(null);
-    setDeleteTarget({ kind: "group", id: group.id, label: group.name });
-  }
-
-  function askDeleteClass(entry: ClassroomRow) {
-    setOpenClassActionsId(null);
-    setDeleteTarget({
-      kind: "class",
-      id: entry.id,
-      label: `${entry.name} (${entry.schoolYear.label})`,
-    });
-  }
-
   async function confirmDelete() {
     if (!deleteTarget || !schoolSlug) {
       return;
@@ -531,18 +687,16 @@ export default function ClassesPage() {
     setDeleting(true);
     setError(null);
     try {
-      const endpoint =
-        deleteTarget.kind === "group"
-          ? buildAdminPath(schoolSlug, `class-groups/${deleteTarget.id}`)
-          : buildAdminPath(schoolSlug, `classrooms/${deleteTarget.id}`);
-
-      const response = await fetch(endpoint, {
-        method: "DELETE",
-        credentials: "include",
-        headers: {
-          "X-CSRF-Token": csrfToken,
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `classrooms/${deleteTarget.id}`),
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfToken,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
@@ -557,11 +711,7 @@ export default function ClassesPage() {
       }
 
       setDeleteTarget(null);
-      setSuccess(
-        deleteTarget.kind === "group"
-          ? "Groupe de classes supprime."
-          : "Classe supprimee.",
-      );
+      setSuccess("Classe supprimee.");
       await loadData(schoolSlug);
     } catch {
       setError("Erreur reseau.");
@@ -570,49 +720,422 @@ export default function ClassesPage() {
     }
   }
 
-  const sortedGroups = useMemo(
-    () => [...groups].sort((a, b) => a.name.localeCompare(b.name)),
-    [groups],
-  );
+  async function createTeacherAssignment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!schoolSlug || !selectedClass) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+
+    const parsed = createTeacherAssignmentSchema.safeParse({
+      teacherUserId: assignmentTeacherUserId,
+      subjectId: assignmentSubjectId,
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingTeacherAssignment(true);
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, "teacher-assignments"),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            schoolYearId: selectedClass.schoolYear.id,
+            classId: selectedClass.id,
+            teacherUserId: parsed.data.teacherUserId,
+            subjectId: parsed.data.subjectId,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Affectation impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setSuccess("Affectation enseignant creee.");
+      await loadClassDetails(schoolSlug, selectedClass);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSubmittingTeacherAssignment(false);
+    }
+  }
+
+  function startEditAssignment(assignment: AssignmentRow) {
+    setEditingAssignmentId(assignment.id);
+    setEditAssignmentTeacherUserId(assignment.teacherUserId);
+    setEditAssignmentSubjectId(assignment.subjectId);
+  }
+
+  async function saveAssignment(assignmentId: string) {
+    if (!schoolSlug || !selectedClass) {
+      return;
+    }
+
+    const parsed = createTeacherAssignmentSchema.safeParse({
+      teacherUserId: editAssignmentTeacherUserId,
+      subjectId: editAssignmentSubjectId,
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSavingAssignment(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `teacher-assignments/${assignmentId}`),
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            schoolYearId: selectedClass.schoolYear.id,
+            classId: selectedClass.id,
+            teacherUserId: parsed.data.teacherUserId,
+            subjectId: parsed.data.subjectId,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Modification impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setEditingAssignmentId(null);
+      setSuccess("Affectation enseignant modifiee.");
+      await loadClassDetails(schoolSlug, selectedClass);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSavingAssignment(false);
+    }
+  }
+
+  async function assignStudentToSelectedClass() {
+    if (!schoolSlug || !selectedClass || !assignStudentId) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setAssigningStudent(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `students/${assignStudentId}/enrollments`),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            classId: selectedClass.id,
+            status: assignStudentStatus,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Affectation eleve impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setSuccess("Eleve affecte a la classe.");
+      await Promise.all([
+        loadData(schoolSlug),
+        loadClassDetails(schoolSlug, selectedClass),
+      ]);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setAssigningStudent(false);
+    }
+  }
+
+  async function updateOneEnrollmentStatus(
+    studentId: string,
+    enrollmentId: string,
+  ) {
+    if (!schoolSlug || !selectedClass) {
+      return;
+    }
+
+    const draft = statusDraftByEnrollmentId[enrollmentId];
+    if (!draft) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setUpdatingEnrollmentId(enrollmentId);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(
+          schoolSlug,
+          `students/${studentId}/enrollments/${enrollmentId}`,
+        ),
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ status: draft }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Mise a jour impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setSuccess("Statut d'affectation eleve mis a jour.");
+      await loadClassDetails(schoolSlug, selectedClass);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setUpdatingEnrollmentId(null);
+    }
+  }
+
   const sortedClasses = useMemo(
     () =>
       [...classrooms].sort((a, b) =>
-        `${a.schoolYear.label}-${a.classGroup?.name ?? ""}-${a.name}`.localeCompare(
-          `${b.schoolYear.label}-${b.classGroup?.name ?? ""}-${b.name}`,
+        `${a.schoolYear.label}-${a.name}`.localeCompare(
+          `${b.schoolYear.label}-${b.name}`,
         ),
       ),
     [classrooms],
   );
+
+  const sortedTeachers = useMemo(
+    () =>
+      [...teachers].sort((a, b) =>
+        `${a.lastName} ${a.firstName}`.localeCompare(
+          `${b.lastName} ${b.firstName}`,
+        ),
+      ),
+    [teachers],
+  );
+
+  const effectiveSubjects = useMemo<EffectiveSubjectRow[]>(() => {
+    const map = new Map<string, EffectiveSubjectRow>();
+
+    for (const row of classCurriculumSubjects) {
+      map.set(row.subjectId, {
+        subjectId: row.subjectId,
+        subjectName: row.subject.name,
+        coefficient: row.coefficient,
+        weeklyHours: row.weeklyHours,
+        source: "curriculum",
+      });
+    }
+
+    for (const override of classSubjectOverrides) {
+      const existing = map.get(override.subjectId);
+      if (override.action === "REMOVE") {
+        map.delete(override.subjectId);
+        continue;
+      }
+
+      if (!existing) {
+        map.set(override.subjectId, {
+          subjectId: override.subjectId,
+          subjectName: override.subject.name,
+          coefficient: override.coefficientOverride,
+          weeklyHours: override.weeklyHoursOverride,
+          source: "override",
+        });
+        continue;
+      }
+
+      map.set(override.subjectId, {
+        ...existing,
+        coefficient:
+          override.coefficientOverride !== null
+            ? override.coefficientOverride
+            : existing.coefficient,
+        weeklyHours:
+          override.weeklyHoursOverride !== null
+            ? override.weeklyHoursOverride
+            : existing.weeklyHours,
+      });
+    }
+
+    return Array.from(map.values()).sort((a, b) =>
+      a.subjectName.localeCompare(b.subjectName),
+    );
+  }, [classCurriculumSubjects, classSubjectOverrides]);
+
+  const classTeacherBySubject = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const assignment of classAssignments) {
+      const fullName = `${assignment.teacherUser.lastName} ${assignment.teacherUser.firstName}`;
+      const current = map.get(assignment.subjectId) ?? [];
+      if (!current.includes(fullName)) {
+        current.push(fullName);
+      }
+      map.set(assignment.subjectId, current);
+    }
+
+    return map;
+  }, [classAssignments]);
+
+  const allStudentsForAssignment = useMemo(
+    () =>
+      [...allStudents]
+        .sort((a, b) =>
+          `${a.lastName} ${a.firstName}`.localeCompare(
+            `${b.lastName} ${b.firstName}`,
+          ),
+        )
+        .map((entry) => ({
+          id: entry.id,
+          label: `${entry.lastName} ${entry.firstName}`,
+        })),
+    [allStudents],
+  );
+
+  if (loading) {
+    return (
+      <AppShell schoolSlug={schoolSlug} schoolName="Gestion des classes">
+        <Card title="Classes" subtitle="Chargement...">
+          <p className="text-sm text-text-secondary">Chargement...</p>
+        </Card>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell schoolSlug={schoolSlug} schoolName="Gestion des classes">
       <div className="grid gap-4">
         <Card
           title="Classes"
-          subtitle="Gestion des groupes de classes et des classes"
+          subtitle="Structure des classes basee sur annee scolaire et curriculum"
         >
           <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
             <button
               type="button"
-              onClick={() => setTab("groups")}
+              onClick={() => setTab("list")}
               className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "groups"
+                tab === "list"
                   ? "border border-border border-b-surface bg-surface text-primary"
                   : "text-text-secondary"
               }`}
             >
-              Groupes de classes
+              Liste
             </button>
             <button
               type="button"
-              onClick={() => setTab("classes")}
+              onClick={() => setTab("details")}
               className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "classes"
+                tab === "details"
                   ? "border border-border border-b-surface bg-surface text-primary"
                   : "text-text-secondary"
               }`}
             >
-              Classes
+              Voir
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("assignments")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "assignments"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Affectations
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Aide
             </button>
 
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
@@ -636,168 +1159,74 @@ export default function ClassesPage() {
             ) : null}
           </div>
 
-          {!schoolSlug ? (
+          {tab !== "list" && tab !== "help" ? (
+            <label className="mb-4 grid gap-1 text-sm md:max-w-[420px]">
+              <span className="text-text-secondary">Classe</span>
+              <select
+                value={selectedClassId}
+                onChange={(event) => setSelectedClassId(event.target.value)}
+                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Selectionner</option>
+                {sortedClasses.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.name} ({entry.schoolYear.label})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {tab === "help" ? (
+            <ModuleHelpTab
+              moduleName="Classes"
+              moduleSummary="ce module centralise la liste des classes, leur detail pedagogique et les affectations eleves/enseignants."
+              actions={[
+                {
+                  name: "Creer",
+                  purpose:
+                    "ajouter une classe avec annee scolaire et curriculum.",
+                  howTo:
+                    "dans l'onglet Liste, remplir le formulaire puis valider.",
+                  moduleImpact:
+                    "la classe devient visible et selectionnable dans les onglets Voir et Affectations.",
+                  crossModuleImpact:
+                    "les modules inscriptions, enseignants et notes utilisent cette classe.",
+                },
+                {
+                  name: "Voir",
+                  purpose: "consulter le detail complet d'une classe.",
+                  howTo:
+                    "cliquer sur le nom de la classe dans la liste ou selectionner une classe dans l'onglet Voir.",
+                  moduleImpact:
+                    "affiche niveau, curriculum, matieres, enseignants, eleves et parents lies.",
+                  crossModuleImpact:
+                    "permet de controler la coherence des donnees avant saisie des notes.",
+                },
+                {
+                  name: "Affecter / Modifier",
+                  purpose:
+                    "gerer les affectations eleves et enseignants de la classe.",
+                  howTo:
+                    "utiliser l'onglet Affectations pour ajouter ou mettre a jour les liaisons.",
+                  moduleImpact:
+                    "les tables d'affectations classe sont synchronisees.",
+                  crossModuleImpact:
+                    "les droits enseignants et les inscriptions eleves sont alignes pour les autres modules.",
+                },
+              ]}
+            />
+          ) : !schoolSlug ? (
             <p className="text-sm text-text-secondary">
               Selectionnez une ecole pour gerer ses classes.
             </p>
-          ) : tab === "groups" ? (
-            <div className="grid gap-4">
-              <form
-                className="grid gap-3 md:grid-cols-[1fr_auto]"
-                onSubmit={onCreateGroup}
-              >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Nouveau groupe de classes
-                  </span>
-                  <input
-                    value={groupName}
-                    onChange={(event) => setGroupName(event.target.value)}
-                    placeholder="Ex: 6eme, 5eme, 4eme..."
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </label>
-                <div className="self-end">
-                  <Button type="submit" disabled={submittingGroup}>
-                    {submittingGroup ? "Creation..." : "Ajouter"}
-                  </Button>
-                </div>
-              </form>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Nom</th>
-                      <th className="px-3 py-2 font-medium">Nb classes</th>
-                      <th className="px-3 py-2 font-medium">Cree le</th>
-                      <th className="px-3 py-2 font-medium text-right">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(loading || loadingData) && (
-                      <tr>
-                        <td
-                          className="px-3 py-6 text-text-secondary"
-                          colSpan={4}
-                        >
-                          Chargement...
-                        </td>
-                      </tr>
-                    )}
-
-                    {!loading &&
-                      !loadingData &&
-                      sortedGroups.map((group) => (
-                        <Fragment key={group.id}>
-                          <tr className="border-b border-border text-text-primary">
-                            <td className="px-3 py-2">{group.name}</td>
-                            <td className="px-3 py-2">
-                              {group._count.classes}
-                            </td>
-                            <td className="px-3 py-2">
-                              {new Date(group.createdAt).toLocaleDateString(
-                                "fr-FR",
-                              )}
-                            </td>
-                            <td className="relative px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-card border border-border bg-surface text-text-primary hover:bg-background"
-                                onClick={() =>
-                                  setOpenGroupActionsId((current) =>
-                                    current === group.id ? null : group.id,
-                                  )
-                                }
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-                              {openGroupActionsId === group.id ? (
-                                <div className="absolute right-3 top-11 z-10 w-36 rounded-card border border-border bg-surface p-1 shadow-soft">
-                                  <button
-                                    type="button"
-                                    className="w-full rounded-card px-3 py-2 text-left text-sm text-text-primary hover:bg-background"
-                                    onClick={() => startEditGroup(group)}
-                                  >
-                                    Modifier
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="w-full rounded-card px-3 py-2 text-left text-sm text-notification hover:bg-background"
-                                    onClick={() => askDeleteGroup(group)}
-                                  >
-                                    Supprimer
-                                  </button>
-                                </div>
-                              ) : null}
-                            </td>
-                          </tr>
-                          {editingGroupId === group.id ? (
-                            <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={4}>
-                                <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                                  <input
-                                    value={editGroupName}
-                                    onChange={(event) =>
-                                      setEditGroupName(event.target.value)
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
-                                  <Button
-                                    type="button"
-                                    disabled={savingGroup}
-                                    onClick={() => {
-                                      void saveGroup(group.id);
-                                    }}
-                                  >
-                                    {savingGroup
-                                      ? "Enregistrement..."
-                                      : "Enregistrer"}
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={() => {
-                                      setEditingGroupId(null);
-                                    }}
-                                  >
-                                    Annuler
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          ) : null}
-                        </Fragment>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
+          ) : tab === "list" ? (
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-4"
                 onSubmit={onCreateClass}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Groupe de classes</span>
-                  <select
-                    value={classGroupId}
-                    onChange={(event) => setClassGroupId(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">Selectionner</option>
-                    {sortedGroups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="grid gap-1 text-sm">
+                <label className="grid gap-1 text-sm md:col-span-2">
                   <span className="text-text-secondary">Nom de classe</span>
                   <input
                     value={className}
@@ -826,7 +1255,25 @@ export default function ClassesPage() {
                   </select>
                 </label>
 
-                <div className="self-end">
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">Curriculum</span>
+                  <select
+                    value={classCurriculumId}
+                    onChange={(event) =>
+                      setClassCurriculumId(event.target.value)
+                    }
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Aucun</option>
+                    {curriculums.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="md:col-span-6">
                   <Button type="submit" disabled={submittingClass}>
                     {submittingClass ? "Creation..." : "Ajouter"}
                   </Button>
@@ -838,7 +1285,9 @@ export default function ClassesPage() {
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
                       <th className="px-3 py-2 font-medium">Classe</th>
-                      <th className="px-3 py-2 font-medium">Groupe</th>
+                      <th className="px-3 py-2 font-medium">Niveau</th>
+                      <th className="px-3 py-2 font-medium">Filiere</th>
+                      <th className="px-3 py-2 font-medium">Curriculum</th>
                       <th className="px-3 py-2 font-medium">Annee</th>
                       <th className="px-3 py-2 font-medium">Eleves</th>
                       <th className="px-3 py-2 font-medium text-right">
@@ -851,7 +1300,7 @@ export default function ClassesPage() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={7}
                         >
                           Chargement...
                         </td>
@@ -863,9 +1312,30 @@ export default function ClassesPage() {
                       sortedClasses.map((entry) => (
                         <Fragment key={entry.id}>
                           <tr className="border-b border-border text-text-primary">
-                            <td className="px-3 py-2">{entry.name}</td>
                             <td className="px-3 py-2">
-                              {entry.classGroup?.name ?? "Non assigne"}
+                              <button
+                                type="button"
+                                className="font-medium text-primary underline-offset-2 hover:underline"
+                                onClick={() => {
+                                  setSelectedClassId(entry.id);
+                                  setTab("details");
+                                }}
+                              >
+                                {entry.name}
+                              </button>
+                            </td>
+                            <td className="px-3 py-2">
+                              {entry.academicLevel
+                                ? `${entry.academicLevel.code} - ${entry.academicLevel.label}`
+                                : "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {entry.track
+                                ? `${entry.track.code} - ${entry.track.label}`
+                                : "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {entry.curriculum?.name ?? "-"}
                             </td>
                             <td className="px-3 py-2">
                               {entry.schoolYear.label}
@@ -873,108 +1343,667 @@ export default function ClassesPage() {
                             <td className="px-3 py-2">
                               {entry._count.enrollments}
                             </td>
-                            <td className="relative px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-card border border-border bg-surface text-text-primary hover:bg-background"
-                                onClick={() =>
-                                  setOpenClassActionsId((current) =>
-                                    current === entry.id ? null : entry.id,
-                                  )
-                                }
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-                              {openClassActionsId === entry.id ? (
-                                <div className="absolute right-3 top-11 z-10 w-36 rounded-card border border-border bg-surface p-1 shadow-soft">
-                                  <button
-                                    type="button"
-                                    className="w-full rounded-card px-3 py-2 text-left text-sm text-text-primary hover:bg-background"
-                                    onClick={() => startEditClass(entry)}
-                                  >
-                                    Modifier
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="w-full rounded-card px-3 py-2 text-left text-sm text-notification hover:bg-background"
-                                    onClick={() => askDeleteClass(entry)}
-                                  >
-                                    Supprimer
-                                  </button>
-                                </div>
-                              ) : null}
+                            <td className="px-3 py-2 text-right">
+                              <div className="inline-flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => startEditClass(entry)}
+                                >
+                                  Modifier
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() =>
+                                    setDeleteTarget({
+                                      id: entry.id,
+                                      label: `${entry.name} (${entry.schoolYear.label})`,
+                                    })
+                                  }
+                                >
+                                  Supprimer
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                           {editingClassId === entry.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={5}>
-                                <div className="grid gap-3 md:grid-cols-5">
-                                  <select
-                                    value={editClassGroupId}
-                                    onChange={(event) =>
-                                      setEditClassGroupId(event.target.value)
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  >
-                                    <option value="">Selectionner</option>
-                                    {sortedGroups.map((group) => (
-                                      <option key={group.id} value={group.id}>
-                                        {group.name}
+                              <td className="px-3 py-3" colSpan={7}>
+                                <div className="grid gap-3 md:grid-cols-3">
+                                  <label className="grid gap-1 text-sm">
+                                    <span className="text-text-secondary">
+                                      Nom de classe
+                                    </span>
+                                    <input
+                                      value={editClassName}
+                                      onChange={(event) =>
+                                        setEditClassName(event.target.value)
+                                      }
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </label>
+                                  <label className="grid gap-1 text-sm">
+                                    <span className="text-text-secondary">
+                                      Annee scolaire
+                                    </span>
+                                    <select
+                                      value={editClassSchoolYearId}
+                                      onChange={(event) =>
+                                        setEditClassSchoolYearId(
+                                          event.target.value,
+                                        )
+                                      }
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      <option value="">
+                                        Selectionner annee
                                       </option>
-                                    ))}
-                                  </select>
-                                  <input
-                                    value={editClassName}
-                                    onChange={(event) =>
-                                      setEditClassName(event.target.value)
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
-                                  <select
-                                    value={editClassSchoolYearId}
-                                    onChange={(event) =>
-                                      setEditClassSchoolYearId(
-                                        event.target.value,
-                                      )
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  >
-                                    <option value="">Selectionner</option>
-                                    {schoolYears.map((schoolYear) => (
-                                      <option
-                                        key={schoolYear.id}
-                                        value={schoolYear.id}
-                                      >
-                                        {schoolYear.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <Button
-                                    type="button"
-                                    disabled={savingClass}
-                                    onClick={() => {
-                                      void saveClass(entry.id);
-                                    }}
-                                  >
-                                    {savingClass
-                                      ? "Enregistrement..."
-                                      : "Enregistrer"}
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={() => {
-                                      setEditingClassId(null);
-                                    }}
-                                  >
-                                    Annuler
-                                  </Button>
+                                      {schoolYears.map((schoolYear) => (
+                                        <option
+                                          key={schoolYear.id}
+                                          value={schoolYear.id}
+                                        >
+                                          {schoolYear.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <label className="grid gap-1 text-sm">
+                                    <span className="text-text-secondary">
+                                      Curriculum
+                                    </span>
+                                    <select
+                                      value={editClassCurriculumId}
+                                      onChange={(event) =>
+                                        setEditClassCurriculumId(
+                                          event.target.value,
+                                        )
+                                      }
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      <option value="">Aucun</option>
+                                      {curriculums.map((curriculum) => (
+                                        <option
+                                          key={curriculum.id}
+                                          value={curriculum.id}
+                                        >
+                                          {curriculum.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <div className="flex gap-2 md:col-span-3">
+                                    <Button
+                                      type="button"
+                                      disabled={savingClass}
+                                      onClick={() => {
+                                        void saveClass(entry.id);
+                                      }}
+                                    >
+                                      {savingClass
+                                        ? "Enregistrement..."
+                                        : "Enregistrer"}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      onClick={() => {
+                                        setEditingClassId(null);
+                                      }}
+                                    >
+                                      Annuler
+                                    </Button>
+                                  </div>
                                 </div>
                               </td>
                             </tr>
                           ) : null}
                         </Fragment>
                       ))}
+
+                    {!loading && !loadingData && sortedClasses.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={7}
+                        >
+                          Aucune classe trouvee.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : !selectedClass ? (
+            <p className="text-sm text-text-secondary">
+              Selectionnez une classe pour voir ses details et gerer ses
+              affectations.
+            </p>
+          ) : tab === "details" ? (
+            <div className="grid gap-4">
+              <div className="rounded-card border border-border bg-background p-3 text-sm">
+                <p className="font-medium text-text-primary">
+                  Informations de la classe
+                </p>
+                <p className="mt-1 text-text-secondary">
+                  Nom: {selectedClass.name}
+                </p>
+                <p className="mt-1 text-text-secondary">
+                  Annee: {selectedClass.schoolYear.label}
+                </p>
+                <p className="mt-1 text-text-secondary">
+                  Niveau:{" "}
+                  {selectedClass.academicLevel
+                    ? `${selectedClass.academicLevel.code} - ${selectedClass.academicLevel.label}`
+                    : "-"}
+                </p>
+                <p className="mt-1 text-text-secondary">
+                  Filiere:{" "}
+                  {selectedClass.track
+                    ? `${selectedClass.track.code} - ${selectedClass.track.label}`
+                    : "-"}
+                </p>
+                <p className="mt-1 text-text-secondary">
+                  Curriculum: {selectedClass.curriculum?.name ?? "-"}
+                </p>
+              </div>
+
+              <div className="rounded-card border border-border bg-background p-3">
+                <p className="mb-2 text-sm font-medium text-text-primary">
+                  Matieres et enseignants
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-text-secondary">
+                        <th className="px-3 py-2 font-medium">Matiere</th>
+                        <th className="px-3 py-2 font-medium">Coefficient</th>
+                        <th className="px-3 py-2 font-medium">Heures/sem.</th>
+                        <th className="px-3 py-2 font-medium">Enseignant(s)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadingClassDetails ? (
+                        <tr>
+                          <td
+                            className="px-3 py-6 text-text-secondary"
+                            colSpan={4}
+                          >
+                            Chargement...
+                          </td>
+                        </tr>
+                      ) : effectiveSubjects.length === 0 ? (
+                        <tr>
+                          <td
+                            className="px-3 py-6 text-text-secondary"
+                            colSpan={4}
+                          >
+                            Aucune matiere definie pour cette classe.
+                          </td>
+                        </tr>
+                      ) : (
+                        effectiveSubjects.map((row) => (
+                          <tr
+                            key={row.subjectId}
+                            className="border-b border-border text-text-primary"
+                          >
+                            <td className="px-3 py-2">{row.subjectName}</td>
+                            <td className="px-3 py-2">
+                              {row.coefficient ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.weeklyHours ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {(classTeacherBySubject.get(row.subjectId) ?? [])
+                                .length === 0
+                                ? "-"
+                                : (
+                                    classTeacherBySubject.get(row.subjectId) ??
+                                    []
+                                  ).join(", ")}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-card border border-border bg-background p-3">
+                <p className="mb-2 text-sm font-medium text-text-primary">
+                  Eleves et parents
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-text-secondary">
+                        <th className="px-3 py-2 font-medium">Eleve</th>
+                        <th className="px-3 py-2 font-medium">
+                          Statut inscription
+                        </th>
+                        <th className="px-3 py-2 font-medium">Parents lies</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadingClassDetails ? (
+                        <tr>
+                          <td
+                            className="px-3 py-6 text-text-secondary"
+                            colSpan={3}
+                          >
+                            Chargement...
+                          </td>
+                        </tr>
+                      ) : classStudents.length === 0 ? (
+                        <tr>
+                          <td
+                            className="px-3 py-6 text-text-secondary"
+                            colSpan={3}
+                          >
+                            Aucun eleve dans cette classe.
+                          </td>
+                        </tr>
+                      ) : (
+                        classStudents.map((student) => {
+                          const enrollment =
+                            student.enrollments[0] ?? student.currentEnrollment;
+                          return (
+                            <tr
+                              key={student.id}
+                              className="border-b border-border text-text-primary"
+                            >
+                              <td className="px-3 py-2">
+                                {student.lastName} {student.firstName}
+                              </td>
+                              <td className="px-3 py-2">
+                                {enrollment?.status ?? "-"}
+                              </td>
+                              <td className="px-3 py-2">
+                                {student.parentLinks.length === 0
+                                  ? "-"
+                                  : student.parentLinks
+                                      .map(
+                                        (link) =>
+                                          `${link.parent.lastName} ${link.parent.firstName} (${link.parent.email})`,
+                                      )
+                                      .join(", ")}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">Eleve</span>
+                  <select
+                    value={assignStudentId}
+                    onChange={(event) => setAssignStudentId(event.target.value)}
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Selectionner</option>
+                    {allStudentsForAssignment.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">
+                    Statut d'inscription
+                  </span>
+                  <select
+                    value={assignStudentStatus}
+                    onChange={(event) =>
+                      setAssignStudentStatus(
+                        event.target.value as
+                          | "ACTIVE"
+                          | "TRANSFERRED"
+                          | "WITHDRAWN"
+                          | "GRADUATED",
+                      )
+                    }
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="TRANSFERRED">TRANSFERRED</option>
+                    <option value="WITHDRAWN">WITHDRAWN</option>
+                    <option value="GRADUATED">GRADUATED</option>
+                  </select>
+                </label>
+                <div className="self-end">
+                  <Button
+                    type="button"
+                    disabled={assigningStudent || !assignStudentId}
+                    onClick={() => {
+                      void assignStudentToSelectedClass();
+                    }}
+                  >
+                    {assigningStudent ? "Affectation..." : "Affecter eleve"}
+                  </Button>
+                </div>
+              </div>
+
+              <form
+                className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3"
+                onSubmit={createTeacherAssignment}
+              >
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">Enseignant</span>
+                  <select
+                    value={assignmentTeacherUserId}
+                    onChange={(event) =>
+                      setAssignmentTeacherUserId(event.target.value)
+                    }
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Selectionner</option>
+                    {sortedTeachers.map((teacher) => (
+                      <option key={teacher.userId} value={teacher.userId}>
+                        {teacher.lastName} {teacher.firstName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">Matiere</span>
+                  <select
+                    value={assignmentSubjectId}
+                    onChange={(event) =>
+                      setAssignmentSubjectId(event.target.value)
+                    }
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Selectionner</option>
+                    {(effectiveSubjects.length > 0
+                      ? effectiveSubjects.map((entry) => ({
+                          id: entry.subjectId,
+                          name: entry.subjectName,
+                        }))
+                      : subjects
+                    ).map((subject) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="self-end">
+                  <Button type="submit" disabled={submittingTeacherAssignment}>
+                    {submittingTeacherAssignment
+                      ? "Affectation..."
+                      : "Affecter enseignant"}
+                  </Button>
+                </div>
+              </form>
+
+              <div className="overflow-x-auto rounded-card border border-border bg-background p-3">
+                <p className="mb-2 text-sm font-medium text-text-primary">
+                  Affectations enseignants
+                </p>
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-text-secondary">
+                      <th className="px-3 py-2 font-medium">Annee</th>
+                      <th className="px-3 py-2 font-medium">Enseignant</th>
+                      <th className="px-3 py-2 font-medium">Matiere</th>
+                      <th className="px-3 py-2 font-medium text-right">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingClassDetails ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={4}
+                        >
+                          Chargement...
+                        </td>
+                      </tr>
+                    ) : classAssignments.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={4}
+                        >
+                          Aucune affectation enseignant.
+                        </td>
+                      </tr>
+                    ) : (
+                      classAssignments.map((assignment) => (
+                        <Fragment key={assignment.id}>
+                          <tr className="border-b border-border text-text-primary">
+                            <td className="px-3 py-2">
+                              {assignment.schoolYear.label}
+                            </td>
+                            <td className="px-3 py-2">
+                              {assignment.teacherUser.lastName}{" "}
+                              {assignment.teacherUser.firstName}
+                            </td>
+                            <td className="px-3 py-2">
+                              {assignment.subject.name}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => startEditAssignment(assignment)}
+                              >
+                                Modifier
+                              </Button>
+                            </td>
+                          </tr>
+                          {editingAssignmentId === assignment.id ? (
+                            <tr className="border-b border-border bg-background">
+                              <td className="px-3 py-3" colSpan={4}>
+                                <div className="grid gap-3 md:grid-cols-3">
+                                  <label className="grid gap-1 text-sm">
+                                    <span className="text-text-secondary">
+                                      Enseignant
+                                    </span>
+                                    <select
+                                      value={editAssignmentTeacherUserId}
+                                      onChange={(event) =>
+                                        setEditAssignmentTeacherUserId(
+                                          event.target.value,
+                                        )
+                                      }
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      <option value="">Selectionner</option>
+                                      {sortedTeachers.map((teacher) => (
+                                        <option
+                                          key={teacher.userId}
+                                          value={teacher.userId}
+                                        >
+                                          {teacher.lastName} {teacher.firstName}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <label className="grid gap-1 text-sm">
+                                    <span className="text-text-secondary">
+                                      Matiere
+                                    </span>
+                                    <select
+                                      value={editAssignmentSubjectId}
+                                      onChange={(event) =>
+                                        setEditAssignmentSubjectId(
+                                          event.target.value,
+                                        )
+                                      }
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      <option value="">Selectionner</option>
+                                      {(effectiveSubjects.length > 0
+                                        ? effectiveSubjects.map((entry) => ({
+                                            id: entry.subjectId,
+                                            name: entry.subjectName,
+                                          }))
+                                        : subjects
+                                      ).map((subject) => (
+                                        <option
+                                          key={subject.id}
+                                          value={subject.id}
+                                        >
+                                          {subject.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <div className="flex items-end gap-2">
+                                    <Button
+                                      type="button"
+                                      disabled={savingAssignment}
+                                      onClick={() => {
+                                        void saveAssignment(assignment.id);
+                                      }}
+                                    >
+                                      {savingAssignment
+                                        ? "Enregistrement..."
+                                        : "Enregistrer"}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      onClick={() =>
+                                        setEditingAssignmentId(null)
+                                      }
+                                    >
+                                      Annuler
+                                    </Button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="overflow-x-auto rounded-card border border-border bg-background p-3">
+                <p className="mb-2 text-sm font-medium text-text-primary">
+                  Affectations eleves
+                </p>
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-text-secondary">
+                      <th className="px-3 py-2 font-medium">Eleve</th>
+                      <th className="px-3 py-2 font-medium">Parents</th>
+                      <th className="px-3 py-2 font-medium">Statut</th>
+                      <th className="px-3 py-2 font-medium text-right">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingClassDetails ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={4}
+                        >
+                          Chargement...
+                        </td>
+                      </tr>
+                    ) : classStudents.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={4}
+                        >
+                          Aucun eleve affecte.
+                        </td>
+                      </tr>
+                    ) : (
+                      classStudents.map((student) => {
+                        const enrollment =
+                          student.enrollments[0] ?? student.currentEnrollment;
+                        if (!enrollment) {
+                          return null;
+                        }
+
+                        return (
+                          <tr
+                            key={student.id}
+                            className="border-b border-border text-text-primary"
+                          >
+                            <td className="px-3 py-2">
+                              {student.lastName} {student.firstName}
+                            </td>
+                            <td className="px-3 py-2">
+                              {student.parentLinks.length === 0
+                                ? "-"
+                                : student.parentLinks
+                                    .map(
+                                      (link) =>
+                                        `${link.parent.lastName} ${link.parent.firstName}`,
+                                    )
+                                    .join(", ")}
+                            </td>
+                            <td className="px-3 py-2">
+                              <select
+                                value={
+                                  statusDraftByEnrollmentId[enrollment.id] ??
+                                  enrollment.status
+                                }
+                                onChange={(event) =>
+                                  setStatusDraftByEnrollmentId((current) => ({
+                                    ...current,
+                                    [enrollment.id]: event.target.value as
+                                      | "ACTIVE"
+                                      | "TRANSFERRED"
+                                      | "WITHDRAWN"
+                                      | "GRADUATED",
+                                  }))
+                                }
+                                className="rounded-card border border-border bg-surface px-2 py-1 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                              >
+                                <option value="ACTIVE">ACTIVE</option>
+                                <option value="TRANSFERRED">TRANSFERRED</option>
+                                <option value="WITHDRAWN">WITHDRAWN</option>
+                                <option value="GRADUATED">GRADUATED</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={
+                                  updatingEnrollmentId === enrollment.id
+                                }
+                                onClick={() => {
+                                  void updateOneEnrollmentStatus(
+                                    student.id,
+                                    enrollment.id,
+                                  );
+                                }}
+                              >
+                                {updatingEnrollmentId === enrollment.id
+                                  ? "..."
+                                  : "Maj"}
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -995,9 +2024,7 @@ export default function ClassesPage() {
         title="Confirmer la suppression"
         message={
           deleteTarget
-            ? deleteTarget.kind === "group"
-              ? `Voulez-vous supprimer le groupe ${deleteTarget.label} ?`
-              : `Voulez-vous supprimer la classe ${deleteTarget.label} ?`
+            ? `Voulez-vous supprimer la classe ${deleteTarget.label} ?`
             : ""
         }
         confirmLabel="Supprimer"

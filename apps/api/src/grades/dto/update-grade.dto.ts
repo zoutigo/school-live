@@ -13,6 +13,11 @@ export class UpdateGradeDto {
   maxValue?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  assessmentWeight?: number;
+
+  @IsOptional()
   @IsEnum(Term)
   term?: Term;
 }

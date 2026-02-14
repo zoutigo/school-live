@@ -6,6 +6,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import type {
+  AppRole,
   PlatformRole,
   RecoveryQuestionKey,
   SchoolRole,
@@ -458,16 +459,52 @@ export class AuthService {
   async getMe(
     userId: string,
     schoolId: string,
-  ): Promise<AuthenticatedUser & { role: PlatformRole | SchoolRole | null }> {
+  ): Promise<
+    AuthenticatedUser & {
+      role: PlatformRole | SchoolRole | null;
+      activeRole: PlatformRole | SchoolRole | null;
+      linkedStudents?: Array<{
+        id: string;
+        firstName: string;
+        lastName: string;
+        avatarUrl?: string | null;
+      }>;
+    }
+  > {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
+      select: {
+        id: true,
+        activeRole: true,
+        profileCompleted: true,
+        email: true,
+        phone: true,
+        avatarUrl: true,
+        firstName: true,
+        lastName: true,
         platformRoles: { select: { role: true } },
         memberships: {
           where: { schoolId },
           select: {
             schoolId: true,
             role: true,
+          },
+        },
+        parentLinks: {
+          where: { schoolId },
+          select: {
+            student: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                user: {
+                  select: {
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -485,6 +522,11 @@ export class AuthService {
       (assignment) => assignment.role,
     );
     const schoolRoles = user.memberships.map((membership) => membership.role);
+    const activeRole = this.resolveActiveRole(
+      user.activeRole,
+      platformRoles,
+      schoolRoles,
+    );
 
     return {
       id: user.id,
@@ -494,12 +536,19 @@ export class AuthService {
         role: membership.role,
       })),
       profileCompleted: user.profileCompleted,
-      role: this.getPrimaryRole(platformRoles, schoolRoles),
+      role: activeRole,
+      activeRole,
       email: user.email,
       phone: user.phone,
       avatarUrl: user.avatarUrl,
       firstName: user.firstName,
       lastName: user.lastName,
+      linkedStudents: user.parentLinks.map((link) => ({
+        id: link.student.id,
+        firstName: link.student.firstName,
+        lastName: link.student.lastName,
+        avatarUrl: link.student.user?.avatarUrl ?? null,
+      })),
     };
   }
 
@@ -507,11 +556,20 @@ export class AuthService {
     AuthenticatedUser & {
       schoolSlug: string | null;
       role: PlatformRole | SchoolRole | null;
+      activeRole: PlatformRole | SchoolRole | null;
     }
   > {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
+      select: {
+        id: true,
+        activeRole: true,
+        profileCompleted: true,
+        email: true,
+        phone: true,
+        avatarUrl: true,
+        firstName: true,
+        lastName: true,
         platformRoles: {
           select: { role: true },
         },
@@ -534,6 +592,11 @@ export class AuthService {
       (assignment) => assignment.role,
     );
     const schoolRoles = user.memberships.map((membership) => membership.role);
+    const activeRole = this.resolveActiveRole(
+      user.activeRole,
+      platformRoles,
+      schoolRoles,
+    );
 
     return {
       id: user.id,
@@ -543,7 +606,8 @@ export class AuthService {
         role: membership.role,
       })),
       profileCompleted: user.profileCompleted,
-      role: this.getPrimaryRole(platformRoles, schoolRoles),
+      role: activeRole,
+      activeRole,
       email: user.email,
       phone: user.phone,
       avatarUrl: user.avatarUrl,
@@ -551,6 +615,41 @@ export class AuthService {
       lastName: user.lastName,
       schoolSlug: user.memberships[0]?.school?.slug ?? null,
     };
+  }
+
+  async setActiveRole(userId: string, role: AppRole) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        platformRoles: {
+          select: { role: true },
+        },
+        memberships: {
+          select: { role: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    const platformRoles = user.platformRoles.map(
+      (assignment) => assignment.role,
+    );
+    const schoolRoles = user.memberships.map((membership) => membership.role);
+    const activeRole = this.resolveActiveRole(role, platformRoles, schoolRoles);
+
+    if (!activeRole) {
+      throw new ForbiddenException("Role is not assigned to this user");
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { activeRole },
+    });
+
+    return { activeRole };
   }
 
   private async issueAccessToken(
@@ -610,6 +709,23 @@ export class AuthService {
     }
 
     return null;
+  }
+
+  private resolveActiveRole(
+    preferredRole: AppRole | null,
+    platformRoles: PlatformRole[],
+    schoolRoles: SchoolRole[],
+  ): AppRole | null {
+    const allowedRoles = new Set<AppRole>([
+      ...platformRoles,
+      ...schoolRoles,
+    ] as AppRole[]);
+
+    if (preferredRole && allowedRoles.has(preferredRole)) {
+      return preferredRole;
+    }
+
+    return this.getPrimaryRole(platformRoles, schoolRoles);
   }
 
   private getRecoveryQuestions() {

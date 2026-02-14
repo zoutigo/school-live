@@ -1,9 +1,6 @@
 import { IsOptional, IsString } from "class-validator";
 
 export class CreateClassroomDto {
-  @IsString()
-  classGroupId!: string;
-
   @IsOptional()
   @IsString()
   schoolYearId?: string;
@@ -19,7 +16,6 @@ export class CreateClassroomDto {
   @IsString()
   trackId?: string;
 
-  @IsOptional()
   @IsString()
-  curriculumId?: string;
+  curriculumId!: string;
 }

@@ -13,29 +13,33 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import type { CreateAdminDto } from "./dto/create-admin.dto.js";
 import type { CreateAcademicLevelDto } from "./dto/create-academic-level.dto.js";
 import type { BulkUpdateEnrollmentStatusDto } from "./dto/bulk-update-enrollment-status.dto.js";
-import type { CreateClassGroupDto } from "./dto/create-class-group.dto.js";
 import type { CreateClassroomDto } from "./dto/create-classroom.dto.js";
 import type { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import type { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
+import type { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import type { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
 import type { CreateSchoolDto } from "./dto/create-school.dto.js";
 import type { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
 import type { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
 import type { CreateStudentDto } from "./dto/create-student.dto.js";
+import type { CreateTeacherAssignmentDto } from "./dto/create-teacher-assignment.dto.js";
 import type { CreateTeacherDto } from "./dto/create-teacher.dto.js";
 import type { CreateTrackDto } from "./dto/create-track.dto.js";
 import type { CreateUserDto } from "./dto/create-user.dto.js";
+import type { ListTeacherAssignmentsQueryDto } from "./dto/list-teacher-assignments-query.dto.js";
 import type { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
 import type { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-query.dto.js";
 import type { RolloverSchoolYearDto } from "./dto/rollover-school-year.dto.js";
 import type { SetActiveSchoolYearDto } from "./dto/set-active-school-year.dto.js";
 import type { UpdateAcademicLevelDto } from "./dto/update-academic-level.dto.js";
-import type { UpdateClassGroupDto } from "./dto/update-class-group.dto.js";
 import type { UpdateClassroomDto } from "./dto/update-classroom.dto.js";
 import type { UpdateClassSubjectOverrideDto } from "./dto/update-class-subject-override.dto.js";
 import type { UpdateCurriculumDto } from "./dto/update-curriculum.dto.js";
 import type { UpdateSchoolDto } from "./dto/update-school.dto.js";
+import type { UpdateStudentDto } from "./dto/update-student.dto.js";
 import type { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
+import type { UpdateSubjectDto } from "./dto/update-subject.dto.js";
+import type { UpdateTeacherAssignmentDto } from "./dto/update-teacher-assignment.dto.js";
 import type { UpdateTrackDto } from "./dto/update-track.dto.js";
 import type { UpdateUserDto } from "./dto/update-user.dto.js";
 import type { UpsertCurriculumSubjectDto } from "./dto/upsert-curriculum-subject.dto.js";
@@ -123,25 +127,15 @@ const updateSchoolSchema = z.object({
   logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).nullable().optional(),
 });
 
-const createClassGroupSchema = z.object({
-  name: z.string().trim().min(1),
-});
-
-const updateClassGroupSchema = z.object({
-  name: z.string().trim().min(1).optional(),
-});
-
 const createClassroomSchema = z.object({
-  classGroupId: z.string().trim().min(1),
   name: z.string().trim().min(1),
   schoolYearId: z.string().trim().min(1).optional(),
   academicLevelId: z.string().trim().min(1).optional(),
   trackId: z.string().trim().min(1).optional(),
-  curriculumId: z.string().trim().min(1).optional(),
+  curriculumId: z.string().trim().min(1),
 });
 
 const updateClassroomSchema = z.object({
-  classGroupId: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1).optional(),
   schoolYearId: z.string().trim().min(1).optional(),
   academicLevelId: z.string().trim().min(1).optional(),
@@ -160,6 +154,11 @@ const updateStudentEnrollmentSchema = z.object({
   status: z
     .enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"])
     .optional(),
+});
+
+const updateStudentSchema = z.object({
+  firstName: z.string().trim().min(1).optional(),
+  lastName: z.string().trim().min(1).optional(),
 });
 
 const listStudentEnrollmentsQuerySchema = z.object({
@@ -235,13 +234,11 @@ const updateTrackSchema = z.object({
 });
 
 const createCurriculumSchema = z.object({
-  name: z.string().trim().min(1),
   academicLevelId: z.string().trim().min(1),
   trackId: z.string().trim().min(1).optional(),
 });
 
 const updateCurriculumSchema = z.object({
-  name: z.string().trim().min(1).optional(),
   academicLevelId: z.string().trim().min(1).optional(),
   trackId: z.string().trim().min(1).optional(),
 });
@@ -251,6 +248,35 @@ const upsertCurriculumSubjectSchema = z.object({
   isMandatory: z.boolean().optional(),
   coefficient: z.number().min(0).optional(),
   weeklyHours: z.number().min(0).optional(),
+});
+
+const createSubjectSchema = z.object({
+  name: z.string().trim().min(1),
+});
+
+const updateSubjectSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+});
+
+const listTeacherAssignmentsQuerySchema = z.object({
+  schoolYearId: z.string().trim().min(1).optional(),
+  teacherUserId: z.string().trim().min(1).optional(),
+  classId: z.string().trim().min(1).optional(),
+  subjectId: z.string().trim().min(1).optional(),
+});
+
+const createTeacherAssignmentSchema = z.object({
+  schoolYearId: z.string().trim().min(1),
+  teacherUserId: z.string().trim().min(1),
+  classId: z.string().trim().min(1),
+  subjectId: z.string().trim().min(1),
+});
+
+const updateTeacherAssignmentSchema = z.object({
+  schoolYearId: z.string().trim().min(1).optional(),
+  teacherUserId: z.string().trim().min(1).optional(),
+  classId: z.string().trim().min(1).optional(),
+  subjectId: z.string().trim().min(1).optional(),
 });
 
 @Injectable()
@@ -1295,102 +1321,6 @@ export class ManagementService {
     };
   }
 
-  async listClassGroups(schoolId: string) {
-    return this.prisma.classGroup.findMany({
-      where: { schoolId },
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        schoolId: true,
-        name: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            classes: true,
-          },
-        },
-      },
-    });
-  }
-
-  async createClassGroup(schoolId: string, payload: CreateClassGroupDto) {
-    const parsedResult = createClassGroupSchema.safeParse(payload);
-    if (!parsedResult.success) {
-      throw new BadRequestException(
-        parsedResult.error.issues.map((issue) => issue.message).join(", "),
-      );
-    }
-
-    const parsed = parsedResult.data;
-
-    return this.prisma.classGroup.create({
-      data: {
-        schoolId,
-        name: parsed.name,
-      },
-    });
-  }
-
-  async updateClassGroup(
-    schoolId: string,
-    classGroupId: string,
-    payload: UpdateClassGroupDto,
-  ) {
-    const parsedResult = updateClassGroupSchema.safeParse(payload);
-    if (!parsedResult.success) {
-      throw new BadRequestException(
-        parsedResult.error.issues.map((issue) => issue.message).join(", "),
-      );
-    }
-    const parsed = parsedResult.data;
-    if (parsed.name === undefined) {
-      throw new BadRequestException("No fields to update");
-    }
-
-    const existing = await this.prisma.classGroup.findFirst({
-      where: { id: classGroupId, schoolId },
-      select: { id: true },
-    });
-    if (!existing) {
-      throw new NotFoundException("Class group not found");
-    }
-
-    return this.prisma.classGroup.update({
-      where: { id: classGroupId },
-      data: {
-        name: parsed.name,
-      },
-    });
-  }
-
-  async deleteClassGroup(schoolId: string, classGroupId: string) {
-    const existing = await this.prisma.classGroup.findFirst({
-      where: { id: classGroupId, schoolId },
-      include: {
-        _count: {
-          select: {
-            classes: true,
-          },
-        },
-      },
-    });
-    if (!existing) {
-      throw new NotFoundException("Class group not found");
-    }
-    if (existing._count.classes > 0) {
-      throw new BadRequestException(
-        "Cannot delete a class group that still contains classes",
-      );
-    }
-
-    await this.prisma.classGroup.delete({
-      where: { id: classGroupId },
-    });
-
-    return { success: true };
-  }
-
   async listClassrooms(schoolId: string) {
     return this.prisma.class.findMany({
       where: { schoolId },
@@ -1402,7 +1332,21 @@ export class ManagementService {
             label: true,
           },
         },
-        classGroup: {
+        academicLevel: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        track: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        curriculum: {
           select: {
             id: true,
             name: true,
@@ -1426,20 +1370,11 @@ export class ManagementService {
     }
     const parsed = parsedResult.data;
 
-    const classGroup = await this.prisma.classGroup.findFirst({
-      where: { id: parsed.classGroupId, schoolId },
-      select: { id: true },
-    });
-
-    if (!classGroup) {
-      throw new NotFoundException("Class group not found");
-    }
-
     const schoolYearId =
       parsed.schoolYearId ??
       (await this.getActiveSchoolYearIdOrThrow(schoolId));
     await this.ensureSchoolYearInSchool(schoolYearId, schoolId);
-    await this.ensureOptionalAcademicReferencesInSchool(
+    const academicReferences = await this.resolveClassAcademicReferences(
       schoolId,
       parsed.academicLevelId,
       parsed.trackId,
@@ -1450,11 +1385,10 @@ export class ManagementService {
       data: {
         schoolId,
         schoolYearId,
-        classGroupId: parsed.classGroupId,
         name: parsed.name,
-        academicLevelId: parsed.academicLevelId,
-        trackId: parsed.trackId,
-        curriculumId: parsed.curriculumId,
+        academicLevelId: academicReferences.academicLevelId,
+        trackId: academicReferences.trackId,
+        curriculumId: academicReferences.curriculumId,
       },
       include: {
         schoolYear: {
@@ -1463,7 +1397,21 @@ export class ManagementService {
             label: true,
           },
         },
-        classGroup: {
+        academicLevel: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        track: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        curriculum: {
           select: {
             id: true,
             name: true,
@@ -1486,7 +1434,6 @@ export class ManagementService {
     }
     const parsed = parsedResult.data;
     if (
-      parsed.classGroupId === undefined &&
       parsed.name === undefined &&
       parsed.schoolYearId === undefined &&
       parsed.academicLevelId === undefined &&
@@ -1498,43 +1445,41 @@ export class ManagementService {
 
     const existing = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
-      select: { id: true },
+      select: {
+        id: true,
+        academicLevelId: true,
+        trackId: true,
+        curriculumId: true,
+      },
     });
     if (!existing) {
       throw new NotFoundException("Classroom not found");
-    }
-
-    if (parsed.classGroupId) {
-      const classGroup = await this.prisma.classGroup.findFirst({
-        where: { id: parsed.classGroupId, schoolId },
-        select: { id: true },
-      });
-
-      if (!classGroup) {
-        throw new NotFoundException("Class group not found");
-      }
     }
 
     if (parsed.schoolYearId) {
       await this.ensureSchoolYearInSchool(parsed.schoolYearId, schoolId);
     }
 
-    await this.ensureOptionalAcademicReferencesInSchool(
+    const academicReferences = await this.resolveClassAcademicReferences(
       schoolId,
       parsed.academicLevelId,
       parsed.trackId,
       parsed.curriculumId,
+      {
+        academicLevelId: existing.academicLevelId ?? undefined,
+        trackId: existing.trackId ?? undefined,
+        curriculumId: existing.curriculumId ?? undefined,
+      },
     );
 
     return this.prisma.class.update({
       where: { id: classId },
       data: {
-        classGroupId: parsed.classGroupId,
         name: parsed.name,
         schoolYearId: parsed.schoolYearId,
-        academicLevelId: parsed.academicLevelId,
-        trackId: parsed.trackId,
-        curriculumId: parsed.curriculumId,
+        academicLevelId: academicReferences.academicLevelId,
+        trackId: academicReferences.trackId,
+        curriculumId: academicReferences.curriculumId,
       },
       include: {
         schoolYear: {
@@ -1543,7 +1488,21 @@ export class ManagementService {
             label: true,
           },
         },
-        classGroup: {
+        academicLevel: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        track: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        curriculum: {
           select: {
             id: true,
             name: true,
@@ -1868,7 +1827,6 @@ export class ManagementService {
         },
         select: {
           id: true,
-          classGroupId: true,
           name: true,
           academicLevelId: true,
           trackId: true,
@@ -1884,7 +1842,6 @@ export class ManagementService {
           where: {
             schoolId,
             schoolYearId: targetSchoolYear.id,
-            classGroupId: sourceClass.classGroupId,
             name: sourceClass.name,
           },
           select: { id: true },
@@ -1899,7 +1856,6 @@ export class ManagementService {
           data: {
             schoolId,
             schoolYearId: targetSchoolYear.id,
-            classGroupId: sourceClass.classGroupId,
             name: sourceClass.name,
             academicLevelId: sourceClass.academicLevelId,
             trackId: sourceClass.trackId,
@@ -2202,11 +2158,16 @@ export class ManagementService {
     if (parsed.trackId) {
       await this.ensureTrackInSchool(parsed.trackId, schoolId);
     }
+    const curriculumName = await this.buildCurriculumName(
+      schoolId,
+      parsed.academicLevelId,
+      parsed.trackId,
+    );
 
     return this.prisma.curriculum.create({
       data: {
         schoolId,
-        name: parsed.name,
+        name: curriculumName,
         academicLevelId: parsed.academicLevelId,
         trackId: parsed.trackId,
       },
@@ -2226,30 +2187,49 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    if (
-      parsed.name === undefined &&
-      parsed.academicLevelId === undefined &&
-      parsed.trackId === undefined
-    ) {
+    if (parsed.academicLevelId === undefined && parsed.trackId === undefined) {
       throw new BadRequestException("No fields to update");
     }
 
-    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+    const existing = await this.prisma.curriculum.findFirst({
+      where: {
+        id: curriculumId,
+        schoolId,
+      },
+      select: {
+        id: true,
+        academicLevelId: true,
+        trackId: true,
+      },
+    });
 
-    if (parsed.academicLevelId) {
-      await this.ensureAcademicLevelInSchool(parsed.academicLevelId, schoolId);
+    if (!existing) {
+      throw new NotFoundException("Curriculum not found");
     }
 
-    if (parsed.trackId) {
-      await this.ensureTrackInSchool(parsed.trackId, schoolId);
+    const nextAcademicLevelId =
+      parsed.academicLevelId ?? existing.academicLevelId;
+    const nextTrackId =
+      parsed.trackId === undefined
+        ? (existing.trackId ?? undefined)
+        : parsed.trackId;
+
+    await this.ensureAcademicLevelInSchool(nextAcademicLevelId, schoolId);
+    if (nextTrackId) {
+      await this.ensureTrackInSchool(nextTrackId, schoolId);
     }
+    const curriculumName = await this.buildCurriculumName(
+      schoolId,
+      nextAcademicLevelId,
+      nextTrackId,
+    );
 
     return this.prisma.curriculum.update({
       where: { id: curriculumId },
       data: {
-        name: parsed.name,
-        academicLevelId: parsed.academicLevelId,
-        trackId: parsed.trackId,
+        name: curriculumName,
+        academicLevelId: nextAcademicLevelId,
+        trackId: nextTrackId,
       },
     });
   }
@@ -2362,16 +2342,475 @@ export class ManagementService {
     return { success: true };
   }
 
-  async createTeacher(schoolId: string, payload: CreateTeacherDto) {
-    const passwordHash = await bcrypt.hash(payload.password, 10);
+  async listSubjects(schoolId: string) {
+    return this.prisma.subject.findMany({
+      where: { schoolId },
+      orderBy: [{ name: "asc" }],
+      include: {
+        _count: {
+          select: {
+            assignments: true,
+            grades: true,
+            curriculumSubjects: true,
+            classOverrides: true,
+          },
+        },
+      },
+    });
+  }
 
-    return this.prisma.$transaction(async (tx) => {
+  async createSubject(schoolId: string, payload: CreateSubjectDto) {
+    const parsedResult = createSubjectSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    return this.prisma.subject.create({
+      data: {
+        schoolId,
+        name: parsed.name,
+      },
+    });
+  }
+
+  async updateSubject(
+    schoolId: string,
+    subjectId: string,
+    payload: UpdateSubjectDto,
+  ) {
+    const parsedResult = updateSubjectSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (parsed.name === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    await this.ensureSubjectInSchool(subjectId, schoolId);
+    return this.prisma.subject.update({
+      where: { id: subjectId },
+      data: {
+        name: parsed.name,
+      },
+    });
+  }
+
+  async deleteSubject(schoolId: string, subjectId: string) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: subjectId, schoolId },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            assignments: true,
+            grades: true,
+            curriculumSubjects: true,
+            classOverrides: true,
+          },
+        },
+      },
+    });
+
+    if (!subject) {
+      throw new NotFoundException("Subject not found");
+    }
+
+    if (
+      subject._count.assignments > 0 ||
+      subject._count.grades > 0 ||
+      subject._count.curriculumSubjects > 0 ||
+      subject._count.classOverrides > 0
+    ) {
+      throw new BadRequestException(
+        "Cannot delete a subject used by curriculums, assignments, class overrides or grades",
+      );
+    }
+
+    await this.prisma.subject.delete({
+      where: { id: subjectId },
+    });
+
+    return { success: true };
+  }
+
+  async listTeachers(schoolId: string) {
+    const teachers = await this.prisma.schoolMembership.findMany({
+      where: {
+        schoolId,
+        role: "TEACHER",
+      },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return teachers
+      .map((entry) => ({
+        userId: entry.userId,
+        firstName: entry.user.firstName,
+        lastName: entry.user.lastName,
+        email: entry.user.email,
+      }))
+      .sort((a, b) =>
+        `${a.lastName} ${a.firstName}`.localeCompare(
+          `${b.lastName} ${b.firstName}`,
+        ),
+      );
+  }
+
+  async listTeacherAssignments(
+    schoolId: string,
+    query: ListTeacherAssignmentsQueryDto,
+  ) {
+    const parsedResult = listTeacherAssignmentsQuerySchema.safeParse(query);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    if (parsed.schoolYearId) {
+      await this.ensureSchoolYearInSchool(parsed.schoolYearId, schoolId);
+    }
+    if (parsed.classId) {
+      await this.ensureClassInSchool(parsed.classId, schoolId);
+    }
+    if (parsed.subjectId) {
+      await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+    }
+    if (parsed.teacherUserId) {
+      await this.ensureTeacherUserInSchool(parsed.teacherUserId, schoolId);
+    }
+
+    return this.prisma.teacherClassSubject.findMany({
+      where: {
+        schoolId,
+        ...(parsed.schoolYearId ? { schoolYearId: parsed.schoolYearId } : {}),
+        ...(parsed.teacherUserId
+          ? { teacherUserId: parsed.teacherUserId }
+          : {}),
+        ...(parsed.classId ? { classId: parsed.classId } : {}),
+        ...(parsed.subjectId ? { subjectId: parsed.subjectId } : {}),
+      },
+      orderBy: [{ createdAt: "desc" }],
+      include: {
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        teacherUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createTeacherAssignment(
+    schoolId: string,
+    payload: CreateTeacherAssignmentDto,
+  ) {
+    const parsedResult = createTeacherAssignmentSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    await this.ensureSchoolYearInSchool(parsed.schoolYearId, schoolId);
+    const classEntity = await this.ensureClassInSchoolAndGet(
+      parsed.classId,
+      schoolId,
+    );
+    await this.ensureTeacherUserInSchool(parsed.teacherUserId, schoolId);
+    await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+    this.ensureClassAndSchoolYearConsistency(
+      classEntity.schoolYearId,
+      parsed.schoolYearId,
+    );
+    await this.ensureSubjectAssignableToClass(
+      schoolId,
+      parsed.classId,
+      parsed.subjectId,
+    );
+
+    return this.prisma.teacherClassSubject.upsert({
+      where: {
+        schoolYearId_teacherUserId_classId_subjectId: {
+          schoolYearId: parsed.schoolYearId,
+          teacherUserId: parsed.teacherUserId,
+          classId: parsed.classId,
+          subjectId: parsed.subjectId,
+        },
+      },
+      update: {},
+      create: {
+        schoolId,
+        schoolYearId: parsed.schoolYearId,
+        teacherUserId: parsed.teacherUserId,
+        classId: parsed.classId,
+        subjectId: parsed.subjectId,
+      },
+      include: {
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        teacherUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateTeacherAssignment(
+    schoolId: string,
+    assignmentId: string,
+    payload: UpdateTeacherAssignmentDto,
+  ) {
+    const parsedResult = updateTeacherAssignmentSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    if (
+      parsed.schoolYearId === undefined &&
+      parsed.teacherUserId === undefined &&
+      parsed.classId === undefined &&
+      parsed.subjectId === undefined
+    ) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.teacherClassSubject.findFirst({
+      where: {
+        id: assignmentId,
+        schoolId,
+      },
+      select: {
+        id: true,
+        schoolYearId: true,
+        teacherUserId: true,
+        classId: true,
+        subjectId: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Teacher assignment not found");
+    }
+
+    const nextSchoolYearId = parsed.schoolYearId ?? existing.schoolYearId;
+    const nextTeacherUserId = parsed.teacherUserId ?? existing.teacherUserId;
+    const nextClassId = parsed.classId ?? existing.classId;
+    const nextSubjectId = parsed.subjectId ?? existing.subjectId;
+
+    await this.ensureSchoolYearInSchool(nextSchoolYearId, schoolId);
+    const classEntity = await this.ensureClassInSchoolAndGet(
+      nextClassId,
+      schoolId,
+    );
+    await this.ensureTeacherUserInSchool(nextTeacherUserId, schoolId);
+    await this.ensureSubjectInSchool(nextSubjectId, schoolId);
+    this.ensureClassAndSchoolYearConsistency(
+      classEntity.schoolYearId,
+      nextSchoolYearId,
+    );
+    await this.ensureSubjectAssignableToClass(
+      schoolId,
+      nextClassId,
+      nextSubjectId,
+    );
+
+    return this.prisma.teacherClassSubject.update({
+      where: { id: assignmentId },
+      data: {
+        schoolYearId: nextSchoolYearId,
+        teacherUserId: nextTeacherUserId,
+        classId: nextClassId,
+        subjectId: nextSubjectId,
+      },
+      include: {
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        teacherUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteTeacherAssignment(schoolId: string, assignmentId: string) {
+    const existing = await this.prisma.teacherClassSubject.findFirst({
+      where: {
+        id: assignmentId,
+        schoolId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Teacher assignment not found");
+    }
+
+    await this.prisma.teacherClassSubject.delete({
+      where: { id: assignmentId },
+    });
+
+    return { success: true };
+  }
+
+  async createTeacher(schoolId: string, payload: CreateTeacherDto) {
+    const teacherEmail = payload.email.toLowerCase();
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { slug: true },
+    });
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: teacherEmail },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
+    });
+
+    if (existingUser) {
+      const result = await this.prisma.$transaction(async (tx) => {
+        await tx.schoolMembership.upsert({
+          where: {
+            userId_schoolId_role: {
+              userId: existingUser.id,
+              schoolId,
+              role: "TEACHER",
+            },
+          },
+          create: {
+            userId: existingUser.id,
+            schoolId,
+            role: "TEACHER",
+          },
+          update: {},
+        });
+
+        const teacher = await tx.teacher.upsert({
+          where: {
+            schoolId_userId: {
+              schoolId,
+              userId: existingUser.id,
+            },
+          },
+          create: {
+            schoolId,
+            userId: existingUser.id,
+          },
+          update: {},
+        });
+
+        return {
+          user: existingUser,
+          teacher,
+          userExisted: true,
+          onboardingEmailSent: false,
+        };
+      });
+
+      return result;
+    }
+
+    const derivedName = this.deriveNameFromEmail(teacherEmail);
+    const generatedTemporaryPassword = this.generateTemporaryPassword();
+    const passwordHash = await bcrypt.hash(generatedTemporaryPassword, 10);
+
+    const created = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          firstName: payload.firstName,
-          lastName: payload.lastName,
-          email: payload.email.toLowerCase(),
+          firstName: derivedName.firstName,
+          lastName: derivedName.lastName,
+          email: teacherEmail,
           passwordHash,
+          mustChangePassword: true,
+          profileCompleted: false,
           memberships: {
             create: {
               schoolId,
@@ -2390,6 +2829,19 @@ export class ManagementService {
 
       return { user, teacher };
     });
+
+    await this.mailService.sendTemporaryPasswordEmail({
+      to: teacherEmail,
+      firstName: created.user.firstName,
+      temporaryPassword: generatedTemporaryPassword,
+      schoolSlug: school?.slug ?? null,
+    });
+
+    return {
+      ...created,
+      userExisted: false,
+      onboardingEmailSent: true,
+    };
   }
 
   async createStudent(schoolId: string, payload: CreateStudentDto) {
@@ -2468,6 +2920,87 @@ export class ManagementService {
     });
   }
 
+  async updateStudent(
+    schoolId: string,
+    studentId: string,
+    payload: UpdateStudentDto,
+  ) {
+    const parsedResult = updateStudentSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    if (parsed.firstName === undefined && parsed.lastName === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        schoolId,
+      },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Student not found");
+    }
+
+    return this.prisma.student.update({
+      where: {
+        id: studentId,
+      },
+      data: {
+        firstName: parsed.firstName,
+        lastName: parsed.lastName,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async deleteStudent(schoolId: string, studentId: string) {
+    const existing = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        schoolId,
+      },
+      select: {
+        id: true,
+        userId: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Student not found");
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.student.delete({
+        where: { id: studentId },
+      });
+
+      if (existing.userId) {
+        await tx.schoolMembership.deleteMany({
+          where: {
+            userId: existing.userId,
+            schoolId,
+            role: "STUDENT",
+          },
+        });
+      }
+    });
+
+    return { success: true };
+  }
+
   async listStudentsWithEnrollments(
     schoolId: string,
     query: ListStudentEnrollmentsQueryDto,
@@ -2510,6 +3043,19 @@ export class ManagementService {
         id: true,
         firstName: true,
         lastName: true,
+        parentLinks: {
+          select: {
+            id: true,
+            parent: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
         enrollments: {
           where: {
             schoolId,
@@ -2536,12 +3082,6 @@ export class ManagementService {
               select: {
                 id: true,
                 name: true,
-                classGroup: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
               },
             },
           },
@@ -2601,12 +3141,6 @@ export class ManagementService {
           select: {
             id: true,
             name: true,
-            classGroup: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
           },
         },
       },
@@ -2678,12 +3212,6 @@ export class ManagementService {
           select: {
             id: true,
             name: true,
-            classGroup: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
           },
         },
       },
@@ -2800,12 +3328,6 @@ export class ManagementService {
           select: {
             id: true,
             name: true,
-            classGroup: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
           },
         },
       },
@@ -2835,15 +3357,20 @@ export class ManagementService {
       throw new NotFoundException("Student not found");
     }
 
-    const parentUserId = payload.parentUserId
-      ? await this.ensureExistingParentMembership(
-          schoolId,
-          payload.parentUserId,
-        )
-      : await this.createParentUser(schoolId, payload);
+    const parentUserId = await this.resolveParentUserForStudentLink(
+      schoolId,
+      payload,
+    );
 
-    return this.prisma.parentStudent.create({
-      data: {
+    return this.prisma.parentStudent.upsert({
+      where: {
+        parentUserId_studentId: {
+          parentUserId,
+          studentId: payload.studentId,
+        },
+      },
+      update: {},
+      create: {
         schoolId,
         parentUserId,
         studentId: payload.studentId,
@@ -2853,29 +3380,29 @@ export class ManagementService {
 
   private async createParentUser(
     schoolId: string,
-    payload: CreateParentStudentLinkDto,
+    payload: {
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      password?: string;
+    },
   ) {
-    if (
-      !payload.email ||
-      !payload.password ||
-      !payload.firstName ||
-      !payload.lastName
-    ) {
-      throw new BadRequestException(
-        "Missing parent credentials or parentUserId",
-      );
-    }
-
-    const passwordHash = await bcrypt.hash(payload.password, 10);
-
     const parentEmail = payload.email.toLowerCase();
+    const derivedName = this.deriveNameFromEmail(parentEmail);
+    const firstName = payload.firstName ?? derivedName.firstName;
+    const lastName = payload.lastName ?? derivedName.lastName;
+    const temporaryPassword =
+      payload.password ?? this.generateTemporaryPassword();
+    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
     const parent = await this.prisma.user.create({
       data: {
-        firstName: payload.firstName,
-        lastName: payload.lastName,
+        firstName,
+        lastName,
         email: parentEmail,
         passwordHash,
+        mustChangePassword: payload.password ? false : true,
+        profileCompleted: false,
         memberships: {
           create: {
             schoolId,
@@ -2885,7 +3412,53 @@ export class ManagementService {
       },
     });
 
+    if (!payload.password) {
+      const school = await this.prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { slug: true },
+      });
+      await this.mailService.sendTemporaryPasswordEmail({
+        to: parentEmail,
+        firstName,
+        temporaryPassword,
+        schoolSlug: school?.slug ?? null,
+      });
+    }
+
     return parent.id;
+  }
+
+  private async resolveParentUserForStudentLink(
+    schoolId: string,
+    payload: CreateParentStudentLinkDto,
+  ) {
+    if (payload.parentUserId) {
+      return this.ensureExistingParentMembership(
+        schoolId,
+        payload.parentUserId,
+      );
+    }
+
+    if (!payload.email) {
+      throw new BadRequestException("Parent email or parentUserId is required");
+    }
+
+    const normalizedEmail = payload.email.toLowerCase();
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true },
+    });
+
+    if (existingUser) {
+      return this.ensureExistingParentMembership(schoolId, existingUser.id);
+    }
+
+    return this.createParentUser(schoolId, {
+      email: normalizedEmail,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      password: payload.password,
+    });
   }
 
   private async ensureExistingParentMembership(
@@ -2962,6 +3535,22 @@ export class ManagementService {
     }
   }
 
+  private async ensureClassInSchoolAndGet(classId: string, schoolId: string) {
+    const classEntity = await this.prisma.class.findFirst({
+      where: { id: classId, schoolId },
+      select: {
+        id: true,
+        schoolYearId: true,
+      },
+    });
+
+    if (!classEntity) {
+      throw new NotFoundException("Classroom not found");
+    }
+
+    return classEntity;
+  }
+
   private async ensureStudentInSchool(studentId: string, schoolId: string) {
     const student = await this.prisma.student.findFirst({
       where: { id: studentId, schoolId },
@@ -2981,6 +3570,98 @@ export class ManagementService {
 
     if (!subject) {
       throw new NotFoundException("Subject not found");
+    }
+  }
+
+  private async ensureTeacherUserInSchool(
+    teacherUserId: string,
+    schoolId: string,
+  ) {
+    const membership = await this.prisma.schoolMembership.findFirst({
+      where: {
+        userId: teacherUserId,
+        schoolId,
+        role: "TEACHER",
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new NotFoundException("Teacher not found in this school");
+    }
+  }
+
+  private ensureClassAndSchoolYearConsistency(
+    classSchoolYearId: string,
+    selectedSchoolYearId: string,
+  ) {
+    if (classSchoolYearId !== selectedSchoolYearId) {
+      throw new BadRequestException(
+        "Assignment school year must match the classroom school year",
+      );
+    }
+  }
+
+  private async ensureSubjectAssignableToClass(
+    schoolId: string,
+    classId: string,
+    subjectId: string,
+  ) {
+    const classEntity = await this.prisma.class.findFirst({
+      where: {
+        id: classId,
+        schoolId,
+      },
+      select: {
+        id: true,
+        curriculumId: true,
+      },
+    });
+
+    if (!classEntity) {
+      throw new NotFoundException("Classroom not found");
+    }
+
+    const override = await this.prisma.classSubjectOverride.findFirst({
+      where: {
+        schoolId,
+        classId,
+        subjectId,
+      },
+      select: {
+        action: true,
+      },
+    });
+
+    if (override?.action === "REMOVE") {
+      throw new BadRequestException(
+        "Subject is explicitly removed for this classroom",
+      );
+    }
+
+    if (override?.action === "ADD") {
+      return;
+    }
+
+    if (!classEntity.curriculumId) {
+      return;
+    }
+
+    const curriculumSubject = await this.prisma.curriculumSubject.findFirst({
+      where: {
+        schoolId,
+        curriculumId: classEntity.curriculumId,
+        subjectId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!curriculumSubject) {
+      throw new BadRequestException(
+        "Subject is not allowed by the classroom curriculum",
+      );
     }
   }
 
@@ -3040,6 +3721,117 @@ export class ManagementService {
     if (curriculumId) {
       await this.ensureCurriculumInSchool(curriculumId, schoolId);
     }
+  }
+
+  private async resolveClassAcademicReferences(
+    schoolId: string,
+    academicLevelId?: string,
+    trackId?: string,
+    curriculumId?: string,
+    defaults?: {
+      academicLevelId?: string;
+      trackId?: string;
+      curriculumId?: string;
+    },
+  ) {
+    const curriculumExplicitlyProvided = curriculumId !== undefined;
+    const nextCurriculumId = curriculumExplicitlyProvided
+      ? curriculumId
+      : defaults?.curriculumId;
+    const nextAcademicLevelId =
+      academicLevelId ??
+      (curriculumExplicitlyProvided ? undefined : defaults?.academicLevelId);
+    const nextTrackId =
+      trackId ?? (curriculumExplicitlyProvided ? undefined : defaults?.trackId);
+
+    if (!nextCurriculumId) {
+      await this.ensureOptionalAcademicReferencesInSchool(
+        schoolId,
+        nextAcademicLevelId,
+        nextTrackId,
+      );
+
+      return {
+        curriculumId: undefined,
+        academicLevelId: nextAcademicLevelId,
+        trackId: nextTrackId,
+      };
+    }
+
+    const curriculum = await this.prisma.curriculum.findFirst({
+      where: {
+        id: nextCurriculumId,
+        schoolId,
+      },
+      select: {
+        id: true,
+        academicLevelId: true,
+        trackId: true,
+      },
+    });
+
+    if (!curriculum) {
+      throw new NotFoundException("Curriculum not found");
+    }
+
+    const curriculumTrackId = curriculum.trackId ?? undefined;
+    if (
+      nextAcademicLevelId &&
+      nextAcademicLevelId !== curriculum.academicLevelId
+    ) {
+      throw new BadRequestException(
+        "Academic level must match curriculum academic level",
+      );
+    }
+    if (nextTrackId !== undefined && nextTrackId !== curriculumTrackId) {
+      throw new BadRequestException("Track must match curriculum track");
+    }
+
+    return {
+      curriculumId: curriculum.id,
+      academicLevelId: curriculum.academicLevelId,
+      trackId: curriculumTrackId,
+    };
+  }
+
+  private async buildCurriculumName(
+    schoolId: string,
+    academicLevelId: string,
+    trackId?: string,
+  ) {
+    const academicLevel = await this.prisma.academicLevel.findFirst({
+      where: {
+        id: academicLevelId,
+        schoolId,
+      },
+      select: {
+        code: true,
+      },
+    });
+
+    if (!academicLevel) {
+      throw new NotFoundException("Academic level not found");
+    }
+
+    if (!trackId) {
+      return `${academicLevel.code} - TRONC_COMMUN`;
+    }
+
+    const track = await this.prisma.track.findFirst({
+      where: {
+        id: trackId,
+        schoolId,
+      },
+      select: {
+        code: true,
+      },
+    });
+
+    if (!track) {
+      throw new NotFoundException("Track not found");
+    }
+
+    return `${academicLevel.code} - ${track.code}`;
   }
 
   private getDefaultSchoolYearLabel(now = new Date()) {

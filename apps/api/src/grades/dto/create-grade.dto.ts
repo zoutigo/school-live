@@ -1,5 +1,5 @@
 import { Term } from "@prisma/client";
-import { IsEnum, IsNumber, IsString, Min } from "class-validator";
+import { IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export class CreateGradeDto {
   @IsString()
@@ -18,6 +18,11 @@ export class CreateGradeDto {
   @IsNumber()
   @Min(1)
   maxValue!: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  assessmentWeight?: number;
 
   @IsEnum(Term)
   term!: Term;

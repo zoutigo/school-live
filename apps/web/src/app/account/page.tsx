@@ -6,6 +6,7 @@ import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -39,7 +40,7 @@ type Role =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
-type Tab = "personal" | "security";
+type Tab = "personal" | "security" | "help";
 
 type MeResponse = {
   firstName: string;
@@ -184,6 +185,17 @@ export default function AccountPage() {
             >
               Securite
             </button>
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Aide
+            </button>
           </div>
 
           {tab === "personal" ? (
@@ -202,7 +214,7 @@ export default function AccountPage() {
                 />
               </div>
             )
-          ) : (
+          ) : tab === "security" ? (
             <form className="grid max-w-xl gap-3" onSubmit={onChangePassword}>
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">Ancien mot de passe</span>
@@ -263,6 +275,36 @@ export default function AccountPage() {
                   : "Changer le mot de passe"}
               </Button>
             </form>
+          ) : (
+            <ModuleHelpTab
+              moduleName="Mon compte"
+              moduleSummary="ce module centralise vos informations personnelles et la securite de votre acces."
+              actions={[
+                {
+                  name: "Consulter",
+                  purpose:
+                    "verifier rapidement vos informations de profil et votre role actif.",
+                  howTo: "utiliser l'onglet Informations personnelles.",
+                  moduleImpact: "aucune modification, simple verification.",
+                  crossModuleImpact:
+                    "permet de confirmer votre perimetre d'action dans les autres modules.",
+                },
+                {
+                  name: "Modifier mot de passe",
+                  purpose:
+                    "renforcer la securite de votre compte ou repondre a une politique interne.",
+                  howTo:
+                    "renseigner l'ancien mot de passe puis le nouveau dans l'onglet Securite.",
+                  moduleImpact:
+                    "votre secret d'authentification est remplace immediatement.",
+                  crossModuleImpact:
+                    "les futures connexions sur tous les modules utilisent ce nouveau mot de passe.",
+                },
+              ]}
+              tips={[
+                "Quand vous reprenez le projet, cet onglet aide a verifier tout de suite votre contexte utilisateur.",
+              ]}
+            />
           )}
         </Card>
       </div>

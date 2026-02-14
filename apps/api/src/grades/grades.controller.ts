@@ -46,6 +46,16 @@ export class GradesController {
     return this.gradesService.list(user, schoolId, filters);
   }
 
+  @Get("context")
+  @Roles("SCHOOL_ADMIN", "TEACHER", "SUPER_ADMIN")
+  context(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Query("schoolYearId") schoolYearId?: string,
+  ) {
+    return this.gradesService.context(user, schoolId, schoolYearId);
+  }
+
   @Patch(":id")
   @Roles("SCHOOL_ADMIN", "TEACHER", "SUPER_ADMIN")
   update(

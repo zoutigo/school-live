@@ -23,6 +23,19 @@ enum SchoolRole {
   STUDENT
 }
 
+enum AppRole {
+  SUPER_ADMIN
+  ADMIN
+  SALES
+  SUPPORT
+  SCHOOL_ADMIN
+  SCHOOL_MANAGER
+  SCHOOL_ACCOUNTANT
+  TEACHER
+  PARENT
+  STUDENT
+}
+
 enum RecoveryQuestionKey {
   MOTHER_MAIDEN_NAME
   FAVORITE_SPORT
@@ -88,6 +101,7 @@ model User {
   passwordHash       String
   mustChangePassword Boolean                  @default(false)
   profileCompleted   Boolean                  @default(true)
+  activeRole         AppRole?
   recoveryBirthDate  DateTime?
   recoveryClassId    String?
   recoveryStudentId  String?
@@ -427,6 +441,7 @@ model Grade {
   teacherUserId String
   value         Float
   maxValue      Float
+  assessmentWeight Float @default(1)
   term          Term
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

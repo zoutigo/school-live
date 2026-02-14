@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
+import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -25,7 +26,7 @@ type Role =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
-type Tab = "list" | "create" | "details";
+type Tab = "list" | "create" | "details" | "help";
 
 type MeResponse = {
   role: Role;
@@ -599,6 +600,17 @@ export default function SchoolsPage() {
                 Details
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Aide
+            </button>
           </div>
 
           {tab === "list" ? (
@@ -950,6 +962,51 @@ export default function SchoolsPage() {
                 </Button>
               </div>
             </form>
+          ) : null}
+
+          {tab === "help" ? (
+            <ModuleHelpTab
+              moduleName="Ecoles"
+              moduleSummary="ce module gere les etablissements: creation, informations de base, logo et administrateurs de reference."
+              actions={[
+                {
+                  name: "Creer",
+                  purpose:
+                    "ouvrir un nouvel etablissement avec son identite et son school admin.",
+                  howTo:
+                    "remplir le formulaire de creation (nom, email admin, logo), puis valider.",
+                  moduleImpact:
+                    "l'ecole apparait dans la liste et devient selectionnable dans les autres ecrans admin.",
+                  crossModuleImpact:
+                    "les modules Utilisateurs, Classes et Inscriptions peuvent ensuite recevoir des donnees rattachees a cette ecole.",
+                },
+                {
+                  name: "Modifier",
+                  purpose:
+                    "mettre a jour le nom/logo ou corriger des informations d'etablissement.",
+                  howTo:
+                    "ouvrir les actions d'une ligne puis enregistrer les changements.",
+                  moduleImpact:
+                    "la fiche detail et la liste sont mises a jour immediatement.",
+                  crossModuleImpact:
+                    "les libelles ecole affiches dans les modules dependants sont harmonises.",
+                },
+                {
+                  name: "Supprimer",
+                  purpose:
+                    "retirer un etablissement non utilise ou cree par erreur.",
+                  howTo:
+                    "lancer l'action Supprimer puis confirmer l'operation irreversible.",
+                  moduleImpact: "l'ecole disparait de ce module.",
+                  crossModuleImpact:
+                    "les comptes, classes et inscriptions relies deviennent orphelins ou invalides selon les regles backend; operation a reserver aux cas maitrises.",
+                },
+              ]}
+              tips={[
+                "Verifier l'email du school admin avant creation pour eviter les doublons d'acces.",
+                "Traiter les suppressions uniquement apres audit des donnees rattachees.",
+              ]}
+            />
           ) : null}
 
           {tab !== "create" && submitError ? (

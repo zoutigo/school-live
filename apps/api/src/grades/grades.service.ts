@@ -59,6 +59,7 @@ export class GradesService {
         teacherUserId: user.id,
         value: payload.value,
         maxValue: payload.maxValue,
+        assessmentWeight: payload.assessmentWeight ?? 1,
         term: payload.term,
       },
     });
@@ -98,6 +99,17 @@ export class GradesService {
       return this.prisma.grade.findMany({
         where,
         orderBy: { createdAt: "desc" },
+        include: {
+          subject: {
+            select: { id: true, name: true },
+          },
+          class: {
+            select: { id: true, name: true },
+          },
+          student: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
       });
     }
 
@@ -128,6 +140,17 @@ export class GradesService {
       return this.prisma.grade.findMany({
         where: teacherScopedWhere,
         orderBy: { createdAt: "desc" },
+        include: {
+          subject: {
+            select: { id: true, name: true },
+          },
+          class: {
+            select: { id: true, name: true },
+          },
+          student: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
       });
     }
 
@@ -150,6 +173,17 @@ export class GradesService {
           studentId: { in: links.map((link) => link.studentId) },
         },
         orderBy: { createdAt: "desc" },
+        include: {
+          subject: {
+            select: { id: true, name: true },
+          },
+          class: {
+            select: { id: true, name: true },
+          },
+          student: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
       });
     }
 
@@ -172,6 +206,17 @@ export class GradesService {
           studentId: student.id,
         },
         orderBy: { createdAt: "desc" },
+        include: {
+          subject: {
+            select: { id: true, name: true },
+          },
+          class: {
+            select: { id: true, name: true },
+          },
+          student: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
       });
     }
 
@@ -209,9 +254,178 @@ export class GradesService {
       data: {
         value: payload.value,
         maxValue: payload.maxValue,
+        assessmentWeight: payload.assessmentWeight,
         term: payload.term,
       },
     });
+  }
+
+  async context(
+    user: AuthenticatedUser,
+    schoolId: string,
+    schoolYearId?: string,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const school = await this.prisma.school.findUnique({
+      where: { id: effectiveSchoolId },
+      select: {
+        activeSchoolYearId: true,
+      },
+    });
+
+    const years = await this.prisma.schoolYear.findMany({
+      where: { schoolId: effectiveSchoolId },
+      orderBy: [{ label: "desc" }],
+      select: {
+        id: true,
+        label: true,
+      },
+    });
+
+    const selectedSchoolYearId =
+      schoolYearId ?? school?.activeSchoolYearId ?? years[0]?.id ?? null;
+
+    let assignments: Array<{
+      classId: string;
+      subjectId: string;
+      className: string;
+      subjectName: string;
+      schoolYearId: string;
+    }> = [];
+
+    if (
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER")
+    ) {
+      const rows = await this.prisma.teacherClassSubject.findMany({
+        where: {
+          schoolId: effectiveSchoolId,
+          ...(selectedSchoolYearId
+            ? { schoolYearId: selectedSchoolYearId }
+            : {}),
+        },
+        select: {
+          classId: true,
+          subjectId: true,
+          schoolYearId: true,
+          class: {
+            select: {
+              name: true,
+            },
+          },
+          subject: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+
+      assignments = rows.map((row) => ({
+        classId: row.classId,
+        subjectId: row.subjectId,
+        className: row.class.name,
+        subjectName: row.subject.name,
+        schoolYearId: row.schoolYearId,
+      }));
+    } else if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
+      const rows = await this.prisma.teacherClassSubject.findMany({
+        where: {
+          schoolId: effectiveSchoolId,
+          teacherUserId: user.id,
+          ...(selectedSchoolYearId
+            ? { schoolYearId: selectedSchoolYearId }
+            : {}),
+        },
+        select: {
+          classId: true,
+          subjectId: true,
+          schoolYearId: true,
+          class: {
+            select: {
+              name: true,
+            },
+          },
+          subject: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+
+      assignments = rows.map((row) => ({
+        classId: row.classId,
+        subjectId: row.subjectId,
+        className: row.class.name,
+        subjectName: row.subject.name,
+        schoolYearId: row.schoolYearId,
+      }));
+    } else {
+      return {
+        schoolYears: years.map((year) => ({
+          ...year,
+          isActive: year.id === school?.activeSchoolYearId,
+        })),
+        selectedSchoolYearId,
+        assignments: [],
+        students: [],
+      };
+    }
+
+    const uniqueClassIds = Array.from(
+      new Set(assignments.map((a) => a.classId)),
+    );
+    const students = selectedSchoolYearId
+      ? await this.prisma.enrollment.findMany({
+          where: {
+            schoolId: effectiveSchoolId,
+            schoolYearId: selectedSchoolYearId,
+            status: "ACTIVE",
+            classId: {
+              in: uniqueClassIds.length ? uniqueClassIds : ["__none__"],
+            },
+          },
+          orderBy: [
+            { class: { name: "asc" } },
+            { student: { lastName: "asc" } },
+            { student: { firstName: "asc" } },
+          ],
+          select: {
+            classId: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            student: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        })
+      : [];
+
+    return {
+      schoolYears: years.map((year) => ({
+        ...year,
+        isActive: year.id === school?.activeSchoolYearId,
+      })),
+      selectedSchoolYearId,
+      assignments,
+      students: students.map((row) => ({
+        classId: row.classId,
+        className: row.class.name,
+        studentId: row.student.id,
+        studentFirstName: row.student.firstName,
+        studentLastName: row.student.lastName,
+      })),
+    };
   }
 
   async remove(user: AuthenticatedUser, schoolId: string, gradeId: string) {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
+import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -24,6 +25,7 @@ type MeResponse = {
   email?: string;
   schoolSlug: string | null;
 };
+type Tab = "overview" | "help";
 
 const kpis = [
   { label: "Ecoles actives", value: "24" },
@@ -33,6 +35,7 @@ const kpis = [
 
 export default function AcceuilPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<Tab>("overview");
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,28 +76,77 @@ export default function AcceuilPage() {
           title="Acceuil administration"
           subtitle="Pilotage global de la plateforme"
         >
-          {loading ? (
-            <p className="text-text-secondary">Chargement...</p>
+          <div className="mb-4 flex items-end gap-2 border-b border-border">
+            <button
+              type="button"
+              onClick={() => setTab("overview")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "overview"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Vue globale
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Aide
+            </button>
+          </div>
+
+          {tab === "overview" ? (
+            loading ? (
+              <p className="text-text-secondary">Chargement...</p>
+            ) : (
+              <p className="text-sm text-text-secondary">
+                Connecte:{" "}
+                <span className="font-medium text-text-primary">
+                  {me?.firstName} {me?.lastName}
+                </span>{" "}
+                ({me?.role})
+              </p>
+            )
           ) : (
-            <p className="text-sm text-text-secondary">
-              Connecte:{" "}
-              <span className="font-medium text-text-primary">
-                {me?.firstName} {me?.lastName}
-              </span>{" "}
-              ({me?.role})
-            </p>
+            <ModuleHelpTab
+              moduleName="Accueil administration"
+              moduleSummary="ce module sert de point d'entree pour suivre l'etat global de la plateforme."
+              actions={[
+                {
+                  name: "Consulter",
+                  purpose:
+                    "avoir une lecture rapide des indicateurs essentiels (ecoles, utilisateurs, connexions).",
+                  howTo: "ouvrir la Vue globale et verifier les cartes KPI.",
+                  moduleImpact:
+                    "pas de modification de donnees, uniquement de la supervision.",
+                  crossModuleImpact:
+                    "vous aide a prioriser les actions dans Ecoles, Utilisateurs, Classes et Inscriptions.",
+                },
+              ]}
+              tips={[
+                "Commencer par ce module apres quelques jours d'absence pour reprendre le fil rapidement.",
+              ]}
+            />
           )}
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          {kpis.map((item) => (
-            <Card key={item.label} title={item.label}>
-              <p className="font-heading text-2xl font-bold text-primary">
-                {item.value}
-              </p>
-            </Card>
-          ))}
-        </div>
+        {tab === "overview" ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {kpis.map((item) => (
+              <Card key={item.label} title={item.label}>
+                <p className="font-heading text-2xl font-bold text-primary">
+                  {item.value}
+                </p>
+              </Card>
+            ))}
+          </div>
+        ) : null}
       </div>
     </AppShell>
   );

@@ -3,10 +3,6 @@ import { IsOptional, IsString } from "class-validator";
 export class UpdateClassroomDto {
   @IsOptional()
   @IsString()
-  classGroupId?: string;
-
-  @IsOptional()
-  @IsString()
   schoolYearId?: string;
 
   @IsOptional()

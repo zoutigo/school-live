@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
+import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -33,7 +34,7 @@ type SchoolCreatableRole =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
-type Tab = "list" | "create" | "details";
+type Tab = "list" | "create" | "details" | "help";
 
 type MeResponse = {
   role: Role;
@@ -133,7 +134,6 @@ type EnrollmentHistoryRow = {
   class: {
     id: string;
     name: string;
-    classGroup: { id: string; name: string } | null;
   };
   isCurrent: boolean;
   createdAt: string;
@@ -142,7 +142,6 @@ type EnrollmentHistoryRow = {
 type ClassroomEnrollmentOption = {
   id: string;
   name: string;
-  classGroup: { id: string; name: string } | null;
   schoolYear: { id: string; label: string };
 };
 
@@ -476,8 +475,8 @@ export default function UsersPage() {
           .catch(() => [])) as ClassroomEnrollmentOption[];
         const rows = Array.isArray(payload) ? payload : [];
         rows.sort((a, b) =>
-          `${a.schoolYear.label}-${a.classGroup?.name ?? ""}-${a.name}`.localeCompare(
-            `${b.schoolYear.label}-${b.classGroup?.name ?? ""}-${b.name}`,
+          `${a.schoolYear.label}-${a.name}`.localeCompare(
+            `${b.schoolYear.label}-${b.name}`,
           ),
         );
 
@@ -947,6 +946,17 @@ export default function UsersPage() {
                 Details
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Aide
+            </button>
           </div>
 
           {tab === "list" ? (
@@ -1528,11 +1538,7 @@ export default function UsersPage() {
                                   []
                                 ).map((entry) => (
                                   <option key={entry.id} value={entry.id}>
-                                    {entry.schoolYear.label} -{" "}
-                                    {entry.classGroup?.name
-                                      ? `${entry.classGroup.name} / `
-                                      : ""}
-                                    {entry.name}
+                                    {entry.schoolYear.label} - {entry.name}
                                   </option>
                                 ))}
                               </select>
@@ -1562,9 +1568,6 @@ export default function UsersPage() {
                                     <span>
                                       {enrollment.schoolYear.label} -{" "}
                                       {enrollment.class.name}
-                                      {enrollment.class.classGroup
-                                        ? ` (${enrollment.class.classGroup.name})`
-                                        : ""}
                                       {enrollment.isCurrent
                                         ? " - actuelle"
                                         : ""}
@@ -1672,6 +1675,49 @@ export default function UsersPage() {
                 </>
               ) : null}
             </div>
+          ) : tab === "help" ? (
+            <ModuleHelpTab
+              moduleName="Utilisateurs"
+              moduleSummary="ce module pilote les comptes, roles plateforme/ecole, et l'etat de securite des acces."
+              actions={[
+                {
+                  name: "Creer",
+                  purpose:
+                    "ouvrir un compte avec les bons roles et une ecole cible.",
+                  howTo:
+                    "renseigner l'identite, les roles, l'ecole si necessaire, puis definir un mot de passe temporaire.",
+                  moduleImpact:
+                    "le compte apparait dans la liste avec son etat d'activation.",
+                  crossModuleImpact:
+                    "l'utilisateur gagne l'acces aux modules correspondant a ses roles (classes, inscriptions, notes, etc.).",
+                },
+                {
+                  name: "Modifier",
+                  purpose:
+                    "ajuster roles, informations de profil ou telephone selon l'evolution des responsabilites.",
+                  howTo:
+                    "ouvrir les actions utilisateur, modifier les champs, puis enregistrer.",
+                  moduleImpact:
+                    "la fiche utilisateur et les filtres role/etat sont actualises.",
+                  crossModuleImpact:
+                    "les droits d'acces changent immediatement dans les autres modules.",
+                },
+                {
+                  name: "Supprimer",
+                  purpose:
+                    "retirer un compte qui ne doit plus acceder a la plateforme.",
+                  howTo:
+                    "lancer Supprimer dans les actions utilisateur puis confirmer.",
+                  moduleImpact: "le compte quitte la liste active.",
+                  crossModuleImpact:
+                    "les traces historiques restent possibles mais l'acces aux modules est coupe.",
+                },
+              ]}
+              tips={[
+                "Valider les roles avant creation pour limiter les erreurs d'autorisation.",
+                "En cas de changement de poste, mettre a jour les roles avant de supprimer.",
+              ]}
+            />
           ) : (
             <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateUser}>
               <label className="grid gap-1 text-sm">

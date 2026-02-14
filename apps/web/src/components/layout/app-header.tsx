@@ -1,66 +1,19 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
-
-type Role =
-  | "SUPER_ADMIN"
-  | "ADMIN"
-  | "SALES"
-  | "SUPPORT"
-  | "SCHOOL_ADMIN"
-  | "SCHOOL_MANAGER"
-  | "SCHOOL_ACCOUNTANT"
-  | "TEACHER"
-  | "PARENT"
-  | "STUDENT";
+import type { Role } from "../../lib/role-view";
 
 type Props = {
   schoolName: string;
+  schoolLogoUrl?: string | null;
+  isSchoolContext: boolean;
   role: Role;
   userInitials: string;
   onToggleMenu: () => void;
 };
-
-function getPageTitle(pathname: string, role: Role): string {
-  if (pathname.startsWith("/account")) {
-    return "Mon compte";
-  }
-
-  if (pathname === "/schools") {
-    return "Ecoles";
-  }
-
-  if (pathname.startsWith("/users")) {
-    return "Utilisateurs";
-  }
-
-  if (pathname.startsWith("/indicators")) {
-    return "Indicateurs";
-  }
-
-  if (pathname.startsWith("/acceuil")) {
-    return "Pilotage plateforme";
-  }
-
-  if (pathname.endsWith("/dashboard")) {
-    return "Tableau de bord";
-  }
-
-  if (pathname.endsWith("/grades")) {
-    return "Notes & Devoirs";
-  }
-
-  if (role === "PARENT" || role === "STUDENT") {
-    return "Mon espace";
-  }
-
-  return "Espace School-Live";
-}
 
 function getPortalLabel(role: Role): string {
   if (
@@ -72,7 +25,11 @@ function getPortalLabel(role: Role): string {
     return "Portail administration";
   }
 
-  if (role === "SCHOOL_ADMIN") {
+  if (
+    role === "SCHOOL_ADMIN" ||
+    role === "SCHOOL_MANAGER" ||
+    role === "SCHOOL_ACCOUNTANT"
+  ) {
     return "Portail etablissement";
   }
 
@@ -85,11 +42,12 @@ function getPortalLabel(role: Role): string {
 
 export function AppHeader({
   schoolName,
+  schoolLogoUrl,
+  isSchoolContext,
   role,
   userInitials,
   onToggleMenu,
 }: Props) {
-  const pathname = usePathname();
   const router = useRouter();
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -123,7 +81,7 @@ export function AppHeader({
           </span>
           <div>
             <p className="font-heading text-sm font-semibold text-text-primary">
-              {schoolName}
+              scolive
             </p>
             <p className="text-xs text-text-secondary">
               {getPortalLabel(role)}
@@ -132,9 +90,30 @@ export function AppHeader({
         </div>
       </div>
 
-      <h1 className="hidden font-heading text-base font-semibold text-text-primary md:block">
-        {getPageTitle(pathname, role)}
-      </h1>
+      <div className="hidden items-center gap-2 md:flex">
+        {isSchoolContext ? (
+          <>
+            {schoolLogoUrl ? (
+              <img
+                src={schoolLogoUrl}
+                alt={`Logo ${schoolName}`}
+                className="h-8 w-8 rounded-full border border-border object-cover"
+              />
+            ) : (
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-xs font-semibold text-text-secondary">
+                {schoolName.slice(0, 2).toUpperCase()}
+              </span>
+            )}
+            <h1 className="font-heading text-base font-semibold text-text-primary">
+              {schoolName}
+            </h1>
+          </>
+        ) : (
+          <h1 className="font-heading text-base font-semibold text-text-primary">
+            Dashboard d'administration de la plateforme
+          </h1>
+        )}
+      </div>
 
       <div className="flex items-center gap-3">
         <button
@@ -168,14 +147,6 @@ export function AppHeader({
         >
           <LogOut className="h-4 w-4" />
         </button>
-
-        <Button
-          variant="ghost"
-          className="hidden sm:inline-flex"
-          onClick={() => router.push("/account")}
-        >
-          Mon compte
-        </Button>
       </div>
     </header>
   );
