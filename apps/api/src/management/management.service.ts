@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { PlatformRole, SchoolRole } from "@prisma/client";
+import type {
+  PlatformRole,
+  SchoolRole,
+  StudentLifeEventType,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
@@ -21,6 +25,7 @@ import type { CreateParentStudentLinkDto } from "./dto/create-parent-student-lin
 import type { CreateSchoolDto } from "./dto/create-school.dto.js";
 import type { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
 import type { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
+import type { CreateStudentLifeEventDto } from "./dto/create-student-life-event.dto.js";
 import type { CreateStudentDto } from "./dto/create-student.dto.js";
 import type { CreateTeacherAssignmentDto } from "./dto/create-teacher-assignment.dto.js";
 import type { CreateTeacherDto } from "./dto/create-teacher.dto.js";
@@ -29,6 +34,7 @@ import type { CreateUserDto } from "./dto/create-user.dto.js";
 import type { ListTeacherAssignmentsQueryDto } from "./dto/list-teacher-assignments-query.dto.js";
 import type { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
 import type { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-query.dto.js";
+import type { ListStudentLifeEventsQueryDto } from "./dto/list-student-life-events-query.dto.js";
 import type { RolloverSchoolYearDto } from "./dto/rollover-school-year.dto.js";
 import type { SetActiveSchoolYearDto } from "./dto/set-active-school-year.dto.js";
 import type { UpdateAcademicLevelDto } from "./dto/update-academic-level.dto.js";
@@ -38,6 +44,7 @@ import type { UpdateCurriculumDto } from "./dto/update-curriculum.dto.js";
 import type { UpdateSchoolDto } from "./dto/update-school.dto.js";
 import type { UpdateStudentDto } from "./dto/update-student.dto.js";
 import type { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
+import type { UpdateStudentLifeEventDto } from "./dto/update-student-life-event.dto.js";
 import type { UpdateSubjectDto } from "./dto/update-subject.dto.js";
 import type { UpdateTeacherAssignmentDto } from "./dto/update-teacher-assignment.dto.js";
 import type { UpdateTrackDto } from "./dto/update-track.dto.js";
@@ -48,6 +55,7 @@ const PLATFORM_ROLES = ["SUPER_ADMIN", "ADMIN", "SALES", "SUPPORT"] as const;
 const SCHOOL_ROLES = [
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
+  "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "TEACHER",
   "PARENT",
@@ -59,6 +67,7 @@ const CREATABLE_ROLES = [
   "SUPPORT",
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
+  "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "TEACHER",
   "PARENT",
@@ -105,6 +114,7 @@ const updateUserSchema = z.object({
     .enum([
       "SCHOOL_ADMIN",
       "SCHOOL_MANAGER",
+      "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "TEACHER",
       "PARENT",
@@ -168,6 +178,34 @@ const listStudentEnrollmentsQuerySchema = z.object({
     .enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"])
     .optional(),
   search: z.string().trim().optional(),
+});
+
+const listStudentLifeEventsQuerySchema = z.object({
+  scope: z.enum(["current", "all"]).optional(),
+  type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]).optional(),
+  schoolYearId: z.string().trim().min(1).optional(),
+  classId: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
+const createStudentLifeEventSchema = z.object({
+  type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]),
+  classId: z.string().trim().min(1).optional(),
+  occurredAt: z.string().datetime().optional(),
+  durationMinutes: z.number().int().min(0).optional(),
+  justified: z.boolean().optional(),
+  reason: z.string().trim().min(1),
+  comment: z.string().trim().optional(),
+});
+
+const updateStudentLifeEventSchema = z.object({
+  type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]).optional(),
+  classId: z.string().trim().min(1).optional(),
+  occurredAt: z.string().datetime().optional(),
+  durationMinutes: z.number().int().min(0).optional(),
+  justified: z.boolean().optional(),
+  reason: z.string().trim().min(1).optional(),
+  comment: z.string().trim().optional(),
 });
 
 const bulkUpdateEnrollmentStatusSchema = z.object({
@@ -3152,6 +3190,336 @@ export class ManagementService {
     }));
   }
 
+  async listStudentLifeEvents(
+    schoolId: string,
+    currentUser: AuthenticatedUser,
+    studentId: string,
+    query: ListStudentLifeEventsQueryDto,
+  ) {
+    const parsedResult = listStudentLifeEventsQuerySchema.safeParse(query);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    await this.ensureStudentInSchool(studentId, schoolId);
+
+    const canWrite = await this.canWriteStudentLifeEvents(
+      schoolId,
+      currentUser,
+      studentId,
+    );
+    const isParentViewer = await this.canReadStudentLifeEventsAsParent(
+      schoolId,
+      currentUser,
+      studentId,
+    );
+
+    if (!canWrite && !isParentViewer) {
+      throw new ForbiddenException("Insufficient role");
+    }
+
+    if (parsed.classId) {
+      await this.ensureClassInSchool(parsed.classId, schoolId);
+    }
+    if (parsed.schoolYearId) {
+      await this.ensureSchoolYearInSchool(parsed.schoolYearId, schoolId);
+    }
+
+    let scopedSchoolYearId: string | null | undefined;
+    if (parsed.scope === "current") {
+      scopedSchoolYearId = await this.getActiveSchoolYearId(schoolId);
+      if (!scopedSchoolYearId) {
+        return [];
+      }
+    }
+
+    const rows = await this.prisma.studentLifeEvent.findMany({
+      where: {
+        schoolId,
+        studentId,
+        ...(parsed.type ? { type: parsed.type } : {}),
+        ...(parsed.schoolYearId ? { schoolYearId: parsed.schoolYearId } : {}),
+        ...(scopedSchoolYearId ? { schoolYearId: scopedSchoolYearId } : {}),
+        ...(parsed.classId ? { classId: parsed.classId } : {}),
+      },
+      orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+      take: parsed.limit ?? 200,
+      include: {
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        authorUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return rows.map((row) => this.mapStudentLifeEventRow(row));
+  }
+
+  async createStudentLifeEvent(
+    schoolId: string,
+    currentUser: AuthenticatedUser,
+    studentId: string,
+    payload: CreateStudentLifeEventDto,
+  ) {
+    const parsedResult = createStudentLifeEventSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    const canWrite = await this.canWriteStudentLifeEvents(
+      schoolId,
+      currentUser,
+      studentId,
+    );
+    if (!canWrite) {
+      throw new ForbiddenException("Insufficient role");
+    }
+
+    await this.ensureStudentInSchool(studentId, schoolId);
+
+    const classContext = parsed.classId
+      ? await this.ensureClassInSchoolAndGet(parsed.classId, schoolId)
+      : await this.getCurrentClassContextForStudent(schoolId, studentId);
+
+    const event = await this.prisma.studentLifeEvent.create({
+      data: {
+        schoolId,
+        studentId,
+        classId: classContext?.id,
+        schoolYearId: classContext?.schoolYearId,
+        authorUserId: currentUser.id,
+        type: parsed.type,
+        occurredAt: parsed.occurredAt
+          ? new Date(parsed.occurredAt)
+          : new Date(),
+        durationMinutes: parsed.durationMinutes,
+        justified: parsed.justified,
+        reason: parsed.reason,
+        comment: parsed.comment,
+      },
+      include: {
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        authorUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    await this.notifyParentsAboutStudentLifeEvent({
+      schoolId,
+      studentId,
+      event,
+      action: "CREATED",
+    });
+
+    return this.mapStudentLifeEventRow(event);
+  }
+
+  async updateStudentLifeEvent(
+    schoolId: string,
+    currentUser: AuthenticatedUser,
+    studentId: string,
+    eventId: string,
+    payload: UpdateStudentLifeEventDto,
+  ) {
+    const parsedResult = updateStudentLifeEventSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    if (
+      parsed.type === undefined &&
+      parsed.classId === undefined &&
+      parsed.occurredAt === undefined &&
+      parsed.durationMinutes === undefined &&
+      parsed.justified === undefined &&
+      parsed.reason === undefined &&
+      parsed.comment === undefined
+    ) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.studentLifeEvent.findFirst({
+      where: {
+        id: eventId,
+        schoolId,
+        studentId,
+      },
+      select: {
+        id: true,
+        studentId: true,
+        authorUserId: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Life event not found");
+    }
+
+    const canWrite = await this.canWriteStudentLifeEvents(
+      schoolId,
+      currentUser,
+      studentId,
+    );
+    if (!canWrite) {
+      throw new ForbiddenException("Insufficient role");
+    }
+
+    const isPowerRole =
+      currentUser.platformRoles.includes("SUPER_ADMIN") ||
+      currentUser.platformRoles.includes("ADMIN") ||
+      this.hasSchoolRole(currentUser, schoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(currentUser, schoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(currentUser, schoolId, "SUPERVISOR");
+    const isTeacher = this.hasSchoolRole(currentUser, schoolId, "TEACHER");
+    if (!isPowerRole && isTeacher && existing.authorUserId !== currentUser.id) {
+      throw new ForbiddenException(
+        "Teachers can only edit events they have created",
+      );
+    }
+
+    const classContext = parsed.classId
+      ? await this.ensureClassInSchoolAndGet(parsed.classId, schoolId)
+      : null;
+
+    const updated = await this.prisma.studentLifeEvent.update({
+      where: { id: eventId },
+      data: {
+        type: parsed.type,
+        classId: classContext?.id,
+        schoolYearId: classContext?.schoolYearId,
+        occurredAt: parsed.occurredAt ? new Date(parsed.occurredAt) : undefined,
+        durationMinutes: parsed.durationMinutes,
+        justified: parsed.justified,
+        reason: parsed.reason,
+        comment: parsed.comment,
+      },
+      include: {
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        authorUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    await this.notifyParentsAboutStudentLifeEvent({
+      schoolId,
+      studentId,
+      event: updated,
+      action: "UPDATED",
+    });
+
+    return this.mapStudentLifeEventRow(updated);
+  }
+
+  async deleteStudentLifeEvent(
+    schoolId: string,
+    currentUser: AuthenticatedUser,
+    studentId: string,
+    eventId: string,
+  ) {
+    const existing = await this.prisma.studentLifeEvent.findFirst({
+      where: {
+        id: eventId,
+        schoolId,
+        studentId,
+      },
+      select: {
+        id: true,
+        authorUserId: true,
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Life event not found");
+    }
+
+    const canWrite = await this.canWriteStudentLifeEvents(
+      schoolId,
+      currentUser,
+      studentId,
+    );
+    if (!canWrite) {
+      throw new ForbiddenException("Insufficient role");
+    }
+
+    const isPowerRole =
+      currentUser.platformRoles.includes("SUPER_ADMIN") ||
+      currentUser.platformRoles.includes("ADMIN") ||
+      this.hasSchoolRole(currentUser, schoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(currentUser, schoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(currentUser, schoolId, "SUPERVISOR");
+    const isTeacher = this.hasSchoolRole(currentUser, schoolId, "TEACHER");
+    if (!isPowerRole && isTeacher && existing.authorUserId !== currentUser.id) {
+      throw new ForbiddenException(
+        "Teachers can only delete events they have created",
+      );
+    }
+
+    await this.prisma.studentLifeEvent.delete({
+      where: { id: existing.id },
+    });
+
+    return { id: existing.id, deleted: true };
+  }
+
   async createStudentEnrollment(
     schoolId: string,
     studentId: string,
@@ -3510,6 +3878,15 @@ export class ManagementService {
     return school.activeSchoolYearId;
   }
 
+  private async getActiveSchoolYearId(schoolId: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+
+    return school?.activeSchoolYearId ?? null;
+  }
+
   private async ensureSchoolYearInSchool(
     schoolYearId: string,
     schoolId: string,
@@ -3834,6 +4211,276 @@ export class ManagementService {
     return `${academicLevel.code} - ${track.code}`;
   }
 
+  private hasSchoolRole(
+    user: AuthenticatedUser,
+    schoolId: string,
+    role: SchoolRole,
+  ) {
+    return user.memberships.some(
+      (membership) =>
+        membership.schoolId === schoolId && membership.role === role,
+    );
+  }
+
+  private async canReadStudentLifeEventsAsParent(
+    schoolId: string,
+    user: AuthenticatedUser,
+    studentId: string,
+  ) {
+    if (!this.hasSchoolRole(user, schoolId, "PARENT")) {
+      return false;
+    }
+
+    const link = await this.prisma.parentStudent.findFirst({
+      where: {
+        schoolId,
+        studentId,
+        parentUserId: user.id,
+      },
+      select: { id: true },
+    });
+
+    return Boolean(link);
+  }
+
+  private async canWriteStudentLifeEvents(
+    schoolId: string,
+    user: AuthenticatedUser,
+    studentId: string,
+  ) {
+    if (
+      user.platformRoles.includes("SUPER_ADMIN") ||
+      user.platformRoles.includes("ADMIN")
+    ) {
+      return true;
+    }
+
+    if (
+      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(user, schoolId, "SUPERVISOR")
+    ) {
+      return true;
+    }
+
+    if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
+      return false;
+    }
+
+    const currentEnrollment = await this.getCurrentEnrollmentContextForStudent(
+      schoolId,
+      studentId,
+    );
+    if (!currentEnrollment) {
+      return false;
+    }
+
+    const assignment = await this.prisma.teacherClassSubject.findFirst({
+      where: {
+        schoolId,
+        teacherUserId: user.id,
+        classId: currentEnrollment.classId,
+        schoolYearId: currentEnrollment.schoolYearId,
+      },
+      select: { id: true },
+    });
+
+    return Boolean(assignment);
+  }
+
+  private async getCurrentEnrollmentContextForStudent(
+    schoolId: string,
+    studentId: string,
+  ) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+
+    if (school?.activeSchoolYearId) {
+      const activeEnrollment = await this.prisma.enrollment.findFirst({
+        where: {
+          schoolId,
+          studentId,
+          schoolYearId: school.activeSchoolYearId,
+        },
+        select: {
+          classId: true,
+          schoolYearId: true,
+        },
+      });
+      if (activeEnrollment) {
+        return activeEnrollment;
+      }
+    }
+
+    return this.prisma.enrollment.findFirst({
+      where: {
+        schoolId,
+        studentId,
+      },
+      orderBy: [{ createdAt: "desc" }],
+      select: {
+        classId: true,
+        schoolYearId: true,
+      },
+    });
+  }
+
+  private async getCurrentClassContextForStudent(
+    schoolId: string,
+    studentId: string,
+  ) {
+    const enrollment = await this.getCurrentEnrollmentContextForStudent(
+      schoolId,
+      studentId,
+    );
+
+    if (!enrollment) {
+      return null;
+    }
+
+    return this.ensureClassInSchoolAndGet(enrollment.classId, schoolId);
+  }
+
+  private async notifyParentsAboutStudentLifeEvent(params: {
+    schoolId: string;
+    studentId: string;
+    event: {
+      type: StudentLifeEventType;
+      reason: string;
+      occurredAt: Date;
+      class: { name: string } | null;
+      authorUser: { firstName: string; lastName: string } | null;
+    };
+    action: "CREATED" | "UPDATED";
+  }) {
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: params.studentId,
+        schoolId: params.schoolId,
+      },
+      select: {
+        firstName: true,
+        lastName: true,
+        parentLinks: {
+          select: {
+            parent: {
+              select: {
+                email: true,
+                firstName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!student) {
+      return;
+    }
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: params.schoolId },
+      select: {
+        name: true,
+        slug: true,
+      },
+    });
+    if (!school) {
+      return;
+    }
+
+    const eventTypeLabel = this.mapStudentLifeEventTypeLabel(params.event.type);
+    const authorFullName = params.event.authorUser
+      ? `${params.event.authorUser.firstName} ${params.event.authorUser.lastName}`.trim()
+      : null;
+
+    for (const link of student.parentLinks) {
+      if (!link.parent.email) {
+        continue;
+      }
+
+      try {
+        await this.mailService.sendStudentLifeEventNotification({
+          to: link.parent.email,
+          parentFirstName: link.parent.firstName,
+          schoolName: school.name,
+          schoolSlug: school.slug,
+          studentFirstName: student.firstName,
+          studentLastName: student.lastName,
+          eventTypeLabel,
+          eventReason: params.event.reason,
+          eventDate: params.event.occurredAt.toISOString(),
+          eventAction: params.action,
+          className: params.event.class?.name ?? null,
+          authorFullName,
+        });
+      } catch {
+        // The life event is already persisted; mail failures must not block business flow.
+      }
+    }
+  }
+
+  private mapStudentLifeEventTypeLabel(type: StudentLifeEventType) {
+    switch (type) {
+      case "ABSENCE":
+        return "Absence";
+      case "RETARD":
+        return "Retard";
+      case "SANCTION":
+        return "Sanction";
+      case "PUNITION":
+        return "Punition";
+      default:
+        return type;
+    }
+  }
+
+  private mapStudentLifeEventRow(row: {
+    id: string;
+    schoolId: string;
+    studentId: string;
+    classId: string | null;
+    schoolYearId: string | null;
+    authorUserId: string;
+    type: StudentLifeEventType;
+    occurredAt: Date;
+    durationMinutes: number | null;
+    justified: boolean | null;
+    reason: string;
+    comment: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    class: { id: string; name: string } | null;
+    schoolYear: { id: string; label: string } | null;
+    authorUser: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    };
+  }) {
+    return {
+      id: row.id,
+      schoolId: row.schoolId,
+      studentId: row.studentId,
+      classId: row.classId,
+      schoolYearId: row.schoolYearId,
+      authorUserId: row.authorUserId,
+      type: row.type,
+      occurredAt: row.occurredAt,
+      durationMinutes: row.durationMinutes,
+      justified: row.justified,
+      reason: row.reason,
+      comment: row.comment,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      class: row.class,
+      schoolYear: row.schoolYear,
+      authorUser: row.authorUser,
+    };
+  }
+
   private getDefaultSchoolYearLabel(now = new Date()) {
     const year = now.getUTCFullYear();
     const month = now.getUTCMonth() + 1;
@@ -3906,6 +4553,7 @@ export class ManagementService {
     const schoolPriority: SchoolRole[] = [
       "SCHOOL_ADMIN",
       "SCHOOL_MANAGER",
+      "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "TEACHER",
       "PARENT",

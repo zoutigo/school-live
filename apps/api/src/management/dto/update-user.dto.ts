@@ -26,6 +26,7 @@ export class UpdateUserDto {
   @IsIn([
     "SCHOOL_ADMIN",
     "SCHOOL_MANAGER",
+    "SUPERVISOR",
     "SCHOOL_ACCOUNTANT",
     "TEACHER",
     "PARENT",
@@ -35,6 +36,7 @@ export class UpdateUserDto {
   schoolRole?:
     | "SCHOOL_ADMIN"
     | "SCHOOL_MANAGER"
+    | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "TEACHER"
     | "PARENT"
@@ -47,6 +49,7 @@ export class UpdateUserDto {
     [
       "SCHOOL_ADMIN",
       "SCHOOL_MANAGER",
+      "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "TEACHER",
       "PARENT",
@@ -57,6 +60,7 @@ export class UpdateUserDto {
   schoolRoles?: Array<
     | "SCHOOL_ADMIN"
     | "SCHOOL_MANAGER"
+    | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "TEACHER"
     | "PARENT"
@@ -70,6 +74,7 @@ export class UpdateUserDto {
     "SUPPORT",
     "SCHOOL_ADMIN",
     "SCHOOL_MANAGER",
+    "SUPERVISOR",
     "SCHOOL_ACCOUNTANT",
     "TEACHER",
     "PARENT",
@@ -81,6 +86,7 @@ export class UpdateUserDto {
     | "SUPPORT"
     | "SCHOOL_ADMIN"
     | "SCHOOL_MANAGER"
+    | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "TEACHER"
     | "PARENT"

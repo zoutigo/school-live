@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "AppRole" ADD VALUE 'SUPERVISOR';
+
+-- AlterEnum
+ALTER TYPE "SchoolRole" ADD VALUE 'SUPERVISOR';

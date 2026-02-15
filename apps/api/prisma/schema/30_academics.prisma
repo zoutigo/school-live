@@ -25,6 +25,7 @@ model SchoolYear {
   enrollments         Enrollment[]
   teachingAssignments TeacherClassSubject[]
   grades              Grade[]
+  lifeEvents          StudentLifeEvent[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -120,6 +121,7 @@ model Class {
   assignments     TeacherClassSubject[]
   grades          Grade[]
   subjectOverrides ClassSubjectOverride[]
+  lifeEvents      StudentLifeEvent[]
 
   @@unique([schoolId, schoolYearId, classGroupId, name])
   @@index([schoolId])

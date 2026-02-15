@@ -17,3 +17,8 @@ a {
 a:hover {
   @apply text-primary-dark;
 }
+
+/* Zebra striping for data tables: improves row tracking while keeping contrast subtle. */
+table.min-w-full.border-collapse > tbody > tr:nth-child(even) {
+  background-color: rgba(2, 6, 23, 0.03);
+}

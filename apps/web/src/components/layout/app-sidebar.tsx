@@ -8,6 +8,7 @@ import {
   BarChart3,
   BookOpen,
   Building2,
+  CalendarDays,
   CreditCard,
   FileText,
   GraduationCap,
@@ -43,6 +44,16 @@ type ParentChild = {
   firstName: string;
   lastName: string;
   avatarUrl?: string | null;
+};
+
+type TeacherClassNav = {
+  classId: string;
+  className: string;
+  schoolYearId: string;
+};
+
+type TeacherClassWithItems = TeacherClassNav & {
+  items: NavItem[];
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -126,7 +137,11 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
     ];
   }
 
-  if (role === "SCHOOL_ADMIN") {
+  if (
+    role === "SCHOOL_ADMIN" ||
+    role === "SCHOOL_MANAGER" ||
+    role === "SUPERVISOR"
+  ) {
     return [
       {
         label: "Mon compte",
@@ -213,9 +228,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       },
       {
         label: "Mes classes",
-        href: `${schoolBase}/dashboard#my-classes`,
+        href: `${schoolBase}/mes-classes`,
         icon: School,
-        matchPrefix: `${schoolBase}/dashboard`,
+        matchPrefix: `${schoolBase}/mes-classes`,
       },
       {
         label: "Cahier de notes",
@@ -410,6 +425,46 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
       icon: FileText,
       matchPrefix: `${base}/formulaires-sondages`,
     },
+    {
+      label: "Cursus",
+      href: `${base}/cursus`,
+      icon: GraduationCap,
+      matchPrefix: `${base}/cursus`,
+    },
+  ];
+}
+
+function buildTeacherClassItems(
+  schoolSlug: string,
+  classId: string,
+): NavItem[] {
+  const base = `/schools/${schoolSlug}/classes/${classId}`;
+
+  return [
+    {
+      label: "Notes",
+      href: `${base}/notes`,
+      icon: BookOpen,
+      matchPrefix: `${base}/notes`,
+    },
+    {
+      label: "Discipline",
+      href: `${base}/discipline`,
+      icon: ShieldCheck,
+      matchPrefix: `${base}/discipline`,
+    },
+    {
+      label: "Agenda",
+      href: `${base}/agenda`,
+      icon: CalendarDays,
+      matchPrefix: `${base}/agenda`,
+    },
+    {
+      label: "Devoirs",
+      href: `${base}/devoirs`,
+      icon: FileText,
+      matchPrefix: `${base}/devoirs`,
+    },
   ];
 }
 
@@ -419,6 +474,9 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
   const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
   const [openParentSection, setOpenParentSection] = useState<string>("general");
+  const [teacherClasses, setTeacherClasses] = useState<TeacherClassNav[]>([]);
+  const [openTeacherSection, setOpenTeacherSection] =
+    useState<string>("classes");
 
   useEffect(() => {
     if (role !== "PARENT" || !schoolSlug) {
@@ -427,6 +485,15 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
     }
 
     void loadParentChildren(schoolSlug);
+  }, [role, schoolSlug]);
+
+  useEffect(() => {
+    if (role !== "TEACHER" || !schoolSlug) {
+      setTeacherClasses([]);
+      return;
+    }
+
+    void loadTeacherClasses(schoolSlug);
   }, [role, schoolSlug]);
 
   async function loadParentChildren(currentSchoolSlug: string) {
@@ -452,6 +519,47 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
     }
   }
 
+  async function loadTeacherClasses(currentSchoolSlug: string) {
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${currentSchoolSlug}/grades/context`,
+        {
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as {
+        assignments?: Array<{
+          classId: string;
+          className: string;
+          schoolYearId: string;
+        }>;
+      };
+
+      const byClassId = new Map<string, TeacherClassNav>();
+      (payload.assignments ?? []).forEach((entry) => {
+        if (!byClassId.has(entry.classId)) {
+          byClassId.set(entry.classId, {
+            classId: entry.classId,
+            className: entry.className,
+            schoolYearId: entry.schoolYearId,
+          });
+        }
+      });
+
+      const rows = Array.from(byClassId.values()).sort((a, b) =>
+        a.className.localeCompare(b.className),
+      );
+      setTeacherClasses(rows);
+    } catch {
+      // Keep sidebar available if classes lookup fails.
+    }
+  }
+
   const parentChildrenWithItems = useMemo(() => {
     if (!schoolSlug) {
       return [];
@@ -462,6 +570,54 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
       items: buildParentChildItems(schoolSlug, child.id),
     }));
   }, [parentChildren, schoolSlug]);
+
+  const teacherClassesWithItems = useMemo<TeacherClassWithItems[]>(() => {
+    if (!schoolSlug) {
+      return [];
+    }
+
+    return teacherClasses.map((entry) => ({
+      ...entry,
+      items: buildTeacherClassItems(schoolSlug, entry.classId),
+    }));
+  }, [teacherClasses, schoolSlug]);
+
+  const teacherGeneralItems = useMemo(
+    () => items.filter((item) => item.href !== "/settings"),
+    [items],
+  );
+  const teacherSettingsItem = useMemo(
+    () => items.find((item) => item.href === "/settings") ?? null,
+    [items],
+  );
+
+  useEffect(() => {
+    if (role !== "TEACHER") {
+      return;
+    }
+
+    const activeClass = teacherClassesWithItems.find((entry) =>
+      entry.items.some((item) =>
+        item.matchPrefix
+          ? pathname.startsWith(item.matchPrefix)
+          : pathname === item.href,
+      ),
+    );
+
+    if (activeClass) {
+      setOpenTeacherSection(`class-${activeClass.classId}`);
+      return;
+    }
+
+    if (
+      openTeacherSection !== "classes" &&
+      !teacherClassesWithItems.some(
+        (entry) => openTeacherSection === `class-${entry.classId}`,
+      )
+    ) {
+      setOpenTeacherSection("classes");
+    }
+  }, [role, pathname, teacherClassesWithItems, openTeacherSection]);
 
   return (
     <aside className="group h-full w-[236px] shrink-0 bg-sidebar-bg px-2 py-4 text-surface transition-all duration-300 md:w-[72px] md:hover:w-[236px] md:px-3">
@@ -475,7 +631,184 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
           </div>
         </div>
       ) : null}
-      {role !== "PARENT" ? (
+      {role === "TEACHER" ? (
+        <div className="grid gap-3">
+          <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
+            <button
+              type="button"
+              onClick={() => setOpenTeacherSection("classes")}
+              className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
+                openTeacherSection === "classes"
+                  ? "bg-surface text-primary"
+                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  openTeacherSection === "classes"
+                    ? "bg-background text-primary"
+                    : "bg-primary-dark text-surface"
+                }`}
+              >
+                <School className="h-4 w-4" />
+              </span>
+              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                Menu enseignant
+              </span>
+            </button>
+
+            {openTeacherSection === "classes" ? (
+              <nav
+                className="mt-2 grid gap-1"
+                aria-label="Menu general enseignant"
+              >
+                {teacherGeneralItems.map((item) => {
+                  const active = item.matchPrefix
+                    ? pathname.startsWith(item.matchPrefix)
+                    : pathname === item.href;
+                  const Icon = item.icon;
+
+                  return (
+                    <Link
+                      key={`teacher-general-${item.label}-${item.href}`}
+                      href={item.href}
+                      onClick={onNavigate}
+                      className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
+                        active
+                          ? "bg-surface text-primary"
+                          : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                          active
+                            ? "bg-background text-primary"
+                            : "bg-primary-dark text-surface"
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                        {item.label}
+                      </span>
+                      {typeof item.unread === "number" ? (
+                        <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                          <Badge variant="notification">{item.unread}</Badge>
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </nav>
+            ) : null}
+          </div>
+
+          {teacherClassesWithItems.map((entry) => {
+            const sectionKey = `class-${entry.classId}`;
+            const isOpen = openTeacherSection === sectionKey;
+
+            return (
+              <div
+                key={entry.classId}
+                className="rounded-card border border-surface/20 bg-primary-dark/40 p-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenTeacherSection(sectionKey)}
+                  className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
+                    isOpen
+                      ? "bg-surface text-primary"
+                      : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                      isOpen
+                        ? "bg-background text-primary"
+                        : "bg-primary-dark text-surface"
+                    }`}
+                  >
+                    <School className="h-4 w-4" />
+                  </span>
+                  <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                    {entry.className}
+                  </span>
+                </button>
+
+                {isOpen ? (
+                  <nav
+                    className="mt-2 grid gap-1"
+                    aria-label={`Menu classe ${entry.className}`}
+                  >
+                    {entry.items.map((item) => {
+                      const active = item.matchPrefix
+                        ? pathname.startsWith(item.matchPrefix)
+                        : pathname === item.href;
+                      const Icon = item.icon;
+
+                      return (
+                        <Link
+                          key={`${entry.classId}-${item.label}-${item.href}`}
+                          href={item.href}
+                          onClick={onNavigate}
+                          className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
+                            active
+                              ? "bg-surface text-primary"
+                              : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                              active
+                                ? "bg-background text-primary"
+                                : "bg-primary-dark text-surface"
+                            }`}
+                          >
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                            {item.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                ) : null}
+              </div>
+            );
+          })}
+
+          {teacherSettingsItem ? (
+            <Link
+              href={teacherSettingsItem.href}
+              onClick={onNavigate}
+              className={`flex items-center rounded-card px-2 py-2 text-sm font-heading font-semibold transition-colors ${
+                pathname.startsWith(teacherSettingsItem.matchPrefix ?? "")
+                  ? "bg-surface text-primary"
+                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  pathname.startsWith(teacherSettingsItem.matchPrefix ?? "")
+                    ? "bg-background text-primary"
+                    : "bg-primary-dark text-surface"
+                }`}
+              >
+                <Settings className="h-4 w-4" />
+              </span>
+              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                {teacherSettingsItem.label}
+              </span>
+            </Link>
+          ) : null}
+        </div>
+      ) : role !== "PARENT" ? (
         <nav className="flex flex-col gap-1" aria-label="Navigation principale">
           {items.map((item) => {
             const active = item.matchPrefix

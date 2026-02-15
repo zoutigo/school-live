@@ -23,6 +23,7 @@ model School {
   tracks             Track[]
   curriculums        Curriculum[]
   curriculumSubjects CurriculumSubject[]
+  lifeEvents         StudentLifeEvent[]
 
   @@index([activeSchoolYearId])
 }
@@ -52,6 +53,7 @@ model User {
   teachingAssignments TeacherClassSubject[]
   refreshTokens      RefreshToken[]
   recoveryAnswers    UserRecoveryAnswer[]
+  lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
 }
 
 model PlatformRoleAssignment {

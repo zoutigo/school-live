@@ -2,6 +2,7 @@ export type PlatformRole = "SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT";
 export type SchoolRole =
   | "SCHOOL_ADMIN"
   | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "TEACHER"
   | "PARENT"

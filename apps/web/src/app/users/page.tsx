@@ -22,6 +22,7 @@ type Role =
   | "SUPPORT"
   | "SCHOOL_ADMIN"
   | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "TEACHER"
   | "PARENT"
@@ -30,6 +31,7 @@ type PlatformCreatableRole = "ADMIN" | "SALES" | "SUPPORT";
 type SchoolCreatableRole =
   | "SCHOOL_ADMIN"
   | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "TEACHER"
   | "PARENT"
@@ -60,6 +62,7 @@ type UserRow = {
   schoolRoles: Array<
     | "SCHOOL_ADMIN"
     | "SCHOOL_MANAGER"
+    | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "TEACHER"
     | "PARENT"
@@ -96,6 +99,7 @@ type UserDetails = {
     role:
       | "SCHOOL_ADMIN"
       | "SCHOOL_MANAGER"
+      | "SUPERVISOR"
       | "SCHOOL_ACCOUNTANT"
       | "TEACHER"
       | "PARENT"
@@ -153,6 +157,7 @@ const PLATFORM_ROLE_OPTIONS: PlatformCreatableRole[] = [
 const SCHOOL_ROLE_OPTIONS: SchoolCreatableRole[] = [
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
+  "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "TEACHER",
   "PARENT",
@@ -175,6 +180,7 @@ const createUserSchema = z
       z.enum([
         "SCHOOL_ADMIN",
         "SCHOOL_MANAGER",
+        "SUPERVISOR",
         "SCHOOL_ACCOUNTANT",
         "TEACHER",
         "PARENT",
@@ -217,6 +223,7 @@ const updateUserSchema = z.object({
     z.enum([
       "SCHOOL_ADMIN",
       "SCHOOL_MANAGER",
+      "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "TEACHER",
       "PARENT",

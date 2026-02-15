@@ -94,7 +94,8 @@ export class GradesService {
     if (
       this.hasPlatformRole(user, "SUPER_ADMIN") ||
       this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER")
+      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(user, effectiveSchoolId, "SUPERVISOR")
     ) {
       return this.prisma.grade.findMany({
         where,
@@ -296,7 +297,8 @@ export class GradesService {
     if (
       this.hasPlatformRole(user, "SUPER_ADMIN") ||
       this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER")
+      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(user, effectiveSchoolId, "SUPERVISOR")
     ) {
       const rows = await this.prisma.teacherClassSubject.findMany({
         where: {

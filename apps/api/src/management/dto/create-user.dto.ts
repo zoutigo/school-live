@@ -40,6 +40,7 @@ export class CreateUserDto {
     "SUPPORT",
     "SCHOOL_ADMIN",
     "SCHOOL_MANAGER",
+    "SUPERVISOR",
     "SCHOOL_ACCOUNTANT",
     "TEACHER",
     "PARENT",
@@ -51,6 +52,7 @@ export class CreateUserDto {
     | "SUPPORT"
     | "SCHOOL_ADMIN"
     | "SCHOOL_MANAGER"
+    | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "TEACHER"
     | "PARENT"
@@ -67,6 +69,7 @@ export class CreateUserDto {
     [
       "SCHOOL_ADMIN",
       "SCHOOL_MANAGER",
+      "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "TEACHER",
       "PARENT",
@@ -77,6 +80,7 @@ export class CreateUserDto {
   schoolRoles?: Array<
     | "SCHOOL_ADMIN"
     | "SCHOOL_MANAGER"
+    | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "TEACHER"
     | "PARENT"

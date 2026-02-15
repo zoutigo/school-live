@@ -7,6 +7,12 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import {
+  LifeEventsList,
+  lifeEventTypeLabel,
+  type LifeEventRow,
+  type LifeEventType,
+} from "../../components/life-events/life-events-list";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
@@ -20,6 +26,7 @@ type Role =
   | "SUPPORT"
   | "SCHOOL_ADMIN"
   | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "TEACHER"
   | "PARENT"
@@ -115,6 +122,23 @@ const updateStudentSchema = z.object({
   lastName: z.string().trim().min(1, "Le nom est obligatoire."),
 });
 
+const createLifeEventSchema = z.object({
+  type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]),
+  occurredAt: z.string().trim().min(1, "La date est obligatoire."),
+  reason: z.string().trim().min(1, "Le motif est obligatoire."),
+  justified: z.boolean().optional(),
+  comment: z.string().trim().optional(),
+});
+
+function toDateTimeLocalInput(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
 export default function ElevesPage() {
   const router = useRouter();
 
@@ -132,6 +156,9 @@ export default function ElevesPage() {
   const [selectedStudentEnrollments, setSelectedStudentEnrollments] = useState<
     EnrollmentRow[]
   >([]);
+  const [studentLifeEvents, setStudentLifeEvents] = useState<LifeEventRow[]>(
+    [],
+  );
 
   const [searchFilter, setSearchFilter] = useState("");
   const [classFilter, setClassFilter] = useState("");
@@ -170,6 +197,30 @@ export default function ElevesPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [parentEmail, setParentEmail] = useState("");
   const [linkingParent, setLinkingParent] = useState(false);
+  const [eventType, setEventType] = useState<LifeEventType>("ABSENCE");
+  const [eventOccurredAt, setEventOccurredAt] = useState("");
+  const [eventReason, setEventReason] = useState("");
+  const [eventDurationMinutes, setEventDurationMinutes] = useState("");
+  const [eventJustified, setEventJustified] = useState(false);
+  const [eventComment, setEventComment] = useState("");
+  const [submittingLifeEvent, setSubmittingLifeEvent] = useState(false);
+  const [editingLifeEventId, setEditingLifeEventId] = useState<string | null>(
+    null,
+  );
+  const [editEventType, setEditEventType] = useState<LifeEventType>("ABSENCE");
+  const [editEventOccurredAt, setEditEventOccurredAt] = useState("");
+  const [editEventReason, setEditEventReason] = useState("");
+  const [editEventDurationMinutes, setEditEventDurationMinutes] = useState("");
+  const [editEventJustified, setEditEventJustified] = useState(false);
+  const [editEventComment, setEditEventComment] = useState("");
+  const [updatingLifeEventId, setUpdatingLifeEventId] = useState<string | null>(
+    null,
+  );
+  const [deletingLifeEventId, setDeletingLifeEventId] = useState<string | null>(
+    null,
+  );
+  const [lifeEventDeleteTarget, setLifeEventDeleteTarget] =
+    useState<LifeEventRow | null>(null);
 
   useEffect(() => {
     void bootstrap();
@@ -185,10 +236,24 @@ export default function ElevesPage() {
   useEffect(() => {
     if (!schoolSlug || !selectedStudentId) {
       setSelectedStudentEnrollments([]);
+      setStudentLifeEvents([]);
+      setEditingLifeEventId(null);
       return;
     }
-    void loadStudentEnrollments(schoolSlug, selectedStudentId);
+    void Promise.all([
+      loadStudentEnrollments(schoolSlug, selectedStudentId),
+      loadStudentLifeEvents(schoolSlug, selectedStudentId),
+    ]);
   }, [schoolSlug, selectedStudentId]);
+
+  useEffect(() => {
+    if (eventOccurredAt) {
+      return;
+    }
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    setEventOccurredAt(local.toISOString().slice(0, 16));
+  }, [eventOccurredAt]);
 
   function buildAdminPath(currentSchoolSlug: string, segment: string) {
     return `${API_URL}/schools/${currentSchoolSlug}/admin/${segment}`;
@@ -210,7 +275,9 @@ export default function ElevesPage() {
       const allowed =
         me.role === "SUPER_ADMIN" ||
         me.role === "ADMIN" ||
-        me.role === "SCHOOL_ADMIN";
+        me.role === "SCHOOL_ADMIN" ||
+        me.role === "SCHOOL_MANAGER" ||
+        me.role === "SUPERVISOR";
       if (!allowed) {
         router.replace(
           me.schoolSlug ? `/schools/${me.schoolSlug}/dashboard` : "/",
@@ -218,9 +285,13 @@ export default function ElevesPage() {
         return;
       }
 
-      if (me.role === "SCHOOL_ADMIN") {
+      if (
+        me.role === "SCHOOL_ADMIN" ||
+        me.role === "SCHOOL_MANAGER" ||
+        me.role === "SUPERVISOR"
+      ) {
         if (!me.schoolSlug) {
-          setError("Aucune ecole rattachee a ce compte SCHOOL_ADMIN.");
+          setError("Aucune ecole rattachee a ce compte.");
           setLoading(false);
           return;
         }
@@ -360,6 +431,29 @@ export default function ElevesPage() {
         draft[entry.id] = entry.status;
       });
       setStatusDraftByEnrollmentId(draft);
+    } catch {
+      // no-op
+    }
+  }
+
+  async function loadStudentLifeEvents(
+    currentSchoolSlug: string,
+    studentId: string,
+  ) {
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${currentSchoolSlug}/students/${studentId}/life-events?limit=100`,
+        {
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as LifeEventRow[];
+      setStudentLifeEvents(payload);
     } catch {
       // no-op
     }
@@ -734,6 +828,261 @@ export default function ElevesPage() {
       setError("Erreur reseau.");
     } finally {
       setLinkingParent(false);
+    }
+  }
+
+  async function createStudentLifeEvent() {
+    if (!schoolSlug || !selectedStudentId) {
+      return;
+    }
+
+    const occurredAtIso = eventOccurredAt
+      ? new Date(eventOccurredAt).toISOString()
+      : "";
+    const parsed = createLifeEventSchema.safeParse({
+      type: eventType,
+      occurredAt: occurredAtIso,
+      reason: eventReason,
+      justified:
+        eventType === "SANCTION" || eventType === "PUNITION"
+          ? undefined
+          : eventJustified,
+      comment: eventComment,
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
+      return;
+    }
+
+    const durationValue = eventDurationMinutes.trim();
+    let durationMinutes: number | undefined;
+    if (durationValue.length > 0) {
+      const parsedDurationMinutes = Number.parseInt(durationValue, 10);
+      if (
+        !Number.isFinite(parsedDurationMinutes) ||
+        parsedDurationMinutes < 0
+      ) {
+        setError("La duree doit etre un entier positif.");
+        return;
+      }
+      durationMinutes = parsedDurationMinutes;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingLifeEvent(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/students/${selectedStudentId}/life-events`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            type: parsed.data.type,
+            occurredAt: parsed.data.occurredAt,
+            reason: parsed.data.reason,
+            durationMinutes,
+            justified: parsed.data.justified,
+            comment: parsed.data.comment || undefined,
+            classId: selectedStudent?.currentEnrollment?.class.id,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Creation impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setEventReason("");
+      setEventDurationMinutes("");
+      setEventComment("");
+      setEventJustified(false);
+      setSuccess("Evenement vie scolaire enregistre.");
+      await loadStudentLifeEvents(schoolSlug, selectedStudentId);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSubmittingLifeEvent(false);
+    }
+  }
+
+  function startEditLifeEvent(event: LifeEventRow) {
+    setEditingLifeEventId(event.id);
+    setEditEventType(event.type);
+    setEditEventOccurredAt(toDateTimeLocalInput(event.occurredAt));
+    setEditEventReason(event.reason);
+    setEditEventDurationMinutes(
+      typeof event.durationMinutes === "number"
+        ? String(event.durationMinutes)
+        : "",
+    );
+    setEditEventJustified(Boolean(event.justified));
+    setEditEventComment(event.comment ?? "");
+    setError(null);
+    setSuccess(null);
+  }
+
+  async function saveLifeEvent() {
+    if (!schoolSlug || !selectedStudentId || !editingLifeEventId) {
+      return;
+    }
+
+    const occurredAtIso = editEventOccurredAt
+      ? new Date(editEventOccurredAt).toISOString()
+      : "";
+    const parsed = createLifeEventSchema.safeParse({
+      type: editEventType,
+      occurredAt: occurredAtIso,
+      reason: editEventReason,
+      justified:
+        editEventType === "SANCTION" || editEventType === "PUNITION"
+          ? undefined
+          : editEventJustified,
+      comment: editEventComment,
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
+      return;
+    }
+
+    const durationValue = editEventDurationMinutes.trim();
+    let durationMinutes: number | undefined;
+    if (durationValue.length > 0) {
+      const parsedDurationMinutes = Number.parseInt(durationValue, 10);
+      if (
+        !Number.isFinite(parsedDurationMinutes) ||
+        parsedDurationMinutes < 0
+      ) {
+        setError("La duree doit etre un entier positif.");
+        return;
+      }
+      durationMinutes = parsedDurationMinutes;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setUpdatingLifeEventId(editingLifeEventId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/students/${selectedStudentId}/life-events/${editingLifeEventId}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            type: parsed.data.type,
+            occurredAt: parsed.data.occurredAt,
+            reason: parsed.data.reason,
+            durationMinutes,
+            justified: parsed.data.justified,
+            comment: parsed.data.comment || undefined,
+            classId: selectedStudent?.currentEnrollment?.class.id,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Modification impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setEditingLifeEventId(null);
+      setSuccess("Evenement vie scolaire modifie.");
+      await loadStudentLifeEvents(schoolSlug, selectedStudentId);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setUpdatingLifeEventId(null);
+    }
+  }
+
+  async function deleteLifeEvent(eventId: string) {
+    if (!schoolSlug || !selectedStudentId) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setDeletingLifeEventId(eventId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/students/${selectedStudentId}/life-events/${eventId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfToken,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Suppression impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setLifeEventDeleteTarget(null);
+      if (editingLifeEventId === eventId) {
+        setEditingLifeEventId(null);
+      }
+      setSuccess("Evenement vie scolaire supprime.");
+      await loadStudentLifeEvents(schoolSlug, selectedStudentId);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setDeletingLifeEventId(null);
     }
   }
 
@@ -1220,6 +1569,214 @@ export default function ElevesPage() {
                     </div>
                   </div>
 
+                  <div className="grid gap-3 rounded-card border border-border bg-background p-3">
+                    <p className="text-sm font-medium text-text-primary">
+                      Vie scolaire: absences, retards, sanctions et punitions
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-6">
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">Type</span>
+                        <select
+                          value={eventType}
+                          onChange={(event) =>
+                            setEventType(event.target.value as LifeEventType)
+                          }
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="ABSENCE">Absence</option>
+                          <option value="RETARD">Retard</option>
+                          <option value="SANCTION">Sanction</option>
+                          <option value="PUNITION">Punition</option>
+                        </select>
+                      </label>
+                      <label className="grid gap-1 text-sm md:col-span-2">
+                        <span className="text-text-secondary">Date/heure</span>
+                        <input
+                          type="datetime-local"
+                          value={eventOccurredAt}
+                          onChange={(event) =>
+                            setEventOccurredAt(event.target.value)
+                          }
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </label>
+                      <label className="grid gap-1 text-sm md:col-span-2">
+                        <span className="text-text-secondary">Motif</span>
+                        <input
+                          value={eventReason}
+                          onChange={(event) =>
+                            setEventReason(event.target.value)
+                          }
+                          placeholder="Motif de l'evenement"
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </label>
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">Duree (min)</span>
+                        <input
+                          value={eventDurationMinutes}
+                          onChange={(event) =>
+                            setEventDurationMinutes(event.target.value)
+                          }
+                          placeholder="ex: 10"
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </label>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">Commentaire</span>
+                        <input
+                          value={eventComment}
+                          onChange={(event) =>
+                            setEventComment(event.target.value)
+                          }
+                          placeholder="Commentaire (optionnel)"
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
+                        <input
+                          type="checkbox"
+                          checked={eventJustified}
+                          onChange={(event) =>
+                            setEventJustified(event.target.checked)
+                          }
+                          disabled={
+                            eventType === "SANCTION" || eventType === "PUNITION"
+                          }
+                        />
+                        Justifie
+                      </label>
+                    </div>
+                    <div>
+                      <Button
+                        type="button"
+                        disabled={submittingLifeEvent}
+                        onClick={() => {
+                          void createStudentLifeEvent();
+                        }}
+                      >
+                        {submittingLifeEvent ? "Enregistrement..." : "Signaler"}
+                      </Button>
+                    </div>
+
+                    {editingLifeEventId ? (
+                      <div className="grid gap-3 rounded-card border border-border bg-surface p-3 md:grid-cols-2">
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">Type</span>
+                          <select
+                            value={editEventType}
+                            onChange={(event) =>
+                              setEditEventType(
+                                event.target.value as LifeEventType,
+                              )
+                            }
+                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="ABSENCE">Absence</option>
+                            <option value="RETARD">Retard</option>
+                            <option value="SANCTION">Sanction</option>
+                            <option value="PUNITION">Punition</option>
+                          </select>
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">
+                            Date/heure
+                          </span>
+                          <input
+                            type="datetime-local"
+                            value={editEventOccurredAt}
+                            onChange={(event) =>
+                              setEditEventOccurredAt(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm md:col-span-2">
+                          <span className="text-text-secondary">Motif</span>
+                          <input
+                            value={editEventReason}
+                            onChange={(event) =>
+                              setEditEventReason(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">
+                            Duree (min)
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={editEventDurationMinutes}
+                            onChange={(event) =>
+                              setEditEventDurationMinutes(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm md:col-span-2">
+                          <span className="text-text-secondary">
+                            Commentaire
+                          </span>
+                          <input
+                            value={editEventComment}
+                            onChange={(event) =>
+                              setEditEventComment(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </label>
+                        <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
+                          <input
+                            type="checkbox"
+                            checked={editEventJustified}
+                            onChange={(event) =>
+                              setEditEventJustified(event.target.checked)
+                            }
+                            disabled={
+                              editEventType === "SANCTION" ||
+                              editEventType === "PUNITION"
+                            }
+                          />
+                          Justifie
+                        </label>
+                        <div className="flex gap-2 md:col-span-2">
+                          <Button
+                            type="button"
+                            disabled={
+                              updatingLifeEventId === editingLifeEventId
+                            }
+                            onClick={() => {
+                              void saveLifeEvent();
+                            }}
+                          >
+                            {updatingLifeEventId === editingLifeEventId
+                              ? "Enregistrement..."
+                              : "Enregistrer"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setEditingLifeEventId(null)}
+                          >
+                            Annuler
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <LifeEventsList
+                      events={studentLifeEvents}
+                      emptyLabel="Aucun evenement de vie scolaire."
+                      deletingEventId={deletingLifeEventId}
+                      onEdit={startEditLifeEvent}
+                      onDelete={(row) => setLifeEventDeleteTarget(row)}
+                    />
+                  </div>
+
                   <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
                     <label className="grid gap-1 text-sm">
                       <span className="text-text-secondary">
@@ -1386,6 +1943,32 @@ export default function ElevesPage() {
         }}
         onConfirm={() => {
           void confirmDeleteStudent();
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(lifeEventDeleteTarget)}
+        title="Supprimer cet evenement ?"
+        message={
+          lifeEventDeleteTarget
+            ? `Cette action est irreversible. L'evenement "${lifeEventTypeLabel(lifeEventDeleteTarget.type)} - ${lifeEventDeleteTarget.reason}" sera supprime definitivement.`
+            : ""
+        }
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        loading={
+          Boolean(lifeEventDeleteTarget) &&
+          deletingLifeEventId === lifeEventDeleteTarget?.id
+        }
+        onCancel={() => {
+          if (!deletingLifeEventId) {
+            setLifeEventDeleteTarget(null);
+          }
+        }}
+        onConfirm={() => {
+          if (!lifeEventDeleteTarget) {
+            return;
+          }
+          void deleteLifeEvent(lifeEventDeleteTarget.id);
         }}
       />
     </AppShell>

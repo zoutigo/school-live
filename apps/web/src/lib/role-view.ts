@@ -3,6 +3,7 @@ export type PlatformRole = "SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT";
 export type SchoolRole =
   | "SCHOOL_ADMIN"
   | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "TEACHER"
   | "PARENT"
@@ -24,6 +25,7 @@ const ROLE_SET: Set<string> = new Set([
   "SUPPORT",
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
+  "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "TEACHER",
   "PARENT",

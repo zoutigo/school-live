@@ -26,3 +26,33 @@ model Grade {
   @@index([subjectId])
   @@index([teacherUserId])
 }
+
+model StudentLifeEvent {
+  id            String               @id @default(cuid())
+  schoolId      String
+  studentId     String
+  classId       String?
+  schoolYearId  String?
+  authorUserId  String
+  type          StudentLifeEventType
+  occurredAt    DateTime
+  durationMinutes Int?
+  justified     Boolean?
+  reason        String
+  comment       String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student       Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class         Class?               @relation(fields: [classId], references: [id], onDelete: SetNull)
+  schoolYear    SchoolYear?          @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  authorUser    User                 @relation("LifeEventAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([classId])
+  @@index([schoolYearId])
+  @@index([authorUserId])
+  @@index([type])
+  @@index([occurredAt])
+}

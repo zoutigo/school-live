@@ -17,6 +17,7 @@ enum PlatformRole {
 enum SchoolRole {
   SCHOOL_ADMIN
   SCHOOL_MANAGER
+  SUPERVISOR
   SCHOOL_ACCOUNTANT
   TEACHER
   PARENT
@@ -30,6 +31,7 @@ enum AppRole {
   SUPPORT
   SCHOOL_ADMIN
   SCHOOL_MANAGER
+  SUPERVISOR
   SCHOOL_ACCOUNTANT
   TEACHER
   PARENT
@@ -63,6 +65,13 @@ enum OverrideAction {
   REMOVE
 }
 
+enum StudentLifeEventType {
+  ABSENCE
+  RETARD
+  SANCTION
+  PUNITION
+}
+
 
 model School {
   id                 String                @id @default(cuid())
@@ -89,6 +98,7 @@ model School {
   tracks             Track[]
   curriculums        Curriculum[]
   curriculumSubjects CurriculumSubject[]
+  lifeEvents         StudentLifeEvent[]
 
   @@index([activeSchoolYearId])
 }
@@ -118,6 +128,7 @@ model User {
   teachingAssignments TeacherClassSubject[]
   refreshTokens      RefreshToken[]
   recoveryAnswers    UserRecoveryAnswer[]
+  lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
 }
 
 model PlatformRoleAssignment {
@@ -174,6 +185,7 @@ model Student {
   parentLinks ParentStudent[] @relation("StudentLinks")
   grades      Grade[]
   enrollments Enrollment[]
+  lifeEvents  StudentLifeEvent[]
 
   @@index([schoolId])
   @@unique([schoolId, userId])
@@ -268,6 +280,7 @@ model SchoolYear {
   enrollments         Enrollment[]
   teachingAssignments TeacherClassSubject[]
   grades              Grade[]
+  lifeEvents          StudentLifeEvent[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -363,6 +376,7 @@ model Class {
   assignments     TeacherClassSubject[]
   grades          Grade[]
   subjectOverrides ClassSubjectOverride[]
+  lifeEvents      StudentLifeEvent[]
 
   @@unique([schoolId, schoolYearId, classGroupId, name])
   @@index([schoolId])
@@ -460,7 +474,36 @@ model Grade {
   @@index([teacherUserId])
 }
 
+model StudentLifeEvent {
+  id            String               @id @default(cuid())
+  schoolId      String
+  studentId     String
+  classId       String?
+  schoolYearId  String?
+  authorUserId  String
+  type          StudentLifeEventType
+  occurredAt    DateTime
+  durationMinutes Int?
+  justified     Boolean?
+  reason        String
+  comment       String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  school        School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student       Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class         Class?               @relation(fields: [classId], references: [id], onDelete: SetNull)
+  schoolYear    SchoolYear?          @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+  authorUser    User                 @relation("LifeEventAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([classId])
+  @@index([schoolYearId])
+  @@index([authorUserId])
+  @@index([type])
+  @@index([occurredAt])
+}
+
 
 // Reserved for future shared indexes, comments and data notes.
-
 

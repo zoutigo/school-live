@@ -24,6 +24,7 @@ type MeResponse = {
     | "SUPPORT"
     | "SCHOOL_ADMIN"
     | "SCHOOL_MANAGER"
+    | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "TEACHER"
     | "PARENT"

@@ -11,6 +11,7 @@ model Student {
   parentLinks ParentStudent[] @relation("StudentLinks")
   grades      Grade[]
   enrollments Enrollment[]
+  lifeEvents  StudentLifeEvent[]
 
   @@index([schoolId])
   @@unique([schoolId, userId])

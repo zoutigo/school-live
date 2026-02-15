@@ -32,10 +32,10 @@ Depuis la racine `school-live`:
 npm install
 ```
 
-### 2) Lancer PostgreSQL
+### 2) Lancer PostgreSQL + Redis
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d postgres
+docker compose -f docker/docker-compose.yml up -d postgres redis
 docker compose -f docker/docker-compose.yml ps
 ```
 
@@ -64,13 +64,19 @@ npm run -w @school-live/api prisma:studio
 npm run -w @school-live/api dev
 ```
 
-### 5) Lancer le web
+### 5) Lancer le worker (jobs async: emails, etc.)
+
+```bash
+npm run -w @school-live/api worker:dev
+```
+
+### 6) Lancer le web
 
 ```bash
 npm run -w @school-live/web dev
 ```
 
-### 6) Lancer le mobile
+### 7) Lancer le mobile
 
 ```bash
 npm run -w @school-live/mobile dev
@@ -82,10 +88,10 @@ Variable mobile utile:
 EXPO_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
-### 7) Arreter PostgreSQL
+### 8) Arreter PostgreSQL + Redis
 
 ```bash
-docker compose -f docker/docker-compose.yml stop postgres
+docker compose -f docker/docker-compose.yml stop postgres redis
 ```
 
 ## API exposee

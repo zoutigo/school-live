@@ -17,6 +17,7 @@ enum PlatformRole {
 enum SchoolRole {
   SCHOOL_ADMIN
   SCHOOL_MANAGER
+  SUPERVISOR
   SCHOOL_ACCOUNTANT
   TEACHER
   PARENT
@@ -30,6 +31,7 @@ enum AppRole {
   SUPPORT
   SCHOOL_ADMIN
   SCHOOL_MANAGER
+  SUPERVISOR
   SCHOOL_ACCOUNTANT
   TEACHER
   PARENT
@@ -61,4 +63,11 @@ enum EnrollmentStatus {
 enum OverrideAction {
   ADD
   REMOVE
+}
+
+enum StudentLifeEventType {
+  ABSENCE
+  RETARD
+  SANCTION
+  PUNITION
 }

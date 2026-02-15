@@ -23,6 +23,7 @@ type MeResponse = {
     role:
       | "SCHOOL_ADMIN"
       | "SCHOOL_MANAGER"
+      | "SUPERVISOR"
       | "SCHOOL_ACCOUNTANT"
       | "TEACHER"
       | "PARENT"
@@ -37,6 +38,7 @@ const ROLE_LABEL: Record<Role, string> = {
   SUPPORT: "Support plateforme",
   SCHOOL_ADMIN: "Administrateur d'etablissement",
   SCHOOL_MANAGER: "Gestionnaire d'etablissement",
+  SUPERVISOR: "Superviseur discipline",
   SCHOOL_ACCOUNTANT: "Comptable d'etablissement",
   TEACHER: "Enseignant",
   PARENT: "Parent",

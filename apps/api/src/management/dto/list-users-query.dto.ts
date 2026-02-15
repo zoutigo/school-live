@@ -14,6 +14,7 @@ export class ListUsersQueryDto {
     "SUPPORT",
     "SCHOOL_ADMIN",
     "SCHOOL_MANAGER",
+    "SUPERVISOR",
     "SCHOOL_ACCOUNTANT",
     "TEACHER",
     "PARENT",
@@ -26,6 +27,7 @@ export class ListUsersQueryDto {
     | "SUPPORT"
     | "SCHOOL_ADMIN"
     | "SCHOOL_MANAGER"
+    | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "TEACHER"
     | "PARENT"

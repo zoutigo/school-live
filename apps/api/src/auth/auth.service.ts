@@ -697,6 +697,7 @@ export class AuthService {
     const schoolPriority: SchoolRole[] = [
       "SCHOOL_ADMIN",
       "SCHOOL_MANAGER",
+      "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "TEACHER",
       "PARENT",

@@ -33,6 +33,7 @@ import { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
 import { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
 import { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
+import { CreateStudentLifeEventDto } from "./dto/create-student-life-event.dto.js";
 import { CreateTeacherAssignmentDto } from "./dto/create-teacher-assignment.dto.js";
 import { RolloverSchoolYearDto } from "./dto/rollover-school-year.dto.js";
 import { SetActiveSchoolYearDto } from "./dto/set-active-school-year.dto.js";
@@ -43,6 +44,7 @@ import { CreateTrackDto } from "./dto/create-track.dto.js";
 import { CreateUserDto } from "./dto/create-user.dto.js";
 import { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
 import { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-query.dto.js";
+import { ListStudentLifeEventsQueryDto } from "./dto/list-student-life-events-query.dto.js";
 import { ListTeacherAssignmentsQueryDto } from "./dto/list-teacher-assignments-query.dto.js";
 import { UpdateAcademicLevelDto } from "./dto/update-academic-level.dto.js";
 import { UpdateClassroomDto } from "./dto/update-classroom.dto.js";
@@ -51,6 +53,7 @@ import { UpdateCurriculumDto } from "./dto/update-curriculum.dto.js";
 import { UpdateSchoolDto } from "./dto/update-school.dto.js";
 import { UpdateStudentDto } from "./dto/update-student.dto.js";
 import { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
+import { UpdateStudentLifeEventDto } from "./dto/update-student-life-event.dto.js";
 import { UpdateSubjectDto } from "./dto/update-subject.dto.js";
 import { UpdateTeacherAssignmentDto } from "./dto/update-teacher-assignment.dto.js";
 import { UpdateTrackDto } from "./dto/update-track.dto.js";
@@ -209,7 +212,7 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/classrooms")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   listClassrooms(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listClassrooms(schoolId);
   }
@@ -298,7 +301,7 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/school-years")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   listSchoolYears(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listSchoolYears(schoolId);
   }
@@ -608,7 +611,7 @@ export class ManagementController {
 
   @Post("schools/:schoolSlug/admin/students")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "SUPER_ADMIN")
   createStudent(
     @CurrentSchoolId() schoolId: string,
     @Body() payload: CreateStudentDto,
@@ -618,7 +621,7 @@ export class ManagementController {
 
   @Patch("schools/:schoolSlug/admin/students/:studentId")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   updateStudent(
     @CurrentSchoolId() schoolId: string,
     @Param("studentId") studentId: string,
@@ -629,7 +632,7 @@ export class ManagementController {
 
   @Delete("schools/:schoolSlug/admin/students/:studentId")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   deleteStudent(
     @CurrentSchoolId() schoolId: string,
     @Param("studentId") studentId: string,
@@ -639,7 +642,7 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/students")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   listStudentsWithEnrollments(
     @CurrentSchoolId() schoolId: string,
     @Query() query: ListStudentEnrollmentsQueryDto,
@@ -649,7 +652,7 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/students/:studentId/enrollments")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   listStudentEnrollments(
     @CurrentSchoolId() schoolId: string,
     @Param("studentId") studentId: string,
@@ -657,9 +660,108 @@ export class ManagementController {
     return this.managementService.listStudentEnrollments(schoolId, studentId);
   }
 
+  @Get("schools/:schoolSlug/students/:studentId/life-events")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "PARENT",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
+  listStudentLifeEvents(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+    @Query() query: ListStudentLifeEventsQueryDto,
+  ) {
+    return this.managementService.listStudentLifeEvents(
+      schoolId,
+      currentUser,
+      studentId,
+      query,
+    );
+  }
+
+  @Post("schools/:schoolSlug/students/:studentId/life-events")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
+  createStudentLifeEvent(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+    @Body() payload: CreateStudentLifeEventDto,
+  ) {
+    return this.managementService.createStudentLifeEvent(
+      schoolId,
+      currentUser,
+      studentId,
+      payload,
+    );
+  }
+
+  @Patch("schools/:schoolSlug/students/:studentId/life-events/:eventId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
+  updateStudentLifeEvent(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+    @Param("eventId") eventId: string,
+    @Body() payload: UpdateStudentLifeEventDto,
+  ) {
+    return this.managementService.updateStudentLifeEvent(
+      schoolId,
+      currentUser,
+      studentId,
+      eventId,
+      payload,
+    );
+  }
+
+  @Delete("schools/:schoolSlug/students/:studentId/life-events/:eventId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
+  deleteStudentLifeEvent(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+    @Param("eventId") eventId: string,
+  ) {
+    return this.managementService.deleteStudentLifeEvent(
+      schoolId,
+      currentUser,
+      studentId,
+      eventId,
+    );
+  }
+
   @Post("schools/:schoolSlug/admin/students/:studentId/enrollments")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   createStudentEnrollment(
     @CurrentSchoolId() schoolId: string,
     @Param("studentId") studentId: string,
@@ -676,7 +778,7 @@ export class ManagementController {
     "schools/:schoolSlug/admin/students/:studentId/enrollments/:enrollmentId",
   )
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   updateStudentEnrollment(
     @CurrentSchoolId() schoolId: string,
     @Param("studentId") studentId: string,
@@ -693,7 +795,7 @@ export class ManagementController {
 
   @Patch("schools/:schoolSlug/admin/enrollments/status")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
   bulkUpdateEnrollmentStatus(
     @CurrentSchoolId() schoolId: string,
     @Body() payload: BulkUpdateEnrollmentStatusDto,
@@ -703,7 +805,7 @@ export class ManagementController {
 
   @Post("schools/:schoolSlug/admin/parent-students")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "SUPER_ADMIN")
   createParentStudentLink(
     @CurrentSchoolId() schoolId: string,
     @Body() payload: CreateParentStudentLinkDto,
