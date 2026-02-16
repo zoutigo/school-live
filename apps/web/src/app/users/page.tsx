@@ -10,6 +10,7 @@ import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { PaginationControls } from "../../components/ui/pagination-controls";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -24,6 +25,7 @@ type Role =
   | "SCHOOL_MANAGER"
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
+  | "SCHOOL_STAFF"
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
@@ -33,6 +35,7 @@ type SchoolCreatableRole =
   | "SCHOOL_MANAGER"
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
+  | "SCHOOL_STAFF"
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
@@ -64,6 +67,7 @@ type UserRow = {
     | "SCHOOL_MANAGER"
     | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
+    | "SCHOOL_STAFF"
     | "TEACHER"
     | "PARENT"
     | "STUDENT"
@@ -101,6 +105,7 @@ type UserDetails = {
       | "SCHOOL_MANAGER"
       | "SUPERVISOR"
       | "SCHOOL_ACCOUNTANT"
+      | "SCHOOL_STAFF"
       | "TEACHER"
       | "PARENT"
       | "STUDENT";
@@ -159,6 +164,7 @@ const SCHOOL_ROLE_OPTIONS: SchoolCreatableRole[] = [
   "SCHOOL_MANAGER",
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
+  "SCHOOL_STAFF",
   "TEACHER",
   "PARENT",
   "STUDENT",
@@ -182,6 +188,7 @@ const createUserSchema = z
         "SCHOOL_MANAGER",
         "SUPERVISOR",
         "SCHOOL_ACCOUNTANT",
+        "SCHOOL_STAFF",
         "TEACHER",
         "PARENT",
         "STUDENT",
@@ -194,7 +201,7 @@ const createUserSchema = z
         "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
       ),
     schoolSlug: z.string().optional(),
-    avatarUrl: z.string().trim().startsWith("/files/users/avatars/").optional(),
+    avatarUrl: z.string().trim().url().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.platformRoles.length === 0 && value.schoolRoles.length === 0) {
@@ -225,6 +232,7 @@ const updateUserSchema = z.object({
       "SCHOOL_MANAGER",
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
+      "SCHOOL_STAFF",
       "TEACHER",
       "PARENT",
       "STUDENT",
@@ -999,6 +1007,7 @@ export default function UsersPage() {
                         <option value="SCHOOL_ACCOUNTANT">
                           SCHOOL_ACCOUNTANT
                         </option>
+                        <option value="SCHOOL_STAFF">SCHOOL_STAFF</option>
                         <option value="TEACHER">TEACHER</option>
                         <option value="PARENT">PARENT</option>
                         <option value="STUDENT">STUDENT</option>
@@ -1376,35 +1385,16 @@ export default function UsersPage() {
                 </table>
               </div>
 
-              <div className="flex items-center justify-between pt-2 text-sm text-text-secondary">
-                <p>
-                  {pagination.total} resultat(s) - page {pagination.page}/
-                  {pagination.totalPages}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={pagination.page <= 1 || loadingUsers}
-                    onClick={() => {
-                      void loadUsers(pagination.page - 1);
-                    }}
-                  >
-                    Precedent
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={
-                      pagination.page >= pagination.totalPages || loadingUsers
-                    }
-                    onClick={() => {
-                      void loadUsers(pagination.page + 1);
-                    }}
-                  >
-                    Suivant
-                  </Button>
-                </div>
+              <div className="pt-2">
+                <PaginationControls
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.total}
+                  disabled={loadingUsers}
+                  onPageChange={(nextPage) => {
+                    void loadUsers(nextPage);
+                  }}
+                />
               </div>
             </div>
           ) : tab === "details" ? (

@@ -24,6 +24,8 @@ import type { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import type { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
 import type { CreateSchoolDto } from "./dto/create-school.dto.js";
 import type { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
+import type { CreateSchoolStaffAssignmentDto } from "./dto/create-school-staff-assignment.dto.js";
+import type { CreateSchoolStaffFunctionDto } from "./dto/create-school-staff-function.dto.js";
 import type { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
 import type { CreateStudentLifeEventDto } from "./dto/create-student-life-event.dto.js";
 import type { CreateStudentDto } from "./dto/create-student.dto.js";
@@ -42,6 +44,7 @@ import type { UpdateClassroomDto } from "./dto/update-classroom.dto.js";
 import type { UpdateClassSubjectOverrideDto } from "./dto/update-class-subject-override.dto.js";
 import type { UpdateCurriculumDto } from "./dto/update-curriculum.dto.js";
 import type { UpdateSchoolDto } from "./dto/update-school.dto.js";
+import type { UpdateSchoolStaffFunctionDto } from "./dto/update-school-staff-function.dto.js";
 import type { UpdateStudentDto } from "./dto/update-student.dto.js";
 import type { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
 import type { UpdateStudentLifeEventDto } from "./dto/update-student-life-event.dto.js";
@@ -57,6 +60,7 @@ const SCHOOL_ROLES = [
   "SCHOOL_MANAGER",
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
+  "SCHOOL_STAFF",
   "TEACHER",
   "PARENT",
   "STUDENT",
@@ -69,13 +73,14 @@ const CREATABLE_ROLES = [
   "SCHOOL_MANAGER",
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
+  "SCHOOL_STAFF",
   "TEACHER",
   "PARENT",
   "STUDENT",
 ] as const;
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-const SCHOOL_LOGO_URL_REGEX = /^\/files\/schools\/logos\/[a-zA-Z0-9-]+\.webp$/;
-const USER_AVATAR_URL_REGEX = /^\/files\/users\/avatars\/[a-zA-Z0-9-]+\.webp$/;
+const SCHOOL_LOGO_URL_REGEX = /^https?:\/\/.+$/;
+const USER_AVATAR_URL_REGEX = /^https?:\/\/.+$/;
 
 const createUserSchema = z.object({
   firstName: z.string().trim().min(1),
@@ -116,6 +121,7 @@ const updateUserSchema = z.object({
       "SCHOOL_MANAGER",
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
+      "SCHOOL_STAFF",
       "TEACHER",
       "PARENT",
       "STUDENT",
@@ -128,12 +134,42 @@ const updateUserSchema = z.object({
 
 const createSchoolSchema = z.object({
   name: z.string().trim().min(1),
+  country: z.string().trim().min(1).max(120).optional(),
+  region: z.string().trim().min(1).max(120).optional(),
+  city: z.string().trim().min(1).max(120).optional(),
   schoolAdminEmail: z.string().trim().email(),
   logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional(),
 });
 
 const updateSchoolSchema = z.object({
   name: z.string().trim().min(1).optional(),
+  country: z
+    .union([z.string().trim().min(1).max(120), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === null) {
+        return null;
+      }
+      return value;
+    }),
+  region: z
+    .union([z.string().trim().min(1).max(120), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === null) {
+        return null;
+      }
+      return value;
+    }),
+  city: z
+    .union([z.string().trim().min(1).max(120), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === null) {
+        return null;
+      }
+      return value;
+    }),
   logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).nullable().optional(),
 });
 
@@ -231,6 +267,37 @@ const createSchoolYearSchema = z.object({
   label: z.string().trim().min(1),
   startsAt: z.string().datetime().optional(),
   endsAt: z.string().datetime().optional(),
+});
+
+const createSchoolStaffFunctionSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z
+    .union([z.string().trim().max(500), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === null) {
+        return null;
+      }
+      return value;
+    }),
+});
+
+const updateSchoolStaffFunctionSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  description: z
+    .union([z.string().trim().max(500), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === null) {
+        return null;
+      }
+      return value;
+    }),
+});
+
+const createSchoolStaffAssignmentSchema = z.object({
+  userId: z.string().trim().min(1),
+  functionId: z.string().trim().min(1),
 });
 
 const setActiveSchoolYearSchema = z.object({
@@ -690,6 +757,9 @@ export class ManagementService {
         id: true,
         slug: true,
         name: true,
+        country: true,
+        region: true,
+        city: true,
         logoUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -707,6 +777,9 @@ export class ManagementService {
       id: school.id,
       slug: school.slug,
       name: school.name,
+      country: school.country,
+      region: school.region,
+      city: school.city,
       logoUrl: school.logoUrl,
       createdAt: school.createdAt,
       updatedAt: school.updatedAt,
@@ -723,6 +796,9 @@ export class ManagementService {
         id: true,
         slug: true,
         name: true,
+        country: true,
+        region: true,
+        city: true,
         logoUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -762,6 +838,9 @@ export class ManagementService {
       id: school.id,
       slug: school.slug,
       name: school.name,
+      country: school.country,
+      region: school.region,
+      city: school.city,
       logoUrl: school.logoUrl,
       createdAt: school.createdAt,
       updatedAt: school.updatedAt,
@@ -790,7 +869,13 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    if (parsed.name === undefined && parsed.logoUrl === undefined) {
+    if (
+      parsed.name === undefined &&
+      parsed.country === undefined &&
+      parsed.region === undefined &&
+      parsed.city === undefined &&
+      parsed.logoUrl === undefined
+    ) {
       throw new BadRequestException("No fields to update");
     }
 
@@ -807,12 +892,18 @@ export class ManagementService {
       where: { id: schoolId },
       data: {
         name: parsed.name,
+        country: parsed.country,
+        region: parsed.region,
+        city: parsed.city,
         logoUrl: parsed.logoUrl,
       },
       select: {
         id: true,
         slug: true,
         name: true,
+        country: true,
+        region: true,
+        city: true,
         logoUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -1239,6 +1330,9 @@ export class ManagementService {
               create: {
                 slug: generatedSlug,
                 name: parsed.name,
+                country: parsed.country,
+                region: parsed.region,
+                city: parsed.city,
                 logoUrl: parsed.logoUrl,
               },
             },
@@ -1249,6 +1343,9 @@ export class ManagementService {
                 id: true,
                 slug: true,
                 name: true,
+                country: true,
+                region: true,
+                city: true,
                 logoUrl: true,
                 createdAt: true,
                 updatedAt: true,
@@ -1299,6 +1396,9 @@ export class ManagementService {
             create: {
               slug: generatedSlug,
               name: parsed.name,
+              country: parsed.country,
+              region: parsed.region,
+              city: parsed.city,
               logoUrl: parsed.logoUrl,
             },
           },
@@ -1309,6 +1409,9 @@ export class ManagementService {
               id: true,
               slug: true,
               name: true,
+              country: true,
+              region: true,
+              city: true,
               logoUrl: true,
               createdAt: true,
               updatedAt: true,
@@ -2476,6 +2579,397 @@ export class ManagementService {
     });
 
     return { success: true };
+  }
+
+  async listSchoolStaffFunctions(schoolId: string) {
+    return this.prisma.schoolStaffFunction.findMany({
+      where: { schoolId },
+      orderBy: [{ name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            assignments: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createSchoolStaffFunction(
+    schoolId: string,
+    payload: CreateSchoolStaffFunctionDto,
+  ) {
+    const parsedResult = createSchoolStaffFunctionSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    return this.prisma.schoolStaffFunction.create({
+      data: {
+        schoolId,
+        name: parsed.name,
+        description: parsed.description ?? null,
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async updateSchoolStaffFunction(
+    schoolId: string,
+    functionId: string,
+    payload: UpdateSchoolStaffFunctionDto,
+  ) {
+    const parsedResult = updateSchoolStaffFunctionSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (parsed.name === undefined && parsed.description === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    await this.ensureSchoolStaffFunctionInSchool(functionId, schoolId);
+    return this.prisma.schoolStaffFunction.update({
+      where: { id: functionId },
+      data: {
+        name: parsed.name,
+        description: parsed.description,
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async deleteSchoolStaffFunction(schoolId: string, functionId: string) {
+    const existing = await this.prisma.schoolStaffFunction.findFirst({
+      where: {
+        id: functionId,
+        schoolId,
+      },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            assignments: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Staff function not found");
+    }
+
+    if (existing._count.assignments > 0) {
+      throw new BadRequestException(
+        "Impossible de supprimer une fonction avec des affectations actives",
+      );
+    }
+
+    await this.prisma.schoolStaffFunction.delete({
+      where: { id: functionId },
+    });
+
+    return { success: true };
+  }
+
+  async listSchoolStaffAssignments(schoolId: string) {
+    return this.prisma.schoolStaffAssignment.findMany({
+      where: { schoolId },
+      orderBy: [{ function: { name: "asc" } }, { user: { lastName: "asc" } }],
+      select: {
+        id: true,
+        createdAt: true,
+        function: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
+  async listSchoolStaffCandidates(schoolId: string) {
+    const memberships = await this.prisma.schoolMembership.findMany({
+      where: {
+        schoolId,
+        role: {
+          in: [
+            "SCHOOL_ADMIN",
+            "SCHOOL_MANAGER",
+            "SUPERVISOR",
+            "SCHOOL_ACCOUNTANT",
+            "SCHOOL_STAFF",
+          ],
+        },
+      },
+      orderBy: [{ user: { lastName: "asc" } }, { user: { firstName: "asc" } }],
+      distinct: ["userId"],
+      select: {
+        userId: true,
+        role: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return memberships.map((entry) => ({
+      userId: entry.userId,
+      role: entry.role,
+      firstName: entry.user.firstName,
+      lastName: entry.user.lastName,
+      email: entry.user.email,
+    }));
+  }
+
+  async createSchoolStaffAssignment(
+    schoolId: string,
+    payload: CreateSchoolStaffAssignmentDto,
+  ) {
+    const parsedResult = createSchoolStaffAssignmentSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    await this.ensureSchoolStaffFunctionInSchool(parsed.functionId, schoolId);
+    await this.ensureStaffUserInSchool(parsed.userId, schoolId);
+
+    return this.prisma.schoolStaffAssignment.upsert({
+      where: {
+        schoolId_functionId_userId: {
+          schoolId,
+          functionId: parsed.functionId,
+          userId: parsed.userId,
+        },
+      },
+      update: {},
+      create: {
+        schoolId,
+        functionId: parsed.functionId,
+        userId: parsed.userId,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        function: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteSchoolStaffAssignment(schoolId: string, assignmentId: string) {
+    const existing = await this.prisma.schoolStaffAssignment.findFirst({
+      where: {
+        id: assignmentId,
+        schoolId,
+      },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Staff assignment not found");
+    }
+
+    await this.prisma.schoolStaffAssignment.delete({
+      where: { id: assignmentId },
+    });
+
+    return { success: true };
+  }
+
+  async listMessagingRecipients(schoolId: string) {
+    const activeSchoolYearId = await this.getActiveSchoolYearId(schoolId);
+    const teacherAssignments = await this.prisma.teacherClassSubject.findMany({
+      where: {
+        schoolId,
+        ...(activeSchoolYearId ? { schoolYearId: activeSchoolYearId } : {}),
+      },
+      orderBy: [
+        { teacherUser: { lastName: "asc" } },
+        { class: { name: "asc" } },
+        { subject: { name: "asc" } },
+      ],
+      select: {
+        teacherUserId: true,
+        teacherUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    const teachersMap = new Map<
+      string,
+      {
+        userId: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        classes: Set<string>;
+        subjects: Set<string>;
+      }
+    >();
+
+    for (const entry of teacherAssignments) {
+      const existing = teachersMap.get(entry.teacherUserId) ?? {
+        userId: entry.teacherUserId,
+        firstName: entry.teacherUser.firstName,
+        lastName: entry.teacherUser.lastName,
+        email: entry.teacherUser.email,
+        classes: new Set<string>(),
+        subjects: new Set<string>(),
+      };
+      existing.classes.add(entry.class.name);
+      existing.subjects.add(entry.subject.name);
+      teachersMap.set(entry.teacherUserId, existing);
+    }
+
+    const teacherOptionsFromAssignments = Array.from(teachersMap.values()).map(
+      (entry) => ({
+        userId: entry.userId,
+        firstName: entry.firstName,
+        lastName: entry.lastName,
+        email: entry.email,
+        classes: Array.from(entry.classes).sort((a, b) => a.localeCompare(b)),
+        subjects: Array.from(entry.subjects).sort((a, b) => a.localeCompare(b)),
+      }),
+    );
+
+    const teacherOptions =
+      teacherOptionsFromAssignments.length > 0
+        ? teacherOptionsFromAssignments
+        : (await this.listTeachers(schoolId)).map((teacher) => ({
+            ...teacher,
+            classes: [],
+            subjects: [],
+          }));
+
+    const staffFunctions = await this.prisma.schoolStaffFunction.findMany({
+      where: { schoolId },
+      orderBy: [{ name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        assignments: {
+          orderBy: [
+            { user: { lastName: "asc" } },
+            { user: { firstName: "asc" } },
+          ],
+          select: {
+            id: true,
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      teachers: teacherOptions.map((teacher) => ({
+        value: teacher.userId,
+        label: `${teacher.lastName} ${teacher.firstName}`.trim(),
+        email: teacher.email,
+        classes: teacher.classes,
+        subjects: teacher.subjects,
+      })),
+      staffFunctions: staffFunctions.map((entry) => ({
+        value: entry.id,
+        label: entry.name,
+        description: entry.description,
+        members: entry.assignments.map((assignment) => ({
+          userId: assignment.user.id,
+          fullName:
+            `${assignment.user.lastName} ${assignment.user.firstName}`.trim(),
+          email: assignment.user.email,
+        })),
+      })),
+      staffPeople: staffFunctions.flatMap((entry) =>
+        entry.assignments.map((assignment) => ({
+          value: assignment.user.id,
+          label:
+            `${assignment.user.lastName} ${assignment.user.firstName}`.trim(),
+          email: assignment.user.email,
+          functionId: entry.id,
+          functionLabel: entry.name,
+        })),
+      ),
+    };
   }
 
   async listTeachers(schoolId: string) {
@@ -3968,6 +4462,48 @@ export class ManagementService {
     }
   }
 
+  private async ensureSchoolStaffFunctionInSchool(
+    functionId: string,
+    schoolId: string,
+  ) {
+    const functionEntity = await this.prisma.schoolStaffFunction.findFirst({
+      where: {
+        id: functionId,
+        schoolId,
+      },
+      select: { id: true },
+    });
+
+    if (!functionEntity) {
+      throw new NotFoundException("Staff function not found");
+    }
+  }
+
+  private async ensureStaffUserInSchool(userId: string, schoolId: string) {
+    const membership = await this.prisma.schoolMembership.findFirst({
+      where: {
+        userId,
+        schoolId,
+        role: {
+          in: [
+            "SCHOOL_ADMIN",
+            "SCHOOL_MANAGER",
+            "SUPERVISOR",
+            "SCHOOL_ACCOUNTANT",
+            "SCHOOL_STAFF",
+          ],
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new BadRequestException(
+        "Utilisateur non eligible: role scolaire staff requis",
+      );
+    }
+  }
+
   private ensureClassAndSchoolYearConsistency(
     classSchoolYearId: string,
     selectedSchoolYearId: string,
@@ -4555,6 +5091,7 @@ export class ManagementService {
       "SCHOOL_MANAGER",
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
+      "SCHOOL_STAFF",
       "TEACHER",
       "PARENT",
       "STUDENT",

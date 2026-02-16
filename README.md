@@ -32,10 +32,10 @@ Depuis la racine `school-live`:
 npm install
 ```
 
-### 2) Lancer PostgreSQL + Redis
+### 2) Lancer PostgreSQL + Redis + MinIO + media
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d postgres redis
+docker compose -f docker/docker-compose.yml up -d postgres redis minio media
 docker compose -f docker/docker-compose.yml ps
 ```
 
@@ -76,6 +76,20 @@ npm run -w @school-live/api worker:dev
 npm run -w @school-live/web dev
 ```
 
+### 6.bis) Lancer le microservice media (upload/resize images)
+
+```bash
+npm run -w @school-live/api media:dev
+```
+
+MinIO (local):
+
+- API S3: `http://localhost:9000`
+- Console: `http://localhost:9001`
+- Login: `minioadmin` / `minioadmin`
+- Region par defaut: `af-south-1` (choix recommande pour un service cible Afrique/Cameroun).
+- Health microservice media: `GET http://localhost:3002/health`
+
 ### 7) Lancer le mobile
 
 ```bash
@@ -88,10 +102,10 @@ Variable mobile utile:
 EXPO_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
-### 8) Arreter PostgreSQL + Redis
+### 8) Arreter les services infra
 
 ```bash
-docker compose -f docker/docker-compose.yml stop postgres redis
+docker compose -f docker/docker-compose.yml stop postgres redis minio media
 ```
 
 ## API exposee

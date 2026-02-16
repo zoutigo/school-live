@@ -11,7 +11,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Format Check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+  api:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -33,17 +58,58 @@ jobs:
       - name: Generate Prisma Schema and Client
         run: npm run db:generate
 
-      - name: Format Check
-        run: npm run format:check
+      - name: API Typecheck
+        run: npm run -w @school-live/api typecheck
 
-      - name: Lint
-        run: npm run lint
+      - name: API Build
+        run: npm run -w @school-live/api build
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: API Tests
+        run: npm run -w @school-live/api test
 
-      - name: Tests
-        run: npm run test
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
 
-      - name: Build
-        run: npm run build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Web Typecheck
+        run: npm run -w @school-live/web typecheck
+
+      - name: Web Build
+        run: npm run -w @school-live/web build
+
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Mobile Typecheck
+        run: npm run -w @school-live/mobile typecheck

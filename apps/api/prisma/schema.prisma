@@ -19,6 +19,7 @@ enum SchoolRole {
   SCHOOL_MANAGER
   SUPERVISOR
   SCHOOL_ACCOUNTANT
+  SCHOOL_STAFF
   TEACHER
   PARENT
   STUDENT
@@ -33,6 +34,7 @@ enum AppRole {
   SCHOOL_MANAGER
   SUPERVISOR
   SCHOOL_ACCOUNTANT
+  SCHOOL_STAFF
   TEACHER
   PARENT
   STUDENT
@@ -72,11 +74,19 @@ enum StudentLifeEventType {
   PUNITION
 }
 
+enum InternalMessageStatus {
+  DRAFT
+  SENT
+}
+
 
 model School {
   id                 String                @id @default(cuid())
   slug               String                @unique
   name               String
+  country            String?
+  region             String?
+  city               String?
   logoUrl            String?
   primaryColor       String?
   activeSchoolYearId String?
@@ -99,6 +109,10 @@ model School {
   curriculums        Curriculum[]
   curriculumSubjects CurriculumSubject[]
   lifeEvents         StudentLifeEvent[]
+  staffFunctions     SchoolStaffFunction[]
+  staffAssignments   SchoolStaffAssignment[]
+  internalMessages   InternalMessage[]
+  messageRecipients  InternalMessageRecipient[]
 
   @@index([activeSchoolYearId])
 }
@@ -129,6 +143,9 @@ model User {
   refreshTokens      RefreshToken[]
   recoveryAnswers    UserRecoveryAnswer[]
   lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
+  staffAssignments   SchoolStaffAssignment[]
+  sentMessages       InternalMessage[]         @relation("InternalMessageSender")
+  receivedMessages   InternalMessageRecipient[] @relation("InternalMessageRecipientUser")
 }
 
 model PlatformRoleAssignment {
@@ -155,6 +172,36 @@ model SchoolMembership {
   @@unique([userId, schoolId, role])
   @@index([schoolId])
   @@index([role])
+}
+
+model SchoolStaffFunction {
+  id          String                 @id @default(cuid())
+  schoolId    String
+  name        String
+  description String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  school      School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments SchoolStaffAssignment[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model SchoolStaffAssignment {
+  id         String             @id @default(cuid())
+  schoolId   String
+  functionId String
+  userId     String
+  createdAt  DateTime           @default(now())
+  school     School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  function   SchoolStaffFunction @relation(fields: [functionId], references: [id], onDelete: Cascade)
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, functionId, userId])
+  @@index([schoolId])
+  @@index([functionId])
+  @@index([userId])
 }
 
 model RefreshToken {
@@ -505,5 +552,50 @@ model StudentLifeEvent {
 }
 
 
+model InternalMessage {
+  id              String                @id @default(cuid())
+  schoolId        String
+  senderUserId    String
+  status          InternalMessageStatus @default(SENT)
+  subject         String
+  body            String
+  sentAt          DateTime?
+  senderArchivedAt DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  school          School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  senderUser      User                  @relation("InternalMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  recipients      InternalMessageRecipient[]
+
+  @@index([schoolId])
+  @@index([senderUserId])
+  @@index([status])
+  @@index([sentAt])
+  @@index([createdAt])
+}
+
+model InternalMessageRecipient {
+  id             String          @id @default(cuid())
+  messageId      String
+  schoolId       String
+  recipientUserId String
+  readAt         DateTime?
+  archivedAt     DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime        @default(now())
+  message        InternalMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  recipientUser  User            @relation("InternalMessageRecipientUser", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, recipientUserId])
+  @@index([schoolId])
+  @@index([recipientUserId])
+  @@index([archivedAt])
+  @@index([readAt])
+  @@index([deletedAt])
+}
+
+
 // Reserved for future shared indexes, comments and data notes.
+
 

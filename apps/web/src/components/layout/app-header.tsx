@@ -31,7 +31,8 @@ function getPortalLabel(role: Role): string {
     role === "SCHOOL_ADMIN" ||
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR" ||
-    role === "SCHOOL_ACCOUNTANT"
+    role === "SCHOOL_ACCOUNTANT" ||
+    role === "SCHOOL_STAFF"
   ) {
     return "Portail etablissement";
   }
