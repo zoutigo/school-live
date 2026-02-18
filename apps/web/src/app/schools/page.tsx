@@ -38,6 +38,9 @@ type SchoolRow = {
   id: string;
   slug: string;
   name: string;
+  country: string | null;
+  region: string | null;
+  city: string | null;
   logoUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +53,9 @@ type SchoolDetails = {
   id: string;
   slug: string;
   name: string;
+  country: string | null;
+  region: string | null;
+  city: string | null;
   logoUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -86,21 +92,46 @@ type EmailCheckState =
 
 const createSchoolSchema = z.object({
   name: z.string().trim().min(1, "Le nom de l ecole est obligatoire."),
+  country: z
+    .union([z.string().trim(), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === null) {
+        return undefined;
+      }
+      return value;
+    }),
+  region: z
+    .union([z.string().trim(), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === null) {
+        return undefined;
+      }
+      return value;
+    }),
+  city: z
+    .union([z.string().trim(), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === "" || value === null) {
+        return undefined;
+      }
+      return value;
+    }),
   schoolAdminEmail: z
     .string()
     .trim()
     .email("L'email du school admin est invalide."),
-  logoUrl: z.string().trim().startsWith("/files/schools/logos/").optional(),
+  logoUrl: z.string().trim().url().optional(),
 });
 
 const updateSchoolSchema = z.object({
   name: z.string().trim().min(1, "Le nom de l ecole est obligatoire."),
-  logoUrl: z
-    .string()
-    .trim()
-    .startsWith("/files/schools/logos/")
-    .nullable()
-    .optional(),
+  country: z.string().trim().nullable().optional(),
+  region: z.string().trim().nullable().optional(),
+  city: z.string().trim().nullable().optional(),
+  logoUrl: z.string().trim().url().nullable().optional(),
 });
 
 function toFileUrl(fileUrl: string | null) {
@@ -126,6 +157,9 @@ export default function SchoolsPage() {
 
   const [name, setName] = useState("");
   const [schoolAdminEmail, setSchoolAdminEmail] = useState("");
+  const [country, setCountry] = useState("");
+  const [region, setRegion] = useState("");
+  const [city, setCity] = useState("");
   const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
   const [slugPreview, setSlugPreview] = useState<SlugPreviewState>({
     loading: false,
@@ -142,6 +176,9 @@ export default function SchoolsPage() {
   );
   const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
   const [editSchoolName, setEditSchoolName] = useState("");
+  const [editSchoolCountry, setEditSchoolCountry] = useState("");
+  const [editSchoolRegion, setEditSchoolRegion] = useState("");
+  const [editSchoolCity, setEditSchoolCity] = useState("");
   const [editSchoolLogoUrl, setEditSchoolLogoUrl] = useState<string | null>(
     null,
   );
@@ -357,6 +394,9 @@ export default function SchoolsPage() {
 
     const parsed = createSchoolSchema.safeParse({
       name,
+      country,
+      region,
+      city,
       schoolAdminEmail,
       logoUrl: schoolLogoUrl ?? undefined,
     });
@@ -416,6 +456,9 @@ export default function SchoolsPage() {
 
       setName("");
       setSchoolAdminEmail("");
+      setCountry("");
+      setRegion("");
+      setCity("");
       setSchoolLogoUrl(null);
       setSlugPreview({
         loading: false,
@@ -440,6 +483,9 @@ export default function SchoolsPage() {
     setOpenActionsSchoolId(null);
     setEditingSchoolId(school.id);
     setEditSchoolName(school.name);
+    setEditSchoolCountry(school.country ?? "");
+    setEditSchoolRegion(school.region ?? "");
+    setEditSchoolCity(school.city ?? "");
     setEditSchoolLogoUrl(school.logoUrl);
   }
 
@@ -447,6 +493,9 @@ export default function SchoolsPage() {
     setEditError(null);
     const parsed = updateSchoolSchema.safeParse({
       name: editSchoolName,
+      country: editSchoolCountry || null,
+      region: editSchoolRegion || null,
+      city: editSchoolCity || null,
       logoUrl: editSchoolLogoUrl,
     });
 
@@ -473,6 +522,9 @@ export default function SchoolsPage() {
         },
         body: JSON.stringify({
           name: parsed.data.name,
+          country: parsed.data.country ?? null,
+          region: parsed.data.region ?? null,
+          city: parsed.data.city ?? null,
           logoUrl: parsed.data.logoUrl ?? null,
         }),
       });
@@ -621,6 +673,7 @@ export default function SchoolsPage() {
                   <tr className="border-b border-border text-left text-text-secondary">
                     <th className="px-3 py-2 font-medium">Nom</th>
                     <th className="px-3 py-2 font-medium">Slug</th>
+                    <th className="px-3 py-2 font-medium">Localisation</th>
                     <th className="px-3 py-2 font-medium">Utilisateurs</th>
                     <th className="px-3 py-2 font-medium">Classes</th>
                     <th className="px-3 py-2 font-medium">Eleves</th>
@@ -633,7 +686,7 @@ export default function SchoolsPage() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className="px-3 py-6 text-text-secondary" colSpan={7}>
+                      <td className="px-3 py-6 text-text-secondary" colSpan={8}>
                         Chargement des ecoles...
                       </td>
                     </tr>
@@ -662,6 +715,11 @@ export default function SchoolsPage() {
                             </button>
                           </td>
                           <td className="px-3 py-2">{school.slug}</td>
+                          <td className="px-3 py-2">
+                            {[school.city, school.region, school.country]
+                              .filter(Boolean)
+                              .join(", ") || "-"}
+                          </td>
                           <td className="px-3 py-2">{school.usersCount}</td>
                           <td className="px-3 py-2">{school.classesCount}</td>
                           <td className="px-3 py-2">{school.studentsCount}</td>
@@ -708,7 +766,7 @@ export default function SchoolsPage() {
 
                         {editingSchoolId === school.id ? (
                           <tr className="border-b border-border bg-background">
-                            <td className="px-3 py-3" colSpan={7}>
+                            <td className="px-3 py-3" colSpan={8}>
                               <div className="grid gap-3 md:grid-cols-2">
                                 <label className="grid gap-1 text-sm">
                                   <span className="text-text-secondary">
@@ -718,6 +776,42 @@ export default function SchoolsPage() {
                                     value={editSchoolName}
                                     onChange={(event) =>
                                       setEditSchoolName(event.target.value)
+                                    }
+                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  />
+                                </label>
+                                <label className="grid gap-1 text-sm">
+                                  <span className="text-text-secondary">
+                                    Pays
+                                  </span>
+                                  <input
+                                    value={editSchoolCountry}
+                                    onChange={(event) =>
+                                      setEditSchoolCountry(event.target.value)
+                                    }
+                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  />
+                                </label>
+                                <label className="grid gap-1 text-sm">
+                                  <span className="text-text-secondary">
+                                    Region
+                                  </span>
+                                  <input
+                                    value={editSchoolRegion}
+                                    onChange={(event) =>
+                                      setEditSchoolRegion(event.target.value)
+                                    }
+                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  />
+                                </label>
+                                <label className="grid gap-1 text-sm">
+                                  <span className="text-text-secondary">
+                                    Ville
+                                  </span>
+                                  <input
+                                    value={editSchoolCity}
+                                    onChange={(event) =>
+                                      setEditSchoolCity(event.target.value)
                                     }
                                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   />
@@ -767,7 +861,7 @@ export default function SchoolsPage() {
 
                   {!loading && orderedSchools.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-6 text-text-secondary" colSpan={7}>
+                      <td className="px-3 py-6 text-text-secondary" colSpan={8}>
                         Aucune ecole trouvee.
                       </td>
                     </tr>
@@ -803,6 +897,18 @@ export default function SchoolsPage() {
                     <div className="grid gap-2">
                       <InfoLine label="Nom" value={selectedSchool.name} />
                       <InfoLine label="Slug" value={selectedSchool.slug} />
+                      <InfoLine
+                        label="Pays"
+                        value={selectedSchool.country ?? "-"}
+                      />
+                      <InfoLine
+                        label="Region"
+                        value={selectedSchool.region ?? "-"}
+                      />
+                      <InfoLine
+                        label="Ville"
+                        value={selectedSchool.city ?? "-"}
+                      />
                       <InfoLine
                         label="Creee le"
                         value={new Date(
@@ -902,6 +1008,33 @@ export default function SchoolsPage() {
                       : `Slug genere: ${slugPreview.suggestedSlug}.`
                     : null}
                 </span>
+              </label>
+
+              <label className="grid gap-1 text-sm">
+                <span className="text-text-secondary">Pays (optionnel)</span>
+                <input
+                  value={country}
+                  onChange={(event) => setCountry(event.target.value)}
+                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                />
+              </label>
+
+              <label className="grid gap-1 text-sm">
+                <span className="text-text-secondary">Region (optionnel)</span>
+                <input
+                  value={region}
+                  onChange={(event) => setRegion(event.target.value)}
+                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                />
+              </label>
+
+              <label className="grid gap-1 text-sm md:col-span-2">
+                <span className="text-text-secondary">Ville (optionnel)</span>
+                <input
+                  value={city}
+                  onChange={(event) => setCity(event.target.value)}
+                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                />
               </label>
 
               <label className="grid gap-1 text-sm md:col-span-2">

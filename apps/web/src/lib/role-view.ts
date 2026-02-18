@@ -5,6 +5,7 @@ export type SchoolRole =
   | "SCHOOL_MANAGER"
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
+  | "SCHOOL_STAFF"
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
@@ -27,6 +28,7 @@ const ROLE_SET: Set<string> = new Set([
   "SCHOOL_MANAGER",
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
+  "SCHOOL_STAFF",
   "TEACHER",
   "PARENT",
   "STUDENT",

@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "nest start --watch",
     "worker:dev": "nest start --watch --entryFile worker-main",
+    "media:dev": "nest start --watch --entryFile media-main",
     "build": "nest build",
     "start": "node dist/main.js",
     "worker:start": "node dist/worker-main.js",
+    "media:start": "node dist/media-main.js",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema prisma/schema.prisma",

@@ -19,6 +19,7 @@ enum SchoolRole {
   SCHOOL_MANAGER
   SUPERVISOR
   SCHOOL_ACCOUNTANT
+  SCHOOL_STAFF
   TEACHER
   PARENT
   STUDENT
@@ -33,6 +34,7 @@ enum AppRole {
   SCHOOL_MANAGER
   SUPERVISOR
   SCHOOL_ACCOUNTANT
+  SCHOOL_STAFF
   TEACHER
   PARENT
   STUDENT
@@ -70,4 +72,9 @@ enum StudentLifeEventType {
   RETARD
   SANCTION
   PUNITION
+}
+
+enum InternalMessageStatus {
+  DRAFT
+  SENT
 }

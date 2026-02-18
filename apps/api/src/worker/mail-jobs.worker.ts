@@ -13,9 +13,11 @@ import {
 } from "../infrastructure/email/email.port.js";
 import { buildRedisConnection } from "../infrastructure/messaging/redis-connection.js";
 import {
+  MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
+  type InternalMessageNotificationPayload,
   type StudentLifeEventNotificationPayload,
   type TemporaryPasswordMailPayload,
 } from "../mail/mail.types.js";
@@ -43,6 +45,12 @@ export class MailJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION) {
           await this.emailPort.sendStudentLifeEventNotification(
             job.data as StudentLifeEventNotificationPayload,
+          );
+          return;
+        }
+        if (job.name === MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION) {
+          await this.emailPort.sendInternalMessageNotification(
+            job.data as InternalMessageNotificationPayload,
           );
           return;
         }

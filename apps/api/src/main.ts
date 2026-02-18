@@ -3,9 +3,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import type { CorsOptions } from "cors";
 import cookieParser from "cookie-parser";
-import express from "express";
 import { AppModule } from "./app.module.js";
-import { getFilesDirectory } from "./files/files-path.util.js";
 import { csrfMiddleware } from "./security/csrf.middleware.js";
 
 async function bootstrap() {
@@ -39,7 +37,6 @@ async function bootstrap() {
   };
   app.enableCors(corsOptions);
   app.use(cookieParser());
-  app.use("/files", express.static(getFilesDirectory()));
   app.use(csrfMiddleware);
   app.useGlobalPipes(
     new ValidationPipe({

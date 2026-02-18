@@ -23,6 +23,7 @@ import {
   Users,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
+import { getSchoolMessagesUnreadCount } from "../messaging/messaging-api";
 import type { Role } from "../../lib/role-view";
 
 type SidebarProps = {
@@ -140,7 +141,8 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
   if (
     role === "SCHOOL_ADMIN" ||
     role === "SCHOOL_MANAGER" ||
-    role === "SUPERVISOR"
+    role === "SUPERVISOR" ||
+    role === "SCHOOL_STAFF"
   ) {
     return [
       {
@@ -204,6 +206,12 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/grades`,
       },
       {
+        label: "Messagerie",
+        href: `${schoolBase}/messagerie`,
+        icon: MessageSquare,
+        matchPrefix: `${schoolBase}/messagerie`,
+      },
+      {
         label: "Parametres",
         href: "/settings",
         icon: Settings,
@@ -240,10 +248,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       },
       {
         label: "Messagerie",
-        href: `${schoolBase}/dashboard#messages`,
+        href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
-        unread: 2,
-        matchPrefix: `${schoolBase}/dashboard`,
+        matchPrefix: `${schoolBase}/messagerie`,
       },
       {
         label: "Parametres",
@@ -288,10 +295,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       },
       {
         label: "Messagerie",
-        href: `${schoolBase}/dashboard#messages`,
+        href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
-        unread: 3,
-        matchPrefix: `${schoolBase}/dashboard`,
+        matchPrefix: `${schoolBase}/messagerie`,
       },
       {
         label: "Documents",
@@ -353,10 +359,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
     },
     {
       label: "Messagerie",
-      href: `${schoolBase}/dashboard#messages`,
+      href: `${schoolBase}/messagerie`,
       icon: MessageSquare,
-      unread: 3,
-      matchPrefix: `${schoolBase}/dashboard`,
+      matchPrefix: `${schoolBase}/messagerie`,
     },
     {
       label: "Documents",
@@ -477,6 +482,7 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
   const [teacherClasses, setTeacherClasses] = useState<TeacherClassNav[]>([]);
   const [openTeacherSection, setOpenTeacherSection] =
     useState<string>("classes");
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
 
   useEffect(() => {
     if (role !== "PARENT" || !schoolSlug) {
@@ -495,6 +501,64 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
 
     void loadTeacherClasses(schoolSlug);
   }, [role, schoolSlug]);
+
+  useEffect(() => {
+    if (!schoolSlug) {
+      setUnreadMessagesCount(0);
+      return;
+    }
+
+    const allowedRoles: Role[] = [
+      "SCHOOL_ADMIN",
+      "SCHOOL_MANAGER",
+      "SUPERVISOR",
+      "SCHOOL_ACCOUNTANT",
+      "SCHOOL_STAFF",
+      "TEACHER",
+      "PARENT",
+      "STUDENT",
+      "ADMIN",
+      "SUPER_ADMIN",
+    ];
+
+    if (!allowedRoles.includes(role)) {
+      setUnreadMessagesCount(0);
+      return;
+    }
+
+    void loadUnreadCount(schoolSlug);
+  }, [schoolSlug, role, pathname]);
+
+  useEffect(() => {
+    if (!schoolSlug) {
+      return;
+    }
+    const onMessagingUpdated = () => {
+      void loadUnreadCount(schoolSlug);
+    };
+    window.addEventListener("messaging:updated", onMessagingUpdated);
+    return () =>
+      window.removeEventListener("messaging:updated", onMessagingUpdated);
+  }, [schoolSlug]);
+
+  async function loadUnreadCount(currentSchoolSlug: string) {
+    try {
+      const unread = await getSchoolMessagesUnreadCount(currentSchoolSlug);
+      setUnreadMessagesCount(unread);
+    } catch {
+      setUnreadMessagesCount(0);
+    }
+  }
+
+  function resolveUnread(item: NavItem) {
+    if (!item.href.includes("/messagerie")) {
+      return item.unread;
+    }
+    if (unreadMessagesCount <= 0) {
+      return undefined;
+    }
+    return unreadMessagesCount;
+  }
 
   async function loadParentChildren(currentSchoolSlug: string) {
     try {
@@ -693,9 +757,11 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                       <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
                         {item.label}
                       </span>
-                      {typeof item.unread === "number" ? (
+                      {typeof resolveUnread(item) === "number" ? (
                         <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                          <Badge variant="notification">{item.unread}</Badge>
+                          <Badge variant="notification">
+                            {resolveUnread(item)}
+                          </Badge>
                         </span>
                       ) : null}
                     </Link>
@@ -842,9 +908,9 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                     {item.label}
                   </span>
                 </span>
-                {typeof item.unread === "number" ? (
+                {typeof resolveUnread(item) === "number" ? (
                   <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                    <Badge variant="notification">{item.unread}</Badge>
+                    <Badge variant="notification">{resolveUnread(item)}</Badge>
                   </span>
                 ) : null}
               </Link>
@@ -910,9 +976,11 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                       <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
                         {item.label}
                       </span>
-                      {typeof item.unread === "number" ? (
+                      {typeof resolveUnread(item) === "number" ? (
                         <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                          <Badge variant="notification">{item.unread}</Badge>
+                          <Badge variant="notification">
+                            {resolveUnread(item)}
+                          </Badge>
                         </span>
                       ) : null}
                     </Link>

@@ -2,6 +2,9 @@ model School {
   id                 String                @id @default(cuid())
   slug               String                @unique
   name               String
+  country            String?
+  region             String?
+  city               String?
   logoUrl            String?
   primaryColor       String?
   activeSchoolYearId String?
@@ -24,6 +27,10 @@ model School {
   curriculums        Curriculum[]
   curriculumSubjects CurriculumSubject[]
   lifeEvents         StudentLifeEvent[]
+  staffFunctions     SchoolStaffFunction[]
+  staffAssignments   SchoolStaffAssignment[]
+  internalMessages   InternalMessage[]
+  messageRecipients  InternalMessageRecipient[]
 
   @@index([activeSchoolYearId])
 }
@@ -54,6 +61,9 @@ model User {
   refreshTokens      RefreshToken[]
   recoveryAnswers    UserRecoveryAnswer[]
   lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
+  staffAssignments   SchoolStaffAssignment[]
+  sentMessages       InternalMessage[]         @relation("InternalMessageSender")
+  receivedMessages   InternalMessageRecipient[] @relation("InternalMessageRecipientUser")
 }
 
 model PlatformRoleAssignment {
@@ -80,6 +90,36 @@ model SchoolMembership {
   @@unique([userId, schoolId, role])
   @@index([schoolId])
   @@index([role])
+}
+
+model SchoolStaffFunction {
+  id          String                 @id @default(cuid())
+  schoolId    String
+  name        String
+  description String?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  school      School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments SchoolStaffAssignment[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model SchoolStaffAssignment {
+  id         String             @id @default(cuid())
+  schoolId   String
+  functionId String
+  userId     String
+  createdAt  DateTime           @default(now())
+  school     School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  function   SchoolStaffFunction @relation(fields: [functionId], references: [id], onDelete: Cascade)
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, functionId, userId])
+  @@index([schoolId])
+  @@index([functionId])
+  @@index([userId])
 }
 
 model RefreshToken {

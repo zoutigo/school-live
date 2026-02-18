@@ -9,7 +9,7 @@ import {
 } from "class-validator";
 
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-const USER_AVATAR_URL_REGEX = /^\/files\/users\/avatars\/[a-zA-Z0-9-]+\.webp$/;
+const USER_AVATAR_URL_REGEX = /^https?:\/\/.+$/;
 
 export class CreateUserDto {
   @IsString()

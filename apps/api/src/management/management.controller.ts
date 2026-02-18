@@ -16,11 +16,11 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { Roles } from "../access/roles.decorator.js";
 import { RolesGuard } from "../access/roles.guard.js";
 import { SchoolScopeGuard } from "../access/school-scope.guard.js";
-import { ImageStorageService } from "../files/image-storage.service.js";
 import { CurrentSchoolId } from "../auth/decorators/current-school-id.decorator.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { MediaClientService } from "../media-client/media-client.service.js";
 import { CreateAdminDto } from "./dto/create-admin.dto.js";
 import { BulkUpdateEnrollmentStatusDto } from "./dto/bulk-update-enrollment-status.dto.js";
 import { CreateAcademicLevelDto } from "./dto/create-academic-level.dto.js";
@@ -31,6 +31,8 @@ import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-overri
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
 import { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
+import { CreateSchoolStaffAssignmentDto } from "./dto/create-school-staff-assignment.dto.js";
+import { CreateSchoolStaffFunctionDto } from "./dto/create-school-staff-function.dto.js";
 import { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
 import { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
 import { CreateStudentLifeEventDto } from "./dto/create-student-life-event.dto.js";
@@ -51,6 +53,7 @@ import { UpdateClassroomDto } from "./dto/update-classroom.dto.js";
 import { UpdateClassSubjectOverrideDto } from "./dto/update-class-subject-override.dto.js";
 import { UpdateCurriculumDto } from "./dto/update-curriculum.dto.js";
 import { UpdateSchoolDto } from "./dto/update-school.dto.js";
+import { UpdateSchoolStaffFunctionDto } from "./dto/update-school-staff-function.dto.js";
 import { UpdateStudentDto } from "./dto/update-student.dto.js";
 import { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
 import { UpdateStudentLifeEventDto } from "./dto/update-student-life-event.dto.js";
@@ -65,7 +68,7 @@ import { ManagementService } from "./management.service.js";
 export class ManagementController {
   constructor(
     private readonly managementService: ManagementService,
-    private readonly imageStorageService: ImageStorageService,
+    private readonly mediaClientService: MediaClientService,
   ) {}
 
   @Get("system/schools")
@@ -197,7 +200,7 @@ export class ManagementController {
       throw new BadRequestException("Type upload non supporte");
     }
 
-    return this.imageStorageService.storeImage(kind, file);
+    return this.mediaClientService.uploadImage(kind, file);
   }
 
   @Post("schools/:schoolSlug/admin/classrooms")
@@ -549,6 +552,108 @@ export class ManagementController {
   @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
   listTeachers(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listTeachers(schoolId);
+  }
+
+  @Get("schools/:schoolSlug/admin/staff-functions")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  listSchoolStaffFunctions(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listSchoolStaffFunctions(schoolId);
+  }
+
+  @Post("schools/:schoolSlug/admin/staff-functions")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  createSchoolStaffFunction(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: CreateSchoolStaffFunctionDto,
+  ) {
+    return this.managementService.createSchoolStaffFunction(schoolId, payload);
+  }
+
+  @Patch("schools/:schoolSlug/admin/staff-functions/:functionId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  updateSchoolStaffFunction(
+    @CurrentSchoolId() schoolId: string,
+    @Param("functionId") functionId: string,
+    @Body() payload: UpdateSchoolStaffFunctionDto,
+  ) {
+    return this.managementService.updateSchoolStaffFunction(
+      schoolId,
+      functionId,
+      payload,
+    );
+  }
+
+  @Delete("schools/:schoolSlug/admin/staff-functions/:functionId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  deleteSchoolStaffFunction(
+    @CurrentSchoolId() schoolId: string,
+    @Param("functionId") functionId: string,
+  ) {
+    return this.managementService.deleteSchoolStaffFunction(
+      schoolId,
+      functionId,
+    );
+  }
+
+  @Get("schools/:schoolSlug/admin/staff-assignments")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  listSchoolStaffAssignments(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listSchoolStaffAssignments(schoolId);
+  }
+
+  @Get("schools/:schoolSlug/admin/staff-candidates")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  listSchoolStaffCandidates(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listSchoolStaffCandidates(schoolId);
+  }
+
+  @Post("schools/:schoolSlug/admin/staff-assignments")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  createSchoolStaffAssignment(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: CreateSchoolStaffAssignmentDto,
+  ) {
+    return this.managementService.createSchoolStaffAssignment(
+      schoolId,
+      payload,
+    );
+  }
+
+  @Delete("schools/:schoolSlug/admin/staff-assignments/:assignmentId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  deleteSchoolStaffAssignment(
+    @CurrentSchoolId() schoolId: string,
+    @Param("assignmentId") assignmentId: string,
+  ) {
+    return this.managementService.deleteSchoolStaffAssignment(
+      schoolId,
+      assignmentId,
+    );
+  }
+
+  @Get("schools/:schoolSlug/messaging/recipients")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "SCHOOL_ACCOUNTANT",
+    "SCHOOL_STAFF",
+    "TEACHER",
+    "PARENT",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
+  listMessagingRecipients(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listMessagingRecipients(schoolId);
   }
 
   @Get("schools/:schoolSlug/admin/teacher-assignments")
