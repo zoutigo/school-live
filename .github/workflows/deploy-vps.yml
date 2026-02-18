@@ -99,7 +99,8 @@ jobs:
             --exclude=node_modules \
             --exclude=apps/web/.next \
             --exclude=apps/api/dist \
-            -czf scolive-release.tar.gz .
+            -czf /tmp/scolive-release.tar.gz .
+          mv /tmp/scolive-release.tar.gz ./scolive-release.tar.gz
 
       - name: Upload archive to VPS
         uses: appleboy/scp-action@v0.1.7
