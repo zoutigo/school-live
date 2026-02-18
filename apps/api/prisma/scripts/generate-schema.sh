@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/usr/bin/env sh
+set -eu
 
 schema_dir="apps/api/prisma/schema"
 out_file="apps/api/prisma/schema.prisma"

@@ -9,10 +9,10 @@
     "packages/*"
   ],
   "scripts": {
-    "db:schema:gen": "bash apps/api/prisma/scripts/generate-schema.sh",
+    "db:schema:gen": "sh apps/api/prisma/scripts/generate-schema.sh",
     "db:generate": "npm run db:schema:gen && npm run -w @school-live/api prisma:generate",
     "db:migrate": "npm run db:schema:gen && npm run -w @school-live/api prisma:migrate:dev",
-    "prepare": "bash scripts/setup-git-hooks.sh",
+    "prepare": "sh scripts/setup-git-hooks.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build": "npm run -ws build --if-present",
