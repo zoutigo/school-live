@@ -78,6 +78,9 @@ services:
     depends_on:
       minio:
         condition: service_started
+    networks:
+      - default
+      - nginx
 
   worker:
     build:
