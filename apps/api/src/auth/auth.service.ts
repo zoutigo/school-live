@@ -733,6 +733,7 @@ export class AuthService {
   private getRecoveryQuestions() {
     return [
       { key: "MOTHER_MAIDEN_NAME", label: "Nom de jeune fille de votre mere" },
+      { key: "FATHER_FIRST_NAME", label: "Prenom de votre pere" },
       { key: "FAVORITE_SPORT", label: "Votre sport prefere" },
       { key: "FAVORITE_TEACHER", label: "Nom de votre enseignant prefere" },
       { key: "BIRTH_CITY", label: "Votre ville de naissance" },

@@ -10,6 +10,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 type QuestionKey =
   | "MOTHER_MAIDEN_NAME"
+  | "FATHER_FIRST_NAME"
   | "FAVORITE_SPORT"
   | "FAVORITE_TEACHER"
   | "BIRTH_CITY"
@@ -38,6 +39,7 @@ const profileSetupSchema = z
         z.object({
           questionKey: z.enum([
             "MOTHER_MAIDEN_NAME",
+            "FATHER_FIRST_NAME",
             "FAVORITE_SPORT",
             "FAVORITE_TEACHER",
             "BIRTH_CITY",

@@ -13,6 +13,7 @@ import {
 class RecoveryAnswerDto {
   @IsIn([
     "MOTHER_MAIDEN_NAME",
+    "FATHER_FIRST_NAME",
     "FAVORITE_SPORT",
     "FAVORITE_TEACHER",
     "BIRTH_CITY",
@@ -21,6 +22,7 @@ class RecoveryAnswerDto {
   ])
   questionKey!:
     | "MOTHER_MAIDEN_NAME"
+    | "FATHER_FIRST_NAME"
     | "FAVORITE_SPORT"
     | "FAVORITE_TEACHER"
     | "BIRTH_CITY"
