@@ -4,11 +4,13 @@ import { CSRF_COOKIE_NAME } from "../auth/auth-cookies.js";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 function isPublicPath(path: string) {
+  const normalizedPath = path.startsWith("/api/") ? path.slice(4) : path;
+
   return (
-    path === "/api/auth/login" ||
-    path === "/api/auth/first-password-change" ||
-    path === "/api/auth/profile-setup" ||
-    /^\/api\/schools\/[^/]+\/auth\/login$/.test(path)
+    normalizedPath === "/auth/login" ||
+    normalizedPath === "/auth/first-password-change" ||
+    normalizedPath === "/auth/profile-setup" ||
+    /^\/schools\/[^/]+\/auth\/login$/.test(normalizedPath)
   );
 }
 
