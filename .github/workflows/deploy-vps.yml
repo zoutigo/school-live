@@ -1,0 +1,158 @@
+name: Scolive - Checks & Deploy (VPS)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: scolive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d scolive"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres -d scolive; then
+              break
+            fi
+            sleep 2
+          done
+        env:
+          PGPASSWORD: postgres
+
+      - name: Set env for Prisma
+        run: |
+          echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/scolive?schema=public" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma schema and client
+        run: npm run db:generate
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm run test
+
+      - name: Build
+        env:
+          NODE_OPTIONS: "--max-old-space-size=2048"
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: npm run build
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create deployment archive
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=apps/web/.next \
+            --exclude=apps/api/dist \
+            -czf scolive-release.tar.gz .
+
+      - name: Upload archive to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: "scolive-release.tar.gz"
+          target: "~/apps"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script_stop: true
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+
+            echo "==> Prepare deploy directory"
+            APP_DIR=~/apps/scolive
+            ARCHIVE_PATH=~/apps/scolive-release.tar.gz
+            ENV_BACKUP=/tmp/scolive.env.backup
+            mkdir -p "${APP_DIR}/docker"
+            if [ -f "${APP_DIR}/docker/.env" ]; then
+              cp "${APP_DIR}/docker/.env" "${ENV_BACKUP}"
+            fi
+
+            echo "==> Replace application code from CI archive"
+            find "${APP_DIR}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            tar -xzf "${ARCHIVE_PATH}" -C "${APP_DIR}"
+            rm -f "${ARCHIVE_PATH}"
+            if [ -f "${ENV_BACKUP}" ]; then
+              mkdir -p "${APP_DIR}/docker"
+              mv "${ENV_BACKUP}" "${APP_DIR}/docker/.env"
+            fi
+
+            echo "==> Ensure persistent data directories"
+            UPLOADS_ROOT=/home/ubuntu/uploads/scolive
+            NGINX_NETWORK=proxy
+            mkdir -p "${UPLOADS_ROOT}/redis" "${UPLOADS_ROOT}/minio"
+            docker network ls | grep -w db >/dev/null 2>&1 || docker network create db
+            docker network ls | grep -w "${NGINX_NETWORK}" >/dev/null 2>&1 || docker network create "${NGINX_NETWORK}"
+
+            echo "==> Rebuild & restart containers"
+            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env up -d --build
+
+            echo "==> Run Prisma migrations in API container"
+            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env exec -T api sh -lc "npm run db:schema:gen && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma"
+
+            echo "==> Status"
+            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env ps
