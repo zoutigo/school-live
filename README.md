@@ -35,8 +35,8 @@ npm install
 ### 2) Lancer PostgreSQL + Redis + MinIO + media
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d postgres redis minio media
-docker compose -f docker/docker-compose.yml ps
+docker compose -f docker/docker-compose.dev.yml up -d postgres redis minio media
+docker compose -f docker/docker-compose.dev.yml ps
 ```
 
 ### 3) Prisma schema (multi-fichiers)
@@ -105,7 +105,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3001/api
 ### 8) Arreter les services infra
 
 ```bash
-docker compose -f docker/docker-compose.yml stop postgres redis minio media
+docker compose -f docker/docker-compose.dev.yml stop postgres redis minio media
 ```
 
 ## API exposee

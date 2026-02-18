@@ -99,6 +99,7 @@ jobs:
             --exclude=node_modules \
             --exclude=apps/web/.next \
             --exclude=apps/api/dist \
+            --exclude=docker/docker-compose.dev.yml \
             -czf /tmp/scolive-release.tar.gz .
           mv /tmp/scolive-release.tar.gz ./scolive-release.tar.gz
 
@@ -148,6 +149,8 @@ jobs:
             mkdir -p "${UPLOADS_ROOT}/redis" "${UPLOADS_ROOT}/minio"
             docker network ls | grep -w db >/dev/null 2>&1 || docker network create db
             docker network ls | grep -w "${NGINX_NETWORK}" >/dev/null 2>&1 || docker network create "${NGINX_NETWORK}"
+
+            cd "${APP_DIR}"
 
             echo "==> Rebuild & restart containers"
             UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env up -d --build

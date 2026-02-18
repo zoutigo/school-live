@@ -18,7 +18,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest --config ./jest.config.cjs",
-    "test:e2e": "docker compose -f ../../docker/docker-compose.yml up -d postgres && jest --config ./jest.e2e.config.cjs --runInBand"
+    "test:e2e": "docker compose -f ../../docker/docker-compose.dev.yml up -d postgres && jest --config ./jest.e2e.config.cjs --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
