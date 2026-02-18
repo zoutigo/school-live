@@ -2,6 +2,7 @@ FROM node:22-alpine AS base
 WORKDIR /app
 
 COPY package*.json ./
+COPY scripts/setup-git-hooks.sh ./scripts/setup-git-hooks.sh
 COPY apps/api/package.json ./apps/api/package.json
 COPY apps/api/prisma ./apps/api/prisma
 COPY packages/types/package.json ./packages/types/package.json
