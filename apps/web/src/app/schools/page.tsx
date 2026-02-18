@@ -71,6 +71,9 @@ type SchoolDetails = {
     firstName: string;
     lastName: string;
     email: string;
+    mustChangePassword: boolean;
+    profileCompleted: boolean;
+    canResendInvite: boolean;
   }>;
 };
 
@@ -193,6 +196,9 @@ export default function SchoolsPage() {
     label: string;
   } | null>(null);
   const [deletingSchoolId, setDeletingSchoolId] = useState<string | null>(null);
+  const [sendingInviteAdminId, setSendingInviteAdminId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     void bootstrap();
@@ -608,6 +614,57 @@ export default function SchoolsPage() {
     }
   }
 
+  async function onResendSchoolAdminInvite(adminUserId: string) {
+    if (!selectedSchool) {
+      return;
+    }
+
+    setSubmitError(null);
+    setSubmitSuccess(null);
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setSubmitError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSendingInviteAdminId(adminUserId);
+    try {
+      const response = await fetch(
+        `${API_URL}/system/schools/${selectedSchool.id}/admins/${adminUserId}/resend-invite`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfToken,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Envoi de l invitation impossible.");
+        setSubmitError(String(message));
+        return;
+      }
+
+      const payload = (await response.json()) as { email: string };
+      setSubmitSuccess(
+        `Invitation renvoyee a ${payload.email}. Le school admin recevra un nouveau mot de passe provisoire.`,
+      );
+      await openSchoolDetails(selectedSchool.id);
+    } catch {
+      setSubmitError("Erreur reseau.");
+    } finally {
+      setSendingInviteAdminId(null);
+    }
+  }
+
   const orderedSchools = useMemo(
     () => [...schools].sort((a, b) => a.name.localeCompare(b.name)),
     [schools],
@@ -958,8 +1015,31 @@ export default function SchoolsPage() {
                     ) : (
                       <ul className="grid gap-1 text-sm text-text-primary">
                         {selectedSchool.schoolAdmins.map((admin) => (
-                          <li key={admin.id}>
-                            {admin.firstName} {admin.lastName} - {admin.email}
+                          <li
+                            key={admin.id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-border bg-surface px-3 py-2"
+                          >
+                            <span>
+                              {admin.firstName} {admin.lastName} - {admin.email}
+                            </span>
+                            {admin.canResendInvite ? (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={sendingInviteAdminId === admin.id}
+                                onClick={() => {
+                                  void onResendSchoolAdminInvite(admin.id);
+                                }}
+                              >
+                                {sendingInviteAdminId === admin.id
+                                  ? "Envoi..."
+                                  : "Renvoyer l invitation"}
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-text-secondary">
+                                Deja active
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>

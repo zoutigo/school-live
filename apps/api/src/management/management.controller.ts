@@ -182,6 +182,19 @@ export class ManagementController {
     return this.managementService.deleteSchool(schoolId);
   }
 
+  @Post("system/schools/:schoolId/admins/:adminUserId/resend-invite")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  resendSchoolAdminInvite(
+    @Param("schoolId") schoolId: string,
+    @Param("adminUserId") adminUserId: string,
+  ) {
+    return this.managementService.resendSchoolAdminInvite(
+      schoolId,
+      adminUserId,
+    );
+  }
+
   @Post("system/uploads/:kind")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("SUPER_ADMIN", "ADMIN")

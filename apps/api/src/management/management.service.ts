@@ -811,6 +811,8 @@ export class ManagementService {
                 firstName: true,
                 lastName: true,
                 email: true,
+                mustChangePassword: true,
+                profileCompleted: true,
               },
             },
           },
@@ -856,7 +858,88 @@ export class ManagementService {
         firstName: membership.user.firstName,
         lastName: membership.user.lastName,
         email: membership.user.email,
+        mustChangePassword: membership.user.mustChangePassword,
+        profileCompleted: membership.user.profileCompleted,
+        canResendInvite:
+          membership.user.mustChangePassword &&
+          !membership.user.profileCompleted,
       })),
+    };
+  }
+
+  async resendSchoolAdminInvite(schoolId: string, adminUserId: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        id: true,
+        slug: true,
+      },
+    });
+
+    if (!school) {
+      throw new NotFoundException("School not found");
+    }
+
+    const membership = await this.prisma.schoolMembership.findFirst({
+      where: {
+        schoolId,
+        userId: adminUserId,
+        role: "SCHOOL_ADMIN",
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!membership) {
+      throw new NotFoundException("School admin not found for this school");
+    }
+
+    const schoolAdmin = await this.prisma.user.findUnique({
+      where: { id: adminUserId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        mustChangePassword: true,
+        profileCompleted: true,
+      },
+    });
+
+    if (!schoolAdmin) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (!schoolAdmin.mustChangePassword || schoolAdmin.profileCompleted) {
+      throw new BadRequestException(
+        "Invite resend is allowed only before first login/password change",
+      );
+    }
+
+    const generatedTemporaryPassword = this.generateTemporaryPassword();
+    const passwordHash = await bcrypt.hash(generatedTemporaryPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: schoolAdmin.id },
+      data: {
+        passwordHash,
+        mustChangePassword: true,
+        profileCompleted: false,
+      },
+    });
+
+    await this.mailService.sendTemporaryPasswordEmail({
+      to: schoolAdmin.email,
+      firstName: schoolAdmin.firstName,
+      temporaryPassword: generatedTemporaryPassword,
+      schoolSlug: school.slug,
+    });
+
+    return {
+      success: true,
+      schoolId: school.id,
+      adminUserId: schoolAdmin.id,
+      email: schoolAdmin.email,
     };
   }
 
