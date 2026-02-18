@@ -10,6 +10,8 @@ type LoginResponse = {
 };
 
 type ApiErrorPayload = {
+  code?: string;
+  schoolSlug?: string | null;
   message?: string | { code?: string; schoolSlug?: string | null };
 };
 
@@ -54,10 +56,13 @@ export function LandingLoginForm() {
       if (!response.ok) {
         if (response.status === 403) {
           const payload = (await response.json()) as ApiErrorPayload;
-          const message = payload.message;
-          const code = typeof message === "object" ? message?.code : null;
+          const messageObject =
+            typeof payload.message === "object" && payload.message
+              ? payload.message
+              : null;
+          const code = payload.code ?? messageObject?.code ?? null;
           const forcedSchoolSlug =
-            typeof message === "object" ? message?.schoolSlug : null;
+            payload.schoolSlug ?? messageObject?.schoolSlug ?? null;
 
           if (code === "PASSWORD_CHANGE_REQUIRED") {
             const params = new URLSearchParams({ email });
