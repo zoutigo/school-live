@@ -26,6 +26,31 @@ Monorepo TypeScript pour une plateforme multi-ecoles (tenancy par route `schoolS
 
 Depuis la racine `school-live`:
 
+### Demarrage rapide (copier/coller)
+
+Si tu veux l equivalent du `npm run dev` d un projet simple, lance exactement ces commandes (dans cet ordre):
+
+```bash
+# Terminal 1 - installation + infra + prisma client
+npm install
+docker compose -f docker/docker-compose.dev.yml up -d postgres redis minio media
+npm run db:generate
+
+# Terminal 2 - API
+npm run -w @school-live/api dev
+
+# Terminal 3 - Worker (emails/jobs)
+npm run -w @school-live/api worker:dev
+
+# Terminal 4 - Web
+npm run -w @school-live/web dev
+```
+
+Application web: `http://localhost:3000`  
+API: `http://localhost:3001/api`
+
+`npm run db:migrate -- --name ...` est a lancer uniquement quand le schema Prisma change.
+
 ### 1) Installer
 
 ```bash

@@ -31,8 +31,10 @@ export interface AuthenticatedUser {
 
 export interface AuthResponse {
   accessToken: string;
+  refreshToken: string;
   tokenType: "Bearer";
   expiresIn: number;
+  refreshExpiresIn: number;
   schoolSlug: string | null;
   csrfToken?: string;
 }

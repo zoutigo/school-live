@@ -31,6 +31,11 @@ import {
 } from "lucide-react";
 import { ActionIconButton } from "../ui/action-icon-button";
 import { PaginationControls } from "../ui/pagination-controls";
+import {
+  buildDraftSnapshot,
+  canSendMessage,
+  hasUnsavedDraftChanges,
+} from "./messaging-compose-logic";
 
 type RecipientOption = {
   value: string;
@@ -57,7 +62,12 @@ type Props = {
   recipients?: RecipientOption[];
   teacherRecipients?: TeacherRecipientOption[];
   functionRecipients?: FunctionRecipientOption[];
+  initialSubject?: string;
+  initialBody?: string;
+  initialRecipientUserIds?: string[];
   onCancel: () => void;
+  onRequestBackToList?: () => void;
+  onUnsavedChange?: (hasUnsavedChanges: boolean) => void;
   onSend?: (payload: {
     subject: string;
     body: string;
@@ -82,7 +92,12 @@ export function MessagingComposer({
   recipients = [],
   teacherRecipients = [],
   functionRecipients = [],
+  initialSubject = "",
+  initialBody = "",
+  initialRecipientUserIds = [],
   onCancel,
+  onRequestBackToList,
+  onUnsavedChange,
   onSend,
   onSaveDraft,
   onUploadInlineImage,
@@ -98,7 +113,7 @@ export function MessagingComposer({
   const [selectedRecipients, setSelectedRecipients] = useState<
     SelectedRecipient[]
   >([]);
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(initialSubject);
   const [editorText, setEditorText] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -107,12 +122,125 @@ export function MessagingComposer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [lastSavedDraftSnapshot, setLastSavedDraftSnapshot] = useState<
+    string | null
+  >(null);
 
   const [teacherModalOpen, setTeacherModalOpen] = useState(false);
   const [staffModalOpen, setStaffModalOpen] = useState(false);
 
   const hasRecipientGroups =
     teacherRecipients.length > 0 || functionRecipients.length > 0;
+  const [initialRecipientsApplied, setInitialRecipientsApplied] =
+    useState(false);
+
+  useEffect(() => {
+    if (!editorRef.current || !initialBody) {
+      return;
+    }
+    editorRef.current.innerHTML = initialBody;
+    setEditorText(editorRef.current.innerText ?? "");
+  }, [initialBody]);
+
+  useEffect(() => {
+    if (initialRecipientsApplied) {
+      return;
+    }
+
+    const ids = Array.from(
+      new Set(
+        initialRecipientUserIds
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0),
+      ),
+    );
+    if (ids.length === 0) {
+      setInitialRecipientsApplied(true);
+      return;
+    }
+
+    if (hasRecipientGroups) {
+      const teacherById = new Map(
+        teacherRecipients.map((row) => [row.value, row]),
+      );
+      const functionById = new Map(
+        functionRecipients.map((row) => [row.value, row]),
+      );
+      if (teacherById.size === 0 && functionById.size === 0) {
+        return;
+      }
+
+      for (const id of ids) {
+        const teacher = teacherById.get(id);
+        if (teacher) {
+          addRecipient({
+            kind: "teacher",
+            value: teacher.value,
+            label: teacher.label,
+            subtitle: teacher.subjects.slice(0, 2).join(", "),
+          });
+          continue;
+        }
+
+        const staff = functionById.get(id);
+        if (staff) {
+          addRecipient({
+            kind: "function",
+            value: staff.value,
+            label: staff.label,
+            subtitle: staff.functionLabel,
+          });
+        }
+      }
+      setInitialRecipientsApplied(true);
+      return;
+    }
+
+    if (recipients.length === 0) {
+      return;
+    }
+    const firstMatch = ids.find((id) =>
+      recipients.some((row) => row.value === id),
+    );
+    if (firstMatch) {
+      setRecipient(firstMatch);
+    }
+    setInitialRecipientsApplied(true);
+  }, [
+    addRecipient,
+    functionRecipients,
+    hasRecipientGroups,
+    initialRecipientUserIds,
+    initialRecipientsApplied,
+    recipients,
+    teacherRecipients,
+  ]);
+
+  const sendEnabled = canSendMessage({
+    hasRecipientGroups,
+    selectedRecipientsCount: selectedRecipients.length,
+    recipient,
+    subject,
+    bodyText: editorText,
+    sending,
+    savingDraft,
+  });
+
+  const currentDraftSnapshot = buildDraftSnapshot({
+    hasRecipientGroups,
+    recipient,
+    selectedRecipientIds: selectedRecipients.map((entry) => entry.value),
+    subject,
+    bodyText: editorText,
+  });
+  const hasUnsavedChanges = hasUnsavedDraftChanges({
+    currentSnapshot: currentDraftSnapshot,
+    lastSavedDraftSnapshot,
+  });
+
+  useEffect(() => {
+    onUnsavedChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onUnsavedChange]);
 
   function addRecipient(next: SelectedRecipient) {
     setSelectedRecipients((prev) => {
@@ -303,6 +431,7 @@ export function MessagingComposer({
         body: editorRef.current?.innerHTML ?? "",
         recipientUserIds,
       });
+      setLastSavedDraftSnapshot(currentDraftSnapshot);
       setInfo("Brouillon enregistre.");
     } catch {
       setError("Impossible d'enregistrer le brouillon.");
@@ -746,7 +875,9 @@ export function MessagingComposer({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={() =>
+                onRequestBackToList ? onRequestBackToList() : onCancel()
+              }
               className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
             >
               Annuler
@@ -771,8 +902,8 @@ export function MessagingComposer({
           <button
             type="button"
             onClick={handleSend}
-            disabled={sending || savingDraft}
-            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark"
+            disabled={!sendEnabled}
+            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Send className="h-4 w-4" />
             {sending ? "Envoi..." : "Envoyer"}

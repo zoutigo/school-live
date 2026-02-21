@@ -6,9 +6,11 @@ import {
   Archive,
   ArchiveRestore,
   FileText,
+  Forward,
   Inbox,
   Mail,
   MailOpen,
+  Reply,
   Send,
 } from "lucide-react";
 import { Card } from "../../../../../components/ui/card";
@@ -16,10 +18,12 @@ import {
   archiveSchoolMessage,
   deleteSchoolMessage,
   getSchoolMessage,
+  getSchoolMessagesUnreadCount,
   listSchoolMessages,
   markSchoolMessageRead,
 } from "../../../../../components/messaging/messaging-api";
 import { MessagingAttachmentPreviewModal } from "../../../../../components/messaging/messaging-attachment-preview-modal";
+import { buildComposeQueryFromMessage } from "../../../../../components/messaging/messaging-compose-logic";
 import { MessagingMessageActions } from "../../../../../components/messaging/messaging-message-actions";
 import { MessagingFoldersPanel } from "../../../../../components/messaging/messaging-folders-panel";
 import { MessagingMessagesList } from "../../../../../components/messaging/messaging-messages-list";
@@ -96,6 +100,7 @@ export default function SchoolMessageriePage() {
       : "inbox",
   );
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [isCompactDevice, setIsCompactDevice] = useState(false);
 
   const [loading, setLoading] = useState(true);
@@ -104,6 +109,9 @@ export default function SchoolMessageriePage() {
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [role, setRole] = useState<SchoolRole | null>(null);
   const [messages, setMessages] = useState<MessagingMessage[]>([]);
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
+  const [draftsCount, setDraftsCount] = useState(0);
+  const [archiveCount, setArchiveCount] = useState(0);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     null,
   );
@@ -163,6 +171,12 @@ export default function SchoolMessageriePage() {
     void loadMessages(schoolSlug, folder, search);
   }, [schoolSlug, folder, search]);
 
+  useEffect(() => {
+    if (folder !== "inbox" && unreadOnly) {
+      setUnreadOnly(false);
+    }
+  }, [folder, unreadOnly]);
+
   async function loadMessages(
     currentSchoolSlug: string,
     nextFolder: FolderKey,
@@ -170,13 +184,30 @@ export default function SchoolMessageriePage() {
   ) {
     setMessagesLoading(true);
     try {
-      const payload = await listSchoolMessages(currentSchoolSlug, {
-        folder: nextFolder,
-        q: nextSearch,
-        page: 1,
-        limit: 50,
-      });
+      const [payload, unreadCount, draftsPayload, archivePayload] =
+        await Promise.all([
+          listSchoolMessages(currentSchoolSlug, {
+            folder: nextFolder,
+            q: nextSearch,
+            page: 1,
+            limit: 50,
+          }),
+          getSchoolMessagesUnreadCount(currentSchoolSlug),
+          listSchoolMessages(currentSchoolSlug, {
+            folder: "drafts",
+            page: 1,
+            limit: 1,
+          }),
+          listSchoolMessages(currentSchoolSlug, {
+            folder: "archive",
+            page: 1,
+            limit: 1,
+          }),
+        ]);
       setMessages(payload.items);
+      setInboxUnreadCount(unreadCount);
+      setDraftsCount(draftsPayload.meta.total);
+      setArchiveCount(archivePayload.meta.total);
       setError(null);
     } catch {
       setError("Impossible de charger la messagerie.");
@@ -328,92 +359,142 @@ export default function SchoolMessageriePage() {
     }
   }
 
+  function openComposeFromMessage(
+    mode: "reply" | "forward",
+    message: MessagingMessage,
+  ) {
+    const query = buildComposeQueryFromMessage(mode, message);
+    router.push(
+      `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
+    );
+  }
+
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 lg:h-[calc(100vh-10rem)]">
       <Card
-        title="Messagerie"
-        subtitle={schoolName ?? "Echanges internes et familles"}
+        title={undefined}
+        subtitle={undefined}
+        className="h-full overflow-hidden"
       >
         {loading ? (
           <p className="text-sm text-text-secondary">Chargement...</p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : (
-          <div className="grid gap-4">
-            <MessagingToolbar search={search} onSearchChange={setSearch} />
+          <div className="flex h-full min-h-0 flex-col gap-3">
+            <MessagingToolbar
+              title="Messagerie"
+              contextLabel={schoolName ?? "Echanges internes et familles"}
+              search={search}
+              onSearchChange={setSearch}
+            />
 
-            <div className="grid gap-3 lg:grid-cols-[240px_320px_minmax(0,1fr)]">
-              <MessagingFoldersPanel
-                folders={FOLDERS}
-                activeFolder={folder}
-                onSelectFolder={setFolder}
-                showComposeButton={canCompose}
-                onCompose={() =>
-                  router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
-                }
-              />
-              <MessagingMessagesList
-                panelLabel={getFolderLabel(folder)}
-                messages={messages}
-                selectedMessageId={selectedMessageId}
-                onSelectMessage={handleMessageClick}
-                renderActions={(message) => {
-                  if (folder === "inbox") {
-                    return (
-                      <ActionIconButton
-                        icon={message.unread ? MailOpen : Mail}
-                        label={
-                          message.unread
-                            ? "Marquer comme lu"
-                            : "Marquer comme non lu"
-                        }
-                        onClick={() =>
-                          void handleToggleRead(message.id, message.unread)
-                        }
-                        variant="neutral"
-                      />
-                    );
+            <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[240px_320px_minmax(0,1fr)]">
+              <div className="lg:min-h-0">
+                <MessagingFoldersPanel
+                  folders={FOLDERS}
+                  activeFolder={folder}
+                  onSelectFolder={setFolder}
+                  inboxUnreadCount={inboxUnreadCount}
+                  draftsCount={draftsCount}
+                  archiveCount={archiveCount}
+                  showComposeButton={canCompose}
+                  onCompose={() =>
+                    router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
                   }
-                  if (folder === "archive") {
-                    return (
-                      <ActionIconButton
-                        icon={ArchiveRestore}
-                        label="Restaurer depuis archives"
-                        onClick={() =>
-                          void handleRestoreFromArchive(message.id)
-                        }
-                        variant="primary"
-                      />
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <div className="hidden gap-2 lg:grid">
-                {selectedMessageId ? (
-                  <div className="flex justify-end">
-                    <MessagingMessageActions
-                      archivedView={folder === "archive"}
-                      busy={actionBusy}
-                      onArchiveToggle={() => void handleArchiveToggle()}
-                      onDelete={() => setDeleteConfirmOpen(true)}
-                      unread={selectedMessage?.unread}
-                      onToggleRead={
-                        folder === "inbox" && selectedMessageId
-                          ? () =>
-                              void handleToggleRead(
-                                selectedMessageId,
-                                selectedMessage?.unread ?? false,
-                              )
-                          : undefined
-                      }
-                    />
-                  </div>
-                ) : null}
+                />
+              </div>
+              <div className="lg:min-h-0">
+                <MessagingMessagesList
+                  panelLabel={getFolderLabel(folder)}
+                  folder={folder}
+                  messages={messages}
+                  selectedMessageId={selectedMessageId}
+                  onSelectMessage={handleMessageClick}
+                  unreadOnly={unreadOnly}
+                  onUnreadOnlyChange={setUnreadOnly}
+                  renderActions={(message) => {
+                    if (folder === "inbox") {
+                      return (
+                        <ActionIconButton
+                          icon={message.unread ? MailOpen : Mail}
+                          label={
+                            message.unread
+                              ? "Marquer comme lu"
+                              : "Marquer comme non lu"
+                          }
+                          onClick={() =>
+                            void handleToggleRead(message.id, message.unread)
+                          }
+                          variant="neutral"
+                        />
+                      );
+                    }
+                    if (folder === "archive") {
+                      return (
+                        <ActionIconButton
+                          icon={ArchiveRestore}
+                          label="Restaurer depuis archives"
+                          onClick={() =>
+                            void handleRestoreFromArchive(message.id)
+                          }
+                          variant="primary"
+                        />
+                      );
+                    }
+                    return null;
+                  }}
+                />
+              </div>
+              <div className="hidden gap-2 lg:grid lg:min-h-0">
                 <MessagingReader
                   desktopOnly
                   message={selectedMessage}
                   onOpenAttachment={setPreviewAttachment}
+                  topActions={
+                    selectedMessage ? (
+                      <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openComposeFromMessage("reply", selectedMessage)
+                            }
+                            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
+                          >
+                            <Reply className="h-4 w-4" />
+                            Repondre
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openComposeFromMessage("forward", selectedMessage)
+                            }
+                            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
+                          >
+                            <Forward className="h-4 w-4" />
+                            Transferer
+                          </button>
+                        </div>
+                        <MessagingMessageActions
+                          archivedView={folder === "archive"}
+                          busy={actionBusy}
+                          onArchiveToggle={() => void handleArchiveToggle()}
+                          onDelete={() => setDeleteConfirmOpen(true)}
+                          unread={selectedMessage.unread}
+                          onToggleRead={
+                            folder === "inbox" && selectedMessageId
+                              ? () =>
+                                  void handleToggleRead(
+                                    selectedMessageId,
+                                    selectedMessage.unread,
+                                  )
+                              : undefined
+                          }
+                        />
+                      </div>
+                    ) : undefined
+                  }
                 />
               </div>
             </div>

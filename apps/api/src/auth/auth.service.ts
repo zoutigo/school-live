@@ -13,6 +13,7 @@ import type {
   User,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { createHash, randomBytes } from "crypto";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type {
   AuthenticatedUser,
@@ -72,7 +73,7 @@ export class AuthService {
       });
     }
 
-    return this.issueAccessToken(
+    return this.issueAuthSession(
       user,
       user.memberships[0]?.school?.slug ?? null,
     );
@@ -139,7 +140,101 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    return this.issueAccessToken(user, schoolSlug);
+    return this.issueAuthSession(user, schoolSlug);
+  }
+
+  async refreshSession(
+    refreshToken: string,
+    schoolSlug?: string,
+  ): Promise<AuthResponse> {
+    const tokenHash = this.hashRefreshToken(refreshToken);
+    const now = new Date();
+
+    const existing = await this.prisma.refreshToken.findFirst({
+      where: {
+        tokenHash,
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+      include: {
+        user: {
+          include: {
+            memberships: {
+              include: {
+                school: {
+                  select: { slug: true },
+                },
+              },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
+    if (schoolSlug) {
+      const hasMembership = existing.user.memberships.some(
+        (membership) => membership.school.slug === schoolSlug,
+      );
+      if (!hasMembership) {
+        throw new UnauthorizedException("Invalid refresh token");
+      }
+    }
+
+    const nextRefreshToken = this.generateRefreshToken();
+    const nextRefreshTokenHash = this.hashRefreshToken(nextRefreshToken);
+    const refreshExpiresIn = this.getRefreshTtlSeconds();
+    const refreshExpiresAt = new Date(now.getTime() + refreshExpiresIn * 1000);
+
+    await this.prisma.$transaction(async (tx) => {
+      const created = await tx.refreshToken.create({
+        data: {
+          userId: existing.userId,
+          tokenHash: nextRefreshTokenHash,
+          expiresAt: refreshExpiresAt,
+        },
+      });
+
+      await tx.refreshToken.update({
+        where: { id: existing.id },
+        data: {
+          revokedAt: now,
+          replacedById: created.id,
+        },
+      });
+    });
+
+    return this.issueAccessToken(
+      existing.user,
+      schoolSlug ?? existing.user.memberships[0]?.school?.slug ?? null,
+      {
+        refreshToken: nextRefreshToken,
+        refreshExpiresIn,
+      },
+    );
+  }
+
+  async logout(refreshToken: string | null | undefined) {
+    if (!refreshToken) {
+      return { success: true };
+    }
+
+    const tokenHash = this.hashRefreshToken(refreshToken);
+    await this.prisma.refreshToken.updateMany({
+      where: {
+        tokenHash,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
+    return { success: true };
   }
 
   async firstPasswordChange(
@@ -188,12 +283,18 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        mustChangePassword: false,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+        },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     });
 
     return {
@@ -243,12 +344,18 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        mustChangePassword: false,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+        },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     });
 
     return { success: true };
@@ -652,13 +759,35 @@ export class AuthService {
     return { activeRole };
   }
 
-  private async issueAccessToken(
+  private async issueAuthSession(
     user: User,
     schoolSlug: string | null,
   ): Promise<AuthResponse> {
-    const expiresIn = Number(
-      this.configService.get<string>("JWT_EXPIRES_IN") ?? 3600,
-    );
+    const refreshToken = this.generateRefreshToken();
+    const refreshTokenHash = this.hashRefreshToken(refreshToken);
+    const refreshExpiresIn = this.getRefreshTtlSeconds();
+    const refreshExpiresAt = new Date(Date.now() + refreshExpiresIn * 1000);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: refreshTokenHash,
+        expiresAt: refreshExpiresAt,
+      },
+    });
+
+    return this.issueAccessToken(user, schoolSlug, {
+      refreshToken,
+      refreshExpiresIn,
+    });
+  }
+
+  private async issueAccessToken(
+    user: User,
+    schoolSlug: string | null,
+    refreshPayload?: { refreshToken: string; refreshExpiresIn: number },
+  ): Promise<AuthResponse> {
+    const expiresIn = this.getAccessTtlSeconds();
 
     const payload: JwtPayload = {
       sub: user.id,
@@ -670,12 +799,41 @@ export class AuthService {
       expiresIn,
     });
 
+    const nextRefreshToken =
+      refreshPayload?.refreshToken ?? this.generateRefreshToken();
+    const nextRefreshExpiresIn =
+      refreshPayload?.refreshExpiresIn ?? this.getRefreshTtlSeconds();
+
     return {
       accessToken,
+      refreshToken: nextRefreshToken,
       tokenType: "Bearer",
       expiresIn,
+      refreshExpiresIn: nextRefreshExpiresIn,
       schoolSlug,
     };
+  }
+
+  private getAccessTtlSeconds() {
+    return Number(this.configService.get<string>("JWT_EXPIRES_IN") ?? 86400);
+  }
+
+  private getRefreshTtlSeconds() {
+    return Number(
+      this.configService.get<string>("JWT_REFRESH_EXPIRES_IN") ??
+        60 * 60 * 24 * 30,
+    );
+  }
+
+  private generateRefreshToken() {
+    return randomBytes(48).toString("hex");
+  }
+
+  private hashRefreshToken(token: string) {
+    const pepper =
+      this.configService.get<string>("JWT_REFRESH_TOKEN_PEPPER") ??
+      "dev-refresh-pepper-change-me";
+    return createHash("sha256").update(`${token}:${pepper}`).digest("hex");
   }
 
   private getPrimaryRole(
