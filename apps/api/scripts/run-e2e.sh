@@ -16,11 +16,14 @@ fi
 
 DATABASE_URL="${DATABASE_URL:-postgresql://${TEST_DB_USER}:${TEST_DB_PASSWORD}@${TEST_DB_HOST}:${TEST_DB_PORT}/${TEST_DB_NAME}?schema=public}"
 
-echo "==> Starting postgres container for e2e"
-docker compose -f "${COMPOSE_FILE}" up -d postgres
+echo "==> Starting postgres + redis containers for e2e"
+docker compose -f "${COMPOSE_FILE}" up -d postgres redis
 
 echo "==> Waiting for postgres readiness"
 docker compose -f "${COMPOSE_FILE}" exec -T postgres sh -lc "until pg_isready -U '${TEST_DB_USER}' -d postgres >/dev/null 2>&1; do sleep 1; done"
+
+echo "==> Waiting for redis readiness"
+docker compose -f "${COMPOSE_FILE}" exec -T redis sh -lc "until redis-cli ping >/dev/null 2>&1; do sleep 1; done"
 
 echo "==> Ensuring test database '${TEST_DB_NAME}' exists"
 docker compose -f "${COMPOSE_FILE}" exec -T postgres sh -lc "psql -U '${TEST_DB_USER}' -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='${TEST_DB_NAME}'\" | grep -q 1 || psql -U '${TEST_DB_USER}' -d postgres -c \"CREATE DATABASE \\\"${TEST_DB_NAME}\\\"\""

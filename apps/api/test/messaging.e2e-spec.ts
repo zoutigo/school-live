@@ -16,6 +16,8 @@ function randomSuffix() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+jest.setTimeout(30_000);
+
 describe("Messaging API e2e", () => {
   let app: Awaited<ReturnType<typeof NestFactory.create>>;
   let prisma: PrismaService;
