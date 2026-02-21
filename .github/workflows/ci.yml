@@ -67,6 +67,9 @@ jobs:
       - name: API Tests
         run: npm run -w @school-live/api test
 
+      - name: API E2E Messaging (isolated test DB)
+        run: npm run -w @school-live/api test:e2e -- messaging.e2e-spec.ts
+
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 30
