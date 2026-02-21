@@ -13,7 +13,10 @@ import { SchoolsModule } from "./schools/schools.module.js";
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ["apps/api/.env", ".env"],
+      envFilePath:
+        process.env.NODE_ENV === "test"
+          ? ["apps/api/.env.test", "apps/api/.env", ".env"]
+          : ["apps/api/.env", ".env"],
     }),
     PrismaModule,
     AuthModule,

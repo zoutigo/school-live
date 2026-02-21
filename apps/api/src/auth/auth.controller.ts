@@ -4,12 +4,17 @@ import {
   Get,
   Param,
   Post,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { SchoolScopeGuard } from "../access/school-scope.guard.js";
-import { clearAuthCookies, setAuthCookies } from "./auth-cookies.js";
+import {
+  clearAuthCookies,
+  REFRESH_COOKIE_NAME,
+  setAuthCookies,
+} from "./auth-cookies.js";
 import { CurrentSchoolId } from "./decorators/current-school-id.decorator.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "./auth.types.js";
@@ -37,11 +42,44 @@ export class AuthController {
       authResponse,
       process.env.NODE_ENV === "production",
     );
-    return { ...authResponse, csrfToken };
+    return {
+      accessToken: authResponse.accessToken,
+      tokenType: authResponse.tokenType,
+      expiresIn: authResponse.expiresIn,
+      schoolSlug: authResponse.schoolSlug,
+      csrfToken,
+    };
+  }
+
+  @Post("refresh")
+  async refresh(
+    @Param("schoolSlug") schoolSlug: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME] ?? null;
+    const authResponse = await this.authService.refreshSession(
+      refreshToken,
+      schoolSlug,
+    );
+    const csrfToken = setAuthCookies(
+      res,
+      authResponse,
+      process.env.NODE_ENV === "production",
+    );
+    return {
+      accessToken: authResponse.accessToken,
+      tokenType: authResponse.tokenType,
+      expiresIn: authResponse.expiresIn,
+      schoolSlug: authResponse.schoolSlug,
+      csrfToken,
+    };
   }
 
   @Post("logout")
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME] ?? null;
+    await this.authService.logout(refreshToken);
     clearAuthCookies(res, process.env.NODE_ENV === "production");
     return { success: true };
   }

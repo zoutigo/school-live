@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Forward, Reply } from "lucide-react";
 import { Card } from "../../../../../../../../components/ui/card";
 import {
   archiveSchoolMessage,
@@ -10,6 +11,7 @@ import {
   markSchoolMessageRead,
 } from "../../../../../../../../components/messaging/messaging-api";
 import { MessagingAttachmentPreviewModal } from "../../../../../../../../components/messaging/messaging-attachment-preview-modal";
+import { buildComposeQueryFromMessage } from "../../../../../../../../components/messaging/messaging-compose-logic";
 import { MessagingMessageActions } from "../../../../../../../../components/messaging/messaging-message-actions";
 import { MessagingMessageDetail } from "../../../../../../../../components/messaging/messaging-message-detail";
 import type {
@@ -174,6 +176,16 @@ export default function ChildMessagerieMessagePage() {
     }
   }
 
+  function openComposeFromMessage(mode: "reply" | "forward") {
+    if (!message) {
+      return;
+    }
+    const query = buildComposeQueryFromMessage(mode, message);
+    router.push(
+      `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
+    );
+  }
+
   const currentChild = useMemo(
     () => children.find((entry) => entry.id === childId) ?? null,
     [children, childId],
@@ -198,22 +210,42 @@ export default function ChildMessagerieMessagePage() {
             message={message}
             onBack={() => router.push(backUrl)}
             onOpenAttachment={setPreviewAttachment}
-            actions={
+            topActions={
               message ? (
-                <MessagingMessageActions
-                  archivedView={folderParam === "archive"}
-                  busy={actionBusy}
-                  onArchiveToggle={() => void handleArchiveToggle()}
-                  onDelete={() => setDeleteConfirmOpen(true)}
-                  unread={message?.unread}
-                  onToggleRead={
-                    folderParam === "inbox"
-                      ? () => {
-                          void handleToggleRead();
-                        }
-                      : undefined
-                  }
-                />
+                <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openComposeFromMessage("reply")}
+                      className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
+                    >
+                      <Reply className="h-4 w-4" />
+                      Repondre
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openComposeFromMessage("forward")}
+                      className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
+                    >
+                      <Forward className="h-4 w-4" />
+                      Transferer
+                    </button>
+                  </div>
+                  <MessagingMessageActions
+                    archivedView={folderParam === "archive"}
+                    busy={actionBusy}
+                    onArchiveToggle={() => void handleArchiveToggle()}
+                    onDelete={() => setDeleteConfirmOpen(true)}
+                    unread={message.unread}
+                    onToggleRead={
+                      folderParam === "inbox"
+                        ? () => {
+                            void handleToggleRead();
+                          }
+                        : undefined
+                    }
+                  />
+                </div>
               ) : null
             }
           />

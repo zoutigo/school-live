@@ -8,6 +8,7 @@ import {
   isPlatformRole,
   type Role,
 } from "../../lib/role-view";
+import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -104,6 +105,61 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
       });
     }
   }
+
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+
+    async function refreshSession() {
+      try {
+        const csrfToken = getCsrfTokenCookie();
+        const endpoint = schoolSlug
+          ? `${API_URL}/schools/${schoolSlug}/auth/refresh`
+          : `${API_URL}/auth/refresh`;
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          credentials: "include",
+          headers: csrfToken ? { "X-CSRF-Token": csrfToken } : undefined,
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        if (!cancelled) {
+          await loadMe();
+        }
+      } catch {
+        // Keep navigation usable if refresh fails transiently.
+      }
+    }
+
+    intervalId = setInterval(
+      () => {
+        void refreshSession();
+      },
+      10 * 60 * 1000,
+    );
+
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void refreshSession();
+      }
+    }
+
+    window.addEventListener("focus", onVisibilityChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+      window.removeEventListener("focus", onVisibilityChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [schoolSlug]);
 
   const availableRoles = useMemo(() => extractAvailableRoles(me), [me]);
   const roleFromMe: Role = (me?.activeRole ??

@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Card } from "../../../../../../components/ui/card";
 import {
   createSchoolMessage,
   uploadSchoolMessagingInlineImage,
 } from "../../../../../../components/messaging/messaging-api";
+import { getLeaveComposerConfirmMessage } from "../../../../../../components/messaging/messaging-compose-logic";
 import { MessagingComposer } from "../../../../../../components/messaging/messaging-composer";
+import { ConfirmDialog } from "../../../../../../components/ui/confirm-dialog";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -65,8 +68,16 @@ const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
 
 export default function SchoolNewMessagePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const params = useParams<{ schoolSlug: string }>();
   const schoolSlug = params.schoolSlug;
+  const composeMode = searchParams.get("mode");
+  const initialSubject = searchParams.get("subject") ?? "";
+  const initialBody = searchParams.get("body") ?? "";
+  const initialRecipientUserIds = (searchParams.get("recipientUserIds") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +101,8 @@ export default function SchoolNewMessagePage() {
       functionLabel: string;
     }>
   >([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!schoolSlug) {
@@ -158,6 +171,25 @@ export default function SchoolNewMessagePage() {
     () => `/schools/${schoolSlug}/messagerie`,
     [schoolSlug],
   );
+  const leaveMessage = getLeaveComposerConfirmMessage(hasUnsavedChanges);
+  const subtitle = useMemo(() => {
+    const base = schoolName ?? "Messagerie de l'etablissement";
+    if (composeMode === "reply") {
+      return `${base} - Reponse`;
+    }
+    if (composeMode === "forward") {
+      return `${base} - Transfert`;
+    }
+    return base;
+  }, [composeMode, schoolName]);
+
+  function requestBackToList() {
+    if (!hasUnsavedChanges) {
+      router.push(backUrl);
+      return;
+    }
+    setLeaveConfirmOpen(true);
+  }
 
   async function sendMessage(payload: {
     subject: string;
@@ -190,7 +222,19 @@ export default function SchoolNewMessagePage() {
     <div className="grid gap-4">
       <Card
         title="Nouveau message"
-        subtitle={schoolName ?? "Messagerie de l'etablissement"}
+        subtitle={subtitle}
+        actions={
+          canCompose ? (
+            <button
+              type="button"
+              onClick={requestBackToList}
+              className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Retour a la liste
+            </button>
+          ) : null
+        }
       >
         {loading ? (
           <p className="text-sm text-text-secondary">Chargement...</p>
@@ -213,7 +257,12 @@ export default function SchoolNewMessagePage() {
           <MessagingComposer
             teacherRecipients={teacherRecipients}
             functionRecipients={functionRecipients}
+            initialSubject={initialSubject}
+            initialBody={initialBody}
+            initialRecipientUserIds={initialRecipientUserIds}
             onCancel={() => router.push(backUrl)}
+            onRequestBackToList={requestBackToList}
+            onUnsavedChange={setHasUnsavedChanges}
             onSend={sendMessage}
             onSaveDraft={saveDraft}
             onUploadInlineImage={(file) =>
@@ -222,6 +271,17 @@ export default function SchoolNewMessagePage() {
           />
         )}
       </Card>
+      <ConfirmDialog
+        open={leaveConfirmOpen}
+        title="Quitter la redaction ?"
+        message={leaveMessage}
+        confirmLabel="Quitter"
+        onCancel={() => setLeaveConfirmOpen(false)}
+        onConfirm={() => {
+          setLeaveConfirmOpen(false);
+          router.push(backUrl);
+        }}
+      />
     </div>
   );
 }

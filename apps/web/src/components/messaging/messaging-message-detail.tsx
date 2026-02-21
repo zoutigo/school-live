@@ -7,14 +7,14 @@ type Props = {
   message: MessagingMessage | null;
   onBack: () => void;
   onOpenAttachment: (attachment: MessageAttachment) => void;
-  actions?: ReactNode;
+  topActions?: ReactNode;
 };
 
 export function MessagingMessageDetail({
   message,
   onBack,
   onOpenAttachment,
-  actions,
+  topActions,
 }: Props) {
   if (!message) {
     return (
@@ -33,32 +33,26 @@ export function MessagingMessageDetail({
   }
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour a la liste
-        </button>
-        {actions}
-      </div>
-
-      <MessagingReader message={message} onOpenAttachment={onOpenAttachment} />
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour a la liste
-        </button>
-        {actions}
-      </div>
-    </div>
+    <MessagingReader
+      message={message}
+      onOpenAttachment={onOpenAttachment}
+      topActions={
+        <div className="flex w-full flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour a la liste
+          </button>
+          {topActions ? (
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+              {topActions}
+            </div>
+          ) : null}
+        </div>
+      }
+    />
   );
 }

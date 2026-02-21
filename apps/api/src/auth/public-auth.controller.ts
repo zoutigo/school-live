@@ -4,11 +4,16 @@ import {
   Get,
   Post,
   Query,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
-import type { Response } from "express";
-import { clearAuthCookies, setAuthCookies } from "./auth-cookies.js";
+import type { Request, Response } from "express";
+import {
+  clearAuthCookies,
+  REFRESH_COOKIE_NAME,
+  setAuthCookies,
+} from "./auth-cookies.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "./auth.types.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
@@ -37,11 +42,40 @@ export class PublicAuthController {
       authResponse,
       process.env.NODE_ENV === "production",
     );
-    return { ...authResponse, csrfToken };
+    return {
+      accessToken: authResponse.accessToken,
+      tokenType: authResponse.tokenType,
+      expiresIn: authResponse.expiresIn,
+      schoolSlug: authResponse.schoolSlug,
+      csrfToken,
+    };
+  }
+
+  @Post("refresh")
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME] ?? null;
+    const authResponse = await this.authService.refreshSession(refreshToken);
+    const csrfToken = setAuthCookies(
+      res,
+      authResponse,
+      process.env.NODE_ENV === "production",
+    );
+    return {
+      accessToken: authResponse.accessToken,
+      tokenType: authResponse.tokenType,
+      expiresIn: authResponse.expiresIn,
+      schoolSlug: authResponse.schoolSlug,
+      csrfToken,
+    };
   }
 
   @Post("logout")
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME] ?? null;
+    await this.authService.logout(refreshToken);
     clearAuthCookies(res, process.env.NODE_ENV === "production");
     return { success: true };
   }

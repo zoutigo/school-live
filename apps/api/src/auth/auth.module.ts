@@ -24,7 +24,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy.js";
           configService.get<string>("JWT_SECRET") ?? "dev-secret-change-me",
         signOptions: {
           expiresIn: Number(
-            configService.get<string>("JWT_EXPIRES_IN") ?? 3600,
+            configService.get<string>("JWT_EXPIRES_IN") ?? 86400,
           ),
         },
       }),

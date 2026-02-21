@@ -13,6 +13,7 @@ export type MessagingMessage = {
   id: string;
   folder: FolderKey;
   sender: string;
+  senderUserId?: string;
   subject: string;
   preview: string;
   createdAt: string;
