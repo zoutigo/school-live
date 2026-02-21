@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import { MailService } from "../src/mail/mail.service";
 import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
@@ -46,6 +47,9 @@ describe("MailService", () => {
   });
 
   it("falls back to synchronous send when queue is unavailable", async () => {
+    const loggerSpy = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => undefined);
     queue.add.mockRejectedValue(new Error("redis down"));
     const payload = {
       to: "admin@example.test",
@@ -58,6 +62,8 @@ describe("MailService", () => {
     await service.sendTemporaryPasswordEmail(payload);
 
     expect(emailPort.sendTemporaryPasswordEmail).toHaveBeenCalledWith(payload);
+    expect(loggerSpy).toHaveBeenCalled();
+    loggerSpy.mockRestore();
   });
 
   it("queues life-event and internal-message notifications", async () => {
