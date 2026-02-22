@@ -1,0 +1,74 @@
+model FeedPost {
+  id               String            @id @default(cuid())
+  schoolId         String
+  authorUserId     String
+  type             FeedPostType      @default(POST)
+  title            String
+  bodyHtml         String
+  audienceScope    FeedAudienceScope
+  audienceLabel    String
+  audienceLevelId  String?
+  audienceClassId  String?
+  featuredUntil    DateTime?
+  pollQuestion     String?
+  pollOptionsJson  Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  school           School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  authorUser       User              @relation("FeedPostAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  audienceLevel    AcademicLevel?    @relation(fields: [audienceLevelId], references: [id], onDelete: SetNull)
+  audienceClass    Class?            @relation(fields: [audienceClassId], references: [id], onDelete: SetNull)
+  attachments      FeedPostAttachment[]
+  comments         FeedComment[]
+  likes            FeedLike[]
+
+  @@index([schoolId, createdAt])
+  @@index([authorUserId])
+  @@index([audienceScope])
+  @@index([audienceLevelId])
+  @@index([audienceClassId])
+}
+
+model FeedPostAttachment {
+  id         String    @id @default(cuid())
+  postId     String
+  fileName   String
+  fileUrl    String?
+  sizeLabel  String?
+  createdAt  DateTime @default(now())
+  post       FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model FeedComment {
+  id           String    @id @default(cuid())
+  postId       String
+  schoolId     String
+  authorUserId String
+  text         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  post         FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  authorUser   User     @relation("FeedCommentAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([schoolId])
+  @@index([authorUserId])
+}
+
+model FeedLike {
+  id        String    @id @default(cuid())
+  postId    String
+  schoolId  String
+  userId    String
+  createdAt DateTime  @default(now())
+  post      FeedPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user      User      @relation("FeedLikeUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([schoolId])
+  @@index([userId])
+}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { Card } from "../ui/card";
 import { ModuleHelpTab } from "../ui/module-help-tab";
 
@@ -12,6 +13,7 @@ type ParentChild = {
   id: string;
   firstName: string;
   lastName: string;
+  className?: string | null;
 };
 
 type TabKey =
@@ -32,6 +34,12 @@ type Props = {
   subtitle: string;
   summary: string;
   bullets: string[];
+  content?:
+    | ReactNode
+    | ((ctx: { child: ParentChild | null; loading: boolean }) => ReactNode);
+  hidePrimaryTabs?: boolean;
+  hideSecondaryTabs?: boolean;
+  hideModuleHeader?: boolean;
 };
 
 const TAB_ITEMS: Array<{ key: TabKey; label: string }> = [
@@ -53,6 +61,10 @@ export function ChildModulePage({
   subtitle,
   summary,
   bullets,
+  content,
+  hidePrimaryTabs = false,
+  hideSecondaryTabs = false,
+  hideModuleHeader = false,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -79,7 +91,16 @@ export function ChildModulePage({
 
       const payload = (await response.json()) as {
         role?: string;
-        linkedStudents?: ParentChild[];
+        linkedStudents?: Array<{
+          id: string;
+          firstName: string;
+          lastName: string;
+          currentEnrollment?: {
+            class?: {
+              name?: string;
+            } | null;
+          } | null;
+        }>;
       };
 
       if (payload.role !== "PARENT") {
@@ -87,18 +108,69 @@ export function ChildModulePage({
         return;
       }
 
-      const list = payload.linkedStudents ?? [];
-      setChildren(list);
+      const list: ParentChild[] = (payload.linkedStudents ?? []).map(
+        (entry) => ({
+          id: entry.id,
+          firstName: entry.firstName,
+          lastName: entry.lastName,
+          className: entry.currentEnrollment?.class?.name ?? null,
+        }),
+      );
 
-      if (list.length > 0 && !list.some((entry) => entry.id === childId)) {
+      const enrichedList = await Promise.all(
+        list.map(async (entry) => {
+          if (entry.className) {
+            return entry;
+          }
+
+          const className = await loadChildClassName(schoolSlug, entry.id);
+          return {
+            ...entry,
+            className,
+          };
+        }),
+      );
+
+      setChildren(enrichedList);
+
+      if (
+        enrichedList.length > 0 &&
+        !enrichedList.some((entry) => entry.id === childId)
+      ) {
         router.replace(
-          `/schools/${schoolSlug}/children/${list[0].id}/${currentTab}`,
+          `/schools/${schoolSlug}/children/${enrichedList[0].id}/${currentTab}`,
         );
       }
     } catch {
       setError("Impossible de charger le profil parent.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadChildClassName(
+    currentSchoolSlug: string,
+    currentChildId: string,
+  ): Promise<string | null> {
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${currentSchoolSlug}/students/${currentChildId}/life-events?scope=current&limit=1`,
+        {
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const payload = (await response.json()) as Array<{
+        class?: { name?: string | null } | null;
+      }>;
+
+      return payload[0]?.class?.name?.trim() || null;
+    } catch {
+      return null;
     }
   }
 
@@ -110,53 +182,59 @@ export function ChildModulePage({
   return (
     <div className="grid gap-4">
       <Card
-        title={title}
+        title={hideModuleHeader ? undefined : title}
         subtitle={
-          currentChild
-            ? `${subtitle} - ${currentChild.lastName} ${currentChild.firstName}`
-            : subtitle
+          hideModuleHeader
+            ? undefined
+            : currentChild
+              ? `${subtitle} - ${currentChild.lastName} ${currentChild.firstName}`
+              : subtitle
         }
       >
-        <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
-          {TAB_ITEMS.map((item) => (
-            <Link
-              key={item.key}
-              href={`/schools/${schoolSlug}/children/${childId}/${item.key}`}
+        {hidePrimaryTabs ? null : (
+          <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
+            {TAB_ITEMS.map((item) => (
+              <Link
+                key={item.key}
+                href={`/schools/${schoolSlug}/children/${childId}/${item.key}`}
+                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                  currentTab === item.key
+                    ? "border border-border border-b-surface bg-surface text-primary"
+                    : "text-text-secondary"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {hideSecondaryTabs ? null : (
+          <div className="mb-4 flex items-end gap-2 border-b border-border">
+            <button
+              type="button"
+              onClick={() => setTab("content")}
               className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                currentTab === item.key
+                tab === "content"
                   ? "border border-border border-b-surface bg-surface text-primary"
                   : "text-text-secondary"
               }`}
             >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-
-        <div className="mb-4 flex items-end gap-2 border-b border-border">
-          <button
-            type="button"
-            onClick={() => setTab("content")}
-            className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-              tab === "content"
-                ? "border border-border border-b-surface bg-surface text-primary"
-                : "text-text-secondary"
-            }`}
-          >
-            Vue
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("help")}
-            className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-              tab === "help"
-                ? "border border-border border-b-surface bg-surface text-primary"
-                : "text-text-secondary"
-            }`}
-          >
-            Aide
-          </button>
-        </div>
+              Vue
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Aide
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <p className="text-sm text-text-secondary">Chargement...</p>
@@ -181,14 +259,18 @@ export function ChildModulePage({
             ]}
           />
         ) : (
-          <div className="rounded-card border border-border bg-background p-4 text-sm">
-            <p className="font-medium text-text-primary">{summary}</p>
-            <ul className="mt-2 grid gap-1 text-text-secondary">
-              {bullets.map((item) => (
-                <li key={item}>- {item}</li>
-              ))}
-            </ul>
-          </div>
+          ((typeof content === "function"
+            ? content({ child: currentChild, loading })
+            : content) ?? (
+            <div className="rounded-card border border-border bg-background p-4 text-sm">
+              <p className="font-medium text-text-primary">{summary}</p>
+              <ul className="mt-2 grid gap-1 text-text-secondary">
+                {bullets.map((item) => (
+                  <li key={item}>- {item}</li>
+                ))}
+              </ul>
+            </div>
+          ))
         )}
       </Card>
     </div>

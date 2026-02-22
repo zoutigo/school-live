@@ -305,6 +305,154 @@ export class AuthService {
     };
   }
 
+  async completeOnboarding(input: {
+    email: string;
+    temporaryPassword: string;
+    newPassword: string;
+    firstName: string;
+    lastName: string;
+    gender: "M" | "F" | "OTHER";
+    birthDate: string;
+    answers: Array<{ questionKey: RecoveryQuestionKey; answer: string }>;
+    parentClassId?: string;
+    parentStudentId?: string;
+  }) {
+    const normalizedEmail = input.email.toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: {
+        memberships: {
+          include: {
+            school: {
+              select: { slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (!user.mustChangePassword) {
+      throw new ForbiddenException(
+        "Password change is not required for this account",
+      );
+    }
+
+    const validTemporaryPassword = await bcrypt.compare(
+      input.temporaryPassword,
+      user.passwordHash,
+    );
+
+    if (!validTemporaryPassword) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(input.newPassword)) {
+      throw new ForbiddenException(
+        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+      );
+    }
+
+    const uniqueQuestions = new Set(
+      input.answers.map((answer) => answer.questionKey),
+    );
+    if (input.answers.length !== 3 || uniqueQuestions.size !== 3) {
+      throw new ForbiddenException(
+        "You must provide exactly 3 distinct recovery questions",
+      );
+    }
+
+    const schoolMembership = user.memberships[0];
+    const schoolSlug = schoolMembership?.school.slug ?? null;
+    const schoolRoles = user.memberships.map((membership) => membership.role);
+    const isParent = schoolRoles.includes("PARENT");
+
+    if (isParent) {
+      if (!input.parentClassId || !input.parentStudentId || !schoolMembership) {
+        throw new ForbiddenException("Parent must select class and student");
+      }
+
+      const [classEntity, studentEntity, enrollment] =
+        await this.prisma.$transaction([
+          this.prisma.class.findFirst({
+            where: {
+              id: input.parentClassId,
+              schoolId: schoolMembership.schoolId,
+            },
+            select: { id: true, schoolYearId: true },
+          }),
+          this.prisma.student.findFirst({
+            where: {
+              id: input.parentStudentId,
+              schoolId: schoolMembership.schoolId,
+            },
+            select: { id: true },
+          }),
+          this.prisma.enrollment.findFirst({
+            where: {
+              schoolId: schoolMembership.schoolId,
+              classId: input.parentClassId,
+              studentId: input.parentStudentId,
+              status: "ACTIVE",
+            },
+            select: { id: true },
+          }),
+        ]);
+
+      if (!classEntity || !studentEntity || !enrollment) {
+        throw new ForbiddenException("Invalid class/student selection");
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(input.newPassword, 10);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+          profileCompleted: true,
+          firstName: input.firstName.trim(),
+          lastName: input.lastName.trim(),
+          gender: input.gender,
+          recoveryBirthDate: new Date(input.birthDate),
+          recoveryClassId: input.parentClassId ?? null,
+          recoveryStudentId: input.parentStudentId ?? null,
+        },
+      });
+
+      await tx.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+
+      await tx.userRecoveryAnswer.deleteMany({
+        where: { userId: user.id },
+      });
+
+      const answerRows = await Promise.all(
+        input.answers.map(async (answer) => ({
+          userId: user.id,
+          questionKey: answer.questionKey,
+          answerHash: await bcrypt.hash(answer.answer.trim().toLowerCase(), 10),
+        })),
+      );
+
+      await tx.userRecoveryAnswer.createMany({
+        data: answerRows,
+      });
+    });
+
+    return {
+      success: true,
+      schoolSlug,
+    };
+  }
+
   async changePassword(
     userId: string,
     currentPassword: string,
@@ -570,6 +718,7 @@ export class AuthService {
     AuthenticatedUser & {
       role: PlatformRole | SchoolRole | null;
       activeRole: PlatformRole | SchoolRole | null;
+      gender?: "M" | "F" | "OTHER" | null;
       linkedStudents?: Array<{
         id: string;
         firstName: string;
@@ -589,6 +738,7 @@ export class AuthService {
         avatarUrl: true,
         firstName: true,
         lastName: true,
+        gender: true,
         platformRoles: { select: { role: true } },
         memberships: {
           where: { schoolId },
@@ -650,6 +800,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       firstName: user.firstName,
       lastName: user.lastName,
+      gender: user.gender,
       linkedStudents: user.parentLinks.map((link) => ({
         id: link.student.id,
         firstName: link.student.firstName,
@@ -664,6 +815,7 @@ export class AuthService {
       schoolSlug: string | null;
       role: PlatformRole | SchoolRole | null;
       activeRole: PlatformRole | SchoolRole | null;
+      gender?: "M" | "F" | "OTHER" | null;
     }
   > {
     const user = await this.prisma.user.findUnique({
@@ -677,6 +829,7 @@ export class AuthService {
         avatarUrl: true,
         firstName: true,
         lastName: true,
+        gender: true,
         platformRoles: {
           select: { role: true },
         },
@@ -720,6 +873,7 @@ export class AuthService {
       avatarUrl: user.avatarUrl,
       firstName: user.firstName,
       lastName: user.lastName,
+      gender: user.gender,
       schoolSlug: user.memberships[0]?.school?.slug ?? null,
     };
   }

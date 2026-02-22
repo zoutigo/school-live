@@ -70,6 +70,12 @@ jobs:
       - name: API E2E Messaging (isolated test DB)
         run: npm run -w @school-live/api test:e2e -- messaging.e2e-spec.ts
 
+      - name: API E2E Feed PATCH+DELETE (isolated test DB)
+        run: npm run -w @school-live/api test:e2e -- feed.patch.e2e-spec.ts feed.delete.e2e-spec.ts
+
+      - name: API E2E Inline Media Cleanup (isolated test DB)
+        run: npm run -w @school-live/api test:e2e -- inline-media-cleanup.e2e-spec.ts
+
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 30

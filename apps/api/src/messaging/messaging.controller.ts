@@ -20,6 +20,7 @@ import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentSchoolId } from "../auth/decorators/current-school-id.decorator.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { InlineMediaService } from "../media/inline-media.service.js";
 import { MediaClientService } from "../media-client/media-client.service.js";
 import { ArchiveMessageDto } from "./dto/archive-message.dto.js";
 import { CreateMessageDto } from "./dto/create-message.dto.js";
@@ -46,6 +47,7 @@ export class MessagingController {
   constructor(
     private readonly messagingService: MessagingService,
     private readonly mediaClientService: MediaClientService,
+    private readonly inlineMediaService: InlineMediaService,
   ) {}
 
   @Get()
@@ -65,13 +67,25 @@ export class MessagingController {
       },
     }),
   )
-  uploadInlineImage(
+  async uploadInlineImage(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
     @UploadedFile() file?: { buffer: Buffer; mimetype: string; size: number },
   ) {
     if (!file) {
       throw new BadRequestException("Fichier image manquant");
     }
-    return this.mediaClientService.uploadImage("messaging-inline-image", file);
+    const uploaded = await this.mediaClientService.uploadImage(
+      "messaging-inline-image",
+      file,
+    );
+    await this.inlineMediaService.registerTempUpload({
+      schoolId,
+      uploadedByUserId: user.id,
+      scope: "MESSAGING",
+      url: uploaded.url,
+    });
+    return uploaded;
   }
 
   @Get("unread-count")

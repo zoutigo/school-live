@@ -40,6 +40,12 @@ enum AppRole {
   STUDENT
 }
 
+enum Gender {
+  M
+  F
+  OTHER
+}
+
 enum RecoveryQuestionKey {
   MOTHER_MAIDEN_NAME
   FATHER_FIRST_NAME
@@ -78,4 +84,33 @@ enum StudentLifeEventType {
 enum InternalMessageStatus {
   DRAFT
   SENT
+}
+
+enum FeedPostType {
+  POST
+  POLL
+}
+
+enum FeedAudienceScope {
+  SCHOOL_ALL
+  STAFF_ONLY
+  PARENTS_STUDENTS
+  PARENTS_ONLY
+  LEVEL
+  CLASS
+}
+
+enum InlineMediaScope {
+  FEED
+  MESSAGING
+}
+
+enum InlineMediaStatus {
+  TEMP
+  LINKED
+}
+
+enum InlineMediaEntityType {
+  FEED_POST
+  INTERNAL_MESSAGE
 }

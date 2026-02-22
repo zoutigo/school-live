@@ -14,8 +14,16 @@ describe("MessagingService", () => {
   const mailService = {
     sendInternalMessageNotification: jest.fn(),
   };
+  const inlineMediaService = {
+    syncEntityImages: jest.fn(),
+    removeEntityImages: jest.fn(),
+  };
 
-  const service = new MessagingService(prisma as never, mailService as never);
+  const service = new MessagingService(
+    prisma as never,
+    mailService as never,
+    inlineMediaService as never,
+  );
 
   const baseUser = {
     id: "user-1",

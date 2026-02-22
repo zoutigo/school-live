@@ -41,7 +41,7 @@ export class SmtpEmailAdapter implements EmailPort {
     if (payload.schoolSlug) {
       firstPasswordParams.set("schoolSlug", payload.schoolSlug);
     }
-    const firstPasswordUrl = `${webUrl}/first-password?${firstPasswordParams.toString()}`;
+    const firstPasswordUrl = `${webUrl}/onboarding?${firstPasswordParams.toString()}`;
 
     const transporter = nodemailer.createTransport({
       host,

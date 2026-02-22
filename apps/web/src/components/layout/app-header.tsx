@@ -14,8 +14,24 @@ type Props = {
   isSchoolContext: boolean;
   role: Role;
   userInitials: string;
+  userDisplayName: string;
   onToggleMenu: () => void;
 };
+
+function roleLabel(role: Role): string {
+  if (role === "SUPER_ADMIN") return "Super admin";
+  if (role === "ADMIN") return "Admin";
+  if (role === "SALES") return "Commercial";
+  if (role === "SUPPORT") return "Support";
+  if (role === "SCHOOL_ADMIN") return "Admin ecole";
+  if (role === "SCHOOL_MANAGER") return "Gestionnaire ecole";
+  if (role === "SUPERVISOR") return "Superviseur";
+  if (role === "SCHOOL_ACCOUNTANT") return "Comptable";
+  if (role === "SCHOOL_STAFF") return "Staff";
+  if (role === "TEACHER") return "Enseignant";
+  if (role === "PARENT") return "Parent";
+  return "Eleve";
+}
 
 function getPortalLabel(role: Role): string {
   if (
@@ -50,6 +66,7 @@ export function AppHeader({
   isSchoolContext,
   role,
   userInitials,
+  userDisplayName,
   onToggleMenu,
 }: Props) {
   const router = useRouter();
@@ -122,6 +139,13 @@ export function AppHeader({
         </div>
 
         <div className="flex items-center gap-3">
+          <div className="hidden text-right sm:block md:block">
+            <p className="text-sm font-semibold text-text-primary">
+              {userDisplayName}
+            </p>
+            <p className="text-xs text-text-secondary">{roleLabel(role)}</p>
+          </div>
+
           <button
             aria-label="Notifications"
             className="relative inline-flex h-9 w-9 items-center justify-center rounded-card border border-border bg-surface text-text-primary"
@@ -153,6 +177,15 @@ export function AppHeader({
           </button>
         </div>
       </header>
+
+      <div className="border-b border-border bg-surface px-4 py-1.5 sm:hidden">
+        <p className="truncate text-sm font-semibold text-text-primary">
+          {userDisplayName}
+        </p>
+        <p className="truncate text-xs text-text-secondary">
+          {roleLabel(role)}
+        </p>
+      </div>
 
       <ConfirmDialog
         open={logoutConfirmOpen}

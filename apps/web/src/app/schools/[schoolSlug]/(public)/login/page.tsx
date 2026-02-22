@@ -71,7 +71,7 @@ export default function SchoolLoginPage() {
             if (forcedSchoolSlug ?? schoolSlug) {
               params.set("schoolSlug", forcedSchoolSlug ?? schoolSlug);
             }
-            router.push(`/first-password?${params.toString()}`);
+            router.push(`/onboarding?${params.toString()}`);
             return;
           }
 
@@ -80,7 +80,7 @@ export default function SchoolLoginPage() {
             if (forcedSchoolSlug ?? schoolSlug) {
               params.set("schoolSlug", forcedSchoolSlug ?? schoolSlug);
             }
-            router.push(`/profile-setup?${params.toString()}`);
+            router.push(`/onboarding?${params.toString()}`);
             return;
           }
         }

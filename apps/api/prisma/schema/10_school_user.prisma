@@ -31,6 +31,9 @@ model School {
   staffAssignments   SchoolStaffAssignment[]
   internalMessages   InternalMessage[]
   messageRecipients  InternalMessageRecipient[]
+  feedPosts          FeedPost[]
+  feedComments       FeedComment[]
+  feedLikes          FeedLike[]
 
   @@index([activeSchoolYearId])
 }
@@ -49,6 +52,7 @@ model User {
   recoveryStudentId  String?
   firstName          String                   @map("firstname")
   lastName           String                   @map("lastname")
+  gender             Gender?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   platformRoles      PlatformRoleAssignment[]
@@ -64,6 +68,9 @@ model User {
   staffAssignments   SchoolStaffAssignment[]
   sentMessages       InternalMessage[]         @relation("InternalMessageSender")
   receivedMessages   InternalMessageRecipient[] @relation("InternalMessageRecipientUser")
+  feedPosts          FeedPost[]                @relation("FeedPostAuthor")
+  feedComments       FeedComment[]             @relation("FeedCommentAuthor")
+  feedLikes          FeedLike[]                @relation("FeedLikeUser")
 }
 
 model PlatformRoleAssignment {

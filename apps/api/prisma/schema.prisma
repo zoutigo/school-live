@@ -40,6 +40,12 @@ enum AppRole {
   STUDENT
 }
 
+enum Gender {
+  M
+  F
+  OTHER
+}
+
 enum RecoveryQuestionKey {
   MOTHER_MAIDEN_NAME
   FATHER_FIRST_NAME
@@ -80,6 +86,35 @@ enum InternalMessageStatus {
   SENT
 }
 
+enum FeedPostType {
+  POST
+  POLL
+}
+
+enum FeedAudienceScope {
+  SCHOOL_ALL
+  STAFF_ONLY
+  PARENTS_STUDENTS
+  PARENTS_ONLY
+  LEVEL
+  CLASS
+}
+
+enum InlineMediaScope {
+  FEED
+  MESSAGING
+}
+
+enum InlineMediaStatus {
+  TEMP
+  LINKED
+}
+
+enum InlineMediaEntityType {
+  FEED_POST
+  INTERNAL_MESSAGE
+}
+
 
 model School {
   id                 String                @id @default(cuid())
@@ -114,6 +149,9 @@ model School {
   staffAssignments   SchoolStaffAssignment[]
   internalMessages   InternalMessage[]
   messageRecipients  InternalMessageRecipient[]
+  feedPosts          FeedPost[]
+  feedComments       FeedComment[]
+  feedLikes          FeedLike[]
 
   @@index([activeSchoolYearId])
 }
@@ -132,6 +170,7 @@ model User {
   recoveryStudentId  String?
   firstName          String                   @map("firstname")
   lastName           String                   @map("lastname")
+  gender             Gender?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   platformRoles      PlatformRoleAssignment[]
@@ -147,6 +186,9 @@ model User {
   staffAssignments   SchoolStaffAssignment[]
   sentMessages       InternalMessage[]         @relation("InternalMessageSender")
   receivedMessages   InternalMessageRecipient[] @relation("InternalMessageRecipientUser")
+  feedPosts          FeedPost[]                @relation("FeedPostAuthor")
+  feedComments       FeedComment[]             @relation("FeedCommentAuthor")
+  feedLikes          FeedLike[]                @relation("FeedLikeUser")
 }
 
 model PlatformRoleAssignment {
@@ -343,6 +385,7 @@ model AcademicLevel {
   updatedAt   DateTime     @updatedAt
   school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classes     Class[]
+  feedPosts   FeedPost[]
   curriculums Curriculum[]
 
   @@unique([schoolId, code])
@@ -425,6 +468,7 @@ model Class {
   grades          Grade[]
   subjectOverrides ClassSubjectOverride[]
   lifeEvents      StudentLifeEvent[]
+  feedPosts       FeedPost[]
 
   @@unique([schoolId, schoolYearId, classGroupId, name])
   @@index([schoolId])
@@ -594,6 +638,101 @@ model InternalMessageRecipient {
   @@index([archivedAt])
   @@index([readAt])
   @@index([deletedAt])
+}
+
+
+model FeedPost {
+  id               String            @id @default(cuid())
+  schoolId         String
+  authorUserId     String
+  type             FeedPostType      @default(POST)
+  title            String
+  bodyHtml         String
+  audienceScope    FeedAudienceScope
+  audienceLabel    String
+  audienceLevelId  String?
+  audienceClassId  String?
+  featuredUntil    DateTime?
+  pollQuestion     String?
+  pollOptionsJson  Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  school           School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  authorUser       User              @relation("FeedPostAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  audienceLevel    AcademicLevel?    @relation(fields: [audienceLevelId], references: [id], onDelete: SetNull)
+  audienceClass    Class?            @relation(fields: [audienceClassId], references: [id], onDelete: SetNull)
+  attachments      FeedPostAttachment[]
+  comments         FeedComment[]
+  likes            FeedLike[]
+
+  @@index([schoolId, createdAt])
+  @@index([authorUserId])
+  @@index([audienceScope])
+  @@index([audienceLevelId])
+  @@index([audienceClassId])
+}
+
+model FeedPostAttachment {
+  id         String    @id @default(cuid())
+  postId     String
+  fileName   String
+  fileUrl    String?
+  sizeLabel  String?
+  createdAt  DateTime @default(now())
+  post       FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model FeedComment {
+  id           String    @id @default(cuid())
+  postId       String
+  schoolId     String
+  authorUserId String
+  text         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  post         FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  authorUser   User     @relation("FeedCommentAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([schoolId])
+  @@index([authorUserId])
+}
+
+model FeedLike {
+  id        String    @id @default(cuid())
+  postId    String
+  schoolId  String
+  userId    String
+  createdAt DateTime  @default(now())
+  post      FeedPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user      User      @relation("FeedLikeUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([schoolId])
+  @@index([userId])
+}
+
+
+model InlineMediaAsset {
+  id               String                @id @default(cuid())
+  schoolId         String
+  uploadedByUserId String?
+  scope            InlineMediaScope
+  status           InlineMediaStatus     @default(TEMP)
+  url              String                @unique
+  entityType       InlineMediaEntityType?
+  entityId         String?
+  expiresAt        DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([status, expiresAt])
+  @@index([entityType, entityId])
+  @@index([schoolId, scope, status])
 }
 
 

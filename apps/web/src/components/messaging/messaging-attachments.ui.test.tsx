@@ -202,9 +202,7 @@ describe("Messaging attachments", () => {
     });
 
     await waitFor(() =>
-      expect(
-        screen.getByText("Impossible d'uploader l'image."),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("upload failed")).toBeInTheDocument(),
     );
     expect(onUploadInlineImage).toHaveBeenCalledTimes(1);
   });

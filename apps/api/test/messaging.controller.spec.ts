@@ -17,10 +17,14 @@ describe("MessagingController", () => {
   const mediaClientService = {
     uploadImage: jest.fn(),
   };
+  const inlineMediaService = {
+    registerTempUpload: jest.fn(),
+  };
 
   const controller = new MessagingController(
     messagingService as never,
     mediaClientService as never,
+    inlineMediaService as never,
   );
 
   const user = {
@@ -35,6 +39,7 @@ describe("MessagingController", () => {
   beforeEach(() => {
     Object.values(messagingService).forEach((fn) => fn.mockReset());
     mediaClientService.uploadImage.mockReset();
+    inlineMediaService.registerTempUpload.mockReset();
   });
 
   it("delegates list to messaging service", async () => {
@@ -50,10 +55,10 @@ describe("MessagingController", () => {
     );
   });
 
-  it("throws when inline image file is missing", () => {
-    expect(() => controller.uploadInlineImage(undefined)).toThrow(
-      BadRequestException,
-    );
+  it("throws when inline image file is missing", async () => {
+    await expect(
+      controller.uploadInlineImage(user, "school-1", undefined),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("uploads inline image through media client", async () => {
@@ -67,12 +72,18 @@ describe("MessagingController", () => {
       url: "https://cdn.example.com/messaging/inline/1.png",
     });
 
-    await controller.uploadInlineImage(file);
+    await controller.uploadInlineImage(user, "school-1", file);
 
     expect(mediaClientService.uploadImage).toHaveBeenCalledWith(
       "messaging-inline-image",
       file,
     );
+    expect(inlineMediaService.registerTempUpload).toHaveBeenCalledWith({
+      schoolId: "school-1",
+      uploadedByUserId: "u-1",
+      scope: "MESSAGING",
+      url: "https://cdn.example.com/messaging/inline/1.png",
+    });
   });
 
   it("delegates write actions to messaging service", async () => {

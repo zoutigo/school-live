@@ -83,6 +83,25 @@ export class ImageStorageService {
     };
   }
 
+  async deleteImageByPublicUrl(url?: string) {
+    if (!url) {
+      throw new BadRequestException("URL image manquante");
+    }
+
+    await this.ensureBucket();
+    const objectKey = this.objectKeyFromPublicUrl(url);
+    const response = await this.signedRequest({
+      method: "DELETE",
+      key: objectKey,
+    });
+
+    if (!response.ok && response.status !== 404) {
+      throw new BadGatewayException("Unable to delete media object");
+    }
+
+    return { success: true };
+  }
+
   private getSchoolVariant() {
     return {
       subfolder: "schools/logos",
@@ -241,8 +260,21 @@ export class ImageStorageService {
     }
   }
 
+  private objectKeyFromPublicUrl(url: string) {
+    const config = this.getS3Config();
+    const normalizedPublicBase = config.publicBaseUrl.replace(/\/$/, "");
+    if (!url.startsWith(`${normalizedPublicBase}/`)) {
+      throw new BadRequestException("URL media non supportee");
+    }
+    const encodedKey = url.slice(normalizedPublicBase.length + 1);
+    return encodedKey
+      .split("/")
+      .map((part) => decodeURIComponent(part))
+      .join("/");
+  }
+
   private async signedRequest(params: {
-    method: "HEAD" | "PUT";
+    method: "HEAD" | "PUT" | "DELETE";
     bucketOnly?: boolean;
     key?: string;
     query?: string;
@@ -316,7 +348,10 @@ export class ImageStorageService {
         ...headers,
         Authorization: authorization,
       },
-      body: params.method === "HEAD" ? undefined : new Uint8Array(bodyBuffer),
+      body:
+        params.method === "HEAD" || params.method === "DELETE"
+          ? undefined
+          : new Uint8Array(bodyBuffer),
     });
   }
 

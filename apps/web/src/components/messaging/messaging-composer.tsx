@@ -2,33 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlignCenter,
-  AlignJustify,
-  AlignLeft,
-  AlignRight,
-  ArrowLeft,
-  ArrowRight,
-  Eraser,
-  Expand,
-  Highlighter,
   ImagePlus,
-  IndentDecrease,
-  IndentIncrease,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
   Paperclip,
-  Pilcrow,
   Plus,
   Search,
   Send,
-  Strikethrough,
-  Trash2,
-  Type,
   UserRound,
   X,
 } from "lucide-react";
+import {
+  RichTextEditor,
+  type RichTextEditorRef,
+} from "../editor/rich-text-editor";
 import { ActionIconButton } from "../ui/action-icon-button";
 import { PaginationControls } from "../ui/pagination-controls";
 import {
@@ -102,12 +87,8 @@ export function MessagingComposer({
   onSaveDraft,
   onUploadInlineImage,
 }: Props) {
-  const editorRef = useRef<HTMLDivElement | null>(null);
+  const editorApiRef = useRef<RichTextEditorRef | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const inlineImageInputRef = useRef<HTMLInputElement | null>(null);
-  const textColorInputRef = useRef<HTMLInputElement | null>(null);
-  const bgColorInputRef = useRef<HTMLInputElement | null>(null);
-  const selectedImageWrapperRef = useRef<HTMLElement | null>(null);
 
   const [recipient, setRecipient] = useState("");
   const [selectedRecipients, setSelectedRecipients] = useState<
@@ -115,11 +96,11 @@ export function MessagingComposer({
   >([]);
   const [subject, setSubject] = useState(initialSubject);
   const [editorText, setEditorText] = useState("");
+  const [editorHtml, setEditorHtml] = useState(initialBody);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [lastSavedDraftSnapshot, setLastSavedDraftSnapshot] = useState<
@@ -133,14 +114,6 @@ export function MessagingComposer({
     teacherRecipients.length > 0 || functionRecipients.length > 0;
   const [initialRecipientsApplied, setInitialRecipientsApplied] =
     useState(false);
-
-  useEffect(() => {
-    if (!editorRef.current || !initialBody) {
-      return;
-    }
-    editorRef.current.innerHTML = initialBody;
-    setEditorText(editorRef.current.innerText ?? "");
-  }, [initialBody]);
 
   useEffect(() => {
     if (initialRecipientsApplied) {
@@ -261,16 +234,6 @@ export function MessagingComposer({
     );
   }
 
-  function applyCommand(command: string, value?: string) {
-    editorRef.current?.focus();
-    document.execCommand(command, false, value);
-    setEditorText(editorRef.current?.innerText ?? "");
-  }
-
-  function setBlockFormat(value: string) {
-    applyCommand("formatBlock", value);
-  }
-
   function addFiles(files: FileList | null) {
     if (!files || files.length === 0) {
       return;
@@ -292,70 +255,9 @@ export function MessagingComposer({
   }
 
   function clearEditor() {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = "";
-    }
-    selectImageWrapper(null);
+    editorApiRef.current?.clear();
     setEditorText("");
-  }
-
-  function selectImageWrapper(wrapper: HTMLElement | null) {
-    if (selectedImageWrapperRef.current) {
-      selectedImageWrapperRef.current.style.boxShadow = "none";
-      selectedImageWrapperRef.current.style.borderColor =
-        "rgba(148,163,184,0.45)";
-    }
-    selectedImageWrapperRef.current = wrapper;
-    if (selectedImageWrapperRef.current) {
-      selectedImageWrapperRef.current.style.boxShadow =
-        "0 0 0 2px rgba(37,99,235,0.25)";
-      selectedImageWrapperRef.current.style.borderColor = "rgba(37,99,235,0.6)";
-    }
-  }
-
-  function getSelectionImageWrapper() {
-    const selection = window.getSelection();
-    const anchorNode = selection?.anchorNode;
-    if (!anchorNode) {
-      return null;
-    }
-    const anchorElement =
-      anchorNode.nodeType === Node.ELEMENT_NODE
-        ? (anchorNode as Element)
-        : anchorNode.parentElement;
-
-    if (!anchorElement) {
-      return null;
-    }
-
-    return anchorElement.closest(
-      '[data-messaging-image="1"]',
-    ) as HTMLElement | null;
-  }
-
-  function toggleSelectedImageLayout() {
-    const wrapper =
-      selectedImageWrapperRef.current ?? getSelectionImageWrapper();
-    if (!wrapper) {
-      setError("Selectionnez une image avant de changer son habillage.");
-      return;
-    }
-
-    setError(null);
-    const currentLayout = wrapper.getAttribute("data-layout") ?? "block";
-    if (currentLayout === "block") {
-      wrapper.setAttribute("data-layout", "wrap");
-      wrapper.style.float = "left";
-      wrapper.style.margin = "0 12px 8px 0";
-      wrapper.style.clear = "none";
-    } else {
-      wrapper.setAttribute("data-layout", "block");
-      wrapper.style.float = "none";
-      wrapper.style.margin = "8px 0";
-      wrapper.style.clear = "both";
-    }
-
-    selectImageWrapper(wrapper);
+    setEditorHtml("");
   }
 
   async function handleSend() {
@@ -396,7 +298,7 @@ export function MessagingComposer({
     try {
       await onSend({
         subject: subject.trim(),
-        body: editorRef.current?.innerHTML ?? "",
+        body: editorHtml,
         recipientUserIds,
       });
       setInfo("Message envoye.");
@@ -428,7 +330,7 @@ export function MessagingComposer({
     try {
       await onSaveDraft({
         subject: subject.trim() || "Brouillon sans objet",
-        body: editorRef.current?.innerHTML ?? "",
+        body: editorHtml,
         recipientUserIds,
       });
       setLastSavedDraftSnapshot(currentDraftSnapshot);
@@ -440,102 +342,9 @@ export function MessagingComposer({
     }
   }
 
-  async function handleInlineImageFile(file: File) {
-    if (!file.type.startsWith("image/")) {
-      setError("Le fichier selectionne n'est pas une image.");
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-      setError("Image trop lourde (max 8 Mo).");
-      return;
-    }
-
-    if (!onUploadInlineImage) {
-      setError("Upload image indisponible.");
-      return;
-    }
-
-    setError(null);
-    try {
-      const imageUrl = await onUploadInlineImage(file);
-      insertResizableImage(imageUrl, file.name);
-    } catch {
-      setError("Impossible d'uploader l'image.");
-    }
-  }
-
-  function insertResizableImage(src: string, alt: string) {
-    const editor = editorRef.current;
-    if (!editor) {
-      return;
-    }
-
-    editor.focus();
-
-    const selection = window.getSelection();
-    const range =
-      selection && selection.rangeCount > 0
-        ? selection.getRangeAt(0)
-        : document.createRange();
-
-    if (!selection || selection.rangeCount === 0) {
-      range.selectNodeContents(editor);
-      range.collapse(false);
-    }
-
-    const wrapper = document.createElement("span");
-    wrapper.setAttribute("contenteditable", "false");
-    wrapper.setAttribute("data-messaging-image", "1");
-    wrapper.setAttribute("data-layout", "block");
-    wrapper.style.display = "inline-block";
-    wrapper.style.maxWidth = "100%";
-    wrapper.style.width = "320px";
-    wrapper.style.minWidth = "120px";
-    wrapper.style.resize = "both";
-    wrapper.style.overflow = "hidden";
-    wrapper.style.verticalAlign = "top";
-    wrapper.style.border = "1px solid rgba(148,163,184,0.45)";
-    wrapper.style.borderRadius = "8px";
-    wrapper.style.background = "#fff";
-    wrapper.style.margin = "8px 0";
-    wrapper.style.clear = "both";
-
-    const image = document.createElement("img");
-    image.src = src;
-    image.alt = alt;
-    image.style.display = "block";
-    image.style.width = "100%";
-    image.style.height = "auto";
-    image.style.userSelect = "none";
-    image.draggable = false;
-
-    wrapper.appendChild(image);
-
-    range.deleteContents();
-    range.insertNode(wrapper);
-    selectImageWrapper(wrapper);
-
-    const spacer = document.createElement("p");
-    spacer.innerHTML = "<br>";
-    if (wrapper.parentNode) {
-      wrapper.parentNode.insertBefore(spacer, wrapper.nextSibling);
-    }
-
-    const nextRange = document.createRange();
-    nextRange.setStart(spacer, 0);
-    nextRange.collapse(true);
-    selection?.removeAllRanges();
-    selection?.addRange(nextRange);
-
-    setEditorText(editor.innerText ?? "");
-  }
-
   return (
     <>
-      <div
-        className={`grid gap-4 ${isFullscreen ? "fixed inset-0 z-50 bg-surface p-4" : ""}`}
-      >
+      <div className="grid gap-4">
         <div className="grid gap-4 rounded-card border border-border bg-background p-4">
           <div className="grid gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
             <label className="pt-2 text-sm font-semibold text-text-primary">
@@ -627,177 +436,14 @@ export function MessagingComposer({
             <label className="pt-2 text-sm font-semibold text-text-primary">
               Message
             </label>
-            <div className="grid gap-0 rounded-card border border-border bg-surface">
-              <div className="flex flex-wrap items-center gap-1 border-b border-border p-2">
-                <ToolbarBtn
-                  onClick={() => applyCommand("undo")}
-                  icon={ArrowLeft}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("redo")}
-                  icon={ArrowRight}
-                />
-                <ToolbarDivider />
-                <ToolbarBtn onClick={() => applyCommand("bold")} icon={Type} />
-                <ToolbarBtn
-                  onClick={() => applyCommand("italic")}
-                  icon={Italic}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("underline")}
-                  icon={Eraser}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("strikeThrough")}
-                  icon={Strikethrough}
-                />
-                <ToolbarDivider />
-                <ToolbarBtn
-                  onClick={() => applyCommand("insertUnorderedList")}
-                  icon={List}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("insertOrderedList")}
-                  icon={ListOrdered}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("outdent")}
-                  icon={IndentDecrease}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("indent")}
-                  icon={IndentIncrease}
-                />
-                <ToolbarDivider />
-                <ToolbarBtn
-                  onClick={() => {
-                    const url = window.prompt("Lien");
-                    if (url) {
-                      applyCommand("createLink", url);
-                    }
-                  }}
-                  icon={Link2}
-                />
-                <ToolbarBtn
-                  onClick={() => inlineImageInputRef.current?.click()}
-                  icon={ImagePlus}
-                />
-                <input
-                  ref={inlineImageInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (event) => {
-                    const input = event.currentTarget;
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      await handleInlineImageFile(file);
-                    }
-                    input.value = "";
-                  }}
-                />
-                <ToolbarDivider />
-                <ToolbarBtn
-                  onClick={() => applyCommand("justifyLeft")}
-                  icon={AlignLeft}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("justifyCenter")}
-                  icon={AlignCenter}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("justifyRight")}
-                  icon={AlignRight}
-                />
-                <ToolbarBtn
-                  onClick={() => applyCommand("justifyFull")}
-                  icon={AlignJustify}
-                />
-                <ToolbarDivider />
-                <label className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-text-secondary">
-                  <Pilcrow className="h-3.5 w-3.5" />
-                  <select
-                    defaultValue="P"
-                    onChange={(event) => setBlockFormat(event.target.value)}
-                    className="bg-transparent text-xs text-text-secondary outline-none"
-                  >
-                    <option value="P">Paragraphe</option>
-                    <option value="H1">Titre 1</option>
-                    <option value="H2">Titre 2</option>
-                    <option value="H3">Titre 3</option>
-                    <option value="BLOCKQUOTE">Citation</option>
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => textColorInputRef.current?.click()}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded border border-border text-text-secondary transition hover:bg-primary/10 hover:text-primary"
-                  title="Couleur du texte"
-                >
-                  <Type className="h-4 w-4" />
-                </button>
-                <input
-                  ref={textColorInputRef}
-                  type="color"
-                  className="hidden"
-                  onChange={(event) =>
-                    applyCommand("foreColor", event.target.value)
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={() => bgColorInputRef.current?.click()}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded border border-border text-text-secondary transition hover:bg-primary/10 hover:text-primary"
-                  title="Surlignage"
-                >
-                  <Highlighter className="h-4 w-4" />
-                </button>
-                <input
-                  ref={bgColorInputRef}
-                  type="color"
-                  className="hidden"
-                  onChange={(event) =>
-                    applyCommand("hiliteColor", event.target.value)
-                  }
-                />
-                <ToolbarDivider />
-                <ToolbarBtn
-                  onClick={() => applyCommand("removeFormat")}
-                  icon={Trash2}
-                />
-                <ToolbarBtn
-                  onClick={() => setIsFullscreen((prev) => !prev)}
-                  icon={Expand}
-                />
-                <button
-                  type="button"
-                  onClick={toggleSelectedImageLayout}
-                  className="rounded border border-border px-2 py-1 text-xs text-text-secondary transition hover:bg-primary/10 hover:text-primary"
-                  title="Basculer entre mode bloc et texte autour"
-                >
-                  Habillage
-                </button>
-              </div>
-              <div
-                ref={editorRef}
-                contentEditable
-                onClick={(event) => {
-                  const target = event.target as HTMLElement;
-                  const wrapper = target.closest(
-                    '[data-messaging-image="1"]',
-                  ) as HTMLElement | null;
-                  selectImageWrapper(wrapper);
-                }}
-                onInput={() =>
-                  setEditorText(editorRef.current?.innerText ?? "")
-                }
-                className="min-h-[220px] p-3 text-sm text-text-primary outline-none"
-              />
-              <p className="border-t border-border px-3 py-2 text-xs text-text-secondary">
-                Astuce: apres insertion, redimensionnez l'image en tirant le
-                coin inferieur droit du cadre.
-              </p>
-            </div>
+            <RichTextEditor
+              ref={editorApiRef}
+              initialHtml={initialBody}
+              onTextChange={setEditorText}
+              onHtmlChange={setEditorHtml}
+              onUploadInlineImage={onUploadInlineImage}
+              hint="Astuce: apres insertion, verifiez l'alignement du contenu et les titres."
+            />
           </div>
 
           <div className="grid gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
@@ -946,28 +592,6 @@ export function MessagingComposer({
       />
     </>
   );
-}
-
-function ToolbarBtn({
-  onClick,
-  icon: Icon,
-}: {
-  onClick: () => void;
-  icon: typeof Type;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex h-8 w-8 items-center justify-center rounded border border-border text-text-secondary transition hover:bg-primary/10 hover:text-primary"
-    >
-      <Icon className="h-4 w-4" />
-    </button>
-  );
-}
-
-function ToolbarDivider() {
-  return <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />;
 }
 
 type TeacherModalProps = {

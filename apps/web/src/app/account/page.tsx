@@ -46,6 +46,7 @@ type Tab = "personal" | "security" | "help";
 type MeResponse = {
   firstName: string;
   lastName: string;
+  gender?: "M" | "F" | "OTHER" | null;
   email?: string | null;
   phone?: string | null;
   role: Role;
@@ -208,6 +209,18 @@ export default function AccountPage() {
                 <InfoBlock label="Nom" value={me?.lastName ?? "-"} />
                 <InfoBlock label="Email" value={me?.email ?? "-"} />
                 <InfoBlock label="Telephone" value={me?.phone ?? "-"} />
+                <InfoBlock
+                  label="Genre"
+                  value={
+                    me?.gender === "M"
+                      ? "Masculin"
+                      : me?.gender === "F"
+                        ? "Feminin"
+                        : me?.gender === "OTHER"
+                          ? "Autre"
+                          : "-"
+                  }
+                />
                 <InfoBlock label="Role" value={me?.role ?? "-"} />
                 <InfoBlock
                   label="Ecole"

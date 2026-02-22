@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
@@ -1509,6 +1510,16 @@ export default function ClassesPage() {
                 <p className="mt-1 text-text-secondary">
                   Curriculum: {selectedClass.curriculum?.name ?? "-"}
                 </p>
+                {schoolSlug ? (
+                  <div className="mt-3">
+                    <Link
+                      href={`/schools/${schoolSlug}/classes/${selectedClass.id}/fil`}
+                      className="inline-flex h-9 items-center rounded-card border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                    >
+                      Ouvrir le fil de classe
+                    </Link>
+                  </div>
+                ) : null}
               </div>
 
               <div className="rounded-card border border-border bg-background p-3">

@@ -7,6 +7,7 @@ npm run check:repo
 echo "[pre-commit] Running API messaging e2e (isolated test DB)..."
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   npm run -w @school-live/api test:e2e -- messaging.e2e-spec.ts
+  npm run -w @school-live/api test:e2e -- inline-media-cleanup.e2e-spec.ts
 else
   echo "[pre-commit] Docker unavailable, skipping API messaging e2e."
 fi

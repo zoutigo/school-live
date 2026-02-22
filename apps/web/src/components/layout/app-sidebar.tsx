@@ -21,6 +21,7 @@ import {
   UserRound,
   UserSquare2,
   Users,
+  Wallet,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { getSchoolMessagesUnreadCount } from "../messaging/messaging-api";
@@ -142,6 +143,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
     role === "SCHOOL_ADMIN" ||
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR" ||
+    role === "SCHOOL_ACCOUNTANT" ||
     role === "SCHOOL_STAFF"
   ) {
     return [
@@ -156,6 +158,12 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         href: `${schoolBase}/dashboard`,
         icon: LayoutDashboard,
         matchPrefix: `${schoolBase}/dashboard`,
+      },
+      {
+        label: "Fil d'actualite",
+        href: `${schoolBase}/fil`,
+        icon: MessageSquare,
+        matchPrefix: `${schoolBase}/fil`,
       },
       {
         label: "Classes",
@@ -235,6 +243,12 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
+        label: "Fil d'actualite",
+        href: `${schoolBase}/fil`,
+        icon: MessageSquare,
+        matchPrefix: `${schoolBase}/fil`,
+      },
+      {
         label: "Mes classes",
         href: `${schoolBase}/mes-classes`,
         icon: School,
@@ -264,34 +278,34 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
   if (role === "PARENT") {
     return [
       {
-        label: "Mon compte",
-        href: "/account",
-        icon: UserSquare2,
-        matchPrefix: "/account",
-      },
-      {
         label: "Accueil",
         href: `${schoolBase}/dashboard`,
         icon: Home,
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
-        label: "Vos informations",
-        href: `${schoolBase}/dashboard#infos`,
+        label: "Mon compte",
+        href: "/account",
         icon: UserSquare2,
-        matchPrefix: `${schoolBase}/dashboard`,
+        matchPrefix: "/account",
+      },
+      {
+        label: "Fil d'actualite",
+        href: `${schoolBase}/fil`,
+        icon: MessageSquare,
+        matchPrefix: `${schoolBase}/fil`,
       },
       {
         label: "Situation financiere",
-        href: `${schoolBase}/dashboard#finance`,
-        icon: CreditCard,
-        matchPrefix: `${schoolBase}/dashboard`,
+        href: `${schoolBase}/situation-financiere`,
+        icon: Wallet,
+        matchPrefix: `${schoolBase}/situation-financiere`,
       },
       {
-        label: "Paiements en ligne",
-        href: `${schoolBase}/dashboard#payments`,
+        label: "Boutique en ligne",
+        href: `${schoolBase}/boutique-en-ligne`,
         icon: CreditCard,
-        matchPrefix: `${schoolBase}/dashboard`,
+        matchPrefix: `${schoolBase}/boutique-en-ligne`,
       },
       {
         label: "Messagerie",
@@ -301,15 +315,15 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       },
       {
         label: "Documents",
-        href: `${schoolBase}/dashboard#docs`,
+        href: `${schoolBase}/documents`,
         icon: FileText,
-        matchPrefix: `${schoolBase}/dashboard`,
+        matchPrefix: `${schoolBase}/documents`,
       },
       {
-        label: "Formulaires & sondages",
-        href: `${schoolBase}/dashboard#forms`,
+        label: "Formulaire",
+        href: `${schoolBase}/formulaire`,
         icon: FileText,
-        matchPrefix: `${schoolBase}/dashboard`,
+        matchPrefix: `${schoolBase}/formulaire`,
       },
       {
         label: "Parametres",
@@ -342,7 +356,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
     {
       label: "Situation financiere",
       href: `${schoolBase}/dashboard#finance`,
-      icon: CreditCard,
+      icon: Wallet,
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
@@ -446,6 +460,12 @@ function buildTeacherClassItems(
   const base = `/schools/${schoolSlug}/classes/${classId}`;
 
   return [
+    {
+      label: "Fil de classe",
+      href: `${base}/fil`,
+      icon: MessageSquare,
+      matchPrefix: `${base}/fil`,
+    },
     {
       label: "Notes",
       href: `${base}/notes`,
@@ -920,74 +940,48 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
       ) : (
         <div className="grid gap-3">
           <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
-            <button
-              type="button"
-              onClick={() => setOpenParentSection("general")}
-              className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
-                openParentSection === "general"
-                  ? "bg-surface text-primary"
-                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  openParentSection === "general"
-                    ? "bg-background text-primary"
-                    : "bg-primary-dark text-surface"
-                }`}
-              >
-                <Home className="h-4 w-4" />
-              </span>
-              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                Menu general
-              </span>
-            </button>
+            <nav className="grid gap-1" aria-label="Menu parent">
+              {items.map((item) => {
+                const active = item.matchPrefix
+                  ? pathname.startsWith(item.matchPrefix)
+                  : pathname === item.href;
+                const Icon = item.icon;
 
-            {openParentSection === "general" ? (
-              <nav className="mt-2 grid gap-1" aria-label="Menu general parent">
-                {items.map((item) => {
-                  const active = item.matchPrefix
-                    ? pathname.startsWith(item.matchPrefix)
-                    : pathname === item.href;
-                  const Icon = item.icon;
-
-                  return (
-                    <Link
-                      key={`general-${item.label}-${item.href}`}
-                      href={item.href}
-                      onClick={onNavigate}
-                      className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
+                return (
+                  <Link
+                    key={`general-${item.label}-${item.href}`}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
+                      active
+                        ? "bg-surface text-primary"
+                        : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                         active
-                          ? "bg-surface text-primary"
-                          : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                          ? "bg-background text-primary"
+                          : "bg-primary-dark text-surface"
                       }`}
                     >
-                      <span
-                        aria-hidden="true"
-                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                          active
-                            ? "bg-background text-primary"
-                            : "bg-primary-dark text-surface"
-                        }`}
-                      >
-                        <Icon className="h-3.5 w-3.5" />
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                      {item.label}
+                    </span>
+                    {typeof resolveUnread(item) === "number" ? (
+                      <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                        <Badge variant="notification">
+                          {resolveUnread(item)}
+                        </Badge>
                       </span>
-                      <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                        {item.label}
-                      </span>
-                      {typeof resolveUnread(item) === "number" ? (
-                        <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                          <Badge variant="notification">
-                            {resolveUnread(item)}
-                          </Badge>
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            ) : null}
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
 
           {parentChildrenWithItems.map((child) => {

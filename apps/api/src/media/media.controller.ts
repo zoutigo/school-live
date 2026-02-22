@@ -1,9 +1,11 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
   Headers,
   Param,
   Post,
+  Query,
   UnauthorizedException,
   UploadedFile,
   UseInterceptors,
@@ -42,5 +44,15 @@ export class MediaController {
     }
 
     return this.imageStorageService.storeImage(kind, file);
+  }
+
+  @Delete()
+  remove(@Query("url") url?: string, @Headers("x-media-token") token?: string) {
+    const expectedToken = process.env.MEDIA_INTERNAL_TOKEN?.trim();
+    if (expectedToken && token !== expectedToken) {
+      throw new UnauthorizedException("Invalid media token");
+    }
+
+    return this.imageStorageService.deleteImageByPublicUrl(url);
   }
 }
