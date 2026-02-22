@@ -40,6 +40,12 @@ enum AppRole {
   STUDENT
 }
 
+enum Gender {
+  M
+  F
+  OTHER
+}
+
 enum RecoveryQuestionKey {
   MOTHER_MAIDEN_NAME
   FATHER_FIRST_NAME
@@ -164,6 +170,7 @@ model User {
   recoveryStudentId  String?
   firstName          String                   @map("firstname")
   lastName           String                   @map("lastname")
+  gender             Gender?
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   platformRoles      PlatformRoleAssignment[]
@@ -709,18 +716,19 @@ model FeedLike {
   @@index([userId])
 }
 
+
 model InlineMediaAsset {
-  id             String                @id @default(cuid())
-  schoolId       String
+  id               String                @id @default(cuid())
+  schoolId         String
   uploadedByUserId String?
-  scope          InlineMediaScope
-  status         InlineMediaStatus     @default(TEMP)
-  url            String                @unique
-  entityType     InlineMediaEntityType?
-  entityId       String?
-  expiresAt      DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  scope            InlineMediaScope
+  status           InlineMediaStatus     @default(TEMP)
+  url              String                @unique
+  entityType       InlineMediaEntityType?
+  entityId         String?
+  expiresAt        DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@index([status, expiresAt])
   @@index([entityType, entityId])
@@ -729,4 +737,5 @@ model InlineMediaAsset {
 
 
 // Reserved for future shared indexes, comments and data notes.
+
 

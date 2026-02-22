@@ -69,7 +69,7 @@ export function LandingLoginForm() {
             if (forcedSchoolSlug) {
               params.set("schoolSlug", forcedSchoolSlug);
             }
-            router.push(`/first-password?${params.toString()}`);
+            router.push(`/onboarding?${params.toString()}`);
             return;
           }
 
@@ -78,7 +78,7 @@ export function LandingLoginForm() {
             if (forcedSchoolSlug) {
               params.set("schoolSlug", forcedSchoolSlug);
             }
-            router.push(`/profile-setup?${params.toString()}`);
+            router.push(`/onboarding?${params.toString()}`);
             return;
           }
         }

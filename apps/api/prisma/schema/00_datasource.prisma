@@ -40,6 +40,12 @@ enum AppRole {
   STUDENT
 }
 
+enum Gender {
+  M
+  F
+  OTHER
+}
+
 enum RecoveryQuestionKey {
   MOTHER_MAIDEN_NAME
   FATHER_FIRST_NAME

@@ -27,6 +27,7 @@ export interface AuthenticatedUser {
   avatarUrl?: string | null;
   firstName: string;
   lastName: string;
+  gender?: "M" | "F" | "OTHER" | null;
 }
 
 export interface AuthResponse {

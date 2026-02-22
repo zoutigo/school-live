@@ -19,6 +19,7 @@ import type { AuthenticatedUser } from "./auth.types.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
 import { FirstPasswordChangeDto } from "./dto/first-password-change.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
+import { OnboardingCompleteDto } from "./dto/onboarding-complete.dto.js";
 import { ProfileSetupDto } from "./dto/profile-setup.dto.js";
 import { ProfileSetupOptionsDto } from "./dto/profile-setup-options.dto.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
@@ -105,6 +106,27 @@ export class PublicAuthController {
   @Get("profile-setup/options")
   profileSetupOptions(@Query() query: ProfileSetupOptionsDto) {
     return this.authService.getProfileSetupOptions(query.email);
+  }
+
+  @Get("onboarding/options")
+  onboardingOptions(@Query() query: ProfileSetupOptionsDto) {
+    return this.authService.getProfileSetupOptions(query.email);
+  }
+
+  @Post("onboarding/complete")
+  onboardingComplete(@Body() payload: OnboardingCompleteDto) {
+    return this.authService.completeOnboarding({
+      email: payload.email,
+      temporaryPassword: payload.temporaryPassword,
+      newPassword: payload.newPassword,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      gender: payload.gender,
+      birthDate: payload.birthDate,
+      answers: payload.answers,
+      parentClassId: payload.parentClassId,
+      parentStudentId: payload.parentStudentId,
+    });
   }
 
   @Post("profile-setup")

@@ -10,6 +10,7 @@ function isPublicPath(path: string) {
     normalizedPath === "/auth/login" ||
     normalizedPath === "/auth/first-password-change" ||
     normalizedPath === "/auth/profile-setup" ||
+    normalizedPath === "/auth/onboarding/complete" ||
     /^\/schools\/[^/]+\/auth\/login$/.test(normalizedPath)
   );
 }
