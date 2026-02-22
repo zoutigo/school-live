@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { Prisma } from "@prisma/client";
+import { InlineMediaEntityType, type Prisma } from "@prisma/client";
 import { MailService } from "../mail/mail.service.js";
+import { InlineMediaService } from "../media/inline-media.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import type { ArchiveMessageDto } from "./dto/archive-message.dto.js";
@@ -21,6 +22,7 @@ export class MessagingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly inlineMediaService: InlineMediaService,
   ) {}
 
   async listMessages(
@@ -355,6 +357,16 @@ export class MessagingService {
       },
     });
 
+    await this.inlineMediaService.syncEntityImages({
+      schoolId: effectiveSchoolId,
+      uploadedByUserId: user.id,
+      scope: "MESSAGING",
+      entityType: InlineMediaEntityType.INTERNAL_MESSAGE,
+      entityId: created.id,
+      nextBodyHtml: payload.body,
+      deleteRemovedPhysically: true,
+    });
+
     if (!isDraft && recipientIds.length > 0) {
       await this.notifyMessageRecipients(effectiveSchoolId, created.id);
     }
@@ -379,6 +391,7 @@ export class MessagingService {
       },
       select: {
         id: true,
+        body: true,
       },
     });
 
@@ -427,6 +440,17 @@ export class MessagingService {
           });
         }
       }
+    });
+
+    await this.inlineMediaService.syncEntityImages({
+      schoolId: effectiveSchoolId,
+      uploadedByUserId: user.id,
+      scope: "MESSAGING",
+      entityType: InlineMediaEntityType.INTERNAL_MESSAGE,
+      entityId: messageId,
+      previousBodyHtml: draft.body,
+      nextBodyHtml: payload.body ?? draft.body,
+      deleteRemovedPhysically: true,
     });
 
     return this.getMessage(user, effectiveSchoolId, messageId);
@@ -592,6 +616,11 @@ export class MessagingService {
 
     if (message.senderUserId === user.id) {
       if (message.status === "DRAFT") {
+        await this.inlineMediaService.removeEntityImages({
+          entityType: InlineMediaEntityType.INTERNAL_MESSAGE,
+          entityId: message.id,
+          deletePhysically: true,
+        });
         await this.prisma.internalMessage.delete({
           where: { id: message.id },
         });

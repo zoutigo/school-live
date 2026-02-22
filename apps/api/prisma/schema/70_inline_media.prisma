@@ -1,0 +1,17 @@
+model InlineMediaAsset {
+  id               String                @id @default(cuid())
+  schoolId         String
+  uploadedByUserId String?
+  scope            InlineMediaScope
+  status           InlineMediaStatus     @default(TEMP)
+  url              String                @unique
+  entityType       InlineMediaEntityType?
+  entityId         String?
+  expiresAt        DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([status, expiresAt])
+  @@index([entityType, entityId])
+  @@index([schoolId, scope, status])
+}

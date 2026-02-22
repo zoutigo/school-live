@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { FeedModule } from "./feed/feed.module.js";
 import { GradesModule } from "./grades/grades.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { ManagementModule } from "./management/management.module.js";
@@ -20,6 +21,7 @@ import { SchoolsModule } from "./schools/schools.module.js";
     }),
     PrismaModule,
     AuthModule,
+    FeedModule,
     GradesModule,
     HealthModule,
     ManagementModule,

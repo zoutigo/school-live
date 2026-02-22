@@ -79,3 +79,32 @@ enum InternalMessageStatus {
   DRAFT
   SENT
 }
+
+enum FeedPostType {
+  POST
+  POLL
+}
+
+enum FeedAudienceScope {
+  SCHOOL_ALL
+  STAFF_ONLY
+  PARENTS_STUDENTS
+  PARENTS_ONLY
+  LEVEL
+  CLASS
+}
+
+enum InlineMediaScope {
+  FEED
+  MESSAGING
+}
+
+enum InlineMediaStatus {
+  TEMP
+  LINKED
+}
+
+enum InlineMediaEntityType {
+  FEED_POST
+  INTERNAL_MESSAGE
+}

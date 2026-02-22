@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
+import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -77,15 +78,27 @@ export default function DashboardPage() {
       </Card>
 
       {me?.role === "PARENT" || me?.role === "STUDENT" ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {familyStats.map((item) => (
-            <Card key={item.title} title={item.title}>
-              <p className="font-heading text-2xl font-bold text-primary">
-                {item.value}
-              </p>
-            </Card>
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            {familyStats.map((item) => (
+              <Card key={item.title} title={item.title}>
+                <p className="font-heading text-2xl font-bold text-primary">
+                  {item.value}
+                </p>
+              </Card>
+            ))}
+          </div>
+
+          {me?.role === "PARENT" ? (
+            <FamilyFeedPage
+              schoolSlug={schoolSlug}
+              childFullName="vos enfants"
+              scopeLabel="la vie de l'ecole"
+              viewerRole={me.role}
+              viewScope="GENERAL"
+            />
+          ) : null}
+        </>
       ) : null}
 
       {me?.role === "TEACHER" ? (

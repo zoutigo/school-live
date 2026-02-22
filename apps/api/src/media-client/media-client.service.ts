@@ -65,4 +65,38 @@ export class MediaClientService {
       mimeType: string;
     };
   }
+
+  async deleteImageByUrl(url: string) {
+    const mediaServiceUrl = process.env.MEDIA_SERVICE_URL?.trim();
+    if (!mediaServiceUrl) {
+      throw new ServiceUnavailableException("MEDIA_SERVICE_URL not configured");
+    }
+
+    const headers: Record<string, string> = {};
+    const internalToken = process.env.MEDIA_INTERNAL_TOKEN?.trim();
+    if (internalToken) {
+      headers["x-media-token"] = internalToken;
+    }
+
+    const endpoint = new URL(
+      `${mediaServiceUrl.replace(/\/$/, "")}/internal/uploads`,
+    );
+    endpoint.searchParams.set("url", url);
+
+    const response = await fetch(endpoint.toString(), {
+      method: "DELETE",
+      headers,
+    });
+
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string | string[];
+      } | null;
+      const message =
+        payload?.message && Array.isArray(payload.message)
+          ? payload.message.join(", ")
+          : (payload?.message ?? "Media service delete failed");
+      throw new BadGatewayException(message);
+    }
+  }
 }

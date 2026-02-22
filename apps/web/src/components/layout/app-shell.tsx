@@ -178,6 +178,8 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
     const last = me?.lastName?.[0] ?? "L";
     return `${first}${last}`.toUpperCase();
   }, [me?.firstName, me?.lastName]);
+  const userDisplayName =
+    `${me?.firstName ?? ""} ${me?.lastName ?? ""}`.trim() || "Utilisateur";
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -187,6 +189,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
         isSchoolContext={Boolean(activeSchoolSlug)}
         role={role}
         userInitials={userInitials}
+        userDisplayName={userDisplayName}
         onToggleMenu={() => setMobileOpen((prev) => !prev)}
       />
 

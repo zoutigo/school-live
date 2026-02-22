@@ -12,6 +12,7 @@
     "db:schema:gen": "sh apps/api/prisma/scripts/generate-schema.sh",
     "db:generate": "npm run db:schema:gen && npm run -w @school-live/api prisma:generate",
     "db:migrate": "npm run db:schema:gen && npm run -w @school-live/api prisma:migrate:dev",
+    "db:migrate:deploy": "npm run db:schema:gen && cd apps/api && npx prisma migrate deploy --schema prisma/schema.prisma",
     "prepare": "sh scripts/setup-git-hooks.sh",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

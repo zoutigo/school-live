@@ -40,6 +40,7 @@ model AcademicLevel {
   updatedAt   DateTime     @updatedAt
   school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classes     Class[]
+  feedPosts   FeedPost[]
   curriculums Curriculum[]
 
   @@unique([schoolId, code])
@@ -122,6 +123,7 @@ model Class {
   grades          Grade[]
   subjectOverrides ClassSubjectOverride[]
   lifeEvents      StudentLifeEvent[]
+  feedPosts       FeedPost[]
 
   @@unique([schoolId, schoolYearId, classGroupId, name])
   @@index([schoolId])

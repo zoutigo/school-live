@@ -142,6 +142,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
     role === "SCHOOL_ADMIN" ||
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR" ||
+    role === "SCHOOL_ACCOUNTANT" ||
     role === "SCHOOL_STAFF"
   ) {
     return [
@@ -156,6 +157,12 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         href: `${schoolBase}/dashboard`,
         icon: LayoutDashboard,
         matchPrefix: `${schoolBase}/dashboard`,
+      },
+      {
+        label: "Fil d'actualite",
+        href: `${schoolBase}/fil`,
+        icon: MessageSquare,
+        matchPrefix: `${schoolBase}/fil`,
       },
       {
         label: "Classes",
@@ -235,6 +242,12 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
+        label: "Fil d'actualite",
+        href: `${schoolBase}/fil`,
+        icon: MessageSquare,
+        matchPrefix: `${schoolBase}/fil`,
+      },
+      {
         label: "Mes classes",
         href: `${schoolBase}/mes-classes`,
         icon: School,
@@ -274,6 +287,12 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         href: `${schoolBase}/dashboard`,
         icon: Home,
         matchPrefix: `${schoolBase}/dashboard`,
+      },
+      {
+        label: "Fil d'actualite",
+        href: `${schoolBase}/fil`,
+        icon: MessageSquare,
+        matchPrefix: `${schoolBase}/fil`,
       },
       {
         label: "Vos informations",
@@ -446,6 +465,12 @@ function buildTeacherClassItems(
   const base = `/schools/${schoolSlug}/classes/${classId}`;
 
   return [
+    {
+      label: "Fil de classe",
+      href: `${base}/fil`,
+      icon: MessageSquare,
+      matchPrefix: `${base}/fil`,
+    },
     {
       label: "Notes",
       href: `${base}/notes`,
