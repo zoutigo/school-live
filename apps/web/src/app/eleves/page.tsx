@@ -269,7 +269,20 @@ export default function ElevesPage() {
         return;
       }
 
-      const me = (await meResponse.json()) as MeResponse;
+      const mePayload = (await meResponse.json().catch(() => null)) as
+        | Partial<MeResponse>
+        | null;
+      if (!mePayload || typeof mePayload.role !== "string") {
+        setError("Session invalide. Veuillez recharger la page.");
+        setLoading(false);
+        return;
+      }
+
+      const me: MeResponse = {
+        role: mePayload.role as Role,
+        schoolSlug:
+          typeof mePayload.schoolSlug === "string" ? mePayload.schoolSlug : null,
+      };
       setRole(me.role);
 
       const allowed =
