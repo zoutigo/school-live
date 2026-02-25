@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import nodemailer from "nodemailer";
 import type {
   InternalMessageNotificationPayload,
+  PasswordResetMailPayload,
   StudentLifeEventNotificationPayload,
   TemporaryPasswordMailPayload,
 } from "../../mail/mail.types.js";
@@ -210,6 +211,69 @@ export class SmtpEmailAdapter implements EmailPort {
                 <a href="${schoolUrl}" style="display:inline-block;background:#0A62BF;color:#FFFFFF;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">
                   Ouvrir le portail
                 </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`,
+    });
+  }
+
+  async sendPasswordResetEmail(payload: PasswordResetMailPayload) {
+    const { host, port, user, pass, secure, from } = this.getMailerConfig();
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    });
+
+    await transporter.sendMail({
+      from,
+      to: payload.to,
+      subject: "School-Live - Reinitialisation de votre mot de passe",
+      text: [
+        `Bonjour ${payload.firstName},`,
+        "",
+        "Une demande de reinitialisation de mot de passe a ete effectuee pour votre compte School-Live.",
+        `Ce lien est valable ${payload.expiresInMinutes} minutes.`,
+        `Lien de reinitialisation: ${payload.resetUrl}`,
+        "",
+        "Si vous n'etes pas a l'origine de cette demande, ignorez ce message.",
+      ].join("\n"),
+      html: `
+<!doctype html>
+<html lang="fr">
+  <body style="margin:0;padding:0;background:#F8F9FA;font-family:Roboto,Arial,sans-serif;color:#212529;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F8F9FA;padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E3E6E8;border-radius:10px;overflow:hidden;">
+            <tr>
+              <td style="background:#0A62BF;padding:16px 24px;color:#FFFFFF;font-family:Poppins,Arial,sans-serif;font-size:20px;font-weight:700;">
+                School-Live
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <h1 style="margin:0 0 12px;font-family:Poppins,Arial,sans-serif;font-size:22px;line-height:1.3;color:#212529;">
+                  Bonjour ${payload.firstName},
+                </h1>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4A4A4A;">
+                  Une demande de reinitialisation de mot de passe a ete detectee pour votre compte.
+                </p>
+                <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#4A4A4A;">
+                  Ce lien est valable <strong>${payload.expiresInMinutes} minutes</strong>.
+                </p>
+                <a href="${payload.resetUrl}" style="display:inline-block;background:#0A62BF;color:#FFFFFF;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">
+                  Reinitialiser mon mot de passe
+                </a>
+                <p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#4A4A4A;">
+                  Si vous n'etes pas a l'origine de cette demande, ignorez simplement ce message.
+                </p>
               </td>
             </tr>
           </table>

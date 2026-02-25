@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
+import { PasswordField } from "../../../../../components/ui/password-field";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -40,6 +41,10 @@ export default function SchoolLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const forgotPasswordHref = `/mot-de-passe-oublie?${new URLSearchParams({
+    schoolSlug,
+    ...(email ? { email } : {}),
+  }).toString()}`;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -142,14 +147,19 @@ export default function SchoolLoginPage() {
 
             <label className="grid gap-1 text-sm">
               <span className="text-text-secondary">Mot de passe</span>
-              <input
-                type="password"
+              <PasswordField
                 required
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               />
             </label>
+            <Link
+              href={forgotPasswordHref}
+              className="justify-self-start text-xs font-medium text-primary hover:underline"
+            >
+              Mot de passe oublie ?
+            </Link>
 
             {error ? (
               <p className="text-sm text-notification">{error}</p>

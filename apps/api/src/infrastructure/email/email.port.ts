@@ -1,5 +1,6 @@
 import type {
   InternalMessageNotificationPayload,
+  PasswordResetMailPayload,
   StudentLifeEventNotificationPayload,
   TemporaryPasswordMailPayload,
 } from "../../mail/mail.types.js";
@@ -13,6 +14,7 @@ export type EmailPort = {
   sendStudentLifeEventNotification(
     payload: StudentLifeEventNotificationPayload,
   ): Promise<void>;
+  sendPasswordResetEmail(payload: PasswordResetMailPayload): Promise<void>;
   sendInternalMessageNotification(
     payload: InternalMessageNotificationPayload,
   ): Promise<void>;

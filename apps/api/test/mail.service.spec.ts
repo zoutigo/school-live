@@ -2,6 +2,7 @@ import { Logger } from "@nestjs/common";
 import { MailService } from "../src/mail/mail.service";
 import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
+  MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
@@ -15,6 +16,7 @@ describe("MailService", () => {
   const emailPort = {
     sendTemporaryPasswordEmail: jest.fn(),
     sendStudentLifeEventNotification: jest.fn(),
+    sendPasswordResetEmail: jest.fn(),
     sendInternalMessageNotification: jest.fn(),
   };
 
@@ -24,6 +26,7 @@ describe("MailService", () => {
     queue.add.mockReset();
     emailPort.sendTemporaryPasswordEmail.mockReset();
     emailPort.sendStudentLifeEventNotification.mockReset();
+    emailPort.sendPasswordResetEmail.mockReset();
     emailPort.sendInternalMessageNotification.mockReset();
   });
 
@@ -105,5 +108,24 @@ describe("MailService", () => {
       MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
       internalPayload,
     );
+  });
+
+  it("queues password reset emails", async () => {
+    const payload = {
+      to: "parent@example.test",
+      firstName: "Parent",
+      resetUrl: "https://school-live.test/mot-de-passe-oublie?token=abc",
+      expiresInMinutes: 15,
+      schoolSlug: "college-vogt",
+    };
+
+    await service.sendPasswordResetEmail(payload);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      MAIL_QUEUE_NAME,
+      MAIL_JOB_SEND_PASSWORD_RESET,
+      payload,
+    );
+    expect(emailPort.sendPasswordResetEmail).not.toHaveBeenCalled();
   });
 });

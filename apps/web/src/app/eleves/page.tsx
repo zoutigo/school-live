@@ -7,6 +7,7 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { PasswordField } from "../../components/ui/password-field";
 import {
   LifeEventsList,
   lifeEventTypeLabel,
@@ -269,9 +270,9 @@ export default function ElevesPage() {
         return;
       }
 
-      const mePayload = (await meResponse.json().catch(() => null)) as
-        | Partial<MeResponse>
-        | null;
+      const mePayload = (await meResponse
+        .json()
+        .catch(() => null)) as Partial<MeResponse> | null;
       if (!mePayload || typeof mePayload.role !== "string") {
         setError("Session invalide. Veuillez recharger la page.");
         setLoading(false);
@@ -281,7 +282,9 @@ export default function ElevesPage() {
       const me: MeResponse = {
         role: mePayload.role as Role,
         schoolSlug:
-          typeof mePayload.schoolSlug === "string" ? mePayload.schoolSlug : null,
+          typeof mePayload.schoolSlug === "string"
+            ? mePayload.schoolSlug
+            : null,
       };
       setRole(me.role);
 
@@ -1283,8 +1286,7 @@ export default function ElevesPage() {
                   <span className="text-text-secondary">
                     Mot de passe (optionnel)
                   </span>
-                  <input
-                    type="password"
+                  <PasswordField
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"

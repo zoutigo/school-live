@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
+import { PasswordField } from "../ui/password-field";
 
 type LoginResponse = {
   schoolSlug: string | null;
@@ -140,14 +142,19 @@ export function LandingLoginForm() {
 
       <label className="grid gap-1 text-sm">
         <span className="text-text-secondary">Mot de passe</span>
-        <input
+        <PasswordField
           className="rounded-card border border-border bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
-          type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           required
         />
       </label>
+      <Link
+        href={`/mot-de-passe-oublie${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+        className="justify-self-start text-xs font-medium text-primary hover:underline"
+      >
+        Mot de passe oublie ?
+      </Link>
 
       {error ? <p className="text-sm text-notification">{error}</p> : null}
 

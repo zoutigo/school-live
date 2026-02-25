@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { PasswordField } from "../../components/ui/password-field";
+import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import {
   buildRecoveryRows,
   step1Schema,
@@ -109,7 +111,6 @@ function OnboardingContent() {
     () => (options?.schoolRoles ?? []).includes("PARENT"),
     [options?.schoolRoles],
   );
-
   function validateStep(target: StepKey): boolean {
     setError(null);
 
@@ -313,8 +314,7 @@ function OnboardingContent() {
                   <span className="text-text-secondary">
                     Mot de passe provisoire
                   </span>
-                  <input
-                    type="password"
+                  <PasswordField
                     value={temporaryPassword}
                     onChange={(event) =>
                       setField("temporaryPassword", event.target.value)
@@ -327,8 +327,7 @@ function OnboardingContent() {
                   <span className="text-text-secondary">
                     Nouveau mot de passe
                   </span>
-                  <input
-                    type="password"
+                  <PasswordField
                     value={newPassword}
                     onChange={(event) =>
                       setField("newPassword", event.target.value)
@@ -336,11 +335,11 @@ function OnboardingContent() {
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
+                <PasswordRequirementsHint password={newPassword} />
 
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Confirmation</span>
-                  <input
-                    type="password"
+                  <PasswordField
                     value={confirmPassword}
                     onChange={(event) =>
                       setField("confirmPassword", event.target.value)

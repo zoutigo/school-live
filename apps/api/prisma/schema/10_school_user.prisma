@@ -63,6 +63,7 @@ model User {
   gradesGiven        Grade[]                  @relation("GradeTeacher")
   teachingAssignments TeacherClassSubject[]
   refreshTokens      RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
   recoveryAnswers    UserRecoveryAnswer[]
   lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
   staffAssignments   SchoolStaffAssignment[]
@@ -141,4 +142,19 @@ model RefreshToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([usedAt])
 }

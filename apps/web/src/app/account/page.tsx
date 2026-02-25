@@ -7,6 +7,8 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { PasswordField } from "../../components/ui/password-field";
+import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -232,8 +234,7 @@ export default function AccountPage() {
             <form className="grid max-w-xl gap-3" onSubmit={onChangePassword}>
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">Ancien mot de passe</span>
-                <input
-                  type="password"
+                <PasswordField
                   required
                   minLength={8}
                   value={currentPassword}
@@ -246,8 +247,7 @@ export default function AccountPage() {
                 <span className="text-text-secondary">
                   Nouveau mot de passe
                 </span>
-                <input
-                  type="password"
+                <PasswordField
                   required
                   minLength={8}
                   pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}"
@@ -257,13 +257,13 @@ export default function AccountPage() {
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
               </label>
+              <PasswordRequirementsHint password={newPassword} />
 
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">
                   Confirmer le nouveau mot de passe
                 </span>
-                <input
-                  type="password"
+                <PasswordField
                   required
                   minLength={8}
                   pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}"

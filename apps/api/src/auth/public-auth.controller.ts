@@ -17,6 +17,10 @@ import {
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "./auth.types.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
+import { ForgotPasswordCompleteDto } from "./dto/forgot-password-complete.dto.js";
+import { ForgotPasswordOptionsDto } from "./dto/forgot-password-options.dto.js";
+import { ForgotPasswordRequestDto } from "./dto/forgot-password-request.dto.js";
+import { ForgotPasswordVerifyDto } from "./dto/forgot-password-verify.dto.js";
 import { FirstPasswordChangeDto } from "./dto/first-password-change.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { OnboardingCompleteDto } from "./dto/onboarding-complete.dto.js";
@@ -99,6 +103,33 @@ export class PublicAuthController {
     return this.authService.changePassword(
       user.id,
       payload.currentPassword,
+      payload.newPassword,
+    );
+  }
+
+  @Post("forgot-password/request")
+  forgotPasswordRequest(@Body() payload: ForgotPasswordRequestDto) {
+    return this.authService.requestPasswordReset(payload.email);
+  }
+
+  @Post("forgot-password/options")
+  forgotPasswordOptions(@Body() payload: ForgotPasswordOptionsDto) {
+    return this.authService.getPasswordResetOptions(payload.token);
+  }
+
+  @Post("forgot-password/verify")
+  forgotPasswordVerify(@Body() payload: ForgotPasswordVerifyDto) {
+    return this.authService.verifyPasswordReset({
+      token: payload.token,
+      birthDate: payload.birthDate,
+      answers: payload.answers,
+    });
+  }
+
+  @Post("forgot-password/complete")
+  forgotPasswordComplete(@Body() payload: ForgotPasswordCompleteDto) {
+    return this.authService.completePasswordReset(
+      payload.token,
       payload.newPassword,
     );
   }

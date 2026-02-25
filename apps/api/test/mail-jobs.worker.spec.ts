@@ -1,6 +1,7 @@
 import { ConfigService } from "@nestjs/config";
 import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
+  MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
@@ -59,6 +60,7 @@ describe("MailJobsWorker", () => {
   const emailPort = {
     sendTemporaryPasswordEmail: jest.fn(),
     sendStudentLifeEventNotification: jest.fn(),
+    sendPasswordResetEmail: jest.fn(),
     sendInternalMessageNotification: jest.fn(),
   };
 
@@ -71,6 +73,7 @@ describe("MailJobsWorker", () => {
     globalScope.__mailWorkerInstances = [];
     emailPort.sendTemporaryPasswordEmail.mockReset();
     emailPort.sendStudentLifeEventNotification.mockReset();
+    emailPort.sendPasswordResetEmail.mockReset();
     emailPort.sendInternalMessageNotification.mockReset();
   });
 
@@ -104,6 +107,14 @@ describe("MailJobsWorker", () => {
     });
     expect(emailPort.sendInternalMessageNotification).toHaveBeenCalledWith({
       to: "teacher@example.test",
+    });
+
+    await instances[0]?.processor({
+      name: MAIL_JOB_SEND_PASSWORD_RESET,
+      data: { to: "parent@example.test" },
+    });
+    expect(emailPort.sendPasswordResetEmail).toHaveBeenCalledWith({
+      to: "parent@example.test",
     });
   });
 

@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -14,6 +15,7 @@ import type {
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
+import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type {
   AuthenticatedUser,
@@ -23,10 +25,13 @@ import type {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
   ) {}
 
   private static readonly PASSWORD_COMPLEXITY_REGEX =
@@ -503,6 +508,227 @@ export class AuthService {
       await tx.refreshToken.updateMany({
         where: { userId: user.id, revokedAt: null },
         data: { revokedAt: new Date() },
+      });
+    });
+
+    return { success: true };
+  }
+
+  async requestPasswordReset(email: string) {
+    const genericResponse: {
+      success: boolean;
+      message: string;
+      resetToken?: string;
+    } = {
+      success: true,
+      message: "Si ce compte existe, un lien de reinitialisation a ete envoye.",
+    };
+    const normalizedEmail = email.toLowerCase();
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: {
+        memberships: {
+          include: {
+            school: {
+              select: { slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        recoveryAnswers: {
+          select: { questionKey: true },
+        },
+      },
+    });
+
+    if (
+      !user ||
+      !user.recoveryBirthDate ||
+      user.recoveryAnswers.length < 3 ||
+      !user.profileCompleted
+    ) {
+      return genericResponse;
+    }
+
+    const resetToken = randomBytes(48).toString("hex");
+    const tokenHash = this.hashPasswordResetToken(resetToken);
+    const now = new Date();
+    const expiresInMinutes = this.getPasswordResetTtlMinutes();
+    const expiresAt = new Date(now.getTime() + expiresInMinutes * 60 * 1000);
+    const schoolSlug = user.memberships[0]?.school?.slug ?? null;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.updateMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: {
+          usedAt: now,
+        },
+      });
+
+      await tx.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+        },
+      });
+    });
+
+    const webUrl =
+      this.configService.get<string>("WEB_URL") ?? "http://localhost:3000";
+    const params = new URLSearchParams({ token: resetToken });
+    if (schoolSlug) {
+      params.set("schoolSlug", schoolSlug);
+    }
+    const resetUrl = `${webUrl}/mot-de-passe-oublie?${params.toString()}`;
+
+    try {
+      await this.mailService.sendPasswordResetEmail({
+        to: user.email,
+        firstName: user.firstName,
+        resetUrl,
+        expiresInMinutes,
+        schoolSlug,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Unable to send password reset email for ${normalizedEmail}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
+    if (process.env.NODE_ENV === "test") {
+      genericResponse.resetToken = resetToken;
+    }
+
+    return genericResponse;
+  }
+
+  async getPasswordResetOptions(token: string) {
+    const resetToken = await this.getValidPasswordResetToken(token);
+    const questions = this.getRecoveryQuestions();
+    const availableQuestions = resetToken.user.recoveryAnswers.map(
+      (answer) => ({
+        key: answer.questionKey,
+        label:
+          questions.find((entry) => entry.key === answer.questionKey)?.label ??
+          answer.questionKey,
+      }),
+    );
+
+    return {
+      success: true,
+      emailHint: this.maskEmail(resetToken.user.email),
+      schoolSlug: resetToken.user.memberships[0]?.school?.slug ?? null,
+      questions: availableQuestions,
+    };
+  }
+
+  async verifyPasswordReset(input: {
+    token: string;
+    birthDate: string;
+    answers: Array<{ questionKey: RecoveryQuestionKey; answer: string }>;
+  }) {
+    const resetToken = await this.getValidPasswordResetToken(input.token);
+
+    if (!resetToken.user.recoveryBirthDate) {
+      throw new ForbiddenException("Informations de recuperation invalides");
+    }
+
+    const providedBirthDate = new Date(input.birthDate);
+    if (Number.isNaN(providedBirthDate.getTime())) {
+      throw new ForbiddenException("Informations de recuperation invalides");
+    }
+
+    if (
+      !this.sameUtcDay(resetToken.user.recoveryBirthDate, providedBirthDate)
+    ) {
+      throw new ForbiddenException("Informations de recuperation invalides");
+    }
+
+    const uniqueQuestions = new Set(
+      input.answers.map((answer) => answer.questionKey),
+    );
+    if (input.answers.length !== 3 || uniqueQuestions.size !== 3) {
+      throw new ForbiddenException("Informations de recuperation invalides");
+    }
+
+    const expectedMap = new Map(
+      resetToken.user.recoveryAnswers.map((answer) => [
+        answer.questionKey,
+        answer.answerHash,
+      ]),
+    );
+
+    for (const answer of input.answers) {
+      const expectedHash = expectedMap.get(answer.questionKey);
+      if (!expectedHash) {
+        throw new ForbiddenException("Informations de recuperation invalides");
+      }
+
+      const validAnswer = await bcrypt.compare(
+        answer.answer.trim().toLowerCase(),
+        expectedHash,
+      );
+      if (!validAnswer) {
+        throw new ForbiddenException("Informations de recuperation invalides");
+      }
+    }
+
+    await this.prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { verifiedAt: new Date() },
+    });
+
+    return { success: true, verified: true };
+  }
+
+  async completePasswordReset(token: string, newPassword: string) {
+    if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(newPassword)) {
+      throw new ForbiddenException(
+        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+      );
+    }
+
+    const resetToken = await this.getValidPasswordResetToken(token);
+    if (!resetToken.verifiedAt) {
+      throw new ForbiddenException(
+        "La verification de recuperation est obligatoire",
+      );
+    }
+
+    const samePassword = await bcrypt.compare(
+      newPassword,
+      resetToken.user.passwordHash,
+    );
+    if (samePassword) {
+      throw new ForbiddenException(
+        "Le nouveau mot de passe doit etre different du mot de passe actuel",
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const now = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: resetToken.userId },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+        },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: resetToken.userId, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      await tx.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { usedAt: now },
       });
     });
 
@@ -988,6 +1214,86 @@ export class AuthService {
       this.configService.get<string>("JWT_REFRESH_TOKEN_PEPPER") ??
       "dev-refresh-pepper-change-me";
     return createHash("sha256").update(`${token}:${pepper}`).digest("hex");
+  }
+
+  private hashPasswordResetToken(token: string) {
+    const pepper =
+      this.configService.get<string>("PASSWORD_RESET_TOKEN_PEPPER") ??
+      "dev-password-reset-pepper-change-me";
+    return createHash("sha256").update(`${token}:${pepper}`).digest("hex");
+  }
+
+  private getPasswordResetTtlMinutes() {
+    const configured = Number(
+      this.configService.get<string>("PASSWORD_RESET_TOKEN_TTL_MINUTES") ?? 15,
+    );
+    if (!Number.isFinite(configured) || configured <= 0) {
+      return 15;
+    }
+
+    return Math.trunc(configured);
+  }
+
+  private async getValidPasswordResetToken(rawToken: string) {
+    const tokenHash = this.hashPasswordResetToken(rawToken);
+    const now = new Date();
+    const resetToken = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: { gt: now },
+      },
+      include: {
+        user: {
+          include: {
+            memberships: {
+              include: {
+                school: {
+                  select: { slug: true },
+                },
+              },
+              orderBy: { createdAt: "asc" },
+            },
+            recoveryAnswers: {
+              select: {
+                questionKey: true,
+                answerHash: true,
+              },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        },
+      },
+    });
+
+    if (!resetToken) {
+      throw new UnauthorizedException(
+        "Lien de reinitialisation invalide ou expire",
+      );
+    }
+
+    return resetToken;
+  }
+
+  private sameUtcDay(left: Date, right: Date) {
+    return (
+      left.getUTCFullYear() === right.getUTCFullYear() &&
+      left.getUTCMonth() === right.getUTCMonth() &&
+      left.getUTCDate() === right.getUTCDate()
+    );
+  }
+
+  private maskEmail(email: string) {
+    const [localPart, domain] = email.split("@");
+    if (!localPart || !domain) {
+      return email;
+    }
+
+    if (localPart.length <= 2) {
+      return `${localPart[0] ?? "*"}***@${domain}`;
+    }
+
+    return `${localPart[0]}***${localPart[localPart.length - 1]}@${domain}`;
   }
 
   private getPrimaryRole(
