@@ -12,6 +12,18 @@ Primary goals: security (school isolation), maintainability, performance, and cl
 
 ---
 
+## Collaboration transparency (must follow)
+
+- The user must see the execution flow in real time.
+- For every non-trivial request, the agent must provide:
+  - a short `Plan` before running commands,
+  - frequent progress updates while working (`step in progress`, then `step done`),
+  - a final `Result` with what changed and where.
+- Do not wait until the end to explain what is being done.
+- If the user explicitly asks for step-by-step, keep updates continuous until completion.
+
+---
+
 ## Non-negotiables (must follow)
 
 1. **Never trust the client for school context**
