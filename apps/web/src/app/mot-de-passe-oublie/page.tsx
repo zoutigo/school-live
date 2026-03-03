@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   FormEvent,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -37,7 +38,7 @@ type ResetOptionsResponse = {
   questions: RecoveryQuestion[];
 };
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestRedirectTimeoutRef = useRef<number | null>(null);
@@ -526,5 +527,27 @@ export default function ForgotPasswordPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="relative min-h-screen overflow-hidden bg-background px-4 py-8 text-text-primary sm:px-6 lg:px-8">
+          <div className="relative mx-auto w-full max-w-6xl">
+            <Card
+              title="Mot de passe oublie"
+              subtitle="Chargement..."
+              className="lg:mt-2"
+            >
+              <p className="text-sm text-text-secondary">Chargement...</p>
+            </Card>
+          </div>
+        </div>
+      }
+    >
+      <ForgotPasswordPageContent />
+    </Suspense>
   );
 }
