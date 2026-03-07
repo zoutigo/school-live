@@ -4,11 +4,11 @@
   "version": "0.1.0",
   "scripts": {
     "predev": "rm -rf .next",
-    "dev": "sh -lc 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next dev --webpack'",
-    "dev:turbo": "sh -lc 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next dev'",
-    "build": "sh -lc 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next build --webpack'",
-    "build:turbo": "sh -lc 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next build'",
-    "start": "sh -lc 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next start'",
+    "dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next dev --webpack'",
+    "dev:turbo": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next dev'",
+    "build": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next build --webpack'",
+    "build:turbo": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next build'",
+    "start": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; next start'",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
