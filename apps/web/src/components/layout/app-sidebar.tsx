@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
@@ -18,13 +18,16 @@ import {
   School,
   Settings,
   ShieldCheck,
+  LogOut,
   UserRound,
   UserSquare2,
   Users,
   Wallet,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import { getSchoolMessagesUnreadCount } from "../messaging/messaging-api";
+import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import type { Role } from "../../lib/role-view";
 
 type SidebarProps = {
@@ -348,6 +351,12 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
+      label: "Emploi du temps",
+      href: `${schoolBase}/emploi-du-temps`,
+      icon: CalendarDays,
+      matchPrefix: `${schoolBase}/emploi-du-temps`,
+    },
+    {
       label: "Vos informations",
       href: `${schoolBase}/dashboard#infos`,
       icon: UserSquare2,
@@ -413,6 +422,12 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
       href: `${base}/vie-de-classe`,
       icon: Users,
       matchPrefix: `${base}/vie-de-classe`,
+    },
+    {
+      label: "Emploi du temps",
+      href: `/schools/${schoolSlug}/emploi-du-temps?childId=${encodeURIComponent(childId)}`,
+      icon: CalendarDays,
+      matchPrefix: `/schools/${schoolSlug}/emploi-du-temps`,
     },
     {
       label: "Notes",
@@ -494,6 +509,7 @@ function buildTeacherClassItems(
 }
 
 export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const items = buildItems(role, schoolSlug);
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
@@ -503,6 +519,7 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
   const [openTeacherSection, setOpenTeacherSection] =
     useState<string>("classes");
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (role !== "PARENT" || !schoolSlug) {
@@ -703,312 +720,152 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
     }
   }, [role, pathname, teacherClassesWithItems, openTeacherSection]);
 
+  useEffect(() => {
+    if (role !== "PARENT") {
+      return;
+    }
+
+    const activeChild = parentChildrenWithItems.find((child) =>
+      child.items.some((item) =>
+        item.matchPrefix
+          ? pathname.startsWith(item.matchPrefix)
+          : pathname === item.href,
+      ),
+    );
+
+    if (activeChild) {
+      const sectionKey = `child-${activeChild.id}`;
+      if (openParentSection !== sectionKey) {
+        setOpenParentSection(sectionKey);
+      }
+      return;
+    }
+
+    if (openParentSection !== "general") {
+      setOpenParentSection("general");
+    }
+  }, [role, pathname, parentChildrenWithItems]);
+
+  async function onLogout() {
+    const csrfToken = getCsrfTokenCookie();
+
+    await fetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRF-Token": csrfToken } : undefined,
+    });
+
+    onNavigate?.();
+    router.push("/");
+  }
+
   return (
-    <aside className="group h-full w-[236px] shrink-0 bg-sidebar-bg px-2 py-4 text-surface transition-all duration-300 md:w-[72px] md:hover:w-[236px] md:px-3">
-      {isFamilySpace ? (
-        <div className="mb-4 rounded-card bg-primary-dark/80 px-3 py-2 text-center font-heading text-xs font-bold tracking-wide text-surface">
-          <div className="flex items-center justify-center md:justify-start">
-            <Home className="h-4 w-4 md:mx-auto md:group-hover:mx-0" />
-            <span className="ml-2 md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[140px] md:group-hover:opacity-100">
-              MON ESPACE FAMILLE
-            </span>
+    <>
+      <aside className="group h-full w-[236px] shrink-0 bg-sidebar-bg px-2 py-4 text-surface transition-all duration-300 md:w-[72px] md:hover:w-[236px] md:px-3">
+        {isFamilySpace ? (
+          <div className="mb-4 rounded-card bg-primary-dark/80 px-3 py-2 text-center font-heading text-xs font-bold tracking-wide text-surface">
+            <div className="flex items-center justify-center md:justify-start">
+              <Home className="h-4 w-4 md:mx-auto md:group-hover:mx-0" />
+              <span className="ml-2 md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[140px] md:group-hover:opacity-100">
+                MON ESPACE FAMILLE
+              </span>
+            </div>
           </div>
-        </div>
-      ) : null}
-      {role === "TEACHER" ? (
-        <div className="grid gap-3">
-          <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
-            <button
-              type="button"
-              onClick={() => setOpenTeacherSection("classes")}
-              className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
-                openTeacherSection === "classes"
-                  ? "bg-surface text-primary"
-                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+        ) : null}
+        {role === "TEACHER" ? (
+          <div className="grid gap-3">
+            <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
+              <button
+                type="button"
+                onClick={() => setOpenTeacherSection("classes")}
+                className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
                   openTeacherSection === "classes"
-                    ? "bg-background text-primary"
-                    : "bg-primary-dark text-surface"
+                    ? "bg-surface text-primary"
+                    : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
                 }`}
               >
-                <School className="h-4 w-4" />
-              </span>
-              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                Menu enseignant
-              </span>
-            </button>
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                    openTeacherSection === "classes"
+                      ? "bg-background text-primary"
+                      : "bg-primary-dark text-surface"
+                  }`}
+                >
+                  <School className="h-4 w-4" />
+                </span>
+                <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                  Menu enseignant
+                </span>
+              </button>
 
-            {openTeacherSection === "classes" ? (
-              <nav
-                className="mt-2 grid gap-1"
-                aria-label="Menu general enseignant"
-              >
-                {teacherGeneralItems.map((item) => {
-                  const active = item.matchPrefix
-                    ? pathname.startsWith(item.matchPrefix)
-                    : pathname === item.href;
-                  const Icon = item.icon;
+              {openTeacherSection === "classes" ? (
+                <nav
+                  className="mt-2 grid gap-1"
+                  aria-label="Menu general enseignant"
+                >
+                  {teacherGeneralItems.map((item) => {
+                    const active = item.matchPrefix
+                      ? pathname.startsWith(item.matchPrefix)
+                      : pathname === item.href;
+                    const Icon = item.icon;
 
-                  return (
-                    <Link
-                      key={`teacher-general-${item.label}-${item.href}`}
-                      href={item.href}
-                      onClick={onNavigate}
-                      className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
-                        active
-                          ? "bg-surface text-primary"
-                          : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                      }`}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                    return (
+                      <Link
+                        key={`teacher-general-${item.label}-${item.href}`}
+                        href={item.href}
+                        onClick={onNavigate}
+                        className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
                           active
-                            ? "bg-background text-primary"
-                            : "bg-primary-dark text-surface"
+                            ? "bg-surface text-primary"
+                            : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
                         }`}
                       >
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                        {item.label}
-                      </span>
-                      {typeof resolveUnread(item) === "number" ? (
-                        <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                          <Badge variant="notification">
-                            {resolveUnread(item)}
-                          </Badge>
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            ) : null}
-          </div>
-
-          {teacherClassesWithItems.map((entry) => {
-            const sectionKey = `class-${entry.classId}`;
-            const isOpen = openTeacherSection === sectionKey;
-
-            return (
-              <div
-                key={entry.classId}
-                className="rounded-card border border-surface/20 bg-primary-dark/40 p-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenTeacherSection(sectionKey)}
-                  className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
-                    isOpen
-                      ? "bg-surface text-primary"
-                      : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                  }`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                      isOpen
-                        ? "bg-background text-primary"
-                        : "bg-primary-dark text-surface"
-                    }`}
-                  >
-                    <School className="h-4 w-4" />
-                  </span>
-                  <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                    {entry.className}
-                  </span>
-                </button>
-
-                {isOpen ? (
-                  <nav
-                    className="mt-2 grid gap-1"
-                    aria-label={`Menu classe ${entry.className}`}
-                  >
-                    {entry.items.map((item) => {
-                      const active = item.matchPrefix
-                        ? pathname.startsWith(item.matchPrefix)
-                        : pathname === item.href;
-                      const Icon = item.icon;
-
-                      return (
-                        <Link
-                          key={`${entry.classId}-${item.label}-${item.href}`}
-                          href={item.href}
-                          onClick={onNavigate}
-                          className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
+                        <span
+                          aria-hidden="true"
+                          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                             active
-                              ? "bg-surface text-primary"
-                              : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                              ? "bg-background text-primary"
+                              : "bg-primary-dark text-surface"
                           }`}
                         >
-                          <span
-                            aria-hidden="true"
-                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                              active
-                                ? "bg-background text-primary"
-                                : "bg-primary-dark text-surface"
-                            }`}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                          {item.label}
+                        </span>
+                        {typeof resolveUnread(item) === "number" ? (
+                          <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                            <Badge variant="notification">
+                              {resolveUnread(item)}
+                            </Badge>
                           </span>
-                          <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                            {item.label}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </nav>
-                ) : null}
-              </div>
-            );
-          })}
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              ) : null}
+            </div>
 
-          {teacherSettingsItem ? (
-            <Link
-              href={teacherSettingsItem.href}
-              onClick={onNavigate}
-              className={`flex items-center rounded-card px-2 py-2 text-sm font-heading font-semibold transition-colors ${
-                pathname.startsWith(teacherSettingsItem.matchPrefix ?? "")
-                  ? "bg-surface text-primary"
-                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  pathname.startsWith(teacherSettingsItem.matchPrefix ?? "")
-                    ? "bg-background text-primary"
-                    : "bg-primary-dark text-surface"
-                }`}
-              >
-                <Settings className="h-4 w-4" />
-              </span>
-              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                {teacherSettingsItem.label}
-              </span>
-            </Link>
-          ) : null}
-        </div>
-      ) : role !== "PARENT" ? (
-        <nav className="flex flex-col gap-1" aria-label="Navigation principale">
-          {items.map((item) => {
-            const active = item.matchPrefix
-              ? pathname.startsWith(item.matchPrefix)
-              : pathname === item.href;
-            const Icon = item.icon;
+            {teacherClassesWithItems.map((entry) => {
+              const sectionKey = `class-${entry.classId}`;
+              const isOpen = openTeacherSection === sectionKey;
 
-            return (
-              <Link
-                key={`${item.label}-${item.href}`}
-                href={item.href}
-                onClick={onNavigate}
-                className={`flex items-center rounded-card px-2 py-2 text-sm font-heading font-semibold transition-colors ${
-                  active
-                    ? "bg-surface text-primary"
-                    : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                }`}
-              >
-                <span className="flex min-w-0 items-center">
-                  <span
-                    aria-hidden="true"
-                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                      active
-                        ? "bg-background text-primary"
-                        : "bg-primary-dark text-surface"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                    {item.label}
-                  </span>
-                </span>
-                {typeof resolveUnread(item) === "number" ? (
-                  <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                    <Badge variant="notification">{resolveUnread(item)}</Badge>
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
-      ) : (
-        <div className="grid gap-3">
-          <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
-            <nav className="grid gap-1" aria-label="Menu parent">
-              {items.map((item) => {
-                const active = item.matchPrefix
-                  ? pathname.startsWith(item.matchPrefix)
-                  : pathname === item.href;
-                const Icon = item.icon;
-
-                return (
-                  <Link
-                    key={`general-${item.label}-${item.href}`}
-                    href={item.href}
-                    onClick={onNavigate}
-                    className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
-                      active
-                        ? "bg-surface text-primary"
-                        : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                    }`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                        active
-                          ? "bg-background text-primary"
-                          : "bg-primary-dark text-surface"
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                      {item.label}
-                    </span>
-                    {typeof resolveUnread(item) === "number" ? (
-                      <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                        <Badge variant="notification">
-                          {resolveUnread(item)}
-                        </Badge>
-                      </span>
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-
-          {parentChildrenWithItems.map((child) => {
-            const sectionKey = `child-${child.id}`;
-            const isOpen = openParentSection === sectionKey;
-
-            return (
-              <div
-                key={child.id}
-                className="rounded-card border border-surface/20 bg-primary-dark/40 p-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenParentSection(sectionKey)}
-                  className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
-                    isOpen
-                      ? "bg-surface text-primary"
-                      : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                  }`}
+              return (
+                <div
+                  key={entry.classId}
+                  className="rounded-card border border-surface/20 bg-primary-dark/40 p-2"
                 >
-                  {child.avatarUrl ? (
-                    <img
-                      src={child.avatarUrl}
-                      alt={`${child.firstName} ${child.lastName}`}
-                      className="h-8 w-8 rounded-full border border-border object-cover"
-                    />
-                  ) : (
+                  <button
+                    type="button"
+                    onClick={() => setOpenTeacherSection(sectionKey)}
+                    className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
+                      isOpen
+                        ? "bg-surface text-primary"
+                        : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                    }`}
+                  >
                     <span
                       aria-hidden="true"
                       className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
@@ -1017,60 +874,321 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                           : "bg-primary-dark text-surface"
                       }`}
                     >
-                      <UserRound className="h-4 w-4" />
+                      <School className="h-4 w-4" />
                     </span>
-                  )}
+                    <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                      {entry.className}
+                    </span>
+                  </button>
 
-                  <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                    {child.lastName} {child.firstName}
-                  </span>
-                </button>
+                  {isOpen ? (
+                    <nav
+                      className="mt-2 grid gap-1"
+                      aria-label={`Menu classe ${entry.className}`}
+                    >
+                      {entry.items.map((item) => {
+                        const active = item.matchPrefix
+                          ? pathname.startsWith(item.matchPrefix)
+                          : pathname === item.href;
+                        const Icon = item.icon;
 
-                {isOpen ? (
-                  <nav
-                    className="mt-2 grid gap-1"
-                    aria-label={`Menu ${child.lastName} ${child.firstName}`}
-                  >
-                    {child.items.map((item) => {
-                      const active = item.matchPrefix
-                        ? pathname.startsWith(item.matchPrefix)
-                        : pathname === item.href;
-                      const Icon = item.icon;
-
-                      return (
-                        <Link
-                          key={`${child.id}-${item.label}-${item.href}`}
-                          href={item.href}
-                          onClick={onNavigate}
-                          className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
-                            active
-                              ? "bg-surface text-primary"
-                              : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                          }`}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                        return (
+                          <Link
+                            key={`${entry.classId}-${item.label}-${item.href}`}
+                            href={item.href}
+                            onClick={onNavigate}
+                            className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
                               active
-                                ? "bg-background text-primary"
-                                : "bg-primary-dark text-surface"
+                                ? "bg-surface text-primary"
+                                : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
                             }`}
                           >
-                            <Icon className="h-3.5 w-3.5" />
+                            <span
+                              aria-hidden="true"
+                              className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                                active
+                                  ? "bg-background text-primary"
+                                  : "bg-primary-dark text-surface"
+                              }`}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                              {item.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            {teacherSettingsItem ? (
+              <Link
+                href={teacherSettingsItem.href}
+                onClick={onNavigate}
+                className={`flex items-center rounded-card px-2 py-2 text-sm font-heading font-semibold transition-colors ${
+                  pathname.startsWith(teacherSettingsItem.matchPrefix ?? "")
+                    ? "bg-surface text-primary"
+                    : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                    pathname.startsWith(teacherSettingsItem.matchPrefix ?? "")
+                      ? "bg-background text-primary"
+                      : "bg-primary-dark text-surface"
+                  }`}
+                >
+                  <Settings className="h-4 w-4" />
+                </span>
+                <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                  {teacherSettingsItem.label}
+                </span>
+              </Link>
+            ) : null}
+          </div>
+        ) : role !== "PARENT" ? (
+          <nav
+            className="flex flex-col gap-1"
+            aria-label="Navigation principale"
+          >
+            {items.map((item) => {
+              const active = item.matchPrefix
+                ? pathname.startsWith(item.matchPrefix)
+                : pathname === item.href;
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={`${item.label}-${item.href}`}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={`flex items-center rounded-card px-2 py-2 text-sm font-heading font-semibold transition-colors ${
+                    active
+                      ? "bg-surface text-primary"
+                      : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center">
+                    <span
+                      aria-hidden="true"
+                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                        active
+                          ? "bg-background text-primary"
+                          : "bg-primary-dark text-surface"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                      {item.label}
+                    </span>
+                  </span>
+                  {typeof resolveUnread(item) === "number" ? (
+                    <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                      <Badge variant="notification">
+                        {resolveUnread(item)}
+                      </Badge>
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </nav>
+        ) : (
+          <div className="grid gap-3">
+            <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
+              <button
+                type="button"
+                onClick={() => setOpenParentSection("general")}
+                className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
+                  openParentSection === "general"
+                    ? "bg-surface text-primary"
+                    : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                    openParentSection === "general"
+                      ? "bg-background text-primary"
+                      : "bg-primary-dark text-surface"
+                  }`}
+                >
+                  <Home className="h-4 w-4" />
+                </span>
+                <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                  Menu parent
+                </span>
+              </button>
+
+              {openParentSection === "general" ? (
+                <nav className="mt-2 grid gap-1" aria-label="Menu parent">
+                  {items.map((item) => {
+                    const active = item.matchPrefix
+                      ? pathname.startsWith(item.matchPrefix)
+                      : pathname === item.href;
+                    const Icon = item.icon;
+
+                    return (
+                      <Link
+                        key={`general-${item.label}-${item.href}`}
+                        href={item.href}
+                        onClick={onNavigate}
+                        className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
+                          active
+                            ? "bg-surface text-primary"
+                            : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                            active
+                              ? "bg-background text-primary"
+                              : "bg-primary-dark text-surface"
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                          {item.label}
+                        </span>
+                        {typeof resolveUnread(item) === "number" ? (
+                          <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                            <Badge variant="notification">
+                              {resolveUnread(item)}
+                            </Badge>
                           </span>
-                          <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                            {item.label}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </nav>
-                ) : null}
-              </div>
-            );
-          })}
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              ) : null}
+            </div>
+
+            {parentChildrenWithItems.map((child) => {
+              const sectionKey = `child-${child.id}`;
+              const isOpen = openParentSection === sectionKey;
+
+              return (
+                <div
+                  key={child.id}
+                  className="rounded-card border border-surface/20 bg-primary-dark/40 p-2"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenParentSection(sectionKey)}
+                    className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
+                      isOpen
+                        ? "bg-surface text-primary"
+                        : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                    }`}
+                  >
+                    {child.avatarUrl ? (
+                      <img
+                        src={child.avatarUrl}
+                        alt={`${child.firstName} ${child.lastName}`}
+                        className="h-8 w-8 rounded-full border border-border object-cover"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                          isOpen
+                            ? "bg-background text-primary"
+                            : "bg-primary-dark text-surface"
+                        }`}
+                      >
+                        <UserRound className="h-4 w-4" />
+                      </span>
+                    )}
+
+                    <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                      {child.lastName} {child.firstName}
+                    </span>
+                  </button>
+
+                  {isOpen ? (
+                    <nav
+                      className="mt-2 grid gap-1"
+                      aria-label={`Menu ${child.lastName} ${child.firstName}`}
+                    >
+                      {child.items.map((item) => {
+                        const active = item.matchPrefix
+                          ? pathname.startsWith(item.matchPrefix)
+                          : pathname === item.href;
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={`${child.id}-${item.label}-${item.href}`}
+                            href={item.href}
+                            onClick={onNavigate}
+                            className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
+                              active
+                                ? "bg-surface text-primary"
+                                : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+                            }`}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                                active
+                                  ? "bg-background text-primary"
+                                  : "bg-primary-dark text-surface"
+                              }`}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                              {item.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-4 border-t border-surface/20 pt-3 md:hidden">
+          <button
+            type="button"
+            onClick={() => setLogoutConfirmOpen(true)}
+            className="flex w-full items-center rounded-card px-2 py-2 text-sm font-heading font-semibold text-surface transition-colors hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+          >
+            <span
+              aria-hidden="true"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-dark text-surface"
+            >
+              <LogOut className="h-4 w-4" />
+            </span>
+            <span className="ml-3">Se deconnecter</span>
+          </button>
         </div>
-      )}
-    </aside>
+      </aside>
+
+      <ConfirmDialog
+        open={logoutConfirmOpen}
+        title="Confirmer la deconnexion"
+        message="Voulez-vous vraiment vous deconnecter ?"
+        confirmLabel="Se deconnecter"
+        cancelLabel="Annuler"
+        onCancel={() => setLogoutConfirmOpen(false)}
+        onConfirm={() => {
+          setLogoutConfirmOpen(false);
+          void onLogout();
+        }}
+      />
+    </>
   );
 }
