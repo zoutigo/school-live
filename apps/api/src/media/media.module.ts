@@ -8,7 +8,7 @@ import { MediaHealthController } from "./media-health.controller.js";
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ["apps/api/.env", ".env"],
+      envFilePath: ["../../docker/.env", ".env"],
     }),
   ],
   controllers: [MediaController, MediaHealthController],

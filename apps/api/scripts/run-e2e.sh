@@ -8,7 +8,21 @@ TEST_DB_PASSWORD="${TEST_DB_PASSWORD:-school}"
 TEST_DB_HOST="${TEST_DB_HOST:-127.0.0.1}"
 TEST_DB_PORT="${TEST_DB_PORT:-5432}"
 
-if [ -f ".env.test" ]; then
+if [ -f "../../docker/.env" ]; then
+  set -a
+  . ../../docker/.env
+  set +a
+elif [ -f "../../.env" ]; then
+  set -a
+  . ../../.env
+  set +a
+fi
+
+if [ -f "../../docker/.env.test" ]; then
+  set -a
+  . ../../docker/.env.test
+  set +a
+elif [ -f ".env.test" ]; then
   set -a
   . ./.env.test
   set +a

@@ -19,8 +19,8 @@ Monorepo TypeScript pour une plateforme multi-ecoles (tenancy par route `schoolS
 
 ## Prerequis
 
-1. Copier `apps/api/.env.example` vers `apps/api/.env`
-2. Verifier `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`
+1. Copier `docker/.env.example` vers `docker/.env` (source de verite unique)
+2. Verifier au minimum `DATABASE_URL`, `JWT_SECRET`, `NEXT_PUBLIC_API_URL`
 
 ## Commandes de developpement
 
@@ -263,7 +263,12 @@ npm run test
 
 ## Guide .env et URLs OAuth
 
-### API (`apps/api/.env`)
+### Fichier unique (`docker/.env`)
+
+Toutes les variables (API + Web + Worker + Media) sont centralisees dans
+`docker/.env`.
+
+### Variables API/Worker/Media
 
 - `DATABASE_URL`
 - `JWT_SECRET`
@@ -278,12 +283,15 @@ npm run test
 - `AUTH_RATE_LIMIT_BLOCK_SECONDS` (defaut: `900`)
 - `ACTIVATION_CODE_TTL_HOURS` (defaut: `48`)
 - `WEB_URL` (ex: `http://localhost:3000`)
+- `CORS_ORIGINS` (ex: `http://localhost:3000,http://127.0.0.1:3000`)
 
-### Web (`apps/web/.env.local`)
+### Variables Web/NextAuth
 
 - `NEXT_PUBLIC_API_URL=http://localhost:3001/api`
 - `NEXTAUTH_URL=http://localhost:3000`
 - `NEXTAUTH_SECRET=<secret long>`
+- `AUTH_URL=http://localhost:3000`
+- `AUTH_SECRET=<secret long>`
 - `AUTH_GOOGLE_CLIENT_ID=<google-client-id>`
 - `AUTH_GOOGLE_CLIENT_SECRET=<google-client-secret>`
 - `AUTH_APPLE_ID=<apple-service-id>`

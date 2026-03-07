@@ -4,11 +4,11 @@
   "version": "0.1.0",
   "scripts": {
     "predev": "rm -rf .next",
-    "dev": "next dev --webpack",
-    "dev:turbo": "next dev",
-    "build": "next build --webpack",
-    "build:turbo": "next build",
-    "start": "next start",
+    "dev": "bash -lc 'if [ -f ../../docker/.env ]; then set -a; source ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; source ../../.env; set +a; fi; next dev --webpack'",
+    "dev:turbo": "bash -lc 'if [ -f ../../docker/.env ]; then set -a; source ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; source ../../.env; set +a; fi; next dev'",
+    "build": "bash -lc 'if [ -f ../../docker/.env ]; then set -a; source ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; source ../../.env; set +a; fi; next build --webpack'",
+    "build:turbo": "bash -lc 'if [ -f ../../docker/.env ]; then set -a; source ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; source ../../.env; set +a; fi; next build'",
+    "start": "bash -lc 'if [ -f ../../docker/.env ]; then set -a; source ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; source ../../.env; set +a; fi; next start'",
     "lint": "next lint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"

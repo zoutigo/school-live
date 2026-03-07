@@ -16,8 +16,8 @@ import { SchoolsModule } from "./schools/schools.module.js";
       isGlobal: true,
       envFilePath:
         process.env.NODE_ENV === "test"
-          ? ["apps/api/.env.test", "apps/api/.env", ".env"]
-          : ["apps/api/.env", ".env"],
+          ? ["../../docker/.env.test", ".env.test", "../../docker/.env", ".env"]
+          : ["../../docker/.env", ".env"],
     }),
     PrismaModule,
     AuthModule,

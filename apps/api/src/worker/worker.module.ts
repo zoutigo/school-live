@@ -7,7 +7,7 @@ import { MailJobsWorker } from "./mail-jobs.worker.js";
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ["apps/api/.env", ".env"],
+      envFilePath: ["../../docker/.env", ".env"],
     }),
     InfrastructureModule,
   ],
