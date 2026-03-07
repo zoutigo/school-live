@@ -671,7 +671,7 @@ export default function SchoolsPage() {
   );
 
   return (
-    <AppShell schoolName="School-Live Platform">
+    <AppShell schoolName="Scolive Platform">
       <div className="grid gap-4">
         <Card title="Ecoles" subtitle="Gestion des etablissements">
           <div className="mb-4 flex items-end gap-2 border-b border-border">

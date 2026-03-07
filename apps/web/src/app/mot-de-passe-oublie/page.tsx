@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, KeyRound, MailCheck, ShieldCheck } from "lucide-react";
+import { RecoveryShell } from "../../components/layout/recovery-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { PasswordField } from "../../components/ui/password-field";
@@ -307,16 +307,8 @@ function ForgotPasswordPageContent() {
         return;
       }
 
-      setSuccess(
-        "Mot de passe reinitialise avec succes. Vous pouvez vous connecter.",
-      );
-      setVerified(false);
-      setOptions(null);
-      setActiveToken("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setBirthDate("");
-      setAnswers({});
+      router.replace(loginHref);
+      return;
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -325,62 +317,8 @@ function ForgotPasswordPageContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background px-4 py-8 text-text-primary sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute -left-24 -top-12 h-72 w-72 rounded-full bg-primary/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-28 right-0 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
-
-      <div className="relative mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-card border border-border bg-surface/95 p-6 shadow-card backdrop-blur lg:p-8">
-          <p className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            Recuperation securisee
-          </p>
-
-          <h1 className="mt-4 font-heading text-3xl font-bold leading-tight">
-            Recuperer l&apos;acces a votre compte
-          </h1>
-
-          <p className="mt-4 text-sm leading-6 text-text-secondary sm:text-base">
-            Workflow en 3 etapes: demande de lien, verification d&apos;identite,
-            puis definition du nouveau mot de passe.
-          </p>
-
-          <div className="mt-6 grid gap-3 text-sm">
-            <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
-              <MailCheck className="mt-0.5 h-4 w-4 text-primary" />
-              <p className="text-text-secondary">
-                Etape 1: recevez un lien temporaire par email.
-              </p>
-            </div>
-            <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
-              <KeyRound className="mt-0.5 h-4 w-4 text-primary" />
-              <p className="text-text-secondary">
-                Etape 2: confirmez votre identite (date de naissance + questions
-                de recuperation).
-              </p>
-            </div>
-            <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
-              <p className="text-text-secondary">
-                Etape 3: choisissez votre nouveau mot de passe.
-              </p>
-            </div>
-          </div>
-
-          <img
-            src="/images/camer-school2.png"
-            alt="Eleves devant leur etablissement"
-            className="mt-6 h-52 w-full rounded-card border border-border object-cover object-center sm:h-64"
-          />
-
-          <Link
-            href={loginHref}
-            className="mt-5 inline-block text-sm text-primary"
-          >
-            Retour a la connexion
-          </Link>
-        </section>
-
+    <RecoveryShell title="Recuperation de mot de passe">
+      <div className="mx-auto w-full max-w-2xl">
         <Card
           title="Mot de passe oublie"
           subtitle={
@@ -524,9 +462,16 @@ function ForgotPasswordPageContent() {
           {success ? (
             <p className="mt-3 text-sm text-primary">{success}</p>
           ) : null}
+
+          <Link
+            href={loginHref}
+            className="mt-4 inline-block text-sm text-primary"
+          >
+            Retour a la connexion
+          </Link>
         </Card>
       </div>
-    </div>
+    </RecoveryShell>
   );
 }
 
@@ -534,8 +479,8 @@ export default function ForgotPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="relative min-h-screen overflow-hidden bg-background px-4 py-8 text-text-primary sm:px-6 lg:px-8">
-          <div className="relative mx-auto w-full max-w-6xl">
+        <RecoveryShell title="Recuperation de mot de passe">
+          <div className="mx-auto w-full max-w-2xl">
             <Card
               title="Mot de passe oublie"
               subtitle="Chargement..."
@@ -544,7 +489,7 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-text-secondary">Chargement...</p>
             </Card>
           </div>
-        </div>
+        </RecoveryShell>
       }
     >
       <ForgotPasswordPageContent />

@@ -22,6 +22,11 @@ describe("ForgotPasswordPage UI", () => {
   it("renders the request step when there is no token", () => {
     render(<ForgotPasswordPage />);
 
+    expect(screen.getByTestId("recovery-header")).toBeInTheDocument();
+    expect(screen.getByTestId("recovery-sidebar")).toBeInTheDocument();
+    expect(
+      screen.getByText("Recuperation de mot de passe"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Etape 1/3: demande de lien")).toBeInTheDocument();
     expect(screen.getByLabelText("Email du compte")).toBeInTheDocument();
     expect(
@@ -155,5 +160,83 @@ describe("ForgotPasswordPage UI", () => {
       expect.stringContaining("/auth/forgot-password/verify"),
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("redirects to login after successful password reset completion", async () => {
+    currentSearchParams = new URLSearchParams(
+      "token=0123456789abcdefghijklmnop&schoolSlug=college-vogt",
+    );
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: true,
+            emailHint: "p***t@example.test",
+            schoolSlug: "college-vogt",
+            questions: [
+              { key: "BIRTH_CITY", label: "Ville de naissance" },
+              { key: "FAVORITE_SPORT", label: "Sport prefere" },
+              { key: "FATHER_FIRST_NAME", label: "Prenom du pere" },
+            ],
+          }),
+          {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, verified: true }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    render(<ForgotPasswordPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Compte detecte:/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Date de naissance"), {
+      target: { value: "1985-07-14" },
+    });
+    fireEvent.change(screen.getByLabelText("Ville de naissance"), {
+      target: { value: "Douala" },
+    });
+    fireEvent.change(screen.getByLabelText("Sport prefere"), {
+      target: { value: "Football" },
+    });
+    fireEvent.change(screen.getByLabelText("Prenom du pere"), {
+      target: { value: "Andre" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Verifier mon identite" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Nouveau mot de passe")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Nouveau mot de passe"), {
+      target: { value: "ValidPass123" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirmation"), {
+      target: { value: "ValidPass123" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Reinitialiser mon mot de passe" }),
+    );
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/schools/college-vogt/login");
+    });
   });
 });

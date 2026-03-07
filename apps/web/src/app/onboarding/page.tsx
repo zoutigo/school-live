@@ -236,9 +236,7 @@ function OnboardingContent() {
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-card bg-primary font-heading text-base font-bold text-surface">
               SL
             </span>
-            <span className="font-heading text-lg font-semibold">
-              School-Live
-            </span>
+            <span className="font-heading text-lg font-semibold">Scolive</span>
           </Link>
           <Link
             href={schoolSlug ? `/schools/${schoolSlug}/login` : "/"}

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Put, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "./auth.types.js";
 import { SetActiveRoleDto } from "./dto/set-active-role.dto.js";
+import { UpdatePersonalProfileDto } from "./dto/update-personal-profile.dto.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
 import { AuthService } from "./auth.service.js";
 
@@ -22,5 +23,14 @@ export class GlobalMeController {
     @Body() payload: SetActiveRoleDto,
   ) {
     return this.authService.setActiveRole(user.id, payload.role);
+  }
+
+  @Put("me/profile")
+  @UseGuards(JwtAuthGuard)
+  updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: UpdatePersonalProfileDto,
+  ) {
+    return this.authService.updatePersonalProfile(user.id, payload);
   }
 }

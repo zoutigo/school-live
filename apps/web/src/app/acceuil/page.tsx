@@ -71,7 +71,7 @@ export default function AcceuilPage() {
   }
 
   return (
-    <AppShell schoolName="School-Live Platform">
+    <AppShell schoolName="Scolive Platform">
       <div className="grid gap-4">
         <Card
           title="Acceuil administration"

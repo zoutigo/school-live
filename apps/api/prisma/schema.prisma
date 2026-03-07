@@ -46,6 +46,39 @@ enum Gender {
   OTHER
 }
 
+enum AccountActivationStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum AuthProvider {
+  GOOGLE
+  APPLE
+}
+
+enum AuthRateLimitPurpose {
+  PASSWORD_LOGIN
+  PHONE_LOGIN
+  SSO_LOGIN
+  ACTIVATION
+}
+
+enum AuthAuditEvent {
+  LOGIN_PASSWORD
+  LOGIN_PHONE
+  LOGIN_SSO
+  ACTIVATION_COMPLETE
+  CHANGE_PASSWORD
+  CHANGE_PIN
+}
+
+enum AuthAuditStatus {
+  SUCCESS
+  FAILURE
+  BLOCKED
+}
+
 enum RecoveryQuestionKey {
   MOTHER_MAIDEN_NAME
   FATHER_FIRST_NAME
@@ -152,6 +185,8 @@ model School {
   feedPosts          FeedPost[]
   feedComments       FeedComment[]
   feedLikes          FeedLike[]
+  activationCodes    ActivationCode[]
+  authAuditLogs      AuthAuditLog[]
 
   @@index([activeSchoolYearId])
 }
@@ -160,10 +195,12 @@ model User {
   id                 String                   @id @default(cuid())
   email              String                   @unique
   phone              String?
+  phoneConfirmedAt   DateTime?
   avatarUrl          String?
   passwordHash       String
   mustChangePassword Boolean                  @default(false)
   profileCompleted   Boolean                  @default(true)
+  activationStatus   AccountActivationStatus  @default(ACTIVE)
   activeRole         AppRole?
   recoveryBirthDate  DateTime?
   recoveryClassId    String?
@@ -183,6 +220,11 @@ model User {
   refreshTokens      RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   recoveryAnswers    UserRecoveryAnswer[]
+  authIdentities     UserAuthIdentity[]
+  phoneCredential    UserPhoneCredential?
+  activationCodes    ActivationCode[]         @relation("ActivationCodeUser")
+  createdActivationCodes ActivationCode[]     @relation("ActivationCodeIssuer")
+  authAuditLogs      AuthAuditLog[]
   lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
   staffAssignments   SchoolStaffAssignment[]
   sentMessages       InternalMessage[]         @relation("InternalMessageSender")
@@ -190,6 +232,89 @@ model User {
   feedPosts          FeedPost[]                @relation("FeedPostAuthor")
   feedComments       FeedComment[]             @relation("FeedCommentAuthor")
   feedLikes          FeedLike[]                @relation("FeedLikeUser")
+}
+
+model UserAuthIdentity {
+  id                String       @id @default(cuid())
+  userId            String
+  provider          AuthProvider
+  providerAccountId String
+  email             String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@index([email])
+}
+
+model UserPhoneCredential {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  phoneE164  String   @unique
+  pinHash    String
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phoneE164])
+}
+
+model ActivationCode {
+  id              String   @id @default(cuid())
+  userId          String
+  schoolId        String
+  codeHash        String
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime @default(now())
+  createdByUserId String?
+  user            User     @relation("ActivationCodeUser", fields: [userId], references: [id], onDelete: Cascade)
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdByUser   User?    @relation("ActivationCodeIssuer", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([expiresAt])
+  @@index([usedAt])
+}
+
+model AuthRateLimit {
+  id          String               @id @default(cuid())
+  purpose     AuthRateLimitPurpose
+  keyHash     String
+  failedCount Int                  @default(0)
+  blockedUntil DateTime?
+  lastFailedAt DateTime?
+  lastSuccessAt DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([purpose, keyHash])
+  @@index([blockedUntil])
+}
+
+model AuthAuditLog {
+  id         String          @id @default(cuid())
+  userId     String?
+  schoolId   String?
+  event      AuthAuditEvent
+  status     AuthAuditStatus
+  provider   AuthProvider?
+  principal  String?
+  ipAddress  String?
+  userAgent  String?
+  reasonCode String?
+  details    Json?
+  createdAt  DateTime        @default(now())
+  user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  school     School?         @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([event, status, createdAt])
 }
 
 model PlatformRoleAssignment {
@@ -753,5 +878,3 @@ model InlineMediaAsset {
 
 
 // Reserved for future shared indexes, comments and data notes.
-
-

@@ -10,6 +10,7 @@ import type {
   StudentLifeEventType,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { MailService } from "../mail/mail.service.js";
@@ -468,6 +469,7 @@ export class ManagementService {
     }
 
     const passwordHash = await bcrypt.hash(parsed.temporaryPassword, 10);
+    const isSchoolAccount = normalizedSchoolRoles.length > 0;
 
     const user = await this.prisma.user.create({
       data: {
@@ -479,6 +481,7 @@ export class ManagementService {
         passwordHash,
         mustChangePassword: true,
         profileCompleted: false,
+        activationStatus: isSchoolAccount ? "PENDING" : "ACTIVE",
         platformRoles:
           normalizedPlatformRoles.length > 0
             ? {
@@ -506,6 +509,7 @@ export class ManagementService {
         email: true,
         phone: true,
         avatarUrl: true,
+        activationStatus: true,
         platformRoles: {
           select: { role: true },
         },
@@ -522,6 +526,15 @@ export class ManagementService {
       },
     });
 
+    let activationCode: string | null = null;
+    if (schoolId && isSchoolAccount) {
+      activationCode = await this.issueActivationCode(
+        user.id,
+        schoolId,
+        currentUser.id,
+      );
+    }
+
     await this.mailService.sendTemporaryPasswordEmail({
       to: user.email,
       firstName: user.firstName,
@@ -529,7 +542,10 @@ export class ManagementService {
       schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
     });
 
-    return this.mapUserRow(user);
+    return {
+      ...this.mapUserRow(user),
+      activationCode,
+    };
   }
 
   async updateUser(
@@ -925,8 +941,14 @@ export class ManagementService {
         passwordHash,
         mustChangePassword: true,
         profileCompleted: false,
+        activationStatus: "PENDING",
       },
     });
+
+    const activationCode = await this.issueActivationCode(
+      schoolAdmin.id,
+      schoolId,
+    );
 
     await this.mailService.sendTemporaryPasswordEmail({
       to: schoolAdmin.email,
@@ -940,6 +962,7 @@ export class ManagementService {
       schoolId: school.id,
       adminUserId: schoolAdmin.id,
       email: schoolAdmin.email,
+      activationCode,
     };
   }
 
@@ -5254,6 +5277,63 @@ export class ManagementService {
     }
 
     return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+  }
+
+  private generateActivationCode() {
+    return randomBytes(4).toString("hex").toUpperCase();
+  }
+
+  private hashActivationCode(code: string) {
+    const pepper =
+      process.env.ACTIVATION_CODE_PEPPER ??
+      "dev-activation-code-pepper-change-me";
+    return createHash("sha256").update(`${code}:${pepper}`).digest("hex");
+  }
+
+  private async issueActivationCode(
+    userId: string,
+    schoolId: string,
+    createdByUserId?: string,
+  ) {
+    const now = new Date();
+    const activationCode = this.generateActivationCode();
+    const expiresAt = new Date(
+      now.getTime() + this.getActivationCodeTtlHours() * 60 * 60 * 1000,
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.activationCode.updateMany({
+        where: {
+          userId,
+          schoolId,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: {
+          usedAt: now,
+        },
+      });
+
+      await tx.activationCode.create({
+        data: {
+          userId,
+          schoolId,
+          codeHash: this.hashActivationCode(activationCode),
+          expiresAt,
+          createdByUserId: createdByUserId ?? null,
+        },
+      });
+    });
+
+    return activationCode;
+  }
+
+  private getActivationCodeTtlHours() {
+    const configured = Number(process.env.ACTIVATION_CODE_TTL_HOURS ?? 48);
+    if (!Number.isFinite(configured) || configured <= 0) {
+      return 48;
+    }
+    return Math.min(Math.floor(configured), 24 * 14);
   }
 
   private generateTemporaryPassword() {

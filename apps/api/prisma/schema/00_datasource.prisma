@@ -46,6 +46,39 @@ enum Gender {
   OTHER
 }
 
+enum AccountActivationStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum AuthProvider {
+  GOOGLE
+  APPLE
+}
+
+enum AuthRateLimitPurpose {
+  PASSWORD_LOGIN
+  PHONE_LOGIN
+  SSO_LOGIN
+  ACTIVATION
+}
+
+enum AuthAuditEvent {
+  LOGIN_PASSWORD
+  LOGIN_PHONE
+  LOGIN_SSO
+  ACTIVATION_COMPLETE
+  CHANGE_PASSWORD
+  CHANGE_PIN
+}
+
+enum AuthAuditStatus {
+  SUCCESS
+  FAILURE
+  BLOCKED
+}
+
 enum RecoveryQuestionKey {
   MOTHER_MAIDEN_NAME
   FATHER_FIRST_NAME
