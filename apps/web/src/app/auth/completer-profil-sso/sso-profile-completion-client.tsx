@@ -87,6 +87,11 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
   const [phone, setPhone] = useState("");
   const [newPin, setNewPin] = useState("");
   const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [firstNameTouched, setFirstNameTouched] = useState(false);
+  const [lastNameTouched, setLastNameTouched] = useState(false);
+  const [genderTouched, setGenderTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [newPinTouched, setNewPinTouched] = useState(false);
 
   const cleanSchoolSlug = useMemo(() => {
     if (!schoolSlug) {
@@ -111,6 +116,32 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
     lastName.length > 0 ||
     phone.length > 0 ||
     newPin.length > 0;
+  const completionErrors = useMemo(() => {
+    if (completionValidation.success) {
+      return {} as Partial<
+        Record<"firstName" | "lastName" | "gender" | "phone" | "newPin", string>
+      >;
+    }
+    return completionValidation.error.issues.reduce(
+      (accumulator, issue) => {
+        const key = issue.path[0];
+        if (
+          (key === "firstName" ||
+            key === "lastName" ||
+            key === "gender" ||
+            key === "phone" ||
+            key === "newPin") &&
+          !accumulator[key]
+        ) {
+          accumulator[key] = issue.message;
+        }
+        return accumulator;
+      },
+      {} as Partial<
+        Record<"firstName" | "lastName" | "gender" | "phone" | "newPin", string>
+      >,
+    );
+  }, [completionValidation]);
 
   async function finalizeAppSession(input: {
     provider: "GOOGLE" | "APPLE";
@@ -319,6 +350,11 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
       newPin,
     });
     if (!parsed.success) {
+      setFirstNameTouched(true);
+      setLastNameTouched(true);
+      setGenderTouched(true);
+      setPhoneTouched(true);
+      setNewPinTouched(true);
       setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
       return;
     }
@@ -361,97 +397,126 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8 text-text-primary sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-2xl">
-        <Card
-          title="Completer votre profil"
-          subtitle="Certaines informations sont requises avant la premiere connexion"
-        >
-          {loading ? (
-            <p className="text-sm text-text-secondary">Chargement...</p>
-          ) : (
-            <form className="grid gap-3" onSubmit={onSubmit}>
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Prenom</span>
-                <input
-                  required
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
+    <Card
+      title="Completer votre profil"
+      subtitle="Certaines informations sont requises avant la premiere connexion"
+      className="mx-auto max-w-2xl"
+    >
+      {loading ? (
+        <p className="text-sm text-text-secondary">Chargement...</p>
+      ) : (
+        <form className="grid gap-3" onSubmit={onSubmit} noValidate>
+          <div className="rounded-card border border-border bg-background px-3 py-2 text-xs text-text-secondary">
+            Finalisez votre profil SSO pour securiser l acces a votre compte.
+          </div>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Nom</span>
-                <input
-                  required
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-text-secondary">Prenom</span>
+            <input
+              value={firstName}
+              onChange={(event) => {
+                setFirstName(event.target.value);
+                setFirstNameTouched(true);
+              }}
+              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+            />
+            {firstNameTouched && completionErrors.firstName ? (
+              <span className="text-xs text-notification">
+                {completionErrors.firstName}
+              </span>
+            ) : null}
+          </label>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Genre</span>
-                <select
-                  value={gender}
-                  onChange={(event) =>
-                    setGender(event.target.value as "M" | "F" | "OTHER")
-                  }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="M">Masculin</option>
-                  <option value="F">Feminin</option>
-                  <option value="OTHER">Autre</option>
-                </select>
-              </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-text-secondary">Nom</span>
+            <input
+              value={lastName}
+              onChange={(event) => {
+                setLastName(event.target.value);
+                setLastNameTouched(true);
+              }}
+              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+            />
+            {lastNameTouched && completionErrors.lastName ? (
+              <span className="text-xs text-notification">
+                {completionErrors.lastName}
+              </span>
+            ) : null}
+          </label>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Telephone</span>
-                <input
-                  required
-                  value={phone}
-                  onChange={(event) =>
-                    setPhone(normalizePhoneInput(event.target.value))
-                  }
-                  placeholder="6XXXXXXXX"
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-text-secondary">Genre</span>
+            <select
+              value={gender}
+              onChange={(event) => {
+                setGender(event.target.value as "M" | "F" | "OTHER");
+                setGenderTouched(true);
+              }}
+              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="M">Masculin</option>
+              <option value="F">Feminin</option>
+              <option value="OTHER">Autre</option>
+            </select>
+            {genderTouched && completionErrors.gender ? (
+              <span className="text-xs text-notification">
+                {completionErrors.gender}
+              </span>
+            ) : null}
+          </label>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">PIN (6 chiffres)</span>
-                <PasswordField
-                  required
-                  value={newPin}
-                  onChange={(event) => setNewPin(event.target.value)}
-                  placeholder="123456"
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-text-secondary">Telephone</span>
+            <input
+              value={phone}
+              onChange={(event) => {
+                setPhone(normalizePhoneInput(event.target.value));
+                setPhoneTouched(true);
+              }}
+              placeholder="6XXXXXXXX"
+              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+            />
+            {phoneTouched && completionErrors.phone ? (
+              <span className="text-xs text-notification">
+                {completionErrors.phone}
+              </span>
+            ) : null}
+          </label>
 
-              {missingFields.length > 0 ? (
-                <p className="text-xs text-text-secondary">
-                  Champs manquants detectes: {missingFields.join(", ")}
-                </p>
-              ) : null}
+          <label className="grid gap-1 text-sm">
+            <span className="text-text-secondary">PIN (6 chiffres)</span>
+            <PasswordField
+              value={newPin}
+              onChange={(event) => {
+                setNewPin(event.target.value);
+                setNewPinTouched(true);
+              }}
+              placeholder="123456"
+              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+            />
+            {newPinTouched && completionErrors.newPin ? (
+              <span className="text-xs text-notification">
+                {completionErrors.newPin}
+              </span>
+            ) : null}
+          </label>
 
-              {error ? (
-                <p className="text-sm text-notification">{error}</p>
-              ) : null}
+          {missingFields.length > 0 ? (
+            <p className="text-xs text-text-secondary">
+              Champs manquants detectes: {missingFields.join(", ")}
+            </p>
+          ) : null}
 
-              <Button
-                type="submit"
-                disabled={
-                  saving || !completionDirty || !completionValidation.success
-                }
-              >
-                {saving ? "Enregistrement..." : "Finaliser mon profil"}
-              </Button>
-            </form>
-          )}
-        </Card>
-      </div>
-    </div>
+          {error ? <p className="text-sm text-notification">{error}</p> : null}
+
+          <Button
+            type="submit"
+            disabled={saving || !completionDirty || !completionValidation.success}
+          >
+            {saving ? "Enregistrement..." : "Finaliser mon profil"}
+          </Button>
+        </form>
+      )}
+    </Card>
   );
 }

@@ -1,4 +1,5 @@
 import { SsoProfileCompletionClient } from "./sso-profile-completion-client";
+import { RecoveryShell } from "../../../components/layout/recovery-shell";
 
 type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -13,5 +14,9 @@ export default async function CompleteSsoProfilePage({
     ? schoolSlugParam[0]
     : schoolSlugParam;
 
-  return <SsoProfileCompletionClient schoolSlug={schoolSlug} />;
+  return (
+    <RecoveryShell title="Recuperation du profil SSO">
+      <SsoProfileCompletionClient schoolSlug={schoolSlug} />
+    </RecoveryShell>
+  );
 }

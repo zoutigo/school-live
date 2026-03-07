@@ -154,6 +154,10 @@ describe("SsoProfileCompletionClient UI", () => {
       expect(screen.getByText("Completer votre profil")).toBeInTheDocument();
     });
 
+    expect(
+      screen.queryByText("Le PIN doit contenir exactement 6 chiffres."),
+    ).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByLabelText("Prenom"), {
       target: { value: "Aline" },
     });
@@ -166,6 +170,10 @@ describe("SsoProfileCompletionClient UI", () => {
     fireEvent.change(screen.getByLabelText("PIN (6 chiffres)"), {
       target: { value: "12345" },
     });
+
+    expect(
+      screen.getByText("Le PIN doit contenir exactement 6 chiffres."),
+    ).toBeInTheDocument();
 
     const submitButton = screen.getByRole("button", {
       name: "Finaliser mon profil",
