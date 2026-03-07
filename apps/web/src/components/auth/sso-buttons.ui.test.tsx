@@ -46,7 +46,7 @@ describe("SsoButtons UI", () => {
     });
   });
 
-  it("keeps Google button disabled when provider is missing", async () => {
+  it("keeps Google button clickable even when provider probe is missing", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify({}), {
         status: 200,
@@ -61,10 +61,14 @@ describe("SsoButtons UI", () => {
     });
 
     await waitFor(() => {
-      expect(googleButton).toBeDisabled();
+      expect(googleButton).toBeEnabled();
     });
 
     fireEvent.click(googleButton);
-    expect(signInMock).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(signInMock).toHaveBeenCalledWith("google", {
+        callbackUrl: "/auth/sso-callback",
+      });
+    });
   });
 });

@@ -89,31 +89,25 @@ export function AppHeader({
   return (
     <>
       <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-4">
-        <div className="flex items-center gap-3">
-          <button
-            aria-label="Ouvrir le menu"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-card border border-border bg-surface text-text-primary md:hidden"
-            onClick={onToggleMenu}
-            type="button"
-          >
-            ≡
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-card bg-primary font-heading text-sm font-bold text-surface">
-              SL
-            </span>
-            <div>
-              <p className="font-heading text-sm font-semibold text-text-primary">
-                scolive
-              </p>
-              <p className="text-xs text-text-secondary">
-                {getPortalLabel(role)}
-              </p>
-            </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-card bg-primary font-heading text-sm font-bold text-surface">
+            SL
+          </span>
+          <div className="hidden md:block">
+            <p className="font-heading text-sm font-semibold text-text-primary">
+              scolive
+            </p>
+            <p className="text-xs text-text-secondary">
+              {getPortalLabel(role)}
+            </p>
           </div>
         </div>
 
-        <div className="hidden items-center gap-2 md:flex">
+        <p className="flex-1 text-center font-heading text-base font-semibold text-text-primary md:hidden">
+          Scolive
+        </p>
+
+        <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 md:flex">
           {isSchoolContext ? (
             <>
               {schoolLogoUrl ? (
@@ -138,7 +132,7 @@ export function AppHeader({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 md:flex">
           <div className="hidden text-right sm:block md:block">
             <p className="text-sm font-semibold text-text-primary">
               {userDisplayName}
@@ -176,16 +170,16 @@ export function AppHeader({
             <LogOut className="h-4 w-4" />
           </button>
         </div>
-      </header>
 
-      <div className="border-b border-border bg-surface px-4 py-1.5 sm:hidden">
-        <p className="truncate text-sm font-semibold text-text-primary">
-          {userDisplayName}
-        </p>
-        <p className="truncate text-xs text-text-secondary">
-          {roleLabel(role)}
-        </p>
-      </div>
+        <button
+          aria-label="Ouvrir le menu"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-card border border-border bg-surface text-text-primary md:hidden"
+          onClick={onToggleMenu}
+          type="button"
+        >
+          ≡
+        </button>
+      </header>
 
       <ConfirmDialog
         open={logoutConfirmOpen}
