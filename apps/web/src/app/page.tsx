@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { LandingLoginForm } from "../components/marketing/landing-login-form";
@@ -32,36 +31,38 @@ export default function LandingPage() {
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-card bg-primary font-heading font-bold text-surface">
               SL
             </span>
-            <span className="font-heading text-lg font-semibold">
-              School-Live
-            </span>
+            <span className="font-heading text-lg font-semibold">Scolive</span>
           </div>
         </div>
       </header>
 
       <main>
-        <section className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-14 lg:grid-cols-[1.2fr_0.8fr]">
-          <div>
-            <h1 className="max-w-3xl font-heading text-4xl font-bold leading-tight text-text-primary md:text-5xl">
-              La plateforme numerique de votre etablissement scolaire
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg text-text-secondary">
-              Notes, messages, paiements et vie scolaire en un seul endroit.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button className="px-6 py-3 text-base">
-                Telecharger l'application
-              </Button>
-              <Link href="/schools/demo">
-                <Button className="px-6 py-3 text-base" variant="secondary">
-                  Decouvrir un portail
-                </Button>
-              </Link>
-            </div>
-          </div>
+        <section className="mx-auto w-full max-w-6xl px-6 pb-6 pt-12">
+          <h1 className="font-heading text-3xl font-bold leading-tight text-text-primary md:text-4xl">
+            Acces Scolive
+          </h1>
+          <p className="mt-2 text-sm text-text-secondary md:text-base">
+            Connectez-vous avec la methode fournie par votre ecole.
+          </p>
+        </section>
 
-          <Card title="Connexion" subtitle="Accedez a votre compte School-Live">
-            <LandingLoginForm />
+        <section className="mx-auto w-full max-w-6xl px-6 pb-16">
+          <LandingLoginForm />
+        </section>
+
+        <section className="mx-auto w-full max-w-6xl px-6 pb-16">
+          <Card
+            title="Application mobile Scolive"
+            subtitle="Disponible sur iOS et Android"
+          >
+            <p className="mb-4 text-sm text-text-secondary">
+              Restez connecte a la vie scolaire de votre etablissement depuis
+              votre mobile.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button>Telecharger sur App Store</Button>
+              <Button variant="secondary">Telecharger sur Google Play</Button>
+            </div>
           </Card>
         </section>
 
@@ -76,7 +77,7 @@ export default function LandingPage() {
               className="h-[380px] w-full rounded-card border border-border object-cover object-center"
             />
             <p className="mt-4 text-sm text-text-secondary">
-              School-Live valorise la reussite des apprenants avec des outils
+              Scolive valorise la reussite des apprenants avec des outils
               numeriques clairs, accessibles et adaptes au quotidien scolaire.
             </p>
           </Card>
@@ -90,32 +91,16 @@ export default function LandingPage() {
               subtitle={feature.description}
             >
               <p className="text-sm text-text-secondary">
-                School-Live centralise vos interactions ecole-famille.
+                Scolive centralise vos interactions ecole-famille.
               </p>
             </Card>
           ))}
-        </section>
-
-        <section className="mx-auto w-full max-w-6xl px-6 pb-16">
-          <Card
-            title="Application mobile School-Live"
-            subtitle="Disponible sur iOS et Android"
-          >
-            <p className="mb-4 text-sm text-text-secondary">
-              Restez connecte a la vie scolaire de votre etablissement depuis
-              votre mobile.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button>Telecharger sur App Store</Button>
-              <Button variant="secondary">Telecharger sur Google Play</Button>
-            </div>
-          </Card>
         </section>
       </main>
 
       <footer className="border-t border-border bg-surface">
         <div className="mx-auto w-full max-w-6xl px-6 py-6 text-sm text-text-secondary">
-          © {new Date().getFullYear()} School-Live
+          © {new Date().getFullYear()} Scolive
         </div>
       </footer>
     </div>

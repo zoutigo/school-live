@@ -35,7 +35,7 @@ describe("MailService", () => {
       to: "admin@example.test",
       firstName: "Admin",
       temporaryPassword: "Tmp123!",
-      schoolName: "School Live",
+      schoolName: "Scolive",
       schoolSlug: "school-live",
     };
 
@@ -58,7 +58,7 @@ describe("MailService", () => {
       to: "admin@example.test",
       firstName: "Admin",
       temporaryPassword: "Tmp123!",
-      schoolName: "School Live",
+      schoolName: "Scolive",
       schoolSlug: "school-live",
     };
 
@@ -75,7 +75,7 @@ describe("MailService", () => {
       parentFirstName: "Parent",
       studentFirstName: "Student",
       studentLastName: "Kid",
-      schoolName: "School Live",
+      schoolName: "Scolive",
       schoolSlug: "school-live",
       eventTypeLabel: "Discipline",
       eventReason: "Retards successifs",
@@ -94,7 +94,7 @@ describe("MailService", () => {
     const internalPayload = {
       to: "teacher@example.test",
       recipientFirstName: "Anne",
-      schoolName: "School Live",
+      schoolName: "Scolive",
       schoolSlug: "school-live",
       senderFullName: "Valery MBELE",
       subject: "Demande de suivi",

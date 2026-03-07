@@ -170,6 +170,15 @@ const SCHOOL_ROLE_OPTIONS: SchoolCreatableRole[] = [
   "STUDENT",
 ];
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const CAMEROON_LOCAL_PHONE_REGEX = /^\d{9}$/;
+
+function normalizeCmPhoneInput(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("237") && digits.length >= 12) {
+    return digits.slice(3, 12);
+  }
+  return digits.slice(0, 9);
+}
 const createUserSchema = z
   .object({
     firstName: z.string().trim().min(1, "Le prenom est obligatoire."),
@@ -178,8 +187,10 @@ const createUserSchema = z
     phone: z
       .string()
       .trim()
-      .min(6, "Le numero de telephone est trop court.")
-      .max(30)
+      .regex(
+        CAMEROON_LOCAL_PHONE_REGEX,
+        "Le numero doit contenir exactement 9 chiffres.",
+      )
       .optional(),
     platformRoles: z.array(z.enum(["ADMIN", "SALES", "SUPPORT"])),
     schoolRoles: z.array(
@@ -224,7 +235,13 @@ const createUserSchema = z
 const updateUserSchema = z.object({
   firstName: z.string().trim().min(1, "Le prenom est obligatoire."),
   lastName: z.string().trim().min(1, "Le nom est obligatoire."),
-  phone: z.string().trim().max(30).optional(),
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || CAMEROON_LOCAL_PHONE_REGEX.test(value), {
+      message: "Le numero doit contenir exactement 9 chiffres.",
+    }),
   platformRoles: z.array(z.enum(["ADMIN", "SALES", "SUPPORT"])),
   schoolRoles: z.array(
     z.enum([
@@ -919,7 +936,7 @@ export default function UsersPage() {
   );
 
   return (
-    <AppShell schoolName="School-Live Platform">
+    <AppShell schoolName="Scolive Platform">
       <div className="grid gap-4">
         <Card
           title="Utilisateurs"
@@ -1331,8 +1348,13 @@ export default function UsersPage() {
                                     <input
                                       value={editPhone}
                                       onChange={(event) =>
-                                        setEditPhone(event.target.value)
+                                        setEditPhone(
+                                          normalizeCmPhoneInput(
+                                            event.target.value,
+                                          ),
+                                        )
                                       }
+                                      placeholder="6XXXXXXXX"
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
                                   </label>
@@ -1753,8 +1775,10 @@ export default function UsersPage() {
                 <input
                   type="text"
                   value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="+237 6 00 00 00 00"
+                  onChange={(event) =>
+                    setPhone(normalizeCmPhoneInput(event.target.value))
+                  }
+                  placeholder="6XXXXXXXX"
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
               </label>

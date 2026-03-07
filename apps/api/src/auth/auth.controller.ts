@@ -19,6 +19,7 @@ import { CurrentSchoolId } from "./decorators/current-school-id.decorator.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "./auth.types.js";
 import { LoginDto } from "./dto/login.dto.js";
+import { LoginPhoneDto } from "./dto/login-phone.dto.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
 import { AuthService } from "./auth.service.js";
 
@@ -30,12 +31,41 @@ export class AuthController {
   async login(
     @Param("schoolSlug") schoolSlug: string,
     @Body() payload: LoginDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const authResponse = await this.authService.loginInSchool(
       schoolSlug,
       payload.email,
       payload.password,
+      this.getRequestContext(req),
+    );
+    const csrfToken = setAuthCookies(
+      res,
+      authResponse,
+      process.env.NODE_ENV === "production",
+    );
+    return {
+      accessToken: authResponse.accessToken,
+      tokenType: authResponse.tokenType,
+      expiresIn: authResponse.expiresIn,
+      schoolSlug: authResponse.schoolSlug,
+      csrfToken,
+    };
+  }
+
+  @Post("login-phone")
+  async loginPhone(
+    @Param("schoolSlug") schoolSlug: string,
+    @Body() payload: LoginPhoneDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const authResponse = await this.authService.loginWithPhonePin(
+      payload.phone,
+      payload.pin,
+      schoolSlug,
+      this.getRequestContext(req),
     );
     const csrfToken = setAuthCookies(
       res,
@@ -91,5 +121,15 @@ export class AuthController {
     @CurrentSchoolId() schoolId: string,
   ) {
     return this.authService.getMe(user.id, schoolId);
+  }
+
+  private getRequestContext(req: Request) {
+    const userAgent = req.headers["user-agent"];
+    return {
+      ipAddress: req.ip ?? null,
+      userAgent: Array.isArray(userAgent)
+        ? (userAgent[0] ?? null)
+        : (userAgent ?? null),
+    };
   }
 }

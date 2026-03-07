@@ -8,14 +8,25 @@ function isPublicPath(path: string) {
 
   return (
     normalizedPath === "/auth/login" ||
+    normalizedPath === "/auth/login-phone" ||
+    normalizedPath === "/auth/sso/login" ||
+    normalizedPath === "/auth/sso/profile/options" ||
+    normalizedPath === "/auth/sso/profile/complete" ||
+    normalizedPath === "/auth/activation/start" ||
+    normalizedPath === "/auth/activation/complete" ||
     normalizedPath === "/auth/first-password-change" ||
     normalizedPath === "/auth/forgot-password/request" ||
     normalizedPath === "/auth/forgot-password/options" ||
     normalizedPath === "/auth/forgot-password/verify" ||
     normalizedPath === "/auth/forgot-password/complete" ||
+    normalizedPath === "/auth/forgot-pin/options" ||
+    normalizedPath === "/auth/forgot-pin/verify" ||
+    normalizedPath === "/auth/forgot-pin/complete" ||
+    normalizedPath === "/auth/platform-credentials/complete" ||
     normalizedPath === "/auth/profile-setup" ||
     normalizedPath === "/auth/onboarding/complete" ||
-    /^\/schools\/[^/]+\/auth\/login$/.test(normalizedPath)
+    /^\/schools\/[^/]+\/auth\/login$/.test(normalizedPath) ||
+    /^\/schools\/[^/]+\/auth\/login-phone$/.test(normalizedPath)
   );
 }
 

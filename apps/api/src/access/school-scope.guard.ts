@@ -43,6 +43,13 @@ export class SchoolScopeGuard implements CanActivate {
       throw new ForbiddenException("User is not bound to a school");
     }
 
+    if ((req.user.activationStatus ?? "ACTIVE") !== "ACTIVE") {
+      throw new ForbiddenException({
+        code: "ACCOUNT_VALIDATION_REQUIRED",
+        message: "School account is pending validation",
+      });
+    }
+
     return true;
   }
 }

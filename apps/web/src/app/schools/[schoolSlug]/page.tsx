@@ -14,10 +14,7 @@ export default async function SchoolPortalPage({
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="mx-auto grid w-full max-w-4xl gap-6">
-        <Card
-          title={branding.name}
-          subtitle="Portail etablissement School-Live"
-        >
+        <Card title={branding.name} subtitle="Portail etablissement Scolive">
           <p className="text-text-secondary">
             Accedez a votre espace personnel pour suivre la vie scolaire.
           </p>

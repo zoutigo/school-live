@@ -54,11 +54,11 @@ export class SmtpEmailAdapter implements EmailPort {
     await transporter.sendMail({
       from,
       to: payload.to,
-      subject: "School-Live - Votre compte a ete cree",
+      subject: "Scolive - Votre compte a ete cree",
       text: [
         `Bonjour ${payload.firstName},`,
         "",
-        "Votre compte School-Live a ete cree.",
+        "Votre compte Scolive a ete cree.",
         `Mot de passe provisoire: ${payload.temporaryPassword}`,
         "",
         `1) Connectez-vous ici: ${loginUrl}`,
@@ -76,7 +76,7 @@ export class SmtpEmailAdapter implements EmailPort {
           <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E3E6E8;border-radius:10px;overflow:hidden;">
             <tr>
               <td style="background:#0A62BF;padding:16px 24px;color:#FFFFFF;font-family:Poppins,Arial,sans-serif;font-size:20px;font-weight:700;">
-                School-Live
+                Scolive
               </td>
             </tr>
             <tr>
@@ -162,7 +162,7 @@ export class SmtpEmailAdapter implements EmailPort {
     await transporter.sendMail({
       from,
       to: payload.to,
-      subject: `School-Live - Evenement vie scolaire ${actionLabel}`,
+      subject: `Scolive - Evenement vie scolaire ${actionLabel}`,
       text: [
         `Bonjour ${payload.parentFirstName},`,
         "",
@@ -187,7 +187,7 @@ export class SmtpEmailAdapter implements EmailPort {
           <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E3E6E8;border-radius:10px;overflow:hidden;">
             <tr>
               <td style="background:#0A62BF;padding:16px 24px;color:#FFFFFF;font-family:Poppins,Arial,sans-serif;font-size:20px;font-weight:700;">
-                School-Live
+                Scolive
               </td>
             </tr>
             <tr>
@@ -234,11 +234,11 @@ export class SmtpEmailAdapter implements EmailPort {
     await transporter.sendMail({
       from,
       to: payload.to,
-      subject: "School-Live - Reinitialisation de votre mot de passe",
+      subject: "Scolive - Reinitialisation de votre mot de passe",
       text: [
         `Bonjour ${payload.firstName},`,
         "",
-        "Une demande de reinitialisation de mot de passe a ete effectuee pour votre compte School-Live.",
+        "Une demande de reinitialisation de mot de passe a ete effectuee pour votre compte Scolive.",
         `Ce lien est valable ${payload.expiresInMinutes} minutes.`,
         `Lien de reinitialisation: ${payload.resetUrl}`,
         "",
@@ -254,7 +254,7 @@ export class SmtpEmailAdapter implements EmailPort {
           <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E3E6E8;border-radius:10px;overflow:hidden;">
             <tr>
               <td style="background:#0A62BF;padding:16px 24px;color:#FFFFFF;font-family:Poppins,Arial,sans-serif;font-size:20px;font-weight:700;">
-                School-Live
+                Scolive
               </td>
             </tr>
             <tr>
@@ -305,7 +305,7 @@ export class SmtpEmailAdapter implements EmailPort {
     await transporter.sendMail({
       from,
       to: payload.to,
-      subject: `School-Live - Nouveau message: ${payload.subject}`,
+      subject: `Scolive - Nouveau message: ${payload.subject}`,
       text: [
         `Bonjour ${payload.recipientFirstName},`,
         "",
@@ -327,7 +327,7 @@ export class SmtpEmailAdapter implements EmailPort {
           <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E3E6E8;border-radius:10px;overflow:hidden;">
             <tr>
               <td style="background:#0A62BF;padding:16px 24px;color:#FFFFFF;font-family:Poppins,Arial,sans-serif;font-size:20px;font-weight:700;">
-                School-Live
+                Scolive
               </td>
             </tr>
             <tr>

@@ -4,7 +4,7 @@ import { RuntimeErrorRecovery } from "../components/runtime-error-recovery";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "School-Live",
+  title: "Scolive",
   description: "Plateforme scolaire inspiree d EcoleDirecte",
 };
 

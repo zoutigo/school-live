@@ -80,7 +80,7 @@ export default function IndicatorsPage() {
   }
 
   return (
-    <AppShell schoolName="School-Live Platform">
+    <AppShell schoolName="Scolive Platform">
       <div className="grid gap-4">
         <Card title="Indicateurs" subtitle="Vue consolidée de la plateforme">
           <div className="mb-4 flex items-end gap-2 border-b border-border">
