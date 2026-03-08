@@ -53,6 +53,12 @@ type ClassroomRow = {
   id: string;
   schoolId: string;
   name: string;
+  referentTeacher: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
   schoolYear: {
     id: string;
     label: string;
@@ -133,7 +139,8 @@ type StudentRow = {
       id: string;
       firstName: string;
       lastName: string;
-      email: string;
+      email: string | null;
+      phone?: string | null;
     };
   }>;
   currentEnrollment: EnrollmentRow | null;
@@ -172,6 +179,13 @@ type EffectiveSubjectRow = {
   source: "curriculum" | "override";
 };
 
+type TimetableClassReadResponse = {
+  subjectStyles?: Array<{
+    subjectId: string;
+    colorHex: string;
+  }>;
+};
+
 const createClassroomSchema = z.object({
   name: z.string().trim().min(1, "Le nom de la classe est obligatoire."),
   schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
@@ -191,6 +205,75 @@ const createTeacherAssignmentSchema = z.object({
 
 function optionalId(value: string) {
   return value.trim() === "" ? undefined : value;
+}
+
+const SUBJECT_COLOR_FALLBACK_PALETTE = [
+  "#2563EB",
+  "#DC2626",
+  "#0891B2",
+  "#4D7C0F",
+  "#7C3AED",
+  "#B45309",
+  "#0E7490",
+  "#BE123C",
+  "#0F766E",
+  "#374151",
+];
+
+const SUBJECT_COLOR_PICKER_PALETTE = [
+  "#2563EB",
+  "#DC2626",
+  "#0891B2",
+  "#4D7C0F",
+  "#7C3AED",
+  "#B45309",
+  "#0E7490",
+  "#BE123C",
+  "#0F766E",
+  "#374151",
+  "#F59E0B",
+  "#10B981",
+  "#6366F1",
+  "#06B6D4",
+  "#1D4ED8",
+  "#1E40AF",
+  "#4338CA",
+  "#5B21B6",
+  "#7E22CE",
+  "#A21CAF",
+  "#BE185D",
+  "#C2410C",
+  "#EA580C",
+  "#D97706",
+  "#CA8A04",
+  "#65A30D",
+  "#16A34A",
+  "#15803D",
+  "#0F766E",
+  "#0D9488",
+  "#0284C7",
+  "#0369A1",
+  "#075985",
+  "#334155",
+  "#475569",
+  "#64748B",
+  "#9A3412",
+  "#A16207",
+  "#0F172A",
+  "#5B3C00",
+  "#4C1D95",
+  "#9D174D",
+  "#991B1B",
+];
+
+function fallbackSubjectColor(subjectId: string) {
+  let hash = 0;
+  for (let index = 0; index < subjectId.length; index += 1) {
+    hash = (hash * 31 + subjectId.charCodeAt(index)) >>> 0;
+  }
+  return SUBJECT_COLOR_FALLBACK_PALETTE[
+    hash % SUBJECT_COLOR_FALLBACK_PALETTE.length
+  ];
 }
 
 export default function ClassesPage() {
@@ -219,6 +302,9 @@ export default function ClassesPage() {
   const [classSubjectOverrides, setClassSubjectOverrides] = useState<
     ClassSubjectOverrideRow[]
   >([]);
+  const [classSubjectColorsById, setClassSubjectColorsById] = useState<
+    Record<string, string>
+  >({});
 
   const [className, setClassName] = useState("");
   const [classSchoolYearId, setClassSchoolYearId] = useState("");
@@ -249,6 +335,9 @@ export default function ClassesPage() {
     useState("");
   const [editAssignmentSubjectId, setEditAssignmentSubjectId] = useState("");
   const [savingAssignment, setSavingAssignment] = useState(false);
+  const [classReferentTeacherUserId, setClassReferentTeacherUserId] =
+    useState("");
+  const [savingClassReferent, setSavingClassReferent] = useState(false);
 
   const [assignStudentId, setAssignStudentId] = useState("");
   const [assignStudentStatus, setAssignStudentStatus] = useState<
@@ -262,6 +351,11 @@ export default function ClassesPage() {
   const [updatingEnrollmentId, setUpdatingEnrollmentId] = useState<
     string | null
   >(null);
+  const [colorPickerSubject, setColorPickerSubject] = useState<{
+    subjectId: string;
+    subjectName: string;
+  } | null>(null);
+  const [savingSubjectColor, setSavingSubjectColor] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -288,9 +382,11 @@ export default function ClassesPage() {
       setClassStudents([]);
       setClassCurriculumSubjects([]);
       setClassSubjectOverrides([]);
+      setClassReferentTeacherUserId("");
       return;
     }
 
+    setClassReferentTeacherUserId(selectedClass.referentTeacher?.id ?? "");
     void loadClassDetails(schoolSlug, selectedClass);
   }, [schoolSlug, selectedClass?.id]);
 
@@ -468,6 +564,7 @@ export default function ClassesPage() {
         studentsResponse,
         overridesResponse,
         curriculumResponse,
+        timetableResponse,
       ] = await Promise.all([
         fetch(
           buildAdminPath(
@@ -493,6 +590,10 @@ export default function ClassesPage() {
           { credentials: "include" },
         ),
         curriculumSubjectsPromise,
+        fetch(
+          `${API_URL}/schools/${currentSchoolSlug}/timetable/classes/${classEntity.id}?schoolYearId=${encodeURIComponent(classEntity.schoolYear.id)}`,
+          { credentials: "include" },
+        ),
       ]);
 
       if (
@@ -516,10 +617,26 @@ export default function ClassesPage() {
           (await curriculumResponse.json()) as CurriculumSubjectRow[];
       }
 
+      let subjectColorMap: Record<string, string> = {};
+      if (timetableResponse.ok) {
+        const timetablePayload =
+          (await timetableResponse.json()) as TimetableClassReadResponse;
+        subjectColorMap = Object.fromEntries(
+          (timetablePayload.subjectStyles ?? [])
+            .filter(
+              (entry) =>
+                typeof entry.subjectId === "string" &&
+                /^#[0-9A-Fa-f]{6}$/.test(entry.colorHex),
+            )
+            .map((entry) => [entry.subjectId, entry.colorHex.toUpperCase()]),
+        );
+      }
+
       setClassAssignments(assignmentsPayload);
       setClassStudents(studentsPayload);
       setClassSubjectOverrides(overridesPayload);
       setClassCurriculumSubjects(curriculumSubjectsPayload);
+      setClassSubjectColorsById(subjectColorMap);
 
       const draft: Record<
         string,
@@ -917,6 +1034,60 @@ export default function ClassesPage() {
     }
   }
 
+  async function updateSelectedClassReferentTeacher() {
+    if (!schoolSlug || !selectedClass || !classReferentTeacherUserId) {
+      setError("Selectionnez un enseignant referent.");
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSavingClassReferent(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `classrooms/${selectedClass.id}`),
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            referentTeacherUserId: classReferentTeacherUserId,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Affectation du referent impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setSuccess("Enseignant referent affecte a la classe.");
+      await loadData(schoolSlug);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSavingClassReferent(false);
+    }
+  }
+
   async function updateOneEnrollmentStatus(
     studentId: string,
     enrollmentId: string,
@@ -976,6 +1147,63 @@ export default function ClassesPage() {
       setError("Erreur reseau.");
     } finally {
       setUpdatingEnrollmentId(null);
+    }
+  }
+
+  async function updateSubjectColor(subjectId: string, colorHex: string) {
+    if (!schoolSlug || !selectedClass) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSavingSubjectColor(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/timetable/classes/${selectedClass.id}/subjects/${subjectId}/style`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            schoolYearId: selectedClass.schoolYear.id,
+            colorHex,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Mise a jour couleur impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setClassSubjectColorsById((current) => ({
+        ...current,
+        [subjectId]: colorHex.toUpperCase(),
+      }));
+      setSuccess("Couleur de la matiere mise a jour.");
+      setColorPickerSubject(null);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSavingSubjectColor(false);
     }
   }
 
@@ -1061,6 +1289,33 @@ export default function ClassesPage() {
 
     return map;
   }, [classAssignments]);
+
+  const canEditSubjectColors =
+    role === "SUPER_ADMIN" || role === "ADMIN" || role === "SCHOOL_ADMIN";
+
+  function getSubjectColor(subjectId: string) {
+    return classSubjectColorsById[subjectId] ?? fallbackSubjectColor(subjectId);
+  }
+
+  const availableColorsForPicker = useMemo(() => {
+    if (!colorPickerSubject) {
+      return [] as string[];
+    }
+
+    const usedByOtherSubjects = new Set(
+      effectiveSubjects
+        .filter((row) => row.subjectId !== colorPickerSubject.subjectId)
+        .map((row) => getSubjectColor(row.subjectId).toUpperCase()),
+    );
+
+    const uniquePalette = Array.from(
+      new Set(SUBJECT_COLOR_PICKER_PALETTE.map((color) => color.toUpperCase())),
+    );
+
+    return uniquePalette.filter(
+      (color) => !usedByOtherSubjects.has(color.toUpperCase()),
+    );
+  }, [colorPickerSubject, effectiveSubjects, classSubjectColorsById]);
 
   const allStudentsForAssignment = useMemo(
     () =>
@@ -1531,6 +1786,7 @@ export default function ClassesPage() {
                     <thead>
                       <tr className="border-b border-border text-left text-text-secondary">
                         <th className="px-3 py-2 font-medium">Matiere</th>
+                        <th className="px-3 py-2 font-medium">Couleur</th>
                         <th className="px-3 py-2 font-medium">Coefficient</th>
                         <th className="px-3 py-2 font-medium">Heures/sem.</th>
                         <th className="px-3 py-2 font-medium">Enseignant(s)</th>
@@ -1541,7 +1797,7 @@ export default function ClassesPage() {
                         <tr>
                           <td
                             className="px-3 py-6 text-text-secondary"
-                            colSpan={4}
+                            colSpan={5}
                           >
                             Chargement...
                           </td>
@@ -1550,7 +1806,7 @@ export default function ClassesPage() {
                         <tr>
                           <td
                             className="px-3 py-6 text-text-secondary"
-                            colSpan={4}
+                            colSpan={5}
                           >
                             Aucune matiere definie pour cette classe.
                           </td>
@@ -1562,6 +1818,41 @@ export default function ClassesPage() {
                             className="border-b border-border text-text-primary"
                           >
                             <td className="px-3 py-2">{row.subjectName}</td>
+                            <td className="px-3 py-2">
+                              {canEditSubjectColors ? (
+                                <button
+                                  type="button"
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/80 transition hover:scale-105 hover:border-primary/70"
+                                  style={{
+                                    backgroundColor: getSubjectColor(
+                                      row.subjectId,
+                                    ),
+                                  }}
+                                  onClick={() =>
+                                    setColorPickerSubject({
+                                      subjectId: row.subjectId,
+                                      subjectName: row.subjectName,
+                                    })
+                                  }
+                                  title={`Modifier couleur ${row.subjectName}`}
+                                  aria-label={`Modifier couleur ${row.subjectName}`}
+                                >
+                                  <span className="sr-only">
+                                    Modifier couleur
+                                  </span>
+                                </button>
+                              ) : (
+                                <span
+                                  className="inline-block h-6 w-6 rounded-full border border-border/80"
+                                  style={{
+                                    backgroundColor: getSubjectColor(
+                                      row.subjectId,
+                                    ),
+                                  }}
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </td>
                             <td className="px-3 py-2">
                               {row.coefficient ?? "-"}
                             </td>
@@ -1640,7 +1931,7 @@ export default function ClassesPage() {
                                   : student.parentLinks
                                       .map(
                                         (link) =>
-                                          `${link.parent.lastName} ${link.parent.firstName} (${link.parent.email})`,
+                                          `${link.parent.lastName} ${link.parent.firstName} (${link.parent.email ?? link.parent.phone ?? "-"})`,
                                       )
                                       .join(", ")}
                               </td>
@@ -1655,6 +1946,43 @@ export default function ClassesPage() {
             </div>
           ) : (
             <div className="grid gap-4">
+              <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
+                <label className="grid gap-1 text-sm md:col-span-2">
+                  <span className="text-text-secondary">
+                    Enseignant referent de la classe
+                  </span>
+                  <select
+                    value={classReferentTeacherUserId}
+                    onChange={(event) =>
+                      setClassReferentTeacherUserId(event.target.value)
+                    }
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Selectionner</option>
+                    {sortedTeachers.map((teacher) => (
+                      <option key={teacher.userId} value={teacher.userId}>
+                        {teacher.lastName} {teacher.firstName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="self-end">
+                  <Button
+                    type="button"
+                    disabled={
+                      savingClassReferent || !classReferentTeacherUserId
+                    }
+                    onClick={() => {
+                      void updateSelectedClassReferentTeacher();
+                    }}
+                  >
+                    {savingClassReferent
+                      ? "Affectation..."
+                      : "Affecter referent"}
+                  </Button>
+                </div>
+              </div>
+
               <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Eleve</span>
@@ -2050,6 +2378,84 @@ export default function ClassesPage() {
           void confirmDelete();
         }}
       />
+
+      {colorPickerSubject ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-text-primary/45 backdrop-blur-[1px]"
+            onClick={() => {
+              if (!savingSubjectColor) {
+                setColorPickerSubject(null);
+              }
+            }}
+            aria-label="Fermer le selecteur de couleur"
+          />
+          <div className="relative w-full max-w-md rounded-card border border-border bg-surface p-5 shadow-soft">
+            <h2 className="font-heading text-lg font-semibold text-text-primary">
+              Couleur de {colorPickerSubject.subjectName}
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              Choisissez une couleur non deja utilisee dans cette classe.
+            </p>
+
+            <div className="mt-4 grid grid-cols-7 gap-2">
+              {availableColorsForPicker.length === 0 ? (
+                <p className="col-span-7 text-sm text-text-secondary">
+                  Aucune couleur libre dans la palette actuelle.
+                </p>
+              ) : (
+                availableColorsForPicker.map((colorHex, index) =>
+                  (() => {
+                    const isCurrent =
+                      getSubjectColor(
+                        colorPickerSubject.subjectId,
+                      ).toUpperCase() === colorHex.toUpperCase();
+                    return (
+                      <button
+                        key={`${colorPickerSubject.subjectId}-${colorHex}-${index}`}
+                        type="button"
+                        className={`relative h-8 w-8 rounded-full border transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                          isCurrent
+                            ? "border-primary ring-2 ring-primary/40"
+                            : "border-border/70 hover:border-primary"
+                        }`}
+                        style={{ backgroundColor: colorHex }}
+                        disabled={savingSubjectColor}
+                        onClick={() => {
+                          void updateSubjectColor(
+                            colorPickerSubject.subjectId,
+                            colorHex,
+                          );
+                        }}
+                        title={colorHex}
+                        aria-label={`Choisir ${colorHex}`}
+                      >
+                        {isCurrent ? (
+                          <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">
+                            ✓
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })(),
+                )
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={savingSubjectColor}
+                onClick={() => setColorPickerSubject(null)}
+              >
+                Fermer
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AppShell>
   );
 }

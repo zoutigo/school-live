@@ -511,7 +511,9 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           <Button
             type="submit"
-            disabled={saving || !completionDirty || !completionValidation.success}
+            disabled={
+              saving || !completionDirty || !completionValidation.success
+            }
           >
             {saving ? "Enregistrement..." : "Finaliser mon profil"}
           </Button>

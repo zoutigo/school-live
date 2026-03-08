@@ -29,6 +29,7 @@ function normalizePhoneInput(value: string) {
 
 type ApiErrorPayload = {
   code?: string;
+  email?: string | null;
   schoolSlug?: string | null;
   setupToken?: string;
   missingFields?: string[];
@@ -36,6 +37,7 @@ type ApiErrorPayload = {
     | string
     | {
         code?: string;
+        email?: string | null;
         schoolSlug?: string | null;
         message?: string;
         setupToken?: string;
@@ -66,6 +68,7 @@ function parseApiError(payload: ApiErrorPayload) {
       : null;
   return {
     code: payload.code ?? messageObject?.code ?? null,
+    email: payload.email ?? messageObject?.email ?? null,
     schoolSlug: payload.schoolSlug ?? messageObject?.schoolSlug ?? null,
     setupToken: payload.setupToken ?? messageObject?.setupToken ?? null,
     missingFields: payload.missingFields ?? messageObject?.missingFields ?? [],
@@ -279,6 +282,21 @@ export default function SchoolLoginPage() {
           const parsed = parseApiError(payload);
           if (parsed.code === "ACCOUNT_VALIDATION_REQUIRED") {
             redirectToPendingAccount({ phone });
+            return;
+          }
+
+          if (parsed.code === "PROFILE_SETUP_REQUIRED") {
+            const params = new URLSearchParams({ schoolSlug });
+            if (parsed.email) {
+              params.set("email", parsed.email);
+            }
+            if (phone) {
+              params.set("phone", phone);
+            }
+            if (parsed.setupToken) {
+              params.set("token", parsed.setupToken);
+            }
+            router.push(`/onboarding?${params.toString()}`);
             return;
           }
 

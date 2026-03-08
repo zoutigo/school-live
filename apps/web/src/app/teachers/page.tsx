@@ -42,7 +42,8 @@ type TeacherRow = {
   userId: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email: string | null;
+  phone?: string | null;
 };
 
 type SchoolYearOption = {
@@ -86,9 +87,78 @@ type AssignmentRow = {
   };
 };
 
-const createTeacherSchema = z.object({
-  email: z.string().trim().email("Email invalide."),
-});
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const PHONE_PIN_REGEX = /^\d{6}$/;
+const CAMEROON_LOCAL_PHONE_REGEX = /^\d{9}$/;
+
+const createTeacherSchema = z
+  .object({
+    mode: z.enum(["email", "phone"]),
+    email: z.union([z.string().trim().email("Email invalide."), z.literal("")]),
+    phone: z
+      .string()
+      .trim()
+      .optional()
+      .refine((value) => !value || CAMEROON_LOCAL_PHONE_REGEX.test(value), {
+        message: "Le numero doit contenir exactement 9 chiffres.",
+      }),
+    password: z.union([
+      z
+        .string()
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+        ),
+      z.literal(""),
+    ]),
+    pin: z.union([
+      z.string().regex(PHONE_PIN_REGEX, "Le PIN doit contenir 6 chiffres."),
+      z.literal(""),
+    ]),
+  })
+  .superRefine((value, ctx) => {
+    if (value.mode === "email") {
+      if (!value.email.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["email"],
+          message: "Email enseignant obligatoire.",
+        });
+      }
+      if (!value.password.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["password"],
+          message: "Mot de passe initial obligatoire.",
+        });
+      }
+    }
+
+    if (value.mode === "phone") {
+      if (!value.phone?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["phone"],
+          message: "Telephone enseignant obligatoire.",
+        });
+      }
+      if (!value.pin.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["pin"],
+          message: "PIN initial obligatoire.",
+        });
+      }
+    }
+  });
+
+function normalizeCmPhoneInput(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("237") && digits.length >= 12) {
+    return digits.slice(3, 12);
+  }
+  return digits.slice(0, 9);
+}
 
 const assignmentSchema = z.object({
   schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
@@ -113,7 +183,11 @@ export default function TeachersPage() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
 
+  const [createMode, setCreateMode] = useState<"email" | "phone">("phone");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [initialPassword, setInitialPassword] = useState("");
+  const [initialPin, setInitialPin] = useState("");
 
   const [assignmentSchoolYearId, setAssignmentSchoolYearId] = useState("");
   const [assignmentTeacherUserId, setAssignmentTeacherUserId] = useState("");
@@ -314,7 +388,11 @@ export default function TeachersPage() {
     setSuccess(null);
 
     const parsed = createTeacherSchema.safeParse({
+      mode: createMode,
       email,
+      phone,
+      password: initialPassword,
+      pin: initialPin,
     });
 
     if (!parsed.success) {
@@ -338,7 +416,17 @@ export default function TeachersPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(
+          parsed.data.mode === "email"
+            ? {
+                email: parsed.data.email.trim(),
+                password: parsed.data.password.trim(),
+              }
+            : {
+                phone: parsed.data.phone?.trim(),
+                pin: parsed.data.pin.trim(),
+              },
+        ),
       });
 
       if (!response.ok) {
@@ -354,8 +442,13 @@ export default function TeachersPage() {
       }
 
       setEmail("");
+      setPhone("");
+      setInitialPassword("");
+      setInitialPin("");
       setSuccess(
-        "Enseignant cree. Un email de premiere connexion a ete envoye si le compte etait nouveau.",
+        parsed.data.mode === "phone"
+          ? "Enseignant cree/affecte. En cas de nouveau compte, utiliser le flux compte en attente pour activer le PIN."
+          : "Enseignant cree/affecte. Si nouveau compte, premiere connexion avec mot de passe initial puis changement obligatoire.",
       );
       await loadData(schoolSlug);
     } catch {
@@ -722,17 +815,64 @@ export default function TeachersPage() {
                 </p>
               ) : (
                 <form
-                  className="grid gap-3 md:grid-cols-[1fr_auto]"
+                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
                   onSubmit={onCreateTeacher}
                 >
                   <label className="grid gap-1 text-sm">
+                    <span className="text-text-secondary">Mode creation</span>
+                    <select
+                      value={createMode}
+                      onChange={(event) =>
+                        setCreateMode(event.target.value as "email" | "phone")
+                      }
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="phone">Telephone + PIN</option>
+                      <option value="email">Email + mot de passe</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm">
                     <span className="text-text-secondary">
-                      Email enseignant
+                      {createMode === "email"
+                        ? "Email enseignant"
+                        : "Telephone enseignant"}
+                    </span>
+                    {createMode === "email" ? (
+                      <input
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="enseignant@ecole.com"
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    ) : (
+                      <input
+                        value={phone}
+                        onChange={(event) =>
+                          setPhone(normalizeCmPhoneInput(event.target.value))
+                        }
+                        placeholder="6XXXXXXXX"
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    )}
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-text-secondary">
+                      {createMode === "email"
+                        ? "Mot de passe initial"
+                        : "PIN initial"}
                     </span>
                     <input
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      placeholder="enseignant@ecole.com"
+                      value={
+                        createMode === "email" ? initialPassword : initialPin
+                      }
+                      onChange={(event) =>
+                        createMode === "email"
+                          ? setInitialPassword(event.target.value)
+                          : setInitialPin(event.target.value)
+                      }
+                      placeholder={
+                        createMode === "email" ? "MotDePasse123" : "123456"
+                      }
                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                     />
                   </label>
@@ -741,6 +881,16 @@ export default function TeachersPage() {
                       {submittingTeacher ? "Creation..." : "Ajouter"}
                     </Button>
                   </div>
+                  {error ? (
+                    <p className="text-sm text-notification md:col-span-3">
+                      {error}
+                    </p>
+                  ) : null}
+                  {success ? (
+                    <p className="text-sm text-primary md:col-span-3">
+                      {success}
+                    </p>
+                  ) : null}
                 </form>
               )}
 
@@ -750,6 +900,7 @@ export default function TeachersPage() {
                     <tr className="border-b border-border text-left text-text-secondary">
                       <th className="px-3 py-2 font-medium">Enseignant</th>
                       <th className="px-3 py-2 font-medium">Email</th>
+                      <th className="px-3 py-2 font-medium">Telephone</th>
                       <th className="px-3 py-2 font-medium">
                         Classes affectees
                       </th>
@@ -760,7 +911,7 @@ export default function TeachersPage() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={3}
+                          colSpan={4}
                         >
                           Chargement...
                         </td>
@@ -776,7 +927,8 @@ export default function TeachersPage() {
                           <td className="px-3 py-2">
                             {entry.lastName} {entry.firstName}
                           </td>
-                          <td className="px-3 py-2">{entry.email}</td>
+                          <td className="px-3 py-2">{entry.email ?? "-"}</td>
+                          <td className="px-3 py-2">{entry.phone ?? "-"}</td>
                           <td className="px-3 py-2">
                             {(assignmentsByTeacher.get(entry.userId) ?? [])
                               .length === 0 ? (
@@ -807,7 +959,7 @@ export default function TeachersPage() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={3}
+                          colSpan={4}
                         >
                           Aucun enseignant trouve.
                         </td>
@@ -1109,10 +1261,10 @@ export default function TeachersPage() {
             </div>
           )}
 
-          {error ? (
+          {error && !(tab === "list" && role !== "ADMIN") ? (
             <p className="mt-3 text-sm text-notification">{error}</p>
           ) : null}
-          {success ? (
+          {success && !(tab === "list" && role !== "ADMIN") ? (
             <p className="mt-3 text-sm text-primary">{success}</p>
           ) : null}
         </Card>

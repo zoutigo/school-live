@@ -179,6 +179,7 @@ const createClassroomSchema = z.object({
   schoolYearId: z.string().trim().min(1).optional(),
   academicLevelId: z.string().trim().min(1).optional(),
   trackId: z.string().trim().min(1).optional(),
+  referentTeacherUserId: z.string().trim().min(1).optional(),
   curriculumId: z.string().trim().min(1),
 });
 
@@ -187,6 +188,7 @@ const updateClassroomSchema = z.object({
   schoolYearId: z.string().trim().min(1).optional(),
   academicLevelId: z.string().trim().min(1).optional(),
   trackId: z.string().trim().min(1).optional(),
+  referentTeacherUserId: z.string().trim().min(1).optional(),
   curriculumId: z.string().trim().min(1).optional(),
 });
 
@@ -1599,6 +1601,14 @@ export class ManagementService {
             name: true,
           },
         },
+        referentTeacher: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
         _count: {
           select: {
             enrollments: true,
@@ -1621,6 +1631,12 @@ export class ManagementService {
       parsed.schoolYearId ??
       (await this.getActiveSchoolYearIdOrThrow(schoolId));
     await this.ensureSchoolYearInSchool(schoolYearId, schoolId);
+    if (parsed.referentTeacherUserId) {
+      await this.ensureTeacherUserInSchool(
+        parsed.referentTeacherUserId,
+        schoolId,
+      );
+    }
     const academicReferences = await this.resolveClassAcademicReferences(
       schoolId,
       parsed.academicLevelId,
@@ -1636,6 +1652,7 @@ export class ManagementService {
         academicLevelId: academicReferences.academicLevelId,
         trackId: academicReferences.trackId,
         curriculumId: academicReferences.curriculumId,
+        referentTeacherUserId: parsed.referentTeacherUserId,
       },
       include: {
         schoolYear: {
@@ -1662,6 +1679,14 @@ export class ManagementService {
           select: {
             id: true,
             name: true,
+          },
+        },
+        referentTeacher: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
           },
         },
       },
@@ -1685,6 +1710,7 @@ export class ManagementService {
       parsed.schoolYearId === undefined &&
       parsed.academicLevelId === undefined &&
       parsed.trackId === undefined &&
+      parsed.referentTeacherUserId === undefined &&
       parsed.curriculumId === undefined
     ) {
       throw new BadRequestException("No fields to update");
@@ -1705,6 +1731,12 @@ export class ManagementService {
 
     if (parsed.schoolYearId) {
       await this.ensureSchoolYearInSchool(parsed.schoolYearId, schoolId);
+    }
+    if (parsed.referentTeacherUserId) {
+      await this.ensureTeacherUserInSchool(
+        parsed.referentTeacherUserId,
+        schoolId,
+      );
     }
 
     const academicReferences = await this.resolveClassAcademicReferences(
@@ -1727,6 +1759,7 @@ export class ManagementService {
         academicLevelId: academicReferences.academicLevelId,
         trackId: academicReferences.trackId,
         curriculumId: academicReferences.curriculumId,
+        referentTeacherUserId: parsed.referentTeacherUserId,
       },
       include: {
         schoolYear: {
@@ -1753,6 +1786,14 @@ export class ManagementService {
           select: {
             id: true,
             name: true,
+          },
+        },
+        referentTeacher: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
           },
         },
       },
@@ -2851,6 +2892,7 @@ export class ManagementService {
             firstName: true,
             lastName: true,
             email: true,
+            phone: true,
           },
         },
       },
@@ -3091,6 +3133,7 @@ export class ManagementService {
             firstName: true,
             lastName: true,
             email: true,
+            phone: true,
           },
         },
       },
@@ -3101,7 +3144,8 @@ export class ManagementService {
         userId: entry.userId,
         firstName: entry.user.firstName,
         lastName: entry.user.lastName,
-        email: entry.user.email,
+        email: this.publicEmailOrNull(entry.user.email),
+        phone: entry.user.phone,
       }))
       .sort((a, b) =>
         `${a.lastName} ${a.firstName}`.localeCompare(
@@ -3378,19 +3422,27 @@ export class ManagementService {
   }
 
   async createTeacher(schoolId: string, payload: CreateTeacherDto) {
-    const teacherEmail = payload.email.toLowerCase();
+    const normalizedEmail = payload.email?.trim().toLowerCase() ?? null;
+    const normalizedPhone = payload.phone
+      ? this.normalizePhone(payload.phone)
+      : null;
+    const hasEmail = Boolean(normalizedEmail);
+    const hasPhone = Boolean(normalizedPhone);
+
+    if (!hasEmail && !hasPhone) {
+      throw new BadRequestException(
+        "Email ou numero de telephone enseignant requis",
+      );
+    }
+
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
       select: { slug: true },
     });
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: teacherEmail },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-      },
+
+    const existingUser = await this.findUserByContact({
+      email: normalizedEmail,
+      phone: normalizedPhone,
     });
 
     if (existingUser) {
@@ -3430,15 +3482,82 @@ export class ManagementService {
           teacher,
           userExisted: true,
           onboardingEmailSent: false,
+          activationRequired: false,
         };
       });
 
       return result;
     }
 
+    if (hasPhone && !hasEmail && !payload.pin?.trim()) {
+      throw new BadRequestException(
+        "PIN initial requis pour une creation par telephone",
+      );
+    }
+
+    if (hasEmail && !payload.password?.trim()) {
+      throw new BadRequestException(
+        "Mot de passe initial requis pour une creation par email",
+      );
+    }
+
+    if (hasPhone && !hasEmail) {
+      const initialPin = payload.pin!.trim();
+      const passwordHash = await bcrypt.hash(initialPin, 10);
+      const technicalEmail = this.buildTechnicalEmailFromPhone(
+        normalizedPhone!,
+        "teacher",
+      );
+
+      const created = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            firstName: "Enseignant",
+            lastName: normalizedPhone!.slice(-4),
+            email: technicalEmail,
+            phone: normalizedPhone!,
+            passwordHash,
+            mustChangePassword: false,
+            profileCompleted: false,
+            activationStatus: "PENDING",
+            memberships: {
+              create: {
+                schoolId,
+                role: "TEACHER",
+              },
+            },
+          },
+        });
+
+        const teacher = await tx.teacher.create({
+          data: {
+            schoolId,
+            userId: user.id,
+          },
+        });
+
+        return { user, teacher };
+      });
+
+      const activationCode = await this.issueActivationCode(
+        created.user.id,
+        schoolId,
+        undefined,
+      );
+
+      return {
+        ...created,
+        userExisted: false,
+        onboardingEmailSent: false,
+        activationRequired: true,
+        activationCode,
+      };
+    }
+
+    const teacherEmail = normalizedEmail!;
     const derivedName = this.deriveNameFromEmail(teacherEmail);
-    const generatedTemporaryPassword = this.generateTemporaryPassword();
-    const passwordHash = await bcrypt.hash(generatedTemporaryPassword, 10);
+    const initialPassword = payload.password!.trim();
+    const passwordHash = await bcrypt.hash(initialPassword, 10);
 
     const created = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -3446,6 +3565,7 @@ export class ManagementService {
           firstName: derivedName.firstName,
           lastName: derivedName.lastName,
           email: teacherEmail,
+          phone: normalizedPhone,
           passwordHash,
           mustChangePassword: true,
           profileCompleted: false,
@@ -3471,7 +3591,7 @@ export class ManagementService {
     await this.mailService.sendTemporaryPasswordEmail({
       to: teacherEmail,
       firstName: created.user.firstName,
-      temporaryPassword: generatedTemporaryPassword,
+      temporaryPassword: initialPassword,
       schoolSlug: school?.slug ?? null,
     });
 
@@ -3479,6 +3599,7 @@ export class ManagementService {
       ...created,
       userExisted: false,
       onboardingEmailSent: true,
+      activationRequired: false,
     };
   }
 
@@ -3690,6 +3811,7 @@ export class ManagementService {
                 firstName: true,
                 lastName: true,
                 email: true,
+                phone: true,
               },
             },
           },
@@ -3734,6 +3856,13 @@ export class ManagementService {
     return students
       .map((student) => ({
         ...student,
+        parentLinks: student.parentLinks.map((link) => ({
+          ...link,
+          parent: {
+            ...link.parent,
+            email: this.publicEmailOrNull(link.parent.email),
+          },
+        })),
         currentEnrollment:
           student.enrollments.find(
             (enrollment) =>
@@ -4349,28 +4478,59 @@ export class ManagementService {
   private async createParentUser(
     schoolId: string,
     payload: {
-      email: string;
+      email?: string;
+      phone?: string;
       firstName?: string;
       lastName?: string;
       password?: string;
+      pin?: string;
     },
   ) {
-    const parentEmail = payload.email.toLowerCase();
-    const derivedName = this.deriveNameFromEmail(parentEmail);
+    const parentEmail = payload.email?.trim().toLowerCase() ?? null;
+    const normalizedPhone = payload.phone
+      ? this.normalizePhone(payload.phone)
+      : null;
+    const hasEmail = Boolean(parentEmail);
+    const hasPhone = Boolean(normalizedPhone);
+
+    if (!hasEmail && !hasPhone) {
+      throw new BadRequestException("Email ou telephone parent requis");
+    }
+
+    if (hasPhone && !hasEmail && !payload.pin?.trim()) {
+      throw new BadRequestException(
+        "PIN initial requis pour une creation parent par telephone",
+      );
+    }
+
+    if (hasEmail && !payload.password?.trim()) {
+      throw new BadRequestException(
+        "Mot de passe initial requis pour une creation parent par email",
+      );
+    }
+
+    const derivedName = hasEmail
+      ? this.deriveNameFromEmail(parentEmail!)
+      : { firstName: "Parent", lastName: normalizedPhone!.slice(-4) };
     const firstName = payload.firstName ?? derivedName.firstName;
     const lastName = payload.lastName ?? derivedName.lastName;
-    const temporaryPassword =
-      payload.password ?? this.generateTemporaryPassword();
-    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    const technicalEmail =
+      parentEmail ??
+      this.buildTechnicalEmailFromPhone(normalizedPhone!, "parent");
+    const rawSecret =
+      hasPhone && !hasEmail ? payload.pin!.trim() : payload.password!.trim();
+    const passwordHash = await bcrypt.hash(rawSecret, 10);
 
     const parent = await this.prisma.user.create({
       data: {
         firstName,
         lastName,
-        email: parentEmail,
+        email: technicalEmail,
+        phone: normalizedPhone,
         passwordHash,
-        mustChangePassword: payload.password ? false : true,
+        mustChangePassword: hasEmail,
         profileCompleted: false,
+        activationStatus: hasPhone && !hasEmail ? "PENDING" : "ACTIVE",
         memberships: {
           create: {
             schoolId,
@@ -4380,17 +4540,21 @@ export class ManagementService {
       },
     });
 
-    if (!payload.password) {
+    if (hasEmail) {
       const school = await this.prisma.school.findUnique({
         where: { id: schoolId },
         select: { slug: true },
       });
       await this.mailService.sendTemporaryPasswordEmail({
-        to: parentEmail,
+        to: parentEmail!,
         firstName,
-        temporaryPassword,
+        temporaryPassword: rawSecret,
         schoolSlug: school?.slug ?? null,
       });
+    }
+
+    if (hasPhone && !hasEmail) {
+      await this.issueActivationCode(parent.id, schoolId, undefined);
     }
 
     return parent.id;
@@ -4407,14 +4571,19 @@ export class ManagementService {
       );
     }
 
-    if (!payload.email) {
-      throw new BadRequestException("Parent email or parentUserId is required");
+    if (!payload.email && !payload.phone) {
+      throw new BadRequestException(
+        "Parent email ou telephone ou parentUserId requis",
+      );
     }
 
-    const normalizedEmail = payload.email.toLowerCase();
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true },
+    const normalizedEmail = payload.email?.trim().toLowerCase() ?? null;
+    const normalizedPhone = payload.phone
+      ? this.normalizePhone(payload.phone)
+      : null;
+    const existingUser = await this.findUserByContact({
+      email: normalizedEmail,
+      phone: normalizedPhone,
     });
 
     if (existingUser) {
@@ -4422,11 +4591,134 @@ export class ManagementService {
     }
 
     return this.createParentUser(schoolId, {
-      email: normalizedEmail,
+      email: normalizedEmail ?? undefined,
+      phone: normalizedPhone ?? undefined,
       firstName: payload.firstName,
       lastName: payload.lastName,
       password: payload.password,
+      pin: payload.pin,
     });
+  }
+
+  private async findUserByContact(input: {
+    email?: string | null;
+    phone?: string | null;
+  }) {
+    const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
+    const normalizedPhone = input.phone
+      ? this.normalizePhone(input.phone)
+      : null;
+
+    if (!normalizedEmail && !normalizedPhone) {
+      return null;
+    }
+
+    if (normalizedEmail && normalizedPhone) {
+      const [byEmail, byPhoneCredential, byPhoneField] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          select: { id: true, firstName: true, lastName: true, email: true },
+        }),
+        this.prisma.userPhoneCredential.findUnique({
+          where: { phoneE164: normalizedPhone },
+          select: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        }),
+        this.prisma.user.findFirst({
+          where: { phone: normalizedPhone },
+          select: { id: true, firstName: true, lastName: true, email: true },
+        }),
+      ]);
+      const byPhone = byPhoneCredential?.user ?? byPhoneField;
+      if (byEmail && byPhone && byEmail.id !== byPhone.id) {
+        throw new BadRequestException(
+          "Email et telephone correspondent a deux comptes differents",
+        );
+      }
+      return byEmail ?? byPhone ?? null;
+    }
+
+    if (normalizedEmail) {
+      return this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true, firstName: true, lastName: true, email: true },
+      });
+    }
+
+    const byPhoneCredential = await this.prisma.userPhoneCredential.findUnique({
+      where: { phoneE164: normalizedPhone! },
+      select: {
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+
+    if (byPhoneCredential?.user) {
+      return byPhoneCredential.user;
+    }
+
+    return this.prisma.user.findFirst({
+      where: { phone: normalizedPhone! },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    });
+  }
+
+  private buildTechnicalEmailFromPhone(
+    normalizedPhone: string,
+    scope: "teacher" | "parent",
+  ) {
+    const compact = normalizedPhone.replace(/\D/g, "");
+    return `${scope}-${compact}-${this.generateShortToken()}@noemail.scolive.local`;
+  }
+
+  private generateShortToken() {
+    return randomBytes(4).toString("hex");
+  }
+
+  private normalizePhone(value: string) {
+    const trimmed = value.trim();
+    if (trimmed.length < 6) {
+      throw new BadRequestException("Numero de telephone invalide");
+    }
+
+    const compact = trimmed.replace(/[\s\-().]/g, "");
+
+    if (/^\d{9}$/.test(compact)) {
+      return `+237${compact}`;
+    }
+
+    if (/^237\d{9}$/.test(compact)) {
+      return `+${compact}`;
+    }
+
+    if (compact.startsWith("+")) {
+      return compact;
+    }
+
+    if (compact.startsWith("00")) {
+      return `+${compact.slice(2)}`;
+    }
+
+    return `+${compact}`;
+  }
+
+  private publicEmailOrNull(email: string | null | undefined) {
+    if (!email) {
+      return null;
+    }
+    if (email.endsWith("@noemail.scolive.local")) {
+      return null;
+    }
+    return email;
   }
 
   private async ensureExistingParentMembership(

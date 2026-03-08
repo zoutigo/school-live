@@ -91,6 +91,43 @@ describe("LandingLoginForm UI", () => {
     });
   });
 
+  it("redirects to onboarding when phone login requires profile setup", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          message: {
+            code: "PROFILE_SETUP_REQUIRED",
+            email: "teacher-237610101031-abc@noemail.scolive.local",
+            schoolSlug: "college-vogt",
+            setupToken: "setup-token-phone",
+          },
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Telephone"), {
+      target: { value: "610101031" },
+    });
+    fireEvent.input(screen.getByLabelText("PIN"), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Connexion telephone + PIN" }),
+    );
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith(
+        "/onboarding?email=teacher-237610101031-abc%40noemail.scolive.local&phone=610101031&schoolSlug=college-vogt&token=setup-token-phone",
+      );
+    });
+  });
+
   it("shows credential inline errors on submit and when email is invalid", () => {
     render(<LandingLoginForm />);
 

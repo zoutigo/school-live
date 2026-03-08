@@ -1,0 +1,72 @@
+model ClassTimetableSlot {
+  id              String    @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  classId         String
+  subjectId       String
+  teacherUserId   String
+  weekday         Int
+  startMinute     Int
+  endMinute       Int
+  room            String?
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  school          School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  class           Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject         Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherUser     User      @relation("ClassTimetableSlotTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
+  createdByUser   User      @relation("ClassTimetableSlotCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([classId, weekday, startMinute])
+  @@index([teacherUserId, weekday, startMinute])
+  @@index([room, weekday, startMinute])
+}
+
+model ClassTimetableSubjectStyle {
+  id          String   @id @default(cuid())
+  schoolId    String
+  schoolYearId String
+  classId     String
+  subjectId   String
+  colorHex    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear  SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, schoolYearId, classId, subjectId])
+  @@index([schoolId, schoolYearId, classId])
+  @@index([subjectId])
+}
+
+model SchoolCalendarEvent {
+  id              String                  @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  type            SchoolCalendarEventType @default(HOLIDAY)
+  scope           SchoolCalendarEventScope
+  label           String
+  startDate       DateTime
+  endDate         DateTime
+  academicLevelId String?
+  classId         String?
+  createdByUserId String
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  school          School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear              @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel?          @relation(fields: [academicLevelId], references: [id], onDelete: SetNull)
+  class           Class?                  @relation(fields: [classId], references: [id], onDelete: SetNull)
+  createdByUser   User                    @relation("SchoolCalendarEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([scope, classId, academicLevelId])
+  @@index([startDate, endDate])
+}

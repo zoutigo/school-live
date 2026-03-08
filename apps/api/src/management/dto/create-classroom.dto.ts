@@ -16,6 +16,10 @@ export class CreateClassroomDto {
   @IsString()
   trackId?: string;
 
+  @IsOptional()
+  @IsString()
+  referentTeacherUserId?: string;
+
   @IsString()
   curriculumId!: string;
 }

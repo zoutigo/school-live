@@ -26,6 +26,9 @@ model SchoolYear {
   teachingAssignments TeacherClassSubject[]
   grades              Grade[]
   lifeEvents          StudentLifeEvent[]
+  timetableSlots      ClassTimetableSlot[]
+  timetableSubjectStyles ClassTimetableSubjectStyle[]
+  calendarEvents      SchoolCalendarEvent[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -42,6 +45,7 @@ model AcademicLevel {
   classes     Class[]
   feedPosts   FeedPost[]
   curriculums Curriculum[]
+  calendarEvents SchoolCalendarEvent[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -109,6 +113,7 @@ model Class {
   academicLevelId String?
   trackId         String?
   curriculumId    String?
+  referentTeacherUserId String?
   name            String
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
@@ -118,12 +123,16 @@ model Class {
   academicLevel   AcademicLevel?        @relation(fields: [academicLevelId], references: [id], onDelete: SetNull)
   track           Track?                @relation(fields: [trackId], references: [id], onDelete: SetNull)
   curriculum      Curriculum?           @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  referentTeacher User?                 @relation("ClassReferentTeacher", fields: [referentTeacherUserId], references: [id], onDelete: SetNull)
   enrollments     Enrollment[]
   assignments     TeacherClassSubject[]
   grades          Grade[]
   subjectOverrides ClassSubjectOverride[]
   lifeEvents      StudentLifeEvent[]
   feedPosts       FeedPost[]
+  timetableSlots  ClassTimetableSlot[]
+  timetableSubjectStyles ClassTimetableSubjectStyle[]
+  calendarEvents  SchoolCalendarEvent[]
 
   @@unique([schoolId, schoolYearId, classGroupId, name])
   @@index([schoolId])
@@ -132,6 +141,7 @@ model Class {
   @@index([academicLevelId])
   @@index([trackId])
   @@index([curriculumId])
+  @@index([referentTeacherUserId])
 }
 
 model Subject {
@@ -145,6 +155,8 @@ model Subject {
   grades       Grade[]
   curriculumSubjects CurriculumSubject[]
   classOverrides ClassSubjectOverride[]
+  timetableSlots ClassTimetableSlot[]
+  timetableSubjectStyles ClassTimetableSubjectStyle[]
 
   @@unique([schoolId, name])
   @@index([schoolId])

@@ -31,6 +31,7 @@ import { FirstPasswordChangeDto } from "./dto/first-password-change.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { LoginPhoneDto } from "./dto/login-phone.dto.js";
 import { OnboardingCompleteDto } from "./dto/onboarding-complete.dto.js";
+import { OnboardingOptionsDto } from "./dto/onboarding-options.dto.js";
 import { PlatformCredentialsCompleteDto } from "./dto/platform-credentials-complete.dto.js";
 import { ProfileSetupDto } from "./dto/profile-setup.dto.js";
 import { ProfileSetupOptionsDto } from "./dto/profile-setup-options.dto.js";
@@ -292,28 +293,17 @@ export class PublicAuthController {
 
   @Get("profile-setup/options")
   profileSetupOptions(@Query() query: ProfileSetupOptionsDto) {
-    return this.authService.getProfileSetupOptions(query.email);
+    return this.authService.getProfileSetupOptions({ email: query.email });
   }
 
   @Get("onboarding/options")
-  onboardingOptions(@Query() query: ProfileSetupOptionsDto) {
-    return this.authService.getProfileSetupOptions(query.email);
+  onboardingOptions(@Query() query: OnboardingOptionsDto) {
+    return this.authService.getProfileSetupOptions(query);
   }
 
   @Post("onboarding/complete")
   onboardingComplete(@Body() payload: OnboardingCompleteDto) {
-    return this.authService.completeOnboarding({
-      email: payload.email,
-      temporaryPassword: payload.temporaryPassword,
-      newPassword: payload.newPassword,
-      firstName: payload.firstName,
-      lastName: payload.lastName,
-      gender: payload.gender,
-      birthDate: payload.birthDate,
-      answers: payload.answers,
-      parentClassId: payload.parentClassId,
-      parentStudentId: payload.parentStudentId,
-    });
+    return this.authService.completeOnboarding(payload);
   }
 
   @Post("profile-setup")

@@ -114,6 +114,16 @@ enum StudentLifeEventType {
   PUNITION
 }
 
+enum SchoolCalendarEventType {
+  HOLIDAY
+}
+
+enum SchoolCalendarEventScope {
+  SCHOOL
+  ACADEMIC_LEVEL
+  CLASS
+}
+
 enum InternalMessageStatus {
   DRAFT
   SENT
@@ -187,6 +197,9 @@ model School {
   feedLikes          FeedLike[]
   activationCodes    ActivationCode[]
   authAuditLogs      AuthAuditLog[]
+  timetableSlots     ClassTimetableSlot[]
+  timetableSubjectStyles ClassTimetableSubjectStyle[]
+  calendarEvents     SchoolCalendarEvent[]
 
   @@index([activeSchoolYearId])
 }
@@ -232,6 +245,10 @@ model User {
   feedPosts          FeedPost[]                @relation("FeedPostAuthor")
   feedComments       FeedComment[]             @relation("FeedCommentAuthor")
   feedLikes          FeedLike[]                @relation("FeedLikeUser")
+  referentOfClasses  Class[]                   @relation("ClassReferentTeacher")
+  timetableSlotsAsTeacher ClassTimetableSlot[] @relation("ClassTimetableSlotTeacher")
+  timetableSlotsCreated ClassTimetableSlot[]   @relation("ClassTimetableSlotCreatedBy")
+  calendarEventsCreated SchoolCalendarEvent[]  @relation("SchoolCalendarEventCreatedBy")
 }
 
 model UserAuthIdentity {
@@ -512,6 +529,9 @@ model SchoolYear {
   teachingAssignments TeacherClassSubject[]
   grades              Grade[]
   lifeEvents          StudentLifeEvent[]
+  timetableSlots      ClassTimetableSlot[]
+  timetableSubjectStyles ClassTimetableSubjectStyle[]
+  calendarEvents      SchoolCalendarEvent[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -528,6 +548,7 @@ model AcademicLevel {
   classes     Class[]
   feedPosts   FeedPost[]
   curriculums Curriculum[]
+  calendarEvents SchoolCalendarEvent[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -595,6 +616,7 @@ model Class {
   academicLevelId String?
   trackId         String?
   curriculumId    String?
+  referentTeacherUserId String?
   name            String
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
@@ -604,12 +626,16 @@ model Class {
   academicLevel   AcademicLevel?        @relation(fields: [academicLevelId], references: [id], onDelete: SetNull)
   track           Track?                @relation(fields: [trackId], references: [id], onDelete: SetNull)
   curriculum      Curriculum?           @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  referentTeacher User?                 @relation("ClassReferentTeacher", fields: [referentTeacherUserId], references: [id], onDelete: SetNull)
   enrollments     Enrollment[]
   assignments     TeacherClassSubject[]
   grades          Grade[]
   subjectOverrides ClassSubjectOverride[]
   lifeEvents      StudentLifeEvent[]
   feedPosts       FeedPost[]
+  timetableSlots  ClassTimetableSlot[]
+  timetableSubjectStyles ClassTimetableSubjectStyle[]
+  calendarEvents  SchoolCalendarEvent[]
 
   @@unique([schoolId, schoolYearId, classGroupId, name])
   @@index([schoolId])
@@ -618,6 +644,7 @@ model Class {
   @@index([academicLevelId])
   @@index([trackId])
   @@index([curriculumId])
+  @@index([referentTeacherUserId])
 }
 
 model Subject {
@@ -631,6 +658,8 @@ model Subject {
   grades       Grade[]
   curriculumSubjects CurriculumSubject[]
   classOverrides ClassSubjectOverride[]
+  timetableSlots ClassTimetableSlot[]
+  timetableSubjectStyles ClassTimetableSubjectStyle[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -675,6 +704,80 @@ model TeacherClassSubject {
   @@index([schoolYearId])
   @@index([classId])
   @@index([subjectId])
+}
+
+
+model ClassTimetableSlot {
+  id              String    @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  classId         String
+  subjectId       String
+  teacherUserId   String
+  weekday         Int
+  startMinute     Int
+  endMinute       Int
+  room            String?
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  school          School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  class           Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject         Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherUser     User      @relation("ClassTimetableSlotTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
+  createdByUser   User      @relation("ClassTimetableSlotCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([classId, weekday, startMinute])
+  @@index([teacherUserId, weekday, startMinute])
+  @@index([room, weekday, startMinute])
+}
+
+model ClassTimetableSubjectStyle {
+  id          String   @id @default(cuid())
+  schoolId    String
+  schoolYearId String
+  classId     String
+  subjectId   String
+  colorHex    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear  SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, schoolYearId, classId, subjectId])
+  @@index([schoolId, schoolYearId, classId])
+  @@index([subjectId])
+}
+
+model SchoolCalendarEvent {
+  id              String                  @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  type            SchoolCalendarEventType @default(HOLIDAY)
+  scope           SchoolCalendarEventScope
+  label           String
+  startDate       DateTime
+  endDate         DateTime
+  academicLevelId String?
+  classId         String?
+  createdByUserId String
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  school          School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear              @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel?          @relation(fields: [academicLevelId], references: [id], onDelete: SetNull)
+  class           Class?                  @relation(fields: [classId], references: [id], onDelete: SetNull)
+  createdByUser   User                    @relation("SchoolCalendarEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([scope, classId, academicLevelId])
+  @@index([startDate, endDate])
 }
 
 
@@ -878,3 +981,4 @@ model InlineMediaAsset {
 
 
 // Reserved for future shared indexes, comments and data notes.
+

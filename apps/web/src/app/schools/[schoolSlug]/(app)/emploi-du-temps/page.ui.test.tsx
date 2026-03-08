@@ -25,6 +25,134 @@ function mockMeResponse(payload: unknown, status = 200) {
   );
 }
 
+function buildTimetablePayload(
+  overrides?: Partial<{
+    student: { id: string; firstName: string; lastName: string };
+    classEntity: {
+      id: string;
+      name: string;
+      schoolYearId: string;
+      academicLevelId: string | null;
+    };
+  }>,
+) {
+  return {
+    student: overrides?.student ?? {
+      id: "student-1",
+      firstName: "Lisa",
+      lastName: "MBELE",
+    },
+    class: overrides?.classEntity ?? {
+      id: "class-1",
+      name: "6eme N3",
+      schoolYearId: "sy-1",
+      academicLevelId: null,
+    },
+    slots: [
+      {
+        id: "slot-fr-mon",
+        weekday: 1,
+        startMinute: 525,
+        endMinute: 580,
+        room: "B14",
+        subject: { id: "subject-fr", name: "FRANCAIS" },
+        teacherUser: { id: "teacher-fr", firstName: "P.", lastName: "Jamet" },
+      },
+      {
+        id: "slot-math-mon",
+        weekday: 1,
+        startMinute: 580,
+        endMinute: 635,
+        room: "B11",
+        subject: { id: "subject-math", name: "MATHEMATIQUES" },
+        teacherUser: {
+          id: "teacher-math",
+          firstName: "C.",
+          lastName: "Auberger",
+        },
+      },
+      {
+        id: "slot-ang-mon",
+        weekday: 1,
+        startMinute: 650,
+        endMinute: 705,
+        room: "A08",
+        subject: { id: "subject-ang", name: "ANGLAIS" },
+        teacherUser: {
+          id: "teacher-ang",
+          firstName: "S.",
+          lastName: "Assade",
+        },
+      },
+      {
+        id: "slot-fr-tue",
+        weekday: 2,
+        startMinute: 525,
+        endMinute: 580,
+        room: "B14",
+        subject: { id: "subject-fr", name: "FRANCAIS" },
+        teacherUser: { id: "teacher-fr", firstName: "P.", lastName: "Jamet" },
+      },
+      {
+        id: "slot-fr-wed",
+        weekday: 3,
+        startMinute: 525,
+        endMinute: 580,
+        room: "B14",
+        subject: { id: "subject-fr", name: "FRANCAIS" },
+        teacherUser: { id: "teacher-fr", firstName: "P.", lastName: "Jamet" },
+      },
+      {
+        id: "slot-fr-thu",
+        weekday: 4,
+        startMinute: 525,
+        endMinute: 580,
+        room: "B14",
+        subject: { id: "subject-fr", name: "FRANCAIS" },
+        teacherUser: { id: "teacher-fr", firstName: "P.", lastName: "Jamet" },
+      },
+      {
+        id: "slot-fr-fri",
+        weekday: 5,
+        startMinute: 525,
+        endMinute: 580,
+        room: "B14",
+        subject: { id: "subject-fr", name: "FRANCAIS" },
+        teacherUser: { id: "teacher-fr", firstName: "P.", lastName: "Jamet" },
+      },
+    ],
+    subjectStyles: [],
+    calendarEvents: [],
+  };
+}
+
+function mockTimetableFlow(mePayload: unknown, timetablePayload?: unknown) {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.includes("/schools/college-vogt/me")) {
+      return new Response(JSON.stringify(mePayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (url.includes("/schools/college-vogt/timetable/me")) {
+      return new Response(
+        JSON.stringify(timetablePayload ?? buildTimetablePayload()),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    return new Response(JSON.stringify({ message: "Not found" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+}
+
 function findMonthTitleButton() {
   return screen.getAllByRole("button").find((button) => {
     const label = button.textContent?.trim() ?? "";
@@ -38,6 +166,17 @@ function findWeekTitleButton() {
   return screen.getAllByRole("button").find((button) => {
     const label = button.textContent?.trim() ?? "";
     return /\d{4}/.test(label) && label.includes(" - ");
+  });
+}
+
+function findDayTitleButton() {
+  return screen.getAllByRole("button").find((button) => {
+    const label = button.textContent?.trim() ?? "";
+    return (
+      /^\d{2}\s+\w+/i.test(label) &&
+      !label.includes("-") &&
+      !label.includes("Aujourd")
+    );
   });
 }
 
@@ -66,7 +205,7 @@ describe("StudentTimetablePage UI", () => {
   });
 
   it("renders student timetable in day mode with class and room details", async () => {
-    mockMeResponse({
+    mockTimetableFlow({
       firstName: "Lisa",
       lastName: "MBELE",
       role: "STUDENT",
@@ -91,12 +230,12 @@ describe("StudentTimetablePage UI", () => {
     await waitFor(() => {
       expect(screen.getByText("FRANCAIS")).toBeInTheDocument();
     });
-    expect(screen.getByText("Jamet P.")).toBeInTheDocument();
+    expect(screen.getByText("JAMET P.")).toBeInTheDocument();
     expect(screen.getAllByText("B14").length).toBeGreaterThan(0);
   });
 
   it("navigates days and returns to today from the day title button", async () => {
-    mockMeResponse({
+    mockTimetableFlow({
       firstName: "Lisa",
       lastName: "MBELE",
       role: "STUDENT",
@@ -114,10 +253,9 @@ describe("StudentTimetablePage UI", () => {
       ).not.toBeInTheDocument();
     });
 
-    const shiftedDayButton = screen.getByRole("button", {
-      name: /\d{2}\s\w+/i,
-    });
-    fireEvent.click(shiftedDayButton);
+    const shiftedDayButton = findDayTitleButton();
+    expect(shiftedDayButton).toBeDefined();
+    fireEvent.click(shiftedDayButton!);
 
     await waitFor(() => {
       expect(
@@ -127,7 +265,7 @@ describe("StudentTimetablePage UI", () => {
   });
 
   it("handles week tab navigation and reset to current week", async () => {
-    mockMeResponse({
+    mockTimetableFlow({
       firstName: "Lisa",
       lastName: "MBELE",
       role: "STUDENT",
@@ -167,7 +305,7 @@ describe("StudentTimetablePage UI", () => {
   });
 
   it("handles month tab navigation and reset to current month", async () => {
-    mockMeResponse({
+    mockTimetableFlow({
       firstName: "Lisa",
       lastName: "MBELE",
       role: "STUDENT",
@@ -208,25 +346,36 @@ describe("StudentTimetablePage UI", () => {
 
   it("supports parent context with childId query and shows targeted child", async () => {
     searchParamsMock = new URLSearchParams("childId=child-2");
-    mockMeResponse({
-      firstName: "Parent",
-      lastName: "Account",
-      role: "PARENT",
-      linkedStudents: [
-        {
-          id: "child-1",
-          firstName: "Lisa",
-          lastName: "MBELE",
-          currentEnrollment: { class: { name: "6eme N3" } },
+    mockTimetableFlow(
+      {
+        firstName: "Parent",
+        lastName: "Account",
+        role: "PARENT",
+        linkedStudents: [
+          {
+            id: "child-1",
+            firstName: "Lisa",
+            lastName: "MBELE",
+            currentEnrollment: { class: { name: "6eme N3" } },
+          },
+          {
+            id: "child-2",
+            firstName: "Paul",
+            lastName: "MBELE",
+            currentEnrollment: { class: { name: "5eme A" } },
+          },
+        ],
+      },
+      buildTimetablePayload({
+        student: { id: "child-2", firstName: "Paul", lastName: "MBELE" },
+        classEntity: {
+          id: "class-2",
+          name: "5eme A",
+          schoolYearId: "sy-1",
+          academicLevelId: null,
         },
-        {
-          id: "child-2",
-          firstName: "Paul",
-          lastName: "MBELE",
-          currentEnrollment: { class: { name: "5eme A" } },
-        },
-      ],
-    });
+      }),
+    );
 
     render(<StudentTimetablePage />);
 
@@ -253,7 +402,7 @@ describe("StudentTimetablePage UI", () => {
   it("renders mobile week grid and shows selected course details on click", async () => {
     mockCompactViewport();
 
-    mockMeResponse({
+    mockTimetableFlow({
       firstName: "Lisa",
       lastName: "MBELE",
       role: "STUDENT",
@@ -273,7 +422,7 @@ describe("StudentTimetablePage UI", () => {
     fireEvent.click(mathsButtons[0]);
 
     await waitFor(() => {
-      expect(screen.getByText(/Auberger C\./i)).toBeInTheDocument();
+      expect(screen.getByText(/AUBERGER C\./i)).toBeInTheDocument();
     });
     expect(screen.getByText(/Plage horaire:/i)).toBeInTheDocument();
     expect(screen.getByText(/Salle:/i)).toBeInTheDocument();
@@ -281,7 +430,7 @@ describe("StudentTimetablePage UI", () => {
 
   it("renders mobile day view and supports compact day navigation", async () => {
     mockCompactViewport();
-    mockMeResponse({
+    mockTimetableFlow({
       firstName: "Lisa",
       lastName: "MBELE",
       role: "STUDENT",
@@ -301,9 +450,11 @@ describe("StudentTimetablePage UI", () => {
     await waitFor(() => {
       expect(screen.getByText("FRANCAIS")).toBeInTheDocument();
     });
-    expect(screen.getByText("Jamet P.")).toBeInTheDocument();
+    expect(screen.getByText("JAMET P.")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /\d{2}\s\w+/i }));
+    const shiftedDayButton = findDayTitleButton();
+    expect(shiftedDayButton).toBeDefined();
+    fireEvent.click(shiftedDayButton!);
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: "Aujourd'hui" }),
@@ -313,7 +464,7 @@ describe("StudentTimetablePage UI", () => {
 
   it("renders mobile month calendar and updates selected-day agenda", async () => {
     mockCompactViewport();
-    mockMeResponse({
+    mockTimetableFlow({
       firstName: "Lisa",
       lastName: "MBELE",
       role: "STUDENT",

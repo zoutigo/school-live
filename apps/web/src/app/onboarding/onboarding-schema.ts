@@ -24,6 +24,19 @@ export const step1Schema = z
     message: "La confirmation ne correspond pas au nouveau mot de passe.",
   });
 
+export const step1PhoneSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .refine(
+      (value) =>
+        value.length === 0 ||
+        z.string().email("Adresse email invalide.").safeParse(value).success,
+      "Adresse email invalide.",
+    ),
+  setupToken: z.string().trim().min(1, "Jeton d onboarding manquant."),
+});
+
 export const step2Schema = z.object({
   firstName: z.string().trim().min(1, "Le prenom est obligatoire."),
   lastName: z.string().trim().min(1, "Le nom est obligatoire."),

@@ -415,6 +415,14 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
       matchPrefix: `${base}/vie-de-classe`,
     },
     {
+      label: "Emploi du temps",
+      href: `/schools/${schoolSlug}/emploi-du-temps?childId=${encodeURIComponent(
+        childId,
+      )}`,
+      icon: CalendarDays,
+      matchPrefix: `/schools/${schoolSlug}/emploi-du-temps`,
+    },
+    {
       label: "Notes",
       href: `${base}/notes`,
       icon: BookOpen,
@@ -479,10 +487,10 @@ function buildTeacherClassItems(
       matchPrefix: `${base}/discipline`,
     },
     {
-      label: "Agenda",
-      href: `${base}/agenda`,
+      label: "Emploi du temps",
+      href: `${base}/emploi-du-temps`,
       icon: CalendarDays,
-      matchPrefix: `${base}/agenda`,
+      matchPrefix: `${base}/emploi-du-temps`,
     },
     {
       label: "Devoirs",
@@ -940,48 +948,74 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
       ) : (
         <div className="grid gap-3">
           <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
-            <nav className="grid gap-1" aria-label="Menu parent">
-              {items.map((item) => {
-                const active = item.matchPrefix
-                  ? pathname.startsWith(item.matchPrefix)
-                  : pathname === item.href;
-                const Icon = item.icon;
+            <button
+              type="button"
+              onClick={() => setOpenParentSection("general")}
+              className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
+                openParentSection === "general"
+                  ? "bg-surface text-primary"
+                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  openParentSection === "general"
+                    ? "bg-background text-primary"
+                    : "bg-primary-dark text-surface"
+                }`}
+              >
+                <Home className="h-4 w-4" />
+              </span>
+              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                MON ESPACE FAMILLE
+              </span>
+            </button>
 
-                return (
-                  <Link
-                    key={`general-${item.label}-${item.href}`}
-                    href={item.href}
-                    onClick={onNavigate}
-                    className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
-                      active
-                        ? "bg-surface text-primary"
-                        : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                    }`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+            {openParentSection === "general" ? (
+              <nav className="mt-2 grid gap-1" aria-label="Menu parent">
+                {items.map((item) => {
+                  const active = item.matchPrefix
+                    ? pathname.startsWith(item.matchPrefix)
+                    : pathname === item.href;
+                  const Icon = item.icon;
+
+                  return (
+                    <Link
+                      key={`general-${item.label}-${item.href}`}
+                      href={item.href}
+                      onClick={onNavigate}
+                      className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
                         active
-                          ? "bg-background text-primary"
-                          : "bg-primary-dark text-surface"
+                          ? "bg-surface text-primary"
+                          : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
                       }`}
                     >
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                      {item.label}
-                    </span>
-                    {typeof resolveUnread(item) === "number" ? (
-                      <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                        <Badge variant="notification">
-                          {resolveUnread(item)}
-                        </Badge>
+                      <span
+                        aria-hidden="true"
+                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+                          active
+                            ? "bg-background text-primary"
+                            : "bg-primary-dark text-surface"
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
                       </span>
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </nav>
+                      <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                        {item.label}
+                      </span>
+                      {typeof resolveUnread(item) === "number" ? (
+                        <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                          <Badge variant="notification">
+                            {resolveUnread(item)}
+                          </Badge>
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </nav>
+            ) : null}
           </div>
 
           {parentChildrenWithItems.map((child) => {

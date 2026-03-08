@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildRecoveryRows,
+  step1PhoneSchema,
   step1Schema,
   step2Schema,
   step3Schema,
@@ -30,6 +31,14 @@ describe("onboarding-schema", () => {
     if (!parsed.success) {
       expect(parsed.error.issues[0]?.message).toContain("confirmation");
     }
+  });
+
+  it("validates phone onboarding step 1 with optional email", () => {
+    const parsed = step1PhoneSchema.safeParse({
+      email: "",
+      setupToken: "token-123",
+    });
+    expect(parsed.success).toBe(true);
   });
 
   it("validates step 2 profile fields including gender", () => {

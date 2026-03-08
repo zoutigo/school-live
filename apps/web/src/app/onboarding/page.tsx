@@ -10,6 +10,7 @@ import { PasswordField } from "../../components/ui/password-field";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import {
   buildRecoveryRows,
+  step1PhoneSchema,
   step1Schema,
   step2Schema,
   step3Schema,
@@ -36,6 +37,7 @@ function OnboardingContent() {
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [setupToken, setSetupToken] = useState("");
 
   const {
     email,
@@ -60,6 +62,7 @@ function OnboardingContent() {
   useEffect(() => {
     const emailFromQuery = params.get("email") ?? "";
     const schoolSlugFromQuery = params.get("schoolSlug") ?? "";
+    const tokenFromQuery = params.get("token") ?? "";
 
     if (emailFromQuery && emailFromQuery !== email) {
       setField("email", emailFromQuery);
@@ -67,25 +70,33 @@ function OnboardingContent() {
     if (schoolSlugFromQuery && schoolSlugFromQuery !== schoolSlug) {
       setField("schoolSlug", schoolSlugFromQuery);
     }
-  }, [params, setField, email, schoolSlug]);
+    if (tokenFromQuery && tokenFromQuery !== setupToken) {
+      setSetupToken(tokenFromQuery);
+    }
+  }, [params, setField, email, schoolSlug, setupToken]);
 
   useEffect(() => {
-    if (!email) {
+    if (!email && !setupToken) {
       return;
     }
 
     const timeout = setTimeout(() => {
-      void loadOptions(email);
+      void loadOptions();
     }, 150);
 
     return () => clearTimeout(timeout);
-  }, [email]);
+  }, [email, setupToken]);
 
-  async function loadOptions(currentEmail: string) {
+  async function loadOptions() {
     setLoadingOptions(true);
     setError(null);
     try {
-      const query = new URLSearchParams({ email: currentEmail });
+      const query = new URLSearchParams();
+      if (setupToken) {
+        query.set("setupToken", setupToken);
+      } else {
+        query.set("email", email);
+      }
       const response = await fetch(
         `${API_URL}/auth/onboarding/options?${query.toString()}`,
       );
@@ -111,16 +122,24 @@ function OnboardingContent() {
     () => (options?.schoolRoles ?? []).includes("PARENT"),
     [options?.schoolRoles],
   );
+  const isTokenFlow = setupToken.length > 0;
+  const phoneFromQuery = params.get("phone") ?? "";
+
   function validateStep(target: StepKey): boolean {
     setError(null);
 
     if (target === 1) {
-      const parsed = step1Schema.safeParse({
-        email,
-        temporaryPassword,
-        newPassword,
-        confirmPassword,
-      });
+      const parsed = isTokenFlow
+        ? step1PhoneSchema.safeParse({
+            email,
+            setupToken,
+          })
+        : step1Schema.safeParse({
+            email,
+            temporaryPassword,
+            newPassword,
+            confirmPassword,
+          });
       if (!parsed.success) {
         setError(parsed.error.issues[0]?.message ?? "Etape 1 invalide.");
         return false;
@@ -187,9 +206,16 @@ function OnboardingContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
-          temporaryPassword,
-          newPassword,
+          ...(isTokenFlow
+            ? {
+                setupToken,
+                email: email.trim() || undefined,
+              }
+            : {
+                email,
+                temporaryPassword,
+                newPassword,
+              }),
           firstName,
           lastName,
           gender,
@@ -261,14 +287,16 @@ function OnboardingContent() {
           <p className="mt-4 max-w-xl text-base text-text-secondary">
             Renseignez les informations d&apos;activation, votre profil et vos
             questions de recuperation. A la fin, vous retournez directement a la
-            connexion avec votre nouveau mot de passe.
+            connexion.
           </p>
 
           <div className="mt-6 grid gap-3 text-sm">
             <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
               <KeyRound className="mt-0.5 h-4 w-4 text-primary" />
               <p className="text-text-secondary">
-                Etape 1: mot de passe provisoire et nouveau mot de passe.
+                {isTokenFlow
+                  ? "Etape 1: email optionnel."
+                  : "Etape 1: mot de passe provisoire et nouveau mot de passe."}
               </p>
             </div>
             <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
@@ -302,49 +330,73 @@ function OnboardingContent() {
             <div className="grid gap-1 text-sm">
               <span className="text-text-secondary">Compte concerne</span>
               <div className="rounded-card border border-border bg-background px-3 py-2 text-text-primary">
-                {email || "Email manquant"}
+                {email || phoneFromQuery || "Compte en attente"}
               </div>
             </div>
 
             {step === 1 ? (
               <>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Mot de passe provisoire
-                  </span>
-                  <PasswordField
-                    value={temporaryPassword}
-                    onChange={(event) =>
-                      setField("temporaryPassword", event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </label>
+                {isTokenFlow ? (
+                  <>
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">
+                        Email (optionnel)
+                      </span>
+                      <input
+                        value={email}
+                        onChange={(event) =>
+                          setField("email", event.target.value)
+                        }
+                        placeholder="prenom.nom@gmail.com"
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </label>
+                    <p className="text-xs text-text-secondary">
+                      Vous pouvez continuer sans email et le renseigner plus
+                      tard dans votre compte.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">
+                        Mot de passe provisoire
+                      </span>
+                      <PasswordField
+                        value={temporaryPassword}
+                        onChange={(event) =>
+                          setField("temporaryPassword", event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </label>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Nouveau mot de passe
-                  </span>
-                  <PasswordField
-                    value={newPassword}
-                    onChange={(event) =>
-                      setField("newPassword", event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </label>
-                <PasswordRequirementsHint password={newPassword} />
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">
+                        Nouveau mot de passe
+                      </span>
+                      <PasswordField
+                        value={newPassword}
+                        onChange={(event) =>
+                          setField("newPassword", event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </label>
+                    <PasswordRequirementsHint password={newPassword} />
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Confirmation</span>
-                  <PasswordField
-                    value={confirmPassword}
-                    onChange={(event) =>
-                      setField("confirmPassword", event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </label>
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">Confirmation</span>
+                      <PasswordField
+                        value={confirmPassword}
+                        onChange={(event) =>
+                          setField("confirmPassword", event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </label>
+                  </>
+                )}
               </>
             ) : null}
 

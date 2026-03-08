@@ -29,31 +29,59 @@ type MeResponse = {
     id: string;
     firstName: string;
     lastName: string;
-    currentEnrollment?: {
-      class?: { name?: string | null } | null;
-    } | null;
   }>;
-  currentEnrollment?: {
-    class?: { name?: string | null } | null;
-  } | null;
 };
 
 type ViewMode = "day" | "week" | "month";
 type SubjectTone = {
-  bg: string;
-  border: string;
-  text: string;
-  chip: string;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+  chipColor: string;
+  chipTextColor: string;
 };
 
 type TimetableSlot = {
   id: string;
+  subjectId?: string;
   weekday: number;
   start: string;
   end: string;
   subject: string;
   teacher: string;
   room: string;
+};
+
+type MyTimetableResponse = {
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  class: {
+    id: string;
+    name: string;
+    schoolYearId: string;
+    academicLevelId: string | null;
+  };
+  slots: Array<{
+    id: string;
+    weekday: number;
+    startMinute: number;
+    endMinute: number;
+    room: string | null;
+    subject: { id: string; name: string };
+    teacherUser: { id: string; firstName: string; lastName: string };
+  }>;
+  subjectStyles: Array<{ subjectId: string; colorHex: string }>;
+  calendarEvents: Array<{
+    id: string;
+    type: "HOLIDAY";
+    scope: "SCHOOL" | "ACADEMIC_LEVEL" | "CLASS";
+    label: string;
+    startDate: string;
+    endDate: string;
+  }>;
 };
 
 const WEEKDAY_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -69,46 +97,53 @@ const WEEKDAY_LONG = [
 
 const SUBJECT_TONES: Record<string, SubjectTone> = {
   FRANCAIS: {
-    bg: "bg-[#E4EEFF]",
-    border: "border-[#98B8F3]",
-    text: "text-[#123B7A]",
-    chip: "bg-[#2F66C7]",
+    bgColor: "#E4EEFF",
+    borderColor: "#98B8F3",
+    textColor: "#123B7A",
+    chipColor: "#2F66C7",
+    chipTextColor: "#FFFFFF",
   },
   MATHEMATIQUES: {
-    bg: "bg-[#FFE9E7]",
-    border: "border-[#F3A39B]",
-    text: "text-[#7B1D15]",
-    chip: "bg-[#CF3F2F]",
+    bgColor: "#FFE9E7",
+    borderColor: "#F3A39B",
+    textColor: "#7B1D15",
+    chipColor: "#CF3F2F",
+    chipTextColor: "#FFFFFF",
   },
   ANGLAIS: {
-    bg: "bg-[#E5F4F7]",
-    border: "border-[#95C9D2]",
-    text: "text-[#0D4F5B]",
-    chip: "bg-[#12839B]",
+    bgColor: "#E5F4F7",
+    borderColor: "#95C9D2",
+    textColor: "#0D4F5B",
+    chipColor: "#12839B",
+    chipTextColor: "#FFFFFF",
   },
   HISTOIRE_GEOGRAPHIE: {
-    bg: "bg-[#EAF0D9]",
-    border: "border-[#B8C68C]",
-    text: "text-[#455B1E]",
-    chip: "bg-[#6C8D2D]",
+    bgColor: "#EAF0D9",
+    borderColor: "#B8C68C",
+    textColor: "#455B1E",
+    chipColor: "#6C8D2D",
+    chipTextColor: "#FFFFFF",
   },
   SCIENCES_VIE_TERRE: {
-    bg: "bg-[#FFF3D9]",
-    border: "border-[#E5C27A]",
-    text: "text-[#6D490D]",
-    chip: "bg-[#B57A10]",
+    bgColor: "#FFF3D9",
+    borderColor: "#E5C27A",
+    textColor: "#6D490D",
+    chipColor: "#B57A10",
+    chipTextColor: "#FFFFFF",
   },
   EDUCATION_PHYSIQUE: {
-    bg: "bg-[#F0E6FA]",
-    border: "border-[#C29EE6]",
-    text: "text-[#4E257B]",
-    chip: "bg-[#7C3FB3]",
+    bgColor: "#F0E6FA",
+    borderColor: "#C29EE6",
+    textColor: "#4E257B",
+    chipColor: "#7C3FB3",
+    chipTextColor: "#FFFFFF",
   },
   default: {
-    bg: "bg-[#EEF2F7]",
-    border: "border-[#C6D2E1]",
-    text: "text-[#1F344D]",
-    chip: "bg-[#36577E]",
+    bgColor: "#EEF2F7",
+    borderColor: "#C6D2E1",
+    textColor: "#1F344D",
+    chipColor: "#36577E",
+    chipTextColor: "#FFFFFF",
   },
 };
 
@@ -311,12 +346,83 @@ function sameDate(a: Date, b: Date) {
   );
 }
 
-function subjectTone(subject: string) {
-  return SUBJECT_TONES[subject] ?? SUBJECT_TONES.default;
+function normalizeSubjectKey(subject: string) {
+  return subject
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toUpperCase();
+}
+
+function hexToRgb(hex: string) {
+  const normalized = hex.replace("#", "");
+  if (!/^[0-9A-Fa-f]{6}$/.test(normalized)) {
+    return null;
+  }
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  };
+}
+
+function rgbToHex(rgb: { r: number; g: number; b: number }) {
+  const channel = (value: number) =>
+    Math.max(0, Math.min(255, Math.round(value)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(rgb.r)}${channel(rgb.g)}${channel(rgb.b)}`.toUpperCase();
+}
+
+function mixHex(base: string, target: string, ratio: number) {
+  const a = hexToRgb(base);
+  const b = hexToRgb(target);
+  if (!a || !b) {
+    return base;
+  }
+  return rgbToHex({
+    r: a.r * (1 - ratio) + b.r * ratio,
+    g: a.g * (1 - ratio) + b.g * ratio,
+    b: a.b * (1 - ratio) + b.b * ratio,
+  });
+}
+
+function bestTextColorOn(hex: string) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) {
+    return "#FFFFFF";
+  }
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  return luminance > 0.62 ? "#163158" : "#FFFFFF";
+}
+
+function buildToneFromBase(baseHex: string): SubjectTone {
+  return {
+    bgColor: mixHex(baseHex, "#FFFFFF", 0.86),
+    borderColor: mixHex(baseHex, "#FFFFFF", 0.66),
+    textColor: mixHex(baseHex, "#0F172A", 0.3),
+    chipColor: baseHex.toUpperCase(),
+    chipTextColor: bestTextColorOn(baseHex),
+  };
+}
+
+function subjectTone(
+  subject: string,
+  subjectId: string | undefined,
+  subjectColorsBySubjectId: Record<string, string>,
+) {
+  if (subjectId) {
+    const colorHex = subjectColorsBySubjectId[subjectId];
+    if (colorHex && /^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
+      return buildToneFromBase(colorHex);
+    }
+  }
+  return SUBJECT_TONES[normalizeSubjectKey(subject)] ?? SUBJECT_TONES.default;
 }
 
 function subjectLabel(subject: string) {
-  return subject.replaceAll("_", " ");
+  return subject.includes("_") ? subject.replaceAll("_", " ") : subject;
 }
 
 function subjectShortLabel(subject: string) {
@@ -346,6 +452,14 @@ function formatWeekRangeLabel(currentDate: Date) {
   return `${startLabel} - ${endLabel}`;
 }
 
+function minuteToTime(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60)
+    .toString()
+    .padStart(2, "0");
+  const minutes = (totalMinutes % 60).toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 export default function StudentTimetablePage() {
   const router = useRouter();
   const params = useParams<{ schoolSlug: string; childId?: string }>();
@@ -359,6 +473,10 @@ export default function StudentTimetablePage() {
   const [activeChildClassName, setActiveChildClassName] = useState<
     string | null
   >(null);
+  const [classSlots, setClassSlots] = useState<TimetableSlot[]>(CLASS_SLOTS);
+  const [subjectColorsBySubjectId, setSubjectColorsBySubjectId] = useState<
+    Record<string, string>
+  >({});
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [cursorDate, setCursorDate] = useState(stripTime(new Date()));
   const [selectedCompactMonthDate, setSelectedCompactMonthDate] =
@@ -398,24 +516,16 @@ export default function StudentTimetablePage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/schools/${schoolSlug}/me`, {
+      const meResponse = await fetch(`${API_URL}/schools/${schoolSlug}/me`, {
         credentials: "include",
       });
 
-      if (!response.ok) {
+      if (!meResponse.ok) {
         router.replace(`/schools/${schoolSlug}/login`);
         return;
       }
 
-      const payload = (await response.json()) as MeResponse;
-
-      if (payload.role === "STUDENT") {
-        setActiveChildLabel(`${payload.firstName} ${payload.lastName}`);
-        setActiveChildClassName(
-          payload.currentEnrollment?.class?.name?.trim() || "6eme N3",
-        );
-        return;
-      }
+      const payload = (await meResponse.json()) as MeResponse;
 
       if (payload.role === "PARENT") {
         const linkedStudents = payload.linkedStudents ?? [];
@@ -423,21 +533,58 @@ export default function StudentTimetablePage() {
           setError("Aucun eleve lie a ce compte parent.");
           return;
         }
+      }
 
-        const targetChildId = childIdFromRoute || childIdFromQuery;
-        const activeChild =
-          linkedStudents.find((entry) => entry.id === targetChildId) ??
-          linkedStudents[0];
-
-        setActiveChildLabel(`${activeChild.firstName} ${activeChild.lastName}`);
-        setActiveChildClassName(
-          activeChild.currentEnrollment?.class?.name?.trim() || "6eme N3",
-        );
+      if (payload.role !== "STUDENT" && payload.role !== "PARENT") {
+        router.replace(`/schools/${schoolSlug}/dashboard`);
         return;
       }
 
-      router.replace(`/schools/${schoolSlug}/dashboard`);
-      return;
+      const targetChildId = childIdFromRoute || childIdFromQuery;
+      const myTimetableQuery =
+        payload.role === "PARENT" && targetChildId
+          ? `?childId=${encodeURIComponent(targetChildId)}`
+          : "";
+
+      const timetableResponse = await fetch(
+        `${API_URL}/schools/${schoolSlug}/timetable/me${myTimetableQuery}`,
+        {
+          credentials: "include",
+        },
+      );
+
+      if (!timetableResponse.ok) {
+        setError("Impossible de charger l'emploi du temps.");
+        return;
+      }
+
+      const timetablePayload =
+        (await timetableResponse.json()) as MyTimetableResponse;
+
+      setActiveChildLabel(
+        `${timetablePayload.student.firstName} ${timetablePayload.student.lastName}`,
+      );
+      setActiveChildClassName(timetablePayload.class.name);
+      setClassSlots(
+        timetablePayload.slots.map((slot) => ({
+          id: slot.id,
+          subjectId: slot.subject.id,
+          weekday: slot.weekday,
+          start: minuteToTime(slot.startMinute),
+          end: minuteToTime(slot.endMinute),
+          subject: slot.subject.name,
+          teacher: `${slot.teacherUser.lastName.toUpperCase()} ${slot.teacherUser.firstName}`,
+          room: slot.room?.trim() || "-",
+        })),
+      );
+      setSubjectColorsBySubjectId(
+        Object.fromEntries(
+          timetablePayload.subjectStyles.map((entry) => [
+            entry.subjectId,
+            entry.colorHex.toUpperCase(),
+          ]),
+        ),
+      );
     } catch {
       setError("Impossible de charger l'emploi du temps.");
     } finally {
@@ -485,10 +632,10 @@ export default function StudentTimetablePage() {
 
   const daySlots = useMemo(
     () =>
-      CLASS_SLOTS.filter((slot) => slot.weekday === weekday).sort((a, b) =>
-        a.start.localeCompare(b.start),
-      ),
-    [weekday],
+      classSlots
+        .filter((slot) => slot.weekday === weekday)
+        .sort((a, b) => a.start.localeCompare(b.start)),
+    [classSlots, weekday],
   );
 
   const weekStart = useMemo(() => startOfWeek(cursorDate), [cursorDate]);
@@ -508,19 +655,19 @@ export default function StudentTimetablePage() {
   const weekSlotsByWeekday = useMemo(() => {
     const result = new Map<number, TimetableSlot[]>();
     weekDays.forEach((entry) => {
-      const slots = CLASS_SLOTS.filter(
-        (slot) => slot.weekday === entry.weekday,
-      ).sort((a, b) => a.start.localeCompare(b.start));
+      const slots = classSlots
+        .filter((slot) => slot.weekday === entry.weekday)
+        .sort((a, b) => a.start.localeCompare(b.start));
       result.set(entry.weekday, slots);
     });
     return result;
-  }, [weekDays]);
+  }, [classSlots, weekDays]);
 
   const compactWeekTimeRows = useMemo(() => {
     const seen = new Set<string>();
     const rows: Array<{ start: string; end: string }> = [];
 
-    CLASS_SLOTS.forEach((slot) => {
+    classSlots.forEach((slot) => {
       const key = `${slot.start}-${slot.end}`;
       if (seen.has(key)) {
         return;
@@ -530,7 +677,7 @@ export default function StudentTimetablePage() {
     });
 
     return rows.sort((a, b) => a.start.localeCompare(b.start));
-  }, []);
+  }, [classSlots]);
 
   const monthMatrix = useMemo(() => {
     const firstDay = new Date(
@@ -542,14 +689,14 @@ export default function StudentTimetablePage() {
     return Array.from({ length: 42 }, (_, index) => {
       const date = addDays(calendarStart, index);
       const weekdayIndex = toWeekdayMondayFirst(date);
-      const slots = CLASS_SLOTS.filter((slot) => slot.weekday === weekdayIndex);
+      const slots = classSlots.filter((slot) => slot.weekday === weekdayIndex);
       return {
         date,
         slots,
         isCurrentMonth: date.getMonth() === cursorDate.getMonth(),
       };
     });
-  }, [cursorDate]);
+  }, [classSlots, cursorDate]);
 
   const monthDaysList = useMemo(() => {
     const firstDay = new Date(
@@ -571,9 +718,9 @@ export default function StudentTimetablePage() {
         day,
       );
       const weekdayIndex = toWeekdayMondayFirst(date);
-      const slots = CLASS_SLOTS.filter(
-        (slot) => slot.weekday === weekdayIndex,
-      ).sort((a, b) => a.start.localeCompare(b.start));
+      const slots = classSlots
+        .filter((slot) => slot.weekday === weekdayIndex)
+        .sort((a, b) => a.start.localeCompare(b.start));
       days.push({
         date,
         slots,
@@ -585,7 +732,7 @@ export default function StudentTimetablePage() {
     }
 
     return days;
-  }, [cursorDate]);
+  }, [classSlots, cursorDate]);
 
   const compactMonthCalendarCells = useMemo(() => {
     const firstDay = new Date(
@@ -938,34 +1085,50 @@ export default function StudentTimetablePage() {
                   </div>
                 ) : (
                   daySlots.map((slot) => {
-                    const tone = subjectTone(slot.subject);
+                    const tone = subjectTone(
+                      slot.subject,
+                      slot.subjectId,
+                      subjectColorsBySubjectId,
+                    );
                     return (
                       <article
                         key={slot.id}
-                        className={`rounded-card border p-3 ${tone.bg} ${tone.border} ${
+                        className={`rounded-card border p-3 ${
                           isCompactViewport
                             ? "grid gap-1.5 px-2.5 py-2"
                             : "grid grid-cols-[120px_1fr] gap-3"
                         }`}
+                        style={{
+                          backgroundColor: tone.bgColor,
+                          borderColor: tone.borderColor,
+                        }}
                       >
                         {isCompactViewport ? (
                           <div className="flex items-center justify-between gap-2">
                             <div className="rounded-[8px] bg-white/92 px-2.5 py-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.65)]">
                               <p
-                                className={`text-[13px] font-semibold leading-none ${tone.text}`}
+                                className="text-[13px] font-semibold leading-none"
+                                style={{ color: tone.textColor }}
                               >
                                 {slot.start} - {slot.end}
                               </p>
                             </div>
                             <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white ${tone.chip}`}
+                              className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                              style={{
+                                backgroundColor: tone.chipColor,
+                                color: tone.chipTextColor,
+                              }}
                             >
                               {slot.room}
                             </span>
                           </div>
                         ) : (
                           <div className="rounded-card bg-white/80 p-2 text-center">
-                            <p className={`text-sm font-semibold ${tone.text}`}>
+                            <p
+                              className="text-sm font-semibold"
+                              style={{ color: tone.textColor }}
+                            >
                               {slot.start}
                             </p>
                             <p className="text-xs text-[#5B6A7E]">
@@ -977,17 +1140,22 @@ export default function StudentTimetablePage() {
                         <div className="grid gap-1">
                           <div className="flex items-center justify-between gap-2">
                             <h3
-                              className={`font-heading font-semibold ${tone.text} ${
+                              className={`font-heading font-semibold ${
                                 isCompactViewport
                                   ? "text-[0.92rem] leading-[1.15]"
                                   : "text-base"
                               }`}
+                              style={{ color: tone.textColor }}
                             >
                               {subjectLabel(slot.subject)}
                             </h3>
                             {isCompactViewport ? null : (
                               <span
-                                className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white ${tone.chip}`}
+                                className="rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide"
+                                style={{
+                                  backgroundColor: tone.chipColor,
+                                  color: tone.chipTextColor,
+                                }}
                               >
                                 {slot.room}
                               </span>
@@ -1077,7 +1245,11 @@ export default function StudentTimetablePage() {
                                   );
                                 }
 
-                                const tone = subjectTone(slot.subject);
+                                const tone = subjectTone(
+                                  slot.subject,
+                                  slot.subjectId,
+                                  subjectColorsBySubjectId,
+                                );
                                 const isSelected =
                                   selectedCompactWeekCell &&
                                   selectedCompactWeekCell.slot.id === slot.id &&
@@ -1102,12 +1274,18 @@ export default function StudentTimetablePage() {
                                       aria-label={`${subjectLabel(slot.subject)} ${slot.start}-${slot.end}`}
                                       className={`w-full rounded-[6px] px-0 py-0.5 text-[7px] font-semibold uppercase tracking-[0.01em] transition ${
                                         isSelected
-                                          ? `${tone.chip} text-white`
-                                          : `${tone.bg} ${tone.text} hover:brightness-[0.98]`
+                                          ? "hover:brightness-[0.98]"
+                                          : "hover:brightness-[0.98]"
                                       }`}
                                       style={{
                                         fontSize: "clamp(7px, 1.65vw, 9px)",
                                         minHeight: "clamp(14px, 2.1vh, 20px)",
+                                        backgroundColor: isSelected
+                                          ? tone.chipColor
+                                          : tone.bgColor,
+                                        color: isSelected
+                                          ? tone.chipTextColor
+                                          : tone.textColor,
                                       }}
                                     >
                                       <span className="block truncate">
@@ -1185,9 +1363,9 @@ export default function StudentTimetablePage() {
                   </div>
                   <div className="grid grid-cols-7 bg-white">
                     {weekDays.map((entry) => {
-                      const slots = CLASS_SLOTS.filter(
-                        (slot) => slot.weekday === entry.weekday,
-                      ).sort((a, b) => a.start.localeCompare(b.start));
+                      const slots = classSlots
+                        .filter((slot) => slot.weekday === entry.weekday)
+                        .sort((a, b) => a.start.localeCompare(b.start));
 
                       return (
                         <div
@@ -1201,19 +1379,29 @@ export default function StudentTimetablePage() {
                           ) : (
                             <div className="grid gap-2">
                               {slots.map((slot) => {
-                                const tone = subjectTone(slot.subject);
+                                const tone = subjectTone(
+                                  slot.subject,
+                                  slot.subjectId,
+                                  subjectColorsBySubjectId,
+                                );
                                 return (
                                   <article
                                     key={slot.id}
-                                    className={`rounded-[10px] border px-2 py-1.5 ${tone.bg} ${tone.border}`}
+                                    className="rounded-[10px] border px-2 py-1.5"
+                                    style={{
+                                      backgroundColor: tone.bgColor,
+                                      borderColor: tone.borderColor,
+                                    }}
                                   >
                                     <p
-                                      className={`text-[11px] font-semibold ${tone.text}`}
+                                      className="text-[11px] font-semibold"
+                                      style={{ color: tone.textColor }}
                                     >
                                       {slot.start} - {slot.end}
                                     </p>
                                     <p
-                                      className={`truncate text-xs font-semibold uppercase tracking-[0.02em] ${tone.text}`}
+                                      className="truncate text-xs font-semibold uppercase tracking-[0.02em]"
+                                      style={{ color: tone.textColor }}
                                     >
                                       {subjectLabel(slot.subject)}
                                     </p>
@@ -1327,19 +1515,29 @@ export default function StudentTimetablePage() {
                     selectedCompactMonthEntry.slots.length > 0 ? (
                       <div className="grid gap-2">
                         {selectedCompactMonthEntry.slots.map((slot) => {
-                          const tone = subjectTone(slot.subject);
+                          const tone = subjectTone(
+                            slot.subject,
+                            slot.subjectId,
+                            subjectColorsBySubjectId,
+                          );
                           return (
                             <div
                               key={`compact-month-selected-${slot.id}`}
-                              className={`rounded-[10px] border px-2 py-1.5 ${tone.bg} ${tone.border}`}
+                              className="rounded-[10px] border px-2 py-1.5"
+                              style={{
+                                backgroundColor: tone.bgColor,
+                                borderColor: tone.borderColor,
+                              }}
                             >
                               <p
-                                className={`text-[11px] font-semibold ${tone.text}`}
+                                className="text-[11px] font-semibold"
+                                style={{ color: tone.textColor }}
                               >
                                 {slot.start} - {slot.end}
                               </p>
                               <p
-                                className={`truncate text-xs font-semibold uppercase tracking-[0.02em] ${tone.text}`}
+                                className="truncate text-xs font-semibold uppercase tracking-[0.02em]"
+                                style={{ color: tone.textColor }}
                               >
                                 {subjectLabel(slot.subject)}
                               </p>
@@ -1395,11 +1593,19 @@ export default function StudentTimetablePage() {
                           </p>
                           <div className="grid gap-1">
                             {cell.slots.slice(0, 3).map((slot) => {
-                              const tone = subjectTone(slot.subject);
+                              const tone = subjectTone(
+                                slot.subject,
+                                slot.subjectId,
+                                subjectColorsBySubjectId,
+                              );
                               return (
                                 <div
                                   key={`${cell.date.toDateString()}-${slot.id}`}
-                                  className={`truncate rounded-full px-2 py-1 text-[10px] font-semibold ${tone.bg} ${tone.text}`}
+                                  className="truncate rounded-full px-2 py-1 text-[10px] font-semibold"
+                                  style={{
+                                    backgroundColor: tone.bgColor,
+                                    color: tone.textColor,
+                                  }}
                                   title={`${slot.start} ${subjectLabel(slot.subject)} - Salle ${slot.room}`}
                                 >
                                   {slot.start} {subjectLabel(slot.subject)} -{" "}

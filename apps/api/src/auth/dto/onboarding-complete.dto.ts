@@ -38,20 +38,27 @@ class RecoveryAnswerDto {
 }
 
 export class OnboardingCompleteDto {
+  @IsOptional()
   @IsEmail()
-  email!: string;
+  email?: string;
 
+  @IsOptional()
+  @IsString()
+  setupToken?: string;
+
+  @IsOptional()
   @IsString()
   @MinLength(8)
-  temporaryPassword!: string;
+  temporaryPassword?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(8)
   @Matches(PASSWORD_COMPLEXITY_REGEX, {
     message:
       "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
   })
-  newPassword!: string;
+  newPassword?: string;
 
   @IsString()
   firstName!: string;
