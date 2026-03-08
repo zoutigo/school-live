@@ -1151,7 +1151,9 @@ export default function AccountPage() {
                       <p className="text-sm text-primary">{recoverySuccess}</p>
                     ) : null}
 
-                    <SubmitButton disabled={updatingRecovery || loadingRecovery}>
+                    <SubmitButton
+                      disabled={updatingRecovery || loadingRecovery}
+                    >
                       {updatingRecovery
                         ? "Mise a jour recovery..."
                         : "Mettre a jour la recuperation"}

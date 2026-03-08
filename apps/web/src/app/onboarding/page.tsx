@@ -164,8 +164,9 @@ function OnboardingContent() {
           (issue) => issue.path[0] === "firstName",
         )?.message ?? null,
       lastName:
-        step2Validation.error.issues.find((issue) => issue.path[0] === "lastName")
-          ?.message ?? null,
+        step2Validation.error.issues.find(
+          (issue) => issue.path[0] === "lastName",
+        )?.message ?? null,
       gender:
         step2Validation.error.issues.find((issue) => issue.path[0] === "gender")
           ?.message ?? null,
@@ -189,7 +190,10 @@ function OnboardingContent() {
   );
   const pinFieldErrors = useMemo(() => {
     if (pinValidation.success) {
-      return { newPin: null as string | null, confirmPin: null as string | null };
+      return {
+        newPin: null as string | null,
+        confirmPin: null as string | null,
+      };
     }
     return {
       newPin:
@@ -254,7 +258,9 @@ function OnboardingContent() {
       parentStudentId: parentStudentId || undefined,
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Etape de securite invalide.");
+      setError(
+        parsed.error.issues[0]?.message ?? "Etape de securite invalide.",
+      );
       return false;
     }
     return true;
@@ -284,7 +290,9 @@ function OnboardingContent() {
 
     if (target === 2) {
       if (!step2Validation.success) {
-        setError(step2Validation.error.issues[0]?.message ?? "Etape 2 invalide.");
+        setError(
+          step2Validation.error.issues[0]?.message ?? "Etape 2 invalide.",
+        );
         return false;
       }
       return true;
@@ -530,7 +538,9 @@ function OnboardingContent() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <FormField
                     label="Prenom"
-                    error={step2Touched.firstName ? step2FieldErrors.firstName : null}
+                    error={
+                      step2Touched.firstName ? step2FieldErrors.firstName : null
+                    }
                   >
                     <input
                       value={firstName}
@@ -538,7 +548,10 @@ function OnboardingContent() {
                         setField("firstName", event.target.value)
                       }
                       onBlur={() =>
-                        setStep2Touched((state) => ({ ...state, firstName: true }))
+                        setStep2Touched((state) => ({
+                          ...state,
+                          firstName: true,
+                        }))
                       }
                       className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
                         step2Touched.firstName && step2FieldErrors.firstName
@@ -550,7 +563,9 @@ function OnboardingContent() {
 
                   <FormField
                     label="Nom"
-                    error={step2Touched.lastName ? step2FieldErrors.lastName : null}
+                    error={
+                      step2Touched.lastName ? step2FieldErrors.lastName : null
+                    }
                   >
                     <input
                       value={lastName}
@@ -558,7 +573,10 @@ function OnboardingContent() {
                         setField("lastName", event.target.value)
                       }
                       onBlur={() =>
-                        setStep2Touched((state) => ({ ...state, lastName: true }))
+                        setStep2Touched((state) => ({
+                          ...state,
+                          lastName: true,
+                        }))
                       }
                       className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
                         step2Touched.lastName && step2FieldErrors.lastName
@@ -610,7 +628,10 @@ function OnboardingContent() {
                         setField("birthDate", event.target.value)
                       }
                       onBlur={() =>
-                        setStep2Touched((state) => ({ ...state, birthDate: true }))
+                        setStep2Touched((state) => ({
+                          ...state,
+                          birthDate: true,
+                        }))
                       }
                       className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
                         step2Touched.birthDate && step2FieldErrors.birthDate
@@ -783,9 +804,7 @@ function OnboardingContent() {
             ) : null}
 
             <div className="flex flex-wrap gap-2">
-              {step > 1 ? (
-                <BackButton onClick={previousStep} />
-              ) : null}
+              {step > 1 ? <BackButton onClick={previousStep} /> : null}
 
               {step < totalSteps ? (
                 <Button

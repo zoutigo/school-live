@@ -5,7 +5,10 @@ import { PasswordField } from "./password-field";
 
 type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
 
-export function PasswordInput({ className = "", ...props }: PasswordInputProps) {
+export function PasswordInput({
+  className = "",
+  ...props
+}: PasswordInputProps) {
   return (
     <PasswordField
       {...props}

@@ -1096,7 +1096,9 @@ export class AuthService {
       }
 
       if (!user.phoneCredential?.pinHash) {
-        throw new ForbiddenException("Aucun PIN n'est configure pour ce compte.");
+        throw new ForbiddenException(
+          "Aucun PIN n'est configure pour ce compte.",
+        );
       }
 
       const samePin = await bcrypt.compare(

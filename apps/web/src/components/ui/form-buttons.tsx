@@ -18,7 +18,12 @@ export function SubmitButton({ children = "Valider", ...props }: BaseProps) {
 
 export function BackButton({ children = "Retour", ...props }: BaseProps) {
   return (
-    <Button type="button" variant="secondary" iconLeft={<ArrowLeft className="h-4 w-4" />} {...props}>
+    <Button
+      type="button"
+      variant="secondary"
+      iconLeft={<ArrowLeft className="h-4 w-4" />}
+      {...props}
+    >
       {children}
     </Button>
   );

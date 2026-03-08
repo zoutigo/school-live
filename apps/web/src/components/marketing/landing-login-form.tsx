@@ -362,7 +362,10 @@ export function LandingLoginForm() {
           </h3>
           <p className="mb-3 text-xs text-text-secondary">Connexion rapide</p>
           <form className="grid gap-3" onSubmit={onPhoneSubmit} noValidate>
-            <FormField label="Telephone" error={touchedPhone ? phoneError : null}>
+            <FormField
+              label="Telephone"
+              error={touchedPhone ? phoneError : null}
+            >
               <input
                 className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 type="text"

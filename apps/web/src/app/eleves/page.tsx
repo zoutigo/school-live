@@ -1449,9 +1449,7 @@ export default function ElevesPage() {
                   </select>
                 </label>
                 <div className="self-end">
-                  <SubmitButton disabled={loadingData}>
-                    Filtrer
-                  </SubmitButton>
+                  <SubmitButton disabled={loadingData}>Filtrer</SubmitButton>
                 </div>
               </form>
 
@@ -1700,9 +1698,7 @@ export default function ElevesPage() {
                           value={parentPin}
                           onChange={(event) =>
                             setParentPin(
-                              event.target.value
-                                .replace(/\D/g, "")
-                                .slice(0, 6),
+                              event.target.value.replace(/\D/g, "").slice(0, 6),
                             )
                           }
                           placeholder="123456"

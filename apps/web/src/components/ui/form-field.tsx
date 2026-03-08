@@ -23,8 +23,12 @@ export function FormField({
     <label className={`grid gap-1 text-sm ${className}`} htmlFor={htmlFor}>
       <span className="text-text-secondary">{label}</span>
       {children}
-      {error ? <span className="text-xs text-notification">{error}</span> : null}
-      {!error && hint ? <span className="text-xs text-text-secondary">{hint}</span> : null}
+      {error ? (
+        <span className="text-xs text-notification">{error}</span>
+      ) : null}
+      {!error && hint ? (
+        <span className="text-xs text-text-secondary">{hint}</span>
+      ) : null}
     </label>
   );
 }

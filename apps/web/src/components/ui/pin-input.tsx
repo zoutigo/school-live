@@ -5,7 +5,11 @@ import { PasswordField } from "./password-field";
 
 type PinInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
 
-export function PinInput({ className = "", maxLength = 6, ...props }: PinInputProps) {
+export function PinInput({
+  className = "",
+  maxLength = 6,
+  ...props
+}: PinInputProps) {
   return (
     <PasswordField
       {...props}

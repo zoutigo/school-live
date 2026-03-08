@@ -20,9 +20,7 @@ export function MessagingMessageDetail({
     return (
       <div className="grid gap-3">
         <p className="text-sm text-text-secondary">Message introuvable.</p>
-        <BackButton onClick={onBack}>
-          Retour a la liste
-        </BackButton>
+        <BackButton onClick={onBack}>Retour a la liste</BackButton>
       </div>
     );
   }
@@ -33,9 +31,7 @@ export function MessagingMessageDetail({
       onOpenAttachment={onOpenAttachment}
       topActions={
         <div className="flex w-full flex-wrap items-center gap-2">
-          <BackButton onClick={onBack}>
-            Retour a la liste
-          </BackButton>
+          <BackButton onClick={onBack}>Retour a la liste</BackButton>
           {topActions ? (
             <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
               {topActions}

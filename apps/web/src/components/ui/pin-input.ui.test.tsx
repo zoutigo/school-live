@@ -8,7 +8,9 @@ describe("PinInput", () => {
     const input = screen.getByLabelText("PIN") as HTMLInputElement;
     expect(input.type).toBe("password");
 
-    fireEvent.click(screen.getByRole("button", { name: "Afficher le mot de passe" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Afficher le mot de passe" }),
+    );
     expect(input.type).toBe("text");
   });
 

@@ -48,7 +48,9 @@ export function RecoveryShell({
         />
         <main
           className={`flex min-w-0 flex-1 p-4 sm:p-6 ${
-            centerContent ? "items-center justify-center" : "items-start justify-center"
+            centerContent
+              ? "items-center justify-center"
+              : "items-start justify-center"
           }`}
         >
           <div className={`w-full ${contentMaxWidthClassName}`}>{children}</div>

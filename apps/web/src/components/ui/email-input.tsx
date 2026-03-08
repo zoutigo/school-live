@@ -4,10 +4,7 @@ import type { InputHTMLAttributes } from "react";
 
 type EmailInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
 
-export function EmailInput({
-  className = "",
-  ...props
-}: EmailInputProps) {
+export function EmailInput({ className = "", ...props }: EmailInputProps) {
   return (
     <input
       {...props}
