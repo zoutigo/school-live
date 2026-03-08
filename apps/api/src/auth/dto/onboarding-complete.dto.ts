@@ -12,6 +12,7 @@ import {
 } from "class-validator";
 
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const PHONE_PIN_REGEX = /^\d{6}$/;
 
 class RecoveryAnswerDto {
   @IsIn([
@@ -59,6 +60,13 @@ export class OnboardingCompleteDto {
       "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
   })
   newPassword?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(PHONE_PIN_REGEX, {
+    message: "Le nouveau PIN doit contenir exactement 6 chiffres.",
+  })
+  newPin?: string;
 
   @IsString()
   firstName!: string;

@@ -5,7 +5,10 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Button } from "../ui/button";
-import { PasswordField } from "../ui/password-field";
+import { EmailInput } from "../ui/email-input";
+import { FormField } from "../ui/form-field";
+import { PasswordInput } from "../ui/password-input";
+import { PinInput } from "../ui/pin-input";
 import { SsoButtons } from "../auth/sso-buttons";
 
 type LoginResponse = {
@@ -359,10 +362,9 @@ export function LandingLoginForm() {
           </h3>
           <p className="mb-3 text-xs text-text-secondary">Connexion rapide</p>
           <form className="grid gap-3" onSubmit={onPhoneSubmit} noValidate>
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Telephone</span>
+            <FormField label="Telephone" error={touchedPhone ? phoneError : null}>
               <input
-                className="rounded-card border border-border bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
+                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 type="text"
                 value={phone}
                 onChange={(event) => {
@@ -372,15 +374,10 @@ export function LandingLoginForm() {
                 onBlur={() => setTouchedPhone(true)}
                 placeholder="6XXXXXXXX"
               />
-            </label>
-            {touchedPhone && phoneError ? (
-              <p className="-mt-2 text-xs text-notification">{phoneError}</p>
-            ) : null}
+            </FormField>
 
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">PIN</span>
-              <PasswordField
-                className="rounded-card border border-border bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
+            <FormField label="PIN" error={touchedPin ? pinError : null}>
+              <PinInput
                 value={pin}
                 onChange={(event) => {
                   setTouchedPin(true);
@@ -388,12 +385,8 @@ export function LandingLoginForm() {
                 }}
                 onBlur={() => setTouchedPin(true)}
                 placeholder="123456"
-                maxLength={6}
               />
-            </label>
-            {touchedPin && pinError ? (
-              <p className="-mt-2 text-xs text-notification">{pinError}</p>
-            ) : null}
+            </FormField>
 
             <Button
               type="submit"
@@ -420,11 +413,8 @@ export function LandingLoginForm() {
             Connexion classique
           </p>
           <form className="grid gap-3" onSubmit={onSubmit} noValidate>
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Email</span>
-              <input
-                className="rounded-card border border-border bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
-                type="email"
+            <FormField label="Email" error={touchedEmail ? emailError : null}>
+              <EmailInput
                 value={email}
                 onChange={(event) => {
                   setTouchedEmail(true);
@@ -433,15 +423,13 @@ export function LandingLoginForm() {
                 onBlur={() => setTouchedEmail(true)}
                 placeholder="prenom.nom@gmail.com"
               />
-            </label>
-            {touchedEmail && emailError ? (
-              <p className="-mt-2 text-xs text-notification">{emailError}</p>
-            ) : null}
+            </FormField>
 
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Mot de passe</span>
-              <PasswordField
-                className="rounded-card border border-border bg-surface px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
+            <FormField
+              label="Mot de passe"
+              error={touchedPassword ? passwordError : null}
+            >
+              <PasswordInput
                 value={password}
                 onChange={(event) => {
                   setTouchedPassword(true);
@@ -449,10 +437,7 @@ export function LandingLoginForm() {
                 }}
                 onBlur={() => setTouchedPassword(true)}
               />
-            </label>
-            {touchedPassword && passwordError ? (
-              <p className="-mt-2 text-xs text-notification">{passwordError}</p>
-            ) : null}
+            </FormField>
             <Button
               type="submit"
               disabled={

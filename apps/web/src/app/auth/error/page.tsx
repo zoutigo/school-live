@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackLinkButton } from "../../../components/ui/back-link-button";
 
 type ErrorPageProps = {
   searchParams: Promise<{
@@ -45,12 +45,9 @@ export default async function AuthErrorPage({ searchParams }: ErrorPageProps) {
             </span>
           </p>
           <p className="mt-2 text-sm text-text-secondary">{getHint(code)}</p>
-          <Link
-            href="/"
-            className="mt-5 inline-block text-sm text-primary hover:underline"
-          >
+          <BackLinkButton href="/" className="mt-5">
             Retour a la connexion
-          </Link>
+          </BackLinkButton>
         </div>
       </div>
     </div>

@@ -1,19 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
+import { RecoveryShell } from "../../components/layout/recovery-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { PasswordField } from "../../components/ui/password-field";
+import { DateInput } from "../../components/ui/date-input";
+import { EmailInput } from "../../components/ui/email-input";
+import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
+import { FormField } from "../../components/ui/form-field";
+import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
+import { PinInput } from "../../components/ui/pin-input";
 import {
   buildRecoveryRows,
   step1PhoneSchema,
   step1Schema,
   step2Schema,
-  step3Schema,
+  step3PinSchema,
+  step4Schema,
 } from "./onboarding-schema";
 import { type QuestionKey, useOnboardingStore } from "./onboarding-store";
 
@@ -27,7 +33,7 @@ type SetupOptionsResponse = {
   students: Array<{ id: string; firstName: string; lastName: string }>;
 };
 
-type StepKey = 1 | 2 | 3;
+type StepKey = 1 | 2 | 3 | 4;
 
 function OnboardingContent() {
   const router = useRouter();
@@ -45,6 +51,8 @@ function OnboardingContent() {
     temporaryPassword,
     newPassword,
     confirmPassword,
+    newPin,
+    confirmPin,
     firstName,
     lastName,
     gender,
@@ -123,7 +131,134 @@ function OnboardingContent() {
     [options?.schoolRoles],
   );
   const isTokenFlow = setupToken.length > 0;
+  const totalSteps = isTokenFlow ? 4 : 3;
   const phoneFromQuery = params.get("phone") ?? "";
+  const step2Validation = useMemo(
+    () =>
+      step2Schema.safeParse({
+        firstName,
+        lastName,
+        gender,
+        birthDate,
+      }),
+    [firstName, lastName, gender, birthDate],
+  );
+  const [step2Touched, setStep2Touched] = useState({
+    firstName: false,
+    lastName: false,
+    gender: false,
+    birthDate: false,
+  });
+  const step2FieldErrors = useMemo(() => {
+    if (step2Validation.success) {
+      return {
+        firstName: null as string | null,
+        lastName: null as string | null,
+        gender: null as string | null,
+        birthDate: null as string | null,
+      };
+    }
+    return {
+      firstName:
+        step2Validation.error.issues.find(
+          (issue) => issue.path[0] === "firstName",
+        )?.message ?? null,
+      lastName:
+        step2Validation.error.issues.find((issue) => issue.path[0] === "lastName")
+          ?.message ?? null,
+      gender:
+        step2Validation.error.issues.find((issue) => issue.path[0] === "gender")
+          ?.message ?? null,
+      birthDate:
+        step2Validation.error.issues.find(
+          (issue) => issue.path[0] === "birthDate",
+        )?.message ?? null,
+    };
+  }, [step2Validation]);
+  const [pinTouched, setPinTouched] = useState({
+    newPin: false,
+    confirmPin: false,
+  });
+  const pinValidation = useMemo(
+    () =>
+      step3PinSchema.safeParse({
+        newPin,
+        confirmPin,
+      }),
+    [newPin, confirmPin],
+  );
+  const pinFieldErrors = useMemo(() => {
+    if (pinValidation.success) {
+      return { newPin: null as string | null, confirmPin: null as string | null };
+    }
+    return {
+      newPin:
+        pinValidation.error.issues.find((issue) => issue.path[0] === "newPin")
+          ?.message ?? null,
+      confirmPin:
+        pinValidation.error.issues.find(
+          (issue) => issue.path[0] === "confirmPin",
+        )?.message ?? null,
+    };
+  }, [pinValidation]);
+  const canContinueCurrentStep = useMemo(() => {
+    if (step === 1) {
+      return isTokenFlow
+        ? step1PhoneSchema.safeParse({ email, setupToken }).success
+        : step1Schema.safeParse({
+            email,
+            temporaryPassword,
+            newPassword,
+            confirmPassword,
+          }).success;
+    }
+    if (step === 2) {
+      return step2Validation.success;
+    }
+    if (step === 3 && isTokenFlow) {
+      return pinValidation.success;
+    }
+    if ((step === 3 && !isTokenFlow) || (step === 4 && isTokenFlow)) {
+      return step4Schema.safeParse({
+        selectedQuestions,
+        answers,
+        isParent,
+        parentClassId: parentClassId || undefined,
+        parentStudentId: parentStudentId || undefined,
+      }).success;
+    }
+    return true;
+  }, [
+    step,
+    isTokenFlow,
+    email,
+    setupToken,
+    temporaryPassword,
+    newPassword,
+    confirmPassword,
+    step2Validation.success,
+    pinValidation.success,
+    selectedQuestions,
+    answers,
+    isParent,
+    parentClassId,
+    parentStudentId,
+  ]);
+
+  function validateRecoveryStep() {
+    const parsed = step4Schema.safeParse({
+      selectedQuestions,
+      answers,
+      isParent,
+      parentClassId: parentClassId || undefined,
+      parentStudentId: parentStudentId || undefined,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Etape de securite invalide.");
+      return false;
+    }
+    return true;
+  }
 
   function validateStep(target: StepKey): boolean {
     setError(null);
@@ -148,38 +283,46 @@ function OnboardingContent() {
     }
 
     if (target === 2) {
-      const parsed = step2Schema.safeParse({
-        firstName,
-        lastName,
-        gender,
-        birthDate,
-      });
-      if (!parsed.success) {
-        setError(parsed.error.issues[0]?.message ?? "Etape 2 invalide.");
+      if (!step2Validation.success) {
+        setError(step2Validation.error.issues[0]?.message ?? "Etape 2 invalide.");
         return false;
       }
       return true;
     }
 
-    const parsed = step3Schema.safeParse({
-      selectedQuestions,
-      answers,
-      isParent,
-      parentClassId: parentClassId || undefined,
-      parentStudentId: parentStudentId || undefined,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Etape 3 invalide.");
+    if (target === 3 && isTokenFlow) {
+      if (!pinValidation.success) {
+        setError(pinValidation.error.issues[0]?.message ?? "Etape 3 invalide.");
+        return false;
+      }
+      return true;
+    }
+
+    if (!validateRecoveryStep()) {
       return false;
     }
     return true;
   }
 
   function nextStep() {
+    if (step === 2) {
+      setStep2Touched({
+        firstName: true,
+        lastName: true,
+        gender: true,
+        birthDate: true,
+      });
+    }
+    if (step === 3 && isTokenFlow) {
+      setPinTouched({
+        newPin: true,
+        confirmPin: true,
+      });
+    }
     if (!validateStep(step)) {
       return;
     }
-    if (step < 3) {
+    if (step < totalSteps) {
       setStep((value) => (value + 1) as StepKey);
     }
   }
@@ -195,7 +338,11 @@ function OnboardingContent() {
     event.preventDefault();
     setError(null);
 
-    if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+    const requiredSteps = isTokenFlow ? [1, 2, 3, 4] : [1, 2, 3];
+    const isFlowValid = requiredSteps.every((requiredStep) =>
+      validateStep(requiredStep as StepKey),
+    );
+    if (!isFlowValid) {
       return;
     }
 
@@ -210,6 +357,7 @@ function OnboardingContent() {
             ? {
                 setupToken,
                 email: email.trim() || undefined,
+                newPin,
               }
             : {
                 email,
@@ -238,12 +386,9 @@ function OnboardingContent() {
         return;
       }
 
-      const payload = (await response.json()) as { schoolSlug?: string | null };
-      const targetSchoolSlug = payload.schoolSlug ?? schoolSlug ?? "";
+      await response.json();
       reset();
-      router.push(
-        targetSchoolSlug ? `/schools/${targetSchoolSlug}/login` : "/",
-      );
+      router.push("/");
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -252,29 +397,13 @@ function OnboardingContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background text-text-primary">
-      <div className="pointer-events-none absolute -left-28 -top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 right-0 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
-
-      <header className="relative z-10 border-b border-border bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3 text-text-primary">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-card bg-primary font-heading text-base font-bold text-surface">
-              SL
-            </span>
-            <span className="font-heading text-lg font-semibold">Scolive</span>
-          </Link>
-          <Link
-            href={schoolSlug ? `/schools/${schoolSlug}/login` : "/"}
-            className="text-sm text-text-secondary hover:text-primary"
-          >
-            Retour connexion
-          </Link>
-        </div>
-      </header>
-
-      <main className="relative z-10 mx-auto grid w-full max-w-6xl gap-6 px-6 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:py-14">
-        <section className="rounded-card border border-border bg-surface p-6 shadow-card lg:p-8">
+    <RecoveryShell
+      title="Activation de compte"
+      contentMaxWidthClassName="max-w-7xl"
+      centerContent={false}
+    >
+      <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+        <section className="order-2 rounded-card border border-border bg-surface p-6 shadow-card lg:p-8 xl:order-1">
           <p className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
             <ShieldCheck className="h-4 w-4 text-primary" />
             Onboarding securise
@@ -309,22 +438,32 @@ function OnboardingContent() {
             <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
               <p className="text-text-secondary">
-                Etape 3: questions de recuperation puis validation finale.
+                {isTokenFlow
+                  ? "Etape 3: changement du PIN de connexion."
+                  : "Etape 3: questions de recuperation puis validation finale."}
               </p>
             </div>
+            {isTokenFlow ? (
+              <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
+                <p className="text-text-secondary">
+                  Etape 4: questions de recuperation puis validation finale.
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <img
             src="/images/camer-school1.png"
             alt="Scene de classe"
-            className="mt-6 h-56 w-full rounded-card border border-border object-cover object-center md:h-64"
+            className="mt-6 hidden h-56 w-full rounded-card border border-border object-cover object-center md:h-64 lg:block"
           />
         </section>
 
         <Card
           title="Finaliser l'activation"
-          subtitle={`Etape ${step} / 3`}
-          className="lg:mt-2"
+          subtitle={`Etape ${step} / ${totalSteps}`}
+          className="order-1 self-start xl:order-2 xl:sticky xl:top-6"
         >
           <form className="grid gap-3" onSubmit={onSubmit}>
             <div className="grid gap-1 text-sm">
@@ -338,19 +477,15 @@ function OnboardingContent() {
               <>
                 {isTokenFlow ? (
                   <>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Email (optionnel)
-                      </span>
-                      <input
+                    <FormField label="Email (optionnel)">
+                      <EmailInput
                         value={email}
                         onChange={(event) =>
                           setField("email", event.target.value)
                         }
                         placeholder="prenom.nom@gmail.com"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
                     <p className="text-xs text-text-secondary">
                       Vous pouvez continuer sans email et le renseigner plus
                       tard dans votre compte.
@@ -358,43 +493,33 @@ function OnboardingContent() {
                   </>
                 ) : (
                   <>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Mot de passe provisoire
-                      </span>
-                      <PasswordField
+                    <FormField label="Mot de passe provisoire">
+                      <PasswordInput
                         value={temporaryPassword}
                         onChange={(event) =>
                           setField("temporaryPassword", event.target.value)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Nouveau mot de passe
-                      </span>
-                      <PasswordField
+                    <FormField label="Nouveau mot de passe">
+                      <PasswordInput
                         value={newPassword}
                         onChange={(event) =>
                           setField("newPassword", event.target.value)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
                     <PasswordRequirementsHint password={newPassword} />
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Confirmation</span>
-                      <PasswordField
+                    <FormField label="Confirmation">
+                      <PasswordInput
                         value={confirmPassword}
                         onChange={(event) =>
                           setField("confirmPassword", event.target.value)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
                   </>
                 )}
               </>
@@ -403,32 +528,52 @@ function OnboardingContent() {
             {step === 2 ? (
               <>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Prenom</span>
+                  <FormField
+                    label="Prenom"
+                    error={step2Touched.firstName ? step2FieldErrors.firstName : null}
+                  >
                     <input
                       value={firstName}
                       onChange={(event) =>
                         setField("firstName", event.target.value)
                       }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      onBlur={() =>
+                        setStep2Touched((state) => ({ ...state, firstName: true }))
+                      }
+                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
+                        step2Touched.firstName && step2FieldErrors.firstName
+                          ? "border-notification"
+                          : "border-border"
+                      }`}
                     />
-                  </label>
+                  </FormField>
 
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Nom</span>
+                  <FormField
+                    label="Nom"
+                    error={step2Touched.lastName ? step2FieldErrors.lastName : null}
+                  >
                     <input
                       value={lastName}
                       onChange={(event) =>
                         setField("lastName", event.target.value)
                       }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      onBlur={() =>
+                        setStep2Touched((state) => ({ ...state, lastName: true }))
+                      }
+                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
+                        step2Touched.lastName && step2FieldErrors.lastName
+                          ? "border-notification"
+                          : "border-border"
+                      }`}
                     />
-                  </label>
+                  </FormField>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Genre</span>
+                  <FormField
+                    label="Genre"
+                    error={step2Touched.gender ? step2FieldErrors.gender : null}
+                  >
                     <select
                       value={gender}
                       onChange={(event) =>
@@ -437,33 +582,111 @@ function OnboardingContent() {
                           event.target.value as "M" | "F" | "OTHER",
                         )
                       }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      onBlur={() =>
+                        setStep2Touched((state) => ({ ...state, gender: true }))
+                      }
+                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
+                        step2Touched.gender && step2FieldErrors.gender
+                          ? "border-notification"
+                          : "border-border"
+                      }`}
                     >
                       <option value="">Selectionner</option>
                       <option value="M">Masculin</option>
                       <option value="F">Feminin</option>
                       <option value="OTHER">Autre</option>
                     </select>
-                  </label>
+                  </FormField>
 
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">
-                      Date de naissance
-                    </span>
-                    <input
-                      type="date"
+                  <FormField
+                    label="Date de naissance"
+                    error={
+                      step2Touched.birthDate ? step2FieldErrors.birthDate : null
+                    }
+                  >
+                    <DateInput
                       value={birthDate}
                       onChange={(event) =>
                         setField("birthDate", event.target.value)
                       }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      onBlur={() =>
+                        setStep2Touched((state) => ({ ...state, birthDate: true }))
+                      }
+                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
+                        step2Touched.birthDate && step2FieldErrors.birthDate
+                          ? "border-notification"
+                          : "border-border"
+                      }`}
                     />
-                  </label>
+                  </FormField>
                 </div>
               </>
             ) : null}
 
-            {step === 3 ? (
+            {step === 3 && isTokenFlow ? (
+              <>
+                <div className="rounded-card border border-border bg-background p-3">
+                  <p className="mb-2 text-sm text-text-secondary">
+                    Modifiez votre PIN de connexion
+                  </p>
+                  <div className="grid gap-3">
+                    <FormField
+                      label="Nouveau PIN"
+                      error={pinTouched.newPin ? pinFieldErrors.newPin : null}
+                    >
+                      <PinInput
+                        value={newPin}
+                        onChange={(event) =>
+                          setField(
+                            "newPin",
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                          )
+                        }
+                        onBlur={() =>
+                          setPinTouched((state) => ({ ...state, newPin: true }))
+                        }
+                        placeholder="654321"
+                        className={`${
+                          pinTouched.newPin && pinFieldErrors.newPin
+                            ? "border-notification"
+                            : "border-border"
+                        }`}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Confirmer PIN"
+                      error={
+                        pinTouched.confirmPin ? pinFieldErrors.confirmPin : null
+                      }
+                    >
+                      <PinInput
+                        value={confirmPin}
+                        onChange={(event) =>
+                          setField(
+                            "confirmPin",
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                          )
+                        }
+                        onBlur={() =>
+                          setPinTouched((state) => ({
+                            ...state,
+                            confirmPin: true,
+                          }))
+                        }
+                        placeholder="654321"
+                        className={`${
+                          pinTouched.confirmPin && pinFieldErrors.confirmPin
+                            ? "border-notification"
+                            : "border-border"
+                        }`}
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {(step === 3 && !isTokenFlow) || (step === 4 && isTokenFlow) ? (
               <>
                 <div className="rounded-card border border-border bg-background p-3">
                   <p className="mb-2 text-sm text-text-secondary">
@@ -561,29 +784,27 @@ function OnboardingContent() {
 
             <div className="flex flex-wrap gap-2">
               {step > 1 ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={previousStep}
-                >
-                  Retour
-                </Button>
+                <BackButton onClick={previousStep} />
               ) : null}
 
-              {step < 3 ? (
-                <Button type="button" onClick={nextStep}>
+              {step < totalSteps ? (
+                <Button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={!canContinueCurrentStep}
+                >
                   Continuer
                 </Button>
               ) : (
-                <Button type="submit" disabled={submitting}>
+                <SubmitButton disabled={submitting}>
                   {submitting ? "Validation..." : "Finaliser l'activation"}
-                </Button>
+                </SubmitButton>
               )}
             </div>
           </form>
         </Card>
-      </main>
-    </div>
+      </div>
+    </RecoveryShell>
   );
 }
 

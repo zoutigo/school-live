@@ -6,7 +6,9 @@ import { CalendarDays, Pencil, Plus, Trash2 } from "lucide-react";
 import { Card } from "../../../../../../../components/ui/card";
 import { Button } from "../../../../../../../components/ui/button";
 import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog";
+import { DateInput } from "../../../../../../../components/ui/date-input";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
+import { TimeInput } from "../../../../../../../components/ui/time-input";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import { API_URL, type MeResponse } from "../_shared";
 
@@ -1020,8 +1022,7 @@ export default function TeacherClassAgendaPage() {
 
                     <label className="grid gap-1 text-sm">
                       <span className="text-text-secondary">Debut</span>
-                      <input
-                        type="time"
+                      <TimeInput
                         value={slotStart}
                         onChange={(event) => setSlotStart(event.target.value)}
                         className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
@@ -1030,8 +1031,7 @@ export default function TeacherClassAgendaPage() {
 
                     <label className="grid gap-1 text-sm">
                       <span className="text-text-secondary">Fin</span>
-                      <input
-                        type="time"
+                      <TimeInput
                         value={slotEnd}
                         onChange={(event) => setSlotEnd(event.target.value)}
                         className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
@@ -1239,8 +1239,7 @@ export default function TeacherClassAgendaPage() {
 
                       <label className="grid gap-1 text-sm">
                         <span className="text-text-secondary">Debut</span>
-                        <input
-                          type="date"
+                        <DateInput
                           value={vacationStartDate}
                           onChange={(event) =>
                             setVacationStartDate(event.target.value)
@@ -1251,8 +1250,7 @@ export default function TeacherClassAgendaPage() {
 
                       <label className="grid gap-1 text-sm">
                         <span className="text-text-secondary">Fin</span>
-                        <input
-                          type="date"
+                        <DateInput
                           value={vacationEndDate}
                           onChange={(event) =>
                             setVacationEndDate(event.target.value)

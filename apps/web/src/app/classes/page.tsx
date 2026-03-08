@@ -8,6 +8,7 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
@@ -1531,9 +1532,9 @@ export default function ClassesPage() {
                 </label>
 
                 <div className="md:col-span-6">
-                  <Button type="submit" disabled={submittingClass}>
+                  <SubmitButton disabled={submittingClass}>
                     {submittingClass ? "Creation..." : "Ajouter"}
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
 
@@ -2080,11 +2081,11 @@ export default function ClassesPage() {
                   </select>
                 </label>
                 <div className="self-end">
-                  <Button type="submit" disabled={submittingTeacherAssignment}>
+                  <SubmitButton disabled={submittingTeacherAssignment}>
                     {submittingTeacherAssignment
                       ? "Affectation..."
                       : "Affecter enseignant"}
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
 

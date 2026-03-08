@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
@@ -1025,9 +1026,9 @@ export default function CurriculumsPage() {
                   />
                 </label>
                 <div className="self-end">
-                  <Button type="submit" disabled={submittingAcademicLevel}>
+                  <SubmitButton disabled={submittingAcademicLevel}>
                     {submittingAcademicLevel ? "Creation..." : "Ajouter"}
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
 
@@ -1183,9 +1184,9 @@ export default function CurriculumsPage() {
                   />
                 </label>
                 <div className="self-end">
-                  <Button type="submit" disabled={submittingTrack}>
+                  <SubmitButton disabled={submittingTrack}>
                     {submittingTrack ? "Creation..." : "Ajouter"}
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
 
@@ -1353,9 +1354,9 @@ export default function CurriculumsPage() {
                 </label>
 
                 <div className="self-end">
-                  <Button type="submit" disabled={submittingCurriculum}>
+                  <SubmitButton disabled={submittingCurriculum}>
                     {submittingCurriculum ? "Creation..." : "Creer"}
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
               <p className="text-xs text-text-secondary">

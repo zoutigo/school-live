@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
+import { BackLinkButton } from "../../components/ui/back-link-button";
 import { Card } from "../../components/ui/card";
+import { EmailInput } from "../../components/ui/email-input";
+import { PinInput } from "../../components/ui/pin-input";
 import { Button } from "../../components/ui/button";
 
 type ActivationStartResponse = {
@@ -276,12 +278,12 @@ export function PendingAccountClient({
             </p>
           </div>
 
-          <Link
+          <BackLinkButton
             href={schoolSlug ? `/schools/${schoolSlug}/login` : "/"}
-            className="mt-4 inline-block text-sm text-primary"
+            className="mt-4"
           >
             Retour a la connexion
-          </Link>
+          </BackLinkButton>
         </Card>
 
         <Card
@@ -294,11 +296,9 @@ export function PendingAccountClient({
             <form className="grid gap-3" onSubmit={onSubmit}>
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">Email</span>
-                <input
-                  type="email"
+                <EmailInput
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   placeholder="prenom.nom@gmail.com"
                 />
               </label>
@@ -344,10 +344,13 @@ export function PendingAccountClient({
                 <span className="text-text-secondary">
                   PIN initial (optionnel)
                 </span>
-                <input
+                <PinInput
                   value={initialPin}
-                  onChange={(event) => setInitialPin(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  onChange={(event) =>
+                    setInitialPin(
+                      event.target.value.replace(/\D/g, "").slice(0, 6),
+                    )
+                  }
                   placeholder="PIN temporaire fourni"
                 />
               </label>
@@ -356,11 +359,12 @@ export function PendingAccountClient({
                 <span className="text-text-secondary">
                   Nouveau PIN (6 chiffres)
                 </span>
-                <input
+                <PinInput
                   required
                   value={newPin}
-                  onChange={(event) => setNewPin(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  onChange={(event) =>
+                    setNewPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
                   placeholder="123456"
                 />
               </label>

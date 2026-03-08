@@ -367,6 +367,58 @@ describe("Management contact auth e2e", () => {
         ? (login.body?.message as { code?: string }).code
         : login.body?.code,
     ).toBe("PROFILE_SETUP_REQUIRED");
+    const setupTokenFromMessage =
+      typeof login.body?.message === "object" && login.body?.message !== null
+        ? String(
+            (login.body.message as { setupToken?: unknown }).setupToken ?? "",
+          )
+        : "";
+    const setupToken =
+      setupTokenFromMessage.length > 0
+        ? setupTokenFromMessage
+        : String(login.body?.setupToken ?? "");
+    expect(setupToken.length).toBeGreaterThan(0);
+
+    const onboarding = await apiJson("/api/auth/onboarding/complete", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        setupToken,
+        newPin: "654321",
+        firstName: "Teacher",
+        lastName: "Phone",
+        gender: "M",
+        birthDate: "1990-01-10",
+        answers: [
+          { questionKey: "FAVORITE_BOOK", answer: "Livre" },
+          { questionKey: "BIRTH_CITY", answer: "Douala" },
+          { questionKey: "FAVORITE_SPORT", answer: "Football" },
+        ],
+      }),
+    });
+    expect(onboarding.response.status).toBe(201);
+
+    const reloginWithOldPin = await apiJson("/api/auth/login-phone", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        phone: teacherPhone,
+        pin: "123456",
+        schoolSlug,
+      }),
+    });
+    expect(reloginWithOldPin.response.status).toBe(401);
+
+    const reloginWithNewPin = await apiJson("/api/auth/login-phone", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        phone: teacherPhone,
+        pin: "654321",
+        schoolSlug,
+      }),
+    });
+    expect(reloginWithNewPin.response.status).toBe(201);
 
     const activated = await prisma.user.findUniqueOrThrow({
       where: { id: created.id },
@@ -376,6 +428,7 @@ describe("Management contact auth e2e", () => {
     });
     expect(activated.activationStatus).toBe("ACTIVE");
     expect(activated.phoneCredential?.verifiedAt).toBeTruthy();
+    expect(activated.profileCompleted).toBe(true);
   });
 
   it("links parent by known phone without registration flow", async () => {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackLinkButton } from "../../../components/ui/back-link-button";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
 import { getSchoolBranding } from "./school-api";
@@ -22,9 +23,7 @@ export default async function SchoolPortalPage({
             <Link href={`/schools/${schoolSlug}/login`}>
               <Button>Se connecter</Button>
             </Link>
-            <Link href="/">
-              <Button variant="secondary">Retour accueil</Button>
-            </Link>
+            <BackLinkButton href="/">Retour accueil</BackLinkButton>
           </div>
         </Card>
       </div>

@@ -7,7 +7,11 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { EmailInput } from "../../components/ui/email-input";
+import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { PasswordInput } from "../../components/ui/password-input";
+import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -838,11 +842,10 @@ export default function TeachersPage() {
                         : "Telephone enseignant"}
                     </span>
                     {createMode === "email" ? (
-                      <input
+                      <EmailInput
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
                         placeholder="enseignant@ecole.com"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     ) : (
                       <input
@@ -861,25 +864,30 @@ export default function TeachersPage() {
                         ? "Mot de passe initial"
                         : "PIN initial"}
                     </span>
-                    <input
-                      value={
-                        createMode === "email" ? initialPassword : initialPin
-                      }
-                      onChange={(event) =>
-                        createMode === "email"
-                          ? setInitialPassword(event.target.value)
-                          : setInitialPin(event.target.value)
-                      }
-                      placeholder={
-                        createMode === "email" ? "MotDePasse123" : "123456"
-                      }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                    />
+                    {createMode === "email" ? (
+                      <PasswordInput
+                        value={initialPassword}
+                        onChange={(event) =>
+                          setInitialPassword(event.target.value)
+                        }
+                        placeholder="MotDePasse123"
+                      />
+                    ) : (
+                      <PinInput
+                        value={initialPin}
+                        onChange={(event) =>
+                          setInitialPin(
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                          )
+                        }
+                        placeholder="123456"
+                      />
+                    )}
                   </label>
                   <div className="self-end">
-                    <Button type="submit" disabled={submittingTeacher}>
+                    <SubmitButton disabled={submittingTeacher}>
                       {submittingTeacher ? "Creation..." : "Ajouter"}
-                    </Button>
+                    </SubmitButton>
                   </div>
                   {error ? (
                     <p className="text-sm text-notification md:col-span-3">
@@ -1050,9 +1058,9 @@ export default function TeachersPage() {
                 </label>
 
                 <div className="self-end">
-                  <Button type="submit" disabled={submittingAssignment}>
+                  <SubmitButton disabled={submittingAssignment}>
                     {submittingAssignment ? "Creation..." : "Ajouter"}
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
 

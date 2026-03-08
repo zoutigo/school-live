@@ -1038,6 +1038,7 @@ export class AuthService {
     setupToken?: string;
     temporaryPassword?: string;
     newPassword?: string;
+    newPin?: string;
     firstName: string;
     lastName: string;
     gender: "M" | "F" | "OTHER";
@@ -1056,6 +1057,7 @@ export class AuthService {
       normalizedEmail !== user.email;
 
     let passwordHash: string | null = null;
+    let nextPinHash: string | null = null;
     if (!isTokenFlow) {
       if (!input.temporaryPassword || !input.newPassword) {
         throw new ForbiddenException("Informations d activation manquantes");
@@ -1082,6 +1084,32 @@ export class AuthService {
         );
       }
       passwordHash = await bcrypt.hash(input.newPassword, 10);
+    } else {
+      if (!input.newPin) {
+        throw new ForbiddenException("Informations de PIN manquantes");
+      }
+
+      if (!AuthService.PHONE_PIN_REGEX.test(input.newPin)) {
+        throw new ForbiddenException(
+          "Le PIN doit contenir exactement 6 chiffres.",
+        );
+      }
+
+      if (!user.phoneCredential?.pinHash) {
+        throw new ForbiddenException("Aucun PIN n'est configure pour ce compte.");
+      }
+
+      const samePin = await bcrypt.compare(
+        input.newPin,
+        user.phoneCredential.pinHash,
+      );
+      if (samePin) {
+        throw new ForbiddenException(
+          "Le nouveau PIN doit etre different de l'actuel.",
+        );
+      }
+
+      nextPinHash = await bcrypt.hash(input.newPin, 10);
     }
 
     if (shouldUpdateEmail) {
@@ -1146,6 +1174,7 @@ export class AuthService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
       await tx.user.update({
         where: { id: user.id },
         data: {
@@ -1170,9 +1199,19 @@ export class AuthService {
         },
       });
 
+      if (nextPinHash && user.phoneCredential?.id) {
+        await tx.userPhoneCredential.update({
+          where: { id: user.phoneCredential.id },
+          data: {
+            pinHash: nextPinHash,
+            verifiedAt: now,
+          },
+        });
+      }
+
       await tx.refreshToken.updateMany({
         where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date() },
+        data: { revokedAt: now },
       });
 
       await tx.userRecoveryAnswer.deleteMany({
@@ -1207,6 +1246,13 @@ export class AuthService {
       const user = await this.prisma.user.findUnique({
         where: { id: payload.userId },
         include: {
+          phoneCredential: {
+            select: {
+              id: true,
+              pinHash: true,
+              verifiedAt: true,
+            },
+          },
           memberships: {
             include: {
               school: {
@@ -1248,6 +1294,13 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
       include: {
+        phoneCredential: {
+          select: {
+            id: true,
+            pinHash: true,
+            verifiedAt: true,
+          },
+        },
         memberships: {
           include: {
             school: {

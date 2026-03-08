@@ -4,7 +4,8 @@ import {
   step1PhoneSchema,
   step1Schema,
   step2Schema,
-  step3Schema,
+  step3PinSchema,
+  step4Schema,
 } from "./onboarding-schema";
 
 describe("onboarding-schema", () => {
@@ -63,8 +64,54 @@ describe("onboarding-schema", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("rejects step 3 when parent misses class/student", () => {
-    const parsed = step3Schema.safeParse({
+  it("rejects step 2 when birth date format is invalid", () => {
+    const parsed = step2Schema.safeParse({
+      firstName: "Lisa",
+      lastName: "Mbele",
+      gender: "F",
+      birthDate: "10/01/1990",
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues[0]?.message).toContain("Format de date");
+    }
+  });
+
+  it("rejects step 2 when birth date is in the future", () => {
+    const parsed = step2Schema.safeParse({
+      firstName: "Lisa",
+      lastName: "Mbele",
+      gender: "F",
+      birthDate: "2999-01-10",
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues[0]?.message).toContain("futur");
+    }
+  });
+
+  it("validates pin change step with new/confirm pin", () => {
+    const parsed = step3PinSchema.safeParse({
+      newPin: "654321",
+      confirmPin: "654321",
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects pin step when confirmation differs", () => {
+    const parsed = step3PinSchema.safeParse({
+      newPin: "654321",
+      confirmPin: "111111",
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects step 4 when parent misses class/student", () => {
+    const parsed = step4Schema.safeParse({
       selectedQuestions: ["FAVORITE_BOOK", "BIRTH_CITY", "FAVORITE_SPORT"],
       answers: {
         FAVORITE_BOOK: "Livre",

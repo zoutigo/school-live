@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { BackButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { extractAvailableRoles, type Role } from "../../lib/role-view";
@@ -505,13 +506,9 @@ export default function SettingsPage() {
                   >
                     {saving ? "Enregistrement..." : "Appliquer ce role"}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => router.push("/account")}
-                  >
+                  <BackButton onClick={() => router.push("/account")}>
                     Retour compte
-                  </Button>
+                  </BackButton>
                 </div>
               </div>
             )

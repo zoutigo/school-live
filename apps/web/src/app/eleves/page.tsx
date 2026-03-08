@@ -7,7 +7,8 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
-import { PasswordField } from "../../components/ui/password-field";
+import { EmailInput } from "../../components/ui/email-input";
+import { SubmitButton } from "../../components/ui/form-buttons";
 import {
   LifeEventsList,
   lifeEventTypeLabel,
@@ -15,6 +16,8 @@ import {
   type LifeEventType,
 } from "../../components/life-events/life-events-list";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { PasswordInput } from "../../components/ui/password-input";
+import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -1373,26 +1376,24 @@ export default function ElevesPage() {
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Email (optionnel)</span>
-                  <input
+                  <EmailInput
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">
                     Mot de passe (optionnel)
                   </span>
-                  <PasswordField
+                  <PasswordInput
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
                 <div className="self-end">
-                  <Button type="submit" disabled={submitting}>
+                  <SubmitButton disabled={submitting}>
                     {submitting ? "Creation..." : "Ajouter"}
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
 
@@ -1448,9 +1449,9 @@ export default function ElevesPage() {
                   </select>
                 </label>
                 <div className="self-end">
-                  <Button type="submit" disabled={loadingData}>
+                  <SubmitButton disabled={loadingData}>
                     Filtrer
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
 
@@ -1660,13 +1661,12 @@ export default function ElevesPage() {
                           : "Telephone du parent"}
                       </span>
                       {parentLinkMode === "email" ? (
-                        <input
+                        <EmailInput
                           value={parentEmail}
                           onChange={(event) =>
                             setParentEmail(event.target.value)
                           }
                           placeholder="parent@email.com"
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       ) : (
                         <input
@@ -1687,24 +1687,27 @@ export default function ElevesPage() {
                           ? "Mot de passe initial"
                           : "PIN initial"}
                       </span>
-                      <input
-                        value={
-                          parentLinkMode === "email"
-                            ? parentPassword
-                            : parentPin
-                        }
-                        onChange={(event) =>
-                          parentLinkMode === "email"
-                            ? setParentPassword(event.target.value)
-                            : setParentPin(event.target.value)
-                        }
-                        placeholder={
-                          parentLinkMode === "email"
-                            ? "MotDePasse123"
-                            : "123456"
-                        }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                      />
+                      {parentLinkMode === "email" ? (
+                        <PasswordInput
+                          value={parentPassword}
+                          onChange={(event) =>
+                            setParentPassword(event.target.value)
+                          }
+                          placeholder="MotDePasse123"
+                        />
+                      ) : (
+                        <PinInput
+                          value={parentPin}
+                          onChange={(event) =>
+                            setParentPin(
+                              event.target.value
+                                .replace(/\D/g, "")
+                                .slice(0, 6),
+                            )
+                          }
+                          placeholder="123456"
+                        />
+                      )}
                     </label>
                     <div className="self-end">
                       <Button
