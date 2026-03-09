@@ -57,6 +57,12 @@ describe("Classes page subject color UI", () => {
             id: "class-1",
             schoolId: "school-1",
             name: "6eB",
+            referentTeacher: {
+              id: "teacher-1",
+              firstName: "Valery",
+              lastName: "MBELE",
+              email: "valery@example.com",
+            },
             schoolYear: { id: "sy-1", label: "2025-2026" },
             academicLevel: { id: "lvl-1", code: "6EME", label: "6eme" },
             track: null,
@@ -153,6 +159,9 @@ describe("Classes page subject color UI", () => {
     expect((colorButton as HTMLButtonElement).style.backgroundColor).toBe(
       "rgb(37, 99, 235)",
     );
+    expect(
+      screen.getByText("Enseignant referent: MBELE Valery"),
+    ).toBeInTheDocument();
   });
 
   it("opens color modal on click and updates subject color", async () => {

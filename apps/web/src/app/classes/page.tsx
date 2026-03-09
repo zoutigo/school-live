@@ -1766,6 +1766,12 @@ export default function ClassesPage() {
                 <p className="mt-1 text-text-secondary">
                   Curriculum: {selectedClass.curriculum?.name ?? "-"}
                 </p>
+                <p className="mt-1 text-text-secondary">
+                  Enseignant referent:{" "}
+                  {selectedClass.referentTeacher
+                    ? `${selectedClass.referentTeacher.lastName} ${selectedClass.referentTeacher.firstName}`
+                    : "-"}
+                </p>
                 {schoolSlug ? (
                   <div className="mt-3">
                     <Link
