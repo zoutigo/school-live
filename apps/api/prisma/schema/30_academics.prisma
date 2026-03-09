@@ -27,6 +27,8 @@ model SchoolYear {
   grades              Grade[]
   lifeEvents          StudentLifeEvent[]
   timetableSlots      ClassTimetableSlot[]
+  timetableOneOffSlots ClassTimetableOneOffSlot[]
+  timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents      SchoolCalendarEvent[]
 
@@ -131,6 +133,8 @@ model Class {
   lifeEvents      StudentLifeEvent[]
   feedPosts       FeedPost[]
   timetableSlots  ClassTimetableSlot[]
+  timetableOneOffSlots ClassTimetableOneOffSlot[]
+  timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents  SchoolCalendarEvent[]
 
@@ -156,6 +160,8 @@ model Subject {
   curriculumSubjects CurriculumSubject[]
   classOverrides ClassSubjectOverride[]
   timetableSlots ClassTimetableSlot[]
+  timetableOneOffSlots ClassTimetableOneOffSlot[]
+  timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
 
   @@unique([schoolId, name])

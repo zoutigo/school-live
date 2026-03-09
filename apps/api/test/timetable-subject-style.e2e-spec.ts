@@ -29,6 +29,7 @@ describe("Timetable subject style API e2e", () => {
   let classId = "";
   let subjectId = "";
   let secondSubjectId = "";
+  let teacherUserId = "";
 
   async function api(path: string, init?: RequestInit) {
     return fetch(`${baseUrl}${path}`, init);
@@ -178,6 +179,40 @@ describe("Timetable subject style API e2e", () => {
           create: [{ schoolId, role: "SCHOOL_ADMIN" }],
         },
       },
+    });
+
+    const teacher = await prisma.user.create({
+      data: {
+        firstName: "Referent",
+        lastName: "Teacher",
+        email: `e2e-timetable-style-teacher-${runId}@example.test`,
+        passwordHash,
+        mustChangePassword: false,
+        profileCompleted: true,
+        memberships: {
+          create: [{ schoolId, role: "TEACHER" }],
+        },
+      },
+    });
+    teacherUserId = teacher.id;
+
+    await prisma.teacherClassSubject.createMany({
+      data: [
+        {
+          schoolId,
+          schoolYearId,
+          classId,
+          subjectId,
+          teacherUserId,
+        },
+        {
+          schoolId,
+          schoolYearId,
+          classId,
+          subjectId: secondSubjectId,
+          teacherUserId,
+        },
+      ],
     });
 
     const login = await apiJson(`/api/schools/${schoolSlug}/auth/login`, {
@@ -356,5 +391,331 @@ describe("Timetable subject style API e2e", () => {
     expect(String(conflictingStyle.body?.message)).toContain(
       "Color too close to another subject color",
     );
+  });
+
+  it("supports cancel + one-off replacement on a specific day", async () => {
+    const createRecurring = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          weekday: 1,
+          startMinute: 525,
+          endMinute: 580,
+          subjectId,
+          teacherUserId,
+          room: "B14",
+        }),
+      },
+    );
+    expect(createRecurring.response.status).toBe(201);
+    const slotId = String(createRecurring.body?.id ?? "");
+    expect(slotId).not.toBe("");
+
+    const cancelOccurrence = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/slots/${slotId}/exceptions`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          occurrenceDate: "2026-03-09",
+          type: "CANCEL",
+          reason: "Sortie scolaire",
+        }),
+      },
+    );
+    expect(cancelOccurrence.response.status).toBe(201);
+
+    const createOneOff = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/one-off-slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          occurrenceDate: "2026-03-09",
+          startMinute: 600,
+          endMinute: 660,
+          subjectId: secondSubjectId,
+          teacherUserId,
+          room: "C02",
+        }),
+      },
+    );
+    expect(createOneOff.response.status).toBe(201);
+
+    const readTimetable = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        schoolYearId,
+      )}&fromDate=2026-03-09&toDate=2026-03-09`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(readTimetable.response.status).toBe(200);
+
+    const occurrences = Array.isArray(readTimetable.body?.occurrences)
+      ? (readTimetable.body?.occurrences as Array<Record<string, unknown>>)
+      : [];
+    const cancelledOccurrence = occurrences.find(
+      (entry) => String(entry.status) === "CANCELLED",
+    );
+    expect(cancelledOccurrence).toBeDefined();
+    expect(String(cancelledOccurrence?.source)).toBe("EXCEPTION_OVERRIDE");
+
+    const oneOffOccurrence = occurrences.find(
+      (entry) => String(entry.source) === "ONE_OFF",
+    );
+    expect(oneOffOccurrence).toBeDefined();
+    expect(String(oneOffOccurrence?.occurrenceDate)).toBe("2026-03-09");
+  });
+
+  it("supports override of a single recurring occurrence", async () => {
+    const createRecurring = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          weekday: 1,
+          startMinute: 720,
+          endMinute: 780,
+          subjectId,
+          teacherUserId,
+          room: "B10",
+        }),
+      },
+    );
+    expect(createRecurring.response.status).toBe(201);
+    const slotId = String(createRecurring.body?.id ?? "");
+    expect(slotId).not.toBe("");
+
+    const overrideOccurrence = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/slots/${slotId}/exceptions`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          occurrenceDate: "2026-03-16",
+          type: "OVERRIDE",
+          startMinute: 780,
+          endMinute: 840,
+          room: "LABO",
+          subjectId: secondSubjectId,
+          teacherUserId,
+          reason: "Cours de remplacement",
+        }),
+      },
+    );
+    expect(overrideOccurrence.response.status).toBe(201);
+
+    const readTimetable = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        schoolYearId,
+      )}&fromDate=2026-03-16&toDate=2026-03-16`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(readTimetable.response.status).toBe(200);
+    const occurrences = Array.isArray(readTimetable.body?.occurrences)
+      ? (readTimetable.body?.occurrences as Array<Record<string, unknown>>)
+      : [];
+    const override = occurrences.find(
+      (entry) =>
+        String(entry.source) === "EXCEPTION_OVERRIDE" &&
+        String(entry.status) === "PLANNED",
+    );
+    expect(override).toBeDefined();
+    expect(Number(override?.startMinute)).toBe(780);
+    expect(Number(override?.endMinute)).toBe(840);
+    expect(String(override?.room)).toBe("LABO");
+    expect(String(override?.reason)).toContain("remplacement");
+  });
+
+  it("supports recurring slot active date range boundaries", async () => {
+    const createRecurring = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          weekday: 1,
+          startMinute: 900,
+          endMinute: 960,
+          subjectId,
+          teacherUserId,
+          room: "B10",
+          activeFromDate: "2026-01-05",
+          activeToDate: "2026-03-30",
+        }),
+      },
+    );
+    expect(createRecurring.response.status).toBe(201);
+
+    const beforeRange = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        schoolYearId,
+      )}&fromDate=2025-12-29&toDate=2025-12-29`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(beforeRange.response.status).toBe(200);
+    const beforeOccurrences = Array.isArray(beforeRange.body?.occurrences)
+      ? (beforeRange.body?.occurrences as Array<Record<string, unknown>>)
+      : [];
+    const recurringBefore = beforeOccurrences.find(
+      (entry) =>
+        String(entry.source) === "RECURRING" &&
+        Number(entry.startMinute) === 900 &&
+        Number(entry.endMinute) === 960,
+    );
+    expect(recurringBefore).toBeUndefined();
+
+    const inRange = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        schoolYearId,
+      )}&fromDate=2026-01-05&toDate=2026-01-05`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(inRange.response.status).toBe(200);
+    const inRangeOccurrences = Array.isArray(inRange.body?.occurrences)
+      ? (inRange.body?.occurrences as Array<Record<string, unknown>>)
+      : [];
+    const recurringInRange = inRangeOccurrences.find(
+      (entry) =>
+        String(entry.source) === "RECURRING" &&
+        Number(entry.startMinute) === 900 &&
+        Number(entry.endMinute) === 960,
+    );
+    expect(recurringInRange).toBeDefined();
+
+    const afterRange = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        schoolYearId,
+      )}&fromDate=2026-04-06&toDate=2026-04-06`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(afterRange.response.status).toBe(200);
+    const afterOccurrences = Array.isArray(afterRange.body?.occurrences)
+      ? (afterRange.body?.occurrences as Array<Record<string, unknown>>)
+      : [];
+    const recurringAfter = afterOccurrences.find(
+      (entry) =>
+        String(entry.source) === "RECURRING" &&
+        Number(entry.startMinute) === 900 &&
+        Number(entry.endMinute) === 960,
+    );
+    expect(recurringAfter).toBeUndefined();
+  });
+
+  it("splits recurring slot updates so past occurrences stay unchanged", async () => {
+    const createRecurring = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          weekday: 1,
+          startMinute: 660,
+          endMinute: 720,
+          subjectId,
+          teacherUserId,
+          room: "A01",
+        }),
+      },
+    );
+    expect(createRecurring.response.status).toBe(201);
+    const slotId = String(createRecurring.body?.id ?? "");
+    expect(slotId).not.toBe("");
+
+    const updateRecurring = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/slots/${slotId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          startMinute: 780,
+          endMinute: 840,
+          room: "A02",
+          effectiveFromDate: "2026-03-16",
+        }),
+      },
+    );
+    expect(updateRecurring.response.status).toBe(200);
+
+    const pastDate = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        schoolYearId,
+      )}&fromDate=2026-03-09&toDate=2026-03-09`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(pastDate.response.status).toBe(200);
+    const pastOccurrences = Array.isArray(pastDate.body?.occurrences)
+      ? (pastDate.body?.occurrences as Array<Record<string, unknown>>)
+      : [];
+    const oldOccurrence = pastOccurrences.find(
+      (entry) =>
+        String(entry.source) === "RECURRING" &&
+        Number(entry.startMinute) === 660 &&
+        Number(entry.endMinute) === 720,
+    );
+    expect(oldOccurrence).toBeDefined();
+
+    const futureDate = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        schoolYearId,
+      )}&fromDate=2026-03-16&toDate=2026-03-16`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(futureDate.response.status).toBe(200);
+    const futureOccurrences = Array.isArray(futureDate.body?.occurrences)
+      ? (futureDate.body?.occurrences as Array<Record<string, unknown>>)
+      : [];
+    const newOccurrence = futureOccurrences.find(
+      (entry) =>
+        String(entry.source) === "RECURRING" &&
+        Number(entry.startMinute) === 780 &&
+        Number(entry.endMinute) === 840,
+    );
+    expect(newOccurrence).toBeDefined();
   });
 });

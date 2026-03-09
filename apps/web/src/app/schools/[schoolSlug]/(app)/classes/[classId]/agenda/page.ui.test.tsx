@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassAgendaPage from "./page";
 
@@ -33,6 +39,8 @@ type SlotRow = {
   weekday: number;
   startMinute: number;
   endMinute: number;
+  activeFromDate?: string | null;
+  activeToDate?: string | null;
   room: string | null;
   subject: { id: string; name: string };
   teacherUser: {
@@ -42,6 +50,18 @@ type SlotRow = {
     email: string;
   };
 };
+
+function toIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toWeekdayMondayFirst(date: Date) {
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
+}
 
 function buildDataset() {
   const sy1 = "sy-2025";
@@ -137,6 +157,26 @@ function buildDataset() {
       ],
     ],
   ]);
+  const oneOffByYear = new Map<
+    string,
+    Array<{
+      id: string;
+      occurrenceDate: string;
+      startMinute: number;
+      endMinute: number;
+      room: string | null;
+      subject: { id: string; name: string };
+      teacherUser: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+    }>
+  >([
+    [sy1, []],
+    [sy2, []],
+  ]);
 
   return {
     sy1,
@@ -160,14 +200,70 @@ function buildDataset() {
         selectedSchoolYearId,
       };
     },
-    getTimetablePayload(selectedSchoolYearId: string) {
+    getTimetablePayload(
+      selectedSchoolYearId: string,
+      fromDateRaw?: string | null,
+      toDateRaw?: string | null,
+    ) {
+      const slots = slotsByYear.get(selectedSchoolYearId) ?? [];
+      const fromDate = fromDateRaw ? new Date(fromDateRaw) : null;
+      const toDate = toDateRaw ? new Date(toDateRaw) : null;
+      const occurrences: Array<Record<string, unknown>> = [];
+      if (fromDate && toDate) {
+        for (
+          let cursor = new Date(fromDate);
+          cursor <= toDate;
+          cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000)
+        ) {
+          const weekday = toWeekdayMondayFirst(cursor);
+          const dateKey = toIsoDate(cursor);
+          slots
+            .filter((slot) => slot.weekday === weekday)
+            .forEach((slot) => {
+              occurrences.push({
+                id: `${slot.id}-${dateKey}`,
+                source: "RECURRING",
+                status: "PLANNED",
+                occurrenceDate: dateKey,
+                weekday,
+                startMinute: slot.startMinute,
+                endMinute: slot.endMinute,
+                room: slot.room,
+                subject: slot.subject,
+                teacherUser: slot.teacherUser,
+                slotId: slot.id,
+              });
+            });
+        }
+        const oneOffRows = oneOffByYear.get(selectedSchoolYearId) ?? [];
+        oneOffRows
+          .filter((row) => {
+            const date = new Date(row.occurrenceDate);
+            return date >= fromDate && date <= toDate;
+          })
+          .forEach((row) => {
+            occurrences.push({
+              id: row.id,
+              source: "ONE_OFF",
+              status: "PLANNED",
+              occurrenceDate: row.occurrenceDate,
+              weekday: toWeekdayMondayFirst(new Date(row.occurrenceDate)),
+              startMinute: row.startMinute,
+              endMinute: row.endMinute,
+              room: row.room,
+              subject: row.subject,
+              teacherUser: row.teacherUser,
+            });
+          });
+      }
       return {
         class: {
           id: "class-1",
           schoolYearId: selectedSchoolYearId,
           academicLevelId: "lvl-1",
         },
-        slots: slotsByYear.get(selectedSchoolYearId) ?? [],
+        slots,
+        occurrences,
         calendarEvents: [],
         subjectStyles: subjectStylesByYear.get(selectedSchoolYearId) ?? [],
       };
@@ -175,6 +271,26 @@ function buildDataset() {
     addSlotToSchoolYear(selectedSchoolYearId: string, slot: SlotRow) {
       const existing = slotsByYear.get(selectedSchoolYearId) ?? [];
       slotsByYear.set(selectedSchoolYearId, [...existing, slot]);
+    },
+    addOneOffToSchoolYear(
+      selectedSchoolYearId: string,
+      oneOff: {
+        id: string;
+        occurrenceDate: string;
+        startMinute: number;
+        endMinute: number;
+        room: string | null;
+        subject: { id: string; name: string };
+        teacherUser: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+        };
+      },
+    ) {
+      const existing = oneOffByYear.get(selectedSchoolYearId) ?? [];
+      oneOffByYear.set(selectedSchoolYearId, [...existing, oneOff]);
     },
     setStyleForSchoolYear(
       selectedSchoolYearId: string,
@@ -195,6 +311,7 @@ function buildDataset() {
 
 function createFetchMock(options?: { rejectDuplicateColor?: boolean }) {
   const data = buildDataset();
+  let createdSlotIndex = 0;
   const fetchMock = vi
     .spyOn(globalThis, "fetch")
     .mockImplementation((input, init) => {
@@ -220,7 +337,13 @@ function createFetchMock(options?: { rejectDuplicateColor?: boolean }) {
         const parsed = new URL(url);
         const schoolYearId =
           parsed.searchParams.get("schoolYearId") ?? data.sy1;
-        return jsonResponse(data.getTimetablePayload(schoolYearId));
+        return jsonResponse(
+          data.getTimetablePayload(
+            schoolYearId,
+            parsed.searchParams.get("fromDate"),
+            parsed.searchParams.get("toDate"),
+          ),
+        );
       }
 
       if (
@@ -250,8 +373,9 @@ function createFetchMock(options?: { rejectDuplicateColor?: boolean }) {
                 email: "albert@example.test",
               };
 
+        createdSlotIndex += 1;
         data.addSlotToSchoolYear(schoolYearId, {
-          id: "slot-new-1",
+          id: `slot-new-${createdSlotIndex}`,
           weekday: Number(body.weekday),
           startMinute: Number(body.startMinute),
           endMinute: Number(body.endMinute),
@@ -290,6 +414,52 @@ function createFetchMock(options?: { rejectDuplicateColor?: boolean }) {
           { subjectId, classId: "class-1", schoolYearId, colorHex },
           200,
         );
+      }
+
+      if (
+        url.includes("/timetable/classes/class-1/one-off-slots") &&
+        method === "POST"
+      ) {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        const schoolYearId = body.schoolYearId ?? data.sy1;
+        const subjectId = String(body.subjectId);
+        const teacherUserId = String(body.teacherUserId);
+        const subject =
+          subjectId === "sub-math"
+            ? { id: "sub-math", name: "Mathematiques" }
+            : { id: "sub-fr", name: "Francais" };
+        const teacher =
+          teacherUserId === "teacher-2"
+            ? {
+                id: "teacher-2",
+                firstName: "Guy",
+                lastName: "Ndem",
+                email: "guy@example.test",
+              }
+            : {
+                id: "teacher-1",
+                firstName: "Albert",
+                lastName: "Mvondo",
+                email: "albert@example.test",
+              };
+        data.addOneOffToSchoolYear(schoolYearId, {
+          id: "oneoff-1",
+          occurrenceDate: String(body.occurrenceDate),
+          startMinute: Number(body.startMinute),
+          endMinute: Number(body.endMinute),
+          room: (body.room as string | undefined) ?? null,
+          subject,
+          teacherUser: teacher,
+        });
+        return jsonResponse({ id: "oneoff-1" }, 201);
+      }
+
+      if (
+        url.includes("/timetable/slots/") &&
+        url.includes("/exceptions") &&
+        method === "POST"
+      ) {
+        return jsonResponse({ id: "exception-1" }, 201);
       }
 
       return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
@@ -349,6 +519,11 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
       screen.getByRole("button", { name: "Couleurs" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Aide" })).toBeInTheDocument();
+
+    expect(screen.getByRole("button", { name: "Ajouter" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Jour")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter" }));
 
     expect(screen.getByLabelText("Jour")).toBeInTheDocument();
     expect(screen.getByLabelText("Debut")).toBeInTheDocument();
@@ -412,6 +587,23 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
       expect(
         screen.getByRole("button", { name: "Aujourd'hui" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("toggles slot creation form from add tooltip button", async () => {
+    createFetchMock();
+    render(<TeacherClassAgendaPage />);
+
+    await screen.findByText("Emploi du temps - 6eC");
+    const addButton = screen.getByRole("button", { name: "Ajouter" });
+    expect(screen.queryByLabelText("Jour")).not.toBeInTheDocument();
+
+    fireEvent.click(addButton);
+    expect(screen.getByLabelText("Jour")).toBeInTheDocument();
+
+    fireEvent.click(addButton);
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Jour")).not.toBeInTheDocument();
     });
   });
 
@@ -494,6 +686,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     render(<TeacherClassAgendaPage />);
 
     await screen.findByText("Emploi du temps - 6eC");
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter" }));
 
     fireEvent.change(screen.getByLabelText("Matiere"), {
       target: { value: "sub-math" },
@@ -518,9 +711,8 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/NDEM\s+Guy\s+· Salle Labo/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Mr\s+NDEM\s+Guy/i)).toBeInTheDocument();
+      expect(screen.getByText("Salle Labo")).toBeInTheDocument();
     });
 
     const postCall = fetchMock.mock.calls.find(
@@ -541,21 +733,120 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     );
   });
 
-  it("renders subject color on slot badges and allows month-day selection details", async () => {
+  it("queues multiple recurring slots and submits them in one save flow", async () => {
+    const { fetchMock } = createFetchMock();
+    render(<TeacherClassAgendaPage />);
+
+    await screen.findByText("Emploi du temps - 6eC");
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    fireEvent.change(screen.getByLabelText("Matiere"), {
+      target: { value: "sub-fr" },
+    });
+    fireEvent.change(screen.getByLabelText("Enseignant"), {
+      target: { value: "teacher-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Debut"), {
+      target: { value: "08:00" },
+    });
+    fireEvent.change(screen.getByLabelText("Fin"), {
+      target: { value: "09:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter a la liste" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Creneaux en attente \(1\)/i),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Debut"), {
+      target: { value: "10:00" },
+    });
+    fireEvent.change(screen.getByLabelText("Fin"), {
+      target: { value: "11:00" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Enregistrer 2 creneaux" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("2 creneaux ajoutes.")).toBeInTheDocument();
+    });
+
+    const postCalls = fetchMock.mock.calls.filter(
+      ([url, init]) =>
+        String(url).includes("/timetable/classes/class-1/slots") &&
+        init?.method === "POST",
+    );
+    expect(postCalls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("opens occurrence modal from a day slot and creates a one-off occurrence", async () => {
+    const { fetchMock } = createFetchMock();
+    render(<TeacherClassAgendaPage />);
+
+    await screen.findByText("Emploi du temps - 6eC");
+
+    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+    await screen.findByText("Gerer l'occurrence");
+    const modalQueries = within(screen.getByTestId("occurrence-modal"));
+
+    fireEvent.change(modalQueries.getByLabelText("Action"), {
+      target: { value: "ONE_OFF" },
+    });
+    fireEvent.change(modalQueries.getByLabelText("Date"), {
+      target: { value: "2026-03-09" },
+    });
+    fireEvent.change(modalQueries.getByLabelText("Matiere"), {
+      target: { value: "sub-math" },
+    });
+    fireEvent.change(modalQueries.getByLabelText("Enseignant"), {
+      target: { value: "teacher-2" },
+    });
+    fireEvent.change(modalQueries.getByLabelText("Debut"), {
+      target: { value: "13:00" },
+    });
+    fireEvent.change(modalQueries.getByLabelText("Fin"), {
+      target: { value: "14:00" },
+    });
+    fireEvent.click(
+      modalQueries.getByRole("button", { name: "Appliquer l'action" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Cours ponctuel enregistre."),
+      ).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      const oneOffTitle = screen.getByText(/13:00 - 14:00 · Mathematiques/i);
+      const oneOffCard = oneOffTitle.closest("article") as HTMLElement | null;
+      expect(oneOffCard).toBeTruthy();
+      expect(oneOffCard?.style.borderLeftWidth).toBe("7px");
+    });
+
+    const oneOffCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).includes("/timetable/classes/class-1/one-off-slots") &&
+        init?.method === "POST",
+    );
+    expect(oneOffCall).toBeDefined();
+    expect(String((oneOffCall?.[1]?.body as string) ?? "")).toContain(
+      '"occurrenceDate":"2026-03-09"',
+    );
+  });
+
+  it("renders day slot visual tone and opens modal from month day slot", async () => {
     createFetchMock();
     render(<TeacherClassAgendaPage />);
 
     await screen.findByText("Emploi du temps - 6eC");
 
-    const roomBadges = screen.getAllByText("Salle B14");
-    const coloredBadge = roomBadges.find(
-      (node) =>
-        node instanceof HTMLElement &&
-        (node as HTMLElement).style.backgroundColor.length > 0,
-    ) as HTMLElement | undefined;
-
-    expect(coloredBadge).toBeDefined();
-    expect(coloredBadge?.style.backgroundColor).toBe("rgb(37, 99, 235)");
+    const daySlotTitle = screen.getByText(/08:45 - 10:00 · Francais/i);
+    const daySlotCard = daySlotTitle.closest("article") as HTMLElement | null;
+    expect(daySlotCard).toBeTruthy();
+    expect(daySlotCard?.style.backgroundColor.length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("button", { name: "Ce mois" }));
     expect(
@@ -564,7 +855,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
 
     const firstMonthDayButton = screen.getAllByRole("button").find((button) => {
       const label = button.textContent?.toLowerCase() ?? "";
-      return /creneau/.test(label) && /\d{2}/.test(label);
+      return /[1-9]\s*creneau/.test(label) && /\d{2}/.test(label);
     });
 
     expect(firstMonthDayButton).toBeDefined();
@@ -573,6 +864,9 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     await waitFor(() => {
       expect(screen.getByText(/Creneaux du/i)).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+    expect(await screen.findByText("Gerer l'occurrence")).toBeInTheDocument();
   });
 });
 

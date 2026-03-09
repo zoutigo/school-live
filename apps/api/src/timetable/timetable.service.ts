@@ -7,12 +7,16 @@ import {
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser, SchoolRole } from "../auth/auth.types.js";
+import type { CreateClassTimetableOneOffSlotDto } from "./dto/create-class-timetable-one-off-slot.dto.js";
 import type { CreateClassTimetableSlotDto } from "./dto/create-class-timetable-slot.dto.js";
+import type { CreateClassTimetableSlotExceptionDto } from "./dto/create-class-timetable-slot-exception.dto.js";
 import type { CreateSchoolCalendarEventDto } from "./dto/create-school-calendar-event.dto.js";
 import type { ListClassTimetableQueryDto } from "./dto/list-class-timetable-query.dto.js";
 import type { ListMyTimetableQueryDto } from "./dto/list-my-timetable-query.dto.js";
 import type { ListSchoolCalendarEventsQueryDto } from "./dto/list-school-calendar-events-query.dto.js";
 import type { SetClassSubjectStyleDto } from "./dto/set-class-subject-style.dto.js";
+import type { UpdateClassTimetableOneOffSlotDto } from "./dto/update-class-timetable-one-off-slot.dto.js";
+import type { UpdateClassTimetableSlotExceptionDto } from "./dto/update-class-timetable-slot-exception.dto.js";
 import type { UpdateClassTimetableSlotDto } from "./dto/update-class-timetable-slot.dto.js";
 import type { UpdateSchoolCalendarEventDto } from "./dto/update-school-calendar-event.dto.js";
 
@@ -24,6 +28,28 @@ type ClassContext = {
   academicLevelId: string | null;
   curriculumId: string | null;
   referentTeacherUserId: string | null;
+};
+
+type ResolvedTimetableOccurrence = {
+  id: string;
+  source: "RECURRING" | "EXCEPTION_OVERRIDE" | "ONE_OFF";
+  status: "PLANNED" | "CANCELLED";
+  occurrenceDate: string;
+  weekday: number;
+  startMinute: number;
+  endMinute: number;
+  room: string | null;
+  reason: string | null;
+  subject: { id: string; name: string };
+  teacherUser: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string | null;
+  };
+  slotId?: string;
+  exceptionId?: string;
+  oneOffSlotId?: string;
 };
 
 const SUBJECT_COLOR_PALETTE = [
@@ -158,14 +184,20 @@ export class TimetableService {
     await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId);
 
     const dateRange = this.parseDateRange(query.fromDate, query.toDate);
-    const { slots, calendarEvents, subjectStyles } =
-      await this.fetchClassTimetableData({
-        schoolId: effectiveSchoolId,
-        schoolYearId,
-        classEntity,
-        fromDate: dateRange.fromDate,
-        toDate: dateRange.toDate,
-      });
+    const {
+      slots,
+      oneOffSlots,
+      slotExceptions,
+      occurrences,
+      calendarEvents,
+      subjectStyles,
+    } = await this.fetchClassTimetableData({
+      schoolId: effectiveSchoolId,
+      schoolYearId,
+      classEntity,
+      fromDate: dateRange.fromDate,
+      toDate: dateRange.toDate,
+    });
 
     return {
       class: {
@@ -174,6 +206,9 @@ export class TimetableService {
         academicLevelId: classEntity.academicLevelId,
       },
       slots,
+      oneOffSlots,
+      slotExceptions,
+      occurrences,
       calendarEvents,
       subjectStyles,
     };
@@ -229,14 +264,20 @@ export class TimetableService {
       effectiveSchoolId,
     );
     const dateRange = this.parseDateRange(query.fromDate, query.toDate);
-    const { slots, calendarEvents, subjectStyles } =
-      await this.fetchClassTimetableData({
-        schoolId: effectiveSchoolId,
-        schoolYearId,
-        classEntity,
-        fromDate: dateRange.fromDate,
-        toDate: dateRange.toDate,
-      });
+    const {
+      slots,
+      oneOffSlots,
+      slotExceptions,
+      occurrences,
+      calendarEvents,
+      subjectStyles,
+    } = await this.fetchClassTimetableData({
+      schoolId: effectiveSchoolId,
+      schoolYearId,
+      classEntity,
+      fromDate: dateRange.fromDate,
+      toDate: dateRange.toDate,
+    });
 
     return {
       student: targetStudent,
@@ -247,6 +288,9 @@ export class TimetableService {
         academicLevelId: classEntity.academicLevelId,
       },
       slots,
+      oneOffSlots,
+      slotExceptions,
+      occurrences,
       calendarEvents,
       subjectStyles,
     };
@@ -272,7 +316,21 @@ export class TimetableService {
     );
 
     const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId);
+    const schoolYear = await this.ensureSchoolYearInSchool(
+      schoolYearId,
+      effectiveSchoolId,
+    );
+    const activeFromDate = payload.activeFromDate
+      ? this.toDateOnly(payload.activeFromDate)
+      : schoolYear.startsAt
+        ? this.toDateOnly(schoolYear.startsAt.toISOString())
+        : null;
+    const activeToDate = payload.activeToDate
+      ? this.toDateOnly(payload.activeToDate)
+      : schoolYear.endsAt
+        ? this.toDateOnly(schoolYear.endsAt.toISOString())
+        : null;
+    this.assertActiveDateRange(activeFromDate, activeToDate);
 
     await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId);
     await this.ensureSubjectAllowedForClass(
@@ -297,6 +355,8 @@ export class TimetableService {
       endMinute: payload.endMinute,
       teacherUserId: payload.teacherUserId,
       room: payload.room ?? null,
+      activeFromDate,
+      activeToDate,
     });
 
     await this.ensureAutoSubjectStyleExists({
@@ -316,7 +376,87 @@ export class TimetableService {
         weekday: payload.weekday,
         startMinute: payload.startMinute,
         endMinute: payload.endMinute,
+        activeFromDate,
+        activeToDate,
         room: payload.room?.trim() || null,
+        createdByUserId: user.id,
+      },
+      include: {
+        subject: { select: { id: true, name: true } },
+        teacherUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+  }
+
+  async createOneOffSlot(
+    user: AuthenticatedUser,
+    schoolId: string,
+    classId: string,
+    payload: CreateClassTimetableOneOffSlotDto,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    this.assertMinuteRange(payload.startMinute, payload.endMinute);
+    const occurrenceDate = this.toDateOnly(payload.occurrenceDate);
+
+    const classEntity = await this.ensureClassInSchool(
+      classId,
+      effectiveSchoolId,
+    );
+    await this.assertCanManageClassTimetable(
+      user,
+      effectiveSchoolId,
+      classEntity,
+    );
+
+    const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
+    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId);
+    await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId);
+    await this.ensureSubjectAllowedForClass(
+      classEntity.id,
+      payload.subjectId,
+      effectiveSchoolId,
+    );
+    await this.ensureTeacherAssignedToClassSubject(
+      effectiveSchoolId,
+      schoolYearId,
+      classEntity.id,
+      payload.subjectId,
+      payload.teacherUserId,
+    );
+
+    await this.ensureNoOccurrenceConflicts({
+      schoolId: effectiveSchoolId,
+      schoolYearId,
+      classId: classEntity.id,
+      occurrenceDate,
+      startMinute: payload.startMinute,
+      endMinute: payload.endMinute,
+      teacherUserId: payload.teacherUserId,
+      room: payload.room ?? null,
+    });
+
+    await this.ensureAutoSubjectStyleExists({
+      schoolId: effectiveSchoolId,
+      schoolYearId,
+      classId: classEntity.id,
+      subjectId: payload.subjectId,
+    });
+
+    return this.prisma.classTimetableOneOffSlot.create({
+      data: {
+        schoolId: effectiveSchoolId,
+        schoolYearId,
+        classId: classEntity.id,
+        occurrenceDate,
+        subjectId: payload.subjectId,
+        teacherUserId: payload.teacherUserId,
+        startMinute: payload.startMinute,
+        endMinute: payload.endMinute,
+        room: payload.room?.trim() || null,
+        status: payload.status ?? "PLANNED",
+        sourceSlotId: payload.sourceSlotId ?? null,
         createdByUserId: user.id,
       },
       include: {
@@ -341,7 +481,10 @@ export class TimetableService {
       payload.endMinute === undefined &&
       payload.subjectId === undefined &&
       payload.teacherUserId === undefined &&
-      payload.room === undefined
+      payload.room === undefined &&
+      payload.activeFromDate === undefined &&
+      payload.activeToDate === undefined &&
+      payload.effectiveFromDate === undefined
     ) {
       throw new BadRequestException("No fields to update");
     }
@@ -358,6 +501,8 @@ export class TimetableService {
         weekday: true,
         startMinute: true,
         endMinute: true,
+        activeFromDate: true,
+        activeToDate: true,
         room: true,
       },
     });
@@ -381,8 +526,21 @@ export class TimetableService {
     const nextSubjectId = payload.subjectId ?? existing.subjectId;
     const nextTeacherUserId = payload.teacherUserId ?? existing.teacherUserId;
     const nextRoom = payload.room === undefined ? existing.room : payload.room;
+    const todayDate = this.toDateOnly(new Date().toISOString());
+    const nextActiveFromDate = payload.activeFromDate
+      ? this.toDateOnly(payload.activeFromDate)
+      : existing.activeFromDate;
+    const nextActiveToDate = payload.activeToDate
+      ? this.toDateOnly(payload.activeToDate)
+      : existing.activeToDate;
+    const effectiveFromDate = payload.effectiveFromDate
+      ? this.toDateOnly(payload.effectiveFromDate)
+      : payload.activeFromDate
+        ? this.toDateOnly(payload.activeFromDate)
+        : todayDate;
 
     this.assertMinuteRange(nextStartMinute, nextEndMinute);
+    this.assertActiveDateRange(nextActiveFromDate, nextActiveToDate);
 
     await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId);
     await this.ensureSubjectAllowedForClass(
@@ -398,6 +556,112 @@ export class TimetableService {
       nextTeacherUserId,
     );
 
+    await this.ensureAutoSubjectStyleExists({
+      schoolId: effectiveSchoolId,
+      schoolYearId: existing.schoolYearId,
+      classId: classEntity.id,
+      subjectId: nextSubjectId,
+    });
+
+    const structuralChanges =
+      nextWeekday !== existing.weekday ||
+      nextStartMinute !== existing.startMinute ||
+      nextEndMinute !== existing.endMinute ||
+      nextSubjectId !== existing.subjectId ||
+      nextTeacherUserId !== existing.teacherUserId ||
+      (nextRoom?.trim() || null) !== (existing.room?.trim() || null);
+
+    if (!structuralChanges) {
+      await this.ensureNoSlotConflicts({
+        schoolId: effectiveSchoolId,
+        schoolYearId: classEntity.schoolYearId,
+        classId: classEntity.id,
+        weekday: nextWeekday,
+        startMinute: nextStartMinute,
+        endMinute: nextEndMinute,
+        teacherUserId: nextTeacherUserId,
+        room: nextRoom,
+        exceptSlotId: existing.id,
+        activeFromDate: nextActiveFromDate,
+        activeToDate: nextActiveToDate,
+      });
+      return this.prisma.classTimetableSlot.update({
+        where: { id: existing.id },
+        data: {
+          weekday: nextWeekday,
+          startMinute: nextStartMinute,
+          endMinute: nextEndMinute,
+          subjectId: nextSubjectId,
+          teacherUserId: nextTeacherUserId,
+          room: nextRoom?.trim() || null,
+          activeFromDate: nextActiveFromDate,
+          activeToDate: nextActiveToDate,
+        },
+        include: {
+          subject: { select: { id: true, name: true } },
+          teacherUser: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      });
+    }
+
+    const oldActiveFrom = existing.activeFromDate;
+    const oldActiveTo = existing.activeToDate;
+    const splitStartDate = effectiveFromDate;
+    if (oldActiveTo && splitStartDate > oldActiveTo) {
+      throw new BadRequestException(
+        "effectiveFromDate is after slot activeToDate",
+      );
+    }
+    if (oldActiveFrom && splitStartDate <= oldActiveFrom) {
+      await this.ensureNoSlotConflicts({
+        schoolId: effectiveSchoolId,
+        schoolYearId: classEntity.schoolYearId,
+        classId: classEntity.id,
+        weekday: nextWeekday,
+        startMinute: nextStartMinute,
+        endMinute: nextEndMinute,
+        teacherUserId: nextTeacherUserId,
+        room: nextRoom,
+        exceptSlotId: existing.id,
+        activeFromDate: nextActiveFromDate,
+        activeToDate: nextActiveToDate,
+      });
+      return this.prisma.classTimetableSlot.update({
+        where: { id: existing.id },
+        data: {
+          weekday: nextWeekday,
+          startMinute: nextStartMinute,
+          endMinute: nextEndMinute,
+          subjectId: nextSubjectId,
+          teacherUserId: nextTeacherUserId,
+          room: nextRoom?.trim() || null,
+          activeFromDate: nextActiveFromDate,
+          activeToDate: nextActiveToDate,
+        },
+        include: {
+          subject: { select: { id: true, name: true } },
+          teacherUser: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      });
+    }
+
+    const oldSlotEndDate = this.addDays(splitStartDate, -1);
+    if (oldActiveFrom && oldSlotEndDate < oldActiveFrom) {
+      throw new BadRequestException(
+        "effectiveFromDate is before slot activeFromDate",
+      );
+    }
+
+    const newActiveFromDate = splitStartDate;
+    const newActiveToDate = payload.activeToDate
+      ? this.toDateOnly(payload.activeToDate)
+      : oldActiveTo;
+    this.assertActiveDateRange(newActiveFromDate, newActiveToDate);
+
     await this.ensureNoSlotConflicts({
       schoolId: effectiveSchoolId,
       schoolYearId: classEntity.schoolYearId,
@@ -408,24 +672,138 @@ export class TimetableService {
       teacherUserId: nextTeacherUserId,
       room: nextRoom,
       exceptSlotId: existing.id,
+      activeFromDate: newActiveFromDate,
+      activeToDate: newActiveToDate,
     });
 
-    await this.ensureAutoSubjectStyleExists({
+    const [, created] = await this.prisma.$transaction([
+      this.prisma.classTimetableSlot.update({
+        where: { id: existing.id },
+        data: {
+          activeToDate: oldSlotEndDate,
+        },
+      }),
+      this.prisma.classTimetableSlot.create({
+        data: {
+          schoolId: effectiveSchoolId,
+          schoolYearId: existing.schoolYearId,
+          classId: classEntity.id,
+          subjectId: nextSubjectId,
+          teacherUserId: nextTeacherUserId,
+          weekday: nextWeekday,
+          startMinute: nextStartMinute,
+          endMinute: nextEndMinute,
+          activeFromDate: newActiveFromDate,
+          activeToDate: newActiveToDate,
+          room: nextRoom?.trim() || null,
+          createdByUserId: user.id,
+        },
+        include: {
+          subject: { select: { id: true, name: true } },
+          teacherUser: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      }),
+    ]);
+
+    return created;
+  }
+
+  async updateOneOffSlot(
+    user: AuthenticatedUser,
+    schoolId: string,
+    oneOffSlotId: string,
+    payload: UpdateClassTimetableOneOffSlotDto,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    if (
+      payload.occurrenceDate === undefined &&
+      payload.subjectId === undefined &&
+      payload.teacherUserId === undefined &&
+      payload.startMinute === undefined &&
+      payload.endMinute === undefined &&
+      payload.room === undefined &&
+      payload.status === undefined
+    ) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.classTimetableOneOffSlot.findFirst({
+      where: { id: oneOffSlotId, schoolId: effectiveSchoolId },
+      select: {
+        id: true,
+        schoolId: true,
+        schoolYearId: true,
+        classId: true,
+        occurrenceDate: true,
+        subjectId: true,
+        teacherUserId: true,
+        startMinute: true,
+        endMinute: true,
+        room: true,
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException("One-off slot not found");
+    }
+
+    const classEntity = await this.ensureClassInSchool(
+      existing.classId,
+      effectiveSchoolId,
+    );
+    await this.assertCanManageClassTimetable(
+      user,
+      effectiveSchoolId,
+      classEntity,
+    );
+
+    const nextOccurrenceDate = payload.occurrenceDate
+      ? this.toDateOnly(payload.occurrenceDate)
+      : existing.occurrenceDate;
+    const nextSubjectId = payload.subjectId ?? existing.subjectId;
+    const nextTeacherUserId = payload.teacherUserId ?? existing.teacherUserId;
+    const nextStartMinute = payload.startMinute ?? existing.startMinute;
+    const nextEndMinute = payload.endMinute ?? existing.endMinute;
+    const nextRoom = payload.room === undefined ? existing.room : payload.room;
+    this.assertMinuteRange(nextStartMinute, nextEndMinute);
+
+    await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId);
+    await this.ensureSubjectAllowedForClass(
+      classEntity.id,
+      nextSubjectId,
+      effectiveSchoolId,
+    );
+    await this.ensureTeacherAssignedToClassSubject(
+      effectiveSchoolId,
+      existing.schoolYearId,
+      classEntity.id,
+      nextSubjectId,
+      nextTeacherUserId,
+    );
+
+    await this.ensureNoOccurrenceConflicts({
       schoolId: effectiveSchoolId,
       schoolYearId: existing.schoolYearId,
       classId: classEntity.id,
-      subjectId: nextSubjectId,
+      occurrenceDate: nextOccurrenceDate,
+      startMinute: nextStartMinute,
+      endMinute: nextEndMinute,
+      teacherUserId: nextTeacherUserId,
+      room: nextRoom ?? null,
+      exceptOneOffSlotId: existing.id,
     });
 
-    return this.prisma.classTimetableSlot.update({
+    return this.prisma.classTimetableOneOffSlot.update({
       where: { id: existing.id },
       data: {
-        weekday: nextWeekday,
-        startMinute: nextStartMinute,
-        endMinute: nextEndMinute,
+        occurrenceDate: nextOccurrenceDate,
         subjectId: nextSubjectId,
         teacherUserId: nextTeacherUserId,
+        startMinute: nextStartMinute,
+        endMinute: nextEndMinute,
         room: nextRoom?.trim() || null,
+        status: payload.status ?? undefined,
       },
       include: {
         subject: { select: { id: true, name: true } },
@@ -500,6 +878,212 @@ export class TimetableService {
     });
   }
 
+  async createSlotException(
+    user: AuthenticatedUser,
+    schoolId: string,
+    slotId: string,
+    payload: CreateClassTimetableSlotExceptionDto,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const slot = await this.prisma.classTimetableSlot.findFirst({
+      where: { id: slotId, schoolId: effectiveSchoolId },
+      select: {
+        id: true,
+        schoolId: true,
+        schoolYearId: true,
+        classId: true,
+        subjectId: true,
+        teacherUserId: true,
+        startMinute: true,
+        endMinute: true,
+      },
+    });
+    if (!slot) {
+      throw new NotFoundException("Timetable slot not found");
+    }
+
+    const classEntity = await this.ensureClassInSchool(
+      slot.classId,
+      effectiveSchoolId,
+    );
+    await this.assertCanManageClassTimetable(
+      user,
+      effectiveSchoolId,
+      classEntity,
+    );
+
+    const occurrenceDate = this.toDateOnly(payload.occurrenceDate);
+    const nextType = payload.type;
+    const nextSubjectId = payload.subjectId ?? slot.subjectId;
+    const nextTeacherUserId = payload.teacherUserId ?? slot.teacherUserId;
+    const nextStartMinute = payload.startMinute ?? slot.startMinute;
+    const nextEndMinute = payload.endMinute ?? slot.endMinute;
+    const nextRoom = payload.room === undefined ? null : payload.room;
+
+    if (nextType === "OVERRIDE") {
+      this.assertMinuteRange(nextStartMinute, nextEndMinute);
+      await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId);
+      await this.ensureSubjectAllowedForClass(
+        classEntity.id,
+        nextSubjectId,
+        effectiveSchoolId,
+      );
+      await this.ensureTeacherAssignedToClassSubject(
+        effectiveSchoolId,
+        slot.schoolYearId,
+        classEntity.id,
+        nextSubjectId,
+        nextTeacherUserId,
+      );
+      await this.ensureNoOccurrenceConflicts({
+        schoolId: effectiveSchoolId,
+        schoolYearId: slot.schoolYearId,
+        classId: classEntity.id,
+        occurrenceDate,
+        startMinute: nextStartMinute,
+        endMinute: nextEndMinute,
+        teacherUserId: nextTeacherUserId,
+        room: nextRoom,
+        ignoreRecurringSlotId: slot.id,
+      });
+    }
+
+    return this.prisma.classTimetableSlotException.upsert({
+      where: {
+        slotId_occurrenceDate: {
+          slotId: slot.id,
+          occurrenceDate,
+        },
+      },
+      update: {
+        type: nextType,
+        subjectId: nextType === "OVERRIDE" ? nextSubjectId : null,
+        teacherUserId: nextType === "OVERRIDE" ? nextTeacherUserId : null,
+        startMinute: nextType === "OVERRIDE" ? nextStartMinute : null,
+        endMinute: nextType === "OVERRIDE" ? nextEndMinute : null,
+        room: nextType === "OVERRIDE" ? nextRoom?.trim() || null : null,
+        reason: payload.reason?.trim() || null,
+      },
+      create: {
+        schoolId: effectiveSchoolId,
+        schoolYearId: slot.schoolYearId,
+        classId: classEntity.id,
+        slotId: slot.id,
+        occurrenceDate,
+        type: nextType,
+        subjectId: nextType === "OVERRIDE" ? nextSubjectId : null,
+        teacherUserId: nextType === "OVERRIDE" ? nextTeacherUserId : null,
+        startMinute: nextType === "OVERRIDE" ? nextStartMinute : null,
+        endMinute: nextType === "OVERRIDE" ? nextEndMinute : null,
+        room: nextType === "OVERRIDE" ? nextRoom?.trim() || null : null,
+        reason: payload.reason?.trim() || null,
+        createdByUserId: user.id,
+      },
+      include: {
+        slot: true,
+      },
+    });
+  }
+
+  async updateSlotException(
+    user: AuthenticatedUser,
+    schoolId: string,
+    exceptionId: string,
+    payload: UpdateClassTimetableSlotExceptionDto,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const existing = await this.prisma.classTimetableSlotException.findFirst({
+      where: { id: exceptionId, schoolId: effectiveSchoolId },
+      include: {
+        slot: {
+          select: {
+            id: true,
+            schoolYearId: true,
+            classId: true,
+            subjectId: true,
+            teacherUserId: true,
+            startMinute: true,
+            endMinute: true,
+          },
+        },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException("Slot exception not found");
+    }
+    const classEntity = await this.ensureClassInSchool(
+      existing.classId,
+      effectiveSchoolId,
+    );
+    await this.assertCanManageClassTimetable(
+      user,
+      effectiveSchoolId,
+      classEntity,
+    );
+
+    const nextType = payload.type ?? existing.type;
+    const nextOccurrenceDate = payload.occurrenceDate
+      ? this.toDateOnly(payload.occurrenceDate)
+      : existing.occurrenceDate;
+    const nextSubjectId =
+      payload.subjectId ?? existing.subjectId ?? existing.slot.subjectId;
+    const nextTeacherUserId =
+      payload.teacherUserId ??
+      existing.teacherUserId ??
+      existing.slot.teacherUserId;
+    const nextStartMinute =
+      payload.startMinute ?? existing.startMinute ?? existing.slot.startMinute;
+    const nextEndMinute =
+      payload.endMinute ?? existing.endMinute ?? existing.slot.endMinute;
+    const nextRoom = payload.room === undefined ? existing.room : payload.room;
+
+    if (nextType === "OVERRIDE") {
+      this.assertMinuteRange(nextStartMinute, nextEndMinute);
+      await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId);
+      await this.ensureSubjectAllowedForClass(
+        classEntity.id,
+        nextSubjectId,
+        effectiveSchoolId,
+      );
+      await this.ensureTeacherAssignedToClassSubject(
+        effectiveSchoolId,
+        existing.schoolYearId,
+        classEntity.id,
+        nextSubjectId,
+        nextTeacherUserId,
+      );
+      await this.ensureNoOccurrenceConflicts({
+        schoolId: effectiveSchoolId,
+        schoolYearId: existing.schoolYearId,
+        classId: classEntity.id,
+        occurrenceDate: nextOccurrenceDate,
+        startMinute: nextStartMinute,
+        endMinute: nextEndMinute,
+        teacherUserId: nextTeacherUserId,
+        room: nextRoom,
+        ignoreRecurringSlotId: existing.slotId,
+        exceptExceptionId: existing.id,
+      });
+    }
+
+    return this.prisma.classTimetableSlotException.update({
+      where: { id: existing.id },
+      data: {
+        occurrenceDate: nextOccurrenceDate,
+        type: nextType,
+        subjectId: nextType === "OVERRIDE" ? nextSubjectId : null,
+        teacherUserId: nextType === "OVERRIDE" ? nextTeacherUserId : null,
+        startMinute: nextType === "OVERRIDE" ? nextStartMinute : null,
+        endMinute: nextType === "OVERRIDE" ? nextEndMinute : null,
+        room: nextType === "OVERRIDE" ? nextRoom?.trim() || null : null,
+        reason:
+          payload.reason === undefined
+            ? existing.reason
+            : payload.reason?.trim() || null,
+      },
+    });
+  }
+
   async deleteSlot(user: AuthenticatedUser, schoolId: string, slotId: string) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
 
@@ -522,6 +1106,65 @@ export class TimetableService {
     );
 
     await this.prisma.classTimetableSlot.delete({ where: { id: existing.id } });
+    return { id: existing.id, deleted: true };
+  }
+
+  async deleteOneOffSlot(
+    user: AuthenticatedUser,
+    schoolId: string,
+    oneOffSlotId: string,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const existing = await this.prisma.classTimetableOneOffSlot.findFirst({
+      where: { id: oneOffSlotId, schoolId: effectiveSchoolId },
+      select: { id: true, classId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("One-off slot not found");
+    }
+
+    const classEntity = await this.ensureClassInSchool(
+      existing.classId,
+      effectiveSchoolId,
+    );
+    await this.assertCanManageClassTimetable(
+      user,
+      effectiveSchoolId,
+      classEntity,
+    );
+
+    await this.prisma.classTimetableOneOffSlot.delete({
+      where: { id: existing.id },
+    });
+    return { id: existing.id, deleted: true };
+  }
+
+  async deleteSlotException(
+    user: AuthenticatedUser,
+    schoolId: string,
+    exceptionId: string,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const existing = await this.prisma.classTimetableSlotException.findFirst({
+      where: { id: exceptionId, schoolId: effectiveSchoolId },
+      select: { id: true, classId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Slot exception not found");
+    }
+    const classEntity = await this.ensureClassInSchool(
+      existing.classId,
+      effectiveSchoolId,
+    );
+    await this.assertCanManageClassTimetable(
+      user,
+      effectiveSchoolId,
+      classEntity,
+    );
+
+    await this.prisma.classTimetableSlotException.delete({
+      where: { id: existing.id },
+    });
     return { id: existing.id, deleted: true };
   }
 
@@ -756,59 +1399,150 @@ export class TimetableService {
     fromDate: Date | null;
     toDate: Date | null;
   }) {
-    const [slots, calendarEvents, subjectStyles] = await Promise.all([
-      this.prisma.classTimetableSlot.findMany({
-        where: {
-          schoolId: input.schoolId,
-          schoolYearId: input.schoolYearId,
-          classId: input.classEntity.id,
-        },
-        orderBy: [{ weekday: "asc" }, { startMinute: "asc" }],
-        include: {
-          subject: { select: { id: true, name: true } },
-          teacherUser: {
-            select: { id: true, firstName: true, lastName: true, email: true },
+    const [slots, oneOffSlots, slotExceptions, calendarEvents, subjectStyles] =
+      await Promise.all([
+        this.prisma.classTimetableSlot.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            classId: input.classEntity.id,
           },
-        },
-      }),
-      this.prisma.schoolCalendarEvent.findMany({
-        where: {
-          schoolId: input.schoolId,
-          schoolYearId: input.schoolYearId,
-          ...(input.fromDate && input.toDate
-            ? {
-                AND: [
-                  { startDate: { lte: input.toDate } },
-                  { endDate: { gte: input.fromDate } },
-                ],
-              }
-            : {}),
-          OR: [
-            { scope: "SCHOOL" },
-            { scope: "CLASS", classId: input.classEntity.id },
-            ...(input.classEntity.academicLevelId
-              ? [
-                  {
-                    scope: "ACADEMIC_LEVEL" as const,
-                    academicLevelId: input.classEntity.academicLevelId,
+          orderBy: [{ weekday: "asc" }, { startMinute: "asc" }],
+          include: {
+            subject: { select: { id: true, name: true } },
+            teacherUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        }),
+        this.prisma.classTimetableOneOffSlot.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            classId: input.classEntity.id,
+            ...(input.fromDate && input.toDate
+              ? {
+                  occurrenceDate: {
+                    gte: input.fromDate,
+                    lte: input.toDate,
                   },
-                ]
-              : []),
-          ],
-        },
-        orderBy: [{ startDate: "asc" }, { endDate: "asc" }],
-      }),
-      this.prisma.classTimetableSubjectStyle.findMany({
-        where: {
-          schoolId: input.schoolId,
-          schoolYearId: input.schoolYearId,
-          classId: input.classEntity.id,
-        },
-        select: { subjectId: true, colorHex: true },
-      }),
-    ]);
+                }
+              : {}),
+          },
+          orderBy: [{ occurrenceDate: "asc" }, { startMinute: "asc" }],
+          include: {
+            subject: { select: { id: true, name: true } },
+            teacherUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        }),
+        this.prisma.classTimetableSlotException.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            classId: input.classEntity.id,
+            ...(input.fromDate && input.toDate
+              ? {
+                  occurrenceDate: {
+                    gte: input.fromDate,
+                    lte: input.toDate,
+                  },
+                }
+              : {}),
+          },
+          orderBy: [{ occurrenceDate: "asc" }, { startMinute: "asc" }],
+          include: {
+            slot: {
+              include: {
+                subject: { select: { id: true, name: true } },
+                teacherUser: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            subject: { select: { id: true, name: true } },
+            teacherUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        }),
+        this.prisma.schoolCalendarEvent.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            ...(input.fromDate && input.toDate
+              ? {
+                  AND: [
+                    { startDate: { lte: input.toDate } },
+                    { endDate: { gte: input.fromDate } },
+                  ],
+                }
+              : {}),
+            OR: [
+              { scope: "SCHOOL" },
+              { scope: "CLASS", classId: input.classEntity.id },
+              ...(input.classEntity.academicLevelId
+                ? [
+                    {
+                      scope: "ACADEMIC_LEVEL" as const,
+                      academicLevelId: input.classEntity.academicLevelId,
+                    },
+                  ]
+                : []),
+            ],
+          },
+          orderBy: [{ startDate: "asc" }, { endDate: "asc" }],
+        }),
+        this.prisma.classTimetableSubjectStyle.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            classId: input.classEntity.id,
+          },
+          select: { subjectId: true, colorHex: true },
+        }),
+      ]);
 
-    return { slots, calendarEvents, subjectStyles };
+    const occurrences =
+      input.fromDate && input.toDate
+        ? this.resolveOccurrencesForDateRange({
+            fromDate: input.fromDate,
+            toDate: input.toDate,
+            slots,
+            oneOffSlots,
+            slotExceptions,
+          })
+        : [];
+
+    return {
+      slots,
+      oneOffSlots,
+      slotExceptions,
+      occurrences,
+      calendarEvents,
+      subjectStyles,
+    };
   }
 
   private async resolveTargetStudentForMyTimetable(input: {
@@ -1069,6 +1803,61 @@ export class TimetableService {
     }
   }
 
+  private assertActiveDateRange(
+    activeFromDate: Date | null,
+    activeToDate: Date | null,
+  ) {
+    if (activeFromDate && activeToDate && activeFromDate > activeToDate) {
+      throw new BadRequestException(
+        "activeFromDate must be before or equal to activeToDate",
+      );
+    }
+  }
+
+  private dateRangesOverlap(input: {
+    leftFrom: Date | null;
+    leftTo: Date | null;
+    rightFrom: Date | null;
+    rightTo: Date | null;
+  }) {
+    const leftFrom = input.leftFrom
+      ? input.leftFrom.getTime()
+      : Number.NEGATIVE_INFINITY;
+    const leftTo = input.leftTo
+      ? input.leftTo.getTime()
+      : Number.POSITIVE_INFINITY;
+    const rightFrom = input.rightFrom
+      ? input.rightFrom.getTime()
+      : Number.NEGATIVE_INFINITY;
+    const rightTo = input.rightTo
+      ? input.rightTo.getTime()
+      : Number.POSITIVE_INFINITY;
+    return leftFrom <= rightTo && rightFrom <= leftTo;
+  }
+
+  private addDays(date: Date, days: number) {
+    return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+  }
+
+  private toDateOnly(isoDate: string) {
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException("Invalid date");
+    }
+    return new Date(
+      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+    );
+  }
+
+  private dateToYmd(date: Date) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  private weekdayMondayFirst(date: Date) {
+    const weekday = date.getUTCDay();
+    return weekday === 0 ? 7 : weekday;
+  }
+
   private async ensureNoSlotConflicts(input: {
     schoolId: string;
     schoolYearId: string;
@@ -1079,63 +1868,350 @@ export class TimetableService {
     teacherUserId: string;
     room: string | null;
     exceptSlotId?: string;
+    activeFromDate: Date | null;
+    activeToDate: Date | null;
   }) {
     const overlapWindow: Prisma.IntFilter = {
       lt: input.endMinute,
     };
 
-    const [classConflict, teacherConflict, roomConflict] = await Promise.all([
-      this.prisma.classTimetableSlot.findFirst({
-        where: {
-          schoolId: input.schoolId,
-          schoolYearId: input.schoolYearId,
-          classId: input.classId,
-          weekday: input.weekday,
-          startMinute: overlapWindow,
-          endMinute: { gt: input.startMinute },
-          ...(input.exceptSlotId ? { id: { not: input.exceptSlotId } } : {}),
-        },
-        select: { id: true },
-      }),
-      this.prisma.classTimetableSlot.findFirst({
-        where: {
-          schoolId: input.schoolId,
-          schoolYearId: input.schoolYearId,
-          teacherUserId: input.teacherUserId,
-          weekday: input.weekday,
-          startMinute: overlapWindow,
-          endMinute: { gt: input.startMinute },
-          ...(input.exceptSlotId ? { id: { not: input.exceptSlotId } } : {}),
-        },
-        select: { id: true },
-      }),
-      input.room
-        ? this.prisma.classTimetableSlot.findFirst({
-            where: {
-              schoolId: input.schoolId,
-              schoolYearId: input.schoolYearId,
-              room: input.room,
-              weekday: input.weekday,
-              startMinute: overlapWindow,
-              endMinute: { gt: input.startMinute },
-              ...(input.exceptSlotId
-                ? { id: { not: input.exceptSlotId } }
-                : {}),
-            },
-            select: { id: true },
-          })
-        : Promise.resolve(null),
-    ]);
+    const [classConflicts, teacherConflicts, roomConflicts] = await Promise.all(
+      [
+        this.prisma.classTimetableSlot.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            classId: input.classId,
+            weekday: input.weekday,
+            startMinute: overlapWindow,
+            endMinute: { gt: input.startMinute },
+            ...(input.exceptSlotId ? { id: { not: input.exceptSlotId } } : {}),
+          },
+          select: { id: true, activeFromDate: true, activeToDate: true },
+        }),
+        this.prisma.classTimetableSlot.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            teacherUserId: input.teacherUserId,
+            weekday: input.weekday,
+            startMinute: overlapWindow,
+            endMinute: { gt: input.startMinute },
+            ...(input.exceptSlotId ? { id: { not: input.exceptSlotId } } : {}),
+          },
+          select: { id: true, activeFromDate: true, activeToDate: true },
+        }),
+        input.room
+          ? this.prisma.classTimetableSlot.findMany({
+              where: {
+                schoolId: input.schoolId,
+                schoolYearId: input.schoolYearId,
+                room: input.room,
+                weekday: input.weekday,
+                startMinute: overlapWindow,
+                endMinute: { gt: input.startMinute },
+                ...(input.exceptSlotId
+                  ? { id: { not: input.exceptSlotId } }
+                  : {}),
+              },
+              select: { id: true, activeFromDate: true, activeToDate: true },
+            })
+          : Promise.resolve([]),
+      ],
+    );
 
-    if (classConflict) {
+    const hasClassConflict = classConflicts.some((entry) =>
+      this.dateRangesOverlap({
+        leftFrom: input.activeFromDate,
+        leftTo: input.activeToDate,
+        rightFrom: entry.activeFromDate,
+        rightTo: entry.activeToDate,
+      }),
+    );
+    if (hasClassConflict) {
       throw new BadRequestException("Conflicting slot for class");
     }
-    if (teacherConflict) {
+    const hasTeacherConflict = teacherConflicts.some((entry) =>
+      this.dateRangesOverlap({
+        leftFrom: input.activeFromDate,
+        leftTo: input.activeToDate,
+        rightFrom: entry.activeFromDate,
+        rightTo: entry.activeToDate,
+      }),
+    );
+    if (hasTeacherConflict) {
       throw new BadRequestException("Conflicting slot for teacher");
     }
-    if (roomConflict) {
+    const hasRoomConflict = roomConflicts.some((entry) =>
+      this.dateRangesOverlap({
+        leftFrom: input.activeFromDate,
+        leftTo: input.activeToDate,
+        rightFrom: entry.activeFromDate,
+        rightTo: entry.activeToDate,
+      }),
+    );
+    if (hasRoomConflict) {
       throw new BadRequestException("Conflicting slot for room");
     }
+  }
+
+  private async ensureNoOccurrenceConflicts(input: {
+    schoolId: string;
+    schoolYearId: string;
+    classId: string;
+    occurrenceDate: Date;
+    startMinute: number;
+    endMinute: number;
+    teacherUserId: string;
+    room: string | null;
+    ignoreRecurringSlotId?: string;
+    exceptOneOffSlotId?: string;
+    exceptExceptionId?: string;
+  }) {
+    const fromDate = input.occurrenceDate;
+    const toDate = input.occurrenceDate;
+    const classEntity = await this.ensureClassInSchool(
+      input.classId,
+      input.schoolId,
+    );
+    const data = await this.fetchClassTimetableData({
+      schoolId: input.schoolId,
+      schoolYearId: input.schoolYearId,
+      classEntity,
+      fromDate,
+      toDate,
+    });
+
+    const currentDateKey = this.dateToYmd(input.occurrenceDate);
+    const overlaps = data.occurrences.filter((occurrence) => {
+      if (occurrence.occurrenceDate !== currentDateKey) {
+        return false;
+      }
+      if (occurrence.status === "CANCELLED") {
+        return false;
+      }
+      if (
+        input.ignoreRecurringSlotId &&
+        occurrence.slotId === input.ignoreRecurringSlotId
+      ) {
+        return false;
+      }
+      if (
+        input.exceptOneOffSlotId &&
+        occurrence.oneOffSlotId === input.exceptOneOffSlotId
+      ) {
+        return false;
+      }
+      if (
+        input.exceptExceptionId &&
+        occurrence.exceptionId === input.exceptExceptionId
+      ) {
+        return false;
+      }
+      return (
+        occurrence.startMinute < input.endMinute &&
+        occurrence.endMinute > input.startMinute
+      );
+    });
+
+    if (overlaps.length > 0) {
+      throw new BadRequestException("Conflicting occurrence for class");
+    }
+  }
+
+  private resolveOccurrencesForDateRange(input: {
+    fromDate: Date;
+    toDate: Date;
+    slots: Array<{
+      id: string;
+      weekday: number;
+      startMinute: number;
+      endMinute: number;
+      activeFromDate: Date | null;
+      activeToDate: Date | null;
+      room: string | null;
+      subject: { id: string; name: string };
+      teacherUser: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+    }>;
+    oneOffSlots: Array<{
+      id: string;
+      occurrenceDate: Date;
+      startMinute: number;
+      endMinute: number;
+      room: string | null;
+      status: "PLANNED" | "CANCELLED";
+      subject: { id: string; name: string };
+      teacherUser: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+    }>;
+    slotExceptions: Array<{
+      id: string;
+      slotId: string;
+      occurrenceDate: Date;
+      type: "OVERRIDE" | "CANCEL";
+      subjectId: string | null;
+      teacherUserId: string | null;
+      startMinute: number | null;
+      endMinute: number | null;
+      room: string | null;
+      reason: string | null;
+      slot: {
+        id: string;
+        weekday: number;
+        startMinute: number;
+        endMinute: number;
+        room: string | null;
+        subject: { id: string; name: string };
+        teacherUser: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+        };
+      };
+      subject: { id: string; name: string } | null;
+      teacherUser: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      } | null;
+    }>;
+  }): ResolvedTimetableOccurrence[] {
+    const from = new Date(
+      Date.UTC(
+        input.fromDate.getUTCFullYear(),
+        input.fromDate.getUTCMonth(),
+        input.fromDate.getUTCDate(),
+      ),
+    );
+    const to = new Date(
+      Date.UTC(
+        input.toDate.getUTCFullYear(),
+        input.toDate.getUTCMonth(),
+        input.toDate.getUTCDate(),
+      ),
+    );
+    const exceptionMap = new Map<
+      string,
+      (typeof input.slotExceptions)[number]
+    >();
+    input.slotExceptions.forEach((entry) => {
+      exceptionMap.set(
+        `${entry.slotId}-${this.dateToYmd(entry.occurrenceDate)}`,
+        entry,
+      );
+    });
+
+    const occurrences: ResolvedTimetableOccurrence[] = [];
+    for (
+      let cursor = new Date(from);
+      cursor <= to;
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000)
+    ) {
+      const weekday = this.weekdayMondayFirst(cursor);
+      const dateYmd = this.dateToYmd(cursor);
+      input.slots
+        .filter(
+          (slot) =>
+            slot.weekday === weekday &&
+            this.dateRangesOverlap({
+              leftFrom: cursor,
+              leftTo: cursor,
+              rightFrom: slot.activeFromDate,
+              rightTo: slot.activeToDate,
+            }),
+        )
+        .forEach((slot) => {
+          const exception = exceptionMap.get(`${slot.id}-${dateYmd}`);
+          if (exception?.type === "CANCEL") {
+            occurrences.push({
+              id: `cancel-${slot.id}-${dateYmd}`,
+              source: "EXCEPTION_OVERRIDE",
+              status: "CANCELLED",
+              occurrenceDate: dateYmd,
+              weekday,
+              startMinute: slot.startMinute,
+              endMinute: slot.endMinute,
+              room: slot.room,
+              reason: exception.reason ?? null,
+              subject: slot.subject,
+              teacherUser: slot.teacherUser,
+              slotId: slot.id,
+              exceptionId: exception.id,
+            });
+            return;
+          }
+
+          if (exception?.type === "OVERRIDE") {
+            occurrences.push({
+              id: `override-${slot.id}-${dateYmd}`,
+              source: "EXCEPTION_OVERRIDE",
+              status: "PLANNED",
+              occurrenceDate: dateYmd,
+              weekday,
+              startMinute: exception.startMinute ?? slot.startMinute,
+              endMinute: exception.endMinute ?? slot.endMinute,
+              room: exception.room ?? slot.room,
+              reason: exception.reason ?? null,
+              subject: exception.subject ?? slot.subject,
+              teacherUser: exception.teacherUser ?? slot.teacherUser,
+              slotId: slot.id,
+              exceptionId: exception.id,
+            });
+            return;
+          }
+
+          occurrences.push({
+            id: `rec-${slot.id}-${dateYmd}`,
+            source: "RECURRING",
+            status: "PLANNED",
+            occurrenceDate: dateYmd,
+            weekday,
+            startMinute: slot.startMinute,
+            endMinute: slot.endMinute,
+            room: slot.room,
+            reason: null,
+            subject: slot.subject,
+            teacherUser: slot.teacherUser,
+            slotId: slot.id,
+          });
+        });
+    }
+
+    input.oneOffSlots.forEach((slot) => {
+      const occurrenceDate = this.dateToYmd(slot.occurrenceDate);
+      occurrences.push({
+        id: `oneoff-${slot.id}-${occurrenceDate}`,
+        source: "ONE_OFF",
+        status: slot.status,
+        occurrenceDate,
+        weekday: this.weekdayMondayFirst(slot.occurrenceDate),
+        startMinute: slot.startMinute,
+        endMinute: slot.endMinute,
+        room: slot.room,
+        reason: null,
+        subject: slot.subject,
+        teacherUser: slot.teacherUser,
+        oneOffSlotId: slot.id,
+      });
+    });
+
+    return occurrences.sort((a, b) => {
+      if (a.occurrenceDate !== b.occurrenceDate) {
+        return a.occurrenceDate.localeCompare(b.occurrenceDate);
+      }
+      return a.startMinute - b.startMinute;
+    });
   }
 
   private async ensureSubjectAllowedForClass(
@@ -1313,12 +2389,14 @@ export class TimetableService {
   ) {
     const schoolYear = await this.prisma.schoolYear.findFirst({
       where: { id: schoolYearId, schoolId },
-      select: { id: true },
+      select: { id: true, startsAt: true, endsAt: true },
     });
 
     if (!schoolYear) {
       throw new NotFoundException("School year not found");
     }
+
+    return schoolYear;
   }
 
   private async ensureClassInSchool(

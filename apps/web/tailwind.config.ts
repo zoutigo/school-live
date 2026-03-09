@@ -14,6 +14,8 @@ const config: Config = {
         "text-secondary": "#4A4A4A",
         border: "#E3E6E8",
         notification: "#DC3545",
+        "accent-teal": "#1C9A8A",
+        "accent-teal-dark": "#167E71",
       },
       fontFamily: {
         heading: ["Poppins", "sans-serif"],

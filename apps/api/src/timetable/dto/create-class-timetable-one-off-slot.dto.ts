@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -7,15 +8,13 @@ import {
   Min,
 } from "class-validator";
 
-export class CreateClassTimetableSlotDto {
+export class CreateClassTimetableOneOffSlotDto {
   @IsOptional()
   @IsString()
   schoolYearId?: string;
 
-  @IsInt()
-  @Min(1)
-  @Max(7)
-  weekday!: number;
+  @IsDateString()
+  occurrenceDate!: string;
 
   @IsInt()
   @Min(0)
@@ -38,10 +37,10 @@ export class CreateClassTimetableSlotDto {
   room?: string;
 
   @IsOptional()
-  @IsDateString()
-  activeFromDate?: string;
+  @IsIn(["PLANNED", "CANCELLED"])
+  status?: "PLANNED" | "CANCELLED";
 
   @IsOptional()
-  @IsDateString()
-  activeToDate?: string;
+  @IsString()
+  sourceSlotId?: string;
 }

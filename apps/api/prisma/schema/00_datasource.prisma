@@ -124,6 +124,16 @@ enum SchoolCalendarEventScope {
   CLASS
 }
 
+enum TimetableOccurrenceExceptionType {
+  OVERRIDE
+  CANCEL
+}
+
+enum TimetableOccurrenceStatus {
+  PLANNED
+  CANCELLED
+}
+
 enum InternalMessageStatus {
   DRAFT
   SENT

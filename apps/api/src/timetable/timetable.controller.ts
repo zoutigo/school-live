@@ -17,12 +17,16 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { CreateClassTimetableSlotDto } from "./dto/create-class-timetable-slot.dto.js";
+import { CreateClassTimetableOneOffSlotDto } from "./dto/create-class-timetable-one-off-slot.dto.js";
+import { CreateClassTimetableSlotExceptionDto } from "./dto/create-class-timetable-slot-exception.dto.js";
 import { CreateSchoolCalendarEventDto } from "./dto/create-school-calendar-event.dto.js";
 import { ClassTimetableContextQueryDto } from "./dto/class-timetable-context-query.dto.js";
 import { ListClassTimetableQueryDto } from "./dto/list-class-timetable-query.dto.js";
 import { ListMyTimetableQueryDto } from "./dto/list-my-timetable-query.dto.js";
 import { ListSchoolCalendarEventsQueryDto } from "./dto/list-school-calendar-events-query.dto.js";
 import { SetClassSubjectStyleDto } from "./dto/set-class-subject-style.dto.js";
+import { UpdateClassTimetableOneOffSlotDto } from "./dto/update-class-timetable-one-off-slot.dto.js";
+import { UpdateClassTimetableSlotExceptionDto } from "./dto/update-class-timetable-slot-exception.dto.js";
 import { UpdateClassTimetableSlotDto } from "./dto/update-class-timetable-slot.dto.js";
 import { UpdateSchoolCalendarEventDto } from "./dto/update-school-calendar-event.dto.js";
 import { TimetableService } from "./timetable.service.js";
@@ -160,6 +164,130 @@ export class TimetableController {
       classId,
       subjectId,
       payload,
+    );
+  }
+
+  @Post("classes/:classId/one-off-slots")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "SUPER_ADMIN",
+  )
+  createOneOffSlot(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Param("classId") classId: string,
+    @Body() payload: CreateClassTimetableOneOffSlotDto,
+  ) {
+    return this.timetableService.createOneOffSlot(
+      user,
+      schoolId,
+      classId,
+      payload,
+    );
+  }
+
+  @Patch("one-off-slots/:oneOffSlotId")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "SUPER_ADMIN",
+  )
+  updateOneOffSlot(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Param("oneOffSlotId") oneOffSlotId: string,
+    @Body() payload: UpdateClassTimetableOneOffSlotDto,
+  ) {
+    return this.timetableService.updateOneOffSlot(
+      user,
+      schoolId,
+      oneOffSlotId,
+      payload,
+    );
+  }
+
+  @Delete("one-off-slots/:oneOffSlotId")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "SUPER_ADMIN",
+  )
+  deleteOneOffSlot(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Param("oneOffSlotId") oneOffSlotId: string,
+  ) {
+    return this.timetableService.deleteOneOffSlot(user, schoolId, oneOffSlotId);
+  }
+
+  @Post("slots/:slotId/exceptions")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "SUPER_ADMIN",
+  )
+  createSlotException(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Param("slotId") slotId: string,
+    @Body() payload: CreateClassTimetableSlotExceptionDto,
+  ) {
+    return this.timetableService.createSlotException(
+      user,
+      schoolId,
+      slotId,
+      payload,
+    );
+  }
+
+  @Patch("slot-exceptions/:exceptionId")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "SUPER_ADMIN",
+  )
+  updateSlotException(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Param("exceptionId") exceptionId: string,
+    @Body() payload: UpdateClassTimetableSlotExceptionDto,
+  ) {
+    return this.timetableService.updateSlotException(
+      user,
+      schoolId,
+      exceptionId,
+      payload,
+    );
+  }
+
+  @Delete("slot-exceptions/:exceptionId")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "SUPER_ADMIN",
+  )
+  deleteSlotException(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Param("exceptionId") exceptionId: string,
+  ) {
+    return this.timetableService.deleteSlotException(
+      user,
+      schoolId,
+      exceptionId,
     );
   }
 

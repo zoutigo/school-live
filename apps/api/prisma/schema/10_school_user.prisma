@@ -37,6 +37,8 @@ model School {
   activationCodes    ActivationCode[]
   authAuditLogs      AuthAuditLog[]
   timetableSlots     ClassTimetableSlot[]
+  timetableOneOffSlots ClassTimetableOneOffSlot[]
+  timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
 
@@ -87,6 +89,10 @@ model User {
   referentOfClasses  Class[]                   @relation("ClassReferentTeacher")
   timetableSlotsAsTeacher ClassTimetableSlot[] @relation("ClassTimetableSlotTeacher")
   timetableSlotsCreated ClassTimetableSlot[]   @relation("ClassTimetableSlotCreatedBy")
+  timetableOneOffSlotsAsTeacher ClassTimetableOneOffSlot[] @relation("ClassTimetableOneOffSlotTeacher")
+  timetableOneOffSlotsCreated ClassTimetableOneOffSlot[]   @relation("ClassTimetableOneOffSlotCreatedBy")
+  timetableSlotExceptionsAsTeacher ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionTeacher")
+  timetableSlotExceptionsCreated ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionCreatedBy")
   calendarEventsCreated SchoolCalendarEvent[]  @relation("SchoolCalendarEventCreatedBy")
 }
 

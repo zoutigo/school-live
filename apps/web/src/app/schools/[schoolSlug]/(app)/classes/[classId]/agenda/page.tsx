@@ -50,6 +50,7 @@ type TimetableContextResponse = {
       firstName: string;
       lastName: string;
       email: string;
+      gender?: string | null;
     };
   }>;
   subjectStyles: Array<{
@@ -69,6 +70,8 @@ type SlotRow = {
   weekday: number;
   startMinute: number;
   endMinute: number;
+  activeFromDate?: string | null;
+  activeToDate?: string | null;
   room: string | null;
   subject: { id: string; name: string };
   teacherUser: {
@@ -76,6 +79,30 @@ type SlotRow = {
     firstName: string;
     lastName: string;
     email: string;
+    gender?: string | null;
+  };
+};
+
+type TimetableOccurrenceRow = {
+  id: string;
+  source: "RECURRING" | "EXCEPTION_OVERRIDE" | "ONE_OFF";
+  status: "PLANNED" | "CANCELLED";
+  occurrenceDate: string;
+  weekday: number;
+  startMinute: number;
+  endMinute: number;
+  room: string | null;
+  reason: string | null;
+  slotId?: string;
+  oneOffSlotId?: string;
+  exceptionId?: string;
+  subject: { id: string; name: string };
+  teacherUser: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    gender?: string | null;
   };
 };
 
@@ -97,6 +124,9 @@ type TimetableResponse = {
     academicLevelId: string | null;
   };
   slots: SlotRow[];
+  oneOffSlots?: Array<Record<string, unknown>>;
+  slotExceptions?: Array<Record<string, unknown>>;
+  occurrences?: TimetableOccurrenceRow[];
   calendarEvents: CalendarEventRow[];
   subjectStyles: Array<{
     subjectId: string;
@@ -258,6 +288,13 @@ function formatWeekRangeLabel(currentDate: Date) {
   return `${startLabel} - ${endLabel}`;
 }
 
+function toIsoDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function hexToRgb(hex: string) {
   const normalized = hex.replace("#", "");
   if (!/^[0-9A-Fa-f]{6}$/.test(normalized)) {
@@ -304,6 +341,22 @@ function subjectVisualTone(subjectColorHex: string | undefined) {
   };
 }
 
+function teacherPrefixFromGender(gender: string | null | undefined) {
+  if (!gender) {
+    return "Mr";
+  }
+  const normalized = gender.trim().toUpperCase();
+  if (
+    normalized === "FEMALE" ||
+    normalized === "FEMININ" ||
+    normalized === "FEMININE" ||
+    normalized === "F"
+  ) {
+    return "Mme";
+  }
+  return "Mr";
+}
+
 export default function TeacherClassAgendaPage() {
   const { schoolSlug, classId } = useParams<{
     schoolSlug: string;
@@ -341,6 +394,35 @@ export default function TeacherClassAgendaPage() {
   const [slotSubjectId, setSlotSubjectId] = useState("");
   const [slotTeacherUserId, setSlotTeacherUserId] = useState("");
   const [slotRoom, setSlotRoom] = useState("");
+  const [slotActiveFromDate, setSlotActiveFromDate] = useState("");
+  const [slotActiveToDate, setSlotActiveToDate] = useState("");
+  const [slotEffectiveFromDate, setSlotEffectiveFromDate] = useState("");
+  const [slotDrafts, setSlotDrafts] = useState<
+    Array<{
+      weekday: number;
+      startMinute: number;
+      endMinute: number;
+      subjectId: string;
+      teacherUserId: string;
+      room: string;
+      activeFromDate: string;
+      activeToDate: string;
+    }>
+  >([]);
+  const [occurrences, setOccurrences] = useState<TimetableOccurrenceRow[]>([]);
+  const [savingOccurrenceAction, setSavingOccurrenceAction] = useState(false);
+  const [occurrenceActionType, setOccurrenceActionType] = useState<
+    "ONE_OFF" | "CANCEL" | "OVERRIDE"
+  >("ONE_OFF");
+  const [occurrenceDateInput, setOccurrenceDateInput] = useState("");
+  const [occurrenceTargetSlotId, setOccurrenceTargetSlotId] = useState("");
+  const [occurrenceSubjectId, setOccurrenceSubjectId] = useState("");
+  const [occurrenceTeacherUserId, setOccurrenceTeacherUserId] = useState("");
+  const [occurrenceStart, setOccurrenceStart] = useState("08:45");
+  const [occurrenceEnd, setOccurrenceEnd] = useState("09:40");
+  const [occurrenceRoom, setOccurrenceRoom] = useState("");
+  const [occurrenceModalSlot, setOccurrenceModalSlot] =
+    useState<TimetableOccurrenceRow | null>(null);
 
   const [vacationLabel, setVacationLabel] = useState("Vacances scolaires");
   const [vacationScope, setVacationScope] = useState<
@@ -359,6 +441,7 @@ export default function TeacherClassAgendaPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [cursorDate, setCursorDate] = useState(stripTime(new Date()));
   const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(null);
+  const [showSlotCreateForm, setShowSlotCreateForm] = useState(false);
 
   const canManageCalendar =
     meRole !== null && CAN_MANAGE_CALENDAR_ROLES.includes(meRole);
@@ -366,6 +449,13 @@ export default function TeacherClassAgendaPage() {
   useEffect(() => {
     void bootstrap();
   }, [schoolSlug, classId]);
+
+  useEffect(() => {
+    if (!context) {
+      return;
+    }
+    void refreshTimetable();
+  }, [cursorDate, viewMode, selectedSchoolYearId, context]);
 
   useEffect(() => {
     if (context?.allowedSubjects.length) {
@@ -406,6 +496,29 @@ export default function TeacherClassAgendaPage() {
     return options.sort((a, b) => a.label.localeCompare(b.label));
   }, [context, slotSubjectId]);
 
+  const occurrenceTeacherChoices = useMemo(() => {
+    if (!context || !occurrenceSubjectId) {
+      return [] as Array<{ id: string; label: string }>;
+    }
+
+    const rows = context.assignments.filter(
+      (entry) => entry.subjectId === occurrenceSubjectId,
+    );
+    const seen = new Set<string>();
+    const options: Array<{ id: string; label: string }> = [];
+    rows.forEach((entry) => {
+      if (seen.has(entry.teacherUser.id)) {
+        return;
+      }
+      seen.add(entry.teacherUser.id);
+      options.push({
+        id: entry.teacherUser.id,
+        label: `${entry.teacherUser.lastName.toUpperCase()} ${entry.teacherUser.firstName}`,
+      });
+    });
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [context, occurrenceSubjectId]);
+
   useEffect(() => {
     if (teacherChoices.length === 0) {
       setSlotTeacherUserId("");
@@ -420,6 +533,68 @@ export default function TeacherClassAgendaPage() {
     }
   }, [teacherChoices, slotTeacherUserId]);
 
+  useEffect(() => {
+    if (!context?.allowedSubjects.length) {
+      setOccurrenceSubjectId("");
+      return;
+    }
+    const exists = context.allowedSubjects.some(
+      (subject) => subject.id === occurrenceSubjectId,
+    );
+    if (!exists) {
+      setOccurrenceSubjectId(context.allowedSubjects[0].id);
+    }
+  }, [context, occurrenceSubjectId]);
+
+  useEffect(() => {
+    if (occurrenceTeacherChoices.length === 0) {
+      setOccurrenceTeacherUserId("");
+      return;
+    }
+    const exists = occurrenceTeacherChoices.some(
+      (entry) => entry.id === occurrenceTeacherUserId,
+    );
+    if (!exists) {
+      setOccurrenceTeacherUserId(occurrenceTeacherChoices[0].id);
+    }
+  }, [occurrenceTeacherChoices, occurrenceTeacherUserId]);
+
+  useEffect(() => {
+    setOccurrenceDateInput(toIsoDateString(cursorDate));
+  }, [cursorDate]);
+
+  useEffect(() => {
+    if (slots.length === 0) {
+      setOccurrenceTargetSlotId("");
+      return;
+    }
+    const exists = slots.some((slot) => slot.id === occurrenceTargetSlotId);
+    if (!exists) {
+      setOccurrenceTargetSlotId(slots[0].id);
+    }
+  }, [slots, occurrenceTargetSlotId]);
+
+  function openOccurrenceModal(slot: TimetableOccurrenceRow) {
+    setOccurrenceModalSlot(slot);
+    setOccurrenceDateInput(slot.occurrenceDate);
+    setOccurrenceStart(minutesToTimeValue(slot.startMinute));
+    setOccurrenceEnd(minutesToTimeValue(slot.endMinute));
+    setOccurrenceSubjectId(slot.subject.id);
+    setOccurrenceTeacherUserId(slot.teacherUser.id);
+    setOccurrenceRoom(slot.room ?? "");
+    if (slot.slotId) {
+      setOccurrenceTargetSlotId(slot.slotId);
+      setOccurrenceActionType(
+        slot.status === "CANCELLED" ? "OVERRIDE" : "CANCEL",
+      );
+    } else {
+      setOccurrenceActionType("ONE_OFF");
+      setOccurrenceTargetSlotId("");
+    }
+    setError(null);
+    setSuccess(null);
+  }
+
   const sortedVacations = useMemo(
     () =>
       [...calendarEvents]
@@ -432,16 +607,6 @@ export default function TeacherClassAgendaPage() {
   );
 
   const today = stripTime(new Date());
-  const cursorWeekday = toWeekdayMondayFirst(cursorDate);
-
-  const daySlots = useMemo(
-    () =>
-      slots
-        .filter((slot) => slot.weekday === cursorWeekday)
-        .sort((a, b) => a.startMinute - b.startMinute),
-    [cursorWeekday, slots],
-  );
-
   const weekStart = useMemo(() => startOfWeek(cursorDate), [cursorDate]);
   const weekDays = useMemo(
     () =>
@@ -457,6 +622,39 @@ export default function TeacherClassAgendaPage() {
     [weekStart],
   );
 
+  const activeRange = useMemo(() => {
+    if (viewMode === "day") {
+      return { from: stripTime(cursorDate), to: stripTime(cursorDate) };
+    }
+    if (viewMode === "week") {
+      const from = startOfWeek(cursorDate);
+      return { from, to: addDays(from, 6) };
+    }
+    const from = new Date(cursorDate.getFullYear(), cursorDate.getMonth(), 1);
+    const to = new Date(cursorDate.getFullYear(), cursorDate.getMonth() + 1, 0);
+    return { from, to };
+  }, [cursorDate, viewMode]);
+
+  const daySlots = useMemo(
+    () =>
+      occurrences
+        .filter((entry) => entry.occurrenceDate === toIsoDateString(cursorDate))
+        .sort((a, b) => a.startMinute - b.startMinute),
+    [cursorDate, occurrences],
+  );
+
+  const weekOccurrencesByDate = useMemo(() => {
+    const map = new Map<string, TimetableOccurrenceRow[]>();
+    weekDays.forEach((entry) => {
+      const key = toIsoDateString(entry.date);
+      const rows = occurrences
+        .filter((occurrence) => occurrence.occurrenceDate === key)
+        .sort((a, b) => a.startMinute - b.startMinute);
+      map.set(key, rows);
+    });
+    return map;
+  }, [occurrences, weekDays]);
+
   const monthCalendarCells = useMemo(() => {
     const firstDay = new Date(
       cursorDate.getFullYear(),
@@ -470,7 +668,8 @@ export default function TeacherClassAgendaPage() {
       cursorDate.getMonth() + 1,
       0,
     ).getDate();
-    const cells: Array<{ date: Date | null; slots: SlotRow[] }> = [];
+    const cells: Array<{ date: Date | null; slots: TimetableOccurrenceRow[] }> =
+      [];
 
     for (let i = 0; i < leadingEmpty; i += 1) {
       cells.push({ date: null, slots: [] });
@@ -482,9 +681,8 @@ export default function TeacherClassAgendaPage() {
         cursorDate.getMonth(),
         day,
       );
-      const weekday = toWeekdayMondayFirst(date);
-      const daySlotsForMonth = slots
-        .filter((slot) => slot.weekday === weekday)
+      const daySlotsForMonth = occurrences
+        .filter((slot) => slot.occurrenceDate === toIsoDateString(date))
         .sort((a, b) => a.startMinute - b.startMinute);
       cells.push({ date, slots: daySlotsForMonth });
     }
@@ -494,17 +692,18 @@ export default function TeacherClassAgendaPage() {
     }
 
     return cells;
-  }, [cursorDate, slots]);
+  }, [cursorDate, occurrences]);
 
   const selectedMonthSlots = useMemo(() => {
     if (!selectedMonthDate) {
-      return [] as SlotRow[];
+      return [] as TimetableOccurrenceRow[];
     }
-    const weekday = toWeekdayMondayFirst(selectedMonthDate);
-    return slots
-      .filter((slot) => slot.weekday === weekday)
+    return occurrences
+      .filter(
+        (slot) => slot.occurrenceDate === toIsoDateString(selectedMonthDate),
+      )
       .sort((a, b) => a.startMinute - b.startMinute);
-  }, [selectedMonthDate, slots]);
+  }, [selectedMonthDate, occurrences]);
 
   const dayTabLabel = sameDate(cursorDate, today)
     ? "Aujourd'hui"
@@ -570,18 +769,27 @@ export default function TeacherClassAgendaPage() {
   async function loadContextAndTimetable(
     requestedSchoolYearId?: string | null,
   ) {
-    const schoolYearQuery = requestedSchoolYearId
-      ? `?schoolYearId=${encodeURIComponent(requestedSchoolYearId)}`
+    const contextParams = new URLSearchParams();
+    if (requestedSchoolYearId) {
+      contextParams.set("schoolYearId", requestedSchoolYearId);
+    }
+    const contextQuery = contextParams.toString()
+      ? `?${contextParams.toString()}`
       : "";
+
+    const timetableParams = new URLSearchParams(contextParams);
+    timetableParams.set("fromDate", toIsoDateString(activeRange.from));
+    timetableParams.set("toDate", toIsoDateString(activeRange.to));
+    const timetableQuery = `?${timetableParams.toString()}`;
     const [contextResponse, timetableResponse] = await Promise.all([
       fetch(
-        `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}/context${schoolYearQuery}`,
+        `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}/context${contextQuery}`,
         {
           credentials: "include",
         },
       ),
       fetch(
-        `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}${schoolYearQuery}`,
+        `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}${timetableQuery}`,
         {
           credentials: "include",
         },
@@ -604,6 +812,7 @@ export default function TeacherClassAgendaPage() {
       (await timetableResponse.json()) as TimetableResponse;
     setContext(contextPayload);
     setSlots(timetablePayload.slots);
+    setOccurrences(timetablePayload.occurrences ?? []);
     setCalendarEvents(timetablePayload.calendarEvents);
     setSubjectColorsBySubjectId(
       Object.fromEntries(
@@ -617,9 +826,13 @@ export default function TeacherClassAgendaPage() {
   }
 
   async function refreshTimetable() {
-    const schoolYearQuery = selectedSchoolYearId
-      ? `?schoolYearId=${encodeURIComponent(selectedSchoolYearId)}`
-      : "";
+    const params = new URLSearchParams();
+    if (selectedSchoolYearId) {
+      params.set("schoolYearId", selectedSchoolYearId);
+    }
+    params.set("fromDate", toIsoDateString(activeRange.from));
+    params.set("toDate", toIsoDateString(activeRange.to));
+    const schoolYearQuery = `?${params.toString()}`;
     const response = await fetch(
       `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}${schoolYearQuery}`,
       {
@@ -636,6 +849,7 @@ export default function TeacherClassAgendaPage() {
 
     const data = (await response.json()) as TimetableResponse;
     setSlots(data.slots);
+    setOccurrences(data.occurrences ?? []);
     setCalendarEvents(data.calendarEvents);
     setSubjectColorsBySubjectId(
       Object.fromEntries(
@@ -650,19 +864,10 @@ export default function TeacherClassAgendaPage() {
     setSlotStart("08:45");
     setSlotEnd("09:40");
     setSlotRoom("");
-  }
-
-  function onEditSlot(slot: SlotRow) {
-    setEditingSlotId(slot.id);
-    setSlotWeekday(String(slot.weekday));
-    setSlotStart(minutesToTimeValue(slot.startMinute));
-    setSlotEnd(minutesToTimeValue(slot.endMinute));
-    setSlotSubjectId(slot.subject.id);
-    setSlotTeacherUserId(slot.teacherUser.id);
-    setSlotRoom(slot.room ?? "");
-    setTab("slots");
-    setSuccess(null);
-    setError(null);
+    setSlotActiveFromDate("");
+    setSlotActiveToDate("");
+    setSlotEffectiveFromDate("");
+    setSlotDrafts([]);
   }
 
   async function switchSchoolYear(nextSchoolYearId: string | null) {
@@ -801,53 +1006,266 @@ export default function TeacherClassAgendaPage() {
     setSuccess(null);
 
     try {
-      const endpoint = editingSlotId
-        ? `${API_URL}/schools/${schoolSlug}/timetable/slots/${editingSlotId}`
-        : `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}/slots`;
-      const method = editingSlotId ? "PATCH" : "POST";
+      if (editingSlotId) {
+        const response = await fetch(
+          `${API_URL}/schools/${schoolSlug}/timetable/slots/${editingSlotId}`,
+          {
+            method: "PATCH",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": csrfToken,
+            },
+            body: JSON.stringify({
+              weekday,
+              startMinute,
+              endMinute,
+              subjectId: slotSubjectId,
+              teacherUserId: slotTeacherUserId,
+              room: slotRoom.trim() || undefined,
+              activeFromDate: slotActiveFromDate || undefined,
+              activeToDate: slotActiveToDate || undefined,
+              effectiveFromDate: slotEffectiveFromDate || undefined,
+            }),
+          },
+        );
 
-      const response = await fetch(endpoint, {
-        method,
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken,
-        },
-        body: JSON.stringify({
-          schoolYearId: selectedSchoolYearId ?? undefined,
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          setError(
+            parseApiError(payload, "Mise a jour du creneau impossible."),
+          );
+          return;
+        }
+        await refreshTimetable();
+        setSuccess("Creneau mis a jour.");
+        resetSlotForm();
+        return;
+      }
+
+      const drafts = [
+        ...slotDrafts,
+        {
           weekday,
           startMinute,
           endMinute,
           subjectId: slotSubjectId,
           teacherUserId: slotTeacherUserId,
-          room: slotRoom.trim() || undefined,
-        }),
-      });
+          room: slotRoom.trim(),
+          activeFromDate: slotActiveFromDate,
+          activeToDate: slotActiveToDate,
+        },
+      ];
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        setError(
-          parseApiError(
-            payload,
-            editingSlotId
-              ? "Mise a jour du creneau impossible."
-              : "Creation du creneau impossible.",
-          ),
+      for (const draft of drafts) {
+        const response = await fetch(
+          `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}/slots`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": csrfToken,
+            },
+            body: JSON.stringify({
+              schoolYearId: selectedSchoolYearId ?? undefined,
+              weekday: draft.weekday,
+              startMinute: draft.startMinute,
+              endMinute: draft.endMinute,
+              subjectId: draft.subjectId,
+              teacherUserId: draft.teacherUserId,
+              room: draft.room || undefined,
+              activeFromDate: draft.activeFromDate || undefined,
+              activeToDate: draft.activeToDate || undefined,
+            }),
+          },
         );
-        return;
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          setError(parseApiError(payload, "Creation du creneau impossible."));
+          return;
+        }
       }
 
       await refreshTimetable();
-      setSuccess(editingSlotId ? "Creneau mis a jour." : "Creneau ajoute.");
-      if (!editingSlotId) {
-        setSlotRoom("");
-      } else {
-        resetSlotForm();
-      }
+      setSuccess(
+        drafts.length > 1
+          ? `${drafts.length} creneaux ajoutes.`
+          : "Creneau ajoute.",
+      );
+      setSlotRoom("");
+      setSlotDrafts([]);
     } catch {
       setError("Erreur reseau.");
     } finally {
       setSavingSlot(false);
+    }
+  }
+
+  function addCurrentSlotToDrafts() {
+    if (!slotSubjectId || !slotTeacherUserId) {
+      setError("Selectionnez une matiere et un enseignant.");
+      return;
+    }
+    const weekday = Number.parseInt(slotWeekday, 10);
+    const startMinute = timeValueToMinutes(slotStart);
+    const endMinute = timeValueToMinutes(slotEnd);
+    if (!Number.isFinite(weekday) || weekday < 1 || weekday > 7) {
+      setError("Jour invalide.");
+      return;
+    }
+    if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
+      setError("Horaire invalide.");
+      return;
+    }
+    if (startMinute >= endMinute) {
+      setError("L'heure de debut doit etre avant l'heure de fin.");
+      return;
+    }
+
+    setError(null);
+    setSlotDrafts((current) => [
+      ...current,
+      {
+        weekday,
+        startMinute,
+        endMinute,
+        subjectId: slotSubjectId,
+        teacherUserId: slotTeacherUserId,
+        room: slotRoom.trim(),
+        activeFromDate: slotActiveFromDate,
+        activeToDate: slotActiveToDate,
+      },
+    ]);
+    setSlotStart(minutesToTimeValue(endMinute));
+    setSlotEnd(minutesToTimeValue(Math.min(endMinute + 55, 23 * 60 + 59)));
+    setSlotRoom("");
+  }
+
+  async function onSubmitOccurrenceAction(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!occurrenceDateInput) {
+      setError("Selectionnez la date d'occurrence.");
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace(`/schools/${schoolSlug}/login`);
+      return;
+    }
+
+    setSavingOccurrenceAction(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      if (occurrenceActionType === "ONE_OFF") {
+        const startMinute = timeValueToMinutes(occurrenceStart);
+        const endMinute = timeValueToMinutes(occurrenceEnd);
+        if (!occurrenceSubjectId || !occurrenceTeacherUserId) {
+          setError("Selectionnez la matiere et l'enseignant.");
+          return;
+        }
+        if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
+          setError("Horaire invalide.");
+          return;
+        }
+        if (startMinute >= endMinute) {
+          setError("L'heure de debut doit etre avant l'heure de fin.");
+          return;
+        }
+        const response = await fetch(
+          `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}/one-off-slots`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": csrfToken,
+            },
+            body: JSON.stringify({
+              schoolYearId: selectedSchoolYearId ?? undefined,
+              occurrenceDate: occurrenceDateInput,
+              startMinute,
+              endMinute,
+              subjectId: occurrenceSubjectId,
+              teacherUserId: occurrenceTeacherUserId,
+              room: occurrenceRoom.trim() || undefined,
+            }),
+          },
+        );
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          setError(
+            parseApiError(payload, "Creation du cours ponctuel impossible."),
+          );
+          return;
+        }
+        setSuccess("Cours ponctuel enregistre.");
+      } else {
+        if (!occurrenceTargetSlotId) {
+          setError("Selectionnez un creneau recurrent cible.");
+          return;
+        }
+        const payload: Record<string, unknown> = {
+          occurrenceDate: occurrenceDateInput,
+          type: occurrenceActionType,
+        };
+        if (occurrenceActionType === "OVERRIDE") {
+          const startMinute = timeValueToMinutes(occurrenceStart);
+          const endMinute = timeValueToMinutes(occurrenceEnd);
+          if (!occurrenceSubjectId || !occurrenceTeacherUserId) {
+            setError("Selectionnez la matiere et l'enseignant.");
+            return;
+          }
+          if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
+            setError("Horaire invalide.");
+            return;
+          }
+          if (startMinute >= endMinute) {
+            setError("L'heure de debut doit etre avant l'heure de fin.");
+            return;
+          }
+          payload.startMinute = startMinute;
+          payload.endMinute = endMinute;
+          payload.subjectId = occurrenceSubjectId;
+          payload.teacherUserId = occurrenceTeacherUserId;
+          payload.room = occurrenceRoom.trim() || undefined;
+        }
+
+        const response = await fetch(
+          `${API_URL}/schools/${schoolSlug}/timetable/slots/${occurrenceTargetSlotId}/exceptions`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": csrfToken,
+            },
+            body: JSON.stringify(payload),
+          },
+        );
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          setError(parseApiError(body, "Mise a jour d'occurrence impossible."));
+          return;
+        }
+        setSuccess(
+          occurrenceActionType === "CANCEL"
+            ? "Occurrence annulee."
+            : "Occurrence modifiee.",
+        );
+      }
+
+      await refreshTimetable();
+      setOccurrenceModalSlot(null);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSavingOccurrenceAction(false);
     }
   }
 
@@ -1153,51 +1571,75 @@ export default function TeacherClassAgendaPage() {
           <div className="grid gap-4">
             {context.schoolYears.length > 0 ? (
               <div className="rounded-card border border-border bg-background p-3">
-                <div className="flex flex-wrap items-center gap-3 text-sm">
-                  <span className="text-text-secondary">Annee scolaire</span>
-                  <div className="inline-flex w-full items-center justify-between gap-2 rounded-card border border-border bg-surface px-2 py-1 sm:w-auto sm:min-w-[320px] sm:max-w-[360px]">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={!canGoToPreviousSchoolYear || loading}
-                      onClick={() => {
-                        if (!context?.schoolYears.length) {
-                          return;
-                        }
-                        const nextYear =
-                          context.schoolYears[selectedSchoolYearIndex - 1];
-                        if (!nextYear) {
-                          return;
-                        }
-                        void switchSchoolYear(nextYear.id);
-                      }}
-                      className="h-8 w-8 px-0"
-                      aria-label="Annee precedente"
-                      iconLeft={<ChevronLeft size={16} />}
-                    />
-                    <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-text-primary">
-                      {selectedSchoolYearLabel}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={!canGoToNextSchoolYear || loading}
-                      onClick={() => {
-                        if (!context?.schoolYears.length) {
-                          return;
-                        }
-                        const nextYear =
-                          context.schoolYears[selectedSchoolYearIndex + 1];
-                        if (!nextYear) {
-                          return;
-                        }
-                        void switchSchoolYear(nextYear.id);
-                      }}
-                      className="h-8 w-8 px-0"
-                      aria-label="Annee suivante"
-                      iconLeft={<ChevronRight size={16} />}
-                    />
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-text-secondary">Annee scolaire</span>
+                    <div className="inline-flex w-full items-center justify-between gap-2 rounded-card border border-border bg-surface px-2 py-1 sm:w-auto sm:min-w-[320px] sm:max-w-[360px]">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={!canGoToPreviousSchoolYear || loading}
+                        onClick={() => {
+                          if (!context?.schoolYears.length) {
+                            return;
+                          }
+                          const nextYear =
+                            context.schoolYears[selectedSchoolYearIndex - 1];
+                          if (!nextYear) {
+                            return;
+                          }
+                          void switchSchoolYear(nextYear.id);
+                        }}
+                        className="h-8 w-8 px-0"
+                        aria-label="Annee precedente"
+                        iconLeft={<ChevronLeft size={16} />}
+                      />
+                      <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-text-primary">
+                        {selectedSchoolYearLabel}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        disabled={!canGoToNextSchoolYear || loading}
+                        onClick={() => {
+                          if (!context?.schoolYears.length) {
+                            return;
+                          }
+                          const nextYear =
+                            context.schoolYears[selectedSchoolYearIndex + 1];
+                          if (!nextYear) {
+                            return;
+                          }
+                          void switchSchoolYear(nextYear.id);
+                        }}
+                        className="h-8 w-8 px-0"
+                        aria-label="Annee suivante"
+                        iconLeft={<ChevronRight size={16} />}
+                      />
+                    </div>
                   </div>
+                  {tab === "slots" ? (
+                    <button
+                      type="button"
+                      aria-label="Ajouter"
+                      title="Ajouter"
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                        showSlotCreateForm
+                          ? "bg-accent-teal-dark text-white"
+                          : "bg-accent-teal text-white hover:bg-accent-teal-dark"
+                      }`}
+                      onClick={() => {
+                        setShowSlotCreateForm((current) => {
+                          if (current) {
+                            resetSlotForm();
+                          }
+                          return !current;
+                        });
+                      }}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -1267,136 +1709,254 @@ export default function TeacherClassAgendaPage() {
             {tab === "slots" ? (
               <>
                 <section className="rounded-card border border-border bg-background p-4">
-                  <form
-                    className="grid gap-3 rounded-card border border-border bg-background p-4"
-                    onSubmit={onSubmitSlot}
-                  >
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Jour</span>
-                        <select
-                          value={slotWeekday}
-                          onChange={(event) =>
-                            setSlotWeekday(event.target.value)
-                          }
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                        >
-                          {WEEKDAY_OPTIONS.map((weekday) => (
-                            <option key={weekday.value} value={weekday.value}>
-                              {weekday.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                  {showSlotCreateForm ? (
+                    <form
+                      className="grid gap-3 rounded-card border border-border bg-background p-4"
+                      onSubmit={onSubmitSlot}
+                    >
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">Jour</span>
+                          <select
+                            value={slotWeekday}
+                            onChange={(event) =>
+                              setSlotWeekday(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          >
+                            {WEEKDAY_OPTIONS.map((weekday) => (
+                              <option key={weekday.value} value={weekday.value}>
+                                {weekday.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
 
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Debut</span>
-                        <TimeInput
-                          value={slotStart}
-                          onChange={(event) => setSlotStart(event.target.value)}
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                        />
-                      </label>
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">Debut</span>
+                          <TimeInput
+                            value={slotStart}
+                            onChange={(event) =>
+                              setSlotStart(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          />
+                        </label>
 
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Fin</span>
-                        <TimeInput
-                          value={slotEnd}
-                          onChange={(event) => setSlotEnd(event.target.value)}
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                        />
-                      </label>
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">Fin</span>
+                          <TimeInput
+                            value={slotEnd}
+                            onChange={(event) => setSlotEnd(event.target.value)}
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          />
+                        </label>
 
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Matiere</span>
-                        <select
-                          value={slotSubjectId}
-                          onChange={(event) =>
-                            setSlotSubjectId(event.target.value)
-                          }
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                        >
-                          {context.allowedSubjects.length === 0 ? (
-                            <option value="">Aucune matiere disponible</option>
-                          ) : null}
-                          {context.allowedSubjects.map((subject) => (
-                            <option key={subject.id} value={subject.id}>
-                              {subject.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">Matiere</span>
+                          <select
+                            value={slotSubjectId}
+                            onChange={(event) =>
+                              setSlotSubjectId(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          >
+                            {context.allowedSubjects.length === 0 ? (
+                              <option value="">
+                                Aucune matiere disponible
+                              </option>
+                            ) : null}
+                            {context.allowedSubjects.map((subject) => (
+                              <option key={subject.id} value={subject.id}>
+                                {subject.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
 
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Enseignant</span>
-                        <select
-                          value={slotTeacherUserId}
-                          onChange={(event) =>
-                            setSlotTeacherUserId(event.target.value)
-                          }
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                        >
-                          {teacherChoices.length === 0 ? (
-                            <option value="">
-                              Aucun enseignant affecte a cette matiere
-                            </option>
-                          ) : null}
-                          {teacherChoices.map((teacher) => (
-                            <option key={teacher.id} value={teacher.id}>
-                              {teacher.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">
+                            Enseignant
+                          </span>
+                          <select
+                            value={slotTeacherUserId}
+                            onChange={(event) =>
+                              setSlotTeacherUserId(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          >
+                            {teacherChoices.length === 0 ? (
+                              <option value="">
+                                Aucun enseignant affecte a cette matiere
+                              </option>
+                            ) : null}
+                            {teacherChoices.map((teacher) => (
+                              <option key={teacher.id} value={teacher.id}>
+                                {teacher.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
 
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">
-                          Salle (optionnel)
-                        </span>
-                        <input
-                          type="text"
-                          value={slotRoom}
-                          onChange={(event) => setSlotRoom(event.target.value)}
-                          placeholder="ex: B14"
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                        />
-                      </label>
-                    </div>
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">
+                            Salle (optionnel)
+                          </span>
+                          <input
+                            type="text"
+                            value={slotRoom}
+                            onChange={(event) =>
+                              setSlotRoom(event.target.value)
+                            }
+                            placeholder="ex: B14"
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          />
+                        </label>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="submit"
-                        disabled={
-                          savingSlot || context.allowedSubjects.length === 0
-                        }
-                        iconLeft={
-                          editingSlotId ? (
-                            <Pencil size={14} />
-                          ) : (
-                            <Plus size={14} />
-                          )
-                        }
-                      >
-                        {savingSlot
-                          ? editingSlotId
-                            ? "Mise a jour..."
-                            : "Enregistrement..."
-                          : editingSlotId
-                            ? "Mettre a jour"
-                            : "Ajouter le creneau"}
-                      </Button>
-                      {editingSlotId ? (
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">
+                            Debut occurrences (optionnel)
+                          </span>
+                          <DateInput
+                            value={slotActiveFromDate}
+                            onChange={(event) =>
+                              setSlotActiveFromDate(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          />
+                        </label>
+
+                        <label className="grid gap-1 text-sm">
+                          <span className="text-text-secondary">
+                            Fin occurrences (optionnel)
+                          </span>
+                          <DateInput
+                            value={slotActiveToDate}
+                            onChange={(event) =>
+                              setSlotActiveToDate(event.target.value)
+                            }
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          />
+                        </label>
+
+                        {editingSlotId ? (
+                          <label className="grid gap-1 text-sm">
+                            <span className="text-text-secondary">
+                              Appliquer a partir du (optionnel)
+                            </span>
+                            <DateInput
+                              value={slotEffectiveFromDate}
+                              onChange={(event) =>
+                                setSlotEffectiveFromDate(event.target.value)
+                              }
+                              className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                            />
+                          </label>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {!editingSlotId ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={addCurrentSlotToDrafts}
+                            disabled={
+                              savingSlot || context.allowedSubjects.length === 0
+                            }
+                            iconLeft={<Plus size={14} />}
+                          >
+                            Ajouter a la liste
+                          </Button>
+                        ) : null}
                         <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={resetSlotForm}
-                          disabled={savingSlot}
+                          type="submit"
+                          disabled={
+                            savingSlot || context.allowedSubjects.length === 0
+                          }
+                          iconLeft={
+                            editingSlotId ? (
+                              <Pencil size={14} />
+                            ) : (
+                              <Plus size={14} />
+                            )
+                          }
                         >
-                          Annuler la modification
+                          {savingSlot
+                            ? editingSlotId
+                              ? "Mise a jour..."
+                              : "Enregistrement..."
+                            : editingSlotId
+                              ? "Mettre a jour"
+                              : slotDrafts.length > 0
+                                ? `Enregistrer ${slotDrafts.length + 1} creneaux`
+                                : "Ajouter le creneau"}
                         </Button>
-                      ) : null}
+                        {editingSlotId ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={resetSlotForm}
+                            disabled={savingSlot}
+                          >
+                            Annuler la modification
+                          </Button>
+                        ) : slotDrafts.length > 0 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setSlotDrafts([])}
+                            disabled={savingSlot}
+                          >
+                            Vider la liste ({slotDrafts.length})
+                          </Button>
+                        ) : null}
+                      </div>
+                    </form>
+                  ) : null}
+
+                  {showSlotCreateForm && slotDrafts.length > 0 ? (
+                    <div className="mt-3 rounded-card border border-border bg-surface p-3">
+                      <p className="mb-2 text-sm font-semibold text-text-primary">
+                        Creneaux en attente ({slotDrafts.length})
+                      </p>
+                      <div className="grid gap-2">
+                        {slotDrafts.map((draft, index) => (
+                          <div
+                            key={`slot-draft-${index + 1}-${draft.weekday}-${draft.startMinute}`}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm"
+                          >
+                            <span className="text-text-primary">
+                              {WEEKDAY_OPTIONS.find(
+                                (day) => day.value === draft.weekday,
+                              )?.label ?? "Jour"}{" "}
+                              · {minutesToTimeValue(draft.startMinute)} -{" "}
+                              {minutesToTimeValue(draft.endMinute)}
+                            </span>
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-notification"
+                              onClick={() =>
+                                setSlotDrafts((current) =>
+                                  current.filter(
+                                    (_, itemIndex) => itemIndex !== index,
+                                  ),
+                                )
+                              }
+                            >
+                              Retirer
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </form>
+                  ) : null}
+
+                  <p className="mt-3 rounded-card border border-[#DCE9F8] bg-[#F7FBFF] px-3 py-2 text-sm text-[#36557A]">
+                    Cliquez sur un creneau dans les vues jour, semaine ou mois
+                    pour definir un ponctuel, annuler ou modifier une
+                    occurrence.
+                  </p>
 
                   <section className="grid gap-3 rounded-card border border-border bg-background p-3">
                     <div className="grid grid-cols-3 gap-2 rounded-[6px] border border-[#D4E4F6] bg-white p-1">
@@ -1485,53 +2045,62 @@ export default function TeacherClassAgendaPage() {
                                   key={`day-slot-${slot.id}`}
                                   className="flex flex-wrap items-center justify-between gap-2 rounded-card border px-3 py-2"
                                   style={{
-                                    backgroundColor: tone.background,
-                                    borderColor: tone.border,
+                                    backgroundColor:
+                                      slot.status === "CANCELLED"
+                                        ? "#FFF5F5"
+                                        : tone.background,
+                                    borderColor:
+                                      slot.status === "CANCELLED"
+                                        ? "#FBCACA"
+                                        : tone.border,
+                                    borderLeftWidth:
+                                      slot.source === "ONE_OFF" ? "7px" : "1px",
+                                    borderLeftColor:
+                                      slot.source === "ONE_OFF"
+                                        ? "#D97706"
+                                        : slot.status === "CANCELLED"
+                                          ? "#FBCACA"
+                                          : tone.border,
                                   }}
                                 >
-                                  <div className="grid gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => openOccurrenceModal(slot)}
+                                    className="grid gap-0.5 text-left"
+                                  >
                                     <p
                                       className="text-sm font-semibold"
-                                      style={{ color: tone.text }}
+                                      style={{
+                                        color:
+                                          slot.status === "CANCELLED"
+                                            ? "#B42318"
+                                            : tone.text,
+                                        textDecoration:
+                                          slot.status === "CANCELLED"
+                                            ? "line-through"
+                                            : undefined,
+                                      }}
                                     >
                                       {minutesToTimeValue(slot.startMinute)} -{" "}
                                       {minutesToTimeValue(slot.endMinute)} ·{" "}
                                       {slot.subject.name}
                                     </p>
                                     <p className="text-xs text-text-secondary">
+                                      {teacherPrefixFromGender(
+                                        slot.teacherUser.gender,
+                                      )}{" "}
                                       {slot.teacherUser.lastName.toUpperCase()}{" "}
                                       {slot.teacherUser.firstName}
-                                      {slot.room ? ` · Salle ${slot.room}` : ""}
+                                      {slot.status === "CANCELLED"
+                                        ? " · Annule"
+                                        : ""}
                                     </p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white"
-                                      style={{ backgroundColor: tone.chip }}
-                                    >
-                                      {slot.room
-                                        ? `Salle ${slot.room}`
-                                        : "Cours"}
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      onClick={() => onEditSlot(slot)}
-                                      className="px-2 py-1 text-xs"
-                                      iconLeft={<Pencil size={14} />}
-                                    >
-                                      Modifier
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      onClick={() => setSlotToDelete(slot)}
-                                      className="px-2 py-1 text-xs text-notification hover:bg-[#FEECEC]"
-                                      iconLeft={<Trash2 size={14} />}
-                                    >
-                                      Supprimer
-                                    </Button>
-                                  </div>
+                                    {slot.room ? (
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-[#36557A]">
+                                        Salle {slot.room}
+                                      </p>
+                                    ) : null}
+                                  </button>
                                 </article>
                               );
                             })(),
@@ -1566,33 +2135,49 @@ export default function TeacherClassAgendaPage() {
                         </div>
                         <div className="grid grid-cols-7 bg-white">
                           {weekDays.map((entry) => {
-                            const weekDaySlots = slots
-                              .filter((slot) => slot.weekday === entry.weekday)
+                            const weekDaySlots =
+                              weekOccurrencesByDate.get(
+                                toIsoDateString(entry.date),
+                              ) ?? [];
+                            const plannedWeekDaySlots = weekDaySlots
+                              .filter((slot) => slot.status === "PLANNED")
                               .sort((a, b) => a.startMinute - b.startMinute);
                             return (
                               <div
                                 key={`week-col-${entry.weekday}`}
                                 className="min-h-[230px] border-r border-border p-2 last:border-r-0"
                               >
-                                {weekDaySlots.length === 0 ? (
+                                {plannedWeekDaySlots.length === 0 ? (
                                   <p className="mt-2 text-center text-xs text-[#8192A8]">
                                     -
                                   </p>
                                 ) : (
                                   <div className="grid gap-2">
-                                    {weekDaySlots.map((slot) => {
+                                    {plannedWeekDaySlots.map((slot) => {
                                       const tone = subjectVisualTone(
                                         subjectColorsBySubjectId[
                                           slot.subject.id
                                         ],
                                       );
                                       return (
-                                        <article
+                                        <button
+                                          type="button"
                                           key={`week-slot-${slot.id}`}
+                                          onClick={() =>
+                                            openOccurrenceModal(slot)
+                                          }
                                           className="rounded-[8px] border px-2 py-1.5"
                                           style={{
                                             backgroundColor: tone.background,
                                             borderColor: tone.border,
+                                            borderLeftWidth:
+                                              slot.source === "ONE_OFF"
+                                                ? "7px"
+                                                : "1px",
+                                            borderLeftColor:
+                                              slot.source === "ONE_OFF"
+                                                ? "#D97706"
+                                                : tone.border,
                                           }}
                                         >
                                           <p
@@ -1616,7 +2201,7 @@ export default function TeacherClassAgendaPage() {
                                               ? `Salle ${slot.room}`
                                               : "-"}
                                           </p>
-                                        </article>
+                                        </button>
                                       );
                                     })}
                                   </div>
@@ -1674,8 +2259,17 @@ export default function TeacherClassAgendaPage() {
                                     .padStart(2, "0")}
                                 </p>
                                 <p className="mt-1 text-[10px] text-[#5C6F88]">
-                                  {entry.slots.length} creneau
-                                  {entry.slots.length > 1 ? "x" : ""}
+                                  {
+                                    entry.slots.filter(
+                                      (slot) => slot.status === "PLANNED",
+                                    ).length
+                                  }{" "}
+                                  creneau
+                                  {entry.slots.filter(
+                                    (slot) => slot.status === "PLANNED",
+                                  ).length > 1
+                                    ? "x"
+                                    : ""}
                                 </p>
                               </button>
                             );
@@ -1707,17 +2301,36 @@ export default function TeacherClassAgendaPage() {
                                     subjectColorsBySubjectId[slot.subject.id],
                                   );
                                   return (
-                                    <article
+                                    <button
+                                      type="button"
                                       key={`month-slot-${slot.id}`}
+                                      onClick={() => openOccurrenceModal(slot)}
                                       className="rounded-card border px-3 py-2"
                                       style={{
                                         backgroundColor: tone.background,
                                         borderColor: tone.border,
+                                        borderLeftWidth:
+                                          slot.source === "ONE_OFF"
+                                            ? "7px"
+                                            : "1px",
+                                        borderLeftColor:
+                                          slot.source === "ONE_OFF"
+                                            ? "#D97706"
+                                            : tone.border,
                                       }}
                                     >
                                       <p
                                         className="text-sm font-semibold"
-                                        style={{ color: tone.text }}
+                                        style={{
+                                          color:
+                                            slot.status === "CANCELLED"
+                                              ? "#B42318"
+                                              : tone.text,
+                                          textDecoration:
+                                            slot.status === "CANCELLED"
+                                              ? "line-through"
+                                              : undefined,
+                                        }}
                                       >
                                         {minutesToTimeValue(slot.startMinute)} -{" "}
                                         {minutesToTimeValue(slot.endMinute)} ·{" "}
@@ -1729,8 +2342,11 @@ export default function TeacherClassAgendaPage() {
                                         {slot.room
                                           ? ` · Salle ${slot.room}`
                                           : ""}
+                                        {slot.status === "CANCELLED"
+                                          ? " · Annule"
+                                          : ""}
                                       </p>
-                                    </article>
+                                    </button>
                                   );
                                 })}
                               </div>
@@ -1945,6 +2561,195 @@ export default function TeacherClassAgendaPage() {
           void onDeleteVacation();
         }}
       />
+
+      {occurrenceModalSlot ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B244066] px-4 py-8">
+          <div
+            className="w-full max-w-2xl rounded-card border border-border bg-background p-4 shadow-xl"
+            data-testid="occurrence-modal"
+          >
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-text-primary">
+                  Gerer l'occurrence
+                </h3>
+                <p className="text-xs text-text-secondary">
+                  {new Intl.DateTimeFormat("fr-FR", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  }).format(new Date(occurrenceDateInput))}
+                  {" · "}
+                  {minutesToTimeValue(occurrenceModalSlot.startMinute)} -{" "}
+                  {minutesToTimeValue(occurrenceModalSlot.endMinute)}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                className="px-2 py-1 text-xs"
+                onClick={() => {
+                  if (!savingOccurrenceAction) {
+                    setOccurrenceModalSlot(null);
+                  }
+                }}
+              >
+                Fermer
+              </Button>
+            </div>
+
+            <form className="grid gap-3" onSubmit={onSubmitOccurrenceAction}>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">Action</span>
+                  <select
+                    value={occurrenceActionType}
+                    onChange={(event) =>
+                      setOccurrenceActionType(
+                        event.target.value as "ONE_OFF" | "CANCEL" | "OVERRIDE",
+                      )
+                    }
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                  >
+                    <option value="ONE_OFF">Cours ponctuel</option>
+                    <option value="CANCEL">Annuler cette occurrence</option>
+                    <option value="OVERRIDE">Modifier cette occurrence</option>
+                  </select>
+                </label>
+
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">Date</span>
+                  <DateInput
+                    value={occurrenceDateInput}
+                    onChange={(event) =>
+                      setOccurrenceDateInput(event.target.value)
+                    }
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+
+              {occurrenceActionType !== "ONE_OFF" ? (
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">
+                    Creneau recurrent cible
+                  </span>
+                  <select
+                    value={occurrenceTargetSlotId}
+                    onChange={(event) =>
+                      setOccurrenceTargetSlotId(event.target.value)
+                    }
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                  >
+                    <option value="">Selectionner</option>
+                    {slots.map((slot) => (
+                      <option key={`target-slot-${slot.id}`} value={slot.id}>
+                        {WEEKDAY_OPTIONS.find(
+                          (day) => day.value === slot.weekday,
+                        )?.label ?? "Jour"}{" "}
+                        · {minutesToTimeValue(slot.startMinute)} -{" "}
+                        {minutesToTimeValue(slot.endMinute)} ·{" "}
+                        {slot.subject.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
+              {occurrenceActionType !== "CANCEL" ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-text-secondary">Debut</span>
+                    <TimeInput
+                      value={occurrenceStart}
+                      onChange={(event) =>
+                        setOccurrenceStart(event.target.value)
+                      }
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-text-secondary">Fin</span>
+                    <TimeInput
+                      value={occurrenceEnd}
+                      onChange={(event) => setOccurrenceEnd(event.target.value)}
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-text-secondary">Matiere</span>
+                    <select
+                      value={occurrenceSubjectId}
+                      onChange={(event) =>
+                        setOccurrenceSubjectId(event.target.value)
+                      }
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                    >
+                      {(context?.allowedSubjects ?? []).map((subject) => (
+                        <option
+                          key={`occ-subject-${subject.id}`}
+                          value={subject.id}
+                        >
+                          {subject.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-text-secondary">Enseignant</span>
+                    <select
+                      value={occurrenceTeacherUserId}
+                      onChange={(event) =>
+                        setOccurrenceTeacherUserId(event.target.value)
+                      }
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                    >
+                      {occurrenceTeacherChoices.map((teacher) => (
+                        <option
+                          key={`occ-teacher-${teacher.id}`}
+                          value={teacher.id}
+                        >
+                          {teacher.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm md:col-span-2">
+                    <span className="text-text-secondary">
+                      Salle (optionnel)
+                    </span>
+                    <input
+                      type="text"
+                      value={occurrenceRoom}
+                      onChange={(event) =>
+                        setOccurrenceRoom(event.target.value)
+                      }
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                    />
+                  </label>
+                </div>
+              ) : null}
+
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setOccurrenceModalSlot(null)}
+                  disabled={savingOccurrenceAction}
+                >
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={savingOccurrenceAction}>
+                  {savingOccurrenceAction
+                    ? "Enregistrement..."
+                    : "Appliquer l'action"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
