@@ -378,6 +378,11 @@ function teacherPrefixFromGender(gender: string | null | undefined) {
   return "Mr";
 }
 
+function subjectShortLabel(subjectName: string) {
+  const firstWord = subjectName.split(" ")[0] ?? subjectName;
+  return firstWord.slice(0, 3).toUpperCase();
+}
+
 function occurrenceActionLabel(action: OccurrenceModalAction) {
   switch (action) {
     case "DELETE_OCCURRENCE":
@@ -478,6 +483,13 @@ export default function TeacherClassAgendaPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [cursorDate, setCursorDate] = useState(stripTime(new Date()));
   const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(null);
+  const [selectedCompactMonthDate, setSelectedCompactMonthDate] =
+    useState<Date | null>(null);
+  const [selectedCompactWeekCell, setSelectedCompactWeekCell] = useState<{
+    slot: TimetableOccurrenceRow;
+    date: Date;
+  } | null>(null);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [showSlotCreateForm, setShowSlotCreateForm] = useState(false);
 
   const canManageCalendar =
@@ -486,6 +498,27 @@ export default function TeacherClassAgendaPage() {
   useEffect(() => {
     void bootstrap();
   }, [schoolSlug, classId]);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
+      return;
+    }
+
+    const media = window.matchMedia("(max-width: 1023px)");
+    const onChange = () => setIsCompactViewport(media.matches);
+    onChange();
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", onChange);
+      return () => media.removeEventListener("change", onChange);
+    }
+
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
 
   useEffect(() => {
     if (!context) {
@@ -724,6 +757,143 @@ export default function TeacherClassAgendaPage() {
     return cells;
   }, [cursorDate, occurrences]);
 
+  const weekSlotsByWeekday = useMemo(() => {
+    const result = new Map<number, TimetableOccurrenceRow[]>();
+    weekDays.forEach((entry) => {
+      const rows =
+        weekOccurrencesByDate
+          .get(toIsoDateString(entry.date))
+          ?.filter((slot) => slot.status === "PLANNED")
+          .sort((a, b) => a.startMinute - b.startMinute) ?? [];
+      result.set(entry.weekday, rows);
+    });
+    return result;
+  }, [weekDays, weekOccurrencesByDate]);
+
+  const compactTimelineStartMinute = 7 * 60;
+  const compactTimelineEndMinute = 18 * 60;
+  const compactTimelinePxPerHour = 36;
+  const compactTimelineHeight =
+    ((compactTimelineEndMinute - compactTimelineStartMinute) / 60) *
+    compactTimelinePxPerHour;
+  const compactTimelineHours = useMemo(() => {
+    const hours: number[] = [];
+    for (
+      let minute = compactTimelineStartMinute;
+      minute <= compactTimelineEndMinute;
+      minute += 60
+    ) {
+      hours.push(minute);
+    }
+    return hours;
+  }, [compactTimelineStartMinute, compactTimelineEndMinute]);
+
+  const compactMonthCalendarCells = useMemo(
+    () =>
+      monthCalendarCells.map((entry) => ({
+        date: entry.date,
+        slotsCount: entry.slots.filter((slot) => slot.status === "PLANNED")
+          .length,
+      })),
+    [monthCalendarCells],
+  );
+
+  useEffect(() => {
+    if (!isCompactViewport || viewMode !== "week") {
+      return;
+    }
+
+    if (selectedCompactWeekCell) {
+      const stillVisible = weekDays.some((entry) =>
+        sameDate(entry.date, selectedCompactWeekCell.date),
+      );
+      if (stillVisible) {
+        return;
+      }
+    }
+
+    const todayWeekDay = weekDays.find((entry) => sameDate(entry.date, today));
+    if (todayWeekDay) {
+      const todaySlots = weekSlotsByWeekday.get(todayWeekDay.weekday) ?? [];
+      if (todaySlots.length > 0) {
+        setSelectedCompactWeekCell({
+          slot: todaySlots[0],
+          date: todayWeekDay.date,
+        });
+        return;
+      }
+    }
+
+    const firstWithSlot = weekDays.find(
+      (entry) => (weekSlotsByWeekday.get(entry.weekday) ?? []).length > 0,
+    );
+    if (firstWithSlot) {
+      const slotsForDay = weekSlotsByWeekday.get(firstWithSlot.weekday) ?? [];
+      setSelectedCompactWeekCell({
+        slot: slotsForDay[0],
+        date: firstWithSlot.date,
+      });
+      return;
+    }
+
+    setSelectedCompactWeekCell(null);
+  }, [
+    isCompactViewport,
+    viewMode,
+    weekDays,
+    weekSlotsByWeekday,
+    selectedCompactWeekCell,
+    today,
+  ]);
+
+  useEffect(() => {
+    if (!isCompactViewport || viewMode !== "month") {
+      return;
+    }
+
+    const firstDayOfMonth = new Date(
+      cursorDate.getFullYear(),
+      cursorDate.getMonth(),
+      1,
+    );
+    const todayInCurrentMonth =
+      today.getFullYear() === cursorDate.getFullYear() &&
+      today.getMonth() === cursorDate.getMonth();
+
+    if (!selectedCompactMonthDate) {
+      setSelectedCompactMonthDate(
+        todayInCurrentMonth ? today : firstDayOfMonth,
+      );
+      return;
+    }
+
+    const selectedInCurrentMonth =
+      selectedCompactMonthDate.getFullYear() === cursorDate.getFullYear() &&
+      selectedCompactMonthDate.getMonth() === cursorDate.getMonth();
+    if (!selectedInCurrentMonth) {
+      setSelectedCompactMonthDate(
+        todayInCurrentMonth ? today : firstDayOfMonth,
+      );
+    }
+  }, [
+    isCompactViewport,
+    viewMode,
+    cursorDate,
+    selectedCompactMonthDate,
+    today,
+  ]);
+
+  const selectedCompactMonthEntry = useMemo(() => {
+    if (!selectedCompactMonthDate) {
+      return null;
+    }
+    return (
+      monthCalendarCells.find(
+        (entry) => entry.date && sameDate(entry.date, selectedCompactMonthDate),
+      ) ?? null
+    );
+  }, [monthCalendarCells, selectedCompactMonthDate]);
+
   const selectedMonthSlots = useMemo(() => {
     if (!selectedMonthDate) {
       return [] as TimetableOccurrenceRow[];
@@ -749,6 +919,14 @@ export default function TeacherClassAgendaPage() {
     cursorDate.getFullYear() === today.getFullYear()
       ? "Ce mois"
       : formatMonthLabel(cursorDate);
+  const activePeriodLabel =
+    viewMode === "day"
+      ? dayTabLabel
+      : viewMode === "week"
+        ? weekTabLabel
+        : monthTabLabel;
+  const activeModeLabel =
+    viewMode === "day" ? "Jour" : viewMode === "week" ? "Semaine" : "Mois";
   function moveCursorForMode(mode: ViewMode, direction: -1 | 1) {
     if (mode === "day") {
       setCursorDate((current) => addDays(current, direction));
@@ -2089,65 +2267,60 @@ export default function TeacherClassAgendaPage() {
                   </p>
 
                   <section className="grid gap-3 rounded-card border border-border bg-background p-3">
-                    <div className="grid grid-cols-3 gap-2 rounded-[6px] border border-[#D4E4F6] bg-white p-1">
-                      {(
-                        [
-                          { key: "day", label: dayTabLabel },
-                          { key: "week", label: weekTabLabel },
-                          { key: "month", label: monthTabLabel },
-                        ] as Array<{ key: ViewMode; label: string }>
-                      ).map((entry) => (
-                        <div
-                          key={`agenda-view-${entry.key}`}
-                          className={`grid grid-cols-[34px_1fr_34px] items-center gap-1 rounded-[4px] px-1 py-1 text-sm font-semibold transition ${
-                            viewMode === entry.key
-                              ? "bg-[#0A62BF] text-white shadow-[0_10px_24px_-14px_rgba(10,98,191,0.95)]"
-                              : "text-[#2B4A74] hover:bg-[#EEF5FF]"
-                          }`}
-                        >
+                    {isCompactViewport ? (
+                      <div className="grid min-w-0 gap-2">
+                        <div className="grid min-w-0 grid-cols-3 gap-1 rounded-[8px] border border-[#DCE8F7] bg-[#F8FBFF] p-1">
+                          {(
+                            [
+                              { key: "day", label: "Jour" },
+                              { key: "week", label: "Semaine" },
+                              { key: "month", label: "Mois" },
+                            ] as Array<{ key: ViewMode; label: string }>
+                          ).map((tabOption) => (
+                            <button
+                              key={`compact-tab-${tabOption.key}`}
+                              type="button"
+                              onClick={() => setViewMode(tabOption.key)}
+                              className={`h-8 min-w-0 rounded-[6px] px-2 text-[11px] font-semibold transition ${
+                                viewMode === tabOption.key
+                                  ? "bg-[#0A62BF] text-white shadow-[0_6px_14px_-10px_rgba(10,98,191,0.95)]"
+                                  : "text-[#2B4A74] hover:bg-white"
+                              }`}
+                            >
+                              {tabOption.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="grid min-w-0 grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-2 rounded-[8px] border border-[#DCE8F7] bg-[#F8FBFF] p-1">
                           <button
                             type="button"
-                            onClick={() => {
-                              setViewMode(entry.key);
-                              moveCursorForMode(entry.key, -1);
-                            }}
-                            className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
-                              viewMode === entry.key
-                                ? "bg-white/15 text-white hover:bg-white/25"
-                                : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
-                            }`}
-                            aria-label={`Periode precedente (${entry.key})`}
+                            onClick={() => moveCursorForMode(viewMode, -1)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#EAF3FF] text-[#0A62BF] hover:bg-[#DCEBFF]"
+                            aria-label={`${activeModeLabel} precedent`}
                           >
                             <ChevronLeft
                               className="h-5 w-5"
                               strokeWidth={2.6}
                             />
                           </button>
+
                           <button
                             type="button"
-                            onClick={() => {
-                              setViewMode(entry.key);
-                              setCursorDate(today);
-                            }}
-                            className="min-w-0 rounded-[4px] px-2 py-1 text-[13px]"
-                            title="Revenir a la periode courante"
+                            onClick={() => setCursorDate(today)}
+                            className="min-w-0 rounded-[6px] bg-white px-2 py-1 text-center text-[13px] font-semibold text-[#163158]"
+                            title={`Revenir a ${activeModeLabel.toLowerCase()} courant`}
                           >
                             <span className="block truncate">
-                              {entry.label}
+                              {activePeriodLabel}
                             </span>
                           </button>
+
                           <button
                             type="button"
-                            onClick={() => {
-                              setViewMode(entry.key);
-                              moveCursorForMode(entry.key, 1);
-                            }}
-                            className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
-                              viewMode === entry.key
-                                ? "bg-white/15 text-white hover:bg-white/25"
-                                : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
-                            }`}
-                            aria-label={`Periode suivante (${entry.key})`}
+                            onClick={() => moveCursorForMode(viewMode, 1)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#EAF3FF] text-[#0A62BF] hover:bg-[#DCEBFF]"
+                            aria-label={`${activeModeLabel} suivant`}
                           >
                             <ChevronRight
                               className="h-5 w-5"
@@ -2155,8 +2328,77 @@ export default function TeacherClassAgendaPage() {
                             />
                           </button>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2 rounded-[6px] border border-[#D4E4F6] bg-white p-1">
+                        {(
+                          [
+                            { key: "day", label: dayTabLabel },
+                            { key: "week", label: weekTabLabel },
+                            { key: "month", label: monthTabLabel },
+                          ] as Array<{ key: ViewMode; label: string }>
+                        ).map((entry) => (
+                          <div
+                            key={`agenda-view-${entry.key}`}
+                            className={`grid grid-cols-[34px_1fr_34px] items-center gap-1 rounded-[4px] px-1 py-1 text-sm font-semibold transition ${
+                              viewMode === entry.key
+                                ? "bg-[#0A62BF] text-white shadow-[0_10px_24px_-14px_rgba(10,98,191,0.95)]"
+                                : "text-[#2B4A74] hover:bg-[#EEF5FF]"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewMode(entry.key);
+                                moveCursorForMode(entry.key, -1);
+                              }}
+                              className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
+                                viewMode === entry.key
+                                  ? "bg-white/15 text-white hover:bg-white/25"
+                                  : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
+                              }`}
+                              aria-label={`Periode precedente (${entry.key})`}
+                            >
+                              <ChevronLeft
+                                className="h-5 w-5"
+                                strokeWidth={2.6}
+                              />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewMode(entry.key);
+                                setCursorDate(today);
+                              }}
+                              className="min-w-0 rounded-[4px] px-2 py-1 text-[13px]"
+                              title="Revenir a la periode courante"
+                            >
+                              <span className="block truncate">
+                                {entry.label}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewMode(entry.key);
+                                moveCursorForMode(entry.key, 1);
+                              }}
+                              className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
+                                viewMode === entry.key
+                                  ? "bg-white/15 text-white hover:bg-white/25"
+                                  : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
+                              }`}
+                              aria-label={`Periode suivante (${entry.key})`}
+                            >
+                              <ChevronRight
+                                className="h-5 w-5"
+                                strokeWidth={2.6}
+                              />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {viewMode === "day" ? (
                       <div className="grid gap-2">
@@ -2240,202 +2482,497 @@ export default function TeacherClassAgendaPage() {
                     ) : null}
 
                     {viewMode === "week" ? (
-                      <section className="overflow-hidden rounded-card border border-border">
-                        <div className="grid grid-cols-7 bg-[#F7FAFF]">
-                          {weekDays.map((entry) => (
-                            <div
-                              key={`week-head-${entry.weekday}`}
-                              className={`border-b border-r border-border px-2 py-2 text-center last:border-r-0 ${
-                                sameDate(entry.date, today)
-                                  ? "bg-[#E7F2FF]"
-                                  : ""
-                              }`}
-                            >
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#4C6284]">
-                                {entry.shortLabel}
-                              </p>
-                              <p className="text-sm font-semibold text-[#163158]">
-                                {entry.date
-                                  .getDate()
-                                  .toString()
-                                  .padStart(2, "0")}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="grid grid-cols-7 bg-white">
-                          {weekDays.map((entry) => {
-                            const weekDaySlots =
-                              weekOccurrencesByDate.get(
-                                toIsoDateString(entry.date),
-                              ) ?? [];
-                            const plannedWeekDaySlots = weekDaySlots
-                              .filter((slot) => slot.status === "PLANNED")
-                              .sort((a, b) => a.startMinute - b.startMinute);
-                            return (
+                      isCompactViewport ? (
+                        <section className="grid min-w-0 gap-3">
+                          <article className="min-w-0 overflow-hidden rounded-card border border-[#DCE8F7] bg-[#FBFDFF] p-2 shadow-[0_8px_20px_-18px_rgba(10,98,191,0.6)]">
+                            <div className="w-full overflow-x-auto">
                               <div
-                                key={`week-col-${entry.weekday}`}
-                                className="min-h-[230px] border-r border-border p-2 last:border-r-0"
+                                data-testid="compact-week-timeline"
+                                className="grid w-max min-w-full grid-cols-[36px_repeat(7,minmax(34px,1fr))] gap-[2px]"
                               >
-                                {plannedWeekDaySlots.length === 0 ? (
-                                  <p className="mt-2 text-center text-xs text-[#8192A8]">
-                                    -
-                                  </p>
-                                ) : (
-                                  <div className="grid gap-2">
-                                    {plannedWeekDaySlots.map((slot) => {
-                                      const tone = subjectVisualTone(
-                                        subjectColorsBySubjectId[
-                                          slot.subject.id
-                                        ],
-                                      );
-                                      return (
-                                        <button
-                                          type="button"
-                                          key={`week-slot-${slot.id}`}
-                                          onClick={() =>
-                                            openOccurrenceModal(slot)
-                                          }
-                                          className="rounded-[8px] border px-2 py-1.5"
-                                          style={{
-                                            backgroundColor: tone.background,
-                                            borderColor: tone.border,
-                                            borderLeftWidth:
-                                              slot.source === "ONE_OFF"
-                                                ? "7px"
-                                                : "1px",
-                                            borderLeftColor:
-                                              slot.source === "ONE_OFF"
-                                                ? "#D97706"
-                                                : tone.border,
-                                          }}
-                                        >
-                                          <p
-                                            className="text-[11px] font-semibold"
-                                            style={{ color: tone.text }}
-                                          >
-                                            {minutesToTimeValue(
-                                              slot.startMinute,
-                                            )}{" "}
-                                            -{" "}
-                                            {minutesToTimeValue(slot.endMinute)}
-                                          </p>
-                                          <p
-                                            className="mt-0.5 text-[11px] font-semibold"
-                                            style={{ color: tone.text }}
-                                          >
-                                            {slot.subject.name}
-                                          </p>
-                                          <p className="mt-0.5 text-[10px] text-[#5C6F88]">
-                                            {slot.room
-                                              ? `Salle ${slot.room}`
-                                              : "-"}
-                                          </p>
-                                        </button>
-                                      );
-                                    })}
+                                <div className="rounded-[6px] bg-[#EFF5FD] px-1 py-1 text-left text-[8px] font-semibold uppercase tracking-[0.02em] text-[#5A7093]">
+                                  H
+                                </div>
+                                {weekDays.map((entry) => (
+                                  <div
+                                    key={`compact-week-head-${entry.weekday}`}
+                                    className={`rounded-[6px] px-0.5 py-1 text-center text-[8px] font-semibold uppercase tracking-[0.01em] ${
+                                      sameDate(entry.date, today)
+                                        ? "bg-[#DCEBFF] text-[#0A62BF]"
+                                        : "bg-[#EFF5FD] text-[#5A7093]"
+                                    }`}
+                                  >
+                                    {entry.label.slice(0, 1)}{" "}
+                                    {entry.date
+                                      .getDate()
+                                      .toString()
+                                      .padStart(2, "0")}
                                   </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    ) : null}
+                                ))}
 
-                    {viewMode === "month" ? (
-                      <section className="grid gap-3">
-                        <div className="grid grid-cols-7 rounded-card border border-border bg-white">
-                          {WEEKDAY_OPTIONS.map((entry) => (
-                            <div
-                              key={`month-head-${entry.value}`}
-                              className="border-b border-r border-border px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-[#4C6284] last:border-r-0"
-                            >
-                              {entry.label.slice(0, 3)}
-                            </div>
-                          ))}
-                          {monthCalendarCells.map((entry, index) => {
-                            if (!entry.date) {
-                              return (
                                 <div
-                                  key={`month-empty-${index}`}
-                                  className="min-h-[66px] border-r border-border bg-[#FAFCFF] last:border-r-0"
-                                />
-                              );
-                            }
-                            const isSelected =
-                              selectedMonthDate &&
-                              sameDate(entry.date, selectedMonthDate);
-                            const isToday = sameDate(entry.date, today);
-                            return (
-                              <button
-                                key={`month-cell-${entry.date.toISOString()}`}
-                                type="button"
-                                onClick={() => setSelectedMonthDate(entry.date)}
-                                className={`min-h-[66px] border-r border-b border-border px-2 py-2 text-left last:border-r-0 ${
-                                  isSelected
-                                    ? "bg-[#EAF3FF]"
-                                    : "bg-white hover:bg-[#F7FBFF]"
+                                  className="relative rounded-[6px] bg-[#F2F7FD]"
+                                  style={{
+                                    height: `${compactTimelineHeight}px`,
+                                  }}
+                                >
+                                  {compactTimelineHours.map(
+                                    (hourMinute, index) => (
+                                      <div
+                                        key={`compact-time-${hourMinute}`}
+                                        className="absolute left-0 right-0"
+                                        style={{
+                                          top:
+                                            index ===
+                                            compactTimelineHours.length - 1
+                                              ? `${compactTimelineHeight - 12}px`
+                                              : `${((hourMinute - compactTimelineStartMinute) / 60) * compactTimelinePxPerHour}px`,
+                                        }}
+                                      >
+                                        <span
+                                          data-testid={`compact-hour-${hourMinute}`}
+                                          className="block px-0.5 font-mono text-[8px] font-medium leading-none text-[#35557F]"
+                                        >
+                                          {minutesToTimeValue(hourMinute)}
+                                        </span>
+                                      </div>
+                                    ),
+                                  )}
+                                </div>
+
+                                {weekDays.map((entry) => {
+                                  const daySlots =
+                                    weekSlotsByWeekday.get(entry.weekday) ?? [];
+                                  return (
+                                    <div
+                                      key={`compact-week-col-${entry.weekday}`}
+                                      className="relative rounded-[6px] bg-[#FAFCFF]"
+                                      style={{
+                                        height: `${compactTimelineHeight}px`,
+                                      }}
+                                    >
+                                      {compactTimelineHours
+                                        .slice(0, -1)
+                                        .map((hourMinute) => (
+                                          <div
+                                            key={`compact-line-${entry.weekday}-${hourMinute}`}
+                                            className="absolute left-0 right-0 border-t border-[#E5EEF9]"
+                                            style={{
+                                              top: `${((hourMinute - compactTimelineStartMinute) / 60) * compactTimelinePxPerHour}px`,
+                                            }}
+                                          />
+                                        ))}
+
+                                      {daySlots.map((slot) => {
+                                        const tone = subjectVisualTone(
+                                          subjectColorsBySubjectId[
+                                            slot.subject.id
+                                          ],
+                                        );
+                                        const clampedStart = Math.max(
+                                          compactTimelineStartMinute,
+                                          Math.min(
+                                            compactTimelineEndMinute,
+                                            slot.startMinute,
+                                          ),
+                                        );
+                                        const clampedEnd = Math.max(
+                                          compactTimelineStartMinute,
+                                          Math.min(
+                                            compactTimelineEndMinute,
+                                            slot.endMinute,
+                                          ),
+                                        );
+                                        if (clampedEnd <= clampedStart) {
+                                          return null;
+                                        }
+                                        const top =
+                                          ((clampedStart -
+                                            compactTimelineStartMinute) /
+                                            60) *
+                                          compactTimelinePxPerHour;
+                                        const height = Math.max(
+                                          16,
+                                          ((clampedEnd - clampedStart) / 60) *
+                                            compactTimelinePxPerHour,
+                                        );
+                                        const isSelected =
+                                          selectedCompactWeekCell &&
+                                          selectedCompactWeekCell.slot.id ===
+                                            slot.id &&
+                                          sameDate(
+                                            selectedCompactWeekCell.date,
+                                            entry.date,
+                                          );
+                                        return (
+                                          <button
+                                            type="button"
+                                            data-testid={`compact-week-slot-${entry.weekday}-${slot.id}`}
+                                            key={`compact-week-slot-${entry.weekday}-${slot.id}`}
+                                            onClick={() =>
+                                              setSelectedCompactWeekCell({
+                                                slot,
+                                                date: entry.date,
+                                              })
+                                            }
+                                            aria-label={`${slot.subject.name} ${minutesToTimeValue(slot.startMinute)}-${minutesToTimeValue(slot.endMinute)}`}
+                                            className="absolute left-0.5 right-0.5 rounded-[6px] border border-white/40 px-0.5 text-center text-[8px] font-semibold uppercase tracking-[0.01em] shadow-[0_2px_6px_-4px_rgba(16,24,40,0.55)] transition hover:brightness-[0.98]"
+                                            style={{
+                                              top: `${top}px`,
+                                              height: `${height}px`,
+                                              backgroundColor: isSelected
+                                                ? tone.text
+                                                : tone.background,
+                                              color: isSelected
+                                                ? "#FFFFFF"
+                                                : tone.text,
+                                              boxShadow: isSelected
+                                                ? "inset 0 0 0 1px rgba(255,255,255,0.35)"
+                                                : undefined,
+                                              borderLeftWidth:
+                                                slot.source === "ONE_OFF"
+                                                  ? "4px"
+                                                  : "1px",
+                                              borderLeftStyle: "solid",
+                                              borderLeftColor:
+                                                slot.source === "ONE_OFF"
+                                                  ? "#D97706"
+                                                  : tone.border,
+                                            }}
+                                          >
+                                            <span className="block truncate leading-tight">
+                                              {subjectShortLabel(
+                                                slot.subject.name,
+                                              )}
+                                            </span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </article>
+
+                          <article className="rounded-card border border-[#DCE8F7] bg-[#F9FCFF] p-3 shadow-[0_8px_20px_-18px_rgba(7,38,78,0.45)]">
+                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#4C6284]">
+                              Detail du creneau selectionne
+                            </p>
+                            {selectedCompactWeekCell ? (
+                              (() => {
+                                const tone = subjectVisualTone(
+                                  subjectColorsBySubjectId[
+                                    selectedCompactWeekCell.slot.subject.id
+                                  ],
+                                );
+                                return (
+                                  <div
+                                    data-testid="compact-week-detail-card"
+                                    className="grid gap-1 rounded-[10px] border px-2.5 py-2 text-[13px]"
+                                    style={{
+                                      backgroundColor: tone.background,
+                                      borderColor: tone.border,
+                                      borderLeftWidth:
+                                        selectedCompactWeekCell.slot.source ===
+                                        "ONE_OFF"
+                                          ? "6px"
+                                          : "1px",
+                                      borderLeftColor:
+                                        selectedCompactWeekCell.slot.source ===
+                                        "ONE_OFF"
+                                          ? "#D97706"
+                                          : tone.border,
+                                    }}
+                                  >
+                                    <p style={{ color: tone.text }}>
+                                      <span className="font-semibold">
+                                        Matiere:
+                                      </span>{" "}
+                                      {
+                                        selectedCompactWeekCell.slot.subject
+                                          .name
+                                      }
+                                    </p>
+                                    <p className="text-[#27496F]">
+                                      <span className="font-semibold">
+                                        Jour:
+                                      </span>{" "}
+                                      {new Intl.DateTimeFormat("fr-FR", {
+                                        weekday: "long",
+                                        day: "2-digit",
+                                        month: "long",
+                                      }).format(selectedCompactWeekCell.date)}
+                                    </p>
+                                    <p className="text-[#27496F]">
+                                      <span className="font-semibold">
+                                        Plage horaire:
+                                      </span>{" "}
+                                      {minutesToTimeValue(
+                                        selectedCompactWeekCell.slot
+                                          .startMinute,
+                                      )}{" "}
+                                      -{" "}
+                                      {minutesToTimeValue(
+                                        selectedCompactWeekCell.slot.endMinute,
+                                      )}
+                                    </p>
+                                    <p className="text-[#27496F]">
+                                      <span className="font-semibold">
+                                        Enseignant:
+                                      </span>{" "}
+                                      {teacherPrefixFromGender(
+                                        selectedCompactWeekCell.slot.teacherUser
+                                          .gender,
+                                      )}{" "}
+                                      {selectedCompactWeekCell.slot.teacherUser.lastName.toUpperCase()}{" "}
+                                      {
+                                        selectedCompactWeekCell.slot.teacherUser
+                                          .firstName
+                                      }
+                                    </p>
+                                    <p className="text-[#27496F]">
+                                      <span className="font-semibold">
+                                        Salle:
+                                      </span>{" "}
+                                      {selectedCompactWeekCell.slot.room ?? "-"}
+                                    </p>
+                                    <div className="pt-1">
+                                      <Button
+                                        type="button"
+                                        onClick={() =>
+                                          openOccurrenceModal(
+                                            selectedCompactWeekCell.slot,
+                                          )
+                                        }
+                                      >
+                                        Gerer ce creneau
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })()
+                            ) : (
+                              <p className="text-xs text-[#8192A8]">
+                                Selectionnez une matiere dans le tableau pour
+                                afficher le detail.
+                              </p>
+                            )}
+                          </article>
+                        </section>
+                      ) : (
+                        <section className="overflow-hidden rounded-card border border-border">
+                          <div className="grid grid-cols-7 bg-[#F7FAFF]">
+                            {weekDays.map((entry) => (
+                              <div
+                                key={`week-head-${entry.weekday}`}
+                                className={`border-b border-r border-border px-2 py-2 text-center last:border-r-0 ${
+                                  sameDate(entry.date, today)
+                                    ? "bg-[#E7F2FF]"
+                                    : ""
                                 }`}
                               >
-                                <p
-                                  className={`text-xs font-semibold ${
-                                    isToday ? "text-primary" : "text-[#163158]"
-                                  }`}
-                                >
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#4C6284]">
+                                  {entry.shortLabel}
+                                </p>
+                                <p className="text-sm font-semibold text-[#163158]">
                                   {entry.date
                                     .getDate()
                                     .toString()
                                     .padStart(2, "0")}
                                 </p>
-                                <p className="mt-1 text-[10px] text-[#5C6F88]">
-                                  {
-                                    entry.slots.filter(
-                                      (slot) => slot.status === "PLANNED",
-                                    ).length
-                                  }{" "}
-                                  creneau
-                                  {entry.slots.filter(
-                                    (slot) => slot.status === "PLANNED",
-                                  ).length > 1
-                                    ? "x"
-                                    : ""}
-                                </p>
-                              </button>
-                            );
-                          })}
-                        </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="grid grid-cols-7 bg-white">
+                            {weekDays.map((entry) => {
+                              const weekDaySlots =
+                                weekOccurrencesByDate.get(
+                                  toIsoDateString(entry.date),
+                                ) ?? [];
+                              const plannedWeekDaySlots = weekDaySlots
+                                .filter((slot) => slot.status === "PLANNED")
+                                .sort((a, b) => a.startMinute - b.startMinute);
+                              return (
+                                <div
+                                  key={`week-col-${entry.weekday}`}
+                                  className="min-h-[230px] border-r border-border p-2 last:border-r-0"
+                                >
+                                  {plannedWeekDaySlots.length === 0 ? (
+                                    <p className="mt-2 text-center text-xs text-[#8192A8]">
+                                      -
+                                    </p>
+                                  ) : (
+                                    <div className="grid gap-2">
+                                      {plannedWeekDaySlots.map((slot) => {
+                                        const tone = subjectVisualTone(
+                                          subjectColorsBySubjectId[
+                                            slot.subject.id
+                                          ],
+                                        );
+                                        return (
+                                          <button
+                                            type="button"
+                                            key={`week-slot-${slot.id}`}
+                                            onClick={() =>
+                                              openOccurrenceModal(slot)
+                                            }
+                                            className="rounded-[8px] border px-2 py-1.5"
+                                            style={{
+                                              backgroundColor: tone.background,
+                                              borderColor: tone.border,
+                                              borderLeftWidth:
+                                                slot.source === "ONE_OFF"
+                                                  ? "7px"
+                                                  : "1px",
+                                              borderLeftColor:
+                                                slot.source === "ONE_OFF"
+                                                  ? "#D97706"
+                                                  : tone.border,
+                                            }}
+                                          >
+                                            <p
+                                              className="text-[11px] font-semibold"
+                                              style={{ color: tone.text }}
+                                            >
+                                              {minutesToTimeValue(
+                                                slot.startMinute,
+                                              )}{" "}
+                                              -{" "}
+                                              {minutesToTimeValue(
+                                                slot.endMinute,
+                                              )}
+                                            </p>
+                                            <p
+                                              className="mt-0.5 text-[11px] font-semibold"
+                                              style={{ color: tone.text }}
+                                            >
+                                              {slot.subject.name}
+                                            </p>
+                                            <p className="mt-0.5 text-[10px] text-[#5C6F88]">
+                                              {slot.room
+                                                ? `Salle ${slot.room}`
+                                                : "-"}
+                                            </p>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      )
+                    ) : null}
 
-                        <div className="rounded-card border border-border bg-surface p-3">
-                          <p className="mb-2 text-sm font-semibold text-text-primary">
-                            {selectedMonthDate
-                              ? `Creneaux du ${new Intl.DateTimeFormat(
-                                  "fr-FR",
-                                  {
+                    {viewMode === "month" ? (
+                      isCompactViewport ? (
+                        <section className="grid gap-3">
+                          <article className="rounded-card border border-border bg-surface p-3 shadow-[0_8px_20px_-18px_rgba(10,98,191,0.6)]">
+                            <div className="mb-2 grid grid-cols-7 gap-1">
+                              {WEEKDAY_OPTIONS.map((entry) => (
+                                <p
+                                  key={`compact-head-${entry.value}`}
+                                  className="text-center text-[10px] font-semibold uppercase tracking-wide text-[#5A7093]"
+                                >
+                                  {entry.label.slice(0, 1)}
+                                </p>
+                              ))}
+                            </div>
+
+                            <div className="grid grid-cols-7 gap-1">
+                              {compactMonthCalendarCells.map((entry, index) => {
+                                if (!entry.date) {
+                                  return (
+                                    <div
+                                      key={`compact-month-empty-${index}`}
+                                      className="h-11 rounded-[8px] bg-[#F7FAFD]"
+                                    />
+                                  );
+                                }
+
+                                const isToday = sameDate(entry.date, today);
+                                const isSelected = selectedCompactMonthDate
+                                  ? sameDate(
+                                      entry.date,
+                                      selectedCompactMonthDate,
+                                    )
+                                  : false;
+
+                                return (
+                                  <button
+                                    key={`compact-month-cell-${entry.date.toISOString()}`}
+                                    type="button"
+                                    onClick={() =>
+                                      setSelectedCompactMonthDate(entry.date)
+                                    }
+                                    className={`relative h-11 rounded-[8px] border text-center transition ${
+                                      isSelected
+                                        ? "border-[#0A62BF] bg-[#0A62BF] text-white"
+                                        : "border-[#D8E5F5] bg-white text-[#20446E] hover:bg-[#EDF5FF]"
+                                    }`}
+                                    title={new Intl.DateTimeFormat("fr-FR", {
+                                      weekday: "long",
+                                      day: "2-digit",
+                                      month: "long",
+                                    }).format(entry.date)}
+                                  >
+                                    <span
+                                      className={`text-sm font-semibold ${
+                                        isToday && !isSelected
+                                          ? "text-[#0A62BF]"
+                                          : ""
+                                      }`}
+                                    >
+                                      {entry.date.getDate()}
+                                    </span>
+                                    {entry.slotsCount > 0 ? (
+                                      <span
+                                        className={`absolute bottom-1 right-1 rounded-full px-1 text-[9px] font-semibold ${
+                                          isSelected
+                                            ? "bg-white/20 text-white"
+                                            : "bg-[#E1EEFF] text-[#0A62BF]"
+                                        }`}
+                                      >
+                                        {entry.slotsCount}
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </article>
+
+                          <article className="rounded-card border border-border bg-surface p-3 shadow-[0_8px_20px_-18px_rgba(7,38,78,0.45)]">
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#4C6284]">
+                              Agenda du jour selectionne
+                            </p>
+                            <p className="mb-3 text-sm font-semibold text-[#163158]">
+                              {selectedCompactMonthDate
+                                ? new Intl.DateTimeFormat("fr-FR", {
                                     weekday: "long",
                                     day: "2-digit",
                                     month: "long",
-                                  },
-                                ).format(selectedMonthDate)}`
-                              : "Selectionnez un jour pour voir les creneaux"}
-                          </p>
-                          {selectedMonthDate ? (
-                            selectedMonthSlots.length === 0 ? (
-                              <p className="text-sm text-text-secondary">
-                                Aucun creneau pour ce jour.
-                              </p>
-                            ) : (
+                                  }).format(selectedCompactMonthDate)
+                                : "-"}
+                            </p>
+
+                            {selectedCompactMonthEntry &&
+                            selectedCompactMonthEntry.date &&
+                            selectedCompactMonthEntry.slots.length > 0 ? (
                               <div className="grid gap-2">
-                                {selectedMonthSlots.map((slot) => {
+                                {selectedCompactMonthEntry.slots.map((slot) => {
                                   const tone = subjectVisualTone(
                                     subjectColorsBySubjectId[slot.subject.id],
                                   );
                                   return (
                                     <button
                                       type="button"
-                                      key={`month-slot-${slot.id}`}
+                                      key={`compact-month-selected-${slot.id}`}
                                       onClick={() => openOccurrenceModal(slot)}
-                                      className="rounded-card border px-3 py-2"
+                                      className="rounded-[10px] border px-2 py-1.5 text-left"
                                       style={{
                                         backgroundColor: tone.background,
                                         borderColor: tone.border,
@@ -2450,40 +2987,187 @@ export default function TeacherClassAgendaPage() {
                                       }}
                                     >
                                       <p
-                                        className="text-sm font-semibold"
-                                        style={{
-                                          color:
-                                            slot.status === "CANCELLED"
-                                              ? "#B42318"
-                                              : tone.text,
-                                          textDecoration:
-                                            slot.status === "CANCELLED"
-                                              ? "line-through"
-                                              : undefined,
-                                        }}
+                                        className="text-[11px] font-semibold"
+                                        style={{ color: tone.text }}
                                       >
                                         {minutesToTimeValue(slot.startMinute)} -{" "}
-                                        {minutesToTimeValue(slot.endMinute)} ·{" "}
+                                        {minutesToTimeValue(slot.endMinute)}
+                                      </p>
+                                      <p
+                                        className="truncate text-xs font-semibold uppercase tracking-[0.02em]"
+                                        style={{ color: tone.text }}
+                                      >
                                         {slot.subject.name}
                                       </p>
-                                      <p className="text-xs text-text-secondary">
+                                      <p className="truncate text-[11px] text-[#3B4F6B]">
+                                        {teacherPrefixFromGender(
+                                          slot.teacherUser.gender,
+                                        )}{" "}
                                         {slot.teacherUser.lastName.toUpperCase()}{" "}
                                         {slot.teacherUser.firstName}
-                                        {slot.room
-                                          ? ` · Salle ${slot.room}`
-                                          : ""}
-                                        {slot.status === "CANCELLED"
-                                          ? " · Annule"
-                                          : ""}
+                                      </p>
+                                      <p className="truncate text-[11px] font-medium text-[#4B6285]">
+                                        Salle {slot.room ?? "-"}
                                       </p>
                                     </button>
                                   );
                                 })}
                               </div>
-                            )
-                          ) : null}
-                        </div>
-                      </section>
+                            ) : (
+                              <p className="text-xs text-[#8192A8]">
+                                Aucun creneau pour cette journee.
+                              </p>
+                            )}
+                          </article>
+                        </section>
+                      ) : (
+                        <section className="grid gap-3">
+                          <div className="grid grid-cols-7 rounded-card border border-border bg-white">
+                            {WEEKDAY_OPTIONS.map((entry) => (
+                              <div
+                                key={`month-head-${entry.value}`}
+                                className="border-b border-r border-border px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-[#4C6284] last:border-r-0"
+                              >
+                                {entry.label.slice(0, 3)}
+                              </div>
+                            ))}
+                            {monthCalendarCells.map((entry, index) => {
+                              if (!entry.date) {
+                                return (
+                                  <div
+                                    key={`month-empty-${index}`}
+                                    className="min-h-[66px] border-r border-border bg-[#FAFCFF] last:border-r-0"
+                                  />
+                                );
+                              }
+                              const isSelected =
+                                selectedMonthDate &&
+                                sameDate(entry.date, selectedMonthDate);
+                              const isToday = sameDate(entry.date, today);
+                              return (
+                                <button
+                                  key={`month-cell-${entry.date.toISOString()}`}
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedMonthDate(entry.date)
+                                  }
+                                  className={`min-h-[66px] border-r border-b border-border px-2 py-2 text-left last:border-r-0 ${
+                                    isSelected
+                                      ? "bg-[#EAF3FF]"
+                                      : "bg-white hover:bg-[#F7FBFF]"
+                                  }`}
+                                >
+                                  <p
+                                    className={`text-xs font-semibold ${
+                                      isToday
+                                        ? "text-primary"
+                                        : "text-[#163158]"
+                                    }`}
+                                  >
+                                    {entry.date
+                                      .getDate()
+                                      .toString()
+                                      .padStart(2, "0")}
+                                  </p>
+                                  <p className="mt-1 text-[10px] text-[#5C6F88]">
+                                    {
+                                      entry.slots.filter(
+                                        (slot) => slot.status === "PLANNED",
+                                      ).length
+                                    }{" "}
+                                    creneau
+                                    {entry.slots.filter(
+                                      (slot) => slot.status === "PLANNED",
+                                    ).length > 1
+                                      ? "x"
+                                      : ""}
+                                  </p>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="rounded-card border border-border bg-surface p-3">
+                            <p className="mb-2 text-sm font-semibold text-text-primary">
+                              {selectedMonthDate
+                                ? `Creneaux du ${new Intl.DateTimeFormat(
+                                    "fr-FR",
+                                    {
+                                      weekday: "long",
+                                      day: "2-digit",
+                                      month: "long",
+                                    },
+                                  ).format(selectedMonthDate)}`
+                                : "Selectionnez un jour pour voir les creneaux"}
+                            </p>
+                            {selectedMonthDate ? (
+                              selectedMonthSlots.length === 0 ? (
+                                <p className="text-sm text-text-secondary">
+                                  Aucun creneau pour ce jour.
+                                </p>
+                              ) : (
+                                <div className="grid gap-2">
+                                  {selectedMonthSlots.map((slot) => {
+                                    const tone = subjectVisualTone(
+                                      subjectColorsBySubjectId[slot.subject.id],
+                                    );
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={`month-slot-${slot.id}`}
+                                        onClick={() =>
+                                          openOccurrenceModal(slot)
+                                        }
+                                        className="rounded-card border px-3 py-2"
+                                        style={{
+                                          backgroundColor: tone.background,
+                                          borderColor: tone.border,
+                                          borderLeftWidth:
+                                            slot.source === "ONE_OFF"
+                                              ? "7px"
+                                              : "1px",
+                                          borderLeftColor:
+                                            slot.source === "ONE_OFF"
+                                              ? "#D97706"
+                                              : tone.border,
+                                        }}
+                                      >
+                                        <p
+                                          className="text-sm font-semibold"
+                                          style={{
+                                            color:
+                                              slot.status === "CANCELLED"
+                                                ? "#B42318"
+                                                : tone.text,
+                                            textDecoration:
+                                              slot.status === "CANCELLED"
+                                                ? "line-through"
+                                                : undefined,
+                                          }}
+                                        >
+                                          {minutesToTimeValue(slot.startMinute)}{" "}
+                                          - {minutesToTimeValue(slot.endMinute)}{" "}
+                                          · {slot.subject.name}
+                                        </p>
+                                        <p className="text-xs text-text-secondary">
+                                          {slot.teacherUser.lastName.toUpperCase()}{" "}
+                                          {slot.teacherUser.firstName}
+                                          {slot.room
+                                            ? ` · Salle ${slot.room}`
+                                            : ""}
+                                          {slot.status === "CANCELLED"
+                                            ? " · Annule"
+                                            : ""}
+                                        </p>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )
+                            ) : null}
+                          </div>
+                        </section>
+                      )
                     ) : null}
                   </section>
                 </section>

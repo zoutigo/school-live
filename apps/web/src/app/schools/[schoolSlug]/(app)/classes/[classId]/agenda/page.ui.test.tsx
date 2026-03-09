@@ -1093,6 +1093,75 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
     expect(await screen.findByText("Gerer l'occurrence")).toBeInTheDocument();
   });
+
+  it("renders compact responsive timetable views for week and month", async () => {
+    const previousMatchMedia = window.matchMedia;
+    try {
+      Object.defineProperty(window, "matchMedia", {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+          matches: query === "(max-width: 1023px)",
+          media: query,
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      });
+
+      createFetchMock();
+      render(<TeacherClassAgendaPage />);
+
+      await screen.findByText("Emploi du temps - 6eC");
+      expect(screen.getByRole("button", { name: "Jour" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Semaine" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Mois" })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Semaine" }));
+      expect(
+        await screen.findByText("Detail du creneau selectionne"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Gerer ce creneau" }),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("compact-week-timeline")).toBeInTheDocument();
+      expect(screen.getByTestId("compact-hour-420")).toHaveTextContent("07:00");
+      expect(screen.getByTestId("compact-hour-1080")).toHaveTextContent(
+        "18:00",
+      );
+
+      const compactWeekSlot = document.querySelector(
+        '[data-testid^="compact-week-slot-1-slot-fr-1-"]',
+      ) as HTMLElement | null;
+      expect(compactWeekSlot).toBeTruthy();
+      expect(compactWeekSlot?.getAttribute("style") ?? "").toContain("top:");
+      expect(compactWeekSlot?.getAttribute("style") ?? "").toContain("height:");
+      fireEvent.click(compactWeekSlot!);
+      expect(screen.getByText(/Matiere:/i)).toBeInTheDocument();
+      expect(screen.getByText(/Francais/i)).toBeInTheDocument();
+      const detailCard = screen.getByTestId("compact-week-detail-card");
+      expect(detailCard.getAttribute("style") ?? "").toContain(
+        "background-color",
+      );
+      expect(detailCard.getAttribute("style") ?? "").toContain("border-color");
+      fireEvent.click(screen.getByRole("button", { name: "Gerer ce creneau" }));
+      expect(await screen.findByText("Gerer l'occurrence")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Mois" }));
+      expect(
+        await screen.findByText("Agenda du jour selectionne"),
+      ).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        writable: true,
+        value: previousMatchMedia,
+      });
+    }
+  });
 });
 
 describe("TeacherClassAgendaPage - couleurs UI", () => {
