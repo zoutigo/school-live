@@ -25,8 +25,10 @@ describe("Timetable subject style API e2e", () => {
 
   let schoolId = "";
   let schoolYearId = "";
+  let previousSchoolYearId = "";
   let classId = "";
   let subjectId = "";
+  let secondSubjectId = "";
 
   async function api(path: string, init?: RequestInit) {
     return fetch(`${baseUrl}${path}`, init);
@@ -87,6 +89,14 @@ describe("Timetable subject style API e2e", () => {
     });
     schoolYearId = schoolYear.id;
 
+    const previousSchoolYear = await prisma.schoolYear.create({
+      data: {
+        schoolId,
+        label: "2024-2025",
+      },
+    });
+    previousSchoolYearId = previousSchoolYear.id;
+
     await prisma.school.update({
       where: { id: schoolId },
       data: { activeSchoolYearId: schoolYearId },
@@ -116,11 +126,29 @@ describe("Timetable subject style API e2e", () => {
     });
     subjectId = subject.id;
 
+    const secondSubject = await prisma.subject.create({
+      data: {
+        schoolId,
+        name: `Francais ${runId}`,
+      },
+    });
+    secondSubjectId = secondSubject.id;
+
     await prisma.curriculumSubject.create({
       data: {
         schoolId,
         curriculumId: curriculum.id,
         subjectId,
+        isMandatory: true,
+        coefficient: 2,
+        weeklyHours: 4,
+      },
+    });
+    await prisma.curriculumSubject.create({
+      data: {
+        schoolId,
+        curriculumId: curriculum.id,
+        subjectId: secondSubjectId,
         isMandatory: true,
         coefficient: 2,
         weeklyHours: 4,
@@ -232,5 +260,101 @@ describe("Timetable subject style API e2e", () => {
     );
     expect(row).toBeDefined();
     expect(String(row?.colorHex)).toBe("#10B981");
+  });
+
+  it("keeps subject colors isolated by school year", async () => {
+    const currentYearStyle = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/subjects/${subjectId}/style`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({ schoolYearId, colorHex: "#0F766E" }),
+      },
+    );
+    expect(currentYearStyle.response.status).toBe(200);
+
+    const previousYearStyle = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/subjects/${subjectId}/style`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId: previousSchoolYearId,
+          colorHex: "#7C3AED",
+        }),
+      },
+    );
+    expect(previousYearStyle.response.status).toBe(200);
+
+    const readCurrentYear = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        schoolYearId,
+      )}`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(readCurrentYear.response.status).toBe(200);
+    const currentStyles = Array.isArray(readCurrentYear.body?.subjectStyles)
+      ? (readCurrentYear.body?.subjectStyles as Array<Record<string, unknown>>)
+      : [];
+    const currentRow = currentStyles.find(
+      (entry) => String(entry.subjectId) === subjectId,
+    );
+    expect(String(currentRow?.colorHex)).toBe("#0F766E");
+
+    const readPreviousYear = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}?schoolYearId=${encodeURIComponent(
+        previousSchoolYearId,
+      )}`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+    expect(readPreviousYear.response.status).toBe(200);
+    const previousStyles = Array.isArray(readPreviousYear.body?.subjectStyles)
+      ? (readPreviousYear.body?.subjectStyles as Array<Record<string, unknown>>)
+      : [];
+    const previousRow = previousStyles.find(
+      (entry) => String(entry.subjectId) === subjectId,
+    );
+    expect(String(previousRow?.colorHex)).toBe("#7C3AED");
+  });
+
+  it("rejects too-close colors for two subjects in the same class and school year", async () => {
+    const firstStyle = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/subjects/${subjectId}/style`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({ schoolYearId, colorHex: "#2563EB" }),
+      },
+    );
+    expect(firstStyle.response.status).toBe(200);
+
+    const conflictingStyle = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/subjects/${secondSubjectId}/style`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({ schoolYearId, colorHex: "#2563EB" }),
+      },
+    );
+    expect(conflictingStyle.response.status).toBe(400);
+    expect(String(conflictingStyle.body?.message)).toContain(
+      "Color too close to another subject color",
+    );
   });
 });

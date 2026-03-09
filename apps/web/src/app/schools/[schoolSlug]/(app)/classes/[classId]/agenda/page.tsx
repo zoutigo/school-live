@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CalendarDays, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { Card } from "../../../../../../../components/ui/card";
 import { Button } from "../../../../../../../components/ui/button";
 import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog";
@@ -12,7 +19,8 @@ import { TimeInput } from "../../../../../../../components/ui/time-input";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import { API_URL, type MeResponse } from "../_shared";
 
-type TabKey = "slots" | "vacations" | "help";
+type TabKey = "slots" | "colors" | "vacations" | "help";
+type ViewMode = "day" | "week" | "month";
 type AllowedRole =
   | "SUPER_ADMIN"
   | "ADMIN"
@@ -194,6 +202,108 @@ function scopeLabel(scope: CalendarEventRow["scope"]) {
   return "Classe";
 }
 
+function stripTime(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date: Date, amount: number) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + amount);
+  return copy;
+}
+
+function addMonths(date: Date, amount: number) {
+  const copy = new Date(date);
+  copy.setMonth(copy.getMonth() + amount);
+  return copy;
+}
+
+function toWeekdayMondayFirst(date: Date) {
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
+}
+
+function startOfWeek(date: Date) {
+  const normalized = stripTime(date);
+  return addDays(normalized, 1 - toWeekdayMondayFirst(normalized));
+}
+
+function sameDate(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function formatMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatWeekRangeLabel(currentDate: Date) {
+  const start = startOfWeek(currentDate);
+  const end = addDays(start, 6);
+  const startLabel = new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+  }).format(start);
+  const endLabel = new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(end);
+  return `${startLabel} - ${endLabel}`;
+}
+
+function hexToRgb(hex: string) {
+  const normalized = hex.replace("#", "");
+  if (!/^[0-9A-Fa-f]{6}$/.test(normalized)) {
+    return null;
+  }
+  return {
+    r: Number.parseInt(normalized.slice(0, 2), 16),
+    g: Number.parseInt(normalized.slice(2, 4), 16),
+    b: Number.parseInt(normalized.slice(4, 6), 16),
+  };
+}
+
+function rgbToHex(rgb: { r: number; g: number; b: number }) {
+  const channel = (value: number) =>
+    Math.max(0, Math.min(255, Math.round(value)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(rgb.r)}${channel(rgb.g)}${channel(rgb.b)}`.toUpperCase();
+}
+
+function mixHex(base: string, target: string, ratio: number) {
+  const a = hexToRgb(base);
+  const b = hexToRgb(target);
+  if (!a || !b) {
+    return base;
+  }
+  return rgbToHex({
+    r: a.r * (1 - ratio) + b.r * ratio,
+    g: a.g * (1 - ratio) + b.g * ratio,
+    b: a.b * (1 - ratio) + b.b * ratio,
+  });
+}
+
+function subjectVisualTone(subjectColorHex: string | undefined) {
+  const base =
+    subjectColorHex && /^#[0-9A-Fa-f]{6}$/.test(subjectColorHex)
+      ? subjectColorHex.toUpperCase()
+      : "#2563EB";
+  return {
+    chip: base,
+    background: mixHex(base, "#FFFFFF", 0.9),
+    border: mixHex(base, "#FFFFFF", 0.68),
+    text: mixHex(base, "#0F172A", 0.3),
+  };
+}
+
 export default function TeacherClassAgendaPage() {
   const { schoolSlug, classId } = useParams<{
     schoolSlug: string;
@@ -246,6 +356,9 @@ export default function TeacherClassAgendaPage() {
   const [eventToDelete, setEventToDelete] = useState<CalendarEventRow | null>(
     null,
   );
+  const [viewMode, setViewMode] = useState<ViewMode>("day");
+  const [cursorDate, setCursorDate] = useState(stripTime(new Date()));
+  const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(null);
 
   const canManageCalendar =
     meRole !== null && CAN_MANAGE_CALENDAR_ROLES.includes(meRole);
@@ -307,26 +420,6 @@ export default function TeacherClassAgendaPage() {
     }
   }, [teacherChoices, slotTeacherUserId]);
 
-  const slotsByWeekday = useMemo(() => {
-    const map = new Map<number, SlotRow[]>();
-    WEEKDAY_OPTIONS.forEach((weekday) => map.set(weekday.value, []));
-
-    slots.forEach((slot) => {
-      const current = map.get(slot.weekday) ?? [];
-      current.push(slot);
-      map.set(slot.weekday, current);
-    });
-
-    map.forEach((weekdaySlots, key) => {
-      map.set(
-        key,
-        [...weekdaySlots].sort((a, b) => a.startMinute - b.startMinute),
-      );
-    });
-
-    return map;
-  }, [slots]);
-
   const sortedVacations = useMemo(
     () =>
       [...calendarEvents]
@@ -337,6 +430,107 @@ export default function TeacherClassAgendaPage() {
         ),
     [calendarEvents],
   );
+
+  const today = stripTime(new Date());
+  const cursorWeekday = toWeekdayMondayFirst(cursorDate);
+
+  const daySlots = useMemo(
+    () =>
+      slots
+        .filter((slot) => slot.weekday === cursorWeekday)
+        .sort((a, b) => a.startMinute - b.startMinute),
+    [cursorWeekday, slots],
+  );
+
+  const weekStart = useMemo(() => startOfWeek(cursorDate), [cursorDate]);
+  const weekDays = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, index) => {
+        const date = addDays(weekStart, index);
+        return {
+          weekday: index + 1,
+          date,
+          label: WEEKDAY_OPTIONS[index]?.label ?? "",
+          shortLabel: WEEKDAY_OPTIONS[index]?.label.slice(0, 3) ?? "",
+        };
+      }),
+    [weekStart],
+  );
+
+  const monthCalendarCells = useMemo(() => {
+    const firstDay = new Date(
+      cursorDate.getFullYear(),
+      cursorDate.getMonth(),
+      1,
+    );
+    const firstWeekday = toWeekdayMondayFirst(firstDay);
+    const leadingEmpty = firstWeekday - 1;
+    const daysInMonth = new Date(
+      cursorDate.getFullYear(),
+      cursorDate.getMonth() + 1,
+      0,
+    ).getDate();
+    const cells: Array<{ date: Date | null; slots: SlotRow[] }> = [];
+
+    for (let i = 0; i < leadingEmpty; i += 1) {
+      cells.push({ date: null, slots: [] });
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = new Date(
+        cursorDate.getFullYear(),
+        cursorDate.getMonth(),
+        day,
+      );
+      const weekday = toWeekdayMondayFirst(date);
+      const daySlotsForMonth = slots
+        .filter((slot) => slot.weekday === weekday)
+        .sort((a, b) => a.startMinute - b.startMinute);
+      cells.push({ date, slots: daySlotsForMonth });
+    }
+
+    while (cells.length % 7 !== 0) {
+      cells.push({ date: null, slots: [] });
+    }
+
+    return cells;
+  }, [cursorDate, slots]);
+
+  const selectedMonthSlots = useMemo(() => {
+    if (!selectedMonthDate) {
+      return [] as SlotRow[];
+    }
+    const weekday = toWeekdayMondayFirst(selectedMonthDate);
+    return slots
+      .filter((slot) => slot.weekday === weekday)
+      .sort((a, b) => a.startMinute - b.startMinute);
+  }, [selectedMonthDate, slots]);
+
+  const dayTabLabel = sameDate(cursorDate, today)
+    ? "Aujourd'hui"
+    : new Intl.DateTimeFormat("fr-FR", {
+        day: "2-digit",
+        month: "short",
+      }).format(cursorDate);
+  const weekTabLabel = sameDate(startOfWeek(cursorDate), startOfWeek(today))
+    ? "Cette semaine"
+    : formatWeekRangeLabel(cursorDate);
+  const monthTabLabel =
+    cursorDate.getMonth() === today.getMonth() &&
+    cursorDate.getFullYear() === today.getFullYear()
+      ? "Ce mois"
+      : formatMonthLabel(cursorDate);
+  function moveCursorForMode(mode: ViewMode, direction: -1 | 1) {
+    if (mode === "day") {
+      setCursorDate((current) => addDays(current, direction));
+      return;
+    }
+    if (mode === "week") {
+      setCursorDate((current) => addDays(current, direction * 7));
+      return;
+    }
+    setCursorDate((current) => addMonths(current, direction));
+  }
 
   async function bootstrap() {
     setLoading(true);
@@ -470,6 +664,51 @@ export default function TeacherClassAgendaPage() {
     setSuccess(null);
     setError(null);
   }
+
+  async function switchSchoolYear(nextSchoolYearId: string | null) {
+    setSelectedSchoolYearId(nextSchoolYearId);
+    setError(null);
+    setSuccess(null);
+    try {
+      setLoading(true);
+      await loadContextAndTimetable(nextSchoolYearId);
+    } catch (caught) {
+      if (caught instanceof Error) {
+        setError(caught.message);
+      } else {
+        setError("Impossible de changer d'annee scolaire.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const selectedSchoolYearIndex = useMemo(() => {
+    if (!context?.schoolYears.length || !selectedSchoolYearId) {
+      return 0;
+    }
+    const index = context.schoolYears.findIndex(
+      (schoolYear) => schoolYear.id === selectedSchoolYearId,
+    );
+    return index >= 0 ? index : 0;
+  }, [context?.schoolYears, selectedSchoolYearId]);
+
+  const selectedSchoolYearLabel = useMemo(() => {
+    if (!context?.schoolYears.length) {
+      return "";
+    }
+    const selectedYear = context.schoolYears[selectedSchoolYearIndex];
+    if (!selectedYear) {
+      return "";
+    }
+    return `${selectedYear.label}${selectedYear.isActive ? " (en cours)" : ""}`;
+  }, [context?.schoolYears, selectedSchoolYearIndex]);
+
+  const canGoToPreviousSchoolYear =
+    !!context?.schoolYears.length && selectedSchoolYearIndex > 0;
+  const canGoToNextSchoolYear =
+    !!context?.schoolYears.length &&
+    selectedSchoolYearIndex < context.schoolYears.length - 1;
 
   async function saveSubjectStyle(subjectId: string, colorHex: string) {
     const csrfToken = getCsrfTokenCookie();
@@ -855,6 +1094,17 @@ export default function TeacherClassAgendaPage() {
           </button>
           <button
             type="button"
+            onClick={() => setTab("colors")}
+            className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+              tab === "colors"
+                ? "border border-border border-b-surface bg-surface text-primary"
+                : "text-text-secondary"
+            }`}
+          >
+            Couleurs
+          </button>
+          <button
+            type="button"
             onClick={() => setTab("help")}
             className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
               tab === "help"
@@ -875,7 +1125,7 @@ export default function TeacherClassAgendaPage() {
         ) : tab === "help" ? (
           <ModuleHelpTab
             moduleName="Emploi du temps"
-            moduleSummary="ce module permet de planifier les cours hebdomadaires et les vacances scolaires par classe."
+            moduleSummary="ce module permet de planifier les cours hebdomadaires et les couleurs de matieres par classe."
             actions={[
               {
                 name: "Creer un creneau",
@@ -888,13 +1138,14 @@ export default function TeacherClassAgendaPage() {
                   "alimente les vues eleve/parent et facilite la coordination pedagogique.",
               },
               {
-                name: "Declarer des vacances",
-                purpose: "bloquer des periodes sans cours",
+                name: "Definir une couleur matiere",
+                purpose: "ameliorer la lisibilite de l'emploi du temps",
                 howTo:
-                  "choisir la portee (ecole, niveau ou classe), saisir les dates puis valider.",
-                moduleImpact: "evite les conflits de planification.",
+                  "ouvrir l'onglet Couleurs, choisir une couleur puis enregistrer.",
+                moduleImpact:
+                  "harmonise la lecture des cours en vue jour/semaine/mois.",
                 crossModuleImpact:
-                  "les vacances remontent dans les agendas de classes et niveaux concernes.",
+                  "les couleurs sont reutilisees dans les vues eleve, parent et enseignant.",
               },
             ]}
           />
@@ -902,38 +1153,52 @@ export default function TeacherClassAgendaPage() {
           <div className="grid gap-4">
             {context.schoolYears.length > 0 ? (
               <div className="rounded-card border border-border bg-background p-3">
-                <label className="grid gap-1 text-sm md:max-w-[320px]">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
                   <span className="text-text-secondary">Annee scolaire</span>
-                  <select
-                    value={selectedSchoolYearId ?? ""}
-                    onChange={async (event) => {
-                      const nextSchoolYearId = event.target.value || null;
-                      setSelectedSchoolYearId(nextSchoolYearId);
-                      setError(null);
-                      setSuccess(null);
-                      try {
-                        setLoading(true);
-                        await loadContextAndTimetable(nextSchoolYearId);
-                      } catch (caught) {
-                        if (caught instanceof Error) {
-                          setError(caught.message);
-                        } else {
-                          setError("Impossible de changer d'annee scolaire.");
+                  <div className="inline-flex w-full items-center justify-between gap-2 rounded-card border border-border bg-surface px-2 py-1 sm:w-auto sm:min-w-[320px] sm:max-w-[360px]">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={!canGoToPreviousSchoolYear || loading}
+                      onClick={() => {
+                        if (!context?.schoolYears.length) {
+                          return;
                         }
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                  >
-                    {context.schoolYears.map((schoolYear) => (
-                      <option key={schoolYear.id} value={schoolYear.id}>
-                        {schoolYear.label}
-                        {schoolYear.isActive ? " (en cours)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                        const nextYear =
+                          context.schoolYears[selectedSchoolYearIndex - 1];
+                        if (!nextYear) {
+                          return;
+                        }
+                        void switchSchoolYear(nextYear.id);
+                      }}
+                      className="h-8 w-8 px-0"
+                      aria-label="Annee precedente"
+                      iconLeft={<ChevronLeft size={16} />}
+                    />
+                    <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-text-primary">
+                      {selectedSchoolYearLabel}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={!canGoToNextSchoolYear || loading}
+                      onClick={() => {
+                        if (!context?.schoolYears.length) {
+                          return;
+                        }
+                        const nextYear =
+                          context.schoolYears[selectedSchoolYearIndex + 1];
+                        if (!nextYear) {
+                          return;
+                        }
+                        void switchSchoolYear(nextYear.id);
+                      }}
+                      className="h-8 w-8 px-0"
+                      aria-label="Annee suivante"
+                      iconLeft={<ChevronRight size={16} />}
+                    />
+                  </div>
+                </div>
               </div>
             ) : null}
 
@@ -943,257 +1208,541 @@ export default function TeacherClassAgendaPage() {
               </p>
             ) : null}
 
-            {tab === "slots" ? (
-              <>
-                <section className="rounded-card border border-border bg-background p-4">
-                  <h3 className="mb-2 text-sm font-semibold text-text-primary">
-                    Couleurs des matieres (classe + annee)
-                  </h3>
-                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                    {context.allowedSubjects.map((subject) => {
-                      const currentColor =
-                        subjectColorsBySubjectId[subject.id] ?? "#2563EB";
-                      return (
-                        <article
-                          key={subject.id}
-                          className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface px-3 py-2"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-text-primary">
-                              {subject.name}
-                            </p>
-                            <p className="text-xs text-text-secondary">
-                              {currentColor.toUpperCase()}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              value={currentColor}
-                              onChange={(event) => {
-                                setSubjectColorsBySubjectId((current) => ({
-                                  ...current,
-                                  [subject.id]:
-                                    event.target.value.toUpperCase(),
-                                }));
-                              }}
-                              className="h-8 w-10 cursor-pointer rounded border border-border bg-surface p-0.5"
-                              aria-label={`Couleur ${subject.name}`}
-                            />
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              className="px-2 py-1 text-xs"
-                              disabled={savingSubjectStyleId === subject.id}
-                              onClick={() => {
-                                void saveSubjectStyle(subject.id, currentColor);
-                              }}
-                            >
-                              {savingSubjectStyleId === subject.id
-                                ? "..."
-                                : "Sauver"}
-                            </Button>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                <form
-                  className="grid gap-3 rounded-card border border-border bg-background p-4"
-                  onSubmit={onSubmitSlot}
-                >
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Jour</span>
-                      <select
-                        value={slotWeekday}
-                        onChange={(event) => setSlotWeekday(event.target.value)}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                      >
-                        {WEEKDAY_OPTIONS.map((weekday) => (
-                          <option key={weekday.value} value={weekday.value}>
-                            {weekday.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Debut</span>
-                      <TimeInput
-                        value={slotStart}
-                        onChange={(event) => setSlotStart(event.target.value)}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                      />
-                    </label>
-
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Fin</span>
-                      <TimeInput
-                        value={slotEnd}
-                        onChange={(event) => setSlotEnd(event.target.value)}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                      />
-                    </label>
-
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Matiere</span>
-                      <select
-                        value={slotSubjectId}
-                        onChange={(event) =>
-                          setSlotSubjectId(event.target.value)
-                        }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                      >
-                        {context.allowedSubjects.length === 0 ? (
-                          <option value="">Aucune matiere disponible</option>
-                        ) : null}
-                        {context.allowedSubjects.map((subject) => (
-                          <option key={subject.id} value={subject.id}>
-                            {subject.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Enseignant</span>
-                      <select
-                        value={slotTeacherUserId}
-                        onChange={(event) =>
-                          setSlotTeacherUserId(event.target.value)
-                        }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                      >
-                        {teacherChoices.length === 0 ? (
-                          <option value="">
-                            Aucun enseignant affecte a cette matiere
-                          </option>
-                        ) : null}
-                        {teacherChoices.map((teacher) => (
-                          <option key={teacher.id} value={teacher.id}>
-                            {teacher.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Salle (optionnel)
-                      </span>
-                      <input
-                        type="text"
-                        value={slotRoom}
-                        onChange={(event) => setSlotRoom(event.target.value)}
-                        placeholder="ex: B14"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="submit"
-                      disabled={
-                        savingSlot || context.allowedSubjects.length === 0
-                      }
-                      iconLeft={
-                        editingSlotId ? (
-                          <Pencil size={14} />
-                        ) : (
-                          <Plus size={14} />
-                        )
-                      }
-                    >
-                      {savingSlot
-                        ? editingSlotId
-                          ? "Mise a jour..."
-                          : "Enregistrement..."
-                        : editingSlotId
-                          ? "Mettre a jour"
-                          : "Ajouter le creneau"}
-                    </Button>
-                    {editingSlotId ? (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={resetSlotForm}
-                        disabled={savingSlot}
-                      >
-                        Annuler la modification
-                      </Button>
-                    ) : null}
-                  </div>
-                </form>
-
-                <div className="grid gap-3">
-                  {WEEKDAY_OPTIONS.map((weekday) => {
-                    const weekdaySlots =
-                      slotsByWeekday.get(weekday.value) ?? [];
+            {tab === "colors" ? (
+              <section className="rounded-card border border-border bg-background p-4">
+                <h3 className="mb-2 text-sm font-semibold text-text-primary">
+                  Couleurs des matieres (classe + annee)
+                </h3>
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {context.allowedSubjects.map((subject) => {
+                    const currentColor =
+                      subjectColorsBySubjectId[subject.id] ?? "#2563EB";
                     return (
-                      <section
-                        key={weekday.value}
-                        className="rounded-card border border-border bg-background p-3"
+                      <article
+                        key={subject.id}
+                        className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface px-3 py-2"
                       >
-                        <h3 className="mb-2 text-sm font-semibold text-text-primary">
-                          {weekday.label}
-                        </h3>
-                        {weekdaySlots.length === 0 ? (
-                          <p className="text-sm text-text-secondary">
-                            Aucun creneau.
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-text-primary">
+                            {subject.name}
                           </p>
-                        ) : (
-                          <div className="grid gap-2">
-                            {weekdaySlots.map((slot) => (
-                              <article
-                                key={slot.id}
-                                className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-border bg-surface px-3 py-2"
-                              >
-                                <div className="grid gap-0.5">
-                                  <p className="text-sm font-semibold text-text-primary">
-                                    {minutesToTimeValue(slot.startMinute)} -{" "}
-                                    {minutesToTimeValue(slot.endMinute)} ·{" "}
-                                    {slot.subject.name}
-                                  </p>
-                                  <p className="text-xs text-text-secondary">
-                                    {slot.teacherUser.lastName.toUpperCase()}{" "}
-                                    {slot.teacherUser.firstName}
-                                    {slot.room ? ` · Salle ${slot.room}` : ""}
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => onEditSlot(slot)}
-                                    className="px-2 py-1 text-xs"
-                                    iconLeft={<Pencil size={14} />}
-                                  >
-                                    Modifier
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => setSlotToDelete(slot)}
-                                    className="px-2 py-1 text-xs text-notification hover:bg-[#FEECEC]"
-                                    iconLeft={<Trash2 size={14} />}
-                                  >
-                                    Supprimer
-                                  </Button>
-                                </div>
-                              </article>
-                            ))}
-                          </div>
-                        )}
-                      </section>
+                          <p className="text-xs text-text-secondary">
+                            {currentColor.toUpperCase()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={currentColor}
+                            onChange={(event) => {
+                              setSubjectColorsBySubjectId((current) => ({
+                                ...current,
+                                [subject.id]: event.target.value.toUpperCase(),
+                              }));
+                            }}
+                            className="h-8 w-10 cursor-pointer rounded border border-border bg-surface p-0.5"
+                            aria-label={`Couleur ${subject.name}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="px-2 py-1 text-xs"
+                            disabled={savingSubjectStyleId === subject.id}
+                            onClick={() => {
+                              void saveSubjectStyle(subject.id, currentColor);
+                            }}
+                          >
+                            {savingSubjectStyleId === subject.id
+                              ? "..."
+                              : "Sauver"}
+                          </Button>
+                        </div>
+                      </article>
                     );
                   })}
                 </div>
+              </section>
+            ) : null}
+
+            {tab === "slots" ? (
+              <>
+                <section className="rounded-card border border-border bg-background p-4">
+                  <form
+                    className="grid gap-3 rounded-card border border-border bg-background p-4"
+                    onSubmit={onSubmitSlot}
+                  >
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">Jour</span>
+                        <select
+                          value={slotWeekday}
+                          onChange={(event) =>
+                            setSlotWeekday(event.target.value)
+                          }
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        >
+                          {WEEKDAY_OPTIONS.map((weekday) => (
+                            <option key={weekday.value} value={weekday.value}>
+                              {weekday.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">Debut</span>
+                        <TimeInput
+                          value={slotStart}
+                          onChange={(event) => setSlotStart(event.target.value)}
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        />
+                      </label>
+
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">Fin</span>
+                        <TimeInput
+                          value={slotEnd}
+                          onChange={(event) => setSlotEnd(event.target.value)}
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        />
+                      </label>
+
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">Matiere</span>
+                        <select
+                          value={slotSubjectId}
+                          onChange={(event) =>
+                            setSlotSubjectId(event.target.value)
+                          }
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        >
+                          {context.allowedSubjects.length === 0 ? (
+                            <option value="">Aucune matiere disponible</option>
+                          ) : null}
+                          {context.allowedSubjects.map((subject) => (
+                            <option key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">Enseignant</span>
+                        <select
+                          value={slotTeacherUserId}
+                          onChange={(event) =>
+                            setSlotTeacherUserId(event.target.value)
+                          }
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        >
+                          {teacherChoices.length === 0 ? (
+                            <option value="">
+                              Aucun enseignant affecte a cette matiere
+                            </option>
+                          ) : null}
+                          {teacherChoices.map((teacher) => (
+                            <option key={teacher.id} value={teacher.id}>
+                              {teacher.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">
+                          Salle (optionnel)
+                        </span>
+                        <input
+                          type="text"
+                          value={slotRoom}
+                          onChange={(event) => setSlotRoom(event.target.value)}
+                          placeholder="ex: B14"
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="submit"
+                        disabled={
+                          savingSlot || context.allowedSubjects.length === 0
+                        }
+                        iconLeft={
+                          editingSlotId ? (
+                            <Pencil size={14} />
+                          ) : (
+                            <Plus size={14} />
+                          )
+                        }
+                      >
+                        {savingSlot
+                          ? editingSlotId
+                            ? "Mise a jour..."
+                            : "Enregistrement..."
+                          : editingSlotId
+                            ? "Mettre a jour"
+                            : "Ajouter le creneau"}
+                      </Button>
+                      {editingSlotId ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={resetSlotForm}
+                          disabled={savingSlot}
+                        >
+                          Annuler la modification
+                        </Button>
+                      ) : null}
+                    </div>
+                  </form>
+
+                  <section className="grid gap-3 rounded-card border border-border bg-background p-3">
+                    <div className="grid grid-cols-3 gap-2 rounded-[6px] border border-[#D4E4F6] bg-white p-1">
+                      {(
+                        [
+                          { key: "day", label: dayTabLabel },
+                          { key: "week", label: weekTabLabel },
+                          { key: "month", label: monthTabLabel },
+                        ] as Array<{ key: ViewMode; label: string }>
+                      ).map((entry) => (
+                        <div
+                          key={`agenda-view-${entry.key}`}
+                          className={`grid grid-cols-[34px_1fr_34px] items-center gap-1 rounded-[4px] px-1 py-1 text-sm font-semibold transition ${
+                            viewMode === entry.key
+                              ? "bg-[#0A62BF] text-white shadow-[0_10px_24px_-14px_rgba(10,98,191,0.95)]"
+                              : "text-[#2B4A74] hover:bg-[#EEF5FF]"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewMode(entry.key);
+                              moveCursorForMode(entry.key, -1);
+                            }}
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
+                              viewMode === entry.key
+                                ? "bg-white/15 text-white hover:bg-white/25"
+                                : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
+                            }`}
+                            aria-label={`Periode precedente (${entry.key})`}
+                          >
+                            <ChevronLeft
+                              className="h-5 w-5"
+                              strokeWidth={2.6}
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewMode(entry.key);
+                              setCursorDate(today);
+                            }}
+                            className="min-w-0 rounded-[4px] px-2 py-1 text-[13px]"
+                            title="Revenir a la periode courante"
+                          >
+                            <span className="block truncate">
+                              {entry.label}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViewMode(entry.key);
+                              moveCursorForMode(entry.key, 1);
+                            }}
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
+                              viewMode === entry.key
+                                ? "bg-white/15 text-white hover:bg-white/25"
+                                : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
+                            }`}
+                            aria-label={`Periode suivante (${entry.key})`}
+                          >
+                            <ChevronRight
+                              className="h-5 w-5"
+                              strokeWidth={2.6}
+                            />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {viewMode === "day" ? (
+                      <div className="grid gap-2">
+                        {daySlots.length === 0 ? (
+                          <p className="rounded-card border border-dashed border-border bg-surface px-3 py-3 text-sm text-text-secondary">
+                            Aucun creneau pour cette journee.
+                          </p>
+                        ) : (
+                          daySlots.map((slot) =>
+                            (() => {
+                              const tone = subjectVisualTone(
+                                subjectColorsBySubjectId[slot.subject.id],
+                              );
+                              return (
+                                <article
+                                  key={`day-slot-${slot.id}`}
+                                  className="flex flex-wrap items-center justify-between gap-2 rounded-card border px-3 py-2"
+                                  style={{
+                                    backgroundColor: tone.background,
+                                    borderColor: tone.border,
+                                  }}
+                                >
+                                  <div className="grid gap-0.5">
+                                    <p
+                                      className="text-sm font-semibold"
+                                      style={{ color: tone.text }}
+                                    >
+                                      {minutesToTimeValue(slot.startMinute)} -{" "}
+                                      {minutesToTimeValue(slot.endMinute)} ·{" "}
+                                      {slot.subject.name}
+                                    </p>
+                                    <p className="text-xs text-text-secondary">
+                                      {slot.teacherUser.lastName.toUpperCase()}{" "}
+                                      {slot.teacherUser.firstName}
+                                      {slot.room ? ` · Salle ${slot.room}` : ""}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white"
+                                      style={{ backgroundColor: tone.chip }}
+                                    >
+                                      {slot.room
+                                        ? `Salle ${slot.room}`
+                                        : "Cours"}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      onClick={() => onEditSlot(slot)}
+                                      className="px-2 py-1 text-xs"
+                                      iconLeft={<Pencil size={14} />}
+                                    >
+                                      Modifier
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      onClick={() => setSlotToDelete(slot)}
+                                      className="px-2 py-1 text-xs text-notification hover:bg-[#FEECEC]"
+                                      iconLeft={<Trash2 size={14} />}
+                                    >
+                                      Supprimer
+                                    </Button>
+                                  </div>
+                                </article>
+                              );
+                            })(),
+                          )
+                        )}
+                      </div>
+                    ) : null}
+
+                    {viewMode === "week" ? (
+                      <section className="overflow-hidden rounded-card border border-border">
+                        <div className="grid grid-cols-7 bg-[#F7FAFF]">
+                          {weekDays.map((entry) => (
+                            <div
+                              key={`week-head-${entry.weekday}`}
+                              className={`border-b border-r border-border px-2 py-2 text-center last:border-r-0 ${
+                                sameDate(entry.date, today)
+                                  ? "bg-[#E7F2FF]"
+                                  : ""
+                              }`}
+                            >
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#4C6284]">
+                                {entry.shortLabel}
+                              </p>
+                              <p className="text-sm font-semibold text-[#163158]">
+                                {entry.date
+                                  .getDate()
+                                  .toString()
+                                  .padStart(2, "0")}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-7 bg-white">
+                          {weekDays.map((entry) => {
+                            const weekDaySlots = slots
+                              .filter((slot) => slot.weekday === entry.weekday)
+                              .sort((a, b) => a.startMinute - b.startMinute);
+                            return (
+                              <div
+                                key={`week-col-${entry.weekday}`}
+                                className="min-h-[230px] border-r border-border p-2 last:border-r-0"
+                              >
+                                {weekDaySlots.length === 0 ? (
+                                  <p className="mt-2 text-center text-xs text-[#8192A8]">
+                                    -
+                                  </p>
+                                ) : (
+                                  <div className="grid gap-2">
+                                    {weekDaySlots.map((slot) => {
+                                      const tone = subjectVisualTone(
+                                        subjectColorsBySubjectId[
+                                          slot.subject.id
+                                        ],
+                                      );
+                                      return (
+                                        <article
+                                          key={`week-slot-${slot.id}`}
+                                          className="rounded-[8px] border px-2 py-1.5"
+                                          style={{
+                                            backgroundColor: tone.background,
+                                            borderColor: tone.border,
+                                          }}
+                                        >
+                                          <p
+                                            className="text-[11px] font-semibold"
+                                            style={{ color: tone.text }}
+                                          >
+                                            {minutesToTimeValue(
+                                              slot.startMinute,
+                                            )}{" "}
+                                            -{" "}
+                                            {minutesToTimeValue(slot.endMinute)}
+                                          </p>
+                                          <p
+                                            className="mt-0.5 text-[11px] font-semibold"
+                                            style={{ color: tone.text }}
+                                          >
+                                            {slot.subject.name}
+                                          </p>
+                                          <p className="mt-0.5 text-[10px] text-[#5C6F88]">
+                                            {slot.room
+                                              ? `Salle ${slot.room}`
+                                              : "-"}
+                                          </p>
+                                        </article>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ) : null}
+
+                    {viewMode === "month" ? (
+                      <section className="grid gap-3">
+                        <div className="grid grid-cols-7 rounded-card border border-border bg-white">
+                          {WEEKDAY_OPTIONS.map((entry) => (
+                            <div
+                              key={`month-head-${entry.value}`}
+                              className="border-b border-r border-border px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-[#4C6284] last:border-r-0"
+                            >
+                              {entry.label.slice(0, 3)}
+                            </div>
+                          ))}
+                          {monthCalendarCells.map((entry, index) => {
+                            if (!entry.date) {
+                              return (
+                                <div
+                                  key={`month-empty-${index}`}
+                                  className="min-h-[66px] border-r border-border bg-[#FAFCFF] last:border-r-0"
+                                />
+                              );
+                            }
+                            const isSelected =
+                              selectedMonthDate &&
+                              sameDate(entry.date, selectedMonthDate);
+                            const isToday = sameDate(entry.date, today);
+                            return (
+                              <button
+                                key={`month-cell-${entry.date.toISOString()}`}
+                                type="button"
+                                onClick={() => setSelectedMonthDate(entry.date)}
+                                className={`min-h-[66px] border-r border-b border-border px-2 py-2 text-left last:border-r-0 ${
+                                  isSelected
+                                    ? "bg-[#EAF3FF]"
+                                    : "bg-white hover:bg-[#F7FBFF]"
+                                }`}
+                              >
+                                <p
+                                  className={`text-xs font-semibold ${
+                                    isToday ? "text-primary" : "text-[#163158]"
+                                  }`}
+                                >
+                                  {entry.date
+                                    .getDate()
+                                    .toString()
+                                    .padStart(2, "0")}
+                                </p>
+                                <p className="mt-1 text-[10px] text-[#5C6F88]">
+                                  {entry.slots.length} creneau
+                                  {entry.slots.length > 1 ? "x" : ""}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="rounded-card border border-border bg-surface p-3">
+                          <p className="mb-2 text-sm font-semibold text-text-primary">
+                            {selectedMonthDate
+                              ? `Creneaux du ${new Intl.DateTimeFormat(
+                                  "fr-FR",
+                                  {
+                                    weekday: "long",
+                                    day: "2-digit",
+                                    month: "long",
+                                  },
+                                ).format(selectedMonthDate)}`
+                              : "Selectionnez un jour pour voir les creneaux"}
+                          </p>
+                          {selectedMonthDate ? (
+                            selectedMonthSlots.length === 0 ? (
+                              <p className="text-sm text-text-secondary">
+                                Aucun creneau pour ce jour.
+                              </p>
+                            ) : (
+                              <div className="grid gap-2">
+                                {selectedMonthSlots.map((slot) => {
+                                  const tone = subjectVisualTone(
+                                    subjectColorsBySubjectId[slot.subject.id],
+                                  );
+                                  return (
+                                    <article
+                                      key={`month-slot-${slot.id}`}
+                                      className="rounded-card border px-3 py-2"
+                                      style={{
+                                        backgroundColor: tone.background,
+                                        borderColor: tone.border,
+                                      }}
+                                    >
+                                      <p
+                                        className="text-sm font-semibold"
+                                        style={{ color: tone.text }}
+                                      >
+                                        {minutesToTimeValue(slot.startMinute)} -{" "}
+                                        {minutesToTimeValue(slot.endMinute)} ·{" "}
+                                        {slot.subject.name}
+                                      </p>
+                                      <p className="text-xs text-text-secondary">
+                                        {slot.teacherUser.lastName.toUpperCase()}{" "}
+                                        {slot.teacherUser.firstName}
+                                        {slot.room
+                                          ? ` · Salle ${slot.room}`
+                                          : ""}
+                                      </p>
+                                    </article>
+                                  );
+                                })}
+                              </div>
+                            )
+                          ) : null}
+                        </div>
+                      </section>
+                    ) : null}
+                  </section>
+                </section>
               </>
-            ) : (
+            ) : tab === "vacations" ? (
               <>
                 {canManageCalendar ? (
                   <form
@@ -1352,7 +1901,7 @@ export default function TeacherClassAgendaPage() {
                   )}
                 </div>
               </>
-            )}
+            ) : null}
           </div>
         )}
       </Card>
