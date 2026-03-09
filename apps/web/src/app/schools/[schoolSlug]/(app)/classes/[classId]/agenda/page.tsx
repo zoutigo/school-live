@@ -1180,10 +1180,7 @@ export default function TeacherClassAgendaPage() {
       return;
     }
 
-    if (
-      occurrenceActionType !== "DELETE_SERIES" &&
-      !occurrenceDateInput
-    ) {
+    if (occurrenceActionType !== "DELETE_SERIES" && !occurrenceDateInput) {
       setError("Selectionnez la date d'occurrence.");
       return;
     }
@@ -1362,7 +1359,9 @@ export default function TeacherClassAgendaPage() {
         );
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          setError(parseApiError(payload, "Mise a jour de la serie impossible."));
+          setError(
+            parseApiError(payload, "Mise a jour de la serie impossible."),
+          );
           return;
         }
         setSuccess("Serie mise a jour.");
@@ -1383,7 +1382,9 @@ export default function TeacherClassAgendaPage() {
         );
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          setError(parseApiError(payload, "Suppression de la serie impossible."));
+          setError(
+            parseApiError(payload, "Suppression de la serie impossible."),
+          );
           return;
         }
         setSuccess("Serie supprimee.");
@@ -2786,8 +2787,9 @@ export default function TeacherClassAgendaPage() {
                       subjectColorsBySubjectId[occurrenceModalSlot.subject.id],
                     );
                     const sourceSeriesSlot = occurrenceModalSlot.slotId
-                      ? (slots.find((entry) => entry.id === occurrenceModalSlot.slotId) ??
-                        null)
+                      ? (slots.find(
+                          (entry) => entry.id === occurrenceModalSlot.slotId,
+                        ) ?? null)
                       : null;
                     const seriesStartLabel = formatDateLabel(
                       sourceSeriesSlot?.activeFromDate,
@@ -2838,9 +2840,12 @@ export default function TeacherClassAgendaPage() {
                                   : undefined,
                             }}
                           >
-                            {minutesToTimeValue(occurrenceModalSlot.startMinute)} -{" "}
-                            {minutesToTimeValue(occurrenceModalSlot.endMinute)} ·{" "}
-                            {occurrenceModalSlot.subject.name}
+                            {minutesToTimeValue(
+                              occurrenceModalSlot.startMinute,
+                            )}{" "}
+                            -{" "}
+                            {minutesToTimeValue(occurrenceModalSlot.endMinute)}{" "}
+                            · {occurrenceModalSlot.subject.name}
                           </p>
                           <p className="text-xs text-text-secondary">
                             {teacherPrefixFromGender(

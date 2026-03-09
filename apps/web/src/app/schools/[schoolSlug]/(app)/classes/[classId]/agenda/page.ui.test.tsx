@@ -862,13 +862,17 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
     fireEvent.click(modalQueries.getByText("Modifier cette occurrence"));
     fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
-    expect(await screen.findByText("Modifier cette occurrence")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Modifier cette occurrence"),
+    ).toBeInTheDocument();
 
     fireEvent.click(modalQueries.getByRole("button", { name: "Retour" }));
     await waitFor(() => {
       expect(screen.getByText("Gerer l'occurrence")).toBeInTheDocument();
     });
-    expect(modalQueries.getByText("Supprimer cette occurrence")).toBeInTheDocument();
+    expect(
+      modalQueries.getByText("Supprimer cette occurrence"),
+    ).toBeInTheDocument();
   });
 
   it("deletes current recurring occurrence via CANCEL exception", async () => {
@@ -883,7 +887,9 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Supprimer cette occurrence")).toBeInTheDocument();
+      expect(
+        screen.getByText("Supprimer cette occurrence"),
+      ).toBeInTheDocument();
     });
     expect(
       screen.getByText(/Voulez-vous vraiment supprimer cette occurrence/i),
@@ -894,7 +900,9 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     ).toBeInTheDocument();
     expect(modalQueries.queryByLabelText("Debut")).not.toBeInTheDocument();
 
-    fireEvent.click(modalQueries.getByRole("button", { name: "Appliquer l'action" }));
+    fireEvent.click(
+      modalQueries.getByRole("button", { name: "Appliquer l'action" }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Occurrence supprimee.")).toBeInTheDocument();
@@ -923,16 +931,21 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     fireEvent.change(modalQueries.getByLabelText("Date de debut d'effet"), {
       target: { value: "2026-03-10" },
     });
-    fireEvent.change(modalQueries.getByLabelText("Date de fin de serie (optionnel)"), {
-      target: { value: "2026-04-30" },
-    });
+    fireEvent.change(
+      modalQueries.getByLabelText("Date de fin de serie (optionnel)"),
+      {
+        target: { value: "2026-04-30" },
+      },
+    );
     fireEvent.change(modalQueries.getByLabelText("Debut"), {
       target: { value: "09:00" },
     });
     fireEvent.change(modalQueries.getByLabelText("Fin"), {
       target: { value: "10:15" },
     });
-    fireEvent.click(modalQueries.getByRole("button", { name: "Appliquer l'action" }));
+    fireEvent.click(
+      modalQueries.getByRole("button", { name: "Appliquer l'action" }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Serie mise a jour.")).toBeInTheDocument();
@@ -981,7 +994,9 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
       modalQueries.getByText(/08:45 - 10:00 · Francais/i),
     ).toBeInTheDocument();
 
-    fireEvent.click(modalQueries.getByRole("button", { name: "Appliquer l'action" }));
+    fireEvent.click(
+      modalQueries.getByRole("button", { name: "Appliquer l'action" }),
+    );
     await waitFor(() => {
       expect(screen.getByText("Serie supprimee.")).toBeInTheDocument();
     });
@@ -1016,8 +1031,12 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     fireEvent.click(screen.getByText(/15:00 - 16:00 · Mathematiques/i));
 
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
-    expect(modalQueries.getByText("Supprimer cette occurrence")).toBeInTheDocument();
-    expect(modalQueries.getByText("Modifier cette occurrence")).toBeInTheDocument();
+    expect(
+      modalQueries.getByText("Supprimer cette occurrence"),
+    ).toBeInTheDocument();
+    expect(
+      modalQueries.getByText("Modifier cette occurrence"),
+    ).toBeInTheDocument();
     expect(
       modalQueries.queryByText("Modifier toute la serie"),
     ).not.toBeInTheDocument();
@@ -1027,7 +1046,9 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
 
     fireEvent.click(modalQueries.getByText("Supprimer cette occurrence"));
     fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
-    fireEvent.click(modalQueries.getByRole("button", { name: "Appliquer l'action" }));
+    fireEvent.click(
+      modalQueries.getByRole("button", { name: "Appliquer l'action" }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Occurrence supprimee.")).toBeInTheDocument();
