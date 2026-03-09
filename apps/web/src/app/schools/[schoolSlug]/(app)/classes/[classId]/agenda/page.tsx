@@ -28,6 +28,12 @@ type AllowedRole =
   | "SCHOOL_MANAGER"
   | "SUPERVISOR"
   | "TEACHER";
+type OccurrenceModalAction =
+  | "DELETE_OCCURRENCE"
+  | "UPDATE_OCCURRENCE"
+  | "UPDATE_SERIES"
+  | "DELETE_SERIES";
+type OccurrenceModalStep = "action" | "details";
 
 type TimetableContextResponse = {
   class: {
@@ -211,6 +217,21 @@ function formatDateRange(startIso: string, endIso: string) {
   return `${formatter.format(start)} - ${formatter.format(end)}`;
 }
 
+function formatDateLabel(iso: string | null | undefined) {
+  if (!iso) {
+    return null;
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
 function toDateInputValue(isoDate: string) {
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) {
@@ -357,6 +378,21 @@ function teacherPrefixFromGender(gender: string | null | undefined) {
   return "Mr";
 }
 
+function occurrenceActionLabel(action: OccurrenceModalAction) {
+  switch (action) {
+    case "DELETE_OCCURRENCE":
+      return "Supprimer cette occurrence";
+    case "UPDATE_OCCURRENCE":
+      return "Modifier cette occurrence";
+    case "UPDATE_SERIES":
+      return "Modifier toute la serie";
+    case "DELETE_SERIES":
+      return "Supprimer toute la serie";
+    default:
+      return "Gerer l'occurrence";
+  }
+}
+
 export default function TeacherClassAgendaPage() {
   const { schoolSlug, classId } = useParams<{
     schoolSlug: string;
@@ -411,11 +447,10 @@ export default function TeacherClassAgendaPage() {
   >([]);
   const [occurrences, setOccurrences] = useState<TimetableOccurrenceRow[]>([]);
   const [savingOccurrenceAction, setSavingOccurrenceAction] = useState(false);
-  const [occurrenceActionType, setOccurrenceActionType] = useState<
-    "ONE_OFF" | "CANCEL" | "OVERRIDE"
-  >("ONE_OFF");
+  const [occurrenceActionType, setOccurrenceActionType] =
+    useState<OccurrenceModalAction>("DELETE_OCCURRENCE");
   const [occurrenceDateInput, setOccurrenceDateInput] = useState("");
-  const [occurrenceTargetSlotId, setOccurrenceTargetSlotId] = useState("");
+  const [occurrenceSeriesEndDate, setOccurrenceSeriesEndDate] = useState("");
   const [occurrenceSubjectId, setOccurrenceSubjectId] = useState("");
   const [occurrenceTeacherUserId, setOccurrenceTeacherUserId] = useState("");
   const [occurrenceStart, setOccurrenceStart] = useState("08:45");
@@ -423,6 +458,8 @@ export default function TeacherClassAgendaPage() {
   const [occurrenceRoom, setOccurrenceRoom] = useState("");
   const [occurrenceModalSlot, setOccurrenceModalSlot] =
     useState<TimetableOccurrenceRow | null>(null);
+  const [occurrenceModalStep, setOccurrenceModalStep] =
+    useState<OccurrenceModalStep>("action");
 
   const [vacationLabel, setVacationLabel] = useState("Vacances scolaires");
   const [vacationScope, setVacationScope] = useState<
@@ -563,34 +600,27 @@ export default function TeacherClassAgendaPage() {
     setOccurrenceDateInput(toIsoDateString(cursorDate));
   }, [cursorDate]);
 
-  useEffect(() => {
-    if (slots.length === 0) {
-      setOccurrenceTargetSlotId("");
-      return;
-    }
-    const exists = slots.some((slot) => slot.id === occurrenceTargetSlotId);
-    if (!exists) {
-      setOccurrenceTargetSlotId(slots[0].id);
-    }
-  }, [slots, occurrenceTargetSlotId]);
-
   function openOccurrenceModal(slot: TimetableOccurrenceRow) {
     setOccurrenceModalSlot(slot);
     setOccurrenceDateInput(slot.occurrenceDate);
+    setOccurrenceSeriesEndDate(
+      slot.slotId
+        ? (slots.find((entry) => entry.id === slot.slotId)?.activeToDate ?? "")
+        : "",
+    );
     setOccurrenceStart(minutesToTimeValue(slot.startMinute));
     setOccurrenceEnd(minutesToTimeValue(slot.endMinute));
     setOccurrenceSubjectId(slot.subject.id);
     setOccurrenceTeacherUserId(slot.teacherUser.id);
     setOccurrenceRoom(slot.room ?? "");
     if (slot.slotId) {
-      setOccurrenceTargetSlotId(slot.slotId);
       setOccurrenceActionType(
-        slot.status === "CANCELLED" ? "OVERRIDE" : "CANCEL",
+        slot.status === "CANCELLED" ? "UPDATE_OCCURRENCE" : "DELETE_OCCURRENCE",
       );
     } else {
-      setOccurrenceActionType("ONE_OFF");
-      setOccurrenceTargetSlotId("");
+      setOccurrenceActionType("UPDATE_OCCURRENCE");
     }
+    setOccurrenceModalStep("action");
     setError(null);
     setSuccess(null);
   }
@@ -1145,7 +1175,15 @@ export default function TeacherClassAgendaPage() {
   async function onSubmitOccurrenceAction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!occurrenceDateInput) {
+    if (!occurrenceModalSlot) {
+      setError("Aucun creneau selectionne.");
+      return;
+    }
+
+    if (
+      occurrenceActionType !== "DELETE_SERIES" &&
+      !occurrenceDateInput
+    ) {
       setError("Selectionnez la date d'occurrence.");
       return;
     }
@@ -1162,7 +1200,131 @@ export default function TeacherClassAgendaPage() {
     setSuccess(null);
 
     try {
-      if (occurrenceActionType === "ONE_OFF") {
+      if (occurrenceActionType === "DELETE_OCCURRENCE") {
+        if (occurrenceModalSlot.oneOffSlotId) {
+          const response = await fetch(
+            `${API_URL}/schools/${schoolSlug}/timetable/one-off-slots/${occurrenceModalSlot.oneOffSlotId}`,
+            {
+              method: "DELETE",
+              credentials: "include",
+              headers: { "X-CSRF-Token": csrfToken },
+            },
+          );
+          if (!response.ok) {
+            const payload = await response.json().catch(() => null);
+            setError(
+              parseApiError(payload, "Suppression de l'occurrence impossible."),
+            );
+            return;
+          }
+        } else if (occurrenceModalSlot.slotId) {
+          const response = await fetch(
+            `${API_URL}/schools/${schoolSlug}/timetable/slots/${occurrenceModalSlot.slotId}/exceptions`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken,
+              },
+              body: JSON.stringify({
+                occurrenceDate: occurrenceDateInput,
+                type: "CANCEL",
+              }),
+            },
+          );
+          if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            setError(
+              parseApiError(body, "Suppression de l'occurrence impossible."),
+            );
+            return;
+          }
+        } else {
+          setError("Occurrence sans source modifiable.");
+          return;
+        }
+        setSuccess("Occurrence supprimee.");
+      } else if (occurrenceActionType === "UPDATE_OCCURRENCE") {
+        const startMinute = timeValueToMinutes(occurrenceStart);
+        const endMinute = timeValueToMinutes(occurrenceEnd);
+        if (!occurrenceSubjectId || !occurrenceTeacherUserId) {
+          setError("Selectionnez la matiere et l'enseignant.");
+          return;
+        }
+        if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
+          setError("Horaire invalide.");
+          return;
+        }
+        if (startMinute >= endMinute) {
+          setError("L'heure de debut doit etre avant l'heure de fin.");
+          return;
+        }
+        if (occurrenceModalSlot.oneOffSlotId) {
+          const response = await fetch(
+            `${API_URL}/schools/${schoolSlug}/timetable/one-off-slots/${occurrenceModalSlot.oneOffSlotId}`,
+            {
+              method: "PATCH",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken,
+              },
+              body: JSON.stringify({
+                occurrenceDate: occurrenceDateInput,
+                startMinute,
+                endMinute,
+                subjectId: occurrenceSubjectId,
+                teacherUserId: occurrenceTeacherUserId,
+                room: occurrenceRoom.trim() || undefined,
+              }),
+            },
+          );
+          if (!response.ok) {
+            const payload = await response.json().catch(() => null);
+            setError(
+              parseApiError(payload, "Mise a jour de l'occurrence impossible."),
+            );
+            return;
+          }
+        } else if (occurrenceModalSlot.slotId) {
+          const response = await fetch(
+            `${API_URL}/schools/${schoolSlug}/timetable/slots/${occurrenceModalSlot.slotId}/exceptions`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken,
+              },
+              body: JSON.stringify({
+                occurrenceDate: occurrenceDateInput,
+                type: "OVERRIDE",
+                startMinute,
+                endMinute,
+                subjectId: occurrenceSubjectId,
+                teacherUserId: occurrenceTeacherUserId,
+                room: occurrenceRoom.trim() || undefined,
+              }),
+            },
+          );
+          if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            setError(
+              parseApiError(body, "Mise a jour de l'occurrence impossible."),
+            );
+            return;
+          }
+        } else {
+          setError("Occurrence sans source modifiable.");
+          return;
+        }
+        setSuccess("Occurrence modifiee.");
+      } else if (occurrenceActionType === "UPDATE_SERIES") {
+        if (!occurrenceModalSlot.slotId) {
+          setError("Cette occurrence ponctuelle n'a pas de serie a modifier.");
+          return;
+        }
         const startMinute = timeValueToMinutes(occurrenceStart);
         const endMinute = timeValueToMinutes(occurrenceEnd);
         if (!occurrenceSubjectId || !occurrenceTeacherUserId) {
@@ -1178,86 +1340,53 @@ export default function TeacherClassAgendaPage() {
           return;
         }
         const response = await fetch(
-          `${API_URL}/schools/${schoolSlug}/timetable/classes/${classId}/one-off-slots`,
+          `${API_URL}/schools/${schoolSlug}/timetable/slots/${occurrenceModalSlot.slotId}`,
           {
-            method: "POST",
+            method: "PATCH",
             credentials: "include",
             headers: {
               "Content-Type": "application/json",
               "X-CSRF-Token": csrfToken,
             },
             body: JSON.stringify({
-              schoolYearId: selectedSchoolYearId ?? undefined,
-              occurrenceDate: occurrenceDateInput,
+              weekday: occurrenceModalSlot.weekday,
               startMinute,
               endMinute,
               subjectId: occurrenceSubjectId,
               teacherUserId: occurrenceTeacherUserId,
               room: occurrenceRoom.trim() || undefined,
+              effectiveFromDate: occurrenceDateInput,
+              activeToDate: occurrenceSeriesEndDate || undefined,
             }),
           },
         );
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          setError(
-            parseApiError(payload, "Creation du cours ponctuel impossible."),
-          );
+          setError(parseApiError(payload, "Mise a jour de la serie impossible."));
           return;
         }
-        setSuccess("Cours ponctuel enregistre.");
-      } else {
-        if (!occurrenceTargetSlotId) {
-          setError("Selectionnez un creneau recurrent cible.");
+        setSuccess("Serie mise a jour.");
+      } else if (occurrenceActionType === "DELETE_SERIES") {
+        if (!occurrenceModalSlot.slotId) {
+          setError("Cette occurrence ponctuelle n'a pas de serie a supprimer.");
           return;
         }
-        const payload: Record<string, unknown> = {
-          occurrenceDate: occurrenceDateInput,
-          type: occurrenceActionType,
-        };
-        if (occurrenceActionType === "OVERRIDE") {
-          const startMinute = timeValueToMinutes(occurrenceStart);
-          const endMinute = timeValueToMinutes(occurrenceEnd);
-          if (!occurrenceSubjectId || !occurrenceTeacherUserId) {
-            setError("Selectionnez la matiere et l'enseignant.");
-            return;
-          }
-          if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
-            setError("Horaire invalide.");
-            return;
-          }
-          if (startMinute >= endMinute) {
-            setError("L'heure de debut doit etre avant l'heure de fin.");
-            return;
-          }
-          payload.startMinute = startMinute;
-          payload.endMinute = endMinute;
-          payload.subjectId = occurrenceSubjectId;
-          payload.teacherUserId = occurrenceTeacherUserId;
-          payload.room = occurrenceRoom.trim() || undefined;
-        }
-
         const response = await fetch(
-          `${API_URL}/schools/${schoolSlug}/timetable/slots/${occurrenceTargetSlotId}/exceptions`,
+          `${API_URL}/schools/${schoolSlug}/timetable/slots/${occurrenceModalSlot.slotId}`,
           {
-            method: "POST",
+            method: "DELETE",
             credentials: "include",
             headers: {
-              "Content-Type": "application/json",
               "X-CSRF-Token": csrfToken,
             },
-            body: JSON.stringify(payload),
           },
         );
         if (!response.ok) {
-          const body = await response.json().catch(() => null);
-          setError(parseApiError(body, "Mise a jour d'occurrence impossible."));
+          const payload = await response.json().catch(() => null);
+          setError(parseApiError(payload, "Suppression de la serie impossible."));
           return;
         }
-        setSuccess(
-          occurrenceActionType === "CANCEL"
-            ? "Occurrence annulee."
-            : "Occurrence modifiee.",
-        );
+        setSuccess("Serie supprimee.");
       }
 
       await refreshTimetable();
@@ -2571,7 +2700,9 @@ export default function TeacherClassAgendaPage() {
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-base font-semibold text-text-primary">
-                  Gerer l'occurrence
+                  {occurrenceModalStep === "action"
+                    ? "Gerer l'occurrence"
+                    : occurrenceActionLabel(occurrenceActionType)}
                 </h3>
                 <p className="text-xs text-text-secondary">
                   {new Intl.DateTimeFormat("fr-FR", {
@@ -2592,6 +2723,7 @@ export default function TeacherClassAgendaPage() {
                 onClick={() => {
                   if (!savingOccurrenceAction) {
                     setOccurrenceModalSlot(null);
+                    setOccurrenceModalStep("action");
                   }
                 }}
               >
@@ -2599,154 +2731,300 @@ export default function TeacherClassAgendaPage() {
               </Button>
             </div>
 
-            <form className="grid gap-3" onSubmit={onSubmitOccurrenceAction}>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Action</span>
-                  <select
-                    value={occurrenceActionType}
-                    onChange={(event) =>
-                      setOccurrenceActionType(
-                        event.target.value as "ONE_OFF" | "CANCEL" | "OVERRIDE",
-                      )
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                  >
-                    <option value="ONE_OFF">Cours ponctuel</option>
-                    <option value="CANCEL">Annuler cette occurrence</option>
-                    <option value="OVERRIDE">Modifier cette occurrence</option>
-                  </select>
-                </label>
-
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Date</span>
-                  <DateInput
-                    value={occurrenceDateInput}
-                    onChange={(event) =>
-                      setOccurrenceDateInput(event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                  />
-                </label>
-              </div>
-
-              {occurrenceActionType !== "ONE_OFF" ? (
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Creneau recurrent cible
-                  </span>
-                  <select
-                    value={occurrenceTargetSlotId}
-                    onChange={(event) =>
-                      setOccurrenceTargetSlotId(event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                  >
-                    <option value="">Selectionner</option>
-                    {slots.map((slot) => (
-                      <option key={`target-slot-${slot.id}`} value={slot.id}>
-                        {WEEKDAY_OPTIONS.find(
-                          (day) => day.value === slot.weekday,
-                        )?.label ?? "Jour"}{" "}
-                        · {minutesToTimeValue(slot.startMinute)} -{" "}
-                        {minutesToTimeValue(slot.endMinute)} ·{" "}
-                        {slot.subject.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-
-              {occurrenceActionType !== "CANCEL" ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Debut</span>
-                    <TimeInput
-                      value={occurrenceStart}
-                      onChange={(event) =>
-                        setOccurrenceStart(event.target.value)
-                      }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Fin</span>
-                    <TimeInput
-                      value={occurrenceEnd}
-                      onChange={(event) => setOccurrenceEnd(event.target.value)}
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Matiere</span>
-                    <select
-                      value={occurrenceSubjectId}
-                      onChange={(event) =>
-                        setOccurrenceSubjectId(event.target.value)
-                      }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+            {occurrenceModalStep === "action" ? (
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  {(
+                    [
+                      "DELETE_OCCURRENCE",
+                      "UPDATE_OCCURRENCE",
+                      ...(occurrenceModalSlot.slotId
+                        ? ["UPDATE_SERIES", "DELETE_SERIES"]
+                        : []),
+                    ] as OccurrenceModalAction[]
+                  ).map((action) => (
+                    <button
+                      key={`occ-action-${action}`}
+                      type="button"
+                      onClick={() => setOccurrenceActionType(action)}
+                      className={`rounded-card border px-3 py-2 text-left text-sm transition ${
+                        occurrenceActionType === action
+                          ? "border-primary bg-[#EAF3FF] text-primary"
+                          : "border-border bg-surface text-text-primary hover:bg-background"
+                      }`}
                     >
-                      {(context?.allowedSubjects ?? []).map((subject) => (
-                        <option
-                          key={`occ-subject-${subject.id}`}
-                          value={subject.id}
-                        >
-                          {subject.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Enseignant</span>
-                    <select
-                      value={occurrenceTeacherUserId}
-                      onChange={(event) =>
-                        setOccurrenceTeacherUserId(event.target.value)
-                      }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                    >
-                      {occurrenceTeacherChoices.map((teacher) => (
-                        <option
-                          key={`occ-teacher-${teacher.id}`}
-                          value={teacher.id}
-                        >
-                          {teacher.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-sm md:col-span-2">
-                    <span className="text-text-secondary">
-                      Salle (optionnel)
-                    </span>
-                    <input
-                      type="text"
-                      value={occurrenceRoom}
-                      onChange={(event) =>
-                        setOccurrenceRoom(event.target.value)
-                      }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
-                    />
-                  </label>
+                      {occurrenceActionLabel(action)}
+                    </button>
+                  ))}
                 </div>
-              ) : null}
-
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setOccurrenceModalSlot(null)}
-                  disabled={savingOccurrenceAction}
-                >
-                  Annuler
-                </Button>
-                <Button type="submit" disabled={savingOccurrenceAction}>
-                  {savingOccurrenceAction
-                    ? "Enregistrement..."
-                    : "Appliquer l'action"}
-                </Button>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setOccurrenceModalSlot(null);
+                      setOccurrenceModalStep("action");
+                    }}
+                    disabled={savingOccurrenceAction}
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setOccurrenceModalStep("details")}
+                  >
+                    Continuer
+                  </Button>
+                </div>
               </div>
-            </form>
+            ) : (
+              <form className="grid gap-3" onSubmit={onSubmitOccurrenceAction}>
+                {occurrenceActionType === "DELETE_OCCURRENCE" ||
+                occurrenceActionType === "DELETE_SERIES" ? (
+                  (() => {
+                    const tone = subjectVisualTone(
+                      subjectColorsBySubjectId[occurrenceModalSlot.subject.id],
+                    );
+                    const sourceSeriesSlot = occurrenceModalSlot.slotId
+                      ? (slots.find((entry) => entry.id === occurrenceModalSlot.slotId) ??
+                        null)
+                      : null;
+                    const seriesStartLabel = formatDateLabel(
+                      sourceSeriesSlot?.activeFromDate,
+                    );
+                    const seriesEndLabel = formatDateLabel(
+                      sourceSeriesSlot?.activeToDate,
+                    );
+                    return (
+                      <div className="grid gap-3">
+                        <p className="text-sm text-text-secondary">
+                          {occurrenceActionType === "DELETE_SERIES"
+                            ? "Voulez-vous vraiment supprimer toute la serie ?"
+                            : "Voulez-vous vraiment supprimer cette occurrence ?"}
+                        </p>
+                        <article
+                          className="rounded-card border px-3 py-2"
+                          style={{
+                            backgroundColor:
+                              occurrenceModalSlot.status === "CANCELLED"
+                                ? "#FFF5F5"
+                                : tone.background,
+                            borderColor:
+                              occurrenceModalSlot.status === "CANCELLED"
+                                ? "#FBCACA"
+                                : tone.border,
+                            borderLeftWidth:
+                              occurrenceModalSlot.source === "ONE_OFF"
+                                ? "7px"
+                                : "1px",
+                            borderLeftColor:
+                              occurrenceModalSlot.source === "ONE_OFF"
+                                ? "#D97706"
+                                : occurrenceModalSlot.status === "CANCELLED"
+                                  ? "#FBCACA"
+                                  : tone.border,
+                          }}
+                        >
+                          <p
+                            className="text-sm font-semibold"
+                            style={{
+                              color:
+                                occurrenceModalSlot.status === "CANCELLED"
+                                  ? "#B42318"
+                                  : tone.text,
+                              textDecoration:
+                                occurrenceModalSlot.status === "CANCELLED"
+                                  ? "line-through"
+                                  : undefined,
+                            }}
+                          >
+                            {minutesToTimeValue(occurrenceModalSlot.startMinute)} -{" "}
+                            {minutesToTimeValue(occurrenceModalSlot.endMinute)} ·{" "}
+                            {occurrenceModalSlot.subject.name}
+                          </p>
+                          <p className="text-xs text-text-secondary">
+                            {teacherPrefixFromGender(
+                              occurrenceModalSlot.teacherUser.gender,
+                            )}{" "}
+                            {occurrenceModalSlot.teacherUser.lastName.toUpperCase()}{" "}
+                            {occurrenceModalSlot.teacherUser.firstName}
+                            {occurrenceModalSlot.status === "CANCELLED"
+                              ? " · Annule"
+                              : ""}
+                          </p>
+                          {occurrenceModalSlot.room ? (
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#36557A]">
+                              Salle {occurrenceModalSlot.room}
+                            </p>
+                          ) : null}
+                          {occurrenceActionType === "DELETE_SERIES" ? (
+                            <div className="mt-1 grid gap-1 text-xs text-text-secondary">
+                              <p>
+                                Debut de serie :{" "}
+                                <span className="font-medium text-text-primary">
+                                  {seriesStartLabel ?? "-"}
+                                </span>
+                              </p>
+                              <p>
+                                Fin de serie :{" "}
+                                <span className="font-medium text-text-primary">
+                                  {seriesEndLabel ?? "Fin annee scolaire"}
+                                </span>
+                              </p>
+                            </div>
+                          ) : null}
+                        </article>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">
+                        {occurrenceActionType === "UPDATE_SERIES"
+                          ? "Date de debut d'effet"
+                          : "Date"}
+                      </span>
+                      <DateInput
+                        value={occurrenceDateInput}
+                        onChange={(event) =>
+                          setOccurrenceDateInput(event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                      />
+                    </label>
+                    {occurrenceActionType === "UPDATE_SERIES" ? (
+                      <label className="grid gap-1 text-sm">
+                        <span className="text-text-secondary">
+                          Date de fin de serie (optionnel)
+                        </span>
+                        <DateInput
+                          value={occurrenceSeriesEndDate}
+                          onChange={(event) =>
+                            setOccurrenceSeriesEndDate(event.target.value)
+                          }
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                )}
+
+                {occurrenceActionType === "DELETE_SERIES" ? (
+                  <p className="rounded-card border border-[#F7D5A0] bg-[#FFFAEB] px-3 py-2 text-sm text-[#92400E]">
+                    Cette action supprimera le creneau recurrent et toutes ses
+                    occurrences futures.
+                  </p>
+                ) : null}
+
+                {occurrenceActionType !== "DELETE_OCCURRENCE" &&
+                occurrenceActionType !== "DELETE_SERIES" ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">Debut</span>
+                      <TimeInput
+                        value={occurrenceStart}
+                        onChange={(event) =>
+                          setOccurrenceStart(event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">Fin</span>
+                      <TimeInput
+                        value={occurrenceEnd}
+                        onChange={(event) =>
+                          setOccurrenceEnd(event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">Matiere</span>
+                      <select
+                        value={occurrenceSubjectId}
+                        onChange={(event) =>
+                          setOccurrenceSubjectId(event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                      >
+                        {(context?.allowedSubjects ?? []).map((subject) => (
+                          <option
+                            key={`occ-subject-${subject.id}`}
+                            value={subject.id}
+                          >
+                            {subject.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">Enseignant</span>
+                      <select
+                        value={occurrenceTeacherUserId}
+                        onChange={(event) =>
+                          setOccurrenceTeacherUserId(event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                      >
+                        {occurrenceTeacherChoices.map((teacher) => (
+                          <option
+                            key={`occ-teacher-${teacher.id}`}
+                            value={teacher.id}
+                          >
+                            {teacher.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-sm md:col-span-2">
+                      <span className="text-text-secondary">
+                        Salle (optionnel)
+                      </span>
+                      <input
+                        type="text"
+                        value={occurrenceRoom}
+                        onChange={(event) =>
+                          setOccurrenceRoom(event.target.value)
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setOccurrenceModalStep("action")}
+                    disabled={savingOccurrenceAction}
+                    iconLeft={<ChevronLeft size={16} />}
+                  >
+                    Retour
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setOccurrenceModalSlot(null);
+                        setOccurrenceModalStep("action");
+                      }}
+                      disabled={savingOccurrenceAction}
+                    >
+                      Annuler
+                    </Button>
+                    <Button type="submit" disabled={savingOccurrenceAction}>
+                      {savingOccurrenceAction
+                        ? "Enregistrement..."
+                        : "Appliquer l'action"}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       ) : null}

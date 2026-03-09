@@ -106,6 +106,8 @@ function buildDataset() {
           weekday: 1,
           startMinute: 525,
           endMinute: 600,
+          activeFromDate: "2025-09-01",
+          activeToDate: "2026-06-30",
           room: "B14",
           subject: { id: "sub-fr", name: "Francais" },
           teacherUser: {
@@ -246,6 +248,7 @@ function buildDataset() {
               id: row.id,
               source: "ONE_OFF",
               status: "PLANNED",
+              oneOffSlotId: row.id,
               occurrenceDate: row.occurrenceDate,
               weekday: toWeekdayMondayFirst(new Date(row.occurrenceDate)),
               startMinute: row.startMinute,
@@ -387,6 +390,14 @@ function createFetchMock(options?: { rejectDuplicateColor?: boolean }) {
         return jsonResponse({ success: true }, 201);
       }
 
+      if (url.includes("/timetable/slots/") && method === "PATCH") {
+        return jsonResponse({ success: true }, 200);
+      }
+
+      if (url.includes("/timetable/slots/") && method === "DELETE") {
+        return jsonResponse({ success: true }, 200);
+      }
+
       if (
         url.includes("/timetable/classes/class-1/subjects/") &&
         url.endsWith("/style") &&
@@ -452,6 +463,14 @@ function createFetchMock(options?: { rejectDuplicateColor?: boolean }) {
           teacherUser: teacher,
         });
         return jsonResponse({ id: "oneoff-1" }, 201);
+      }
+
+      if (url.includes("/timetable/one-off-slots/") && method === "PATCH") {
+        return jsonResponse({ success: true }, 200);
+      }
+
+      if (url.includes("/timetable/one-off-slots/") && method === "DELETE") {
+        return jsonResponse({ success: true }, 200);
       }
 
       if (
@@ -782,7 +801,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     expect(postCalls.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("opens occurrence modal from a day slot and creates a one-off occurrence", async () => {
+  it("opens occurrence modal from a day slot and updates this occurrence", async () => {
     const { fetchMock } = createFetchMock();
     render(<TeacherClassAgendaPage />);
 
@@ -792,9 +811,10 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     await screen.findByText("Gerer l'occurrence");
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
 
-    fireEvent.change(modalQueries.getByLabelText("Action"), {
-      target: { value: "ONE_OFF" },
-    });
+    fireEvent.click(modalQueries.getByText("Modifier cette occurrence"));
+    fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
+    await screen.findByText("Modifier cette occurrence");
+
     fireEvent.change(modalQueries.getByLabelText("Date"), {
       target: { value: "2026-03-09" },
     });
@@ -815,26 +835,210 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Cours ponctuel enregistre."),
-      ).toBeInTheDocument();
-    });
-    await waitFor(() => {
-      const oneOffTitle = screen.getByText(/13:00 - 14:00 · Mathematiques/i);
-      const oneOffCard = oneOffTitle.closest("article") as HTMLElement | null;
-      expect(oneOffCard).toBeTruthy();
-      expect(oneOffCard?.style.borderLeftWidth).toBe("7px");
+      expect(screen.getByText("Occurrence modifiee.")).toBeInTheDocument();
     });
 
-    const oneOffCall = fetchMock.mock.calls.find(
+    const overrideCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        String(url).includes("/timetable/classes/class-1/one-off-slots") &&
+        String(url).includes("/timetable/slots/slot-fr-1/exceptions") &&
         init?.method === "POST",
     );
-    expect(oneOffCall).toBeDefined();
-    expect(String((oneOffCall?.[1]?.body as string) ?? "")).toContain(
+    expect(overrideCall).toBeDefined();
+    expect(String((overrideCall?.[1]?.body as string) ?? "")).toContain(
       '"occurrenceDate":"2026-03-09"',
     );
+    expect(String((overrideCall?.[1]?.body as string) ?? "")).toContain(
+      '"type":"OVERRIDE"',
+    );
+  });
+
+  it("supports modal back navigation from details step to action step", async () => {
+    createFetchMock();
+    render(<TeacherClassAgendaPage />);
+
+    await screen.findByText("Emploi du temps - 6eC");
+    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+
+    const modalQueries = within(screen.getByTestId("occurrence-modal"));
+    fireEvent.click(modalQueries.getByText("Modifier cette occurrence"));
+    fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
+    expect(await screen.findByText("Modifier cette occurrence")).toBeInTheDocument();
+
+    fireEvent.click(modalQueries.getByRole("button", { name: "Retour" }));
+    await waitFor(() => {
+      expect(screen.getByText("Gerer l'occurrence")).toBeInTheDocument();
+    });
+    expect(modalQueries.getByText("Supprimer cette occurrence")).toBeInTheDocument();
+  });
+
+  it("deletes current recurring occurrence via CANCEL exception", async () => {
+    const { fetchMock } = createFetchMock();
+    render(<TeacherClassAgendaPage />);
+
+    await screen.findByText("Emploi du temps - 6eC");
+    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+
+    const modalQueries = within(screen.getByTestId("occurrence-modal"));
+    fireEvent.click(modalQueries.getByText("Supprimer cette occurrence"));
+    fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Supprimer cette occurrence")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(/Voulez-vous vraiment supprimer cette occurrence/i),
+    ).toBeInTheDocument();
+    expect(modalQueries.queryByLabelText("Date")).not.toBeInTheDocument();
+    expect(
+      modalQueries.getByText(/08:45 - 10:00 · Francais/i),
+    ).toBeInTheDocument();
+    expect(modalQueries.queryByLabelText("Debut")).not.toBeInTheDocument();
+
+    fireEvent.click(modalQueries.getByRole("button", { name: "Appliquer l'action" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Occurrence supprimee.")).toBeInTheDocument();
+    });
+
+    const cancelCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).includes("/timetable/slots/slot-fr-1/exceptions") &&
+        init?.method === "POST" &&
+        String((init?.body as string) ?? "").includes('"type":"CANCEL"'),
+    );
+    expect(cancelCall).toBeDefined();
+  });
+
+  it("updates whole series from occurrence modal with effective date", async () => {
+    const { fetchMock } = createFetchMock();
+    render(<TeacherClassAgendaPage />);
+
+    await screen.findByText("Emploi du temps - 6eC");
+    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+
+    const modalQueries = within(screen.getByTestId("occurrence-modal"));
+    fireEvent.click(modalQueries.getByText("Modifier toute la serie"));
+    fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
+
+    fireEvent.change(modalQueries.getByLabelText("Date de debut d'effet"), {
+      target: { value: "2026-03-10" },
+    });
+    fireEvent.change(modalQueries.getByLabelText("Date de fin de serie (optionnel)"), {
+      target: { value: "2026-04-30" },
+    });
+    fireEvent.change(modalQueries.getByLabelText("Debut"), {
+      target: { value: "09:00" },
+    });
+    fireEvent.change(modalQueries.getByLabelText("Fin"), {
+      target: { value: "10:15" },
+    });
+    fireEvent.click(modalQueries.getByRole("button", { name: "Appliquer l'action" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Serie mise a jour.")).toBeInTheDocument();
+    });
+
+    const patchSeriesCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).includes("/timetable/slots/slot-fr-1") &&
+        init?.method === "PATCH",
+    );
+    expect(patchSeriesCall).toBeDefined();
+    expect(String((patchSeriesCall?.[1]?.body as string) ?? "")).toContain(
+      '"effectiveFromDate":"2026-03-10"',
+    );
+    expect(String((patchSeriesCall?.[1]?.body as string) ?? "")).toContain(
+      '"activeToDate":"2026-04-30"',
+    );
+  });
+
+  it("deletes whole series from occurrence modal", async () => {
+    const { fetchMock } = createFetchMock();
+    render(<TeacherClassAgendaPage />);
+
+    await screen.findByText("Emploi du temps - 6eC");
+    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+
+    const modalQueries = within(screen.getByTestId("occurrence-modal"));
+    fireEvent.click(modalQueries.getByText("Supprimer toute la serie"));
+    fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Supprimer toute la serie")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(/supprimera le creneau recurrent/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Voulez-vous vraiment supprimer toute la serie/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Debut de serie/i)).toBeInTheDocument();
+    expect(screen.getByText("01/09/2025")).toBeInTheDocument();
+    expect(screen.getByText(/Fin de serie/i)).toBeInTheDocument();
+    expect(screen.getByText("30/06/2026")).toBeInTheDocument();
+    expect(modalQueries.queryByLabelText("Date")).not.toBeInTheDocument();
+    expect(
+      modalQueries.getByText(/08:45 - 10:00 · Francais/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(modalQueries.getByRole("button", { name: "Appliquer l'action" }));
+    await waitFor(() => {
+      expect(screen.getByText("Serie supprimee.")).toBeInTheDocument();
+    });
+
+    const deleteSeriesCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).includes("/timetable/slots/slot-fr-1") &&
+        init?.method === "DELETE",
+    );
+    expect(deleteSeriesCall).toBeDefined();
+  });
+
+  it("shows only occurrence actions for one-off slot and deletes it", async () => {
+    const { fetchMock, data } = createFetchMock();
+    data.addOneOffToSchoolYear(data.sy1, {
+      id: "oneoff-seeded-1",
+      occurrenceDate: toIsoDate(new Date()),
+      startMinute: 900,
+      endMinute: 960,
+      room: "PONC1",
+      subject: { id: "sub-math", name: "Mathematiques" },
+      teacherUser: {
+        id: "teacher-2",
+        firstName: "Guy",
+        lastName: "Ndem",
+        email: "guy@example.test",
+      },
+    });
+    render(<TeacherClassAgendaPage />);
+
+    await screen.findByText("Emploi du temps - 6eC");
+    fireEvent.click(screen.getByText(/15:00 - 16:00 · Mathematiques/i));
+
+    const modalQueries = within(screen.getByTestId("occurrence-modal"));
+    expect(modalQueries.getByText("Supprimer cette occurrence")).toBeInTheDocument();
+    expect(modalQueries.getByText("Modifier cette occurrence")).toBeInTheDocument();
+    expect(
+      modalQueries.queryByText("Modifier toute la serie"),
+    ).not.toBeInTheDocument();
+    expect(
+      modalQueries.queryByText("Supprimer toute la serie"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(modalQueries.getByText("Supprimer cette occurrence"));
+    fireEvent.click(modalQueries.getByRole("button", { name: "Continuer" }));
+    fireEvent.click(modalQueries.getByRole("button", { name: "Appliquer l'action" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Occurrence supprimee.")).toBeInTheDocument();
+    });
+
+    const deleteOneOffCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).includes("/timetable/one-off-slots/oneoff-seeded-1") &&
+        init?.method === "DELETE",
+    );
+    expect(deleteOneOffCall).toBeDefined();
   });
 
   it("renders day slot visual tone and opens modal from month day slot", async () => {
