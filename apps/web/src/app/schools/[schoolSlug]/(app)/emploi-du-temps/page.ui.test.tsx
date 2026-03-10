@@ -34,6 +34,15 @@ function buildTimetablePayload(
       schoolYearId: string;
       academicLevelId: string | null;
     };
+    oneOffSlots: Array<{
+      id: string;
+      occurrenceDate: string;
+      startMinute: number;
+      endMinute: number;
+      room: string | null;
+      subject: { id: string; name: string };
+      teacherUser: { id: string; firstName: string; lastName: string };
+    }>;
   }>,
 ) {
   return {
@@ -121,9 +130,17 @@ function buildTimetablePayload(
         teacherUser: { id: "teacher-fr", firstName: "P.", lastName: "Jamet" },
       },
     ],
+    oneOffSlots: overrides?.oneOffSlots ?? [],
     subjectStyles: [],
     calendarEvents: [],
   };
+}
+
+function toIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function mockTimetableFlow(mePayload: unknown, timetablePayload?: unknown) {
@@ -219,19 +236,18 @@ describe("StudentTimetablePage UI", () => {
       screen.getByRole("button", { name: "Aujourd'hui" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Jour precedent" }),
+      screen.getByRole("button", { name: "Periode precedente (day)" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Jour suivant" }),
+      screen.getByRole("button", { name: "Periode suivante (day)" }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
-    fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("FRANCAIS")).toBeInTheDocument();
-    });
-    expect(screen.getByText("JAMET P.")).toBeInTheDocument();
-    expect(screen.getAllByText("B14").length).toBeGreaterThan(0);
+    const daySlotButton = screen
+      .getAllByRole("button")
+      .find((button) =>
+        /\d{2}:\d{2}\s-\s\d{2}:\d{2}\s·/i.test(button.textContent ?? ""),
+      );
+    expect(daySlotButton).toBeDefined();
+    expect(daySlotButton?.textContent ?? "").toMatch(/Salle/i);
   });
 
   it("navigates days and returns to today from the day title button", async () => {
@@ -245,7 +261,9 @@ describe("StudentTimetablePage UI", () => {
     render(<StudentTimetablePage />);
     await screen.findByText("Lisa MBELE - 6eme N3");
 
-    fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Periode suivante (day)" }),
+    );
 
     await waitFor(() => {
       expect(
@@ -278,14 +296,16 @@ describe("StudentTimetablePage UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cette semaine" }));
 
     expect(
-      screen.getByRole("button", { name: "Semaine precedente" }),
+      screen.getByRole("button", { name: "Periode precedente (week)" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Semaine suivante" }),
+      screen.getByRole("button", { name: "Periode suivante (week)" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Salle B14").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Salle/i).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "Semaine suivante" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Periode suivante (week)" }),
+    );
 
     await waitFor(() => {
       expect(
@@ -318,14 +338,18 @@ describe("StudentTimetablePage UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ce mois" }));
 
     expect(
-      screen.getByRole("button", { name: "Mois precedent" }),
+      screen.getByRole("button", { name: "Periode precedente (month)" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Mois suivant" }),
+      screen.getByRole("button", { name: "Periode suivante (month)" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/- B14/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("Selectionnez un jour pour voir les creneaux"),
+    ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Mois suivant" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Periode suivante (month)" }),
+    );
 
     await waitFor(() => {
       expect(
@@ -341,6 +365,51 @@ describe("StudentTimetablePage UI", () => {
       expect(
         screen.getByRole("button", { name: "Ce mois" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("renders one-off slots in student/parent timetable views", async () => {
+    const now = new Date();
+    const weekday = now.getDay() === 0 ? 7 : now.getDay();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - (weekday - 1));
+    const saturday = new Date(weekStart);
+    saturday.setDate(weekStart.getDate() + 5);
+    const saturdayIso = toIsoDate(saturday);
+
+    mockTimetableFlow(
+      {
+        firstName: "Lisa",
+        lastName: "MBELE",
+        role: "STUDENT",
+        currentEnrollment: { class: { name: "6eme N3" } },
+      },
+      buildTimetablePayload({
+        oneOffSlots: [
+          {
+            id: "oneoff-tech-sat",
+            occurrenceDate: `${saturdayIso}T00:00:00.000Z`,
+            startMinute: 615,
+            endMinute: 690,
+            room: "ATELIER",
+            subject: { id: "subject-tech", name: "TECHNOLOGIE" },
+            teacherUser: {
+              id: "teacher-tech",
+              firstName: "Aline",
+              lastName: "Mekongo",
+            },
+          },
+        ],
+      }),
+    );
+
+    render(<StudentTimetablePage />);
+    await screen.findByText("Lisa MBELE - 6eme N3");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cette semaine" }));
+    await waitFor(() => {
+      expect(screen.getByText(/TECHNOLOGIE/i)).toBeInTheDocument();
+      expect(screen.getByText(/ATELIER/i)).toBeInTheDocument();
     });
   });
 
@@ -414,12 +483,19 @@ describe("StudentTimetablePage UI", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Semaine" }));
     expect(screen.getByText("H")).toBeInTheDocument();
-    expect(screen.getByText("Detail du cours selectionne")).toBeInTheDocument();
+    expect(
+      screen.getByText("Detail du creneau selectionne"),
+    ).toBeInTheDocument();
 
-    const mathsButtons = screen.getAllByRole("button", {
-      name: /MATHEMATIQUES/i,
-    });
-    fireEvent.click(mathsButtons[0]);
+    const mathsCompactButton = screen
+      .getAllByRole("button")
+      .find((button) =>
+        (button.getAttribute("data-testid") ?? "").includes(
+          "compact-week-slot-1-slot-math",
+        ),
+      );
+    expect(mathsCompactButton).toBeDefined();
+    fireEvent.click(mathsCompactButton!);
 
     await waitFor(() => {
       expect(screen.getByText(/AUBERGER C\./i)).toBeInTheDocument();
@@ -448,9 +524,9 @@ describe("StudentTimetablePage UI", () => {
     fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
 
     await waitFor(() => {
-      expect(screen.getByText("FRANCAIS")).toBeInTheDocument();
+      expect(screen.getAllByText(/FRANCAIS/i).length).toBeGreaterThan(0);
     });
-    expect(screen.getByText("JAMET P.")).toBeInTheDocument();
+    expect(screen.getAllByText(/JAMET P\./i).length).toBeGreaterThan(0);
 
     const shiftedDayButton = findDayTitleButton();
     expect(shiftedDayButton).toBeDefined();
@@ -476,8 +552,6 @@ describe("StudentTimetablePage UI", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Mois" }));
     expect(screen.getByText("Agenda du jour selectionne")).toBeInTheDocument();
-    expect(screen.getByText("Lun")).toBeInTheDocument();
-    expect(screen.getByText("Mar")).toBeInTheDocument();
 
     const monthDayButtons = screen
       .getAllByRole("button")

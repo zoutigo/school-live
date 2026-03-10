@@ -2,8 +2,11 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "../../../../../components/ui/card";
+import {
+  TimetableViews,
+  type TimetableDisplaySlot,
+} from "../../../../../components/timetable/timetable-views";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -33,13 +36,6 @@ type MeResponse = {
 };
 
 type ViewMode = "day" | "week" | "month";
-type SubjectTone = {
-  bgColor: string;
-  borderColor: string;
-  textColor: string;
-  chipColor: string;
-  chipTextColor: string;
-};
 
 type TimetableSlot = {
   id: string;
@@ -73,6 +69,15 @@ type MyTimetableResponse = {
     subject: { id: string; name: string };
     teacherUser: { id: string; firstName: string; lastName: string };
   }>;
+  oneOffSlots?: Array<{
+    id: string;
+    occurrenceDate: string;
+    startMinute: number;
+    endMinute: number;
+    room: string | null;
+    subject: { id: string; name: string };
+    teacherUser: { id: string; firstName: string; lastName: string };
+  }>;
   subjectStyles: Array<{ subjectId: string; colorHex: string }>;
   calendarEvents: Array<{
     id: string;
@@ -82,69 +87,6 @@ type MyTimetableResponse = {
     startDate: string;
     endDate: string;
   }>;
-};
-
-const WEEKDAY_SHORT = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const WEEKDAY_LONG = [
-  "Lundi",
-  "Mardi",
-  "Mercredi",
-  "Jeudi",
-  "Vendredi",
-  "Samedi",
-  "Dimanche",
-];
-
-const SUBJECT_TONES: Record<string, SubjectTone> = {
-  FRANCAIS: {
-    bgColor: "#E4EEFF",
-    borderColor: "#98B8F3",
-    textColor: "#123B7A",
-    chipColor: "#2F66C7",
-    chipTextColor: "#FFFFFF",
-  },
-  MATHEMATIQUES: {
-    bgColor: "#FFE9E7",
-    borderColor: "#F3A39B",
-    textColor: "#7B1D15",
-    chipColor: "#CF3F2F",
-    chipTextColor: "#FFFFFF",
-  },
-  ANGLAIS: {
-    bgColor: "#E5F4F7",
-    borderColor: "#95C9D2",
-    textColor: "#0D4F5B",
-    chipColor: "#12839B",
-    chipTextColor: "#FFFFFF",
-  },
-  HISTOIRE_GEOGRAPHIE: {
-    bgColor: "#EAF0D9",
-    borderColor: "#B8C68C",
-    textColor: "#455B1E",
-    chipColor: "#6C8D2D",
-    chipTextColor: "#FFFFFF",
-  },
-  SCIENCES_VIE_TERRE: {
-    bgColor: "#FFF3D9",
-    borderColor: "#E5C27A",
-    textColor: "#6D490D",
-    chipColor: "#B57A10",
-    chipTextColor: "#FFFFFF",
-  },
-  EDUCATION_PHYSIQUE: {
-    bgColor: "#F0E6FA",
-    borderColor: "#C29EE6",
-    textColor: "#4E257B",
-    chipColor: "#7C3FB3",
-    chipTextColor: "#FFFFFF",
-  },
-  default: {
-    bgColor: "#EEF2F7",
-    borderColor: "#C6D2E1",
-    textColor: "#1F344D",
-    chipColor: "#36577E",
-    chipTextColor: "#FFFFFF",
-  },
 };
 
 const CLASS_SLOTS: TimetableSlot[] = [
@@ -322,12 +264,6 @@ function addDays(date: Date, amount: number) {
   return copy;
 }
 
-function addMonths(date: Date, amount: number) {
-  const copy = new Date(date);
-  copy.setMonth(copy.getMonth() + amount);
-  return copy;
-}
-
 function toWeekdayMondayFirst(date: Date) {
   const day = date.getDay();
   return day === 0 ? 7 : day;
@@ -338,118 +274,8 @@ function startOfWeek(date: Date) {
   return addDays(normalized, 1 - toWeekdayMondayFirst(normalized));
 }
 
-function sameDate(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function normalizeSubjectKey(subject: string) {
-  return subject
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Za-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .toUpperCase();
-}
-
-function hexToRgb(hex: string) {
-  const normalized = hex.replace("#", "");
-  if (!/^[0-9A-Fa-f]{6}$/.test(normalized)) {
-    return null;
-  }
-  return {
-    r: Number.parseInt(normalized.slice(0, 2), 16),
-    g: Number.parseInt(normalized.slice(2, 4), 16),
-    b: Number.parseInt(normalized.slice(4, 6), 16),
-  };
-}
-
-function rgbToHex(rgb: { r: number; g: number; b: number }) {
-  const channel = (value: number) =>
-    Math.max(0, Math.min(255, Math.round(value)))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${channel(rgb.r)}${channel(rgb.g)}${channel(rgb.b)}`.toUpperCase();
-}
-
-function mixHex(base: string, target: string, ratio: number) {
-  const a = hexToRgb(base);
-  const b = hexToRgb(target);
-  if (!a || !b) {
-    return base;
-  }
-  return rgbToHex({
-    r: a.r * (1 - ratio) + b.r * ratio,
-    g: a.g * (1 - ratio) + b.g * ratio,
-    b: a.b * (1 - ratio) + b.b * ratio,
-  });
-}
-
-function bestTextColorOn(hex: string) {
-  const rgb = hexToRgb(hex);
-  if (!rgb) {
-    return "#FFFFFF";
-  }
-  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-  return luminance > 0.62 ? "#163158" : "#FFFFFF";
-}
-
-function buildToneFromBase(baseHex: string): SubjectTone {
-  return {
-    bgColor: mixHex(baseHex, "#FFFFFF", 0.86),
-    borderColor: mixHex(baseHex, "#FFFFFF", 0.66),
-    textColor: mixHex(baseHex, "#0F172A", 0.3),
-    chipColor: baseHex.toUpperCase(),
-    chipTextColor: bestTextColorOn(baseHex),
-  };
-}
-
-function subjectTone(
-  subject: string,
-  subjectId: string | undefined,
-  subjectColorsBySubjectId: Record<string, string>,
-) {
-  if (subjectId) {
-    const colorHex = subjectColorsBySubjectId[subjectId];
-    if (colorHex && /^#[0-9A-Fa-f]{6}$/.test(colorHex)) {
-      return buildToneFromBase(colorHex);
-    }
-  }
-  return SUBJECT_TONES[normalizeSubjectKey(subject)] ?? SUBJECT_TONES.default;
-}
-
 function subjectLabel(subject: string) {
   return subject.includes("_") ? subject.replaceAll("_", " ") : subject;
-}
-
-function subjectShortLabel(subject: string) {
-  const [firstWord] = subjectLabel(subject).split(" ");
-  return (firstWord ?? subjectLabel(subject)).slice(0, 3);
-}
-
-function formatMonthLabel(date: Date) {
-  return new Intl.DateTimeFormat("fr-FR", {
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
-
-function formatWeekRangeLabel(currentDate: Date) {
-  const start = startOfWeek(currentDate);
-  const end = addDays(start, 6);
-  const startLabel = new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "short",
-  }).format(start);
-  const endLabel = new Intl.DateTimeFormat("fr-FR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(end);
-  return `${startLabel} - ${endLabel}`;
 }
 
 function minuteToTime(totalMinutes: number) {
@@ -458,6 +284,34 @@ function minuteToTime(totalMinutes: number) {
     .padStart(2, "0");
   const minutes = (totalMinutes % 60).toString().padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+function timeToMinute(value: string) {
+  const [hoursRaw, minutesRaw] = value.split(":");
+  const hours = Number.parseInt(hoursRaw ?? "", 10);
+  const minutes = Number.parseInt(minutesRaw ?? "", 10);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return Number.NaN;
+  }
+  return hours * 60 + minutes;
+}
+
+function toIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeApiDateOnly(value: string) {
+  if (!value) {
+    return value;
+  }
+  const trimmed = value.trim();
+  if (trimmed.includes("T")) {
+    return trimmed.slice(0, 10);
+  }
+  return trimmed;
 }
 
 export default function StudentTimetablePage() {
@@ -474,17 +328,12 @@ export default function StudentTimetablePage() {
     string | null
   >(null);
   const [classSlots, setClassSlots] = useState<TimetableSlot[]>(CLASS_SLOTS);
+  const [oneOffSlots, setOneOffSlots] = useState<TimetableDisplaySlot[]>([]);
   const [subjectColorsBySubjectId, setSubjectColorsBySubjectId] = useState<
     Record<string, string>
   >({});
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [cursorDate, setCursorDate] = useState(stripTime(new Date()));
-  const [selectedCompactMonthDate, setSelectedCompactMonthDate] =
-    useState<Date | null>(null);
-  const [selectedCompactWeekCell, setSelectedCompactWeekCell] = useState<{
-    slot: TimetableSlot;
-    date: Date;
-  } | null>(null);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
 
   useEffect(() => {
@@ -577,6 +426,23 @@ export default function StudentTimetablePage() {
           room: slot.room?.trim() || "-",
         })),
       );
+      setOneOffSlots(
+        (timetablePayload.oneOffSlots ?? []).map((slot) => ({
+          id: `${slot.id}-${normalizeApiDateOnly(slot.occurrenceDate)}`,
+          occurrenceDate: normalizeApiDateOnly(slot.occurrenceDate),
+          weekday: toWeekdayMondayFirst(
+            new Date(normalizeApiDateOnly(slot.occurrenceDate)),
+          ),
+          startMinute: slot.startMinute,
+          endMinute: slot.endMinute,
+          subjectId: slot.subject.id,
+          subjectName: slot.subject.name,
+          teacherName: `${slot.teacherUser.lastName.toUpperCase()} ${slot.teacherUser.firstName}`,
+          room: slot.room?.trim() || null,
+          status: "PLANNED",
+          source: "ONE_OFF",
+        })),
+      );
       setSubjectColorsBySubjectId(
         Object.fromEntries(
           timetablePayload.subjectStyles.map((entry) => [
@@ -592,263 +458,57 @@ export default function StudentTimetablePage() {
     }
   }
 
-  const weekday = toWeekdayMondayFirst(cursorDate);
-  const today = stripTime(new Date());
   const className = activeChildClassName || "6eme N3";
-  const dayTabLabel = sameDate(cursorDate, today)
-    ? "Aujourd'hui"
-    : new Intl.DateTimeFormat("fr-FR", {
-        day: "2-digit",
-        month: "short",
-      }).format(cursorDate);
-  const weekTabLabel = sameDate(startOfWeek(cursorDate), startOfWeek(today))
-    ? "Cette semaine"
-    : formatWeekRangeLabel(cursorDate);
-  const monthTabLabel =
-    cursorDate.getMonth() === today.getMonth() &&
-    cursorDate.getFullYear() === today.getFullYear()
-      ? "Ce mois"
-      : formatMonthLabel(cursorDate);
-  const activePeriodLabel =
-    viewMode === "day"
-      ? dayTabLabel
-      : viewMode === "week"
-        ? weekTabLabel
-        : monthTabLabel;
-  const activeModeLabel =
-    viewMode === "day" ? "Jour" : viewMode === "week" ? "Semaine" : "Mois";
-
-  function moveCursorByMode(mode: ViewMode, direction: -1 | 1) {
-    if (mode === "day") {
-      setCursorDate((current) => addDays(current, direction));
-      return;
+  const activeRange = useMemo(() => {
+    if (viewMode === "day") {
+      return { from: stripTime(cursorDate), to: stripTime(cursorDate) };
     }
-    if (mode === "week") {
-      setCursorDate((current) => addDays(current, direction * 7));
-      return;
+    if (viewMode === "week") {
+      const from = startOfWeek(cursorDate);
+      return { from, to: addDays(from, 6) };
     }
-    setCursorDate((current) => addMonths(current, direction));
-  }
+    const from = new Date(cursorDate.getFullYear(), cursorDate.getMonth(), 1);
+    const to = new Date(cursorDate.getFullYear(), cursorDate.getMonth() + 1, 0);
+    return { from, to };
+  }, [cursorDate, viewMode]);
 
-  const daySlots = useMemo(
-    () =>
+  const timetableViewSlots = useMemo<TimetableDisplaySlot[]>(() => {
+    const rows: TimetableDisplaySlot[] = [];
+
+    for (
+      let date = new Date(activeRange.from);
+      date <= activeRange.to;
+      date = addDays(date, 1)
+    ) {
+      const weekday = toWeekdayMondayFirst(date);
+      const occurrenceDate = toIsoDate(date);
       classSlots
         .filter((slot) => slot.weekday === weekday)
-        .sort((a, b) => a.start.localeCompare(b.start)),
-    [classSlots, weekday],
-  );
-
-  const weekStart = useMemo(() => startOfWeek(cursorDate), [cursorDate]);
-  const weekDays = useMemo(
-    () =>
-      Array.from({ length: 7 }, (_, index) => {
-        const date = addDays(weekStart, index);
-        return {
-          weekday: index + 1,
-          date,
-          label: WEEKDAY_SHORT[index],
-        };
-      }),
-    [weekStart],
-  );
-
-  const weekSlotsByWeekday = useMemo(() => {
-    const result = new Map<number, TimetableSlot[]>();
-    weekDays.forEach((entry) => {
-      const slots = classSlots
-        .filter((slot) => slot.weekday === entry.weekday)
-        .sort((a, b) => a.start.localeCompare(b.start));
-      result.set(entry.weekday, slots);
-    });
-    return result;
-  }, [classSlots, weekDays]);
-
-  const compactWeekTimeRows = useMemo(() => {
-    const seen = new Set<string>();
-    const rows: Array<{ start: string; end: string }> = [];
-
-    classSlots.forEach((slot) => {
-      const key = `${slot.start}-${slot.end}`;
-      if (seen.has(key)) {
-        return;
-      }
-      seen.add(key);
-      rows.push({ start: slot.start, end: slot.end });
-    });
-
-    return rows.sort((a, b) => a.start.localeCompare(b.start));
-  }, [classSlots]);
-
-  const monthMatrix = useMemo(() => {
-    const firstDay = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth(),
-      1,
-    );
-    const calendarStart = startOfWeek(firstDay);
-    return Array.from({ length: 42 }, (_, index) => {
-      const date = addDays(calendarStart, index);
-      const weekdayIndex = toWeekdayMondayFirst(date);
-      const slots = classSlots.filter((slot) => slot.weekday === weekdayIndex);
-      return {
-        date,
-        slots,
-        isCurrentMonth: date.getMonth() === cursorDate.getMonth(),
-      };
-    });
-  }, [classSlots, cursorDate]);
-
-  const monthDaysList = useMemo(() => {
-    const firstDay = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth(),
-      1,
-    );
-    const lastDay = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth() + 1,
-      0,
-    );
-    const days: Array<{ date: Date; slots: TimetableSlot[] }> = [];
-
-    for (let day = 1; day <= lastDay.getDate(); day += 1) {
-      const date = new Date(
-        cursorDate.getFullYear(),
-        cursorDate.getMonth(),
-        day,
-      );
-      const weekdayIndex = toWeekdayMondayFirst(date);
-      const slots = classSlots
-        .filter((slot) => slot.weekday === weekdayIndex)
-        .sort((a, b) => a.start.localeCompare(b.start));
-      days.push({
-        date,
-        slots,
-      });
-    }
-
-    if (days.length === 0) {
-      return [{ date: firstDay, slots: [] }];
-    }
-
-    return days;
-  }, [classSlots, cursorDate]);
-
-  const compactMonthCalendarCells = useMemo(() => {
-    const firstDay = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth(),
-      1,
-    );
-    const firstWeekday = toWeekdayMondayFirst(firstDay);
-    const leadingEmpty = firstWeekday - 1;
-    const cells: Array<{ date: Date | null; slotsCount: number }> = [];
-
-    for (let i = 0; i < leadingEmpty; i += 1) {
-      cells.push({ date: null, slotsCount: 0 });
-    }
-
-    monthDaysList.forEach((entry) => {
-      cells.push({
-        date: entry.date,
-        slotsCount: entry.slots.length,
-      });
-    });
-
-    while (cells.length % 7 !== 0) {
-      cells.push({ date: null, slotsCount: 0 });
-    }
-
-    return cells;
-  }, [cursorDate, monthDaysList]);
-
-  useEffect(() => {
-    const firstDayOfMonth = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth(),
-      1,
-    );
-    const todayInCurrentMonth =
-      today.getFullYear() === cursorDate.getFullYear() &&
-      today.getMonth() === cursorDate.getMonth();
-
-    if (!selectedCompactMonthDate) {
-      setSelectedCompactMonthDate(
-        todayInCurrentMonth ? today : firstDayOfMonth,
-      );
-      return;
-    }
-
-    const selectedInCurrentMonth =
-      selectedCompactMonthDate.getFullYear() === cursorDate.getFullYear() &&
-      selectedCompactMonthDate.getMonth() === cursorDate.getMonth();
-
-    if (!selectedInCurrentMonth) {
-      setSelectedCompactMonthDate(
-        todayInCurrentMonth ? today : firstDayOfMonth,
-      );
-    }
-  }, [cursorDate, selectedCompactMonthDate, today]);
-
-  useEffect(() => {
-    if (!isCompactViewport || viewMode !== "week") {
-      return;
-    }
-
-    if (selectedCompactWeekCell) {
-      const stillVisible = weekDays.some((entry) =>
-        sameDate(entry.date, selectedCompactWeekCell.date),
-      );
-      if (stillVisible) {
-        return;
-      }
-    }
-
-    const todayWeekDay = weekDays.find((entry) => sameDate(entry.date, today));
-    if (todayWeekDay) {
-      const todaySlots = weekSlotsByWeekday.get(todayWeekDay.weekday) ?? [];
-      if (todaySlots.length > 0) {
-        setSelectedCompactWeekCell({
-          slot: todaySlots[0],
-          date: todayWeekDay.date,
+        .forEach((slot) => {
+          rows.push({
+            id: `${slot.id}-${occurrenceDate}`,
+            occurrenceDate,
+            weekday,
+            startMinute: timeToMinute(slot.start),
+            endMinute: timeToMinute(slot.end),
+            subjectId: slot.subjectId ?? slot.subject,
+            subjectName: subjectLabel(slot.subject),
+            teacherName: slot.teacher,
+            room: slot.room === "-" ? null : slot.room,
+            status: "PLANNED",
+            source: "RECURRING",
+          });
         });
-        return;
-      }
     }
 
-    const firstWithSlot = weekDays.find(
-      (entry) => (weekSlotsByWeekday.get(entry.weekday) ?? []).length > 0,
-    );
-    if (firstWithSlot) {
-      const slots = weekSlotsByWeekday.get(firstWithSlot.weekday) ?? [];
-      setSelectedCompactWeekCell({
-        slot: slots[0],
-        date: firstWithSlot.date,
-      });
-      return;
-    }
+    const oneOffRowsInRange = oneOffSlots.filter((slot) => {
+      const date = stripTime(new Date(slot.occurrenceDate));
+      return date >= activeRange.from && date <= activeRange.to;
+    });
+    rows.push(...oneOffRowsInRange);
 
-    setSelectedCompactWeekCell(null);
-  }, [
-    isCompactViewport,
-    viewMode,
-    weekDays,
-    weekSlotsByWeekday,
-    selectedCompactWeekCell,
-    today,
-  ]);
-
-  const selectedCompactMonthEntry = useMemo(() => {
-    if (!selectedCompactMonthDate) {
-      return null;
-    }
-
-    return (
-      monthDaysList.find((entry) =>
-        sameDate(entry.date, selectedCompactMonthDate),
-      ) ?? null
-    );
-  }, [monthDaysList, selectedCompactMonthDate]);
+    return rows;
+  }, [activeRange.from, activeRange.to, classSlots, oneOffSlots]);
 
   return (
     <div className="grid gap-4">
@@ -868,764 +528,19 @@ export default function StudentTimetablePage() {
               <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-[#A7D1FF]/35 blur-2xl" />
               <div className="pointer-events-none absolute -left-8 bottom-0 h-28 w-28 rounded-full bg-[#C4B1FF]/25 blur-xl" />
               <div className="relative grid gap-4">
-                {isCompactViewport ? (
-                  <div className="grid min-w-0 gap-2">
-                    <div className="grid min-w-0 grid-cols-3 gap-1 rounded-[8px] border border-[#DCE8F7] bg-[#F8FBFF] p-1">
-                      {(
-                        [
-                          { key: "day", label: "Jour" },
-                          { key: "week", label: "Semaine" },
-                          { key: "month", label: "Mois" },
-                        ] as Array<{ key: ViewMode; label: string }>
-                      ).map((tab) => (
-                        <button
-                          key={`compact-tab-${tab.key}`}
-                          type="button"
-                          onClick={() => setViewMode(tab.key)}
-                          className={`h-8 min-w-0 rounded-[6px] px-2 text-[11px] font-semibold transition ${
-                            viewMode === tab.key
-                              ? "bg-[#0A62BF] text-white shadow-[0_6px_14px_-10px_rgba(10,98,191,0.95)]"
-                              : "text-[#2B4A74] hover:bg-white"
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid min-w-0 grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-2 rounded-[8px] border border-[#DCE8F7] bg-[#F8FBFF] p-1">
-                      <button
-                        type="button"
-                        onClick={() => moveCursorByMode(viewMode, -1)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#EAF3FF] text-[#0A62BF] hover:bg-[#DCEBFF]"
-                        aria-label={`${activeModeLabel} precedent`}
-                      >
-                        <ChevronLeft className="h-5 w-5" strokeWidth={2.6} />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setCursorDate(today)}
-                        className="min-w-0 rounded-[6px] bg-white px-2 py-1 text-center text-[13px] font-semibold text-[#163158]"
-                        title={`Revenir a ${activeModeLabel.toLowerCase()} courant`}
-                      >
-                        <span className="block truncate">
-                          {activePeriodLabel}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => moveCursorByMode(viewMode, 1)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#EAF3FF] text-[#0A62BF] hover:bg-[#DCEBFF]"
-                        aria-label={`${activeModeLabel} suivant`}
-                      >
-                        <ChevronRight className="h-5 w-5" strokeWidth={2.6} />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2 rounded-[6px] border border-[#D4E4F6] bg-white p-1">
-                    <div
-                      className={`grid grid-cols-[36px_1fr_36px] items-center gap-1 rounded-[4px] px-1 py-1 text-sm font-semibold transition ${
-                        viewMode === "day"
-                          ? "bg-[#0A62BF] text-white shadow-[0_10px_24px_-14px_rgba(10,98,191,0.95)]"
-                          : "text-[#2B4A74] hover:bg-[#EEF5FF]"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("day");
-                          moveCursorByMode("day", -1);
-                        }}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
-                          viewMode === "day"
-                            ? "bg-white/15 text-white hover:bg-white/25"
-                            : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
-                        }`}
-                        aria-label="Jour precedent"
-                      >
-                        <ChevronLeft className="h-5 w-5" strokeWidth={2.6} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("day");
-                          setCursorDate(today);
-                        }}
-                        className="rounded-[4px] px-2 py-1 text-[13px]"
-                      >
-                        {dayTabLabel}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("day");
-                          moveCursorByMode("day", 1);
-                        }}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
-                          viewMode === "day"
-                            ? "bg-white/15 text-white hover:bg-white/25"
-                            : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
-                        }`}
-                        aria-label="Jour suivant"
-                      >
-                        <ChevronRight className="h-5 w-5" strokeWidth={2.6} />
-                      </button>
-                    </div>
-
-                    <div
-                      className={`grid grid-cols-[36px_1fr_36px] items-center gap-1 rounded-[4px] px-1 py-1 text-sm font-semibold transition ${
-                        viewMode === "week"
-                          ? "bg-[#0A62BF] text-white shadow-[0_10px_24px_-14px_rgba(10,98,191,0.95)]"
-                          : "text-[#2B4A74] hover:bg-[#EEF5FF]"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("week");
-                          moveCursorByMode("week", -1);
-                        }}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
-                          viewMode === "week"
-                            ? "bg-white/15 text-white hover:bg-white/25"
-                            : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
-                        }`}
-                        aria-label="Semaine precedente"
-                      >
-                        <ChevronLeft className="h-5 w-5" strokeWidth={2.6} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("week");
-                          setCursorDate(today);
-                        }}
-                        className="rounded-[4px] px-2 py-1 text-[13px]"
-                      >
-                        {weekTabLabel}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("week");
-                          moveCursorByMode("week", 1);
-                        }}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
-                          viewMode === "week"
-                            ? "bg-white/15 text-white hover:bg-white/25"
-                            : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
-                        }`}
-                        aria-label="Semaine suivante"
-                      >
-                        <ChevronRight className="h-5 w-5" strokeWidth={2.6} />
-                      </button>
-                    </div>
-
-                    <div
-                      className={`grid grid-cols-[36px_1fr_36px] items-center gap-1 rounded-[4px] px-1 py-1 text-sm font-semibold transition ${
-                        viewMode === "month"
-                          ? "bg-[#0A62BF] text-white shadow-[0_10px_24px_-14px_rgba(10,98,191,0.95)]"
-                          : "text-[#2B4A74] hover:bg-[#EEF5FF]"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("month");
-                          moveCursorByMode("month", -1);
-                        }}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
-                          viewMode === "month"
-                            ? "bg-white/15 text-white hover:bg-white/25"
-                            : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
-                        }`}
-                        aria-label="Mois precedent"
-                      >
-                        <ChevronLeft className="h-5 w-5" strokeWidth={2.6} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("month");
-                          setCursorDate(today);
-                        }}
-                        className="rounded-[4px] px-2 py-1 text-[13px]"
-                      >
-                        {monthTabLabel}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setViewMode("month");
-                          moveCursorByMode("month", 1);
-                        }}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-[4px] ${
-                          viewMode === "month"
-                            ? "bg-white/15 text-white hover:bg-white/25"
-                            : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
-                        }`}
-                        aria-label="Mois suivant"
-                      >
-                        <ChevronRight className="h-5 w-5" strokeWidth={2.6} />
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <TimetableViews
+                  slots={timetableViewSlots}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                  cursorDate={cursorDate}
+                  onCursorDateChange={setCursorDate}
+                  isCompactViewport={isCompactViewport}
+                  subjectColorsBySubjectId={subjectColorsBySubjectId}
+                  dayEmptyLabel="Aucun cours programme pour cette journee."
+                  monthEmptyLabel="Aucun cours programme pour cette journee."
+                />
               </div>
             </section>
-
-            {viewMode === "day" ? (
-              <section className="grid gap-3">
-                {daySlots.length === 0 ? (
-                  <div className="rounded-card border border-dashed border-border bg-background p-6 text-sm text-text-secondary">
-                    Aucun cours programme pour cette journee.
-                  </div>
-                ) : (
-                  daySlots.map((slot) => {
-                    const tone = subjectTone(
-                      slot.subject,
-                      slot.subjectId,
-                      subjectColorsBySubjectId,
-                    );
-                    return (
-                      <article
-                        key={slot.id}
-                        className={`rounded-card border p-3 ${
-                          isCompactViewport
-                            ? "grid gap-1.5 px-2.5 py-2"
-                            : "grid grid-cols-[120px_1fr] gap-3"
-                        }`}
-                        style={{
-                          backgroundColor: tone.bgColor,
-                          borderColor: tone.borderColor,
-                        }}
-                      >
-                        {isCompactViewport ? (
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="rounded-[8px] bg-white/92 px-2.5 py-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.65)]">
-                              <p
-                                className="text-[13px] font-semibold leading-none"
-                                style={{ color: tone.textColor }}
-                              >
-                                {slot.start} - {slot.end}
-                              </p>
-                            </div>
-                            <span
-                              className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                              style={{
-                                backgroundColor: tone.chipColor,
-                                color: tone.chipTextColor,
-                              }}
-                            >
-                              {slot.room}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="rounded-card bg-white/80 p-2 text-center">
-                            <p
-                              className="text-sm font-semibold"
-                              style={{ color: tone.textColor }}
-                            >
-                              {slot.start}
-                            </p>
-                            <p className="text-xs text-[#5B6A7E]">
-                              a {slot.end}
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="grid gap-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3
-                              className={`font-heading font-semibold ${
-                                isCompactViewport
-                                  ? "text-[0.92rem] leading-[1.15]"
-                                  : "text-base"
-                              }`}
-                              style={{ color: tone.textColor }}
-                            >
-                              {subjectLabel(slot.subject)}
-                            </h3>
-                            {isCompactViewport ? null : (
-                              <span
-                                className="rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide"
-                                style={{
-                                  backgroundColor: tone.chipColor,
-                                  color: tone.chipTextColor,
-                                }}
-                              >
-                                {slot.room}
-                              </span>
-                            )}
-                          </div>
-                          <p
-                            className={`text-[#374A66] ${
-                              isCompactViewport ? "text-[0.8rem]" : "text-sm"
-                            }`}
-                          >
-                            {slot.teacher}
-                          </p>
-                        </div>
-                      </article>
-                    );
-                  })
-                )}
-              </section>
-            ) : null}
-
-            {viewMode === "week" ? (
-              isCompactViewport ? (
-                <section className="grid min-w-0 gap-3">
-                  <article className="min-w-0 overflow-hidden rounded-card border border-[#DCE8F7] bg-[#FBFDFF] p-2 shadow-[0_8px_20px_-18px_rgba(10,98,191,0.6)]">
-                    <div className="w-full overflow-x-auto">
-                      <table className="w-max border-separate [border-spacing:1px]">
-                        <colgroup>
-                          <col style={{ width: "clamp(24px, 7.2vw, 34px)" }} />
-                          {weekDays.map((entry) => (
-                            <col
-                              key={`compact-week-col-${entry.weekday}`}
-                              style={{ width: "clamp(27px, 7.7vw, 44px)" }}
-                            />
-                          ))}
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th className="whitespace-nowrap rounded-[6px] bg-[#EFF5FD] px-0.5 py-1 text-left text-[7px] font-semibold uppercase tracking-[0.015em] text-[#5A7093]">
-                              H
-                            </th>
-                            {weekDays.map((entry) => (
-                              <th
-                                key={`compact-week-head-${entry.weekday}`}
-                                className={`whitespace-nowrap rounded-[6px] px-0.5 py-1 text-center text-[7px] font-semibold uppercase tracking-[0.01em] ${
-                                  sameDate(entry.date, today)
-                                    ? "bg-[#DCEBFF] text-[#0A62BF]"
-                                    : "bg-[#EFF5FD] text-[#5A7093]"
-                                }`}
-                                style={{ fontSize: "clamp(7px, 1.7vw, 9px)" }}
-                              >
-                                {entry.label.slice(0, 1)}{" "}
-                                {entry.date
-                                  .getDate()
-                                  .toString()
-                                  .padStart(2, "0")}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {compactWeekTimeRows.map((row) => (
-                            <tr
-                              key={`compact-week-row-${row.start}-${row.end}`}
-                            >
-                              <td
-                                className="rounded-[6px] bg-[#F2F7FD] px-[1px] py-0.5 text-[6px] font-medium leading-[1.03] text-[#35557F]"
-                                style={{ fontSize: "clamp(6px, 1.45vw, 8px)" }}
-                              >
-                                <span className="block">{row.start}</span>
-                                <span className="block">{row.end}</span>
-                              </td>
-                              {weekDays.map((entry) => {
-                                const slot = (
-                                  weekSlotsByWeekday.get(entry.weekday) ?? []
-                                ).find(
-                                  (candidate) =>
-                                    candidate.start === row.start &&
-                                    candidate.end === row.end,
-                                );
-
-                                if (!slot) {
-                                  return (
-                                    <td
-                                      key={`compact-week-empty-${entry.weekday}-${row.start}`}
-                                      className="rounded-[8px] bg-[#FAFCFF]"
-                                    />
-                                  );
-                                }
-
-                                const tone = subjectTone(
-                                  slot.subject,
-                                  slot.subjectId,
-                                  subjectColorsBySubjectId,
-                                );
-                                const isSelected =
-                                  selectedCompactWeekCell &&
-                                  selectedCompactWeekCell.slot.id === slot.id &&
-                                  sameDate(
-                                    selectedCompactWeekCell.date,
-                                    entry.date,
-                                  );
-
-                                return (
-                                  <td
-                                    key={`compact-week-slot-${entry.weekday}-${slot.id}`}
-                                    className="rounded-[6px] bg-white p-0.5"
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setSelectedCompactWeekCell({
-                                          slot,
-                                          date: entry.date,
-                                        })
-                                      }
-                                      aria-label={`${subjectLabel(slot.subject)} ${slot.start}-${slot.end}`}
-                                      className={`w-full rounded-[6px] px-0 py-0.5 text-[7px] font-semibold uppercase tracking-[0.01em] transition ${
-                                        isSelected
-                                          ? "hover:brightness-[0.98]"
-                                          : "hover:brightness-[0.98]"
-                                      }`}
-                                      style={{
-                                        fontSize: "clamp(7px, 1.65vw, 9px)",
-                                        minHeight: "clamp(14px, 2.1vh, 20px)",
-                                        backgroundColor: isSelected
-                                          ? tone.chipColor
-                                          : tone.bgColor,
-                                        color: isSelected
-                                          ? tone.chipTextColor
-                                          : tone.textColor,
-                                      }}
-                                    >
-                                      <span className="block truncate">
-                                        {subjectShortLabel(slot.subject)}
-                                      </span>
-                                    </button>
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </article>
-
-                  <article className="rounded-card border border-[#DCE8F7] bg-[#F9FCFF] p-3 shadow-[0_8px_20px_-18px_rgba(7,38,78,0.45)]">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#4C6284]">
-                      Detail du cours selectionne
-                    </p>
-                    {selectedCompactWeekCell ? (
-                      <div className="grid gap-1 text-[13px] text-[#213B5D]">
-                        <p>
-                          <span className="font-semibold">Matiere:</span>{" "}
-                          {subjectLabel(selectedCompactWeekCell.slot.subject)}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Jour:</span>{" "}
-                          {new Intl.DateTimeFormat("fr-FR", {
-                            weekday: "long",
-                            day: "2-digit",
-                            month: "long",
-                          }).format(selectedCompactWeekCell.date)}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Plage horaire:</span>{" "}
-                          {selectedCompactWeekCell.slot.start} -{" "}
-                          {selectedCompactWeekCell.slot.end}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Enseignant:</span>{" "}
-                          {selectedCompactWeekCell.slot.teacher}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Salle:</span>{" "}
-                          {selectedCompactWeekCell.slot.room}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[#8192A8]">
-                        Selectionnez une matiere dans le tableau pour afficher
-                        le detail.
-                      </p>
-                    )}
-                  </article>
-                </section>
-              ) : (
-                <section className="overflow-hidden rounded-card border border-border">
-                  <div className="grid grid-cols-7 bg-[#F7FAFF]">
-                    {weekDays.map((entry) => (
-                      <div
-                        key={entry.label}
-                        className={`border-b border-r border-border px-3 py-2 text-center last:border-r-0 ${
-                          sameDate(entry.date, today) ? "bg-[#E7F2FF]" : ""
-                        }`}
-                      >
-                        <p className="text-xs font-semibold uppercase tracking-wide text-[#4C6284]">
-                          {entry.label}
-                        </p>
-                        <p className="text-sm font-semibold text-[#163158]">
-                          {entry.date.getDate().toString().padStart(2, "0")}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-7 bg-white">
-                    {weekDays.map((entry) => {
-                      const slots = classSlots
-                        .filter((slot) => slot.weekday === entry.weekday)
-                        .sort((a, b) => a.start.localeCompare(b.start));
-
-                      return (
-                        <div
-                          key={`${entry.label}-content`}
-                          className="min-h-[360px] border-r border-border p-2 last:border-r-0"
-                        >
-                          {slots.length === 0 ? (
-                            <p className="mt-2 text-center text-xs text-[#8192A8]">
-                              -
-                            </p>
-                          ) : (
-                            <div className="grid gap-2">
-                              {slots.map((slot) => {
-                                const tone = subjectTone(
-                                  slot.subject,
-                                  slot.subjectId,
-                                  subjectColorsBySubjectId,
-                                );
-                                return (
-                                  <article
-                                    key={slot.id}
-                                    className="rounded-[10px] border px-2 py-1.5"
-                                    style={{
-                                      backgroundColor: tone.bgColor,
-                                      borderColor: tone.borderColor,
-                                    }}
-                                  >
-                                    <p
-                                      className="text-[11px] font-semibold"
-                                      style={{ color: tone.textColor }}
-                                    >
-                                      {slot.start} - {slot.end}
-                                    </p>
-                                    <p
-                                      className="truncate text-xs font-semibold uppercase tracking-[0.02em]"
-                                      style={{ color: tone.textColor }}
-                                    >
-                                      {subjectLabel(slot.subject)}
-                                    </p>
-                                    <p className="truncate text-[11px] text-[#3B4F6B]">
-                                      {slot.teacher}
-                                    </p>
-                                    <p className="truncate text-[11px] font-medium text-[#4B6285]">
-                                      Salle {slot.room}
-                                    </p>
-                                  </article>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              )
-            ) : null}
-
-            {viewMode === "month" ? (
-              isCompactViewport ? (
-                <section className="grid gap-3">
-                  <article className="rounded-card border border-border bg-surface p-3 shadow-[0_8px_20px_-18px_rgba(10,98,191,0.6)]">
-                    <div className="mb-2 grid grid-cols-7 gap-1">
-                      {WEEKDAY_SHORT.map((label) => (
-                        <p
-                          key={`compact-head-${label}`}
-                          className="text-center text-[10px] font-semibold uppercase tracking-wide text-[#5A7093]"
-                        >
-                          {label}
-                        </p>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1">
-                      {compactMonthCalendarCells.map((entry, index) => {
-                        if (!entry.date) {
-                          return (
-                            <div
-                              key={`compact-month-empty-${index}`}
-                              className="h-11 rounded-[8px] bg-[#F7FAFD]"
-                            />
-                          );
-                        }
-
-                        const isToday = sameDate(entry.date, today);
-                        const isSelected = selectedCompactMonthDate
-                          ? sameDate(entry.date, selectedCompactMonthDate)
-                          : false;
-
-                        return (
-                          <button
-                            key={`compact-month-cell-${entry.date.toISOString()}`}
-                            type="button"
-                            onClick={() =>
-                              setSelectedCompactMonthDate(entry.date)
-                            }
-                            className={`relative h-11 rounded-[8px] border text-center transition ${
-                              isSelected
-                                ? "border-[#0A62BF] bg-[#0A62BF] text-white"
-                                : "border-[#D8E5F5] bg-white text-[#20446E] hover:bg-[#EDF5FF]"
-                            }`}
-                            title={new Intl.DateTimeFormat("fr-FR", {
-                              weekday: "long",
-                              day: "2-digit",
-                              month: "long",
-                            }).format(entry.date)}
-                          >
-                            <span
-                              className={`text-sm font-semibold ${
-                                isToday && !isSelected ? "text-[#0A62BF]" : ""
-                              }`}
-                            >
-                              {entry.date.getDate()}
-                            </span>
-                            {entry.slotsCount > 0 ? (
-                              <span
-                                className={`absolute bottom-1 right-1 rounded-full px-1 text-[9px] font-semibold ${
-                                  isSelected
-                                    ? "bg-white/20 text-white"
-                                    : "bg-[#E1EEFF] text-[#0A62BF]"
-                                }`}
-                              >
-                                {entry.slotsCount}
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </article>
-
-                  <article className="rounded-card border border-border bg-surface p-3 shadow-[0_8px_20px_-18px_rgba(7,38,78,0.45)]">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#4C6284]">
-                      Agenda du jour selectionne
-                    </p>
-                    <p className="mb-3 text-sm font-semibold text-[#163158]">
-                      {selectedCompactMonthDate
-                        ? new Intl.DateTimeFormat("fr-FR", {
-                            weekday: "long",
-                            day: "2-digit",
-                            month: "long",
-                          }).format(selectedCompactMonthDate)
-                        : "-"}
-                    </p>
-
-                    {selectedCompactMonthEntry &&
-                    selectedCompactMonthEntry.slots.length > 0 ? (
-                      <div className="grid gap-2">
-                        {selectedCompactMonthEntry.slots.map((slot) => {
-                          const tone = subjectTone(
-                            slot.subject,
-                            slot.subjectId,
-                            subjectColorsBySubjectId,
-                          );
-                          return (
-                            <div
-                              key={`compact-month-selected-${slot.id}`}
-                              className="rounded-[10px] border px-2 py-1.5"
-                              style={{
-                                backgroundColor: tone.bgColor,
-                                borderColor: tone.borderColor,
-                              }}
-                            >
-                              <p
-                                className="text-[11px] font-semibold"
-                                style={{ color: tone.textColor }}
-                              >
-                                {slot.start} - {slot.end}
-                              </p>
-                              <p
-                                className="truncate text-xs font-semibold uppercase tracking-[0.02em]"
-                                style={{ color: tone.textColor }}
-                              >
-                                {subjectLabel(slot.subject)}
-                              </p>
-                              <p className="truncate text-[11px] text-[#3B4F6B]">
-                                {slot.teacher}
-                              </p>
-                              <p className="truncate text-[11px] font-medium text-[#4B6285]">
-                                Salle {slot.room}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[#8192A8]">
-                        Aucun cours programme pour cette journee.
-                      </p>
-                    )}
-                  </article>
-                </section>
-              ) : (
-                <section className="overflow-hidden rounded-card border border-border">
-                  <div className="grid grid-cols-7 bg-[#F7FAFF]">
-                    {WEEKDAY_LONG.map((label) => (
-                      <div
-                        key={label}
-                        className="border-b border-r border-border px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide text-[#4C6284] last:border-r-0"
-                      >
-                        {label}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-7 bg-white">
-                    {monthMatrix.map((cell) => {
-                      const isToday = sameDate(cell.date, today);
-                      return (
-                        <div
-                          key={cell.date.toISOString()}
-                          className={`min-h-[140px] border-r border-t border-border p-2 last:border-r-0 ${
-                            cell.isCurrentMonth ? "" : "bg-[#FAFBFD]"
-                          }`}
-                        >
-                          <p
-                            className={`mb-2 text-right text-xs font-semibold ${
-                              isToday
-                                ? "text-[#0A62BF]"
-                                : cell.isCurrentMonth
-                                  ? "text-[#274566]"
-                                  : "text-[#A1AEC0]"
-                            }`}
-                          >
-                            {cell.date.getDate().toString().padStart(2, "0")}
-                          </p>
-                          <div className="grid gap-1">
-                            {cell.slots.slice(0, 3).map((slot) => {
-                              const tone = subjectTone(
-                                slot.subject,
-                                slot.subjectId,
-                                subjectColorsBySubjectId,
-                              );
-                              return (
-                                <div
-                                  key={`${cell.date.toDateString()}-${slot.id}`}
-                                  className="truncate rounded-full px-2 py-1 text-[10px] font-semibold"
-                                  style={{
-                                    backgroundColor: tone.bgColor,
-                                    color: tone.textColor,
-                                  }}
-                                  title={`${slot.start} ${subjectLabel(slot.subject)} - Salle ${slot.room}`}
-                                >
-                                  {slot.start} {subjectLabel(slot.subject)} -{" "}
-                                  {slot.room}
-                                </div>
-                              );
-                            })}
-                            {cell.slots.length > 3 ? (
-                              <p className="text-[10px] font-medium text-[#6682A8]">
-                                +{cell.slots.length - 3} autres
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              )
-            ) : null}
           </div>
         )}
       </Card>

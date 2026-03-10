@@ -2017,6 +2017,187 @@ export class TimetableService {
     if (overlaps.length > 0) {
       throw new BadRequestException("Conflicting occurrence for class");
     }
+
+    const targetWeekday = this.weekdayMondayFirst(input.occurrenceDate);
+    const [suppressedRecurringRows, recurringRows, oneOffRows, overrideRows] =
+      await Promise.all([
+        this.prisma.classTimetableSlotException.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            occurrenceDate: input.occurrenceDate,
+            type: { in: ["CANCEL", "OVERRIDE"] },
+          },
+          select: { slotId: true },
+        }),
+        this.prisma.classTimetableSlot.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            weekday: targetWeekday,
+            startMinute: { lt: input.endMinute },
+            endMinute: { gt: input.startMinute },
+            OR: [
+              { teacherUserId: input.teacherUserId },
+              ...(input.room ? [{ room: input.room }] : []),
+            ],
+            AND: [
+              {
+                OR: [
+                  { activeFromDate: null },
+                  { activeFromDate: { lte: input.occurrenceDate } },
+                ],
+              },
+              {
+                OR: [
+                  { activeToDate: null },
+                  { activeToDate: { gte: input.occurrenceDate } },
+                ],
+              },
+            ],
+            ...(input.ignoreRecurringSlotId
+              ? { id: { not: input.ignoreRecurringSlotId } }
+              : {}),
+          },
+          select: {
+            id: true,
+            classId: true,
+            teacherUserId: true,
+            room: true,
+          },
+        }),
+        this.prisma.classTimetableOneOffSlot.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            occurrenceDate: input.occurrenceDate,
+            status: "PLANNED",
+            startMinute: { lt: input.endMinute },
+            endMinute: { gt: input.startMinute },
+            OR: [
+              { teacherUserId: input.teacherUserId },
+              ...(input.room ? [{ room: input.room }] : []),
+            ],
+            ...(input.exceptOneOffSlotId
+              ? { id: { not: input.exceptOneOffSlotId } }
+              : {}),
+          },
+          select: {
+            id: true,
+            classId: true,
+            teacherUserId: true,
+            room: true,
+          },
+        }),
+        this.prisma.classTimetableSlotException.findMany({
+          where: {
+            schoolId: input.schoolId,
+            schoolYearId: input.schoolYearId,
+            occurrenceDate: input.occurrenceDate,
+            type: "OVERRIDE",
+            OR: [
+              { teacherUserId: input.teacherUserId },
+              ...(input.room ? [{ room: input.room }] : []),
+              { slot: { teacherUserId: input.teacherUserId } },
+              ...(input.room ? [{ slot: { room: input.room } }] : []),
+            ],
+          },
+          select: {
+            id: true,
+            slotId: true,
+            classId: true,
+            startMinute: true,
+            endMinute: true,
+            teacherUserId: true,
+            room: true,
+            slot: {
+              select: {
+                classId: true,
+                startMinute: true,
+                endMinute: true,
+                teacherUserId: true,
+                room: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+    const suppressedRecurring = new Set(
+      suppressedRecurringRows.map((row) => row.slotId),
+    );
+
+    const recurringTeacherConflict = recurringRows.some(
+      (row) =>
+        !suppressedRecurring.has(row.id) &&
+        row.teacherUserId === input.teacherUserId,
+    );
+    const oneOffTeacherConflict = oneOffRows.some(
+      (row) => row.teacherUserId === input.teacherUserId,
+    );
+    const overrideTeacherConflict = overrideRows.some((row) => {
+      if (input.exceptExceptionId && row.id === input.exceptExceptionId) {
+        return false;
+      }
+      if (
+        input.ignoreRecurringSlotId &&
+        row.slotId === input.ignoreRecurringSlotId
+      ) {
+        return false;
+      }
+      const effectiveStart = row.startMinute ?? row.slot.startMinute;
+      const effectiveEnd = row.endMinute ?? row.slot.endMinute;
+      const isOverlapping =
+        effectiveStart < input.endMinute && effectiveEnd > input.startMinute;
+      if (!isOverlapping) {
+        return false;
+      }
+      const effectiveTeacher = row.teacherUserId ?? row.slot.teacherUserId;
+      return effectiveTeacher === input.teacherUserId;
+    });
+
+    if (
+      recurringTeacherConflict ||
+      oneOffTeacherConflict ||
+      overrideTeacherConflict
+    ) {
+      throw new BadRequestException("Conflicting occurrence for teacher");
+    }
+
+    if (!input.room) {
+      return;
+    }
+
+    const recurringRoomConflict = recurringRows.some(
+      (row) => !suppressedRecurring.has(row.id) && row.room === input.room,
+    );
+    const oneOffRoomConflict = oneOffRows.some(
+      (row) => row.room === input.room,
+    );
+    const overrideRoomConflict = overrideRows.some((row) => {
+      if (input.exceptExceptionId && row.id === input.exceptExceptionId) {
+        return false;
+      }
+      if (
+        input.ignoreRecurringSlotId &&
+        row.slotId === input.ignoreRecurringSlotId
+      ) {
+        return false;
+      }
+      const effectiveStart = row.startMinute ?? row.slot.startMinute;
+      const effectiveEnd = row.endMinute ?? row.slot.endMinute;
+      const isOverlapping =
+        effectiveStart < input.endMinute && effectiveEnd > input.startMinute;
+      if (!isOverlapping) {
+        return false;
+      }
+      const effectiveRoom = row.room ?? row.slot.room;
+      return effectiveRoom === input.room;
+    });
+
+    if (recurringRoomConflict || oneOffRoomConflict || overrideRoomConflict) {
+      throw new BadRequestException("Conflicting occurrence for room");
+    }
   }
 
   private resolveOccurrencesForDateRange(input: {

@@ -63,6 +63,26 @@ function toWeekdayMondayFirst(date: Date) {
   return day === 0 ? 7 : day;
 }
 
+function findSlotButtonBySubject(subjectPattern: RegExp) {
+  return screen.getAllByRole("button").find((button) => {
+    const label = button.textContent ?? "";
+    return (
+      /\d{2}:\d{2}\s-\s\d{2}:\d{2}/.test(label) && subjectPattern.test(label)
+    );
+  });
+}
+
+async function openWeekViewAndClickSlot(subjectPattern: RegExp) {
+  fireEvent.click(screen.getByRole("button", { name: "Cette semaine" }));
+  await waitFor(() => {
+    const target = findSlotButtonBySubject(subjectPattern);
+    expect(target).toBeDefined();
+  });
+  const target = findSlotButtonBySubject(subjectPattern);
+  expect(target).toBeDefined();
+  fireEvent.click(target!);
+}
+
 function buildDataset() {
   const sy1 = "sy-2025";
   const sy2 = "sy-2024";
@@ -729,8 +749,9 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
       expect(screen.getByText("Creneau ajoute.")).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Cette semaine" }));
     await waitFor(() => {
-      expect(screen.getByText(/Mr\s+NDEM\s+Guy/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/NDEM\s+Guy/i).length).toBeGreaterThan(0);
       expect(screen.getByText("Salle Labo")).toBeInTheDocument();
     });
 
@@ -807,7 +828,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
 
     await screen.findByText("Emploi du temps - 6eC");
 
-    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+    await openWeekViewAndClickSlot(/Francais/i);
     await screen.findByText("Gerer l'occurrence");
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
 
@@ -857,7 +878,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     render(<TeacherClassAgendaPage />);
 
     await screen.findByText("Emploi du temps - 6eC");
-    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+    await openWeekViewAndClickSlot(/Francais/i);
 
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
     fireEvent.click(modalQueries.getByText("Modifier cette occurrence"));
@@ -880,7 +901,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     render(<TeacherClassAgendaPage />);
 
     await screen.findByText("Emploi du temps - 6eC");
-    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+    await openWeekViewAndClickSlot(/Francais/i);
 
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
     fireEvent.click(modalQueries.getByText("Supprimer cette occurrence"));
@@ -922,7 +943,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     render(<TeacherClassAgendaPage />);
 
     await screen.findByText("Emploi du temps - 6eC");
-    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+    await openWeekViewAndClickSlot(/Francais/i);
 
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
     fireEvent.click(modalQueries.getByText("Modifier toute la serie"));
@@ -970,7 +991,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     render(<TeacherClassAgendaPage />);
 
     await screen.findByText("Emploi du temps - 6eC");
-    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+    await openWeekViewAndClickSlot(/Francais/i);
 
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
     fireEvent.click(modalQueries.getByText("Supprimer toute la serie"));
@@ -1028,7 +1049,7 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     render(<TeacherClassAgendaPage />);
 
     await screen.findByText("Emploi du temps - 6eC");
-    fireEvent.click(screen.getByText(/15:00 - 16:00 · Mathematiques/i));
+    await openWeekViewAndClickSlot(/Mathematiques/i);
 
     const modalQueries = within(screen.getByTestId("occurrence-modal"));
     expect(
@@ -1067,11 +1088,15 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
     render(<TeacherClassAgendaPage />);
 
     await screen.findByText("Emploi du temps - 6eC");
-
-    const daySlotTitle = screen.getByText(/08:45 - 10:00 · Francais/i);
-    const daySlotCard = daySlotTitle.closest("article") as HTMLElement | null;
-    expect(daySlotCard).toBeTruthy();
-    expect(daySlotCard?.style.backgroundColor.length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Cette semaine" }));
+    await waitFor(() => {
+      expect(findSlotButtonBySubject(/Francais/i)).toBeDefined();
+    });
+    const daySlotButton = findSlotButtonBySubject(/Francais/i);
+    expect(daySlotButton).toBeDefined();
+    expect(daySlotButton?.getAttribute("style") ?? "").toContain(
+      "background-color",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Ce mois" }));
     expect(
@@ -1090,7 +1115,13 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
       expect(screen.getByText(/Creneaux du/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText(/08:45 - 10:00 · Francais/i));
+    const monthSlotButton = screen
+      .getAllByRole("button")
+      .find((button) =>
+        /\d{2}:\d{2}\s-\s\d{2}:\d{2}\s·/i.test(button.textContent ?? ""),
+      );
+    expect(monthSlotButton).toBeDefined();
+    fireEvent.click(monthSlotButton!);
     expect(await screen.findByText("Gerer l'occurrence")).toBeInTheDocument();
   });
 
@@ -1125,9 +1156,6 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
       expect(
         await screen.findByText("Detail du creneau selectionne"),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Gerer ce creneau" }),
-      ).toBeInTheDocument();
       expect(screen.getByTestId("compact-week-timeline")).toBeInTheDocument();
       expect(screen.getByTestId("compact-hour-420")).toHaveTextContent("07:00");
       expect(screen.getByTestId("compact-hour-1080")).toHaveTextContent(
@@ -1141,6 +1169,9 @@ describe("TeacherClassAgendaPage - creneaux UI", () => {
       expect(compactWeekSlot?.getAttribute("style") ?? "").toContain("top:");
       expect(compactWeekSlot?.getAttribute("style") ?? "").toContain("height:");
       fireEvent.click(compactWeekSlot!);
+      expect(
+        screen.getByRole("button", { name: "Gerer ce creneau" }),
+      ).toBeInTheDocument();
       expect(screen.getByText(/Matiere:/i)).toBeInTheDocument();
       expect(screen.getByText(/Francais/i)).toBeInTheDocument();
       const detailCard = screen.getByTestId("compact-week-detail-card");

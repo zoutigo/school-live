@@ -27,9 +27,11 @@ describe("Timetable subject style API e2e", () => {
   let schoolYearId = "";
   let previousSchoolYearId = "";
   let classId = "";
+  let secondClassId = "";
   let subjectId = "";
   let secondSubjectId = "";
   let teacherUserId = "";
+  let secondTeacherUserId = "";
 
   async function api(path: string, init?: RequestInit) {
     return fetch(`${baseUrl}${path}`, init);
@@ -166,6 +168,16 @@ describe("Timetable subject style API e2e", () => {
       },
     });
     classId = classroom.id;
+    const secondClassroom = await prisma.class.create({
+      data: {
+        schoolId,
+        schoolYearId,
+        academicLevelId: academicLevel.id,
+        curriculumId: curriculum.id,
+        name: "6eC",
+      },
+    });
+    secondClassId = secondClassroom.id;
 
     await prisma.user.create({
       data: {
@@ -195,6 +207,20 @@ describe("Timetable subject style API e2e", () => {
       },
     });
     teacherUserId = teacher.id;
+    const secondTeacher = await prisma.user.create({
+      data: {
+        firstName: "Second",
+        lastName: "Teacher",
+        email: `e2e-timetable-style-teacher-two-${runId}@example.test`,
+        passwordHash,
+        mustChangePassword: false,
+        profileCompleted: true,
+        memberships: {
+          create: [{ schoolId, role: "TEACHER" }],
+        },
+      },
+    });
+    secondTeacherUserId = secondTeacher.id;
 
     await prisma.teacherClassSubject.createMany({
       data: [
@@ -211,6 +237,13 @@ describe("Timetable subject style API e2e", () => {
           classId,
           subjectId: secondSubjectId,
           teacherUserId,
+        },
+        {
+          schoolId,
+          schoolYearId,
+          classId: secondClassId,
+          subjectId,
+          teacherUserId: secondTeacherUserId,
         },
       ],
     });
@@ -479,6 +512,194 @@ describe("Timetable subject style API e2e", () => {
     );
     expect(oneOffOccurrence).toBeDefined();
     expect(String(oneOffOccurrence?.occurrenceDate)).toBe("2026-03-09");
+  });
+
+  it("rejects overlapping recurring slots in the same class", async () => {
+    const firstSlot = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          weekday: 2,
+          startMinute: 1020,
+          endMinute: 1080,
+          subjectId,
+          teacherUserId,
+          room: "A11",
+        }),
+      },
+    );
+    expect(firstSlot.response.status).toBe(201);
+
+    const overlappingSlot = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          weekday: 2,
+          startMinute: 1050,
+          endMinute: 1110,
+          subjectId: secondSubjectId,
+          teacherUserId,
+          room: "A12",
+        }),
+      },
+    );
+    expect(overlappingSlot.response.status).toBe(400);
+    expect(String(overlappingSlot.body?.message)).toContain(
+      "Conflicting slot for class",
+    );
+  });
+
+  it("rejects overlapping recurring slots in the same room across classes", async () => {
+    const firstSlot = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          weekday: 3,
+          startMinute: 1020,
+          endMinute: 1080,
+          subjectId,
+          teacherUserId,
+          room: "R-ROOM-1",
+        }),
+      },
+    );
+    expect(firstSlot.response.status).toBe(201);
+
+    const conflictingRoomSlot = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${secondClassId}/slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          weekday: 3,
+          startMinute: 1040,
+          endMinute: 1100,
+          subjectId,
+          teacherUserId: secondTeacherUserId,
+          room: "R-ROOM-1",
+        }),
+      },
+    );
+    expect(conflictingRoomSlot.response.status).toBe(400);
+    expect(String(conflictingRoomSlot.body?.message)).toContain(
+      "Conflicting slot for room",
+    );
+  });
+
+  it("rejects overlapping one-off occurrences in the same class", async () => {
+    const firstOneOff = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/one-off-slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          occurrenceDate: "2026-04-21",
+          startMinute: 840,
+          endMinute: 900,
+          subjectId,
+          teacherUserId,
+          room: "A20",
+        }),
+      },
+    );
+    expect(firstOneOff.response.status).toBe(201);
+
+    const conflictingOneOff = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/one-off-slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          occurrenceDate: "2026-04-21",
+          startMinute: 870,
+          endMinute: 930,
+          subjectId: secondSubjectId,
+          teacherUserId,
+          room: "A21",
+        }),
+      },
+    );
+    expect(conflictingOneOff.response.status).toBe(400);
+    expect(String(conflictingOneOff.body?.message)).toContain(
+      "Conflicting occurrence for class",
+    );
+  });
+
+  it("rejects overlapping one-off occurrences in the same room across classes", async () => {
+    const firstOneOff = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${classId}/one-off-slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          occurrenceDate: "2026-04-14",
+          startMinute: 900,
+          endMinute: 960,
+          subjectId,
+          teacherUserId,
+          room: "R-ROOM-2",
+        }),
+      },
+    );
+    expect(firstOneOff.response.status).toBe(201);
+
+    const conflictingOneOff = await apiJson(
+      `/api/schools/${schoolSlug}/timetable/classes/${secondClassId}/one-off-slots`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${bearerToken}`,
+        },
+        body: JSON.stringify({
+          schoolYearId,
+          occurrenceDate: "2026-04-14",
+          startMinute: 930,
+          endMinute: 990,
+          subjectId,
+          teacherUserId: secondTeacherUserId,
+          room: "R-ROOM-2",
+        }),
+      },
+    );
+    expect(conflictingOneOff.response.status).toBe(400);
+    expect(String(conflictingOneOff.body?.message)).toContain(
+      "Conflicting occurrence for room",
+    );
   });
 
   it("supports override of a single recurring occurrence", async () => {
