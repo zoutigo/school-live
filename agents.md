@@ -12,6 +12,23 @@ Primary goals: security (school isolation), maintainability, performance, and cl
 
 ---
 
+## Mandatory VPS context loading (must follow)
+
+- Before any VPS/deployment/infrastructure action (analysis, command, change, advice), the agent MUST read:
+  - `docs/ops/vps-deploy.md`
+- If the file is missing or outdated, the agent must:
+  - state it explicitly,
+  - proceed carefully with verification commands,
+  - and propose updating `docs/ops/vps-deploy.md` at the end.
+- The agent must treat `docs/ops/vps-deploy.md` as the operational source of truth for:
+  - deployment paths,
+  - compose files,
+  - networks,
+  - reverse proxy routing,
+  - and deploy procedure.
+
+---
+
 ## Collaboration transparency (must follow)
 
 - The user must see the execution flow in real time.

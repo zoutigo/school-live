@@ -62,7 +62,7 @@ export function SsoButtons({ schoolSlug }: Props) {
     google: boolean;
     apple: boolean;
   }>({
-    google: false,
+    google: true,
     apple: false,
   });
   const [providersLoaded, setProvidersLoaded] = useState(false);
@@ -85,10 +85,10 @@ export function SsoButtons({ schoolSlug }: Props) {
         const response = await fetch("/api/auth/providers", {
           cache: "no-store",
         });
-        const payload = (await response.json().catch(() => ({}))) as Record<
-          string,
-          unknown
-        >;
+        if (!response.ok) {
+          throw new Error("providers probe failed");
+        }
+        const payload = (await response.json()) as Record<string, unknown>;
 
         if (!cancelled) {
           setProviders({
@@ -99,6 +99,8 @@ export function SsoButtons({ schoolSlug }: Props) {
         }
       } catch {
         if (!cancelled) {
+          // Keep Google button usable on transient probe failures.
+          setProviders((current) => ({ ...current, google: true }));
           setProvidersLoaded(true);
         }
       }
@@ -112,14 +114,8 @@ export function SsoButtons({ schoolSlug }: Props) {
   }, []);
 
   async function onProviderSignIn(provider: "google" | "apple") {
-    const providerAvailable =
-      provider === "google" ? providers.google : providers.apple;
-    if (!providerAvailable) {
-      setError(
-        provider === "google"
-          ? "Connexion Google indisponible: configuration manquante."
-          : "Connexion Apple indisponible: configuration manquante.",
-      );
+    if (provider === "apple" && !providers.apple) {
+      setError("Connexion Apple indisponible: configuration manquante.");
       return;
     }
     setError(null);
@@ -131,7 +127,6 @@ export function SsoButtons({ schoolSlug }: Props) {
     }
   }
 
-  const googleEnabled = providersLoaded && providers.google;
   const appleEnabled = providersLoaded && providers.apple && APPLE_SSO_ENABLED;
 
   return (
@@ -139,13 +134,8 @@ export function SsoButtons({ schoolSlug }: Props) {
       <Button
         type="button"
         variant="secondary"
-        disabled={!googleEnabled || loadingProvider !== null}
+        disabled={loadingProvider !== null}
         onClick={() => void onProviderSignIn("google")}
-        title={
-          googleEnabled
-            ? undefined
-            : "Connexion Google desactivee: provider non configure"
-        }
       >
         <span className="inline-flex items-center gap-2">
           <GoogleLogo />
