@@ -211,7 +211,7 @@ export default function ElevesPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [parentLinkMode, setParentLinkMode] = useState<"email" | "phone">(
-    "email",
+    "phone",
   );
   const [parentEmail, setParentEmail] = useState("");
   const [parentPhone, setParentPhone] = useState("");
@@ -1648,8 +1648,8 @@ export default function ElevesPage() {
                         }
                         className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
-                        <option value="email">Email + mot de passe</option>
                         <option value="phone">Telephone + PIN</option>
+                        <option value="email">Email + mot de passe</option>
                       </select>
                     </label>
                     <label className="grid gap-1 text-sm">

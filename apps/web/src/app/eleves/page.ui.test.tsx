@@ -126,6 +126,9 @@ describe("Eleves page parent link modes", () => {
       await screen.findByRole("button", { name: "Affectations" }),
     );
 
+    fireEvent.change(await screen.findByDisplayValue("Telephone + PIN"), {
+      target: { value: "email" },
+    });
     fireEvent.input(await screen.findByPlaceholderText("parent@email.com"), {
       target: { value: "parent@example.test" },
     });
@@ -160,9 +163,6 @@ describe("Eleves page parent link modes", () => {
       await screen.findByRole("button", { name: "Affectations" }),
     );
 
-    fireEvent.change(await screen.findByDisplayValue("Email + mot de passe"), {
-      target: { value: "phone" },
-    });
     fireEvent.input(screen.getByPlaceholderText("6XXXXXXXX"), {
       target: { value: "699001122" },
     });
@@ -187,5 +187,18 @@ describe("Eleves page parent link modes", () => {
     expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
       '"pin":"123456"',
     );
+  });
+
+  it("defaults parent link mode to phone + pin", async () => {
+    setupFetchMock();
+
+    render(<ElevesPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Affectations" }),
+    );
+
+    expect(await screen.findByDisplayValue("Telephone + PIN")).toBeDefined();
+    expect(screen.getByPlaceholderText("6XXXXXXXX")).toBeDefined();
+    expect(screen.getByPlaceholderText("123456")).toBeDefined();
   });
 });
