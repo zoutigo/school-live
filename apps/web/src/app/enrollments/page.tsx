@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
@@ -559,9 +560,9 @@ export default function EnrollmentsPage() {
                           placeholder="Nom ou prenom"
                           className="w-full rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
-                        <Button type="submit" disabled={loadingData}>
+                        <SubmitButton disabled={loadingData}>
                           Filtrer
-                        </Button>
+                        </SubmitButton>
                       </div>
                     </label>
                   </form>

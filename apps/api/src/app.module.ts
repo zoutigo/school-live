@@ -9,6 +9,7 @@ import { ManagementModule } from "./management/management.module.js";
 import { MessagingModule } from "./messaging/messaging.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { SchoolsModule } from "./schools/schools.module.js";
+import { TimetableModule } from "./timetable/timetable.module.js";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SchoolsModule } from "./schools/schools.module.js";
     ManagementModule,
     MessagingModule,
     SchoolsModule,
+    TimetableModule,
   ],
   controllers: [AppController],
 })

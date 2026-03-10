@@ -8,6 +8,8 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { EmailInput } from "../../components/ui/email-input";
+import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
@@ -1047,13 +1049,9 @@ export default function SchoolsPage() {
                   </div>
 
                   <div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setTab("list")}
-                    >
+                    <BackButton onClick={() => setTab("list")}>
                       Retour a la liste
-                    </Button>
+                    </BackButton>
                   </div>
                 </>
               ) : null}
@@ -1119,12 +1117,10 @@ export default function SchoolsPage() {
 
               <label className="grid gap-1 text-sm md:col-span-2">
                 <span className="text-text-secondary">Email School Admin</span>
-                <input
-                  type="email"
+                <EmailInput
                   required
                   value={schoolAdminEmail}
                   onChange={(event) => setSchoolAdminEmail(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
                 <span className="text-xs text-text-secondary">
                   {emailCheckState === "checking"
@@ -1171,9 +1167,9 @@ export default function SchoolsPage() {
               ) : null}
 
               <div className="md:col-span-2">
-                <Button type="submit" disabled={submitting}>
+                <SubmitButton disabled={submitting}>
                   {submitting ? "Creation..." : "Creer l ecole"}
-                </Button>
+                </SubmitButton>
               </div>
             </form>
           ) : null}

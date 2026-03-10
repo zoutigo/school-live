@@ -1,12 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { BackLinkButton } from "../../components/ui/back-link-button";
 import { RecoveryShell } from "../../components/layout/recovery-shell";
-import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { PasswordField } from "../../components/ui/password-field";
+import { DateInput } from "../../components/ui/date-input";
+import { EmailInput } from "../../components/ui/email-input";
+import { SubmitButton } from "../../components/ui/form-buttons";
+import { FormField } from "../../components/ui/form-field";
+import { PinInput } from "../../components/ui/pin-input";
 import {
   buildVerifyPinRecoverySchema,
   completePinRecoverySchema,
@@ -312,29 +315,26 @@ function PinRecoveryPageContent() {
           <div className="grid gap-5">
             {!options ? (
               <form className="grid gap-3" onSubmit={onLoadOptions} noValidate>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Email (optionnel)</span>
-                  <input
-                    type="email"
+                <FormField
+                  label="Email (optionnel)"
+                  error={emailTouched ? requestErrors.email : null}
+                >
+                  <EmailInput
                     value={email}
                     onChange={(event) => {
                       setEmailTouched(true);
                       setEmail(event.target.value);
                     }}
                     placeholder="prenom.nom@gmail.com"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                  {emailTouched && requestErrors.email ? (
-                    <span className="text-xs text-notification">
-                      {requestErrors.email}
-                    </span>
-                  ) : null}
-                </label>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Telephone (optionnel)
-                  </span>
+                <FormField
+                  label="Telephone (optionnel)"
+                  error={
+                    phoneTouched || emailTouched ? requestErrors.phone : null
+                  }
+                >
                   <input
                     type="text"
                     value={phone}
@@ -345,15 +345,9 @@ function PinRecoveryPageContent() {
                     placeholder="6XXXXXXXX"
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                  {(phoneTouched || emailTouched) && requestErrors.phone ? (
-                    <span className="text-xs text-notification">
-                      {requestErrors.phone}
-                    </span>
-                  ) : null}
-                </label>
+                </FormField>
 
-                <Button
-                  type="submit"
+                <SubmitButton
                   disabled={
                     loadingOptions ||
                     !requestDirty ||
@@ -363,7 +357,7 @@ function PinRecoveryPageContent() {
                   {loadingOptions
                     ? "Chargement..."
                     : "Continuer vers les questions de recuperation"}
-                </Button>
+                </SubmitButton>
               </form>
             ) : null}
 
@@ -375,15 +369,12 @@ function PinRecoveryPageContent() {
                     {options.principalHint}
                   </span>
                 </p>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Date de naissance</span>
-                  <input
-                    type="date"
+                <FormField label="Date de naissance">
+                  <DateInput
                     value={birthDate}
                     onChange={(event) => setBirthDate(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
+                </FormField>
                 {options.questions.map((question) => (
                   <label key={question.key} className="grid gap-1 text-sm">
                     <span className="text-text-secondary">
@@ -402,24 +393,23 @@ function PinRecoveryPageContent() {
                     />
                   </label>
                 ))}
-                <Button
-                  type="submit"
+                <SubmitButton
                   disabled={
                     verifying || !verifyDirty || !verifyValidation.success
                   }
                 >
                   {verifying ? "Verification..." : "Verifier mes reponses"}
-                </Button>
+                </SubmitButton>
               </form>
             ) : null}
 
             {recoveryToken ? (
               <form className="grid gap-3" onSubmit={onComplete} noValidate>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Nouveau PIN (6 chiffres)
-                  </span>
-                  <PasswordField
+                <FormField
+                  label="Nouveau PIN (6 chiffres)"
+                  error={pinTouched ? completeErrors.newPin : null}
+                >
+                  <PinInput
                     value={newPin}
                     onChange={(event) => {
                       setPinTouched(true);
@@ -428,18 +418,13 @@ function PinRecoveryPageContent() {
                       );
                     }}
                     placeholder="123456"
-                    maxLength={6}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                  {pinTouched && completeErrors.newPin ? (
-                    <span className="text-xs text-notification">
-                      {completeErrors.newPin}
-                    </span>
-                  ) : null}
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Confirmer le PIN</span>
-                  <PasswordField
+                </FormField>
+                <FormField
+                  label="Confirmer le PIN"
+                  error={confirmPinTouched ? completeErrors.confirmPin : null}
+                >
+                  <PinInput
                     value={confirmPin}
                     onChange={(event) => {
                       setConfirmPinTouched(true);
@@ -448,17 +433,9 @@ function PinRecoveryPageContent() {
                       );
                     }}
                     placeholder="123456"
-                    maxLength={6}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                  {confirmPinTouched && completeErrors.confirmPin ? (
-                    <span className="text-xs text-notification">
-                      {completeErrors.confirmPin}
-                    </span>
-                  ) : null}
-                </label>
-                <Button
-                  type="submit"
+                </FormField>
+                <SubmitButton
                   disabled={
                     completing || !completeDirty || !completeValidation.success
                   }
@@ -466,7 +443,7 @@ function PinRecoveryPageContent() {
                   {completing
                     ? "Reinitialisation..."
                     : "Definir mon nouveau PIN"}
-                </Button>
+                </SubmitButton>
               </form>
             ) : null}
 
@@ -475,12 +452,9 @@ function PinRecoveryPageContent() {
             ) : null}
             {success ? <p className="text-sm text-success">{success}</p> : null}
 
-            <Link
-              href={loginHref}
-              className="text-sm text-primary hover:underline"
-            >
+            <BackLinkButton href={loginHref}>
               Retour a la connexion
-            </Link>
+            </BackLinkButton>
           </div>
         </Card>
       </div>

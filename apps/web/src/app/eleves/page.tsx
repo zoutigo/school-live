@@ -7,7 +7,8 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
-import { PasswordField } from "../../components/ui/password-field";
+import { EmailInput } from "../../components/ui/email-input";
+import { SubmitButton } from "../../components/ui/form-buttons";
 import {
   LifeEventsList,
   lifeEventTypeLabel,
@@ -15,10 +16,14 @@ import {
   type LifeEventType,
 } from "../../components/life-events/life-events-list";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { PasswordInput } from "../../components/ui/password-input";
+import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const PHONE_PIN_REGEX = /^\d{6}$/;
+const CAMEROON_LOCAL_PHONE_REGEX = /^\d{9}$/;
 
 type Role =
   | "SUPER_ADMIN"
@@ -81,7 +86,8 @@ type StudentRow = {
       id: string;
       firstName: string;
       lastName: string;
-      email: string;
+      email: string | null;
+      phone?: string | null;
     };
   }>;
   currentEnrollment: EnrollmentRow | null;
@@ -140,6 +146,14 @@ function toDateTimeLocalInput(value: string) {
   return local.toISOString().slice(0, 16);
 }
 
+function normalizeCmPhoneInput(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.startsWith("237") && digits.length >= 12) {
+    return digits.slice(3, 12);
+  }
+  return digits.slice(0, 9);
+}
+
 export default function ElevesPage() {
   const router = useRouter();
 
@@ -196,7 +210,13 @@ export default function ElevesPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [parentLinkMode, setParentLinkMode] = useState<"email" | "phone">(
+    "phone",
+  );
   const [parentEmail, setParentEmail] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [parentPassword, setParentPassword] = useState("");
+  const [parentPin, setParentPin] = useState("");
   const [linkingParent, setLinkingParent] = useState(false);
   const [eventType, setEventType] = useState<LifeEventType>("ABSENCE");
   const [eventOccurredAt, setEventOccurredAt] = useState("");
@@ -783,16 +803,83 @@ export default function ElevesPage() {
   }
 
   async function linkParentToStudent() {
-    if (!schoolSlug || !selectedStudentId || !parentEmail.trim()) {
+    if (!schoolSlug || !selectedStudentId) {
       return;
     }
 
-    const emailParsed = z
-      .string()
-      .email("Email parent invalide.")
-      .safeParse(parentEmail.trim());
-    if (!emailParsed.success) {
-      setError(emailParsed.error.issues[0]?.message ?? "Email invalide.");
+    const parsed = z
+      .object({
+        mode: z.enum(["email", "phone"]),
+        email: z.union([
+          z.string().trim().email("Email parent invalide."),
+          z.literal(""),
+        ]),
+        phone: z
+          .string()
+          .trim()
+          .optional()
+          .refine((value) => !value || CAMEROON_LOCAL_PHONE_REGEX.test(value), {
+            message: "Le numero parent doit contenir 9 chiffres.",
+          }),
+        password: z.union([
+          z
+            .string()
+            .regex(
+              PASSWORD_COMPLEXITY_REGEX,
+              "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+            ),
+          z.literal(""),
+        ]),
+        pin: z.union([
+          z.string().regex(PHONE_PIN_REGEX, "Le PIN doit contenir 6 chiffres."),
+          z.literal(""),
+        ]),
+      })
+      .superRefine((value, ctx) => {
+        if (value.mode === "email") {
+          if (!value.email.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["email"],
+              message: "Email parent obligatoire.",
+            });
+          }
+          if (!value.password.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["password"],
+              message: "Mot de passe initial obligatoire.",
+            });
+          }
+        }
+
+        if (value.mode === "phone") {
+          if (!value.phone?.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["phone"],
+              message: "Telephone parent obligatoire.",
+            });
+          }
+          if (!value.pin.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["pin"],
+              message: "PIN initial obligatoire.",
+            });
+          }
+        }
+      })
+      .safeParse({
+        mode: parentLinkMode,
+        email: parentEmail,
+        phone: parentPhone,
+        password: parentPassword,
+        pin: parentPin,
+      });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Contact parent invalide.");
       return;
     }
 
@@ -818,7 +905,15 @@ export default function ElevesPage() {
           },
           body: JSON.stringify({
             studentId: selectedStudentId,
-            email: parentEmail.trim(),
+            ...(parsed.data.mode === "email"
+              ? {
+                  email: parsed.data.email.trim(),
+                  password: parsed.data.password.trim(),
+                }
+              : {
+                  phone: parsed.data.phone?.trim(),
+                  pin: parsed.data.pin.trim(),
+                }),
           }),
         },
       );
@@ -836,8 +931,13 @@ export default function ElevesPage() {
       }
 
       setParentEmail("");
+      setParentPhone("");
+      setParentPassword("");
+      setParentPin("");
       setSuccess(
-        "Parent affecte. Si le parent n'avait pas de compte, un email d'acces lui a ete envoye.",
+        parsed.data.mode === "email"
+          ? "Parent affecte. Si nouveau compte, premiere connexion email + mot de passe initial."
+          : "Parent affecte. Si nouveau compte, activation via compte en attente avec PIN initial.",
       );
       await loadData(schoolSlug);
     } catch {
@@ -1276,26 +1376,24 @@ export default function ElevesPage() {
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Email (optionnel)</span>
-                  <input
+                  <EmailInput
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">
                     Mot de passe (optionnel)
                   </span>
-                  <PasswordField
+                  <PasswordInput
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
                 <div className="self-end">
-                  <Button type="submit" disabled={submitting}>
+                  <SubmitButton disabled={submitting}>
                     {submitting ? "Creation..." : "Ajouter"}
-                  </Button>
+                  </SubmitButton>
                 </div>
               </form>
 
@@ -1351,9 +1449,7 @@ export default function ElevesPage() {
                   </select>
                 </label>
                 <div className="self-end">
-                  <Button type="submit" disabled={loadingData}>
-                    Filtrer
-                  </Button>
+                  <SubmitButton disabled={loadingData}>Filtrer</SubmitButton>
                 </div>
               </form>
 
@@ -1540,22 +1636,84 @@ export default function ElevesPage() {
                     </p>
                   </div>
 
-                  <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-[1fr_auto]">
+                  <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">Mode parent</span>
+                      <select
+                        value={parentLinkMode}
+                        onChange={(event) =>
+                          setParentLinkMode(
+                            event.target.value as "email" | "phone",
+                          )
+                        }
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="phone">Telephone + PIN</option>
+                        <option value="email">Email + mot de passe</option>
+                      </select>
+                    </label>
                     <label className="grid gap-1 text-sm">
                       <span className="text-text-secondary">
-                        Email du parent
+                        {parentLinkMode === "email"
+                          ? "Email du parent"
+                          : "Telephone du parent"}
                       </span>
-                      <input
-                        value={parentEmail}
-                        onChange={(event) => setParentEmail(event.target.value)}
-                        placeholder="parent@email.com"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                      />
+                      {parentLinkMode === "email" ? (
+                        <EmailInput
+                          value={parentEmail}
+                          onChange={(event) =>
+                            setParentEmail(event.target.value)
+                          }
+                          placeholder="parent@email.com"
+                        />
+                      ) : (
+                        <input
+                          value={parentPhone}
+                          onChange={(event) =>
+                            setParentPhone(
+                              normalizeCmPhoneInput(event.target.value),
+                            )
+                          }
+                          placeholder="6XXXXXXXX"
+                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      )}
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      <span className="text-text-secondary">
+                        {parentLinkMode === "email"
+                          ? "Mot de passe initial"
+                          : "PIN initial"}
+                      </span>
+                      {parentLinkMode === "email" ? (
+                        <PasswordInput
+                          value={parentPassword}
+                          onChange={(event) =>
+                            setParentPassword(event.target.value)
+                          }
+                          placeholder="MotDePasse123"
+                        />
+                      ) : (
+                        <PinInput
+                          value={parentPin}
+                          onChange={(event) =>
+                            setParentPin(
+                              event.target.value.replace(/\D/g, "").slice(0, 6),
+                            )
+                          }
+                          placeholder="123456"
+                        />
+                      )}
                     </label>
                     <div className="self-end">
                       <Button
                         type="button"
-                        disabled={linkingParent || !parentEmail.trim()}
+                        disabled={
+                          linkingParent ||
+                          (parentLinkMode === "email"
+                            ? !parentEmail.trim() || !parentPassword.trim()
+                            : !parentPhone.trim() || !parentPin.trim())
+                        }
                         onClick={() => {
                           void linkParentToStudent();
                         }}
@@ -1576,7 +1734,7 @@ export default function ElevesPage() {
                           {(selectedStudent.parentLinks ?? []).map((link) => (
                             <li key={link.id}>
                               {link.parent.lastName} {link.parent.firstName} -{" "}
-                              {link.parent.email}
+                              {link.parent.email ?? link.parent.phone ?? "-"}
                             </li>
                           ))}
                         </ul>

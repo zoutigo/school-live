@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { ArrowLeft } from "lucide-react";
 import type { MessageAttachment, MessagingMessage } from "./types";
 import { MessagingReader } from "./messaging-reader";
+import { BackButton } from "../ui/form-buttons";
 
 type Props = {
   message: MessagingMessage | null;
@@ -20,14 +20,7 @@ export function MessagingMessageDetail({
     return (
       <div className="grid gap-3">
         <p className="text-sm text-text-secondary">Message introuvable.</p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex w-fit items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour a la liste
-        </button>
+        <BackButton onClick={onBack}>Retour a la liste</BackButton>
       </div>
     );
   }
@@ -38,14 +31,7 @@ export function MessagingMessageDetail({
       onOpenAttachment={onOpenAttachment}
       topActions={
         <div className="flex w-full flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour a la liste
-          </button>
+          <BackButton onClick={onBack}>Retour a la liste</BackButton>
           {topActions ? (
             <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
               {topActions}

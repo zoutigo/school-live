@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
-import { Button } from "../../../../../components/ui/button";
+import { SubmitButton } from "../../../../../components/ui/form-buttons";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -429,9 +429,9 @@ export default function GradesPage() {
             </label>
 
             <div className="self-end md:col-span-3">
-              <Button type="submit" disabled={saving || loadingContext}>
+              <SubmitButton disabled={saving || loadingContext}>
                 {saving ? "Enregistrement..." : "Ajouter la note"}
-              </Button>
+              </SubmitButton>
             </div>
           </form>
         ) : null}

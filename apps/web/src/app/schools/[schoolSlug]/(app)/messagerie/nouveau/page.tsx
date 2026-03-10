@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { Card } from "../../../../../../components/ui/card";
+import { BackButton } from "../../../../../../components/ui/form-buttons";
 import {
   createSchoolMessage,
   uploadSchoolMessagingInlineImage,
@@ -225,14 +225,9 @@ export default function SchoolNewMessagePage() {
         subtitle={subtitle}
         actions={
           canCompose ? (
-            <button
-              type="button"
-              onClick={requestBackToList}
-              className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
-            >
-              <ArrowLeft className="h-4 w-4" />
+            <BackButton onClick={requestBackToList}>
               Retour a la liste
-            </button>
+            </BackButton>
           ) : null
         }
       >
@@ -245,13 +240,9 @@ export default function SchoolNewMessagePage() {
             <p className="text-sm text-text-secondary">
               Votre role actuel ne peut pas poster de message.
             </p>
-            <button
-              type="button"
-              onClick={() => router.push(backUrl)}
-              className="inline-flex w-fit items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
-            >
+            <BackButton onClick={() => router.push(backUrl)}>
               Retour a la messagerie
-            </button>
+            </BackButton>
           </div>
         ) : (
           <MessagingComposer

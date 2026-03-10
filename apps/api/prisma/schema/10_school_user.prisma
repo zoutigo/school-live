@@ -36,6 +36,11 @@ model School {
   feedLikes          FeedLike[]
   activationCodes    ActivationCode[]
   authAuditLogs      AuthAuditLog[]
+  timetableSlots     ClassTimetableSlot[]
+  timetableOneOffSlots ClassTimetableOneOffSlot[]
+  timetableSlotExceptions ClassTimetableSlotException[]
+  timetableSubjectStyles ClassTimetableSubjectStyle[]
+  calendarEvents     SchoolCalendarEvent[]
 
   @@index([activeSchoolYearId])
 }
@@ -81,6 +86,14 @@ model User {
   feedPosts          FeedPost[]                @relation("FeedPostAuthor")
   feedComments       FeedComment[]             @relation("FeedCommentAuthor")
   feedLikes          FeedLike[]                @relation("FeedLikeUser")
+  referentOfClasses  Class[]                   @relation("ClassReferentTeacher")
+  timetableSlotsAsTeacher ClassTimetableSlot[] @relation("ClassTimetableSlotTeacher")
+  timetableSlotsCreated ClassTimetableSlot[]   @relation("ClassTimetableSlotCreatedBy")
+  timetableOneOffSlotsAsTeacher ClassTimetableOneOffSlot[] @relation("ClassTimetableOneOffSlotTeacher")
+  timetableOneOffSlotsCreated ClassTimetableOneOffSlot[]   @relation("ClassTimetableOneOffSlotCreatedBy")
+  timetableSlotExceptionsAsTeacher ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionTeacher")
+  timetableSlotExceptionsCreated ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionCreatedBy")
+  calendarEventsCreated SchoolCalendarEvent[]  @relation("SchoolCalendarEventCreatedBy")
 }
 
 model UserAuthIdentity {

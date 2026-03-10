@@ -8,9 +8,12 @@ import { AppShell } from "../../components/layout/app-shell";
 import { ActionIconButton } from "../../components/ui/action-icon-button";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import { DateInput } from "../../components/ui/date-input";
+import { SubmitButton } from "../../components/ui/form-buttons";
+import { PasswordInput } from "../../components/ui/password-input";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
-import { PasswordField } from "../../components/ui/password-field";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
+import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -758,9 +761,9 @@ export default function AccountPage() {
                       <p className="text-sm text-primary">{personalSuccess}</p>
                     ) : null}
 
-                    <Button type="submit" disabled={updatingPersonal}>
+                    <SubmitButton disabled={updatingPersonal}>
                       {updatingPersonal ? "Mise a jour..." : "Enregistrer"}
-                    </Button>
+                    </SubmitButton>
                   </form>
                 ) : null}
 
@@ -833,14 +836,13 @@ export default function AccountPage() {
                       <span className="text-text-secondary">
                         Ancien mot de passe
                       </span>
-                      <PasswordField
+                      <PasswordInput
                         required
                         minLength={8}
                         value={currentPassword}
                         onChange={(event) =>
                           setCurrentPassword(event.target.value)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </label>
 
@@ -848,14 +850,13 @@ export default function AccountPage() {
                       <span className="text-text-secondary">
                         Nouveau mot de passe
                       </span>
-                      <PasswordField
+                      <PasswordInput
                         required
                         minLength={8}
                         pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}"
                         title="8 caracteres minimum avec au moins une majuscule, une minuscule et un chiffre."
                         value={newPassword}
                         onChange={(event) => setNewPassword(event.target.value)}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </label>
                     <PasswordRequirementsHint password={newPassword} />
@@ -864,7 +865,7 @@ export default function AccountPage() {
                       <span className="text-text-secondary">
                         Confirmer le nouveau mot de passe
                       </span>
-                      <PasswordField
+                      <PasswordInput
                         required
                         minLength={8}
                         pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}"
@@ -873,7 +874,6 @@ export default function AccountPage() {
                         onChange={(event) =>
                           setConfirmNewPassword(event.target.value)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </label>
 
@@ -886,11 +886,11 @@ export default function AccountPage() {
                       <p className="text-sm text-primary">{passwordSuccess}</p>
                     ) : null}
 
-                    <Button type="submit" disabled={updatingPassword}>
+                    <SubmitButton disabled={updatingPassword}>
                       {updatingPassword
                         ? "Mise a jour..."
                         : "Changer le mot de passe"}
-                    </Button>
+                    </SubmitButton>
                   </form>
                 ) : null}
               </section>
@@ -932,11 +932,14 @@ export default function AccountPage() {
                   <form className="grid gap-3 p-4" onSubmit={onChangePin}>
                     <label className="grid gap-1 text-sm">
                       <span className="text-text-secondary">PIN actuel</span>
-                      <PasswordField
+                      <PinInput
                         required
                         value={currentPin}
-                        onChange={(event) => setCurrentPin(event.target.value)}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        onChange={(event) =>
+                          setCurrentPin(
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                          )
+                        }
                         placeholder="123456"
                       />
                     </label>
@@ -945,11 +948,14 @@ export default function AccountPage() {
                       <span className="text-text-secondary">
                         Nouveau PIN (6 chiffres)
                       </span>
-                      <PasswordField
+                      <PinInput
                         required
                         value={newPin}
-                        onChange={(event) => setNewPin(event.target.value)}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        onChange={(event) =>
+                          setNewPin(
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                          )
+                        }
                         placeholder="123456"
                       />
                     </label>
@@ -958,13 +964,14 @@ export default function AccountPage() {
                       <span className="text-text-secondary">
                         Confirmation PIN
                       </span>
-                      <PasswordField
+                      <PinInput
                         required
                         value={confirmNewPin}
                         onChange={(event) =>
-                          setConfirmNewPin(event.target.value)
+                          setConfirmNewPin(
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                          )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         placeholder="123456"
                       />
                     </label>
@@ -976,9 +983,9 @@ export default function AccountPage() {
                       <p className="text-sm text-primary">{pinSuccess}</p>
                     ) : null}
 
-                    <Button type="submit" disabled={updatingPin}>
+                    <SubmitButton disabled={updatingPin}>
                       {updatingPin ? "Mise a jour PIN..." : "Changer le PIN"}
-                    </Button>
+                    </SubmitButton>
                   </form>
                 ) : null}
               </section>
@@ -1032,13 +1039,11 @@ export default function AccountPage() {
                           <span className="text-text-secondary">
                             Date de naissance
                           </span>
-                          <input
-                            type="date"
+                          <DateInput
                             value={recoveryBirthDate}
                             onChange={(event) =>
                               setRecoveryBirthDate(event.target.value)
                             }
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
                         </label>
 
@@ -1146,14 +1151,13 @@ export default function AccountPage() {
                       <p className="text-sm text-primary">{recoverySuccess}</p>
                     ) : null}
 
-                    <Button
-                      type="submit"
+                    <SubmitButton
                       disabled={updatingRecovery || loadingRecovery}
                     >
                       {updatingRecovery
                         ? "Mise a jour recovery..."
                         : "Mettre a jour la recuperation"}
-                    </Button>
+                    </SubmitButton>
                   </form>
                 ) : null}
               </section>

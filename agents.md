@@ -223,3 +223,103 @@ Every PR must include:
 - Migration(s) if DB changes
 - Minimal tests for critical authorization paths
 - Updated docs if it changes routing or environment variables
+
+---
+
+## Timetable UI notes (student)
+
+Reference implementation:
+
+- `apps/web/src/app/schools/[schoolSlug]/(app)/emploi-du-temps/page.tsx`
+- `apps/web/src/app/schools/[schoolSlug]/(app)/emploi-du-temps/page.ui.test.tsx`
+
+Current UX rules:
+
+- Student timetable has 3 views: `Jour`, `Semaine`, `Mois`.
+- Period navigation is inside the active view controls:
+  - previous/next icon buttons
+  - center title button resets to current period (`Aujourd'hui`, `Cette semaine`, `Ce mois`).
+- Course cards use subject color coding and include room (`salle`) information.
+
+Mobile/tablet specific rules:
+
+- Keep desktop behavior/layout intact when iterating mobile.
+- `Semaine` mobile uses a compact timetable grid (rows=timeslots, cols=days).
+- Week mobile cells show abbreviated subject label (3 letters) + color code.
+- Clicking a week cell shows detailed course info below the grid (subject, day, time range, teacher, room).
+- Week mobile sizing is viewport-adaptive (`clamp` with `vw`/`vh`) to improve visibility on larger screens.
+- `Mois` mobile uses a classic month calendar grid; selecting a day shows its agenda below.
+
+Quality gate:
+
+- Any change in this area must keep `page.ui.test.tsx` green (desktop + mobile day/week/month coverage).
+- Run repo checks before commit: `npm run check:repo`.
+
+---
+
+## Timetable status snapshot (2026-03-08)
+
+Use this as operational memory before continuing timetable work.
+
+### Backend/API status
+
+- Dedicated timetable module exists in API:
+  - `apps/api/src/timetable/timetable.controller.ts`
+  - `apps/api/src/timetable/timetable.service.ts`
+- Student/parent endpoint in place:
+  - `GET /schools/:schoolSlug/timetable/me`
+  - supports `childId`, `schoolYearId`, `fromDate`, `toDate`.
+- Class timetable endpoints are school-year aware (active year used by default in UI).
+- Calendar events (e.g. school vacations) are handled in timetable flows.
+
+### Subject color model (business rule implemented)
+
+- Color is scoped by `school + schoolYear + class + subject` (not global subject color).
+- Prisma model: `ClassTimetableSubjectStyle`.
+- Migration already added:
+  - `apps/api/prisma/migrations/20260308230000_add_timetable_subject_styles/migration.sql`
+- API supports manual color update per subject in class timetable context:
+  - `PATCH /schools/:schoolSlug/timetable/classes/:classId/subjects/:subjectId/style`
+- Service auto-assigns a distinct color when missing and validates distance to avoid too-similar colors in the same class/year.
+
+### Web status (already wired)
+
+- Student timetable page uses real API data:
+  - `apps/web/src/app/schools/[schoolSlug]/(app)/emploi-du-temps/page.tsx`
+- Class agenda page wired to timetable API + school year selector:
+  - `apps/web/src/app/schools/[schoolSlug]/(app)/classes/[classId]/agenda/page.tsx`
+- Classes page shows subject color column and allows editing color via modal palette:
+  - `apps/web/src/app/classes/page.tsx`
+  - used colors in class are excluded from suggestions; current color is visibly indicated.
+
+### Tests in place
+
+- Web UI/functional test for color display + click/update behavior:
+  - `apps/web/src/app/classes/page.ui.test.tsx`
+- API e2e for subject color update and timetable style propagation:
+  - `apps/api/test/timetable-subject-style.e2e-spec.ts`
+
+### Next-session checklist
+
+Before new timetable changes:
+
+1. Read this file section + timetable files above.
+2. Run targeted tests first, then full checks before commit:
+   - `npm run -w @school-live/web test -- src/app/classes/page.ui.test.tsx`
+   - `npm run -w @school-live/api test:e2e -- test/timetable-subject-style.e2e-spec.ts`
+   - `npm run check:repo`
+
+---
+
+## Identity & Auth continuity (multi-auth)
+
+Business rule to preserve across modules (teachers, parents, users, auth):
+
+- A single `User` can accumulate multiple authentication methods over time:
+  - `phone + PIN`
+  - `email + password`
+  - `Google/Apple SSO`
+- Contact resolution in management flows must always try to match an existing user first (by phone and/or email) before creating a new account.
+- Never create duplicate users when a phone/email already maps to an existing account in school scope.
+- Internal technical emails (`@noemail.scolive.local`) are implementation detail for phone-only bootstrap and must stay hidden in UI.
+- If a user later adds/updates email and/or links Google auth, this extends the same account identity (no account split).

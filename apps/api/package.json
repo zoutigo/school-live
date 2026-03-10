@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; nest start --watch'",
+    "dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; PORT_TO_KILL=${API_PORT:-3001}; if command -v fuser >/dev/null 2>&1; then fuser -k ${PORT_TO_KILL}/tcp >/dev/null 2>&1 || true; elif command -v lsof >/dev/null 2>&1; then lsof -ti tcp:${PORT_TO_KILL} | xargs -r kill -9 || true; fi; nest start --watch'",
     "worker:dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; nest start --watch --entryFile worker-main'",
     "media:dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; nest start --watch --entryFile media-main'",
     "build": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; nest build'",

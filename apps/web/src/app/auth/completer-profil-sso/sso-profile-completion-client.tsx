@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
-import { PasswordField } from "../../../components/ui/password-field";
+import { PinInput } from "../../../components/ui/pin-input";
 
 type Role =
   | "SUPER_ADMIN"
@@ -485,14 +485,13 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           <label className="grid gap-1 text-sm">
             <span className="text-text-secondary">PIN (6 chiffres)</span>
-            <PasswordField
+            <PinInput
               value={newPin}
               onChange={(event) => {
-                setNewPin(event.target.value);
+                setNewPin(event.target.value.replace(/\D/g, "").slice(0, 6));
                 setNewPinTouched(true);
               }}
               placeholder="123456"
-              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
             />
             {newPinTouched && completionErrors.newPin ? (
               <span className="text-xs text-notification">

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   FormEvent,
   Suspense,
@@ -12,9 +11,14 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RecoveryShell } from "../../components/layout/recovery-shell";
+import { BackLinkButton } from "../../components/ui/back-link-button";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { PasswordField } from "../../components/ui/password-field";
+import { DateInput } from "../../components/ui/date-input";
+import { EmailInput } from "../../components/ui/email-input";
+import { SubmitButton } from "../../components/ui/form-buttons";
+import { FormField } from "../../components/ui/form-field";
+import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import {
   buildVerifyResetSchema,
@@ -332,21 +336,18 @@ function ForgotPasswordPageContent() {
         >
           {!activeToken ? (
             <form className="grid gap-3" onSubmit={onRequestReset}>
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Email du compte</span>
-                <input
-                  type="email"
+              <FormField label="Email du compte">
+                <EmailInput
                   required
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="prenom.nom@gmail.com"
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
-              <Button type="submit" disabled={!canSubmitRequest}>
+              <SubmitButton disabled={!canSubmitRequest}>
                 {requesting ? "Envoi en cours..." : "Envoyer le lien"}
-              </Button>
+              </SubmitButton>
 
               {!canSubmitRequest && email.trim().length > 0 ? (
                 <p className="text-xs text-notification">
@@ -372,15 +373,12 @@ function ForgotPasswordPageContent() {
                 <span className="font-semibold">{options.emailHint}</span>
               </div>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Date de naissance</span>
-                <input
-                  type="date"
+              <FormField label="Date de naissance">
+                <DateInput
                   value={birthDate}
                   onChange={(event) => setBirthDate(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
               <div className="grid gap-3">
                 {options.questions.map((question) => (
@@ -402,39 +400,33 @@ function ForgotPasswordPageContent() {
                 ))}
               </div>
 
-              <Button type="submit" disabled={verifying}>
+              <SubmitButton disabled={verifying}>
                 {verifying ? "Verification..." : "Verifier mon identite"}
-              </Button>
+              </SubmitButton>
             </form>
           ) : options && verified ? (
             <form className="grid gap-3" onSubmit={onCompleteReset}>
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">
-                  Nouveau mot de passe
-                </span>
-                <PasswordField
+              <FormField label="Nouveau mot de passe">
+                <PasswordInput
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
               <PasswordRequirementsHint password={newPassword} />
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Confirmation</span>
-                <PasswordField
+              <FormField label="Confirmation">
+                <PasswordInput
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
-              <Button type="submit" disabled={completing}>
+              <SubmitButton disabled={completing}>
                 {completing
                   ? "Reinitialisation..."
                   : "Reinitialiser mon mot de passe"}
-              </Button>
+              </SubmitButton>
             </form>
           ) : (
             <div className="grid gap-3">
@@ -463,12 +455,9 @@ function ForgotPasswordPageContent() {
             <p className="mt-3 text-sm text-primary">{success}</p>
           ) : null}
 
-          <Link
-            href={loginHref}
-            className="mt-4 inline-block text-sm text-primary"
-          >
+          <BackLinkButton href={loginHref} className="mt-4">
             Retour a la connexion
-          </Link>
+          </BackLinkButton>
         </Card>
       </div>
     </RecoveryShell>

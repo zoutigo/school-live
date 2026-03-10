@@ -19,5 +19,9 @@ export class UpdateClassroomDto {
 
   @IsOptional()
   @IsString()
+  referentTeacherUserId?: string;
+
+  @IsOptional()
+  @IsString()
   curriculumId?: string;
 }

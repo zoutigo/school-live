@@ -5,11 +5,18 @@ import type { ReactNode } from "react";
 type RecoveryShellProps = {
   title: string;
   children: ReactNode;
+  contentMaxWidthClassName?: string;
+  centerContent?: boolean;
 };
 
-export function RecoveryShell({ title, children }: RecoveryShellProps) {
+export function RecoveryShell({
+  title,
+  children,
+  contentMaxWidthClassName = "max-w-3xl",
+  centerContent = true,
+}: RecoveryShellProps) {
   return (
-    <div className="flex h-screen flex-col bg-background text-text-primary">
+    <div className="flex h-screen flex-col overflow-x-hidden bg-background text-text-primary">
       <header
         className="flex h-16 items-center justify-between border-b border-border bg-surface px-4"
         data-testid="recovery-header"
@@ -39,8 +46,14 @@ export function RecoveryShell({ title, children }: RecoveryShellProps) {
           data-testid="recovery-sidebar"
           aria-hidden
         />
-        <main className="flex min-w-0 flex-1 items-center justify-center p-4 sm:p-6">
-          <div className="w-full max-w-3xl">{children}</div>
+        <main
+          className={`flex min-w-0 flex-1 p-4 sm:p-6 ${
+            centerContent
+              ? "items-center justify-center"
+              : "items-start justify-center"
+          }`}
+        >
+          <div className={`w-full ${contentMaxWidthClassName}`}>{children}</div>
         </main>
       </div>
     </div>

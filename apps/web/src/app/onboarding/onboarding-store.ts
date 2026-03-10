@@ -17,6 +17,8 @@ type OnboardingState = {
   temporaryPassword: string;
   newPassword: string;
   confirmPassword: string;
+  newPin: string;
+  confirmPin: string;
   firstName: string;
   lastName: string;
   gender: "M" | "F" | "OTHER" | "";
@@ -40,6 +42,8 @@ const initialState = {
   temporaryPassword: "",
   newPassword: "",
   confirmPassword: "",
+  newPin: "",
+  confirmPin: "",
   firstName: "",
   lastName: "",
   gender: "" as const,

@@ -8,6 +8,8 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { EmailInput } from "../../components/ui/email-input";
+import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PaginationControls } from "../../components/ui/pagination-controls";
@@ -1683,13 +1685,9 @@ export default function UsersPage() {
                   ) : null}
 
                   <div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setTab("list")}
-                    >
+                    <BackButton onClick={() => setTab("list")}>
                       Retour a la liste
-                    </Button>
+                    </BackButton>
                   </div>
                 </>
               ) : null}
@@ -1761,12 +1759,10 @@ export default function UsersPage() {
 
               <label className="grid gap-1 text-sm md:col-span-2">
                 <span className="text-text-secondary">Email</span>
-                <input
-                  type="email"
+                <EmailInput
                   required
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
               </label>
 
@@ -1894,9 +1890,9 @@ export default function UsersPage() {
               ) : null}
 
               <div className="md:col-span-2">
-                <Button type="submit" disabled={submitting}>
+                <SubmitButton disabled={submitting}>
                   {submitting ? "Creation..." : "Creer le compte"}
-                </Button>
+                </SubmitButton>
               </div>
             </form>
           )}

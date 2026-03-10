@@ -4,8 +4,9 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Card } from "../../../components/ui/card";
-import { Button } from "../../../components/ui/button";
-import { PasswordField } from "../../../components/ui/password-field";
+import { SubmitButton } from "../../../components/ui/form-buttons";
+import { PasswordInput } from "../../../components/ui/password-input";
+import { PinInput } from "../../../components/ui/pin-input";
 
 type Role =
   | "SUPER_ADMIN"
@@ -312,13 +313,12 @@ export function PlatformCredentialsCompletionClient({
                   <span className="text-text-secondary">
                     Nouveau mot de passe
                   </span>
-                  <PasswordField
+                  <PasswordInput
                     value={newPassword}
                     onChange={(event) => {
                       markTouched("newPassword");
                       setNewPassword(event.target.value);
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                   {touched.newPassword && fieldErrors.newPassword ? (
                     <span className="text-xs text-notification">
@@ -330,13 +330,12 @@ export function PlatformCredentialsCompletionClient({
                   <span className="text-text-secondary">
                     Confirmer le mot de passe
                   </span>
-                  <PasswordField
+                  <PasswordInput
                     value={confirmPassword}
                     onChange={(event) => {
                       markTouched("confirmPassword");
                       setConfirmPassword(event.target.value);
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                   {touched.confirmPassword && fieldErrors.confirmPassword ? (
                     <span className="text-xs text-notification">
@@ -391,7 +390,7 @@ export function PlatformCredentialsCompletionClient({
                   <span className="text-text-secondary">
                     Nouveau PIN (6 chiffres)
                   </span>
-                  <PasswordField
+                  <PinInput
                     value={newPin}
                     onChange={(event) => {
                       markTouched("newPin");
@@ -400,7 +399,6 @@ export function PlatformCredentialsCompletionClient({
                       );
                     }}
                     maxLength={6}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                   {touched.newPin && fieldErrors.newPin ? (
                     <span className="text-xs text-notification">
@@ -410,7 +408,7 @@ export function PlatformCredentialsCompletionClient({
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Confirmer le PIN</span>
-                  <PasswordField
+                  <PinInput
                     value={confirmPin}
                     onChange={(event) => {
                       markTouched("confirmPin");
@@ -419,7 +417,6 @@ export function PlatformCredentialsCompletionClient({
                       );
                     }}
                     maxLength={6}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                   {touched.confirmPin && fieldErrors.confirmPin ? (
                     <span className="text-xs text-notification">
@@ -434,9 +431,9 @@ export function PlatformCredentialsCompletionClient({
               <p className="text-sm text-notification">{error}</p>
             ) : null}
 
-            <Button type="submit" disabled={saving || !isFormValid}>
+            <SubmitButton disabled={saving || !isFormValid}>
               {saving ? "Validation..." : "Valider"}
-            </Button>
+            </SubmitButton>
           </form>
         </Card>
       </div>

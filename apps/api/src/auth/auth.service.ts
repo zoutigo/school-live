@@ -418,71 +418,15 @@ export class AuthService {
       },
     });
 
-    if (!credential || !credential.verifiedAt) {
-      await this.recordAuthFailure("PHONE_LOGIN", rateLimitKeyHash);
-      await this.auditAuth({
-        event: "LOGIN_PHONE",
-        status: "FAILURE",
-        principal: normalizedPhone,
-        reasonCode: "INVALID_CREDENTIALS",
-        context,
-        details: { schoolSlug: schoolSlug ?? null },
-      });
-      throw new UnauthorizedException("Invalid credentials");
-    }
+    let user:
+      | (typeof credential extends null
+          ? never
+          : NonNullable<typeof credential>["user"])
+      | null = null;
 
-    const validPin = await bcrypt.compare(pin, credential.pinHash);
-    if (!validPin) {
-      await this.recordAuthFailure("PHONE_LOGIN", rateLimitKeyHash);
-      await this.auditAuth({
-        event: "LOGIN_PHONE",
-        status: "FAILURE",
-        principal: normalizedPhone,
-        userId: credential.user.id,
-        schoolId: credential.user.memberships[0]?.schoolId ?? null,
-        reasonCode: "INVALID_CREDENTIALS",
-        context,
-        details: { schoolSlug: schoolSlug ?? null },
-      });
-      throw new UnauthorizedException("Invalid credentials");
-    }
-
-    const isPlatformAdmin = credential.user.platformRoles.some(
-      (assignment) =>
-        assignment.role === "SUPER_ADMIN" || assignment.role === "ADMIN",
-    );
-    if (
-      credential.user.memberships.length > 0 &&
-      credential.user.activationStatus !== "ACTIVE" &&
-      !isPlatformAdmin
-    ) {
-      await this.auditAuth({
-        event: "LOGIN_PHONE",
-        status: "FAILURE",
-        principal: normalizedPhone,
-        userId: credential.user.id,
-        schoolId: credential.user.memberships[0]?.schoolId ?? null,
-        reasonCode: "ACCOUNT_VALIDATION_REQUIRED",
-        context,
-        details: { schoolSlug: schoolSlug ?? null },
-      });
-      throw new ForbiddenException({
-        code: "ACCOUNT_VALIDATION_REQUIRED",
-        schoolSlug: credential.user.memberships[0]?.school?.slug ?? null,
-      });
-    }
-
-    this.assertPlatformCredentialsReady(credential.user, {
-      schoolSlug:
-        schoolSlug ?? credential.user.memberships[0]?.school?.slug ?? null,
-      reasonCode: "PLATFORM_CREDENTIAL_SETUP_REQUIRED",
-    });
-
-    if (schoolSlug) {
-      const hasMembership = credential.user.memberships.some(
-        (membership) => membership.school.slug === schoolSlug,
-      );
-      if (!hasMembership && !isPlatformAdmin) {
+    if (credential?.verifiedAt) {
+      const validPin = await bcrypt.compare(pin, credential.pinHash);
+      if (!validPin) {
         await this.recordAuthFailure("PHONE_LOGIN", rateLimitKeyHash);
         await this.auditAuth({
           event: "LOGIN_PHONE",
@@ -492,10 +436,103 @@ export class AuthService {
           schoolId: credential.user.memberships[0]?.schoolId ?? null,
           reasonCode: "INVALID_CREDENTIALS",
           context,
+          details: { schoolSlug: schoolSlug ?? null },
+        });
+        throw new UnauthorizedException("Invalid credentials");
+      }
+      user = credential.user;
+    } else {
+      user = await this.activatePendingPhoneUserOnFirstLogin({
+        normalizedPhone,
+        pin,
+        schoolSlug,
+      });
+      if (!user) {
+        await this.recordAuthFailure("PHONE_LOGIN", rateLimitKeyHash);
+        await this.auditAuth({
+          event: "LOGIN_PHONE",
+          status: "FAILURE",
+          principal: normalizedPhone,
+          reasonCode: "INVALID_CREDENTIALS",
+          context,
+          details: { schoolSlug: schoolSlug ?? null },
+        });
+        throw new UnauthorizedException("Invalid credentials");
+      }
+    }
+
+    const isPlatformAdmin = user.platformRoles.some(
+      (assignment) =>
+        assignment.role === "SUPER_ADMIN" || assignment.role === "ADMIN",
+    );
+    if (
+      user.memberships.length > 0 &&
+      user.activationStatus !== "ACTIVE" &&
+      !isPlatformAdmin
+    ) {
+      await this.auditAuth({
+        event: "LOGIN_PHONE",
+        status: "FAILURE",
+        principal: normalizedPhone,
+        userId: user.id,
+        schoolId: user.memberships[0]?.schoolId ?? null,
+        reasonCode: "ACCOUNT_VALIDATION_REQUIRED",
+        context,
+        details: { schoolSlug: schoolSlug ?? null },
+      });
+      throw new ForbiddenException({
+        code: "ACCOUNT_VALIDATION_REQUIRED",
+        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      });
+    }
+
+    this.assertPlatformCredentialsReady(user, {
+      schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
+      reasonCode: "PLATFORM_CREDENTIAL_SETUP_REQUIRED",
+    });
+
+    if (schoolSlug) {
+      const hasMembership = user.memberships.some(
+        (membership) => membership.school.slug === schoolSlug,
+      );
+      if (!hasMembership && !isPlatformAdmin) {
+        await this.recordAuthFailure("PHONE_LOGIN", rateLimitKeyHash);
+        await this.auditAuth({
+          event: "LOGIN_PHONE",
+          status: "FAILURE",
+          principal: normalizedPhone,
+          userId: user.id,
+          schoolId: user.memberships[0]?.schoolId ?? null,
+          reasonCode: "INVALID_CREDENTIALS",
+          context,
           details: { schoolSlug },
         });
         throw new UnauthorizedException("Invalid credentials");
       }
+    }
+
+    if (!user.profileCompleted) {
+      await this.auditAuth({
+        event: "LOGIN_PHONE",
+        status: "FAILURE",
+        principal: normalizedPhone,
+        userId: user.id,
+        schoolId: user.memberships[0]?.schoolId ?? null,
+        reasonCode: "PROFILE_SETUP_REQUIRED",
+        context,
+        details: { schoolSlug: schoolSlug ?? null },
+      });
+      throw new ForbiddenException({
+        code: "PROFILE_SETUP_REQUIRED",
+        email: user.email.endsWith("@noemail.scolive.local")
+          ? null
+          : user.email,
+        schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
+        setupToken: this.issueOnboardingSetupToken({
+          userId: user.id,
+          schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
+        }),
+      });
     }
 
     await this.clearAuthFailures("PHONE_LOGIN", rateLimitKeyHash);
@@ -503,16 +540,123 @@ export class AuthService {
       event: "LOGIN_PHONE",
       status: "SUCCESS",
       principal: normalizedPhone,
-      userId: credential.user.id,
-      schoolId: credential.user.memberships[0]?.schoolId ?? null,
+      userId: user.id,
+      schoolId: user.memberships[0]?.schoolId ?? null,
       context,
       details: { schoolSlug: schoolSlug ?? null },
     });
 
     return this.issueAuthSession(
-      credential.user,
-      schoolSlug ?? credential.user.memberships[0]?.school?.slug ?? null,
+      user,
+      schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
     );
+  }
+
+  private async activatePendingPhoneUserOnFirstLogin(input: {
+    normalizedPhone: string;
+    pin: string;
+    schoolSlug?: string;
+  }) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        phone: input.normalizedPhone,
+        activationStatus: "PENDING",
+        ...(input.schoolSlug
+          ? {
+              memberships: {
+                some: {
+                  school: {
+                    slug: input.schoolSlug,
+                  },
+                },
+              },
+            }
+          : {}),
+      },
+      include: {
+        platformRoles: { select: { role: true } },
+        phoneCredential: {
+          select: {
+            verifiedAt: true,
+          },
+        },
+        memberships: {
+          include: {
+            school: {
+              select: { slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    if (user.phoneCredential?.verifiedAt) {
+      return null;
+    }
+
+    const validPin = await bcrypt.compare(input.pin, user.passwordHash);
+    if (!validPin) {
+      return null;
+    }
+
+    const now = new Date();
+    const pinHash = await bcrypt.hash(input.pin, 10);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          phone: input.normalizedPhone,
+          phoneConfirmedAt: now,
+          activationStatus: "ACTIVE",
+        },
+      });
+      await tx.userPhoneCredential.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          phoneE164: input.normalizedPhone,
+          pinHash,
+          verifiedAt: now,
+        },
+        update: {
+          phoneE164: input.normalizedPhone,
+          pinHash,
+          verifiedAt: now,
+        },
+      });
+      await tx.activationCode.updateMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+        },
+        data: { usedAt: now },
+      });
+    });
+
+    return this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        platformRoles: { select: { role: true } },
+        phoneCredential: {
+          select: {
+            verifiedAt: true,
+          },
+        },
+        memberships: {
+          include: {
+            school: {
+              select: { slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
   }
 
   async loginWithSso(input: {
@@ -890,9 +1034,11 @@ export class AuthService {
   }
 
   async completeOnboarding(input: {
-    email: string;
-    temporaryPassword: string;
-    newPassword: string;
+    email?: string;
+    setupToken?: string;
+    temporaryPassword?: string;
+    newPassword?: string;
+    newPin?: string;
     firstName: string;
     lastName: string;
     gender: "M" | "F" | "OTHER";
@@ -901,44 +1047,81 @@ export class AuthService {
     parentClassId?: string;
     parentStudentId?: string;
   }) {
-    const normalizedEmail = input.email.toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      include: {
-        memberships: {
-          include: {
-            school: {
-              select: { slug: true },
-            },
-          },
-          orderBy: { createdAt: "asc" },
-        },
-      },
-    });
+    const user = await this.resolveUserForOnboarding(input);
+    const isTokenFlow = Boolean(input.setupToken?.trim());
+    const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
+    const shouldUpdateEmail =
+      isTokenFlow &&
+      Boolean(normalizedEmail) &&
+      !normalizedEmail!.endsWith("@noemail.scolive.local") &&
+      normalizedEmail !== user.email;
 
-    if (!user) {
-      throw new UnauthorizedException("Invalid credentials");
-    }
+    let passwordHash: string | null = null;
+    let nextPinHash: string | null = null;
+    if (!isTokenFlow) {
+      if (!input.temporaryPassword || !input.newPassword) {
+        throw new ForbiddenException("Informations d activation manquantes");
+      }
 
-    if (!user.mustChangePassword) {
-      throw new ForbiddenException(
-        "Password change is not required for this account",
+      if (!user.mustChangePassword) {
+        throw new ForbiddenException(
+          "Password change is not required for this account",
+        );
+      }
+
+      const validTemporaryPassword = await bcrypt.compare(
+        input.temporaryPassword,
+        user.passwordHash,
       );
-    }
 
-    const validTemporaryPassword = await bcrypt.compare(
-      input.temporaryPassword,
-      user.passwordHash,
-    );
+      if (!validTemporaryPassword) {
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
-    if (!validTemporaryPassword) {
-      throw new UnauthorizedException("Invalid credentials");
-    }
+      if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(input.newPassword)) {
+        throw new ForbiddenException(
+          "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+        );
+      }
+      passwordHash = await bcrypt.hash(input.newPassword, 10);
+    } else {
+      if (!input.newPin) {
+        throw new ForbiddenException("Informations de PIN manquantes");
+      }
 
-    if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(input.newPassword)) {
-      throw new ForbiddenException(
-        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+      if (!AuthService.PHONE_PIN_REGEX.test(input.newPin)) {
+        throw new ForbiddenException(
+          "Le PIN doit contenir exactement 6 chiffres.",
+        );
+      }
+
+      if (!user.phoneCredential?.pinHash) {
+        throw new ForbiddenException(
+          "Aucun PIN n'est configure pour ce compte.",
+        );
+      }
+
+      const samePin = await bcrypt.compare(
+        input.newPin,
+        user.phoneCredential.pinHash,
       );
+      if (samePin) {
+        throw new ForbiddenException(
+          "Le nouveau PIN doit etre different de l'actuel.",
+        );
+      }
+
+      nextPinHash = await bcrypt.hash(input.newPin, 10);
+    }
+
+    if (shouldUpdateEmail) {
+      const existing = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail! },
+        select: { id: true },
+      });
+      if (existing && existing.id !== user.id) {
+        throw new ForbiddenException("Cette adresse email est deja utilisee.");
+      }
     }
 
     const uniqueQuestions = new Set(
@@ -992,13 +1175,22 @@ export class AuthService {
       }
     }
 
-    const passwordHash = await bcrypt.hash(input.newPassword, 10);
     await this.prisma.$transaction(async (tx) => {
+      const now = new Date();
       await tx.user.update({
         where: { id: user.id },
         data: {
-          passwordHash,
-          mustChangePassword: false,
+          ...(passwordHash
+            ? {
+                passwordHash,
+                mustChangePassword: false,
+              }
+            : {}),
+          ...(shouldUpdateEmail
+            ? {
+                email: normalizedEmail!,
+              }
+            : {}),
           profileCompleted: true,
           firstName: input.firstName.trim(),
           lastName: input.lastName.trim(),
@@ -1009,9 +1201,19 @@ export class AuthService {
         },
       });
 
+      if (nextPinHash && user.phoneCredential?.id) {
+        await tx.userPhoneCredential.update({
+          where: { id: user.phoneCredential.id },
+          data: {
+            pinHash: nextPinHash,
+            verifiedAt: now,
+          },
+        });
+      }
+
       await tx.refreshToken.updateMany({
         where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: new Date() },
+        data: { revokedAt: now },
       });
 
       await tx.userRecoveryAnswer.deleteMany({
@@ -1035,6 +1237,93 @@ export class AuthService {
       success: true,
       schoolSlug,
     };
+  }
+
+  private async resolveUserForOnboarding(input: {
+    email?: string;
+    setupToken?: string;
+  }) {
+    if (input.setupToken?.trim()) {
+      const payload = this.verifyOnboardingSetupToken(input.setupToken);
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.userId },
+        include: {
+          phoneCredential: {
+            select: {
+              id: true,
+              pinHash: true,
+              verifiedAt: true,
+            },
+          },
+          memberships: {
+            include: {
+              school: {
+                select: {
+                  id: true,
+                  slug: true,
+                  name: true,
+                  activeSchoolYearId: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException("Invalid account");
+      }
+
+      if (
+        payload.schoolSlug &&
+        user.memberships.length > 0 &&
+        !user.memberships.some(
+          (membership) => membership.school.slug === payload.schoolSlug,
+        )
+      ) {
+        throw new UnauthorizedException("Invalid account");
+      }
+
+      return user;
+    }
+
+    if (!input.email?.trim()) {
+      throw new UnauthorizedException("Invalid account");
+    }
+
+    const normalizedEmail = input.email.toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: {
+        phoneCredential: {
+          select: {
+            id: true,
+            pinHash: true,
+            verifiedAt: true,
+          },
+        },
+        memberships: {
+          include: {
+            school: {
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+                activeSchoolYearId: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("Invalid account");
+    }
+
+    return user;
   }
 
   async changePassword(
@@ -1914,30 +2203,8 @@ export class AuthService {
     };
   }
 
-  async getProfileSetupOptions(email: string) {
-    const normalizedEmail = email.toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      include: {
-        memberships: {
-          include: {
-            school: {
-              select: {
-                id: true,
-                slug: true,
-                name: true,
-                activeSchoolYearId: true,
-              },
-            },
-          },
-          orderBy: { createdAt: "asc" },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException("Invalid account");
-    }
+  async getProfileSetupOptions(input: { email?: string; setupToken?: string }) {
+    const user = await this.resolveUserForOnboarding(input);
 
     const schoolMembership = user.memberships[0];
     const schoolId = schoolMembership?.schoolId ?? null;
@@ -3008,6 +3275,22 @@ export class AuthService {
     );
   }
 
+  private issueOnboardingSetupToken(input: {
+    userId: string;
+    schoolSlug: string | null;
+  }) {
+    return this.jwtService.sign(
+      {
+        sub: input.userId,
+        purpose: "ONBOARDING_SETUP",
+        schoolSlug: input.schoolSlug,
+      },
+      {
+        expiresIn: "30m",
+      },
+    );
+  }
+
   private verifyPlatformCredentialSetupToken(token: string) {
     try {
       const payload = this.jwtService.verify(token) as {
@@ -3032,6 +3315,27 @@ export class AuthService {
       };
     } catch {
       throw new UnauthorizedException("Jeton de configuration invalide");
+    }
+  }
+
+  private verifyOnboardingSetupToken(token: string) {
+    try {
+      const payload = this.jwtService.verify(token) as {
+        sub?: string;
+        purpose?: string;
+        schoolSlug?: string | null;
+      };
+
+      if (payload.purpose !== "ONBOARDING_SETUP" || !payload.sub) {
+        throw new UnauthorizedException("Jeton onboarding invalide");
+      }
+
+      return {
+        userId: payload.sub,
+        schoolSlug: payload.schoolSlug ?? null,
+      };
+    } catch {
+      throw new UnauthorizedException("Jeton onboarding invalide");
     }
   }
 

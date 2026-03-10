@@ -114,6 +114,26 @@ enum StudentLifeEventType {
   PUNITION
 }
 
+enum SchoolCalendarEventType {
+  HOLIDAY
+}
+
+enum SchoolCalendarEventScope {
+  SCHOOL
+  ACADEMIC_LEVEL
+  CLASS
+}
+
+enum TimetableOccurrenceExceptionType {
+  OVERRIDE
+  CANCEL
+}
+
+enum TimetableOccurrenceStatus {
+  PLANNED
+  CANCELLED
+}
+
 enum InternalMessageStatus {
   DRAFT
   SENT
