@@ -226,6 +226,42 @@ Every PR must include:
 
 ---
 
+## GitHub PR workflow (standard, must follow)
+
+Use `gh` (GitHub CLI) for PR lifecycle when available.
+
+### 1) Before creating PR
+
+- Ensure working tree is clean.
+- Push branch to remote.
+- Check if an equivalent PR already exists.
+
+### 2) Create PR
+
+- Open PR from `dev` to `main` with clear title/body.
+- Monitor checks until completion.
+- If conflicts appear, merge `main` into `dev`, resolve conflicts, push `dev`, wait checks again.
+
+### 3) Merge PR
+
+- Merge only when PR is `MERGEABLE` and required checks are green.
+- Confirm merge commit and merged timestamp.
+
+### 4) Reset cycle after merge (important)
+
+After `dev -> main` merge is done:
+
+1. Checkout local `main`
+2. Pull latest `origin/main` (fast-forward only)
+3. Delete local `dev`
+4. Delete remote `dev`
+5. Create new local `dev` from updated local `main`
+6. Push new `dev` and set upstream tracking
+
+This keeps `dev` aligned with `main` and avoids long-lived drift.
+
+---
+
 ## Timetable UI notes (student)
 
 Reference implementation:
