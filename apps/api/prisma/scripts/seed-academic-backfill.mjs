@@ -138,7 +138,7 @@ async function main() {
         select: { subjectId: true },
       });
 
-      const grades = await prisma.grade.findMany({
+      const grades = await prisma.studentGrade.findMany({
         where: { classId: classroom.id },
         select: { subjectId: true },
       });

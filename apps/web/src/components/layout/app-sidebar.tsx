@@ -209,9 +209,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       },
       {
         label: "Notes",
-        href: `${schoolBase}/grades`,
+        href: `${schoolBase}/student-grades`,
         icon: BookOpen,
-        matchPrefix: `${schoolBase}/grades`,
+        matchPrefix: `${schoolBase}/student-grades`,
       },
       {
         label: "Messagerie",
@@ -256,9 +256,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       },
       {
         label: "Cahier de notes",
-        href: `${schoolBase}/grades`,
+        href: `${schoolBase}/student-grades`,
         icon: BookOpen,
-        matchPrefix: `${schoolBase}/grades`,
+        matchPrefix: `${schoolBase}/student-grades`,
       },
       {
         label: "Messagerie",
@@ -385,9 +385,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
     },
     {
       label: "Notes & devoirs",
-      href: `${schoolBase}/grades`,
+      href: `${schoolBase}/student-grades`,
       icon: BookOpen,
-      matchPrefix: `${schoolBase}/grades`,
+      matchPrefix: `${schoolBase}/student-grades`,
     },
   ];
 }
@@ -614,7 +614,7 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
   async function loadTeacherClasses(currentSchoolSlug: string) {
     try {
       const response = await fetch(
-        `${API_URL}/schools/${currentSchoolSlug}/grades/context`,
+        `${API_URL}/schools/${currentSchoolSlug}/student-grades/context`,
         {
           credentials: "include",
         },

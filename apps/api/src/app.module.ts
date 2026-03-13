@@ -2,8 +2,9 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { EvaluationsModule } from "./evaluations/evaluations.module.js";
 import { FeedModule } from "./feed/feed.module.js";
-import { GradesModule } from "./grades/grades.module.js";
+import { StudentGradesModule } from "./student-grades/student-grades.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { ManagementModule } from "./management/management.module.js";
 import { MessagingModule } from "./messaging/messaging.module.js";
@@ -22,8 +23,9 @@ import { TimetableModule } from "./timetable/timetable.module.js";
     }),
     PrismaModule,
     AuthModule,
+    EvaluationsModule,
     FeedModule,
-    GradesModule,
+    StudentGradesModule,
     HealthModule,
     ManagementModule,
     MessagingModule,

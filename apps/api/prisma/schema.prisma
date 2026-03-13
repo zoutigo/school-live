@@ -168,6 +168,31 @@ enum InlineMediaEntityType {
   INTERNAL_MESSAGE
 }
 
+enum EvaluationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EvaluationScoreStatus {
+  ENTERED
+  ABSENT
+  EXCUSED
+  NOT_GRADED
+}
+
+enum EvaluationAuditAction {
+  CREATED
+  UPDATED
+  PUBLISHED
+  SCORES_UPDATED
+}
+
+enum TermReportStatus {
+  DRAFT
+  PUBLISHED
+}
+
 
 model School {
   id                 String                @id @default(cuid())
@@ -189,8 +214,15 @@ model School {
   teachers           Teacher[]
   classes            Class[]
   subjects           Subject[]
+  subjectBranches    SubjectBranch[]
   assignments        TeacherClassSubject[]
-  grades             Grade[]
+  studentGrades      StudentGrade[]
+  evaluationTypes    EvaluationType[]
+  evaluations        Evaluation[]
+  evaluationAttachments EvaluationAttachment[]
+  evaluationAuditLogs EvaluationAuditLog[]
+  studentTermReports StudentTermReport[]
+  studentTermReportEntries StudentTermReportEntry[]
   enrollments        Enrollment[]
   classSubjectOverrides ClassSubjectOverride[]
   academicLevels     AcademicLevel[]
@@ -240,7 +272,11 @@ model User {
   teacherProfiles    Teacher[]
   studentProfiles    Student[]
   parentLinks        ParentStudent[]          @relation("ParentLinks")
-  gradesGiven        Grade[]                  @relation("GradeTeacher")
+  studentGradesGiven StudentGrade[]           @relation("StudentGradeTeacher")
+  evaluationsAuthored Evaluation[]            @relation("EvaluationAuthor")
+  evaluationAuditLogs EvaluationAuditLog[]    @relation("EvaluationAuditActor")
+  studentTermReportsAuthored StudentTermReport[] @relation("StudentTermReportUpdatedBy")
+  studentTermReportEntriesAuthored StudentTermReportEntry[] @relation("StudentTermReportEntryUpdatedBy")
   teachingAssignments TeacherClassSubject[]
   refreshTokens      RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -447,7 +483,9 @@ model Student {
   school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   parentLinks ParentStudent[] @relation("StudentLinks")
-  grades      Grade[]
+  studentGrades StudentGrade[]
+  evaluationScores StudentEvaluationScore[]
+  termReports   StudentTermReport[]
   enrollments Enrollment[]
   lifeEvents  StudentLifeEvent[]
 
@@ -543,7 +581,9 @@ model SchoolYear {
   classes             Class[]
   enrollments         Enrollment[]
   teachingAssignments TeacherClassSubject[]
-  grades              Grade[]
+  studentGrades       StudentGrade[]
+  evaluations         Evaluation[]
+  termReports         StudentTermReport[]
   lifeEvents          StudentLifeEvent[]
   timetableSlots      ClassTimetableSlot[]
   timetableOneOffSlots ClassTimetableOneOffSlot[]
@@ -647,7 +687,9 @@ model Class {
   referentTeacher User?                 @relation("ClassReferentTeacher", fields: [referentTeacherUserId], references: [id], onDelete: SetNull)
   enrollments     Enrollment[]
   assignments     TeacherClassSubject[]
-  grades          Grade[]
+  studentGrades   StudentGrade[]
+  evaluations     Evaluation[]
+  termReports     StudentTermReport[]
   subjectOverrides ClassSubjectOverride[]
   lifeEvents      StudentLifeEvent[]
   feedPosts       FeedPost[]
@@ -675,7 +717,10 @@ model Subject {
   updatedAt    DateTime              @updatedAt
   school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   assignments  TeacherClassSubject[]
-  grades       Grade[]
+  studentGrades StudentGrade[]
+  branches     SubjectBranch[]
+  evaluations  Evaluation[]
+  termReportEntries StudentTermReportEntry[]
   curriculumSubjects CurriculumSubject[]
   classOverrides ClassSubjectOverride[]
   timetableSlots ClassTimetableSlot[]
@@ -871,7 +916,7 @@ model SchoolCalendarEvent {
 }
 
 
-model Grade {
+model StudentGrade {
   id            String   @id @default(cuid())
   schoolId      String
   schoolYearId  String
@@ -885,12 +930,12 @@ model Grade {
   term          Term
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  school        School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
-  student       Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  class         Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subject       Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacherUser   User       @relation("GradeTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
+  school        School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear    SchoolYear  @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  student       Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class         Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherUser   User        @relation("StudentGradeTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
   @@index([schoolYearId])
@@ -898,6 +943,7 @@ model Grade {
   @@index([classId])
   @@index([subjectId])
   @@index([teacherUserId])
+  @@map("Grade")
 }
 
 model StudentLifeEvent {
@@ -928,6 +974,177 @@ model StudentLifeEvent {
   @@index([authorUserId])
   @@index([type])
   @@index([occurredAt])
+}
+
+
+model SubjectBranch {
+  id          String   @id @default(cuid())
+  schoolId    String
+  subjectId   String
+  name        String
+  code        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  evaluations Evaluation[]
+
+  @@unique([subjectId, name])
+  @@index([schoolId])
+  @@index([subjectId])
+}
+
+model EvaluationType {
+  id          String   @id @default(cuid())
+  schoolId    String
+  code        String
+  label       String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  evaluations Evaluation[]
+
+  @@unique([schoolId, code])
+  @@unique([schoolId, label])
+  @@index([schoolId])
+}
+
+model Evaluation {
+  id               String            @id @default(cuid())
+  schoolId         String
+  schoolYearId     String
+  classId          String
+  subjectId        String
+  subjectBranchId  String?
+  evaluationTypeId String
+  authorUserId     String
+  title            String
+  description      String?
+  coefficient      Float             @default(1)
+  maxScore         Float
+  term             Term
+  status           EvaluationStatus  @default(DRAFT)
+  scheduledAt      DateTime?
+  publishedAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  school           School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear       SchoolYear        @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  class            Class             @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject          Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectBranch    SubjectBranch?    @relation(fields: [subjectBranchId], references: [id], onDelete: SetNull)
+  evaluationType   EvaluationType    @relation(fields: [evaluationTypeId], references: [id], onDelete: Restrict)
+  authorUser       User              @relation("EvaluationAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  attachments      EvaluationAttachment[]
+  scores           StudentEvaluationScore[]
+  auditLogs        EvaluationAuditLog[]
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([classId, subjectId, term, createdAt])
+  @@index([subjectBranchId])
+  @@index([evaluationTypeId])
+  @@index([authorUserId])
+}
+
+model EvaluationAttachment {
+  id           String     @id @default(cuid())
+  schoolId     String
+  evaluationId String
+  fileName     String
+  fileUrl      String?
+  sizeLabel    String?
+  mimeType     String?
+  createdAt    DateTime   @default(now())
+  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([evaluationId])
+}
+
+model StudentEvaluationScore {
+  id           String                @id @default(cuid())
+  evaluationId String
+  studentId    String
+  score        Float?
+  comment      String?
+  status       EvaluationScoreStatus @default(ENTERED)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  evaluation   Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  student      Student               @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, studentId])
+  @@index([studentId])
+  @@index([evaluationId, status])
+}
+
+model EvaluationAuditLog {
+  id           String                @id @default(cuid())
+  schoolId     String
+  evaluationId String
+  actorUserId  String
+  action       EvaluationAuditAction
+  payloadJson  Json?
+  createdAt    DateTime              @default(now())
+  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  evaluation   Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  actorUser    User                  @relation("EvaluationAuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([evaluationId, createdAt])
+  @@index([actorUserId])
+}
+
+model StudentTermReport {
+  id                 String           @id @default(cuid())
+  schoolId           String
+  schoolYearId       String
+  classId            String
+  studentId          String
+  term               Term
+  status             TermReportStatus @default(DRAFT)
+  councilHeldAt      DateTime?
+  generalAppreciation String?
+  publishedAt        DateTime?
+  updatedByUserId    String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  school             School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear         SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  class              Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student            Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  updatedByUser      User             @relation("StudentTermReportUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Cascade)
+  subjectEntries     StudentTermReportEntry[]
+
+  @@unique([schoolYearId, classId, studentId, term])
+  @@index([schoolId])
+  @@index([classId, term])
+  @@index([studentId, term])
+  @@index([updatedByUserId])
+}
+
+model StudentTermReportEntry {
+  id                String            @id @default(cuid())
+  schoolId          String
+  reportId          String
+  subjectId         String
+  appreciation      String
+  updatedByUserId   String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  school            School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  report            StudentTermReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  subject           Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  updatedByUser     User              @relation("StudentTermReportEntryUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([reportId, subjectId])
+  @@index([schoolId])
+  @@index([reportId])
+  @@index([subjectId])
+  @@index([updatedByUserId])
 }
 
 

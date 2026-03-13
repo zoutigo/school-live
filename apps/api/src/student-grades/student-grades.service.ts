@@ -6,18 +6,18 @@ import {
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser, SchoolRole } from "../auth/auth.types.js";
-import type { CreateGradeDto } from "./dto/create-grade.dto.js";
-import type { ListGradesDto } from "./dto/list-grades.dto.js";
-import type { UpdateGradeDto } from "./dto/update-grade.dto.js";
+import type { CreateStudentGradeDto } from "./dto/create-student-grade.dto.js";
+import type { ListStudentGradesDto } from "./dto/list-student-grades.dto.js";
+import type { UpdateStudentGradeDto } from "./dto/update-student-grade.dto.js";
 
 @Injectable()
-export class GradesService {
+export class StudentGradesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(
     user: AuthenticatedUser,
     schoolId: string,
-    payload: CreateGradeDto,
+    payload: CreateStudentGradeDto,
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
 
@@ -49,7 +49,7 @@ export class GradesService {
       );
     }
 
-    return this.prisma.grade.create({
+    return this.prisma.studentGrade.create({
       data: {
         schoolId: effectiveSchoolId,
         schoolYearId: classEntity.schoolYearId,
@@ -68,10 +68,10 @@ export class GradesService {
   async list(
     user: AuthenticatedUser,
     schoolId: string,
-    filters: ListGradesDto,
+    filters: ListStudentGradesDto,
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
-    const where: Prisma.GradeWhereInput = {
+    const where: Prisma.StudentGradeWhereInput = {
       schoolId: effectiveSchoolId,
     };
 
@@ -97,7 +97,7 @@ export class GradesService {
       this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER") ||
       this.hasSchoolRole(user, effectiveSchoolId, "SUPERVISOR")
     ) {
-      return this.prisma.grade.findMany({
+      return this.prisma.studentGrade.findMany({
         where,
         orderBy: { createdAt: "desc" },
         include: {
@@ -130,7 +130,7 @@ export class GradesService {
         return [];
       }
 
-      const teacherScopedWhere: Prisma.GradeWhereInput = {
+      const teacherScopedWhere: Prisma.StudentGradeWhereInput = {
         ...where,
         OR: assignments.map((assignment) => ({
           classId: assignment.classId,
@@ -138,41 +138,8 @@ export class GradesService {
         })),
       };
 
-      return this.prisma.grade.findMany({
+      return this.prisma.studentGrade.findMany({
         where: teacherScopedWhere,
-        orderBy: { createdAt: "desc" },
-        include: {
-          subject: {
-            select: { id: true, name: true },
-          },
-          class: {
-            select: { id: true, name: true },
-          },
-          student: {
-            select: { id: true, firstName: true, lastName: true },
-          },
-        },
-      });
-    }
-
-    if (this.hasSchoolRole(user, effectiveSchoolId, "PARENT")) {
-      const links = await this.prisma.parentStudent.findMany({
-        where: {
-          schoolId: effectiveSchoolId,
-          parentUserId: user.id,
-        },
-        select: { studentId: true },
-      });
-
-      if (!links.length) {
-        return [];
-      }
-
-      return this.prisma.grade.findMany({
-        where: {
-          ...where,
-          studentId: { in: links.map((link) => link.studentId) },
-        },
         orderBy: { createdAt: "desc" },
         include: {
           subject: {
@@ -201,7 +168,7 @@ export class GradesService {
         return [];
       }
 
-      return this.prisma.grade.findMany({
+      return this.prisma.studentGrade.findMany({
         where: {
           ...where,
           studentId: student.id,
@@ -221,37 +188,39 @@ export class GradesService {
       });
     }
 
-    throw new ForbiddenException("Unsupported role");
+    throw new ForbiddenException(
+      "Student grades are reserved for school staff, teachers and the student owner",
+    );
   }
 
   async update(
     user: AuthenticatedUser,
     schoolId: string,
-    gradeId: string,
-    payload: UpdateGradeDto,
+    studentGradeId: string,
+    payload: UpdateStudentGradeDto,
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
 
-    const grade = await this.prisma.grade.findFirst({
-      where: { id: gradeId, schoolId: effectiveSchoolId },
+    const studentGrade = await this.prisma.studentGrade.findFirst({
+      where: { id: studentGradeId, schoolId: effectiveSchoolId },
     });
 
-    if (!grade) {
-      throw new NotFoundException("Grade not found");
+    if (!studentGrade) {
+      throw new NotFoundException("Student grade not found");
     }
 
     if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
       await this.ensureTeacherAssignment(
         user.id,
         effectiveSchoolId,
-        grade.classId,
-        grade.subjectId,
-        grade.schoolYearId,
+        studentGrade.classId,
+        studentGrade.subjectId,
+        studentGrade.schoolYearId,
       );
     }
 
-    return this.prisma.grade.update({
-      where: { id: grade.id },
+    return this.prisma.studentGrade.update({
+      where: { id: studentGrade.id },
       data: {
         value: payload.value,
         maxValue: payload.maxValue,
@@ -430,21 +399,25 @@ export class GradesService {
     };
   }
 
-  async remove(user: AuthenticatedUser, schoolId: string, gradeId: string) {
+  async remove(
+    user: AuthenticatedUser,
+    schoolId: string,
+    studentGradeId: string,
+  ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
 
-    const grade = await this.prisma.grade.findFirst({
+    const studentGrade = await this.prisma.studentGrade.findFirst({
       where: {
-        id: gradeId,
+        id: studentGradeId,
         schoolId: effectiveSchoolId,
       },
     });
 
-    if (!grade) {
-      throw new NotFoundException("Grade not found");
+    if (!studentGrade) {
+      throw new NotFoundException("Student grade not found");
     }
 
-    return this.prisma.grade.delete({ where: { id: grade.id } });
+    return this.prisma.studentGrade.delete({ where: { id: studentGrade.id } });
   }
 
   private getEffectiveSchoolId(

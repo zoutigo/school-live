@@ -38,7 +38,8 @@ export class MediaController {
     if (
       kind !== "school-logo" &&
       kind !== "user-avatar" &&
-      kind !== "messaging-inline-image"
+      kind !== "messaging-inline-image" &&
+      kind !== "evaluation-attachment"
     ) {
       throw new BadRequestException("Type upload non supporte");
     }

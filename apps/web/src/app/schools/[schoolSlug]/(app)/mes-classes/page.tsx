@@ -88,7 +88,7 @@ export default function TeacherClassesPage() {
       }
 
       const contextResponse = await fetch(
-        `${API_URL}/schools/${schoolSlug}/grades/context`,
+        `${API_URL}/schools/${schoolSlug}/student-grades/context`,
         {
           credentials: "include",
         },

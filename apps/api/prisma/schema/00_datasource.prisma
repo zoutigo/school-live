@@ -167,3 +167,28 @@ enum InlineMediaEntityType {
   FEED_POST
   INTERNAL_MESSAGE
 }
+
+enum EvaluationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EvaluationScoreStatus {
+  ENTERED
+  ABSENT
+  EXCUSED
+  NOT_GRADED
+}
+
+enum EvaluationAuditAction {
+  CREATED
+  UPDATED
+  PUBLISHED
+  SCORES_UPDATED
+}
+
+enum TermReportStatus {
+  DRAFT
+  PUBLISHED
+}

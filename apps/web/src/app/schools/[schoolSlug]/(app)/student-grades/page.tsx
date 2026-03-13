@@ -21,7 +21,7 @@ type Role =
   | "PARENT"
   | "STUDENT";
 
-type Grade = {
+type StudentGrade = {
   id: string;
   value: number;
   maxValue: number;
@@ -40,7 +40,7 @@ type MeResponse = {
   role: Role;
 };
 
-type GradesContext = {
+type StudentGradesContext = {
   schoolYears: Array<{ id: string; label: string; isActive: boolean }>;
   selectedSchoolYearId: string | null;
   assignments: Array<{
@@ -59,15 +59,15 @@ type GradesContext = {
   }>;
 };
 
-export default function GradesPage() {
+export default function StudentGradesPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
 
   const [role, setRole] = useState<Role | null>(null);
-  const [grades, setGrades] = useState<Grade[]>([]);
+  const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingContext, setLoadingContext] = useState(false);
-  const [context, setContext] = useState<GradesContext | null>(null);
+  const [context, setContext] = useState<StudentGradesContext | null>(null);
 
   const [selectedSchoolYearId, setSelectedSchoolYearId] = useState("");
   const [selectedAssignmentKey, setSelectedAssignmentKey] = useState("");
@@ -99,7 +99,7 @@ export default function GradesPage() {
       const me = (await meResponse.json()) as MeResponse;
       setRole(me.role);
 
-      await loadGrades();
+      await loadStudentGrades();
 
       const canWrite =
         me.role === "TEACHER" ||
@@ -114,17 +114,20 @@ export default function GradesPage() {
     }
   }
 
-  async function loadGrades() {
-    const response = await fetch(`${API_URL}/schools/${schoolSlug}/grades`, {
-      credentials: "include",
-    });
+  async function loadStudentGrades() {
+    const response = await fetch(
+      `${API_URL}/schools/${schoolSlug}/student-grades`,
+      {
+        credentials: "include",
+      },
+    );
 
     if (!response.ok) {
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
 
-    setGrades((await response.json()) as Grade[]);
+    setStudentGrades((await response.json()) as StudentGrade[]);
   }
 
   async function loadContext(schoolYearId?: string) {
@@ -134,7 +137,7 @@ export default function GradesPage() {
         ? `?schoolYearId=${encodeURIComponent(schoolYearId)}`
         : "";
       const response = await fetch(
-        `${API_URL}/schools/${schoolSlug}/grades/context${query}`,
+        `${API_URL}/schools/${schoolSlug}/student-grades/context${query}`,
         {
           credentials: "include",
         },
@@ -145,7 +148,7 @@ export default function GradesPage() {
         return;
       }
 
-      const payload = (await response.json()) as GradesContext;
+      const payload = (await response.json()) as StudentGradesContext;
       setContext(payload);
 
       const schoolYearToUse =
@@ -263,23 +266,26 @@ export default function GradesPage() {
     setSuccess(null);
 
     try {
-      const response = await fetch(`${API_URL}/schools/${schoolSlug}/grades`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken,
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/student-grades`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            studentId: selectedStudentId,
+            classId: selectedAssignment.classId,
+            subjectId: selectedAssignment.subjectId,
+            value: Number(value),
+            maxValue: Number(maxValue),
+            assessmentWeight: Number(assessmentWeight),
+            term,
+          }),
         },
-        body: JSON.stringify({
-          studentId: selectedStudentId,
-          classId: selectedAssignment.classId,
-          subjectId: selectedAssignment.subjectId,
-          value: Number(value),
-          maxValue: Number(maxValue),
-          assessmentWeight: Number(assessmentWeight),
-          term,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
@@ -297,7 +303,7 @@ export default function GradesPage() {
       setMaxValue("20");
       setAssessmentWeight("1");
       setSuccess("Note enregistree.");
-      await loadGrades();
+      await loadStudentGrades();
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -458,7 +464,7 @@ export default function GradesPage() {
               ) : null}
 
               {!loading &&
-                grades.map((grade) => (
+                studentGrades.map((grade) => (
                   <tr
                     key={grade.id}
                     className="border-b border-border text-text-primary last:border-none"
@@ -482,7 +488,7 @@ export default function GradesPage() {
                   </tr>
                 ))}
 
-              {!loading && grades.length === 0 ? (
+              {!loading && studentGrades.length === 0 ? (
                 <tr>
                   <td className="px-3 py-6 text-text-secondary" colSpan={6}>
                     Aucune note disponible.

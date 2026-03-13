@@ -35,6 +35,6 @@ export const config = {
     "/indicators",
     "/indicators/:path*",
     "/schools/:schoolSlug/dashboard/:path*",
-    "/schools/:schoolSlug/grades/:path*",
+    "/schools/:schoolSlug/student-grades/:path*",
   ],
 };

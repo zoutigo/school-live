@@ -24,7 +24,9 @@ model SchoolYear {
   classes             Class[]
   enrollments         Enrollment[]
   teachingAssignments TeacherClassSubject[]
-  grades              Grade[]
+  studentGrades       StudentGrade[]
+  evaluations         Evaluation[]
+  termReports         StudentTermReport[]
   lifeEvents          StudentLifeEvent[]
   timetableSlots      ClassTimetableSlot[]
   timetableOneOffSlots ClassTimetableOneOffSlot[]
@@ -128,7 +130,9 @@ model Class {
   referentTeacher User?                 @relation("ClassReferentTeacher", fields: [referentTeacherUserId], references: [id], onDelete: SetNull)
   enrollments     Enrollment[]
   assignments     TeacherClassSubject[]
-  grades          Grade[]
+  studentGrades   StudentGrade[]
+  evaluations     Evaluation[]
+  termReports     StudentTermReport[]
   subjectOverrides ClassSubjectOverride[]
   lifeEvents      StudentLifeEvent[]
   feedPosts       FeedPost[]
@@ -156,7 +160,10 @@ model Subject {
   updatedAt    DateTime              @updatedAt
   school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   assignments  TeacherClassSubject[]
-  grades       Grade[]
+  studentGrades StudentGrade[]
+  branches     SubjectBranch[]
+  evaluations  Evaluation[]
+  termReportEntries StudentTermReportEntry[]
   curriculumSubjects CurriculumSubject[]
   classOverrides ClassSubjectOverride[]
   timetableSlots ClassTimetableSlot[]

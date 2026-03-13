@@ -1,7 +1,7 @@
 import { Term } from "@prisma/client";
 import { IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
-export class CreateGradeDto {
+export class CreateStudentGradeDto {
   @IsString()
   studentId!: string;
 

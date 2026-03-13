@@ -29,7 +29,9 @@ import { CheckUserEmailDto } from "./dto/check-user-email.dto.js";
 import { CreateClassroomDto } from "./dto/create-classroom.dto.js";
 import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
+import { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
 import { CreateSubjectDto } from "./dto/create-subject.dto.js";
+import { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
 import { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
 import { CreateSchoolStaffAssignmentDto } from "./dto/create-school-staff-assignment.dto.js";
 import { CreateSchoolStaffFunctionDto } from "./dto/create-school-staff-function.dto.js";
@@ -58,9 +60,11 @@ import { UpdateStudentDto } from "./dto/update-student.dto.js";
 import { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
 import { UpdateStudentLifeEventDto } from "./dto/update-student-life-event.dto.js";
 import { UpdateSubjectDto } from "./dto/update-subject.dto.js";
+import { UpdateSubjectBranchDto } from "./dto/update-subject-branch.dto.js";
 import { UpdateTeacherAssignmentDto } from "./dto/update-teacher-assignment.dto.js";
 import { UpdateTrackDto } from "./dto/update-track.dto.js";
 import { UpdateUserDto } from "./dto/update-user.dto.js";
+import { UpdateEvaluationTypeDto } from "./dto/update-evaluation-type.dto.js";
 import { UpsertCurriculumSubjectDto } from "./dto/upsert-curriculum-subject.dto.js";
 import { ManagementService } from "./management.service.js";
 
@@ -527,6 +531,91 @@ export class ManagementController {
   @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
   listSubjects(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listSubjects(schoolId);
+  }
+
+  @Post("schools/:schoolSlug/admin/subjects/:subjectId/branches")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  createSubjectBranch(
+    @CurrentSchoolId() schoolId: string,
+    @Param("subjectId") subjectId: string,
+    @Body() payload: CreateSubjectBranchDto,
+  ) {
+    return this.managementService.createSubjectBranch(
+      schoolId,
+      subjectId,
+      payload,
+    );
+  }
+
+  @Patch("schools/:schoolSlug/admin/subjects/branches/:branchId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  updateSubjectBranch(
+    @CurrentSchoolId() schoolId: string,
+    @Param("branchId") branchId: string,
+    @Body() payload: UpdateSubjectBranchDto,
+  ) {
+    return this.managementService.updateSubjectBranch(
+      schoolId,
+      branchId,
+      payload,
+    );
+  }
+
+  @Delete("schools/:schoolSlug/admin/subjects/branches/:branchId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  deleteSubjectBranch(
+    @CurrentSchoolId() schoolId: string,
+    @Param("branchId") branchId: string,
+  ) {
+    return this.managementService.deleteSubjectBranch(schoolId, branchId);
+  }
+
+  @Get("schools/:schoolSlug/admin/evaluation-types")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  listEvaluationTypes(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listEvaluationTypes(schoolId);
+  }
+
+  @Post("schools/:schoolSlug/admin/evaluation-types")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  createEvaluationType(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: CreateEvaluationTypeDto,
+  ) {
+    return this.managementService.createEvaluationType(schoolId, payload);
+  }
+
+  @Patch("schools/:schoolSlug/admin/evaluation-types/:evaluationTypeId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  updateEvaluationType(
+    @CurrentSchoolId() schoolId: string,
+    @Param("evaluationTypeId") evaluationTypeId: string,
+    @Body() payload: UpdateEvaluationTypeDto,
+  ) {
+    return this.managementService.updateEvaluationType(
+      schoolId,
+      evaluationTypeId,
+      payload,
+    );
+  }
+
+  @Delete("schools/:schoolSlug/admin/evaluation-types/:evaluationTypeId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  deleteEvaluationType(
+    @CurrentSchoolId() schoolId: string,
+    @Param("evaluationTypeId") evaluationTypeId: string,
+  ) {
+    return this.managementService.deleteEvaluationType(
+      schoolId,
+      evaluationTypeId,
+    );
   }
 
   @Post("schools/:schoolSlug/admin/subjects")

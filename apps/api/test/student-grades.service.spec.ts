@@ -1,7 +1,7 @@
 import { ForbiddenException } from "@nestjs/common";
-import { GradesService } from "../src/grades/grades.service";
+import { StudentGradesService } from "../src/student-grades/student-grades.service";
 
-describe("GradesService access rules", () => {
+describe("StudentGradesService access rules", () => {
   const prisma = {
     student: { findFirst: jest.fn() },
     class: { findFirst: jest.fn() },
@@ -9,18 +9,17 @@ describe("GradesService access rules", () => {
     teacherClassSubject: { findFirst: jest.fn(), findMany: jest.fn() },
     enrollment: { findFirst: jest.fn() },
     classSubjectOverride: { findFirst: jest.fn() },
-    grade: {
+    studentGrade: {
       create: jest.fn(),
       findMany: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
-    parentStudent: { findMany: jest.fn() },
     $transaction: jest.fn(),
   };
 
-  const service = new GradesService(prisma as never);
+  const service = new StudentGradesService(prisma as never);
 
   beforeEach(() => {
     Object.values(prisma).forEach((value) => {
@@ -72,38 +71,27 @@ describe("GradesService access rules", () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it("limits parent list to linked children", async () => {
-    prisma.parentStudent.findMany.mockResolvedValue([
-      { studentId: "student-1" },
-    ]);
-    prisma.grade.findMany.mockResolvedValue([{ id: "grade-1" }]);
-
-    await service.list(
-      {
-        id: "parent-1",
-        platformRoles: [],
-        memberships: [{ schoolId: "school-1", role: "PARENT" }],
-        profileCompleted: true,
-        firstName: "P",
-        lastName: "Q",
-        email: "p@test.com",
-      },
-      "school-1",
-      {},
-    );
-
-    expect(prisma.grade.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          studentId: { in: ["student-1"] },
-        }),
-      }),
-    );
+  it("blocks parent access to the technical student-grades listing", async () => {
+    await expect(
+      service.list(
+        {
+          id: "parent-1",
+          platformRoles: [],
+          memberships: [{ schoolId: "school-1", role: "PARENT" }],
+          profileCompleted: true,
+          firstName: "P",
+          lastName: "Q",
+          email: "p@test.com",
+        },
+        "school-1",
+        {},
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it("limits student list to own profile", async () => {
+  it("limits student listing to the authenticated student profile", async () => {
     prisma.student.findFirst.mockResolvedValue({ id: "student-own" });
-    prisma.grade.findMany.mockResolvedValue([{ id: "grade-own" }]);
+    prisma.studentGrade.findMany.mockResolvedValue([{ id: "grade-own" }]);
 
     await service.list(
       {
@@ -119,7 +107,7 @@ describe("GradesService access rules", () => {
       {},
     );
 
-    expect(prisma.grade.findMany).toHaveBeenCalledWith(
+    expect(prisma.studentGrade.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ studentId: "student-own" }),
       }),

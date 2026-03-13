@@ -25,7 +25,7 @@ type Role =
   | "PARENT"
   | "STUDENT";
 
-type Tab = "catalog" | "assignments" | "help";
+type Tab = "catalog" | "assignments" | "evaluation-types" | "help";
 
 type MeResponse = {
   role: Role;
@@ -44,9 +44,14 @@ type SubjectRow = {
   name: string;
   createdAt: string;
   updatedAt: string;
+  branches: Array<{
+    id: string;
+    name: string;
+    code?: string | null;
+  }>;
   _count: {
     assignments: number;
-    grades: number;
+    studentGrades: number;
     curriculumSubjects: number;
     classOverrides: number;
   };
@@ -95,6 +100,13 @@ type AssignmentRow = {
   };
 };
 
+type EvaluationTypeRow = {
+  id: string;
+  code: string;
+  label: string;
+  isDefault: boolean;
+};
+
 export default function SubjectsPage() {
   const router = useRouter();
 
@@ -106,14 +118,25 @@ export default function SubjectsPage() {
   const [schools, setSchools] = useState<SchoolOption[]>([]);
 
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
+  const [evaluationTypes, setEvaluationTypes] = useState<EvaluationTypeRow[]>(
+    [],
+  );
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
   const [classrooms, setClassrooms] = useState<ClassroomOption[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
 
   const [subjectName, setSubjectName] = useState("");
+  const [branchDrafts, setBranchDrafts] = useState<Record<string, string>>({});
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [editSubjectName, setEditSubjectName] = useState("");
+  const [evaluationTypeCode, setEvaluationTypeCode] = useState("");
+  const [evaluationTypeLabel, setEvaluationTypeLabel] = useState("");
+  const [editingEvaluationTypeId, setEditingEvaluationTypeId] = useState<
+    string | null
+  >(null);
+  const [editEvaluationTypeCode, setEditEvaluationTypeCode] = useState("");
+  const [editEvaluationTypeLabel, setEditEvaluationTypeLabel] = useState("");
 
   const [assignmentSchoolYearId, setAssignmentSchoolYearId] = useState("");
   const [assignmentTeacherUserId, setAssignmentTeacherUserId] = useState("");
@@ -132,12 +155,19 @@ export default function SubjectsPage() {
 
   const [submittingSubject, setSubmittingSubject] = useState(false);
   const [savingSubject, setSavingSubject] = useState(false);
+  const [submittingBranchForSubjectId, setSubmittingBranchForSubjectId] =
+    useState<string | null>(null);
+  const [submittingEvaluationType, setSubmittingEvaluationType] =
+    useState(false);
+  const [savingEvaluationType, setSavingEvaluationType] = useState(false);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<
     | { kind: "subject"; id: string; label: string }
+    | { kind: "branch"; id: string; label: string }
+    | { kind: "evaluation-type"; id: string; label: string }
     | { kind: "assignment"; id: string; label: string }
     | null
   >(null);
@@ -224,12 +254,16 @@ export default function SubjectsPage() {
     try {
       const [
         subjectsResponse,
+        evaluationTypesResponse,
         teachersResponse,
         schoolYearsResponse,
         classroomsResponse,
         assignmentsResponse,
       ] = await Promise.all([
         fetch(buildAdminPath(currentSchoolSlug, "subjects"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "evaluation-types"), {
           credentials: "include",
         }),
         fetch(buildAdminPath(currentSchoolSlug, "teachers"), {
@@ -248,6 +282,7 @@ export default function SubjectsPage() {
 
       if (
         !subjectsResponse.ok ||
+        !evaluationTypesResponse.ok ||
         !teachersResponse.ok ||
         !schoolYearsResponse.ok ||
         !classroomsResponse.ok ||
@@ -258,6 +293,8 @@ export default function SubjectsPage() {
       }
 
       const subjectsPayload = (await subjectsResponse.json()) as SubjectRow[];
+      const evaluationTypesPayload =
+        (await evaluationTypesResponse.json()) as EvaluationTypeRow[];
       const teachersPayload =
         (await teachersResponse.json()) as TeacherOption[];
       const schoolYearsPayload =
@@ -268,6 +305,7 @@ export default function SubjectsPage() {
         (await assignmentsResponse.json()) as AssignmentRow[];
 
       setSubjects(subjectsPayload);
+      setEvaluationTypes(evaluationTypesPayload);
       setTeachers(teachersPayload);
       setSchoolYears(schoolYearsPayload);
       setClassrooms(classroomsPayload);
@@ -431,6 +469,202 @@ export default function SubjectsPage() {
     setDeleteTarget({ kind: "subject", id: subject.id, label: subject.name });
   }
 
+  async function onCreateBranch(subjectId: string) {
+    if (!schoolSlug) {
+      return;
+    }
+
+    const name = branchDrafts[subjectId]?.trim();
+    if (!name) {
+      setError("Nom de sous-branche requis.");
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingBranchForSubjectId(subjectId);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `subjects/${subjectId}/branches`),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ name }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Creation sous-branche impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setBranchDrafts((prev) => ({ ...prev, [subjectId]: "" }));
+      setSuccess("Sous-branche creee.");
+      await loadData(schoolSlug);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSubmittingBranchForSubjectId(null);
+    }
+  }
+
+  function askDeleteBranch(
+    subject: SubjectRow,
+    branchId: string,
+    label: string,
+  ) {
+    setDeleteTarget({
+      kind: "branch",
+      id: branchId,
+      label: `${subject.name} - ${label}`,
+    });
+  }
+
+  async function onCreateEvaluationType(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!schoolSlug) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingEvaluationType(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, "evaluation-types"),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            code: evaluationTypeCode,
+            label: evaluationTypeLabel,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Creation type impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setEvaluationTypeCode("");
+      setEvaluationTypeLabel("");
+      setSuccess("Type d'evaluation cree.");
+      await loadData(schoolSlug);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSubmittingEvaluationType(false);
+    }
+  }
+
+  function startEditEvaluationType(evaluationType: EvaluationTypeRow) {
+    setEditingEvaluationTypeId(evaluationType.id);
+    setEditEvaluationTypeCode(evaluationType.code);
+    setEditEvaluationTypeLabel(evaluationType.label);
+    setError(null);
+    setSuccess(null);
+  }
+
+  async function saveEvaluationType(evaluationTypeId: string) {
+    if (!schoolSlug) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSavingEvaluationType(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `evaluation-types/${evaluationTypeId}`),
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            code: editEvaluationTypeCode,
+            label: editEvaluationTypeLabel,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Mise a jour type impossible.");
+        setError(String(message));
+        return;
+      }
+      setEditingEvaluationTypeId(null);
+      setSuccess("Type d'evaluation modifie.");
+      await loadData(schoolSlug);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSavingEvaluationType(false);
+    }
+  }
+
+  function askDeleteEvaluationType(evaluationType: EvaluationTypeRow) {
+    setDeleteTarget({
+      kind: "evaluation-type",
+      id: evaluationType.id,
+      label: evaluationType.label,
+    });
+  }
+
   function startEditAssignment(assignment: AssignmentRow) {
     setEditingAssignmentId(assignment.id);
     setEditAssignmentSchoolYearId(assignment.schoolYearId);
@@ -583,7 +817,11 @@ export default function SubjectsPage() {
       const segment =
         deleteTarget.kind === "subject"
           ? `subjects/${deleteTarget.id}`
-          : `teacher-assignments/${deleteTarget.id}`;
+          : deleteTarget.kind === "branch"
+            ? `subjects/branches/${deleteTarget.id}`
+            : deleteTarget.kind === "evaluation-type"
+              ? `evaluation-types/${deleteTarget.id}`
+              : `teacher-assignments/${deleteTarget.id}`;
 
       const response = await fetch(buildAdminPath(schoolSlug, segment), {
         method: "DELETE",
@@ -609,7 +847,11 @@ export default function SubjectsPage() {
       setSuccess(
         deleteTarget.kind === "subject"
           ? "Matiere supprimee."
-          : "Affectation supprimee.",
+          : deleteTarget.kind === "branch"
+            ? "Sous-branche supprimee."
+            : deleteTarget.kind === "evaluation-type"
+              ? "Type d'evaluation supprime."
+              : "Affectation supprimee.",
       );
       await loadData(schoolSlug);
     } catch {
@@ -639,7 +881,7 @@ export default function SubjectsPage() {
       <div className="grid gap-4">
         <Card
           title="Matieres"
-          subtitle="Catalogue et affectations enseignant-classe-matiere"
+          subtitle="Catalogue, sous-branches, types d'evaluation et affectations"
         >
           <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
             <button
@@ -663,6 +905,17 @@ export default function SubjectsPage() {
               }`}
             >
               Affectations
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("evaluation-types")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "evaluation-types"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Types d'evaluation
             </button>
             <button
               type="button"
@@ -700,7 +953,7 @@ export default function SubjectsPage() {
           {tab === "help" ? (
             <ModuleHelpTab
               moduleName="Matieres"
-              moduleSummary="ce module gere le catalogue des matieres et les affectations enseignants par classe et annee scolaire."
+              moduleSummary="ce module gere le catalogue des matieres, les sous-branches, les types d'evaluation et les affectations enseignants par classe."
               actions={[
                 {
                   name: "Creer une matiere",
@@ -710,7 +963,7 @@ export default function SubjectsPage() {
                   moduleImpact:
                     "la matiere devient selectionnable dans le module Matieres.",
                   crossModuleImpact:
-                    "elle pourra etre rattachee aux curriculums, classes et notes.",
+                    "elle pourra etre rattachee aux curriculums, classes, sous-branches et evaluations.",
                 },
                 {
                   name: "Affecter un enseignant",
@@ -722,6 +975,17 @@ export default function SubjectsPage() {
                     "l'affectation apparait dans la liste operationnelle.",
                   crossModuleImpact:
                     "le professeur pourra saisir/consulter les notes sur son perimetre assigne.",
+                },
+                {
+                  name: "Structurer les evaluations",
+                  purpose:
+                    "parametrer les sous-branches de matiere et les types d'evaluation.",
+                  howTo:
+                    "ajouter des sous-branches dans Catalogue et gerer les types dans l'onglet dedie.",
+                  moduleImpact:
+                    "les enseignants creent ensuite des evaluations mieux classees.",
+                  crossModuleImpact:
+                    "le module Notes parent/eleve restitue la matiere et la sous-branche correspondantes.",
                 },
                 {
                   name: "Modifier/Supprimer",
@@ -771,6 +1035,7 @@ export default function SubjectsPage() {
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
                       <th className="px-3 py-2 font-medium">Matiere</th>
+                      <th className="px-3 py-2 font-medium">Sous-branches</th>
                       <th className="px-3 py-2 font-medium">Curriculums</th>
                       <th className="px-3 py-2 font-medium">Affectations</th>
                       <th className="px-3 py-2 font-medium">Notes</th>
@@ -784,7 +1049,7 @@ export default function SubjectsPage() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={6}
                         >
                           Chargement...
                         </td>
@@ -798,13 +1063,71 @@ export default function SubjectsPage() {
                           <tr className="border-b border-border text-text-primary">
                             <td className="px-3 py-2">{subject.name}</td>
                             <td className="px-3 py-2">
+                              <div className="flex flex-wrap gap-2">
+                                {subject.branches.length === 0 ? (
+                                  <span className="text-text-secondary">
+                                    Aucune
+                                  </span>
+                                ) : (
+                                  subject.branches.map((branch) => (
+                                    <span
+                                      key={branch.id}
+                                      className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs"
+                                    >
+                                      {branch.name}
+                                      <button
+                                        type="button"
+                                        className="font-semibold text-notification"
+                                        onClick={() =>
+                                          askDeleteBranch(
+                                            subject,
+                                            branch.id,
+                                            branch.name,
+                                          )
+                                        }
+                                      >
+                                        x
+                                      </button>
+                                    </span>
+                                  ))
+                                )}
+                              </div>
+                              <div className="mt-2 flex gap-2">
+                                <input
+                                  value={branchDrafts[subject.id] ?? ""}
+                                  onChange={(event) =>
+                                    setBranchDrafts((prev) => ({
+                                      ...prev,
+                                      [subject.id]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder="Nouvelle sous-branche"
+                                  className="min-w-[180px] rounded-card border border-border bg-surface px-3 py-2 text-xs text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    void onCreateBranch(subject.id);
+                                  }}
+                                  disabled={
+                                    submittingBranchForSubjectId === subject.id
+                                  }
+                                >
+                                  {submittingBranchForSubjectId === subject.id
+                                    ? "Ajout..."
+                                    : "Ajouter"}
+                                </Button>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
                               {subject._count.curriculumSubjects}
                             </td>
                             <td className="px-3 py-2">
                               {subject._count.assignments}
                             </td>
                             <td className="px-3 py-2">
-                              {subject._count.grades}
+                              {subject._count.studentGrades}
                             </td>
                             <td className="px-3 py-2 text-right">
                               <div className="inline-flex gap-2">
@@ -827,7 +1150,7 @@ export default function SubjectsPage() {
                           </tr>
                           {editingSubjectId === subject.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={5}>
+                              <td className="px-3 py-3" colSpan={6}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
                                   <input
                                     value={editSubjectName}
@@ -865,7 +1188,7 @@ export default function SubjectsPage() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={6}
                         >
                           Aucune matiere.
                         </td>
@@ -874,6 +1197,150 @@ export default function SubjectsPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          ) : tab === "evaluation-types" ? (
+            <div className="grid gap-4">
+              <form
+                className="grid gap-3 md:grid-cols-[180px_1fr_auto]"
+                onSubmit={onCreateEvaluationType}
+              >
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">Code</span>
+                  <input
+                    value={evaluationTypeCode}
+                    onChange={(event) =>
+                      setEvaluationTypeCode(event.target.value)
+                    }
+                    placeholder="DEVOIR"
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </label>
+                <label className="grid gap-1 text-sm">
+                  <span className="text-text-secondary">Libelle</span>
+                  <input
+                    value={evaluationTypeLabel}
+                    onChange={(event) =>
+                      setEvaluationTypeLabel(event.target.value)
+                    }
+                    placeholder="Devoir surveille"
+                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </label>
+                <div className="self-end">
+                  <SubmitButton disabled={submittingEvaluationType}>
+                    {submittingEvaluationType ? "Creation..." : "Ajouter"}
+                  </SubmitButton>
+                </div>
+              </form>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-text-secondary">
+                      <th className="px-3 py-2 font-medium">Code</th>
+                      <th className="px-3 py-2 font-medium">Libelle</th>
+                      <th className="px-3 py-2 font-medium">Origine</th>
+                      <th className="px-3 py-2 font-medium text-right">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {evaluationTypes.map((evaluationType) => (
+                      <Fragment key={evaluationType.id}>
+                        <tr className="border-b border-border text-text-primary">
+                          <td className="px-3 py-2 font-mono">
+                            {evaluationType.code}
+                          </td>
+                          <td className="px-3 py-2">{evaluationType.label}</td>
+                          <td className="px-3 py-2">
+                            {evaluationType.isDefault
+                              ? "Defaut"
+                              : "Personnalise"}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex gap-2">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() =>
+                                  startEditEvaluationType(evaluationType)
+                                }
+                              >
+                                Modifier
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={evaluationType.isDefault}
+                                onClick={() =>
+                                  askDeleteEvaluationType(evaluationType)
+                                }
+                              >
+                                Supprimer
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                        {editingEvaluationTypeId === evaluationType.id ? (
+                          <tr className="border-b border-border bg-background">
+                            <td className="px-3 py-3" colSpan={4}>
+                              <div className="grid gap-3 md:grid-cols-[180px_1fr_auto_auto]">
+                                <input
+                                  value={editEvaluationTypeCode}
+                                  onChange={(event) =>
+                                    setEditEvaluationTypeCode(
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                />
+                                <input
+                                  value={editEvaluationTypeLabel}
+                                  onChange={(event) =>
+                                    setEditEvaluationTypeLabel(
+                                      event.target.value,
+                                    )
+                                  }
+                                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                />
+                                <Button
+                                  type="button"
+                                  disabled={savingEvaluationType}
+                                  onClick={() => {
+                                    void saveEvaluationType(evaluationType.id);
+                                  }}
+                                >
+                                  {savingEvaluationType
+                                    ? "Enregistrement..."
+                                    : "Enregistrer"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() =>
+                                    setEditingEvaluationTypeId(null)
+                                  }
+                                >
+                                  Annuler
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {!loading && !loadingData && evaluationTypes.length === 0 ? (
+                <p className="text-sm text-text-secondary">
+                  Les types par defaut seront initialises automatiquement des la
+                  premiere creation d'evaluation. Vous pouvez aussi preparer vos
+                  propres types ici.
+                </p>
+              ) : null}
             </div>
           ) : (
             <div className="grid gap-4">
