@@ -944,26 +944,18 @@ export default function UsersPage() {
           title="Utilisateurs"
           subtitle="Gestion des comptes plateforme et ecoles"
         >
-          <div className="mb-4 flex items-end gap-2 border-b border-border">
+          <div className="section-tabs mb-4">
             <button
               type="button"
               onClick={() => setTab("list")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "list"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "list" ? "section-tab-active" : ""}`}
             >
               Liste des utilisateurs
             </button>
             <button
               type="button"
               onClick={() => setTab("create")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "create"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "create" ? "section-tab-active" : ""}`}
             >
               Creer un utilisateur
             </button>
@@ -971,11 +963,7 @@ export default function UsersPage() {
               <button
                 type="button"
                 onClick={() => setTab("details")}
-                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                  tab === "details"
-                    ? "border border-border border-b-surface bg-surface text-primary"
-                    : "text-text-secondary"
-                }`}
+                className={`section-tab ${tab === "details" ? "section-tab-active" : ""}`}
               >
                 Details
               </button>
@@ -983,11 +971,7 @@ export default function UsersPage() {
             <button
               type="button"
               onClick={() => setTab("help")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "help"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "help" ? "section-tab-active" : ""}`}
             >
               Aide
             </button>
@@ -1006,7 +990,7 @@ export default function UsersPage() {
                 </Button>
 
                 {showFilters ? (
-                  <>
+                  <div className="filter-panel flex flex-wrap items-end justify-end gap-2">
                     <label className="grid min-w-[170px] gap-1 text-sm">
                       <span className="text-text-secondary">Role</span>
                       <select
@@ -1014,7 +998,7 @@ export default function UsersPage() {
                         onChange={(event) =>
                           setRoleFilter(event.target.value as "ALL" | Role)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="ALL">Tous</option>
                         <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -1040,7 +1024,7 @@ export default function UsersPage() {
                         onChange={(event) =>
                           setSchoolFilter(event.target.value)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="ALL">Toutes</option>
                         {schools.map((school) => (
@@ -1058,7 +1042,7 @@ export default function UsersPage() {
                         onChange={(event) =>
                           setStateFilter(event.target.value as UserStateFilter)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="ALL">Tous</option>
                         <option value="ACTIVE">Actif</option>
@@ -1067,7 +1051,7 @@ export default function UsersPage() {
                         </option>
                       </select>
                     </label>
-                  </>
+                  </div>
                 ) : null}
               </div>
 
@@ -1080,7 +1064,7 @@ export default function UsersPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Ex: Michelle ou mbele"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 placeholder:text-text-secondary/70 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                   />
                 </label>
               </div>

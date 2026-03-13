@@ -164,7 +164,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     }
 
     return (
-      <div className="grid gap-0 rounded-card border border-border bg-surface">
+      <div className="grid gap-0 rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.96)_100%)] shadow-[0_14px_30px_rgba(77,56,32,0.07)]">
         <div className="flex flex-wrap items-center gap-1 border-b border-border p-2">
           <ToolbarBtn onClick={() => applyCommand("undo")} icon={ArrowLeft} />
           <ToolbarBtn onClick={() => applyCommand("redo")} icon={ArrowRight} />
@@ -239,7 +239,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
             icon={AlignJustify}
           />
           <ToolbarDivider />
-          <label className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-text-secondary">
+          <label className="inline-flex items-center gap-1 rounded-[12px] border border-warm-border bg-warm-surface px-2 py-1 text-xs text-text-secondary">
             <Pilcrow className="h-3.5 w-3.5" />
             <select
               defaultValue="P"
@@ -258,7 +258,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
           <button
             type="button"
             onClick={() => textColorInputRef.current?.click()}
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-border text-text-secondary transition hover:bg-primary/10 hover:text-primary"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-warm-border bg-warm-surface text-text-secondary transition hover:bg-warm-highlight hover:text-primary"
             title="Couleur du texte"
           >
             <Type className="h-4 w-4" />
@@ -272,7 +272,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
           <button
             type="button"
             onClick={() => bgColorInputRef.current?.click()}
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-border text-text-secondary transition hover:bg-primary/10 hover:text-primary"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-warm-border bg-warm-surface text-text-secondary transition hover:bg-warm-highlight hover:text-primary"
             title="Surlignage"
           >
             <Highlighter className="h-4 w-4" />
@@ -295,13 +295,13 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
           ref={editorRef}
           contentEditable
           onInput={syncEditorState}
-          className={`${minHeightClassName} p-3 text-sm text-text-primary outline-none`}
+          className={`${minHeightClassName} p-4 text-sm text-text-primary outline-none`}
         />
-        <p className="border-t border-border px-3 py-2 text-xs text-text-secondary">
+        <p className="border-t border-border px-4 py-3 text-xs text-text-secondary">
           {hint}
         </p>
         {error ? (
-          <p className="px-3 pb-3 text-sm text-notification">{error}</p>
+          <p className="px-4 pb-4 text-sm text-notification">{error}</p>
         ) : null}
       </div>
     );
@@ -319,7 +319,7 @@ function ToolbarBtn({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-8 w-8 items-center justify-center rounded border border-border text-text-secondary transition hover:bg-primary/10 hover:text-primary"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-warm-border bg-warm-surface text-text-secondary transition hover:bg-warm-highlight hover:text-primary"
     >
       <Icon className="h-4 w-4" />
     </button>
@@ -334,5 +334,5 @@ function resolveUploadErrorMessage(error: unknown) {
 }
 
 function ToolbarDivider() {
-  return <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />;
+  return <span className="mx-1 h-5 w-px bg-warm-border" aria-hidden="true" />;
 }

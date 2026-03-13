@@ -1350,48 +1350,32 @@ export default function ClassesPage() {
           title="Classes"
           subtitle="Structure des classes basee sur annee scolaire et curriculum"
         >
-          <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
+          <div className="section-tabs mb-4">
             <button
               type="button"
               onClick={() => setTab("list")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "list"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "list" ? "section-tab-active" : ""}`}
             >
               Liste
             </button>
             <button
               type="button"
               onClick={() => setTab("details")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "details"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "details" ? "section-tab-active" : ""}`}
             >
               Voir
             </button>
             <button
               type="button"
               onClick={() => setTab("assignments")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "assignments"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "assignments" ? "section-tab-active" : ""}`}
             >
               Affectations
             </button>
             <button
               type="button"
               onClick={() => setTab("help")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "help"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "help" ? "section-tab-active" : ""}`}
             >
               Aide
             </button>
@@ -1404,7 +1388,7 @@ export default function ClassesPage() {
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">Selectionner une ecole</option>
                   {schools.map((school) => (
@@ -1423,7 +1407,7 @@ export default function ClassesPage() {
               <select
                 value={selectedClassId}
                 onChange={(event) => setSelectedClassId(event.target.value)}
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">Selectionner</option>
                 {sortedClasses.map((entry) => (

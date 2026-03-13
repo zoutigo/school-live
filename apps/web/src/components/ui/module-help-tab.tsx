@@ -21,7 +21,7 @@ export function ModuleHelpTab({
 }: ModuleHelpTabProps) {
   return (
     <div className="grid gap-4">
-      <div className="rounded-card border border-border bg-background p-4">
+      <div className="content-panel p-4">
         <p className="text-sm font-heading font-semibold text-text-primary">
           A quoi sert ce module ?
         </p>
@@ -33,10 +33,7 @@ export function ModuleHelpTab({
 
       <div className="grid gap-3">
         {actions.map((action) => (
-          <div
-            key={action.name}
-            className="rounded-card border border-border bg-background p-4"
-          >
+          <div key={action.name} className="content-panel p-4">
             <p className="text-sm font-heading font-semibold text-text-primary">
               {action.name}
             </p>
@@ -65,7 +62,7 @@ export function ModuleHelpTab({
       </div>
 
       {tips.length > 0 ? (
-        <div className="rounded-card border border-border bg-background p-4">
+        <div className="content-panel p-4">
           <p className="text-sm font-heading font-semibold text-text-primary">
             Repere rapide
           </p>

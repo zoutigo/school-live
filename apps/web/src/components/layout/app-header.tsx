@@ -90,7 +90,7 @@ export function AppHeader({
     <>
       <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-4">
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-card bg-primary font-heading text-sm font-bold text-surface">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-bold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]">
             SL
           </span>
           <div className="hidden md:block">
@@ -114,10 +114,10 @@ export function AppHeader({
                 <img
                   src={schoolLogoUrl}
                   alt={`Logo ${schoolName}`}
-                  className="h-8 w-8 rounded-full border border-border object-cover"
+                  className="h-9 w-9 rounded-full border border-warm-border bg-warm-surface object-cover shadow-sm"
                 />
               ) : (
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-xs font-semibold text-text-secondary">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-warm-border bg-warm-surface text-xs font-semibold text-text-secondary">
                   {schoolName.slice(0, 2).toUpperCase()}
                 </span>
               )}
@@ -142,7 +142,7 @@ export function AppHeader({
 
           <button
             aria-label="Notifications"
-            className="relative inline-flex h-9 w-9 items-center justify-center rounded-card border border-border bg-surface text-text-primary"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary shadow-sm transition-colors hover:bg-warm-highlight"
             type="button"
           >
             🔔
@@ -153,7 +153,7 @@ export function AppHeader({
 
           <button
             aria-label="Compte utilisateur"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary font-heading text-sm font-semibold text-surface"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-semibold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]"
             type="button"
             onClick={() => router.push("/account")}
           >
@@ -163,7 +163,7 @@ export function AppHeader({
           <button
             aria-label="Se deconnecter"
             title="Se deconnecter"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-card border border-border bg-surface text-text-primary transition-colors hover:bg-background"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary transition-colors hover:bg-warm-highlight"
             type="button"
             onClick={() => setLogoutConfirmOpen(true)}
           >
@@ -173,7 +173,7 @@ export function AppHeader({
 
         <button
           aria-label="Ouvrir le menu"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-card border border-border bg-surface text-text-primary md:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary md:hidden"
           onClick={onToggleMenu}
           type="button"
         >

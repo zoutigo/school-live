@@ -21,7 +21,7 @@ export function FormField({
 }: FormFieldProps) {
   return (
     <label className={`grid gap-1 text-sm ${className}`} htmlFor={htmlFor}>
-      <span className="text-text-secondary">{label}</span>
+      <span className="font-medium text-text-secondary">{label}</span>
       {children}
       {error ? (
         <span className="text-xs text-notification">{error}</span>

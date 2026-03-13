@@ -1234,37 +1234,25 @@ export default function ElevesPage() {
           title="Eleves"
           subtitle="CRUD des eleves, visualisation et suivi des inscriptions"
         >
-          <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
+          <div className="section-tabs mb-4">
             <button
               type="button"
               onClick={() => setTab("list")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "list"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "list" ? "section-tab-active" : ""}`}
             >
               Liste
             </button>
             <button
               type="button"
               onClick={() => setTab("assignments")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "assignments"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "assignments" ? "section-tab-active" : ""}`}
             >
               Affectations
             </button>
             <button
               type="button"
               onClick={() => setTab("help")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "help"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "help" ? "section-tab-active" : ""}`}
             >
               Aide
             </button>
@@ -1277,7 +1265,7 @@ export default function ElevesPage() {
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">Selectionner une ecole</option>
                   {schools.map((school) => (
@@ -1398,7 +1386,7 @@ export default function ElevesPage() {
               </form>
 
               <form
-                className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-4"
+                className="filter-panel grid gap-3 md:grid-cols-4"
                 onSubmit={(event) => {
                   event.preventDefault();
                   if (schoolSlug) {

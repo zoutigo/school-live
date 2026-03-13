@@ -8,13 +8,14 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-card px-4 py-2 text-sm font-heading font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70";
+  "inline-flex items-center justify-center gap-2 rounded-card px-4 py-2 text-sm font-heading font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-surface hover:bg-primary-dark",
+  primary:
+    "bg-primary text-surface shadow-[0_12px_24px_rgba(12,95,168,0.18)] hover:bg-primary-dark hover:shadow-[0_16px_30px_rgba(12,95,168,0.24)]",
   secondary:
-    "bg-surface text-primary border border-primary hover:bg-background",
-  ghost: "bg-transparent text-primary hover:bg-background",
+    "border border-warm-border bg-warm-surface text-primary hover:bg-warm-highlight",
+  ghost: "bg-transparent text-primary hover:bg-warm-highlight/70",
 };
 
 export function Button({

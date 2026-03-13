@@ -20,7 +20,7 @@ export function PasswordRequirementsHint({
 
   return (
     <div
-      className={`rounded-card border border-border bg-background p-3 ${className}`.trim()}
+      className={`rounded-[18px] border border-warm-border bg-warm-surface p-3 shadow-[0_10px_22px_rgba(77,56,32,0.06)] ${className}`.trim()}
     >
       <p className="text-xs text-text-secondary">
         8 caracteres minimum, dont au moins 1 Maj, 1 Min, 1 Chiffre

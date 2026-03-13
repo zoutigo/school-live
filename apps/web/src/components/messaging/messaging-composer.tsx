@@ -345,7 +345,7 @@ export function MessagingComposer({
   return (
     <>
       <div className="grid gap-4">
-        <div className="grid gap-4 rounded-card border border-border bg-background p-4">
+        <div className="filter-panel grid gap-4">
           <div className="grid gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
             <label className="pt-2 text-sm font-semibold text-text-primary">
               A
@@ -406,7 +406,7 @@ export function MessagingComposer({
               <select
                 value={recipient}
                 onChange={(event) => setRecipient(event.target.value)}
-                className="h-10 rounded-card border border-border bg-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">Aucun destinataire selectionne</option>
                 {recipients.map((option) => (
@@ -426,7 +426,7 @@ export function MessagingComposer({
               <input
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
-                className="h-10 rounded-card border border-border bg-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 placeholder="Objet du message"
               />
             </div>
@@ -461,10 +461,10 @@ export function MessagingComposer({
                 setDragOver(false);
                 addFiles(event.dataTransfer.files);
               }}
-              className={`rounded-card border border-dashed p-4 transition ${
+              className={`rounded-[18px] border border-dashed p-4 transition ${
                 dragOver
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-surface"
+                  ? "border-primary bg-[linear-gradient(180deg,rgba(12,95,168,0.08)_0%,rgba(255,248,240,0.92)_100%)]"
+                  : "border-warm-border bg-warm-surface"
               }`}
             >
               <p className="text-sm text-text-secondary">
@@ -474,7 +474,7 @@ export function MessagingComposer({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
+                  className="inline-flex items-center gap-2 rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-primary transition hover:bg-warm-highlight/60"
                 >
                   <ImagePlus className="h-4 w-4" />
                   Depuis mon ordinateur
@@ -493,7 +493,7 @@ export function MessagingComposer({
                   {attachments.map((file) => (
                     <li
                       key={file.name}
-                      className="flex items-center justify-between rounded-card border border-border bg-background px-3 py-2"
+                      className="flex items-center justify-between rounded-[14px] border border-warm-border bg-surface px-3 py-2"
                     >
                       <span className="inline-flex items-center gap-2 text-sm text-text-primary">
                         <Paperclip className="h-4 w-4 text-primary" />
@@ -502,7 +502,7 @@ export function MessagingComposer({
                       <button
                         type="button"
                         onClick={() => removeFile(file.name)}
-                        className="rounded border border-border px-2 py-1 text-xs text-text-secondary transition hover:bg-notification/10 hover:text-notification"
+                        className="rounded border border-warm-border px-2 py-1 text-xs text-text-secondary transition hover:bg-notification/10 hover:text-notification"
                       >
                         Supprimer
                       </button>
@@ -524,7 +524,7 @@ export function MessagingComposer({
               onClick={() =>
                 onRequestBackToList ? onRequestBackToList() : onCancel()
               }
-              className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
+              className="rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-primary transition hover:bg-warm-highlight/60"
             >
               Annuler
             </button>
@@ -532,14 +532,14 @@ export function MessagingComposer({
               type="button"
               onClick={handleSaveDraft}
               disabled={sending || savingDraft}
-              className="rounded-card border border-border bg-primary/10 px-3 py-2 text-sm text-primary transition hover:bg-primary/20"
+              className="rounded-[14px] border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary transition hover:bg-primary/20"
             >
               {savingDraft ? "Enregistrement..." : "Enregistrer en brouillon"}
             </button>
             <button
               type="button"
               onClick={clearEditor}
-              className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-secondary transition hover:bg-surface"
+              className="rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-secondary transition hover:bg-warm-highlight/60"
             >
               Effacer
             </button>
@@ -549,7 +549,7 @@ export function MessagingComposer({
             type="button"
             onClick={handleSend}
             disabled={!sendEnabled}
-            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Send className="h-4 w-4" />
             {sending ? "Envoi..." : "Envoyer"}
@@ -660,14 +660,14 @@ function TeacherRecipientsModal({
         className="absolute inset-0 bg-text-primary/45"
         onClick={onClose}
       />
-      <section className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-card border border-border bg-surface p-4 shadow-soft">
+      <section className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-[24px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,1)_100%)] p-4 shadow-[0_24px_60px_rgba(47,36,24,0.18)]">
         <header className="mb-3 flex items-center justify-between border-b border-border pb-2">
           <h3 className="font-heading text-base font-semibold text-text-primary">
             Recherchez des enseignants
           </h3>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-card border border-border text-text-secondary transition hover:bg-primary/10 hover:text-primary"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-warm-border text-text-secondary transition hover:bg-warm-highlight hover:text-primary"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -682,7 +682,7 @@ function TeacherRecipientsModal({
               <input
                 value={nameFilter}
                 onChange={(event) => setNameFilter(event.target.value)}
-                className="h-10 w-full rounded-card border border-border bg-background pl-8 pr-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full rounded-[14px] border border-warm-border bg-warm-surface pl-8 pr-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </label>
@@ -691,7 +691,7 @@ function TeacherRecipientsModal({
             <input
               value={subjectFilter}
               onChange={(event) => setSubjectFilter(event.target.value)}
-              className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
             />
           </label>
           <label className="grid gap-1 text-xs text-text-secondary">
@@ -699,12 +699,12 @@ function TeacherRecipientsModal({
             <input
               value={classFilter}
               onChange={(event) => setClassFilter(event.target.value)}
-              className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
             />
           </label>
         </div>
 
-        <div className="overflow-auto rounded-card border border-border">
+        <div className="overflow-auto rounded-[18px] border border-warm-border bg-surface">
           <table className="min-w-full text-sm">
             <thead className="bg-primary text-white">
               <tr>
@@ -718,7 +718,7 @@ function TeacherRecipientsModal({
               {pageRows.map((row, index) => (
                 <tr
                   key={row.value}
-                  className={index % 2 === 0 ? "bg-background/60" : ""}
+                  className={index % 2 === 0 ? "bg-warm-highlight/30" : ""}
                 >
                   <td className="px-2 py-2">
                     <input
@@ -764,14 +764,14 @@ function TeacherRecipientsModal({
         <footer className="mt-3 flex items-center justify-between">
           <button
             type="button"
-            className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
+            className="rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-primary transition hover:bg-warm-highlight/60"
             onClick={onClose}
           >
             Fermer
           </button>
           <button
             type="button"
-            className="rounded-card bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark"
+            className="rounded-[14px] bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition hover:bg-primary-dark"
             onClick={() => onConfirm(selectedRows)}
             disabled={selectedRows.length === 0}
           >
@@ -850,14 +850,14 @@ function StaffRecipientsModal({
         className="absolute inset-0 bg-text-primary/45"
         onClick={onClose}
       />
-      <section className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-card border border-border bg-surface p-4 shadow-soft">
+      <section className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-[24px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,1)_100%)] p-4 shadow-[0_24px_60px_rgba(47,36,24,0.18)]">
         <header className="mb-3 flex items-center justify-between border-b border-border pb-2">
           <h3 className="font-heading text-base font-semibold text-text-primary">
             Recherchez des personnels
           </h3>
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-card border border-border text-text-secondary transition hover:bg-primary/10 hover:text-primary"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-warm-border text-text-secondary transition hover:bg-warm-highlight hover:text-primary"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -872,7 +872,7 @@ function StaffRecipientsModal({
               <input
                 value={nameFilter}
                 onChange={(event) => setNameFilter(event.target.value)}
-                className="h-10 w-full rounded-card border border-border bg-background pl-8 pr-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full rounded-[14px] border border-warm-border bg-warm-surface pl-8 pr-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </label>
@@ -881,7 +881,7 @@ function StaffRecipientsModal({
             <select
               value={functionFilter}
               onChange={(event) => setFunctionFilter(event.target.value)}
-              className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Toutes les fonctions</option>
               {functionOptions.map((entry) => (
@@ -893,7 +893,7 @@ function StaffRecipientsModal({
           </label>
         </div>
 
-        <div className="overflow-auto rounded-card border border-border">
+        <div className="overflow-auto rounded-[18px] border border-warm-border bg-surface">
           <table className="min-w-full text-sm">
             <thead className="bg-primary text-white">
               <tr>
@@ -908,7 +908,7 @@ function StaffRecipientsModal({
                 return (
                   <tr
                     key={key}
-                    className={index % 2 === 0 ? "bg-background/60" : ""}
+                    className={index % 2 === 0 ? "bg-warm-highlight/30" : ""}
                   >
                     <td className="px-2 py-2">
                       <input
@@ -952,14 +952,14 @@ function StaffRecipientsModal({
         <footer className="mt-3 flex items-center justify-between">
           <button
             type="button"
-            className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary transition hover:bg-primary/10"
+            className="rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-primary transition hover:bg-warm-highlight/60"
             onClick={onClose}
           >
             Fermer
           </button>
           <button
             type="button"
-            className="rounded-card bg-primary px-3 py-2 text-sm font-semibold text-white transition hover:bg-primary-dark"
+            className="rounded-[14px] bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition hover:bg-primary-dark"
             onClick={() => onConfirm(selectedRows)}
             disabled={selectedRows.length === 0}
           >

@@ -553,7 +553,7 @@ export default function TeacherClassNotesPage() {
         title={`Evaluations - ${context?.class.name ?? "Classe"}`}
         subtitle="Creation, publication et saisie des notes"
       >
-        <div className="mb-4 flex items-end gap-2 border-b border-border">
+        <div className="section-tabs mb-4">
           {[
             { key: "evaluations", label: "Evaluations" },
             { key: "scores", label: "Saisie des notes" },
@@ -564,11 +564,7 @@ export default function TeacherClassNotesPage() {
               key={item.key}
               type="button"
               onClick={() => setTab(item.key as TabKey)}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === item.key
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === item.key ? "section-tab-active" : ""}`}
             >
               {item.label}
             </button>
@@ -632,7 +628,7 @@ export default function TeacherClassNotesPage() {
                   <select
                     value={subjectId}
                     onChange={(event) => setSubjectId(event.target.value)}
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                   >
                     {context.subjects.map((subject) => (
                       <option key={subject.id} value={subject.id}>
@@ -647,7 +643,7 @@ export default function TeacherClassNotesPage() {
                   <select
                     value={subjectBranchId}
                     onChange={(event) => setSubjectBranchId(event.target.value)}
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">Aucune sous-branche</option>
                     {(selectedSubject?.branches ?? []).map((branch) => (
@@ -665,7 +661,7 @@ export default function TeacherClassNotesPage() {
                     onChange={(event) =>
                       setEvaluationTypeId(event.target.value)
                     }
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                   >
                     {context.evaluationTypes.map((item) => (
                       <option key={item.id} value={item.id}>
@@ -680,7 +676,7 @@ export default function TeacherClassNotesPage() {
                   <select
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="TERM_1">1er trimestre</option>
                     <option value="TERM_2">2eme trimestre</option>
@@ -693,7 +689,7 @@ export default function TeacherClassNotesPage() {
                   <input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                     placeholder="Ex. Composition sur les fractions"
                     required
                   />
@@ -706,7 +702,7 @@ export default function TeacherClassNotesPage() {
                   <textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
-                    className="min-h-[120px] rounded-card border border-border bg-background px-3 py-2"
+                    className="min-h-[120px] rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                     placeholder="Precisions, notions travaillees, attentes..."
                   />
                 </label>
@@ -719,7 +715,7 @@ export default function TeacherClassNotesPage() {
                     step="0.1"
                     value={coefficient}
                     onChange={(event) => setCoefficient(event.target.value)}
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                     required
                   />
                 </label>
@@ -732,7 +728,7 @@ export default function TeacherClassNotesPage() {
                     step="0.1"
                     value={maxScore}
                     onChange={(event) => setMaxScore(event.target.value)}
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                     required
                   />
                 </label>
@@ -743,7 +739,7 @@ export default function TeacherClassNotesPage() {
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(event) => setScheduledAt(event.target.value)}
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                   />
                 </label>
 
@@ -754,7 +750,7 @@ export default function TeacherClassNotesPage() {
                     onChange={(event) =>
                       setStatus(event.target.value as "DRAFT" | "PUBLISHED")
                     }
-                    className="rounded-card border border-border bg-background px-3 py-2"
+                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="DRAFT">Brouillon</option>
                     <option value="PUBLISHED">Publie</option>
@@ -762,7 +758,7 @@ export default function TeacherClassNotesPage() {
                 </label>
               </div>
 
-              <div className="rounded-card border border-border bg-background p-3">
+              <div className="content-panel p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-text-primary">
@@ -772,7 +768,7 @@ export default function TeacherClassNotesPage() {
                       Support de cours, enonce, PDF ou image.
                     </p>
                   </div>
-                  <label className="rounded-card border border-primary bg-surface px-3 py-2 text-sm font-semibold text-primary">
+                  <label className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2 text-sm font-semibold text-primary shadow-sm transition-colors hover:bg-warm-highlight">
                     {uploadingAttachment
                       ? "Televersement..."
                       : "Ajouter un fichier"}
@@ -795,7 +791,7 @@ export default function TeacherClassNotesPage() {
                     attachments.map((attachment) => (
                       <div
                         key={`${attachment.fileName}-${attachment.fileUrl ?? "local"}`}
-                        className="flex items-center justify-between rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        className="flex items-center justify-between rounded-[16px] border border-warm-border bg-surface px-3 py-2 text-sm shadow-sm"
                       >
                         <div>
                           <p className="font-medium text-text-primary">
@@ -828,7 +824,7 @@ export default function TeacherClassNotesPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+                className="rounded-[14px] bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] disabled:opacity-70"
               >
                 {submitting ? "Enregistrement..." : "Creer l'evaluation"}
               </button>
@@ -836,7 +832,7 @@ export default function TeacherClassNotesPage() {
 
             <div className="grid gap-3">
               {evaluations.length === 0 ? (
-                <div className="rounded-card border border-border bg-background p-4 text-sm text-text-secondary">
+                <div className="content-panel p-4 text-sm text-text-secondary">
                   Aucune evaluation pour cette classe.
                 </div>
               ) : (
@@ -848,10 +844,10 @@ export default function TeacherClassNotesPage() {
                       setSelectedEvaluationId(evaluation.id);
                       setTab("scores");
                     }}
-                    className={`grid gap-2 rounded-card border p-4 text-left transition ${
+                    className={`grid gap-2 rounded-[18px] border p-4 text-left transition ${
                       selectedEvaluationId === evaluation.id
-                        ? "border-primary bg-primary/5"
-                        : "border-border bg-surface hover:border-primary/30"
+                        ? "border-primary bg-[linear-gradient(180deg,rgba(12,95,168,0.08)_0%,rgba(255,248,240,0.9)_100%)] shadow-[0_12px_24px_rgba(12,95,168,0.12)]"
+                        : "border-warm-border bg-surface hover:border-primary/30 hover:shadow-[0_10px_22px_rgba(77,56,32,0.08)]"
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -901,7 +897,7 @@ export default function TeacherClassNotesPage() {
                   onChange={(event) =>
                     setSelectedEvaluationId(event.target.value)
                   }
-                  className="rounded-card border border-border bg-background px-3 py-2"
+                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">Selectionner</option>
                   {evaluations.map((evaluation) => (
@@ -914,12 +910,12 @@ export default function TeacherClassNotesPage() {
             </div>
 
             {!selectedEvaluation ? (
-              <div className="rounded-card border border-border bg-background p-4 text-sm text-text-secondary">
+              <div className="content-panel p-4 text-sm text-text-secondary">
                 Selectionnez une evaluation pour saisir les notes.
               </div>
             ) : (
               <div className="grid gap-4">
-                <div className="rounded-card border border-border bg-background p-4">
+                <div className="content-panel p-4">
                   <p className="font-heading text-xl font-semibold text-text-primary">
                     {selectedEvaluation.title}
                   </p>
@@ -934,7 +930,7 @@ export default function TeacherClassNotesPage() {
                   </p>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-[18px] border border-warm-border bg-surface p-2 shadow-[0_10px_24px_rgba(77,56,32,0.06)]">
                   <table className="min-w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-text-secondary">
@@ -970,7 +966,7 @@ export default function TeacherClassNotesPage() {
                                   },
                                 }))
                               }
-                              className="rounded-card border border-border bg-background px-3 py-2"
+                              className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                             >
                               <option value="ENTERED">Note saisie</option>
                               <option value="ABSENT">Absent</option>
@@ -1001,7 +997,7 @@ export default function TeacherClassNotesPage() {
                                 (scoreDrafts[student.id]?.status ??
                                   "ENTERED") !== "ENTERED"
                               }
-                              className="w-28 rounded-card border border-border bg-background px-3 py-2"
+                              className="w-28 rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                             />
                           </td>
                           <td className="px-3 py-2">
@@ -1019,7 +1015,7 @@ export default function TeacherClassNotesPage() {
                                   },
                                 }))
                               }
-                              className="min-w-[220px] rounded-card border border-border bg-background px-3 py-2"
+                              className="min-w-[220px] rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 placeholder:text-text-secondary/70 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                               placeholder="Commentaire optionnel"
                             />
                           </td>
@@ -1036,7 +1032,7 @@ export default function TeacherClassNotesPage() {
                   type="button"
                   onClick={() => void handleSaveScores()}
                   disabled={savingScores}
-                  className="w-fit rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+                  className="w-fit rounded-[14px] bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] disabled:opacity-70"
                 >
                   {savingScores ? "Enregistrement..." : "Enregistrer les notes"}
                 </button>
@@ -1051,7 +1047,7 @@ export default function TeacherClassNotesPage() {
                 <select
                   value={councilTerm}
                   onChange={(event) => setCouncilTerm(event.target.value)}
-                  className="rounded-card border border-border bg-background px-3 py-2"
+                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="TERM_1">1er trimestre</option>
                   <option value="TERM_2">2eme trimestre</option>
@@ -1064,7 +1060,7 @@ export default function TeacherClassNotesPage() {
                   type="datetime-local"
                   value={councilHeldAt}
                   onChange={(event) => setCouncilHeldAt(event.target.value)}
-                  className="rounded-card border border-border bg-background px-3 py-2"
+                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 />
               </label>
               <label className="grid gap-1 text-sm">
@@ -1076,7 +1072,7 @@ export default function TeacherClassNotesPage() {
                       event.target.value as "DRAFT" | "PUBLISHED",
                     )
                   }
-                  className="rounded-card border border-border bg-background px-3 py-2"
+                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="DRAFT">Brouillon</option>
                   <option value="PUBLISHED">Publie</option>
@@ -1086,10 +1082,7 @@ export default function TeacherClassNotesPage() {
 
             <div className="grid gap-4">
               {context.students.map((student) => (
-                <div
-                  key={student.id}
-                  className="rounded-card border border-border bg-background p-4"
-                >
+                <div key={student.id} className="content-panel p-4">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="font-heading text-lg font-semibold text-text-primary">
@@ -1126,7 +1119,7 @@ export default function TeacherClassNotesPage() {
                             },
                           }))
                         }
-                        className="min-h-[90px] rounded-card border border-border bg-surface px-3 py-2"
+                        className="min-h-[90px] rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                         placeholder="Synthese generale du trimestre..."
                       />
                     </label>
@@ -1155,7 +1148,7 @@ export default function TeacherClassNotesPage() {
                                 },
                               }))
                             }
-                            className="min-h-[88px] rounded-card border border-border bg-surface px-3 py-2"
+                            className="min-h-[88px] rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                             placeholder={`Appreciation ${subject.name.toLowerCase()}...`}
                           />
                         </label>
@@ -1173,7 +1166,7 @@ export default function TeacherClassNotesPage() {
               type="button"
               onClick={() => void handleSaveCouncilReports()}
               disabled={savingCouncil}
-              className="w-fit rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+              className="w-fit rounded-[14px] bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] disabled:opacity-70"
             >
               {savingCouncil
                 ? "Enregistrement..."

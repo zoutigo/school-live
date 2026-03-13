@@ -192,16 +192,12 @@ export function ChildModulePage({
         }
       >
         {hidePrimaryTabs ? null : (
-          <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
+          <div className="section-tabs mb-4">
             {TAB_ITEMS.map((item) => (
               <Link
                 key={item.key}
                 href={`/schools/${schoolSlug}/children/${childId}/${item.key}`}
-                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                  currentTab === item.key
-                    ? "border border-border border-b-surface bg-surface text-primary"
-                    : "text-text-secondary"
-                }`}
+                className={`section-tab ${currentTab === item.key ? "section-tab-active" : ""}`}
               >
                 {item.label}
               </Link>
@@ -210,26 +206,18 @@ export function ChildModulePage({
         )}
 
         {hideSecondaryTabs ? null : (
-          <div className="mb-4 flex items-end gap-2 border-b border-border">
+          <div className="section-tabs mb-4">
             <button
               type="button"
               onClick={() => setTab("content")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "content"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "content" ? "section-tab-active" : ""}`}
             >
               Vue
             </button>
             <button
               type="button"
               onClick={() => setTab("help")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "help"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "help" ? "section-tab-active" : ""}`}
             >
               Aide
             </button>
@@ -262,7 +250,7 @@ export function ChildModulePage({
           ((typeof content === "function"
             ? content({ child: currentChild, loading })
             : content) ?? (
-            <div className="rounded-card border border-border bg-background p-4 text-sm">
+            <div className="content-panel p-4 text-sm">
               <p className="font-medium text-text-primary">{summary}</p>
               <ul className="mt-2 grid gap-1 text-text-secondary">
                 {bullets.map((item) => (

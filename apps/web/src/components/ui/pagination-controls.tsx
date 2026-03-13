@@ -25,7 +25,7 @@ export function PaginationControls({
   const safePage = Math.min(Math.max(1, page), safeTotalPages);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-warm-border bg-warm-surface px-4 py-3 text-sm text-text-secondary">
       <p>
         {typeof totalItems === "number" ? `${totalItems} resultat(s) - ` : ""}
         page {safePage}/{safeTotalPages}
@@ -41,7 +41,7 @@ export function PaginationControls({
               onChange={(event) =>
                 onPageSizeChange(Number.parseInt(event.target.value, 10))
               }
-              className="h-9 rounded-card border border-border bg-surface px-2 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="h-9 rounded-[12px] border border-warm-border bg-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             >
               {pageSizeOptions.map((size) => (
                 <option key={size} value={size}>

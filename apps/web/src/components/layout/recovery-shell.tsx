@@ -22,7 +22,7 @@ export function RecoveryShell({
         data-testid="recovery-header"
       >
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-card bg-primary font-heading text-sm font-bold text-surface">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-bold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]">
             SL
           </span>
           <div>
@@ -42,7 +42,7 @@ export function RecoveryShell({
 
       <div className="flex min-h-0 flex-1">
         <aside
-          className="hidden w-14 shrink-0 border-r border-border bg-primary md:block"
+          className="hidden w-14 shrink-0 border-r border-border bg-gradient-to-b from-sidebar-bg via-primary to-[#083a64] md:block"
           data-testid="recovery-sidebar"
           aria-hidden
         />

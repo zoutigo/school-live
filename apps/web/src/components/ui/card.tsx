@@ -17,7 +17,7 @@ export function Card({
 }: Props) {
   return (
     <article
-      className={`rounded-card border border-border bg-surface p-5 shadow-card ${className}`}
+      className={`rounded-[20px] border border-border bg-surface p-5 shadow-card ${className}`}
       {...props}
     >
       {title || actions ? (

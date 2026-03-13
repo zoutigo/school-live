@@ -7,8 +7,9 @@ type Props = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const variants: Record<BadgeVariant, string> = {
-  notification: "bg-notification text-surface",
-  neutral: "bg-background text-text-secondary border border-border",
+  notification:
+    "border border-[#f3b3b8] bg-[#fff1f2] text-[#b42318] shadow-[0_4px_12px_rgba(180,35,24,0.12)]",
+  neutral: "border border-warm-border bg-warm-surface text-text-secondary",
 };
 
 export function Badge({
