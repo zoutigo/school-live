@@ -219,21 +219,25 @@ function ViewTabs({
   const items: Array<{
     key: StudentNotesView;
     label: string;
+    mobileLabel: string;
     description: string;
   }> = [
     {
       key: "evaluations",
       label: "Evaluations",
+      mobileLabel: "Eval",
       description: "Lecture detaillee des notes publiees par matiere",
     },
     {
       key: "averages",
       label: "Moyennes",
+      mobileLabel: "Moy",
       description: "Comparaison eleve, classe, min et max",
     },
     {
       key: "charts",
       label: "Graphiques",
+      mobileLabel: "Graph",
       description: "Vue visuelle des performances et amplitudes",
     },
   ];
@@ -249,7 +253,7 @@ function ViewTabs({
           data-testid={`notes-view-tab-${item.key}`}
           type="button"
           onClick={() => setView(item.key)}
-          className={`group min-w-0 rounded-[18px] border px-3 py-3 text-left transition md:flex-1 md:p-4 ${
+          className={`group min-w-0 rounded-[8px] border px-2.5 py-2.5 text-left transition md:flex-1 md:rounded-[12px] md:p-4 ${
             view === item.key
               ? "border-primary bg-[linear-gradient(135deg,rgba(10,98,191,0.14),rgba(255,255,255,0.98))] shadow-[0_12px_24px_rgba(10,98,191,0.10)]"
               : "border-border bg-surface hover:border-primary/30 hover:shadow-card"
@@ -261,7 +265,11 @@ function ViewTabs({
                 view === item.key ? "text-primary" : "text-text-primary"
               }`}
             >
-              {item.label}
+              <span className="min-[360px]:hidden">{item.mobileLabel}</span>
+              <span className="hidden min-[360px]:inline md:hidden">
+                {item.mobileLabel}
+              </span>
+              <span className="hidden md:inline">{item.label}</span>
             </span>
             <span
               className={`h-2.5 w-2.5 rounded-full ${
@@ -1233,20 +1241,62 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
       ]}
       hidePrimaryTabs
       hideSecondaryTabs
-      content={() => (
+      hideModuleHeader
+      content={({ child }) => (
         <div className="grid gap-5">
+          <div className="grid gap-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="font-heading text-xl font-semibold text-text-primary">
+                  Notes
+                </h1>
+                <p className="mt-1 hidden text-sm text-text-secondary min-[360px]:block">
+                  Evaluations et moyennes de l'eleve -{" "}
+                  {child ? `${child.lastName} ${child.firstName}` : ""}
+                </p>
+              </div>
+
+              <div className="shrink-0 min-[360px]:hidden">
+                <label className="block">
+                  <span className="sr-only">Choisir le trimestre</span>
+                  <select
+                    data-testid="notes-term-select-mobile"
+                    aria-label="Choisir le trimestre"
+                    value={selectedTerm}
+                    onChange={(event) =>
+                      setSelectedTerm(event.target.value as StudentNotesTerm)
+                    }
+                    className="min-w-[132px] rounded-[8px] border border-border bg-surface px-3 py-2 text-xs font-semibold text-text-primary outline-none transition focus:border-primary"
+                  >
+                    {snapshots.map((term) => (
+                      <option key={term.term} value={term.term}>
+                        {term.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <p className="w-full text-sm text-text-secondary min-[360px]:hidden">
+              {child
+                ? `Evals et Moyennes ${child.firstName} ${child.lastName}`
+                : "Evals et Moyennes"}
+            </p>
+          </div>
+
           {warning ? (
             <div className="rounded-[18px] border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-text-secondary">
               {warning}
             </div>
           ) : null}
-          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+          <div className="hidden min-[360px]:flex min-[360px]:flex-wrap min-[360px]:gap-2">
             {snapshots.map((term) => (
               <button
                 key={term.term}
                 type="button"
                 onClick={() => setSelectedTerm(term.term)}
-                className={`shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold transition ${
+                className={`shrink-0 rounded-[10px] border px-4 py-2.5 text-sm font-semibold transition ${
                   selectedTerm === term.term
                     ? "border-primary bg-[linear-gradient(90deg,#0A62BF,#1182D8)] text-white shadow-[0_12px_24px_rgba(10,98,191,0.22)]"
                     : "border-border bg-surface text-text-secondary hover:border-primary/30 hover:text-primary"

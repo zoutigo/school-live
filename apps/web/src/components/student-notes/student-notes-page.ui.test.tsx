@@ -15,18 +15,30 @@ vi.mock("../family/child-module-page", () => ({
     title,
     subtitle,
     content,
+    hideModuleHeader,
   }: {
     title: string;
     subtitle: string;
     content:
       | ReactNode
-      | ((ctx: { child: null; loading: boolean }) => ReactNode);
+      | ((ctx: {
+          child: {
+            id: string;
+            firstName: string;
+            lastName: string;
+          } | null;
+          loading: boolean;
+        }) => ReactNode);
+    hideModuleHeader?: boolean;
   }) => (
     <div>
-      <h1>{title}</h1>
-      <p>{subtitle}</p>
+      {hideModuleHeader ? null : <h1>{title}</h1>}
+      {hideModuleHeader ? null : <p>{subtitle}</p>}
       {typeof content === "function"
-        ? content({ child: null, loading: false })
+        ? content({
+            child: { id: "child-1", firstName: "Lisa", lastName: "MBELE" },
+            loading: false,
+          })
         : content}
     </div>
   ),
@@ -299,6 +311,97 @@ describe("StudentNotesPage UI", () => {
     expect(tabsSummary.className).toContain("md:block");
   });
 
+  it("uses a mobile trimester select and short tab labels on very small screens", async () => {
+    render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
+
+    const select = await screen.findByTestId("notes-term-select-mobile");
+    expect(select).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Evals et Moyennes Lisa MBELE"),
+    ).toBeInTheDocument();
+
+    const evaluationTab = screen.getByTestId("notes-view-tab-evaluations");
+    const averagesTab = screen.getByTestId("notes-view-tab-averages");
+    const chartsTab = screen.getByTestId("notes-view-tab-charts");
+
+    expect(within(evaluationTab).getAllByText("Eval").length).toBeGreaterThan(
+      0,
+    );
+    expect(within(averagesTab).getAllByText("Moy").length).toBeGreaterThan(0);
+    expect(within(chartsTab).getAllByText("Graph").length).toBeGreaterThan(0);
+
+    expect(evaluationTab.className).toContain("rounded-[8px]");
+  });
+
+  it("updates smartphone content when the trimester select changes", async () => {
+    render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
+
+    const select = (await screen.findByTestId(
+      "notes-term-select-mobile",
+    )) as HTMLSelectElement;
+
+    fireEvent.change(select, { target: { value: "TERM_2" } });
+
+    await waitFor(() => {
+      expect(select.value).toBe("TERM_2");
+    });
+
+    expect(screen.getAllByText("2eme Trimestre").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Chimie").length).toBeGreaterThan(0);
+    expect(screen.queryAllByText("Anglais").length).toBe(0);
+    expect(screen.getAllByText("15,50").length).toBeGreaterThan(0);
+  });
+
+  it("switches to the empty smartphone trimester through the mobile select", async () => {
+    render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
+
+    const select = (await screen.findByTestId(
+      "notes-term-select-mobile",
+    )) as HTMLSelectElement;
+
+    fireEvent.change(select, { target: { value: "TERM_3" } });
+
+    await waitFor(() => {
+      expect(select.value).toBe("TERM_3");
+    });
+
+    expect(screen.getAllByText("3eme Trimestre").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Les evaluations de cette periode seront visibles/i),
+    ).toBeInTheDocument();
+  });
+
+  it("switches smartphone sub-tabs with their short labels", async () => {
+    render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
+
+    const averagesTab = await screen.findByTestId("notes-view-tab-averages");
+    fireEvent.click(averagesTab);
+
+    expect(
+      screen.getByText("Bonne participation et expression ecrite soignee."),
+    ).toBeInTheDocument();
+
+    const chartsTab = screen.getByTestId("notes-view-tab-charts");
+    fireEvent.click(chartsTab);
+
+    expect(screen.getByText("Comparaison par matiere")).toBeInTheDocument();
+    expect(screen.getByText("Radar des moyennes")).toBeInTheDocument();
+  });
+
+  it("keeps the smartphone subtitle full-width below the header row", async () => {
+    render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
+
+    const title = screen.getByRole("heading", { name: "Notes" });
+    const subtitle = screen.getByText("Evals et Moyennes Lisa MBELE");
+
+    expect(subtitle.className).toContain("w-full");
+    expect(
+      title.compareDocumentPosition(subtitle) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("uses a regular mobile grid for evaluation notes", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
@@ -327,9 +430,7 @@ describe("StudentNotesPage UI", () => {
     const tabs = await screen.findByTestId("notes-view-tabs");
     const evaluationTab = screen.getByTestId("notes-view-tab-evaluations");
     const notesGrid = screen.getByTestId("evaluations-notes-grid-anglais");
-    const evaluationTabLabel = within(evaluationTab).getByText("Evaluations");
-
-    expect(evaluationTabLabel.className).toContain("min-[360px]:text-sm");
+    expect(evaluationTab.className).toContain("rounded-[8px]");
     expect(notesGrid.className).toContain("min-[360px]:text-[13px]");
     expect(tabs.className).toContain("grid-cols-3");
   });
