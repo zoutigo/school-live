@@ -218,7 +218,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
           </div>
         ) : null}
 
-        <main className="min-w-0 flex-1 overflow-y-auto bg-background p-6">
+        <main className="site-main-gutter site-scroll-frame min-w-0 flex-1 overflow-y-auto bg-background">
           {children}
         </main>
       </div>

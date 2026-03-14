@@ -13,7 +13,7 @@ export default async function SchoolPortalPage({
   const branding = await getSchoolBranding(schoolSlug);
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="site-main-gutter min-h-screen bg-background">
       <div className="mx-auto grid w-full max-w-4xl gap-6">
         <Card title={branding.name} subtitle="Portail etablissement Scolive">
           <p className="text-text-secondary">

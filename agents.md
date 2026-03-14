@@ -135,6 +135,11 @@ Implement ownership checks in services (not controllers):
 - The layout at `apps/web/app/schools/[schoolSlug]/layout.tsx` should:
   - load school branding (name/logo/colors) by slug
   - provide a SchoolContext to children
+- Mobile-first spacing must explicitly support `320px` width:
+  - the site-wide horizontal gutter rule is `8px` at `320px`,
+  - `12px` from `360px`,
+  - `24px` from `768px`,
+  - agents should reuse shared gutter utilities/classes instead of hardcoding large `p-6` / `px-6` mobile spacing on key page shells.
 
 ### Frontend role gating
 

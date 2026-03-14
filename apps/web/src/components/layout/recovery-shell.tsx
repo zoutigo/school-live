@@ -47,7 +47,7 @@ export function RecoveryShell({
           aria-hidden
         />
         <main
-          className={`flex min-w-0 flex-1 p-4 sm:p-6 ${
+          className={`site-main-gutter site-scroll-frame flex min-w-0 flex-1 ${
             centerContent
               ? "items-center justify-center"
               : "items-start justify-center"

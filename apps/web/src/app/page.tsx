@@ -26,7 +26,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-text-primary">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex w-full max-w-6xl items-center px-6 py-4">
+        <div className="site-inline-gutter mx-auto flex w-full max-w-6xl items-center py-4">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-card bg-primary font-heading font-bold text-surface">
               SL
@@ -37,7 +37,7 @@ export default function LandingPage() {
       </header>
 
       <main>
-        <section className="mx-auto w-full max-w-6xl px-6 pb-6 pt-12">
+        <section className="site-inline-gutter mx-auto w-full max-w-6xl pb-6 pt-12">
           <h1 className="font-heading text-3xl font-bold leading-tight text-text-primary md:text-4xl">
             Acces Scolive
           </h1>
@@ -46,11 +46,11 @@ export default function LandingPage() {
           </p>
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-6 pb-16">
+        <section className="site-inline-gutter mx-auto w-full max-w-6xl pb-16">
           <LandingLoginForm />
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-6 pb-16">
+        <section className="site-inline-gutter mx-auto w-full max-w-6xl pb-16">
           <Card
             title="Application mobile Scolive"
             subtitle="Disponible sur iOS et Android"
@@ -66,7 +66,7 @@ export default function LandingPage() {
           </Card>
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-6 pb-16">
+        <section className="site-inline-gutter mx-auto w-full max-w-6xl pb-16">
           <Card
             title="Une plateforme pensee pour les ecoles"
             subtitle="Un environnement scolaire moderne et connecte"
@@ -83,7 +83,7 @@ export default function LandingPage() {
           </Card>
         </section>
 
-        <section className="mx-auto grid w-full max-w-6xl gap-4 px-6 pb-16 md:grid-cols-2">
+        <section className="site-inline-gutter mx-auto grid w-full max-w-6xl gap-4 pb-16 md:grid-cols-2">
           {features.map((feature) => (
             <Card
               key={feature.title}
@@ -99,7 +99,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-border bg-surface">
-        <div className="mx-auto w-full max-w-6xl px-6 py-6 text-sm text-text-secondary">
+        <div className="site-inline-gutter mx-auto w-full max-w-6xl py-6 text-sm text-text-secondary">
           © {new Date().getFullYear()} Scolive
         </div>
       </footer>

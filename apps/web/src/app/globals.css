@@ -4,6 +4,19 @@
 
 :root {
   color-scheme: light;
+  --site-gutter: 8px;
+}
+
+@media (min-width: 360px) {
+  :root {
+    --site-gutter: 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --site-gutter: 24px;
+  }
 }
 
 body {
@@ -21,6 +34,18 @@ body {
     ),
     linear-gradient(180deg, #fcfaf7 0%, #f7f1e8 100%);
   background-attachment: fixed;
+}
+
+.site-inline-gutter {
+  padding-inline: var(--site-gutter);
+}
+
+.site-main-gutter {
+  padding: var(--site-gutter);
+}
+
+.site-scroll-frame {
+  scrollbar-gutter: stable both-edges;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
