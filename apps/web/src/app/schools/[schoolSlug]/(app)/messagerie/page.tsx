@@ -387,6 +387,12 @@ export default function SchoolMessageriePage() {
               contextLabel={schoolName ?? "Echanges internes et familles"}
               search={search}
               onSearchChange={setSearch}
+              onCompose={
+                canCompose
+                  ? () =>
+                      router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
+                  : undefined
+              }
             />
 
             <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[240px_320px_minmax(0,1fr)]">

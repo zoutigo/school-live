@@ -34,13 +34,13 @@ export function MessagingMessagesList({
       : messages;
 
   return (
-    <section className="flex h-full min-h-0 flex-col rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.9)_100%)] shadow-[0_14px_30px_rgba(77,56,32,0.07)]">
-      <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+    <section className="flex h-full min-h-0 min-w-0 flex-col rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.9)_100%)] shadow-[0_14px_30px_rgba(77,56,32,0.07)]">
+      <header className="grid gap-2 border-b border-border px-3 py-3 min-[360px]:px-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
           {panelLabel}
         </p>
         {folder === "inbox" && onUnreadOnlyChange ? (
-          <label className="inline-flex items-center gap-2 text-xs font-medium text-text-secondary">
+          <label className="inline-flex items-center gap-2 text-xs font-medium text-text-secondary sm:justify-self-end">
             <input
               type="checkbox"
               checked={unreadOnly}
@@ -63,7 +63,7 @@ export function MessagingMessagesList({
               return (
                 <li key={message.id}>
                   <div
-                    className={`flex items-start gap-2 px-4 py-3 transition ${
+                    className={`flex items-start gap-2 px-3 py-3 transition min-[360px]:px-4 ${
                       selected
                         ? "bg-[linear-gradient(180deg,rgba(12,95,168,0.08)_0%,rgba(255,248,240,0.92)_100%)]"
                         : "hover:bg-warm-highlight/45"

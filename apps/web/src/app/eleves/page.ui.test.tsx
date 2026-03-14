@@ -125,6 +125,9 @@ describe("Eleves page parent link modes", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Affectations" }),
     );
+    fireEvent.change(screen.getByLabelText("Eleve"), {
+      target: { value: "student-1" },
+    });
 
     fireEvent.change(await screen.findByDisplayValue("Telephone + PIN"), {
       target: { value: "email" },
@@ -162,6 +165,9 @@ describe("Eleves page parent link modes", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Affectations" }),
     );
+    fireEvent.change(screen.getByLabelText("Eleve"), {
+      target: { value: "student-1" },
+    });
 
     fireEvent.input(screen.getByPlaceholderText("6XXXXXXXX"), {
       target: { value: "699001122" },
@@ -196,6 +202,9 @@ describe("Eleves page parent link modes", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Affectations" }),
     );
+    fireEvent.change(screen.getByLabelText("Eleve"), {
+      target: { value: "student-1" },
+    });
 
     expect(await screen.findByDisplayValue("Telephone + PIN")).toBeDefined();
     expect(screen.getByPlaceholderText("6XXXXXXXX")).toBeDefined();

@@ -17,7 +17,7 @@ export function MessagingReader({
 }: Props) {
   return (
     <section
-      className={`${desktopOnly ? "hidden lg:flex " : "flex "}h-full min-h-0 flex-col rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.9)_100%)] p-0 shadow-[0_14px_30px_rgba(77,56,32,0.07)]`}
+      className={`${desktopOnly ? "hidden lg:flex " : "flex "}h-full min-h-0 min-w-0 flex-col rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.9)_100%)] p-0 shadow-[0_14px_30px_rgba(77,56,32,0.07)]`}
     >
       {!message ? (
         <div className="m-4 flex h-full min-h-[380px] items-center justify-center rounded-[18px] border border-dashed border-warm-border bg-warm-surface">

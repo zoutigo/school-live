@@ -908,32 +908,35 @@ export function FamilyFeedPage({
 
   return (
     <div className="grid gap-4">
-      <section className="relative overflow-hidden rounded-card border border-primary/20 bg-gradient-to-br from-primary/10 via-surface to-surface p-4">
+      <section
+        data-testid="family-feed-header"
+        className="relative min-w-0 overflow-hidden rounded-card border border-primary/20 bg-gradient-to-br from-primary/10 via-surface to-surface p-3 min-[360px]:p-4"
+      >
         <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/15 blur-2xl" />
         <div className="absolute -bottom-8 -left-8 h-28 w-28 rounded-full bg-success/20 blur-2xl" />
         <div className="relative grid gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+            <div className="min-w-0">
               {hideSectionLabel ? null : (
                 <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
                   <Sparkles className="h-3.5 w-3.5" />
                   Fil d'actualite famille
                 </p>
               )}
-              <h2 className="font-heading text-xl font-semibold text-text-primary">
+              <h2 className="mt-1 text-balance font-heading text-lg font-semibold leading-tight text-text-primary min-[360px]:text-xl">
                 {headingTitle ??
                   `Bonjour, suivez ${scopeLabel} de ${childFullName}`}
               </h2>
             </div>
             {allowComposer ? (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid gap-2 min-[360px]:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
                 <Button
                   variant={
                     openComposerMode === "POST" ? "secondary" : "primary"
                   }
                   iconLeft={<FileText className="h-4 w-4" />}
                   onClick={() => toggleComposer("POST")}
-                  className="h-9 px-3"
+                  className="h-10 w-full justify-center px-3 text-sm lg:w-auto"
                 >
                   Publier une info
                 </Button>
@@ -943,7 +946,7 @@ export function FamilyFeedPage({
                   }
                   iconLeft={<Vote className="h-4 w-4" />}
                   onClick={() => toggleComposer("POLL")}
-                  className="h-9 px-3"
+                  className="h-10 w-full justify-center px-3 text-sm lg:w-auto"
                 >
                   Realiser un sondage
                 </Button>
@@ -960,14 +963,17 @@ export function FamilyFeedPage({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div
+            data-testid="family-feed-toolbar"
+            className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+          >
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Rechercher dans le fil..."
-              className="h-10 min-w-0 flex-1 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="h-10 min-w-0 w-full rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="-mx-1 flex min-w-0 items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
               <FilterButton
                 label="Tous"
                 active={filter === "all"}
@@ -1966,7 +1972,7 @@ function FilterButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={`rounded-card border text-sm font-semibold transition ${
+      className={`shrink-0 rounded-card border text-sm font-semibold transition ${
         iconOnly ? "h-10 w-10 px-0" : "h-10 px-3"
       } ${
         active

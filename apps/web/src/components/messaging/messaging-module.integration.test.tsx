@@ -1,5 +1,11 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import {
   Archive,
   ArchiveRestore,
@@ -13,6 +19,10 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { describe, expect, it } from "vitest";
+import {
+  assertNoHorizontalOverflowAt320,
+  setViewportWidth,
+} from "../../test/responsive";
 import { ActionIconButton } from "../ui/action-icon-button";
 import { buildComposeQueryFromMessage } from "./messaging-compose-logic";
 import { MessagingComposer } from "./messaging-composer";
@@ -43,9 +53,11 @@ function setEditorText(container: HTMLElement, value: string) {
 }
 
 function getComposerRecipientSelect(container: HTMLElement) {
-  const select = container.querySelector(
-    'select[class*="h-10"][class*="bg-surface"]',
-  ) as HTMLSelectElement | null;
+  const subjectInput = screen.queryByPlaceholderText("Objet du message");
+  const scopeRoot =
+    subjectInput?.closest(".filter-panel") ??
+    container.querySelector(".filter-panel");
+  const select = scopeRoot?.querySelector("select") as HTMLSelectElement | null;
   if (!select) {
     throw new Error("Recipient select not found");
   }
@@ -222,12 +234,19 @@ function MessagingModuleHarness() {
   }
 
   return (
-    <div>
+    <div data-testid="messaging-module-root" className="min-w-0">
       <MessagingToolbar
         title="Messagerie"
         contextLabel="Lisa MBELE"
         search={search}
         onSearchChange={setSearch}
+        onCompose={() =>
+          openComposerWithPreset({
+            subject: "",
+            body: "",
+            recipientUserIds: [],
+          })
+        }
       />
 
       {composerPreset ? (
@@ -244,7 +263,7 @@ function MessagingModuleHarness() {
           onSend={sendMessage}
         />
       ) : (
-        <div className="grid gap-3 lg:grid-cols-[220px_320px_1fr]">
+        <div className="grid min-w-0 gap-3 lg:grid-cols-[220px_320px_1fr]">
           <MessagingFoldersPanel
             folders={FOLDERS}
             activeFolder={folder}
@@ -383,13 +402,16 @@ function MessagingModuleHarness() {
 describe("Messaging module integration", () => {
   it("renders toolbar and 3-column structure with expected elements", () => {
     render(<MessagingModuleHarness />);
+    const toolbar = screen.getByTestId("messaging-toolbar");
 
     expect(screen.getByText("Messagerie")).toBeInTheDocument();
     expect(screen.getByText("Lisa MBELE")).toBeInTheDocument();
     expect(
       screen.getByPlaceholderText("Rechercher un message..."),
     ).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Annee en cours")).toBeInTheDocument();
+    expect(
+      within(toolbar).getAllByDisplayValue("Annee en cours").length,
+    ).toBeGreaterThan(0);
 
     expect(screen.getByText("Dossiers")).toBeInTheDocument();
     expect(screen.getAllByText("Boite de reception").length).toBeGreaterThan(0);
@@ -400,8 +422,11 @@ describe("Messaging module integration", () => {
 
   it("creates a new message and makes it appear in sent folder", async () => {
     const { container } = render(<MessagingModuleHarness />);
+    const toolbar = screen.getByTestId("messaging-toolbar");
 
-    fireEvent.click(screen.getByRole("button", { name: "Nouveau message" }));
+    fireEvent.click(
+      within(toolbar).getByRole("button", { name: "Nouveau message" }),
+    );
     fireEvent.change(getComposerRecipientSelect(container), {
       target: { value: "u-anne" },
     });
@@ -526,5 +551,23 @@ describe("Messaging module integration", () => {
     expect(
       screen.queryByText("Demande de suivi particulier"),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the assembled messaging module constrained at 320px", () => {
+    setViewportWidth(320);
+
+    render(<MessagingModuleHarness />);
+    const toolbar = screen.getByTestId("messaging-toolbar");
+
+    expect(screen.getByTestId("messaging-module-root")).toBeInTheDocument();
+    expect(
+      within(toolbar).getByRole("button", { name: "Nouveau message" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Rechercher un message..."),
+    ).toBeInTheDocument();
+    assertNoHorizontalOverflowAt320(
+      screen.getByTestId("messaging-module-root"),
+    );
   });
 });
