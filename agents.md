@@ -140,6 +140,12 @@ Implement ownership checks in services (not controllers):
   - `12px` from `360px`,
   - `24px` from `768px`,
   - agents should reuse shared gutter utilities/classes instead of hardcoding large `p-6` / `px-6` mobile spacing on key page shells.
+- Web forms standard:
+  - use `react-hook-form` with `zod` validation by default,
+  - validation mode must be `onChange`,
+  - inline field errors are required,
+  - primary submit actions stay disabled until the form is valid,
+  - reuse shared form helpers/components before introducing local form wrappers.
 
 ### Frontend role gating
 

@@ -1,8 +1,10 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MoreVertical } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
@@ -10,6 +12,7 @@ import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
+import { FormField } from "../../components/ui/form-field";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PaginationControls } from "../../components/ui/pagination-controls";
@@ -214,7 +217,15 @@ const createUserSchema = z
         "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
       ),
     schoolSlug: z.string().optional(),
-    avatarUrl: z.string().trim().url().optional(),
+    avatarUrl: z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          value.length === 0 || z.string().url().safeParse(value).success,
+        "L'URL de l'avatar est invalide.",
+      )
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (value.platformRoles.length === 0 && value.schoolRoles.length === 0) {
@@ -270,20 +281,6 @@ export default function UsersPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [createPlatformRoles, setCreatePlatformRoles] = useState<
-    PlatformCreatableRole[]
-  >([]);
-  const [createSchoolRoles, setCreateSchoolRoles] = useState<
-    SchoolCreatableRole[]
-  >([]);
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [schoolSlug, setSchoolSlug] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"ALL" | Role>("ALL");
   const [schoolFilter, setSchoolFilter] = useState<string>("ALL");
@@ -335,6 +332,48 @@ export default function UsersPage() {
     total: 0,
     totalPages: 1,
   });
+  const createUserForm = useForm<
+    z.input<typeof createUserSchema>,
+    unknown,
+    z.output<typeof createUserSchema>
+  >({
+    resolver: zodResolver(createUserSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      platformRoles: [],
+      schoolRoles: [],
+      temporaryPassword: "",
+      schoolSlug: "",
+      avatarUrl: "",
+    },
+  });
+  const createValues = createUserForm.watch();
+  const createValidation = useMemo(
+    () =>
+      createUserSchema.safeParse({
+        firstName: createValues.firstName ?? "",
+        lastName: createValues.lastName ?? "",
+        email: createValues.email ?? "",
+        phone: createValues.phone?.trim()
+          ? createValues.phone.trim()
+          : undefined,
+        platformRoles: createValues.platformRoles ?? [],
+        schoolRoles: createValues.schoolRoles ?? [],
+        temporaryPassword: createValues.temporaryPassword ?? "",
+        schoolSlug:
+          (createValues.schoolRoles ?? []).length > 0
+            ? createValues.schoolSlug || undefined
+            : undefined,
+        avatarUrl: createValues.avatarUrl?.trim()
+          ? createValues.avatarUrl.trim()
+          : undefined,
+      }),
+    [createValues],
+  );
 
   useEffect(() => {
     void bootstrap();
@@ -706,38 +745,15 @@ export default function UsersPage() {
     }
   }
 
-  async function onCreateUser(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateUser(values: z.output<typeof createUserSchema>) {
     setSubmitError(null);
     setSubmitSuccess(null);
 
-    if (createSchoolRoles.length > 0 && !schoolSlug) {
-      setSubmitError("L'ecole est obligatoire pour ce role.");
-      return;
-    }
-
     if (
-      createPlatformRoles.includes("ADMIN") &&
+      values.platformRoles.includes("ADMIN") &&
       currentRole !== "SUPER_ADMIN"
     ) {
       setSubmitError("Seul SUPER_ADMIN peut creer un ADMIN.");
-      return;
-    }
-
-    const parsed = createUserSchema.safeParse({
-      firstName,
-      lastName,
-      email,
-      phone: phone.trim() ? phone.trim() : undefined,
-      platformRoles: createPlatformRoles,
-      schoolRoles: createSchoolRoles,
-      temporaryPassword,
-      schoolSlug: createSchoolRoles.length > 0 ? schoolSlug : undefined,
-      avatarUrl: avatarUrl ?? undefined,
-    });
-
-    if (!parsed.success) {
-      setSubmitError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
       return;
     }
 
@@ -757,7 +773,7 @@ export default function UsersPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(values),
       });
 
       if (!response.ok) {
@@ -773,15 +789,17 @@ export default function UsersPage() {
       }
 
       setSubmitSuccess("Utilisateur cree et email envoye.");
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-      setPhone("");
-      setTemporaryPassword("");
-      setCreatePlatformRoles([]);
-      setCreateSchoolRoles([]);
-      setSchoolSlug("");
-      setAvatarUrl(null);
+      createUserForm.reset({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        platformRoles: [],
+        schoolRoles: [],
+        temporaryPassword: "",
+        schoolSlug: "",
+        avatarUrl: "",
+      });
       await loadUsers(page);
       setTab("list");
     } catch {
@@ -1720,61 +1738,108 @@ export default function UsersPage() {
               ]}
             />
           ) : (
-            <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateUser}>
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Prenom</span>
+            <form
+              className="grid gap-3 md:grid-cols-2"
+              onSubmit={createUserForm.handleSubmit(onCreateUser)}
+            >
+              <FormField
+                label="Prenom"
+                error={createUserForm.formState.errors.firstName?.message}
+              >
                 <input
-                  required
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
+                  aria-label="Prenom"
+                  value={createValues.firstName ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue("firstName", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Nom</span>
+              <FormField
+                label="Nom"
+                error={createUserForm.formState.errors.lastName?.message}
+              >
                 <input
-                  required
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
+                  aria-label="Nom"
+                  value={createValues.lastName ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue("lastName", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Email</span>
+              <FormField
+                label="Email"
+                className="md:col-span-2"
+                error={createUserForm.formState.errors.email?.message}
+              >
                 <EmailInput
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  value={createValues.email ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue("email", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Telephone</span>
+              <FormField
+                label="Telephone"
+                className="md:col-span-2"
+                error={createUserForm.formState.errors.phone?.message}
+              >
                 <input
+                  aria-label="Telephone"
                   type="text"
-                  value={phone}
-                  onChange={(event) =>
-                    setPhone(normalizeCmPhoneInput(event.target.value))
-                  }
+                  value={createValues.phone ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue(
+                      "phone",
+                      normalizeCmPhoneInput(event.target.value),
+                      {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      },
+                    );
+                  }}
                   placeholder="6XXXXXXXX"
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
               <div className="md:col-span-2">
                 <ImageUploadField
                   kind="user-avatar"
                   label="Photo de profil (optionnel)"
                   helperText="Image JPG/PNG/WEBP, maximum 5MB. La photo est recadree et compressee automatiquement."
-                  value={avatarUrl}
-                  onChange={setAvatarUrl}
+                  value={createValues.avatarUrl || null}
+                  onChange={(value) => {
+                    createUserForm.setValue("avatarUrl", value ?? "", {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                 />
               </div>
 
-              <div className="grid gap-1 text-sm">
-                <span className="text-text-secondary">PlatformRoles</span>
+              <FormField
+                label="PlatformRoles"
+                error={createUserForm.formState.errors.platformRoles?.message}
+              >
                 <div className="grid gap-1 rounded-card border border-border bg-surface px-3 py-2">
                   {PLATFORM_ROLE_OPTIONS.map((roleOption) => (
                     <label
@@ -1783,16 +1848,29 @@ export default function UsersPage() {
                     >
                       <input
                         type="checkbox"
-                        checked={createPlatformRoles.includes(roleOption)}
+                        checked={(createValues.platformRoles ?? []).includes(
+                          roleOption,
+                        )}
                         disabled={
                           roleOption === "ADMIN" &&
                           currentRole !== "SUPER_ADMIN"
                         }
                         onChange={(event) => {
-                          setCreatePlatformRoles((current) =>
+                          const currentRoles = createValues.platformRoles ?? [];
+                          createUserForm.setValue(
+                            "platformRoles",
                             event.target.checked
-                              ? Array.from(new Set([...current, roleOption]))
-                              : current.filter((value) => value !== roleOption),
+                              ? Array.from(
+                                  new Set([...currentRoles, roleOption]),
+                                )
+                              : currentRoles.filter(
+                                  (value) => value !== roleOption,
+                                ),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
                           );
                         }}
                       />
@@ -1800,10 +1878,12 @@ export default function UsersPage() {
                     </label>
                   ))}
                 </div>
-              </div>
+              </FormField>
 
-              <div className="grid gap-1 text-sm">
-                <span className="text-text-secondary">SchoolRoles</span>
+              <FormField
+                label="SchoolRoles"
+                error={createUserForm.formState.errors.schoolRoles?.message}
+              >
                 <div className="grid gap-1 rounded-card border border-border bg-surface px-3 py-2">
                   {SCHOOL_ROLE_OPTIONS.map((roleOption) => (
                     <label
@@ -1812,44 +1892,80 @@ export default function UsersPage() {
                     >
                       <input
                         type="checkbox"
-                        checked={createSchoolRoles.includes(roleOption)}
+                        checked={(createValues.schoolRoles ?? []).includes(
+                          roleOption,
+                        )}
                         onChange={(event) => {
-                          setCreateSchoolRoles((current) =>
-                            event.target.checked
-                              ? Array.from(new Set([...current, roleOption]))
-                              : current.filter((value) => value !== roleOption),
-                          );
+                          const currentRoles = createValues.schoolRoles ?? [];
+                          const nextRoles = event.target.checked
+                            ? Array.from(new Set([...currentRoles, roleOption]))
+                            : currentRoles.filter(
+                                (value) => value !== roleOption,
+                              );
+                          createUserForm.setValue("schoolRoles", nextRoles, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                          if (nextRoles.length === 0) {
+                            createUserForm.setValue("schoolSlug", "", {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            });
+                          }
                         }}
                       />
                       <span>{roleOption}</span>
                     </label>
                   ))}
                 </div>
-              </div>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">
-                  Mot de passe provisoire
-                </span>
+              <FormField
+                label="Mot de passe provisoire"
+                error={
+                  createUserForm.formState.errors.temporaryPassword?.message
+                }
+              >
                 <input
+                  aria-label="Mot de passe provisoire"
                   type="text"
-                  required
-                  minLength={8}
-                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}"
-                  title="8 caracteres minimum avec au moins une majuscule, une minuscule et un chiffre."
-                  value={temporaryPassword}
-                  onChange={(event) => setTemporaryPassword(event.target.value)}
+                  value={createValues.temporaryPassword ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue(
+                      "temporaryPassword",
+                      event.target.value,
+                      {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      },
+                    );
+                  }}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
-              {createSchoolRoles.length > 0 ? (
-                <label className="grid gap-1 text-sm md:col-span-2">
-                  <span className="text-text-secondary">Ecole assignee</span>
+              {(createValues.schoolRoles ?? []).length > 0 ? (
+                <FormField
+                  label="Ecole assignee"
+                  className="md:col-span-2"
+                  error={createUserForm.formState.errors.schoolSlug?.message}
+                >
                   <select
-                    required
-                    value={schoolSlug}
-                    onChange={(event) => setSchoolSlug(event.target.value)}
+                    value={createValues.schoolSlug ?? ""}
+                    onChange={(event) => {
+                      createUserForm.setValue(
+                        "schoolSlug",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner une ecole</option>
@@ -1859,7 +1975,7 @@ export default function UsersPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
               ) : null}
 
               {submitError ? (
@@ -1874,7 +1990,9 @@ export default function UsersPage() {
               ) : null}
 
               <div className="md:col-span-2">
-                <SubmitButton disabled={submitting}>
+                <SubmitButton
+                  disabled={submitting || !createValidation.success}
+                >
                   {submitting ? "Creation..." : "Creer le compte"}
                 </SubmitButton>
               </div>

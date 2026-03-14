@@ -102,6 +102,9 @@ function setupFetchMock() {
     if (url.includes("/students/student-1/life-events") && method === "GET") {
       return jsonResponse([]);
     }
+    if (url.includes("/students/student-1/life-events") && method === "POST") {
+      return jsonResponse({ id: "event-1" }, 201);
+    }
     if (url.includes("/admin/parent-students") && method === "POST") {
       return jsonResponse({ id: "link-1" }, 201);
     }
@@ -165,11 +168,11 @@ describe("Eleves page parent link modes", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Affectations" }),
     );
-    fireEvent.change(screen.getByLabelText("Eleve"), {
+    fireEvent.change(await screen.findByLabelText("Eleve"), {
       target: { value: "student-1" },
     });
 
-    fireEvent.input(screen.getByPlaceholderText("6XXXXXXXX"), {
+    fireEvent.input(await screen.findByPlaceholderText("6XXXXXXXX"), {
       target: { value: "699001122" },
     });
     fireEvent.input(screen.getByPlaceholderText("123456"), {
@@ -209,5 +212,117 @@ describe("Eleves page parent link modes", () => {
     expect(await screen.findByDisplayValue("Telephone + PIN")).toBeDefined();
     expect(screen.getByPlaceholderText("6XXXXXXXX")).toBeDefined();
     expect(screen.getByPlaceholderText("123456")).toBeDefined();
+  });
+
+  it("keeps life event submit disabled until the form is valid and submits values", async () => {
+    const fetchMock = setupFetchMock();
+
+    render(<ElevesPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Affectations" }),
+    );
+    fireEvent.change(screen.getByLabelText("Eleve"), {
+      target: { value: "student-1" },
+    });
+
+    const submitButton = await screen.findByRole("button", {
+      name: "Signaler",
+    });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText("Motif de l'evenement"), {
+      target: { value: "Absence justifiee" },
+    });
+
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).includes("/students/student-1/life-events") &&
+          init?.method === "POST",
+      );
+      expect(postCall).toBeDefined();
+    });
+  });
+
+  it("keeps student creation submit disabled until the form is valid and submits values", async () => {
+    const fetchMock = setupFetchMock();
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (url.includes("/admin/school-years")) {
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      }
+      if (url.includes("/admin/classrooms")) {
+        return jsonResponse([
+          {
+            id: "class-1",
+            name: "6eC",
+            schoolYear: { id: "sy-1", label: "2025-2026" },
+          },
+        ]);
+      }
+      if (url.includes("/admin/students?")) {
+        return jsonResponse([]);
+      }
+      if (url.endsWith("/admin/students") && method === "POST") {
+        return jsonResponse({ id: "student-2" }, 201);
+      }
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+
+    render(<ElevesPage />);
+
+    const submitButton = await screen.findByRole("button", { name: "Ajouter" });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Prenom"), {
+      target: { value: "Paul" },
+    });
+    fireEvent.change(screen.getByLabelText("Nom"), {
+      target: { value: "Mbele" },
+    });
+
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/students") && init?.method === "POST",
+      );
+      expect(postCall).toBeDefined();
+    });
+
+    const postCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).endsWith("/admin/students") && init?.method === "POST",
+    );
+    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
+      '"firstName":"Paul"',
+    );
+    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
+      '"lastName":"Mbele"',
+    );
+    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
+      '"classId":"class-1"',
+    );
   });
 });

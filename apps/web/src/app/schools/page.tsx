@@ -1,14 +1,17 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MoreVertical } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import { FormField } from "../../components/ui/form-field";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
@@ -128,7 +131,15 @@ const createSchoolSchema = z.object({
     .string()
     .trim()
     .email("L'email du school admin est invalide."),
-  logoUrl: z.string().trim().url().optional(),
+  logoUrl: z
+    .union([z.string().trim().url(), z.literal(""), z.undefined()])
+    .optional()
+    .transform((value) => {
+      if (!value) {
+        return undefined;
+      }
+      return value;
+    }),
 });
 
 const updateSchoolSchema = z.object({
@@ -160,12 +171,6 @@ export default function SchoolsPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
-  const [name, setName] = useState("");
-  const [schoolAdminEmail, setSchoolAdminEmail] = useState("");
-  const [country, setCountry] = useState("");
-  const [region, setRegion] = useState("");
-  const [city, setCity] = useState("");
-  const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
   const [slugPreview, setSlugPreview] = useState<SlugPreviewState>({
     loading: false,
     baseSlug: null,
@@ -201,13 +206,26 @@ export default function SchoolsPage() {
   const [sendingInviteAdminId, setSendingInviteAdminId] = useState<
     string | null
   >(null);
+  const createSchoolForm = useForm<z.input<typeof createSchoolSchema>>({
+    resolver: zodResolver(createSchoolSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      country: "",
+      region: "",
+      city: "",
+      schoolAdminEmail: "",
+      logoUrl: "",
+    },
+  });
+  const createSchoolValues = createSchoolForm.watch();
 
   useEffect(() => {
     void bootstrap();
   }, []);
 
   useEffect(() => {
-    const value = name.trim();
+    const value = (createSchoolValues.name ?? "").trim();
     if (!value) {
       setSlugPreview({
         loading: false,
@@ -224,10 +242,10 @@ export default function SchoolsPage() {
     }, 350);
 
     return () => clearTimeout(timeout);
-  }, [name]);
+  }, [createSchoolValues.name]);
 
   useEffect(() => {
-    const email = schoolAdminEmail.trim();
+    const email = (createSchoolValues.schoolAdminEmail ?? "").trim();
     if (!email) {
       setEmailCheckState("idle");
       setEmailCheckName(null);
@@ -245,7 +263,7 @@ export default function SchoolsPage() {
     }, 350);
 
     return () => clearTimeout(timeout);
-  }, [schoolAdminEmail]);
+  }, [createSchoolValues.schoolAdminEmail]);
 
   async function bootstrap() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -395,24 +413,9 @@ export default function SchoolsPage() {
     }
   }
 
-  async function onCreateSchool(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateSchool(values: z.input<typeof createSchoolSchema>) {
     setSubmitError(null);
     setSubmitSuccess(null);
-
-    const parsed = createSchoolSchema.safeParse({
-      name,
-      country,
-      region,
-      city,
-      schoolAdminEmail,
-      logoUrl: schoolLogoUrl ?? undefined,
-    });
-
-    if (!parsed.success) {
-      setSubmitError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -430,7 +433,7 @@ export default function SchoolsPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(createSchoolSchema.parse(values)),
       });
 
       if (!response.ok) {
@@ -462,12 +465,14 @@ export default function SchoolsPage() {
         );
       }
 
-      setName("");
-      setSchoolAdminEmail("");
-      setCountry("");
-      setRegion("");
-      setCity("");
-      setSchoolLogoUrl(null);
+      createSchoolForm.reset({
+        name: "",
+        country: "",
+        region: "",
+        city: "",
+        schoolAdminEmail: "",
+        logoUrl: "",
+      });
       setSlugPreview({
         loading: false,
         baseSlug: null,
@@ -1061,91 +1066,143 @@ export default function SchoolsPage() {
           {tab === "create" ? (
             <form
               className="grid gap-3 md:grid-cols-2"
-              onSubmit={onCreateSchool}
+              onSubmit={createSchoolForm.handleSubmit(onCreateSchool)}
             >
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Nom de l ecole</span>
-                <input
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                />
-                <span className="text-xs text-text-secondary">
-                  {slugPreview.loading
+              <FormField
+                label="Nom de l ecole"
+                className="md:col-span-2"
+                error={createSchoolForm.formState.errors.name?.message}
+                hint={
+                  slugPreview.loading
                     ? "Generation/verifications du slug..."
-                    : null}
-                  {!slugPreview.loading && slugPreview.error
-                    ? slugPreview.error
-                    : null}
-                  {!slugPreview.loading &&
-                  !slugPreview.error &&
-                  slugPreview.suggestedSlug
-                    ? slugPreview.baseExists
-                      ? `Slug detecte deja pris (${slugPreview.baseSlug}). Le slug final sera ${slugPreview.suggestedSlug}.`
-                      : `Slug genere: ${slugPreview.suggestedSlug}.`
-                    : null}
-                </span>
-              </label>
-
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Pays (optionnel)</span>
+                    : !slugPreview.loading && slugPreview.error
+                      ? slugPreview.error
+                      : !slugPreview.loading && slugPreview.suggestedSlug
+                        ? slugPreview.baseExists
+                          ? `Slug detecte deja pris (${slugPreview.baseSlug}). Le slug final sera ${slugPreview.suggestedSlug}.`
+                          : `Slug genere: ${slugPreview.suggestedSlug}.`
+                        : null
+                }
+              >
                 <input
-                  value={country}
-                  onChange={(event) => setCountry(event.target.value)}
+                  aria-label="Nom de l ecole"
+                  value={createSchoolValues.name ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue("name", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Region (optionnel)</span>
+              <FormField
+                label="Pays (optionnel)"
+                error={createSchoolForm.formState.errors.country?.message}
+              >
                 <input
-                  value={region}
-                  onChange={(event) => setRegion(event.target.value)}
+                  aria-label="Pays"
+                  value={createSchoolValues.country ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue("country", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Ville (optionnel)</span>
+              <FormField
+                label="Region (optionnel)"
+                error={createSchoolForm.formState.errors.region?.message}
+              >
                 <input
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
+                  aria-label="Region"
+                  value={createSchoolValues.region ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue("region", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Email School Admin</span>
-                <EmailInput
-                  required
-                  value={schoolAdminEmail}
-                  onChange={(event) => setSchoolAdminEmail(event.target.value)}
+              <FormField
+                label="Ville (optionnel)"
+                className="md:col-span-2"
+                error={createSchoolForm.formState.errors.city?.message}
+              >
+                <input
+                  aria-label="Ville"
+                  value={createSchoolValues.city ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue("city", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-                <span className="text-xs text-text-secondary">
-                  {emailCheckState === "checking"
+              </FormField>
+
+              <FormField
+                label="Email School Admin"
+                className="md:col-span-2"
+                error={
+                  createSchoolForm.formState.errors.schoolAdminEmail?.message
+                }
+                hint={
+                  emailCheckState === "checking"
                     ? "Verification de l email..."
-                    : null}
-                  {emailCheckState === "invalid" ? "Email invalide." : null}
-                  {emailCheckState === "exists"
-                    ? `Compte existant detecte (${emailCheckName ?? "utilisateur"}). Il recevra le role SCHOOL_ADMIN pour cette ecole.`
-                    : null}
-                  {emailCheckState === "not_found"
-                    ? "Aucun compte existant: un nouveau school admin sera cree et recevra un mot de passe provisoire genere automatiquement."
-                    : null}
-                  {emailCheckState === "error"
-                    ? "Verification email indisponible."
-                    : null}
-                </span>
-              </label>
+                    : emailCheckState === "invalid"
+                      ? "Email invalide."
+                      : emailCheckState === "exists"
+                        ? `Compte existant detecte (${emailCheckName ?? "utilisateur"}). Il recevra le role SCHOOL_ADMIN pour cette ecole.`
+                        : emailCheckState === "not_found"
+                          ? "Aucun compte existant: un nouveau school admin sera cree et recevra un mot de passe provisoire genere automatiquement."
+                          : emailCheckState === "error"
+                            ? "Verification email indisponible."
+                            : null
+                }
+              >
+                <EmailInput
+                  aria-label="Email School Admin"
+                  value={createSchoolValues.schoolAdminEmail ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue(
+                      "schoolAdminEmail",
+                      event.target.value,
+                      {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      },
+                    );
+                  }}
+                />
+              </FormField>
 
               <div className="md:col-span-2">
                 <ImageUploadField
                   kind="school-logo"
                   label="Logo de l ecole (optionnel)"
                   helperText="Image JPG/PNG/WEBP, maximum 5MB. Le logo est optimise automatiquement."
-                  value={schoolLogoUrl}
-                  onChange={setSchoolLogoUrl}
+                  value={createSchoolValues.logoUrl || null}
+                  onChange={(value) => {
+                    createSchoolForm.setValue("logoUrl", value ?? "", {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                 />
               </div>
 
@@ -1167,7 +1224,9 @@ export default function SchoolsPage() {
               ) : null}
 
               <div className="md:col-span-2">
-                <SubmitButton disabled={submitting}>
+                <SubmitButton
+                  disabled={submitting || !createSchoolForm.formState.isValid}
+                >
                   {submitting ? "Creation..." : "Creer l ecole"}
                 </SubmitButton>
               </div>

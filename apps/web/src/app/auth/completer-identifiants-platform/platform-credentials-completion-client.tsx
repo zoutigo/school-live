@@ -1,9 +1,12 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Card } from "../../../components/ui/card";
+import { FormField } from "../../../components/ui/form-field";
 import { SubmitButton } from "../../../components/ui/form-buttons";
 import { PasswordInput } from "../../../components/ui/password-input";
 import { PinInput } from "../../../components/ui/pin-input";
@@ -33,14 +36,6 @@ type Props = {
   schoolSlug?: string;
   missing?: string;
 };
-
-type SetupField =
-  | "newPassword"
-  | "confirmPassword"
-  | "phone"
-  | "confirmPhone"
-  | "newPin"
-  | "confirmPin";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -130,24 +125,8 @@ export function PlatformCredentialsCompletionClient({
   missing,
 }: Props) {
   const router = useRouter();
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [phoneValue, setPhoneValue] = useState(
-    normalizePhoneInput(phone ?? ""),
-  );
-  const [confirmPhone, setConfirmPhone] = useState("");
-  const [newPin, setNewPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [touched, setTouched] = useState<Record<SetupField, boolean>>({
-    newPassword: false,
-    confirmPassword: false,
-    phone: false,
-    confirmPhone: false,
-    newPin: false,
-    confirmPin: false,
-  });
 
   const missingFields = useMemo(
     () =>
@@ -159,56 +138,111 @@ export function PlatformCredentialsCompletionClient({
   );
   const requiresPassword = missingFields.includes("PASSWORD");
   const requiresPhonePin = missingFields.includes("PHONE_PIN");
+  const form = useForm<
+    z.input<typeof setupSchema>,
+    unknown,
+    z.output<typeof setupSchema>
+  >({
+    resolver: zodResolver(setupSchema),
+    mode: "onChange",
+    defaultValues: {
+      token: token ?? "",
+      requiresPassword,
+      requiresPhonePin,
+      newPassword: "",
+      confirmPassword: "",
+      phone: normalizePhoneInput(phone ?? ""),
+      confirmPhone: "",
+      newPin: "",
+      confirmPin: "",
+    },
+  });
+  const values = form.watch();
+
+  useEffect(() => {
+    form.setValue("token", token ?? "", {
+      shouldDirty: false,
+      shouldValidate: true,
+    });
+    form.setValue("requiresPassword", requiresPassword, {
+      shouldDirty: false,
+      shouldValidate: true,
+    });
+    form.setValue("requiresPhonePin", requiresPhonePin, {
+      shouldDirty: false,
+      shouldValidate: true,
+    });
+  }, [form, requiresPassword, requiresPhonePin, token]);
+
   const formValidation = useMemo(
     () =>
       setupSchema.safeParse({
         token: token ?? "",
         requiresPassword,
         requiresPhonePin,
-        newPassword,
-        confirmPassword,
-        phone: phoneValue,
-        confirmPhone,
-        newPin,
-        confirmPin,
+        newPassword: values.newPassword ?? "",
+        confirmPassword: values.confirmPassword ?? "",
+        phone: values.phone ?? "",
+        confirmPhone: values.confirmPhone ?? "",
+        newPin: values.newPin ?? "",
+        confirmPin: values.confirmPin ?? "",
       }),
     [
-      confirmPassword,
-      confirmPhone,
-      confirmPin,
-      newPassword,
-      newPin,
-      phoneValue,
       requiresPassword,
       requiresPhonePin,
       token,
+      values.confirmPassword,
+      values.confirmPhone,
+      values.confirmPin,
+      values.newPassword,
+      values.newPin,
+      values.phone,
     ],
   );
   const fieldErrors = useMemo(() => {
     if (formValidation.success) {
-      return {} as Partial<Record<SetupField, string>>;
+      return {} as Partial<
+        Record<
+          | "newPassword"
+          | "confirmPassword"
+          | "phone"
+          | "confirmPhone"
+          | "newPin"
+          | "confirmPin",
+          string
+        >
+      >;
     }
-    const entries = formValidation.error.issues.map((issue) => {
-      const key = issue.path[0] as SetupField | undefined;
-      return [key, issue.message] as const;
-    });
-    return entries.reduce(
-      (accumulator, [key, message]) => {
-        if (key && !accumulator[key]) {
-          accumulator[key] = message;
+    return formValidation.error.issues.reduce(
+      (accumulator, issue) => {
+        const key = issue.path[0];
+        if (
+          (key === "newPassword" ||
+            key === "confirmPassword" ||
+            key === "phone" ||
+            key === "confirmPhone" ||
+            key === "newPin" ||
+            key === "confirmPin") &&
+          !accumulator[key]
+        ) {
+          accumulator[key] = issue.message;
         }
         return accumulator;
       },
-      {} as Partial<Record<SetupField, string>>,
+      {} as Partial<
+        Record<
+          | "newPassword"
+          | "confirmPassword"
+          | "phone"
+          | "confirmPhone"
+          | "newPin"
+          | "confirmPin",
+          string
+        >
+      >,
     );
   }, [formValidation]);
   const isFormValid = formValidation.success;
-
-  function markTouched(field: SetupField) {
-    setTouched((previous) =>
-      previous[field] ? previous : { ...previous, [field]: true },
-    );
-  }
 
   async function redirectAfterCompletion() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -238,25 +272,8 @@ export function PlatformCredentialsCompletionClient({
     router.replace(schoolSlug ? `/schools/${schoolSlug}/dashboard` : "/");
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onSubmit(values: z.output<typeof setupSchema>) {
     setError(null);
-
-    const parsed = formValidation;
-
-    if (!parsed.success) {
-      setTouched((previous) => ({
-        ...previous,
-        ...(requiresPassword
-          ? { newPassword: true, confirmPassword: true }
-          : {}),
-        ...(requiresPhonePin
-          ? { phone: true, confirmPhone: true, newPin: true, confirmPin: true }
-          : {}),
-      }));
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     setSaving(true);
     try {
@@ -267,10 +284,10 @@ export function PlatformCredentialsCompletionClient({
           credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            token: parsed.data.token,
-            newPassword: requiresPassword ? parsed.data.newPassword : undefined,
-            phone: requiresPhonePin ? parsed.data.phone : undefined,
-            newPin: requiresPhonePin ? parsed.data.newPin : undefined,
+            token: values.token,
+            newPassword: requiresPassword ? values.newPassword : undefined,
+            phone: requiresPhonePin ? values.phone : undefined,
+            newPin: requiresPhonePin ? values.newPin : undefined,
           }),
         },
       );
@@ -302,128 +319,210 @@ export function PlatformCredentialsCompletionClient({
           title="Completer vos identifiants"
           subtitle="Pour securiser votre acces, renseignez les informations manquantes."
         >
-          <form className="grid gap-3" onSubmit={onSubmit} noValidate>
+          <form
+            className="grid gap-3"
+            onSubmit={form.handleSubmit(onSubmit)}
+            noValidate
+          >
             {email ? (
               <p className="text-xs text-text-secondary">Compte: {email}</p>
             ) : null}
 
             {requiresPassword ? (
               <>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Nouveau mot de passe
-                  </span>
-                  <PasswordInput
-                    value={newPassword}
-                    onChange={(event) => {
-                      markTouched("newPassword");
-                      setNewPassword(event.target.value);
-                    }}
+                <FormField
+                  label="Nouveau mot de passe"
+                  error={
+                    (values.newPassword?.length ?? 0) > 0 ||
+                    form.formState.submitCount > 0
+                      ? (fieldErrors.newPassword ?? null)
+                      : null
+                  }
+                >
+                  <Controller
+                    control={form.control}
+                    name="newPassword"
+                    render={({ field }) => (
+                      <PasswordInput
+                        name={field.name}
+                        value={field.value ?? ""}
+                        onChange={(event) =>
+                          form.setValue("newPassword", event.target.value, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                        onBlur={field.onBlur}
+                      />
+                    )}
                   />
-                  {touched.newPassword && fieldErrors.newPassword ? (
-                    <span className="text-xs text-notification">
-                      {fieldErrors.newPassword}
-                    </span>
-                  ) : null}
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Confirmer le mot de passe
-                  </span>
-                  <PasswordInput
-                    value={confirmPassword}
-                    onChange={(event) => {
-                      markTouched("confirmPassword");
-                      setConfirmPassword(event.target.value);
-                    }}
+                </FormField>
+                <FormField
+                  label="Confirmer le mot de passe"
+                  error={
+                    (values.confirmPassword?.length ?? 0) > 0 ||
+                    form.formState.submitCount > 0
+                      ? (fieldErrors.confirmPassword ?? null)
+                      : null
+                  }
+                >
+                  <Controller
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <PasswordInput
+                        name={field.name}
+                        value={field.value ?? ""}
+                        onChange={(event) =>
+                          form.setValue("confirmPassword", event.target.value, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }
+                        onBlur={field.onBlur}
+                      />
+                    )}
                   />
-                  {touched.confirmPassword && fieldErrors.confirmPassword ? (
-                    <span className="text-xs text-notification">
-                      {fieldErrors.confirmPassword}
-                    </span>
-                  ) : null}
-                </label>
+                </FormField>
               </>
             ) : null}
 
             {requiresPhonePin ? (
               <>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Telephone</span>
-                  <input
-                    type="text"
-                    value={phoneValue}
-                    onChange={(event) => {
-                      markTouched("phone");
-                      setPhoneValue(normalizePhoneInput(event.target.value));
-                    }}
-                    placeholder="6XXXXXXXX"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                <FormField
+                  label="Telephone"
+                  error={
+                    (values.phone?.length ?? 0) > 0 ||
+                    form.formState.submitCount > 0
+                      ? (fieldErrors.phone ?? null)
+                      : null
+                  }
+                >
+                  <Controller
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <input
+                        name={field.name}
+                        ref={field.ref}
+                        type="text"
+                        value={field.value ?? ""}
+                        onChange={(event) =>
+                          form.setValue(
+                            "phone",
+                            normalizePhoneInput(event.target.value),
+                            {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }
+                        onBlur={field.onBlur}
+                        placeholder="6XXXXXXXX"
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    )}
                   />
-                  {touched.phone && fieldErrors.phone ? (
-                    <span className="text-xs text-notification">
-                      {fieldErrors.phone}
-                    </span>
-                  ) : null}
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Confirmer le telephone
-                  </span>
-                  <input
-                    type="text"
-                    value={confirmPhone}
-                    onChange={(event) => {
-                      markTouched("confirmPhone");
-                      setConfirmPhone(normalizePhoneInput(event.target.value));
-                    }}
-                    placeholder="6XXXXXXXX"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                </FormField>
+                <FormField
+                  label="Confirmer le telephone"
+                  error={
+                    (values.confirmPhone?.length ?? 0) > 0 ||
+                    form.formState.submitCount > 0
+                      ? (fieldErrors.confirmPhone ?? null)
+                      : null
+                  }
+                >
+                  <Controller
+                    control={form.control}
+                    name="confirmPhone"
+                    render={({ field }) => (
+                      <input
+                        name={field.name}
+                        ref={field.ref}
+                        type="text"
+                        value={field.value ?? ""}
+                        onChange={(event) =>
+                          form.setValue(
+                            "confirmPhone",
+                            normalizePhoneInput(event.target.value),
+                            {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }
+                        onBlur={field.onBlur}
+                        placeholder="6XXXXXXXX"
+                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    )}
                   />
-                  {touched.confirmPhone && fieldErrors.confirmPhone ? (
-                    <span className="text-xs text-notification">
-                      {fieldErrors.confirmPhone}
-                    </span>
-                  ) : null}
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Nouveau PIN (6 chiffres)
-                  </span>
-                  <PinInput
-                    value={newPin}
-                    onChange={(event) => {
-                      markTouched("newPin");
-                      setNewPin(
-                        event.target.value.replace(/\D/g, "").slice(0, 6),
-                      );
-                    }}
-                    maxLength={6}
+                </FormField>
+                <FormField
+                  label="Nouveau PIN (6 chiffres)"
+                  error={
+                    (values.newPin?.length ?? 0) > 0 ||
+                    form.formState.submitCount > 0
+                      ? (fieldErrors.newPin ?? null)
+                      : null
+                  }
+                >
+                  <Controller
+                    control={form.control}
+                    name="newPin"
+                    render={({ field }) => (
+                      <PinInput
+                        name={field.name}
+                        value={field.value ?? ""}
+                        onChange={(event) =>
+                          form.setValue(
+                            "newPin",
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                            {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }
+                        onBlur={field.onBlur}
+                        maxLength={6}
+                      />
+                    )}
                   />
-                  {touched.newPin && fieldErrors.newPin ? (
-                    <span className="text-xs text-notification">
-                      {fieldErrors.newPin}
-                    </span>
-                  ) : null}
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Confirmer le PIN</span>
-                  <PinInput
-                    value={confirmPin}
-                    onChange={(event) => {
-                      markTouched("confirmPin");
-                      setConfirmPin(
-                        event.target.value.replace(/\D/g, "").slice(0, 6),
-                      );
-                    }}
-                    maxLength={6}
+                </FormField>
+                <FormField
+                  label="Confirmer le PIN"
+                  error={
+                    (values.confirmPin?.length ?? 0) > 0 ||
+                    form.formState.submitCount > 0
+                      ? (fieldErrors.confirmPin ?? null)
+                      : null
+                  }
+                >
+                  <Controller
+                    control={form.control}
+                    name="confirmPin"
+                    render={({ field }) => (
+                      <PinInput
+                        name={field.name}
+                        value={field.value ?? ""}
+                        onChange={(event) =>
+                          form.setValue(
+                            "confirmPin",
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                            {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }
+                        onBlur={field.onBlur}
+                        maxLength={6}
+                      />
+                    )}
                   />
-                  {touched.confirmPin && fieldErrors.confirmPin ? (
-                    <span className="text-xs text-notification">
-                      {fieldErrors.confirmPin}
-                    </span>
-                  ) : null}
-                </label>
+                </FormField>
               </>
             ) : null}
 

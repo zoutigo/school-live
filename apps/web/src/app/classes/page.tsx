@@ -1,13 +1,16 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
@@ -204,6 +207,18 @@ const createTeacherAssignmentSchema = z.object({
   subjectId: z.string().trim().min(1, "La matiere est obligatoire."),
 });
 
+const assignStudentSchema = z.object({
+  studentId: z.string().trim().min(1, "L'eleve est obligatoire."),
+  status: z.enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"]),
+});
+
+const classReferentSchema = z.object({
+  teacherUserId: z
+    .string()
+    .trim()
+    .min(1, "L'enseignant referent est obligatoire."),
+});
+
 function optionalId(value: string) {
   return value.trim() === "" ? undefined : value;
 }
@@ -307,15 +322,7 @@ export default function ClassesPage() {
     Record<string, string>
   >({});
 
-  const [className, setClassName] = useState("");
-  const [classSchoolYearId, setClassSchoolYearId] = useState("");
-  const [classCurriculumId, setClassCurriculumId] = useState("");
-
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
-  const [editClassName, setEditClassName] = useState("");
-  const [editClassSchoolYearId, setEditClassSchoolYearId] = useState("");
-  const [editClassCurriculumId, setEditClassCurriculumId] = useState("");
-
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     label: string;
@@ -324,8 +331,6 @@ export default function ClassesPage() {
   const [savingClass, setSavingClass] = useState(false);
   const [submittingClass, setSubmittingClass] = useState(false);
 
-  const [assignmentTeacherUserId, setAssignmentTeacherUserId] = useState("");
-  const [assignmentSubjectId, setAssignmentSubjectId] = useState("");
   const [submittingTeacherAssignment, setSubmittingTeacherAssignment] =
     useState(false);
 
@@ -336,14 +341,7 @@ export default function ClassesPage() {
     useState("");
   const [editAssignmentSubjectId, setEditAssignmentSubjectId] = useState("");
   const [savingAssignment, setSavingAssignment] = useState(false);
-  const [classReferentTeacherUserId, setClassReferentTeacherUserId] =
-    useState("");
   const [savingClassReferent, setSavingClassReferent] = useState(false);
-
-  const [assignStudentId, setAssignStudentId] = useState("");
-  const [assignStudentStatus, setAssignStudentStatus] = useState<
-    "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "GRADUATED"
-  >("ACTIVE");
   const [assigningStudent, setAssigningStudent] = useState(false);
 
   const [statusDraftByEnrollmentId, setStatusDraftByEnrollmentId] = useState<
@@ -360,6 +358,113 @@ export default function ClassesPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const createTeacherAssignmentForm = useForm<
+    z.input<typeof createTeacherAssignmentSchema>,
+    unknown,
+    z.output<typeof createTeacherAssignmentSchema>
+  >({
+    resolver: zodResolver(createTeacherAssignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      teacherUserId: "",
+      subjectId: "",
+    },
+  });
+  const createTeacherAssignmentValues = createTeacherAssignmentForm.watch();
+  const createTeacherAssignmentValidation = useMemo(
+    () =>
+      createTeacherAssignmentSchema.safeParse({
+        teacherUserId: createTeacherAssignmentValues.teacherUserId ?? "",
+        subjectId: createTeacherAssignmentValues.subjectId ?? "",
+      }),
+    [createTeacherAssignmentValues],
+  );
+  const editClassForm = useForm<
+    z.input<typeof updateClassroomSchema>,
+    unknown,
+    z.output<typeof updateClassroomSchema>
+  >({
+    resolver: zodResolver(updateClassroomSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      schoolYearId: "",
+      curriculumId: "",
+    },
+  });
+  const editClassValues = editClassForm.watch();
+  const editClassValidation = useMemo(
+    () =>
+      updateClassroomSchema.safeParse({
+        name: editClassValues.name ?? "",
+        schoolYearId: editClassValues.schoolYearId ?? "",
+        curriculumId: editClassValues.curriculumId ?? "",
+      }),
+    [editClassValues],
+  );
+  const assignStudentForm = useForm<
+    z.input<typeof assignStudentSchema>,
+    unknown,
+    z.output<typeof assignStudentSchema>
+  >({
+    resolver: zodResolver(assignStudentSchema),
+    mode: "onChange",
+    defaultValues: {
+      studentId: "",
+      status: "ACTIVE",
+    },
+  });
+  const assignStudentValues = assignStudentForm.watch();
+  const assignStudentValidation = useMemo(
+    () =>
+      assignStudentSchema.safeParse({
+        studentId: assignStudentValues.studentId ?? "",
+        status: assignStudentValues.status ?? "ACTIVE",
+      }),
+    [assignStudentValues],
+  );
+  const referentForm = useForm<
+    z.input<typeof classReferentSchema>,
+    unknown,
+    z.output<typeof classReferentSchema>
+  >({
+    resolver: zodResolver(classReferentSchema),
+    mode: "onChange",
+    defaultValues: {
+      teacherUserId: "",
+    },
+  });
+  const referentValues = referentForm.watch();
+  const referentValidation = useMemo(
+    () =>
+      classReferentSchema.safeParse({
+        teacherUserId: referentValues.teacherUserId ?? "",
+      }),
+    [referentValues],
+  );
+  const createClassForm = useForm<
+    z.input<typeof createClassroomSchema>,
+    unknown,
+    z.output<typeof createClassroomSchema>
+  >({
+    resolver: zodResolver(createClassroomSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      schoolYearId: "",
+      curriculumId: "",
+    },
+  });
+  const createClassValues = createClassForm.watch();
+  const createClassValidation = useMemo(
+    () =>
+      createClassroomSchema.safeParse({
+        name: createClassValues.name ?? "",
+        schoolYearId: createClassValues.schoolYearId ?? "",
+        curriculumId: createClassValues.curriculumId ?? "",
+      }),
+    [createClassValues],
+  );
 
   useEffect(() => {
     void bootstrap();
@@ -383,11 +488,13 @@ export default function ClassesPage() {
       setClassStudents([]);
       setClassCurriculumSubjects([]);
       setClassSubjectOverrides([]);
-      setClassReferentTeacherUserId("");
+      referentForm.reset({ teacherUserId: "" });
       return;
     }
 
-    setClassReferentTeacherUserId(selectedClass.referentTeacher?.id ?? "");
+    referentForm.reset({
+      teacherUserId: selectedClass.referentTeacher?.id ?? "",
+    });
     void loadClassDetails(schoolSlug, selectedClass);
   }, [schoolSlug, selectedClass?.id]);
 
@@ -522,15 +629,27 @@ export default function ClassesPage() {
         setSelectedClassId(classesPayload[0].id);
       }
 
-      if (!classSchoolYearId && schoolYearsPayload.length > 0) {
-        setClassSchoolYearId(
+      if (
+        !(createClassForm.getValues("schoolYearId") ?? "") &&
+        schoolYearsPayload.length > 0
+      ) {
+        createClassForm.setValue(
+          "schoolYearId",
           schoolYearsPayload.find((schoolYear) => schoolYear.isActive)?.id ??
             schoolYearsPayload[0].id,
+          { shouldValidate: true },
         );
       }
 
-      if (!assignmentTeacherUserId && teachersPayload.length > 0) {
-        setAssignmentTeacherUserId(teachersPayload[0].userId);
+      if (
+        !(createTeacherAssignmentForm.getValues("teacherUserId") ?? "") &&
+        teachersPayload.length > 0
+      ) {
+        createTeacherAssignmentForm.setValue(
+          "teacherUserId",
+          teachersPayload[0].userId,
+          { shouldValidate: true },
+        );
       }
     } catch {
       setError("Erreur reseau.");
@@ -650,8 +769,13 @@ export default function ClassesPage() {
       });
       setStatusDraftByEnrollmentId(draft);
 
-      if (!assignStudentId && studentsPayload.length > 0) {
-        setAssignStudentId(studentsPayload[0].id);
+      if (
+        !(assignStudentForm.getValues("studentId") ?? "") &&
+        studentsPayload.length > 0
+      ) {
+        assignStudentForm.setValue("studentId", studentsPayload[0].id, {
+          shouldValidate: true,
+        });
       }
     } catch {
       setError("Erreur reseau.");
@@ -660,21 +784,10 @@ export default function ClassesPage() {
     }
   }
 
-  async function onCreateClass(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateClass(values: z.output<typeof createClassroomSchema>) {
     setError(null);
     setSuccess(null);
     if (!schoolSlug) {
-      return;
-    }
-
-    const parsed = createClassroomSchema.safeParse({
-      name: className,
-      schoolYearId: classSchoolYearId,
-      curriculumId: classCurriculumId,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
       return;
     }
 
@@ -695,8 +808,8 @@ export default function ClassesPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          ...parsed.data,
-          curriculumId: optionalId(parsed.data.curriculumId ?? ""),
+          ...values,
+          curriculumId: optionalId(values.curriculumId ?? ""),
         }),
       });
 
@@ -712,8 +825,11 @@ export default function ClassesPage() {
         return;
       }
 
-      setClassName("");
-      setClassCurriculumId("");
+      createClassForm.reset({
+        name: "",
+        schoolYearId: createClassForm.getValues("schoolYearId") ?? "",
+        curriculumId: "",
+      });
       setSuccess("Classe creee.");
       await loadData(schoolSlug);
     } catch {
@@ -725,9 +841,11 @@ export default function ClassesPage() {
 
   function startEditClass(entry: ClassroomRow) {
     setEditingClassId(entry.id);
-    setEditClassName(entry.name);
-    setEditClassSchoolYearId(entry.schoolYear.id);
-    setEditClassCurriculumId(entry.curriculum?.id ?? "");
+    editClassForm.reset({
+      name: entry.name,
+      schoolYearId: entry.schoolYear.id,
+      curriculumId: entry.curriculum?.id ?? "",
+    });
   }
 
   async function saveClass(classId: string) {
@@ -735,15 +853,9 @@ export default function ClassesPage() {
       return;
     }
     setError(null);
-    const parsed = updateClassroomSchema.safeParse({
-      name: editClassName,
-      schoolYearId: editClassSchoolYearId,
-      curriculumId: editClassCurriculumId,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
+    const isValid = await editClassForm.trigger();
+    if (!isValid) return;
+    const values = editClassForm.getValues();
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -764,8 +876,8 @@ export default function ClassesPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            ...parsed.data,
-            curriculumId: optionalId(parsed.data.curriculumId ?? ""),
+            ...values,
+            curriculumId: optionalId(values.curriculumId ?? ""),
           }),
         },
       );
@@ -840,24 +952,15 @@ export default function ClassesPage() {
     }
   }
 
-  async function createTeacherAssignment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function createTeacherAssignment(
+    values: z.output<typeof createTeacherAssignmentSchema>,
+  ) {
     if (!schoolSlug || !selectedClass) {
       return;
     }
 
     setError(null);
     setSuccess(null);
-
-    const parsed = createTeacherAssignmentSchema.safeParse({
-      teacherUserId: assignmentTeacherUserId,
-      subjectId: assignmentSubjectId,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -880,8 +983,8 @@ export default function ClassesPage() {
           body: JSON.stringify({
             schoolYearId: selectedClass.schoolYear.id,
             classId: selectedClass.id,
-            teacherUserId: parsed.data.teacherUserId,
-            subjectId: parsed.data.subjectId,
+            teacherUserId: values.teacherUserId,
+            subjectId: values.subjectId,
           }),
         },
       );
@@ -978,8 +1081,10 @@ export default function ClassesPage() {
     }
   }
 
-  async function assignStudentToSelectedClass() {
-    if (!schoolSlug || !selectedClass || !assignStudentId) {
+  async function assignStudentToSelectedClass(
+    values: z.output<typeof assignStudentSchema>,
+  ) {
+    if (!schoolSlug || !selectedClass) {
       return;
     }
 
@@ -996,7 +1101,7 @@ export default function ClassesPage() {
 
     try {
       const response = await fetch(
-        buildAdminPath(schoolSlug, `students/${assignStudentId}/enrollments`),
+        buildAdminPath(schoolSlug, `students/${values.studentId}/enrollments`),
         {
           method: "POST",
           credentials: "include",
@@ -1006,7 +1111,7 @@ export default function ClassesPage() {
           },
           body: JSON.stringify({
             classId: selectedClass.id,
-            status: assignStudentStatus,
+            status: values.status,
           }),
         },
       );
@@ -1035,9 +1140,10 @@ export default function ClassesPage() {
     }
   }
 
-  async function updateSelectedClassReferentTeacher() {
-    if (!schoolSlug || !selectedClass || !classReferentTeacherUserId) {
-      setError("Selectionnez un enseignant referent.");
+  async function updateSelectedClassReferentTeacher(
+    values: z.output<typeof classReferentSchema>,
+  ) {
+    if (!schoolSlug || !selectedClass) {
       return;
     }
 
@@ -1063,7 +1169,7 @@ export default function ClassesPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            referentTeacherUserId: classReferentTeacherUserId,
+            referentTeacherUserId: values.teacherUserId,
           }),
         },
       );
@@ -1466,25 +1572,46 @@ export default function ClassesPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-4"
-                onSubmit={onCreateClass}
+                onSubmit={createClassForm.handleSubmit(onCreateClass)}
               >
-                <label className="grid gap-1 text-sm md:col-span-2">
-                  <span className="text-text-secondary">Nom de classe</span>
+                <FormField
+                  label="Nom de classe"
+                  className="md:col-span-2"
+                  error={createClassForm.formState.errors.name?.message}
+                >
                   <input
-                    value={className}
-                    onChange={(event) => setClassName(event.target.value)}
+                    aria-label="Nom de classe"
+                    value={createClassValues.name ?? ""}
+                    onChange={(event) => {
+                      createClassForm.setValue("name", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="Ex: 6e A"
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Annee scolaire</span>
+                <FormField
+                  label="Annee scolaire"
+                  error={createClassForm.formState.errors.schoolYearId?.message}
+                >
                   <select
-                    value={classSchoolYearId}
-                    onChange={(event) =>
-                      setClassSchoolYearId(event.target.value)
-                    }
+                    aria-label="Annee scolaire"
+                    value={createClassValues.schoolYearId ?? ""}
+                    onChange={(event) => {
+                      createClassForm.setValue(
+                        "schoolYearId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -1495,15 +1622,26 @@ export default function ClassesPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Curriculum</span>
+                <FormField
+                  label="Curriculum"
+                  error={createClassForm.formState.errors.curriculumId?.message}
+                >
                   <select
-                    value={classCurriculumId}
-                    onChange={(event) =>
-                      setClassCurriculumId(event.target.value)
-                    }
+                    aria-label="Curriculum"
+                    value={createClassValues.curriculumId ?? ""}
+                    onChange={(event) => {
+                      createClassForm.setValue(
+                        "curriculumId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Aucun</option>
@@ -1513,10 +1651,12 @@ export default function ClassesPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
 
                 <div className="md:col-span-6">
-                  <SubmitButton disabled={submittingClass}>
+                  <SubmitButton
+                    disabled={submittingClass || !createClassValidation.success}
+                  >
                     {submittingClass ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
@@ -1613,27 +1753,47 @@ export default function ClassesPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={7}>
                                 <div className="grid gap-3 md:grid-cols-3">
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Nom de classe
-                                    </span>
+                                  <FormField
+                                    label="Nom de classe"
+                                    error={
+                                      editClassForm.formState.errors.name
+                                        ?.message
+                                    }
+                                  >
                                     <input
-                                      value={editClassName}
+                                      value={editClassValues.name ?? ""}
                                       onChange={(event) =>
-                                        setEditClassName(event.target.value)
+                                        editClassForm.setValue(
+                                          "name",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        )
                                       }
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
-                                  </label>
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Annee scolaire
-                                    </span>
+                                  </FormField>
+                                  <FormField
+                                    label="Annee scolaire"
+                                    error={
+                                      editClassForm.formState.errors
+                                        .schoolYearId?.message
+                                    }
+                                  >
                                     <select
-                                      value={editClassSchoolYearId}
+                                      value={editClassValues.schoolYearId ?? ""}
                                       onChange={(event) =>
-                                        setEditClassSchoolYearId(
+                                        editClassForm.setValue(
+                                          "schoolYearId",
                                           event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -1650,16 +1810,25 @@ export default function ClassesPage() {
                                         </option>
                                       ))}
                                     </select>
-                                  </label>
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Curriculum
-                                    </span>
+                                  </FormField>
+                                  <FormField
+                                    label="Curriculum"
+                                    error={
+                                      editClassForm.formState.errors
+                                        .curriculumId?.message
+                                    }
+                                  >
                                     <select
-                                      value={editClassCurriculumId}
+                                      value={editClassValues.curriculumId ?? ""}
                                       onChange={(event) =>
-                                        setEditClassCurriculumId(
+                                        editClassForm.setValue(
+                                          "curriculumId",
                                           event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -1674,11 +1843,14 @@ export default function ClassesPage() {
                                         </option>
                                       ))}
                                     </select>
-                                  </label>
+                                  </FormField>
                                   <div className="flex gap-2 md:col-span-3">
                                     <Button
                                       type="button"
-                                      disabled={savingClass}
+                                      disabled={
+                                        savingClass ||
+                                        !editClassValidation.success
+                                      }
                                       onClick={() => {
                                         void saveClass(entry.id);
                                       }}
@@ -1938,14 +2110,23 @@ export default function ClassesPage() {
           ) : (
             <div className="grid gap-4">
               <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
-                <label className="grid gap-1 text-sm md:col-span-2">
-                  <span className="text-text-secondary">
-                    Enseignant referent de la classe
-                  </span>
+                <FormField
+                  label="Enseignant referent de la classe"
+                  className="md:col-span-2"
+                  error={referentForm.formState.errors.teacherUserId?.message}
+                >
                   <select
-                    value={classReferentTeacherUserId}
+                    value={referentValues.teacherUserId ?? ""}
                     onChange={(event) =>
-                      setClassReferentTeacherUserId(event.target.value)
+                      referentForm.setValue(
+                        "teacherUserId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
                     }
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
@@ -1956,15 +2137,17 @@ export default function ClassesPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
                 <div className="self-end">
                   <Button
                     type="button"
                     disabled={
-                      savingClassReferent || !classReferentTeacherUserId
+                      savingClassReferent || !referentValidation.success
                     }
                     onClick={() => {
-                      void updateSelectedClassReferentTeacher();
+                      void referentForm.handleSubmit(
+                        updateSelectedClassReferentTeacher,
+                      )();
                     }}
                   >
                     {savingClassReferent
@@ -1975,11 +2158,23 @@ export default function ClassesPage() {
               </div>
 
               <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Eleve</span>
+                <FormField
+                  label="Eleve"
+                  error={assignStudentForm.formState.errors.studentId?.message}
+                >
                   <select
-                    value={assignStudentId}
-                    onChange={(event) => setAssignStudentId(event.target.value)}
+                    value={assignStudentValues.studentId ?? ""}
+                    onChange={(event) =>
+                      assignStudentForm.setValue(
+                        "studentId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
+                    }
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -1989,20 +2184,23 @@ export default function ClassesPage() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Statut d'inscription
-                  </span>
+                </FormField>
+                <FormField label="Statut d'inscription">
                   <select
-                    value={assignStudentStatus}
+                    value={assignStudentValues.status ?? "ACTIVE"}
                     onChange={(event) =>
-                      setAssignStudentStatus(
+                      assignStudentForm.setValue(
+                        "status",
                         event.target.value as
                           | "ACTIVE"
                           | "TRANSFERRED"
                           | "WITHDRAWN"
                           | "GRADUATED",
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
                       )
                     }
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -2012,13 +2210,17 @@ export default function ClassesPage() {
                     <option value="WITHDRAWN">WITHDRAWN</option>
                     <option value="GRADUATED">GRADUATED</option>
                   </select>
-                </label>
+                </FormField>
                 <div className="self-end">
                   <Button
                     type="button"
-                    disabled={assigningStudent || !assignStudentId}
+                    disabled={
+                      assigningStudent || !assignStudentValidation.success
+                    }
                     onClick={() => {
-                      void assignStudentToSelectedClass();
+                      void assignStudentForm.handleSubmit(
+                        assignStudentToSelectedClass,
+                      )();
                     }}
                   >
                     {assigningStudent ? "Affectation..." : "Affecter eleve"}
@@ -2028,15 +2230,31 @@ export default function ClassesPage() {
 
               <form
                 className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3"
-                onSubmit={createTeacherAssignment}
+                onSubmit={createTeacherAssignmentForm.handleSubmit(
+                  createTeacherAssignment,
+                )}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Enseignant</span>
+                <FormField
+                  label="Enseignant"
+                  error={
+                    createTeacherAssignmentForm.formState.errors.teacherUserId
+                      ?.message
+                  }
+                >
                   <select
-                    value={assignmentTeacherUserId}
-                    onChange={(event) =>
-                      setAssignmentTeacherUserId(event.target.value)
-                    }
+                    aria-label="Enseignant"
+                    value={createTeacherAssignmentValues.teacherUserId ?? ""}
+                    onChange={(event) => {
+                      createTeacherAssignmentForm.setValue(
+                        "teacherUserId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -2046,14 +2264,28 @@ export default function ClassesPage() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Matiere</span>
+                </FormField>
+                <FormField
+                  label="Matiere"
+                  error={
+                    createTeacherAssignmentForm.formState.errors.subjectId
+                      ?.message
+                  }
+                >
                   <select
-                    value={assignmentSubjectId}
-                    onChange={(event) =>
-                      setAssignmentSubjectId(event.target.value)
-                    }
+                    aria-label="Matiere"
+                    value={createTeacherAssignmentValues.subjectId ?? ""}
+                    onChange={(event) => {
+                      createTeacherAssignmentForm.setValue(
+                        "subjectId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -2069,9 +2301,14 @@ export default function ClassesPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
                 <div className="self-end">
-                  <SubmitButton disabled={submittingTeacherAssignment}>
+                  <SubmitButton
+                    disabled={
+                      submittingTeacherAssignment ||
+                      !createTeacherAssignmentValidation.success
+                    }
+                  >
                     {submittingTeacherAssignment
                       ? "Affectation..."
                       : "Affecter enseignant"}

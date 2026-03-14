@@ -1,13 +1,16 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import {
   LifeEventsList,
@@ -137,6 +140,74 @@ const createLifeEventSchema = z.object({
   comment: z.string().trim().optional(),
 });
 
+const createLifeEventFormSchema = createLifeEventSchema.extend({
+  durationMinutes: z.string().trim().optional(),
+});
+
+const linkParentSchema = z
+  .object({
+    mode: z.enum(["email", "phone"]),
+    email: z.union([
+      z.string().trim().email("Email parent invalide."),
+      z.literal(""),
+    ]),
+    phone: z
+      .string()
+      .trim()
+      .optional()
+      .refine((value) => !value || CAMEROON_LOCAL_PHONE_REGEX.test(value), {
+        message: "Le numero parent doit contenir 9 chiffres.",
+      }),
+    password: z.union([
+      z
+        .string()
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+        ),
+      z.literal(""),
+    ]),
+    pin: z.union([
+      z.string().regex(PHONE_PIN_REGEX, "Le PIN doit contenir 6 chiffres."),
+      z.literal(""),
+    ]),
+  })
+  .superRefine((value, ctx) => {
+    if (value.mode === "email") {
+      if (!value.email.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["email"],
+          message: "Email parent obligatoire.",
+        });
+      }
+      if (!value.password.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["password"],
+          message: "Mot de passe initial obligatoire.",
+        });
+      }
+    }
+
+    if (value.mode === "phone") {
+      if (!value.phone?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["phone"],
+          message: "Telephone parent obligatoire.",
+        });
+      }
+      if (!value.pin.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["pin"],
+          message: "PIN initial obligatoire.",
+        });
+      }
+    }
+  });
+
 function toDateTimeLocalInput(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -179,15 +250,7 @@ export default function ElevesPage() {
   const [classFilter, setClassFilter] = useState("");
   const [schoolYearFilter, setSchoolYearFilter] = useState("");
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [classId, setClassId] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
 
   const [targetClassId, setTargetClassId] = useState("");
   const [targetStatus, setTargetStatus] = useState<
@@ -210,20 +273,7 @@ export default function ElevesPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [parentLinkMode, setParentLinkMode] = useState<"email" | "phone">(
-    "phone",
-  );
-  const [parentEmail, setParentEmail] = useState("");
-  const [parentPhone, setParentPhone] = useState("");
-  const [parentPassword, setParentPassword] = useState("");
-  const [parentPin, setParentPin] = useState("");
   const [linkingParent, setLinkingParent] = useState(false);
-  const [eventType, setEventType] = useState<LifeEventType>("ABSENCE");
-  const [eventOccurredAt, setEventOccurredAt] = useState("");
-  const [eventReason, setEventReason] = useState("");
-  const [eventDurationMinutes, setEventDurationMinutes] = useState("");
-  const [eventJustified, setEventJustified] = useState(false);
-  const [eventComment, setEventComment] = useState("");
   const [submittingLifeEvent, setSubmittingLifeEvent] = useState(false);
   const [editingLifeEventId, setEditingLifeEventId] = useState<string | null>(
     null,
@@ -242,6 +292,114 @@ export default function ElevesPage() {
   );
   const [lifeEventDeleteTarget, setLifeEventDeleteTarget] =
     useState<LifeEventRow | null>(null);
+  const linkParentForm = useForm<
+    z.input<typeof linkParentSchema>,
+    unknown,
+    z.output<typeof linkParentSchema>
+  >({
+    resolver: zodResolver(linkParentSchema),
+    mode: "onChange",
+    defaultValues: {
+      mode: "phone",
+      email: "",
+      phone: "",
+      password: "",
+      pin: "",
+    },
+  });
+  const linkParentValues = linkParentForm.watch();
+  const linkParentValidation = useMemo(
+    () =>
+      linkParentSchema.safeParse({
+        mode: linkParentValues.mode ?? "phone",
+        email: linkParentValues.email ?? "",
+        phone: linkParentValues.phone ?? "",
+        password: linkParentValues.password ?? "",
+        pin: linkParentValues.pin ?? "",
+      }),
+    [linkParentValues],
+  );
+  const editStudentForm = useForm<
+    z.input<typeof updateStudentSchema>,
+    unknown,
+    z.output<typeof updateStudentSchema>
+  >({
+    resolver: zodResolver(updateStudentSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+    },
+  });
+  const editStudentValues = editStudentForm.watch();
+  const editStudentValidation = useMemo(
+    () =>
+      updateStudentSchema.safeParse({
+        firstName: editStudentValues.firstName ?? "",
+        lastName: editStudentValues.lastName ?? "",
+      }),
+    [editStudentValues],
+  );
+  const createLifeEventForm = useForm<
+    z.input<typeof createLifeEventFormSchema>,
+    unknown,
+    z.output<typeof createLifeEventFormSchema>
+  >({
+    resolver: zodResolver(createLifeEventFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      type: "ABSENCE",
+      occurredAt: "",
+      reason: "",
+      durationMinutes: "",
+      justified: false,
+      comment: "",
+    },
+  });
+  const createLifeEventValues = createLifeEventForm.watch();
+  const createLifeEventValidation = useMemo(
+    () =>
+      createLifeEventFormSchema.safeParse({
+        type: createLifeEventValues.type ?? "ABSENCE",
+        occurredAt: createLifeEventValues.occurredAt ?? "",
+        reason: createLifeEventValues.reason ?? "",
+        durationMinutes: createLifeEventValues.durationMinutes ?? "",
+        justified:
+          createLifeEventValues.type === "SANCTION" ||
+          createLifeEventValues.type === "PUNITION"
+            ? undefined
+            : (createLifeEventValues.justified ?? false),
+        comment: createLifeEventValues.comment ?? "",
+      }),
+    [createLifeEventValues],
+  );
+  const createStudentForm = useForm<
+    z.input<typeof createStudentSchema>,
+    unknown,
+    z.output<typeof createStudentSchema>
+  >({
+    resolver: zodResolver(createStudentSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      classId: "",
+      email: "",
+      password: "",
+    },
+  });
+  const createStudentValues = createStudentForm.watch();
+  const createStudentValidation = useMemo(
+    () =>
+      createStudentSchema.safeParse({
+        firstName: createStudentValues.firstName ?? "",
+        lastName: createStudentValues.lastName ?? "",
+        classId: createStudentValues.classId ?? "",
+        email: createStudentValues.email ?? "",
+        password: createStudentValues.password ?? "",
+      }),
+    [createStudentValues],
+  );
 
   useEffect(() => {
     void bootstrap();
@@ -268,13 +426,19 @@ export default function ElevesPage() {
   }, [schoolSlug, selectedStudentId]);
 
   useEffect(() => {
-    if (eventOccurredAt) {
+    if (createLifeEventForm.getValues("occurredAt")) {
       return;
     }
     const now = new Date();
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    setEventOccurredAt(local.toISOString().slice(0, 16));
-  }, [eventOccurredAt]);
+    createLifeEventForm.setValue(
+      "occurredAt",
+      local.toISOString().slice(0, 16),
+      {
+        shouldValidate: true,
+      },
+    );
+  }, [createLifeEventForm]);
 
   function buildAdminPath(currentSchoolSlug: string, segment: string) {
     return `${API_URL}/schools/${currentSchoolSlug}/admin/${segment}`;
@@ -412,13 +576,20 @@ export default function ElevesPage() {
         setSchoolYearFilter(active?.id ?? "");
       }
 
-      if (!classId && classroomsPayload.length > 0) {
+      if (
+        !(createStudentForm.getValues("classId") ?? "") &&
+        classroomsPayload.length > 0
+      ) {
         const preferred = classroomsPayload.find(
           (entry) =>
             entry.schoolYear.id ===
             (schoolYearsPayload.find((y) => y.isActive)?.id ?? ""),
         );
-        setClassId(preferred?.id ?? classroomsPayload[0].id);
+        createStudentForm.setValue(
+          "classId",
+          preferred?.id ?? classroomsPayload[0].id,
+          { shouldValidate: true },
+        );
       }
 
       if (!selectedStudentId && studentsPayload.length > 0) {
@@ -495,26 +666,12 @@ export default function ElevesPage() {
     }
   }
 
-  async function onCreateStudent(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateStudent(values: z.output<typeof createStudentSchema>) {
     if (!schoolSlug) {
       return;
     }
     setError(null);
     setSuccess(null);
-
-    const parsed = createStudentSchema.safeParse({
-      firstName,
-      lastName,
-      classId,
-      email,
-      password,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -533,11 +690,11 @@ export default function ElevesPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          firstName: parsed.data.firstName,
-          lastName: parsed.data.lastName,
-          classId: parsed.data.classId,
-          email: parsed.data.email.trim() || undefined,
-          password: parsed.data.password.trim() || undefined,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          classId: values.classId,
+          email: values.email.trim() || undefined,
+          password: values.password.trim() || undefined,
         }),
       });
 
@@ -553,10 +710,13 @@ export default function ElevesPage() {
         return;
       }
 
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-      setPassword("");
+      createStudentForm.reset({
+        firstName: "",
+        lastName: "",
+        classId: createStudentForm.getValues("classId") ?? "",
+        email: "",
+        password: "",
+      });
       setSuccess("Eleve cree.");
       await loadData(schoolSlug);
     } catch {
@@ -568,8 +728,10 @@ export default function ElevesPage() {
 
   function startEditStudent(student: StudentRow) {
     setEditingStudentId(student.id);
-    setEditFirstName(student.firstName);
-    setEditLastName(student.lastName);
+    editStudentForm.reset({
+      firstName: student.firstName,
+      lastName: student.lastName,
+    });
   }
 
   async function saveStudent(studentId: string) {
@@ -578,15 +740,9 @@ export default function ElevesPage() {
     }
 
     setError(null);
-    const parsed = updateStudentSchema.safeParse({
-      firstName: editFirstName,
-      lastName: editLastName,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
+    const isValid = await editStudentForm.trigger();
+    if (!isValid) return;
+    const values = editStudentForm.getValues();
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -606,7 +762,7 @@ export default function ElevesPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify(parsed.data),
+          body: JSON.stringify(values),
         },
       );
 
@@ -802,84 +958,10 @@ export default function ElevesPage() {
     }
   }
 
-  async function linkParentToStudent() {
+  async function linkParentToStudent(
+    values: z.output<typeof linkParentSchema>,
+  ) {
     if (!schoolSlug || !selectedStudentId) {
-      return;
-    }
-
-    const parsed = z
-      .object({
-        mode: z.enum(["email", "phone"]),
-        email: z.union([
-          z.string().trim().email("Email parent invalide."),
-          z.literal(""),
-        ]),
-        phone: z
-          .string()
-          .trim()
-          .optional()
-          .refine((value) => !value || CAMEROON_LOCAL_PHONE_REGEX.test(value), {
-            message: "Le numero parent doit contenir 9 chiffres.",
-          }),
-        password: z.union([
-          z
-            .string()
-            .regex(
-              PASSWORD_COMPLEXITY_REGEX,
-              "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-            ),
-          z.literal(""),
-        ]),
-        pin: z.union([
-          z.string().regex(PHONE_PIN_REGEX, "Le PIN doit contenir 6 chiffres."),
-          z.literal(""),
-        ]),
-      })
-      .superRefine((value, ctx) => {
-        if (value.mode === "email") {
-          if (!value.email.trim()) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ["email"],
-              message: "Email parent obligatoire.",
-            });
-          }
-          if (!value.password.trim()) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ["password"],
-              message: "Mot de passe initial obligatoire.",
-            });
-          }
-        }
-
-        if (value.mode === "phone") {
-          if (!value.phone?.trim()) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ["phone"],
-              message: "Telephone parent obligatoire.",
-            });
-          }
-          if (!value.pin.trim()) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ["pin"],
-              message: "PIN initial obligatoire.",
-            });
-          }
-        }
-      })
-      .safeParse({
-        mode: parentLinkMode,
-        email: parentEmail,
-        phone: parentPhone,
-        password: parentPassword,
-        pin: parentPin,
-      });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Contact parent invalide.");
       return;
     }
 
@@ -905,14 +987,14 @@ export default function ElevesPage() {
           },
           body: JSON.stringify({
             studentId: selectedStudentId,
-            ...(parsed.data.mode === "email"
+            ...(values.mode === "email"
               ? {
-                  email: parsed.data.email.trim(),
-                  password: parsed.data.password.trim(),
+                  email: values.email.trim(),
+                  password: values.password.trim(),
                 }
               : {
-                  phone: parsed.data.phone?.trim(),
-                  pin: parsed.data.pin.trim(),
+                  phone: values.phone?.trim(),
+                  pin: values.pin.trim(),
                 }),
           }),
         },
@@ -930,12 +1012,15 @@ export default function ElevesPage() {
         return;
       }
 
-      setParentEmail("");
-      setParentPhone("");
-      setParentPassword("");
-      setParentPin("");
+      linkParentForm.reset({
+        mode: values.mode,
+        email: "",
+        phone: "",
+        password: "",
+        pin: "",
+      });
       setSuccess(
-        parsed.data.mode === "email"
+        values.mode === "email"
           ? "Parent affecte. Si nouveau compte, premiere connexion email + mot de passe initial."
           : "Parent affecte. Si nouveau compte, activation via compte en attente avec PIN initial.",
       );
@@ -947,23 +1032,25 @@ export default function ElevesPage() {
     }
   }
 
-  async function createStudentLifeEvent() {
+  async function createStudentLifeEvent(
+    values: z.output<typeof createLifeEventFormSchema>,
+  ) {
     if (!schoolSlug || !selectedStudentId) {
       return;
     }
 
-    const occurredAtIso = eventOccurredAt
-      ? new Date(eventOccurredAt).toISOString()
+    const occurredAtIso = values.occurredAt
+      ? new Date(values.occurredAt).toISOString()
       : "";
     const parsed = createLifeEventSchema.safeParse({
-      type: eventType,
+      type: values.type,
       occurredAt: occurredAtIso,
-      reason: eventReason,
+      reason: values.reason,
       justified:
-        eventType === "SANCTION" || eventType === "PUNITION"
+        values.type === "SANCTION" || values.type === "PUNITION"
           ? undefined
-          : eventJustified,
-      comment: eventComment,
+          : values.justified,
+      comment: values.comment,
     });
 
     if (!parsed.success) {
@@ -971,7 +1058,7 @@ export default function ElevesPage() {
       return;
     }
 
-    const durationValue = eventDurationMinutes.trim();
+    const durationValue = (values.durationMinutes ?? "").trim();
     let durationMinutes: number | undefined;
     if (durationValue.length > 0) {
       const parsedDurationMinutes = Number.parseInt(durationValue, 10);
@@ -1029,10 +1116,14 @@ export default function ElevesPage() {
         return;
       }
 
-      setEventReason("");
-      setEventDurationMinutes("");
-      setEventComment("");
-      setEventJustified(false);
+      createLifeEventForm.reset({
+        type: values.type,
+        occurredAt: createLifeEventForm.getValues("occurredAt") ?? "",
+        reason: "",
+        durationMinutes: "",
+        justified: false,
+        comment: "",
+      });
       setSuccess("Evenement vie scolaire enregistre.");
       await loadStudentLifeEvents(schoolSlug, selectedStudentId);
     } catch {
@@ -1329,29 +1420,68 @@ export default function ElevesPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-6"
-                onSubmit={onCreateStudent}
+                onSubmit={createStudentForm.handleSubmit(onCreateStudent)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Prenom</span>
+                <FormField
+                  label="Prenom"
+                  error={createStudentForm.formState.errors.firstName?.message}
+                >
                   <input
-                    value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
+                    aria-label="Prenom"
+                    value={createStudentValues.firstName ?? ""}
+                    onChange={(event) => {
+                      createStudentForm.setValue(
+                        "firstName",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Nom</span>
+                </FormField>
+                <FormField
+                  label="Nom"
+                  error={createStudentForm.formState.errors.lastName?.message}
+                >
                   <input
-                    value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
+                    aria-label="Nom"
+                    value={createStudentValues.lastName ?? ""}
+                    onChange={(event) => {
+                      createStudentForm.setValue(
+                        "lastName",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Classe</span>
+                </FormField>
+                <FormField
+                  label="Classe"
+                  error={createStudentForm.formState.errors.classId?.message}
+                >
                   <select
-                    value={classId}
-                    onChange={(event) => setClassId(event.target.value)}
+                    aria-label="Classe"
+                    value={createStudentValues.classId ?? ""}
+                    onChange={(event) => {
+                      createStudentForm.setValue(
+                        "classId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -1361,25 +1491,45 @@ export default function ElevesPage() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Email (optionnel)</span>
+                </FormField>
+                <FormField
+                  label="Email (optionnel)"
+                  error={createStudentForm.formState.errors.email?.message}
+                >
                   <EmailInput
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    value={createStudentValues.email ?? ""}
+                    onChange={(event) => {
+                      createStudentForm.setValue("email", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                   />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Mot de passe (optionnel)
-                  </span>
+                </FormField>
+                <FormField
+                  label="Mot de passe (optionnel)"
+                  error={createStudentForm.formState.errors.email?.message}
+                >
                   <PasswordInput
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    value={createStudentValues.password ?? ""}
+                    onChange={(event) => {
+                      createStudentForm.setValue(
+                        "password",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                   />
-                </label>
+                </FormField>
                 <div className="self-end">
-                  <SubmitButton disabled={submitting}>
+                  <SubmitButton
+                    disabled={submitting || !createStudentValidation.success}
+                  >
                     {submitting ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
@@ -1476,30 +1626,54 @@ export default function ElevesPage() {
                           <td className="px-3 py-2">
                             {editingStudentId === student.id ? (
                               <div className="grid gap-2">
-                                <label className="grid gap-1 text-xs">
-                                  <span className="text-text-secondary">
-                                    Prenom
-                                  </span>
+                                <FormField
+                                  label="Prenom"
+                                  className="text-xs"
+                                  error={
+                                    editStudentForm.formState.errors.firstName
+                                      ?.message
+                                  }
+                                >
                                   <input
-                                    value={editFirstName}
+                                    value={editStudentValues.firstName ?? ""}
                                     onChange={(event) =>
-                                      setEditFirstName(event.target.value)
+                                      editStudentForm.setValue(
+                                        "firstName",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      )
                                     }
                                     className="rounded-card border border-border bg-surface px-2 py-1 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   />
-                                </label>
-                                <label className="grid gap-1 text-xs">
-                                  <span className="text-text-secondary">
-                                    Nom
-                                  </span>
+                                </FormField>
+                                <FormField
+                                  label="Nom"
+                                  className="text-xs"
+                                  error={
+                                    editStudentForm.formState.errors.lastName
+                                      ?.message
+                                  }
+                                >
                                   <input
-                                    value={editLastName}
+                                    value={editStudentValues.lastName ?? ""}
                                     onChange={(event) =>
-                                      setEditLastName(event.target.value)
+                                      editStudentForm.setValue(
+                                        "lastName",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      )
                                     }
                                     className="rounded-card border border-border bg-surface px-2 py-1 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   />
-                                </label>
+                                </FormField>
                               </div>
                             ) : (
                               `${student.lastName} ${student.firstName}`
@@ -1522,7 +1696,9 @@ export default function ElevesPage() {
                                 <>
                                   <Button
                                     type="button"
-                                    disabled={saving}
+                                    disabled={
+                                      saving || !editStudentValidation.success
+                                    }
                                     onClick={() => {
                                       void saveStudent(student.id);
                                     }}
@@ -1625,85 +1801,143 @@ export default function ElevesPage() {
                   </div>
 
                   <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Mode parent</span>
+                    <FormField label="Mode parent">
                       <select
-                        value={parentLinkMode}
-                        onChange={(event) =>
-                          setParentLinkMode(
-                            event.target.value as "email" | "phone",
-                          )
-                        }
+                        value={linkParentValues.mode ?? "phone"}
+                        onChange={(event) => {
+                          const nextMode = event.target.value as
+                            | "email"
+                            | "phone";
+                          linkParentForm.setValue("mode", nextMode, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                          if (nextMode === "email") {
+                            linkParentForm.setValue("phone", "", {
+                              shouldValidate: true,
+                            });
+                            linkParentForm.setValue("pin", "", {
+                              shouldValidate: true,
+                            });
+                          } else {
+                            linkParentForm.setValue("email", "", {
+                              shouldValidate: true,
+                            });
+                            linkParentForm.setValue("password", "", {
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
                         className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="phone">Telephone + PIN</option>
                         <option value="email">Email + mot de passe</option>
                       </select>
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        {parentLinkMode === "email"
+                    </FormField>
+                    <FormField
+                      label={
+                        linkParentValues.mode === "email"
                           ? "Email du parent"
-                          : "Telephone du parent"}
-                      </span>
-                      {parentLinkMode === "email" ? (
+                          : "Telephone du parent"
+                      }
+                      error={
+                        linkParentValues.mode === "email"
+                          ? linkParentForm.formState.errors.email?.message
+                          : linkParentForm.formState.errors.phone?.message
+                      }
+                    >
+                      {linkParentValues.mode === "email" ? (
                         <EmailInput
-                          value={parentEmail}
-                          onChange={(event) =>
-                            setParentEmail(event.target.value)
-                          }
+                          value={linkParentValues.email ?? ""}
+                          onChange={(event) => {
+                            linkParentForm.setValue(
+                              "email",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            );
+                          }}
                           placeholder="parent@email.com"
                         />
                       ) : (
                         <input
-                          value={parentPhone}
-                          onChange={(event) =>
-                            setParentPhone(
+                          value={linkParentValues.phone ?? ""}
+                          onChange={(event) => {
+                            linkParentForm.setValue(
+                              "phone",
                               normalizeCmPhoneInput(event.target.value),
-                            )
-                          }
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            );
+                          }}
                           placeholder="6XXXXXXXX"
                           className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       )}
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        {parentLinkMode === "email"
+                    </FormField>
+                    <FormField
+                      label={
+                        linkParentValues.mode === "email"
                           ? "Mot de passe initial"
-                          : "PIN initial"}
-                      </span>
-                      {parentLinkMode === "email" ? (
+                          : "PIN initial"
+                      }
+                      error={
+                        linkParentValues.mode === "email"
+                          ? linkParentForm.formState.errors.password?.message
+                          : linkParentForm.formState.errors.pin?.message
+                      }
+                    >
+                      {linkParentValues.mode === "email" ? (
                         <PasswordInput
-                          value={parentPassword}
-                          onChange={(event) =>
-                            setParentPassword(event.target.value)
-                          }
+                          value={linkParentValues.password ?? ""}
+                          onChange={(event) => {
+                            linkParentForm.setValue(
+                              "password",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            );
+                          }}
                           placeholder="MotDePasse123"
                         />
                       ) : (
                         <PinInput
-                          value={parentPin}
-                          onChange={(event) =>
-                            setParentPin(
+                          value={linkParentValues.pin ?? ""}
+                          onChange={(event) => {
+                            linkParentForm.setValue(
+                              "pin",
                               event.target.value.replace(/\D/g, "").slice(0, 6),
-                            )
-                          }
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            );
+                          }}
                           placeholder="123456"
                         />
                       )}
-                    </label>
+                    </FormField>
                     <div className="self-end">
                       <Button
                         type="button"
                         disabled={
-                          linkingParent ||
-                          (parentLinkMode === "email"
-                            ? !parentEmail.trim() || !parentPassword.trim()
-                            : !parentPhone.trim() || !parentPin.trim())
+                          linkingParent || !linkParentValidation.success
                         }
                         onClick={() => {
-                          void linkParentToStudent();
+                          void linkParentForm.handleSubmit(
+                            linkParentToStudent,
+                          )();
                         }}
                       >
                         {linkingParent ? "Affectation..." : "Affecter parent"}
@@ -1735,12 +1969,24 @@ export default function ElevesPage() {
                       Vie scolaire: absences, retards, sanctions et punitions
                     </p>
                     <div className="grid gap-3 md:grid-cols-6">
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Type</span>
+                      <FormField
+                        label="Type"
+                        error={
+                          createLifeEventForm.formState.errors.type?.message
+                        }
+                      >
                         <select
-                          value={eventType}
+                          value={createLifeEventValues.type ?? "ABSENCE"}
                           onChange={(event) =>
-                            setEventType(event.target.value as LifeEventType)
+                            createLifeEventForm.setValue(
+                              "type",
+                              event.target.value as LifeEventType,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         >
@@ -1749,62 +1995,112 @@ export default function ElevesPage() {
                           <option value="SANCTION">Sanction</option>
                           <option value="PUNITION">Punition</option>
                         </select>
-                      </label>
-                      <label className="grid gap-1 text-sm md:col-span-2">
-                        <span className="text-text-secondary">Date/heure</span>
+                      </FormField>
+                      <FormField
+                        label="Date/heure"
+                        className="md:col-span-2"
+                        error={
+                          createLifeEventForm.formState.errors.occurredAt
+                            ?.message
+                        }
+                      >
                         <input
                           type="datetime-local"
-                          value={eventOccurredAt}
+                          value={createLifeEventValues.occurredAt ?? ""}
                           onChange={(event) =>
-                            setEventOccurredAt(event.target.value)
+                            createLifeEventForm.setValue(
+                              "occurredAt",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
-                      </label>
-                      <label className="grid gap-1 text-sm md:col-span-2">
-                        <span className="text-text-secondary">Motif</span>
+                      </FormField>
+                      <FormField
+                        label="Motif"
+                        className="md:col-span-2"
+                        error={
+                          createLifeEventForm.formState.errors.reason?.message
+                        }
+                      >
                         <input
-                          value={eventReason}
+                          value={createLifeEventValues.reason ?? ""}
                           onChange={(event) =>
-                            setEventReason(event.target.value)
+                            createLifeEventForm.setValue(
+                              "reason",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           placeholder="Motif de l'evenement"
                           className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Duree (min)</span>
+                      </FormField>
+                      <FormField label="Duree (min)">
                         <input
-                          value={eventDurationMinutes}
+                          value={createLifeEventValues.durationMinutes ?? ""}
                           onChange={(event) =>
-                            setEventDurationMinutes(event.target.value)
+                            createLifeEventForm.setValue(
+                              "durationMinutes",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           placeholder="ex: 10"
                           className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
-                      </label>
+                      </FormField>
                     </div>
                     <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Commentaire</span>
+                      <FormField label="Commentaire">
                         <input
-                          value={eventComment}
+                          value={createLifeEventValues.comment ?? ""}
                           onChange={(event) =>
-                            setEventComment(event.target.value)
+                            createLifeEventForm.setValue(
+                              "comment",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           placeholder="Commentaire (optionnel)"
                           className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
-                      </label>
+                      </FormField>
                       <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
                         <input
                           type="checkbox"
-                          checked={eventJustified}
+                          checked={createLifeEventValues.justified ?? false}
                           onChange={(event) =>
-                            setEventJustified(event.target.checked)
+                            createLifeEventForm.setValue(
+                              "justified",
+                              event.target.checked,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           disabled={
-                            eventType === "SANCTION" || eventType === "PUNITION"
+                            createLifeEventValues.type === "SANCTION" ||
+                            createLifeEventValues.type === "PUNITION"
                           }
                         />
                         Justifie
@@ -1813,9 +2109,14 @@ export default function ElevesPage() {
                     <div>
                       <Button
                         type="button"
-                        disabled={submittingLifeEvent}
+                        disabled={
+                          submittingLifeEvent ||
+                          !createLifeEventValidation.success
+                        }
                         onClick={() => {
-                          void createStudentLifeEvent();
+                          void createLifeEventForm.handleSubmit(
+                            createStudentLifeEvent,
+                          )();
                         }}
                       >
                         {submittingLifeEvent ? "Enregistrement..." : "Signaler"}

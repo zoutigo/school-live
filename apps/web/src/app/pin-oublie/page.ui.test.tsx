@@ -76,6 +76,13 @@ describe("PinRecoveryPage UI", () => {
     fireEvent.change(screen.getByLabelText("Email (optionnel)"), {
       target: { value: "parent@example.test" },
     });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", {
+          name: "Continuer vers les questions de recuperation",
+        }),
+      ).toBeEnabled(),
+    );
     fireEvent.click(
       screen.getByRole("button", {
         name: "Continuer vers les questions de recuperation",
@@ -102,18 +109,12 @@ describe("PinRecoveryPage UI", () => {
       screen.getByRole("button", { name: "Verifier mes reponses" }),
     );
 
-    await waitFor(() => {
-      expect(
-        screen.getByLabelText("Nouveau PIN (6 chiffres)"),
-      ).toBeInTheDocument();
-    });
-
-    const pinInputs = screen.getAllByPlaceholderText("123456");
-    const newPinInput = pinInputs[0];
-    const confirmPinInput = pinInputs[1];
-    const submitButton = screen.getByRole("button", {
+    const submitButton = await screen.findByRole("button", {
       name: "Definir mon nouveau PIN",
     });
+    const pinInputs = await screen.findAllByPlaceholderText("123456");
+    const newPinInput = pinInputs[0];
+    const confirmPinInput = pinInputs[1];
     expect(submitButton).toBeDisabled();
     expect(
       screen.queryByText("Le PIN doit contenir exactement 6 chiffres."),
@@ -195,19 +196,25 @@ describe("PinRecoveryPage UI", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.change(emailInput, { target: { value: "bad-email" } });
-    expect(screen.getByText("Adresse email invalide.")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Adresse email invalide.")).toBeInTheDocument(),
+    );
     expect(submitButton).toBeDisabled();
 
     fireEvent.change(emailInput, { target: { value: "" } });
-    expect(
-      screen.getByText("Renseignez un email ou un telephone."),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByText("Renseignez un email ou un telephone."),
+      ).toBeInTheDocument(),
+    );
     expect(fetchMock).not.toHaveBeenCalled();
 
     fireEvent.change(phoneInput, { target: { value: "65099" } });
-    expect(
-      screen.getByText("Numero invalide (9 chiffres attendus)."),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByText("Numero invalide (9 chiffres attendus)."),
+      ).toBeInTheDocument(),
+    );
     expect(submitButton).toBeDisabled();
 
     fireEvent.change(emailInput, { target: { value: "parent@example.test" } });

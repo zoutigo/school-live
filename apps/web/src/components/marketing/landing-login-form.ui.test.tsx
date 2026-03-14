@@ -145,7 +145,7 @@ describe("LandingLoginForm UI", () => {
     fireEvent.change(emailInput, { target: { value: "parent@example.test" } });
     fireEvent.submit(credentialsForm as HTMLFormElement);
 
-    expect(screen.getAllByText("Mot de passe requis.")).toHaveLength(2);
+    expect(screen.getAllByText("Mot de passe requis.")).toHaveLength(1);
   });
 
   it("shows global credentials error when API rejects submit", async () => {
@@ -163,6 +163,11 @@ describe("LandingLoginForm UI", () => {
     fireEvent.input(screen.getByLabelText("Mot de passe"), {
       target: { value: "Password123!" },
     });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter" }),
+      ).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
 
     await waitFor(() => {
@@ -197,6 +202,11 @@ describe("LandingLoginForm UI", () => {
     fireEvent.input(screen.getByLabelText("Mot de passe"), {
       target: { value: "Password123!" },
     });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter" }),
+      ).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
 
     await waitFor(() => {

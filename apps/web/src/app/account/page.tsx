@@ -1,14 +1,17 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { ActionIconButton } from "../../components/ui/action-icon-button";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { PasswordInput } from "../../components/ui/password-input";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
@@ -187,24 +190,12 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [editingPersonal, setEditingPersonal] = useState(false);
-  const [personalFirstName, setPersonalFirstName] = useState("");
-  const [personalLastName, setPersonalLastName] = useState("");
-  const [personalGender, setPersonalGender] = useState<"M" | "F" | "OTHER">(
-    "M",
-  );
-  const [personalPhone, setPersonalPhone] = useState("");
   const [personalError, setPersonalError] = useState<string | null>(null);
   const [personalSuccess, setPersonalSuccess] = useState<string | null>(null);
   const [updatingPersonal, setUpdatingPersonal] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [updatingPassword, setUpdatingPassword] = useState(false);
-  const [currentPin, setCurrentPin] = useState("");
-  const [newPin, setNewPin] = useState("");
-  const [confirmNewPin, setConfirmNewPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinSuccess, setPinSuccess] = useState<string | null>(null);
   const [updatingPin, setUpdatingPin] = useState(false);
@@ -220,21 +211,96 @@ export default function AccountPage() {
     Array<{ id: string; firstName: string; lastName: string }>
   >([]);
   const [recoveryIsParent, setRecoveryIsParent] = useState(false);
-  const [recoveryBirthDate, setRecoveryBirthDate] = useState("");
-  const [recoverySelectedQuestions, setRecoverySelectedQuestions] = useState<
-    QuestionKey[]
-  >([]);
-  const [recoveryAnswers, setRecoveryAnswers] = useState<
-    Record<string, string>
-  >({});
-  const [recoveryParentClassId, setRecoveryParentClassId] = useState("");
-  const [recoveryParentStudentId, setRecoveryParentStudentId] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoverySuccess, setRecoverySuccess] = useState<string | null>(null);
   const [updatingRecovery, setUpdatingRecovery] = useState(false);
   const [openSecuritySection, setOpenSecuritySection] = useState<
     "password" | "pin" | "recovery" | null
   >(null);
+  const personalForm = useForm<
+    z.input<typeof personalProfileSchema>,
+    unknown,
+    z.output<typeof personalProfileSchema>
+  >({
+    resolver: zodResolver(personalProfileSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      gender: "M",
+      phone: "",
+    },
+  });
+  const passwordForm = useForm<
+    z.input<typeof changePasswordSchema>,
+    unknown,
+    z.output<typeof changePasswordSchema>
+  >({
+    resolver: zodResolver(changePasswordSchema),
+    mode: "onChange",
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmNewPassword: "",
+    },
+  });
+  const pinForm = useForm<
+    z.input<typeof changePinSchema>,
+    unknown,
+    z.output<typeof changePinSchema>
+  >({
+    resolver: zodResolver(changePinSchema),
+    mode: "onChange",
+    defaultValues: {
+      currentPin: "",
+      newPin: "",
+      confirmNewPin: "",
+    },
+  });
+  const recoveryForm = useForm<
+    z.input<typeof recoverySchema>,
+    unknown,
+    z.output<typeof recoverySchema>
+  >({
+    resolver: zodResolver(recoverySchema),
+    mode: "onChange",
+    defaultValues: {
+      birthDate: "",
+      selectedQuestions: [],
+      answers: {},
+      isParent: false,
+      parentClassId: "",
+      parentStudentId: "",
+    },
+  });
+  const personalValues = personalForm.watch();
+  const passwordValues = passwordForm.watch();
+  const pinValues = pinForm.watch();
+  const recoveryValues = recoveryForm.watch();
+  const personalValidation = personalProfileSchema.safeParse({
+    firstName: personalValues.firstName ?? "",
+    lastName: personalValues.lastName ?? "",
+    gender: personalValues.gender ?? "M",
+    phone: personalValues.phone ?? "",
+  });
+  const passwordValidation = changePasswordSchema.safeParse({
+    currentPassword: passwordValues.currentPassword ?? "",
+    newPassword: passwordValues.newPassword ?? "",
+    confirmNewPassword: passwordValues.confirmNewPassword ?? "",
+  });
+  const pinValidation = changePinSchema.safeParse({
+    currentPin: pinValues.currentPin ?? "",
+    newPin: pinValues.newPin ?? "",
+    confirmNewPin: pinValues.confirmNewPin ?? "",
+  });
+  const recoveryValidation = recoverySchema.safeParse({
+    birthDate: recoveryValues.birthDate ?? "",
+    selectedQuestions: recoveryValues.selectedQuestions ?? [],
+    answers: recoveryValues.answers ?? {},
+    isParent: recoveryIsParent,
+    parentClassId: recoveryValues.parentClassId || undefined,
+    parentStudentId: recoveryValues.parentStudentId || undefined,
+  });
 
   useEffect(() => {
     void loadMe();
@@ -259,10 +325,12 @@ export default function AccountPage() {
 
     const payload = (await response.json()) as MeResponse;
     setMe(payload);
-    setPersonalFirstName(payload.firstName ?? "");
-    setPersonalLastName(payload.lastName ?? "");
-    setPersonalGender(payload.gender ?? "M");
-    setPersonalPhone(toLocalPhoneDisplay(payload.phone));
+    personalForm.reset({
+      firstName: payload.firstName ?? "",
+      lastName: payload.lastName ?? "",
+      gender: payload.gender ?? "M",
+      phone: toLocalPhoneDisplay(payload.phone),
+    });
     setLoading(false);
   }
 
@@ -280,23 +348,11 @@ export default function AccountPage() {
       : "Espace Scolive";
   }, [me]);
 
-  async function onUpdatePersonal(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onUpdatePersonal(
+    values: z.output<typeof personalProfileSchema>,
+  ) {
     setPersonalError(null);
     setPersonalSuccess(null);
-
-    const parsed = personalProfileSchema.safeParse({
-      firstName: personalFirstName,
-      lastName: personalLastName,
-      gender: personalGender,
-      phone: personalPhone,
-    });
-    if (!parsed.success) {
-      setPersonalError(
-        parsed.error.issues[0]?.message ?? "Formulaire invalide.",
-      );
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -315,10 +371,10 @@ export default function AccountPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          firstName: parsed.data.firstName,
-          lastName: parsed.data.lastName,
-          gender: parsed.data.gender,
-          phone: parsed.data.phone,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          gender: values.gender,
+          phone: values.phone,
         }),
       });
 
@@ -336,10 +392,12 @@ export default function AccountPage() {
 
       const updatedMe = (await response.json()) as MeResponse;
       setMe(updatedMe);
-      setPersonalFirstName(updatedMe.firstName ?? "");
-      setPersonalLastName(updatedMe.lastName ?? "");
-      setPersonalGender(updatedMe.gender ?? "M");
-      setPersonalPhone(toLocalPhoneDisplay(updatedMe.phone));
+      personalForm.reset({
+        firstName: updatedMe.firstName ?? "",
+        lastName: updatedMe.lastName ?? "",
+        gender: updatedMe.gender ?? "M",
+        phone: toLocalPhoneDisplay(updatedMe.phone),
+      });
       setPersonalSuccess("Informations personnelles mises a jour.");
       setEditingPersonal(false);
     } catch {
@@ -349,23 +407,11 @@ export default function AccountPage() {
     }
   }
 
-  async function onChangePassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onChangePassword(
+    values: z.output<typeof changePasswordSchema>,
+  ) {
     setPasswordError(null);
     setPasswordSuccess(null);
-
-    const parsed = changePasswordSchema.safeParse({
-      currentPassword,
-      newPassword,
-      confirmNewPassword,
-    });
-
-    if (!parsed.success) {
-      setPasswordError(
-        parsed.error.issues[0]?.message ?? "Formulaire invalide.",
-      );
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -384,8 +430,8 @@ export default function AccountPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          currentPassword: parsed.data.currentPassword,
-          newPassword: parsed.data.newPassword,
+          currentPassword: values.currentPassword,
+          newPassword: values.newPassword,
         }),
       });
 
@@ -402,9 +448,7 @@ export default function AccountPage() {
       }
 
       setPasswordSuccess("Mot de passe mis a jour avec succes.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmNewPassword("");
+      passwordForm.reset();
     } catch {
       setPasswordError("Erreur reseau.");
     } finally {
@@ -412,23 +456,9 @@ export default function AccountPage() {
     }
   }
 
-  async function onChangePin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onChangePin(values: z.output<typeof changePinSchema>) {
     setPinError(null);
     setPinSuccess(null);
-
-    const parsed = changePinSchema.safeParse({
-      currentPin,
-      newPin,
-      confirmNewPin,
-    });
-
-    if (!parsed.success) {
-      setPinError(
-        parsed.error.issues[0]?.message ?? "Formulaire PIN invalide.",
-      );
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -447,8 +477,8 @@ export default function AccountPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          currentPin: parsed.data.currentPin,
-          newPin: parsed.data.newPin,
+          currentPin: values.currentPin,
+          newPin: values.newPin,
         }),
       });
 
@@ -465,9 +495,7 @@ export default function AccountPage() {
       }
 
       setPinSuccess("PIN mis a jour avec succes.");
-      setCurrentPin("");
-      setNewPin("");
-      setConfirmNewPin("");
+      pinForm.reset();
     } catch {
       setPinError("Erreur reseau.");
     } finally {
@@ -501,19 +529,20 @@ export default function AccountPage() {
       setRecoveryClasses(data.classes ?? []);
       setRecoveryStudents(data.students ?? []);
       setRecoveryIsParent((data.schoolRoles ?? []).includes("PARENT"));
-      setRecoveryBirthDate(data.birthDate ?? "");
-      setRecoverySelectedQuestions(data.selectedQuestions ?? []);
-      setRecoveryParentClassId(data.parentClassId ?? "");
-      setRecoveryParentStudentId(data.parentStudentId ?? "");
-      setRecoveryAnswers(
-        (data.selectedQuestions ?? []).reduce<Record<string, string>>(
+      recoveryForm.reset({
+        birthDate: data.birthDate ?? "",
+        selectedQuestions: data.selectedQuestions ?? [],
+        parentClassId: data.parentClassId ?? "",
+        parentStudentId: data.parentStudentId ?? "",
+        isParent: (data.schoolRoles ?? []).includes("PARENT"),
+        answers: (data.selectedQuestions ?? []).reduce<Record<string, string>>(
           (accumulator, questionKey) => ({
             ...accumulator,
             [questionKey]: "",
           }),
           {},
         ),
-      );
+      });
       setRecoveryReady(true);
     } catch {
       setRecoveryError("Erreur reseau.");
@@ -523,53 +552,47 @@ export default function AccountPage() {
   }
 
   function toggleRecoveryQuestion(question: QuestionKey) {
-    setRecoverySelectedQuestions((current) => {
-      const exists = current.includes(question);
-      if (exists) {
-        const next = current.filter((entry) => entry !== question);
-        setRecoveryAnswers((answers) => {
-          const clone = { ...answers };
-          delete clone[question];
-          return clone;
-        });
-        return next;
-      }
+    const current = recoveryForm.getValues("selectedQuestions") ?? [];
+    const currentAnswers = recoveryForm.getValues("answers") ?? {};
+    if (current.includes(question)) {
+      const next = current.filter((entry) => entry !== question);
+      const clone = { ...currentAnswers };
+      delete clone[question];
+      recoveryForm.setValue("selectedQuestions", next, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+      recoveryForm.setValue("answers", clone, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+      return;
+    }
 
-      if (current.length >= 3) {
-        return current;
-      }
+    if (current.length >= 3) {
+      return;
+    }
 
-      return [...current, question];
+    recoveryForm.setValue("selectedQuestions", [...current, question], {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
     });
   }
 
   function setRecoveryAnswer(question: QuestionKey, value: string) {
-    setRecoveryAnswers((current) => ({
-      ...current,
-      [question]: value,
-    }));
+    recoveryForm.setValue(`answers.${question}`, value, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
   }
 
-  async function onUpdateRecovery(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onUpdateRecovery(values: z.output<typeof recoverySchema>) {
     setRecoveryError(null);
     setRecoverySuccess(null);
-
-    const parsed = recoverySchema.safeParse({
-      birthDate: recoveryBirthDate,
-      selectedQuestions: recoverySelectedQuestions,
-      answers: recoveryAnswers,
-      isParent: recoveryIsParent,
-      parentClassId: recoveryParentClassId || undefined,
-      parentStudentId: recoveryParentStudentId || undefined,
-    });
-
-    if (!parsed.success) {
-      setRecoveryError(
-        parsed.error.issues[0]?.message ?? "Formulaire invalide.",
-      );
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -588,13 +611,13 @@ export default function AccountPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          birthDate: parsed.data.birthDate,
-          answers: parsed.data.selectedQuestions.map((questionKey) => ({
+          birthDate: values.birthDate,
+          answers: values.selectedQuestions.map((questionKey) => ({
             questionKey,
-            answer: parsed.data.answers[questionKey] ?? "",
+            answer: values.answers[questionKey] ?? "",
           })),
-          parentClassId: parsed.data.parentClassId,
-          parentStudentId: parsed.data.parentStudentId,
+          parentClassId: values.parentClassId,
+          parentStudentId: values.parentStudentId,
         }),
       });
 
@@ -612,8 +635,9 @@ export default function AccountPage() {
       }
 
       setRecoverySuccess("Questions de recuperation mises a jour.");
-      setRecoveryAnswers((current) =>
-        Object.keys(current).reduce<Record<string, string>>(
+      recoveryForm.setValue(
+        "answers",
+        Object.keys(values.answers).reduce<Record<string, string>>(
           (accumulator, key) => ({
             ...accumulator,
             [key]: "",
@@ -684,6 +708,14 @@ export default function AccountPage() {
                       setEditingPersonal((value) => !value);
                       setPersonalError(null);
                       setPersonalSuccess(null);
+                      if (!editingPersonal && me) {
+                        personalForm.reset({
+                          firstName: me.firstName ?? "",
+                          lastName: me.lastName ?? "",
+                          gender: me.gender ?? "M",
+                          phone: toLocalPhoneDisplay(me.phone),
+                        });
+                      }
                     }}
                   >
                     {editingPersonal ? "Annuler" : "Modifier"}
@@ -693,64 +725,172 @@ export default function AccountPage() {
                 {editingPersonal ? (
                   <form
                     className="grid max-w-xl gap-3"
-                    onSubmit={onUpdatePersonal}
+                    onSubmit={personalForm.handleSubmit(onUpdatePersonal)}
                     noValidate
                   >
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Prenom</span>
-                      <input
-                        type="text"
-                        value={personalFirstName}
-                        onChange={(event) =>
-                          setPersonalFirstName(event.target.value)
-                        }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    <FormField
+                      label="Prenom"
+                      error={
+                        (personalValues.firstName?.length ?? 0) > 0 ||
+                        personalForm.formState.submitCount > 0
+                          ? ((personalValidation.success
+                              ? null
+                              : personalValidation.error.issues.find(
+                                  (issue) => issue.path[0] === "firstName",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={personalForm.control}
+                        name="firstName"
+                        render={({ field }) => (
+                          <input
+                            name={field.name}
+                            ref={field.ref}
+                            type="text"
+                            value={field.value}
+                            onChange={(event) =>
+                              personalForm.setValue(
+                                "firstName",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        )}
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Nom</span>
-                      <input
-                        type="text"
-                        value={personalLastName}
-                        onChange={(event) =>
-                          setPersonalLastName(event.target.value)
-                        }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    <FormField
+                      label="Nom"
+                      error={
+                        (personalValues.lastName?.length ?? 0) > 0 ||
+                        personalForm.formState.submitCount > 0
+                          ? ((personalValidation.success
+                              ? null
+                              : personalValidation.error.issues.find(
+                                  (issue) => issue.path[0] === "lastName",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={personalForm.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <input
+                            name={field.name}
+                            ref={field.ref}
+                            type="text"
+                            value={field.value}
+                            onChange={(event) =>
+                              personalForm.setValue(
+                                "lastName",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        )}
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Genre</span>
-                      <select
-                        value={personalGender}
-                        onChange={(event) =>
-                          setPersonalGender(
-                            event.target.value as "M" | "F" | "OTHER",
-                          )
-                        }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="M">Masculin</option>
-                        <option value="F">Feminin</option>
-                        <option value="OTHER">Autre</option>
-                      </select>
-                    </label>
-
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Telephone</span>
-                      <input
-                        type="text"
-                        value={personalPhone}
-                        onChange={(event) =>
-                          setPersonalPhone(
-                            normalizePhoneInput(event.target.value),
-                          )
-                        }
-                        placeholder="6XXXXXXXX"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    <FormField
+                      label="Genre"
+                      error={
+                        personalForm.formState.isDirty ||
+                        personalForm.formState.submitCount > 0
+                          ? ((personalValidation.success
+                              ? null
+                              : personalValidation.error.issues.find(
+                                  (issue) => issue.path[0] === "gender",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={personalForm.control}
+                        name="gender"
+                        render={({ field }) => (
+                          <select
+                            name={field.name}
+                            ref={field.ref}
+                            value={field.value}
+                            onChange={(event) =>
+                              personalForm.setValue(
+                                "gender",
+                                event.target.value as "M" | "F" | "OTHER",
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="M">Masculin</option>
+                            <option value="F">Feminin</option>
+                            <option value="OTHER">Autre</option>
+                          </select>
+                        )}
                       />
-                    </label>
+                    </FormField>
+
+                    <FormField
+                      label="Telephone"
+                      error={
+                        (personalValues.phone?.length ?? 0) > 0 ||
+                        personalForm.formState.submitCount > 0
+                          ? ((personalValidation.success
+                              ? null
+                              : personalValidation.error.issues.find(
+                                  (issue) => issue.path[0] === "phone",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={personalForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <input
+                            name={field.name}
+                            ref={field.ref}
+                            type="text"
+                            value={field.value}
+                            onChange={(event) =>
+                              personalForm.setValue(
+                                "phone",
+                                normalizePhoneInput(event.target.value),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            placeholder="6XXXXXXXX"
+                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        )}
+                      />
+                    </FormField>
 
                     {personalError ? (
                       <p className="text-sm text-notification">
@@ -761,7 +901,9 @@ export default function AccountPage() {
                       <p className="text-sm text-primary">{personalSuccess}</p>
                     ) : null}
 
-                    <SubmitButton disabled={updatingPersonal}>
+                    <SubmitButton
+                      disabled={updatingPersonal || !personalValidation.success}
+                    >
                       {updatingPersonal ? "Mise a jour..." : "Enregistrer"}
                     </SubmitButton>
                   </form>
@@ -831,51 +973,129 @@ export default function AccountPage() {
                 </div>
 
                 {openSecuritySection === "password" ? (
-                  <form className="grid gap-3 p-4" onSubmit={onChangePassword}>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Ancien mot de passe
-                      </span>
-                      <PasswordInput
-                        required
-                        minLength={8}
-                        value={currentPassword}
-                        onChange={(event) =>
-                          setCurrentPassword(event.target.value)
-                        }
+                  <form
+                    className="grid gap-3 p-4"
+                    onSubmit={passwordForm.handleSubmit(onChangePassword)}
+                    noValidate
+                  >
+                    <FormField
+                      label="Ancien mot de passe"
+                      error={
+                        (passwordValues.currentPassword?.length ?? 0) > 0 ||
+                        passwordForm.formState.submitCount > 0
+                          ? ((passwordValidation.success
+                              ? null
+                              : passwordValidation.error.issues.find(
+                                  (issue) =>
+                                    issue.path[0] === "currentPassword",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={passwordForm.control}
+                        name="currentPassword"
+                        render={({ field }) => (
+                          <PasswordInput
+                            aria-label="Ancien mot de passe"
+                            name={field.name}
+                            value={field.value}
+                            onChange={(event) =>
+                              passwordForm.setValue(
+                                "currentPassword",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                          />
+                        )}
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Nouveau mot de passe
-                      </span>
-                      <PasswordInput
-                        required
-                        minLength={8}
-                        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}"
-                        title="8 caracteres minimum avec au moins une majuscule, une minuscule et un chiffre."
-                        value={newPassword}
-                        onChange={(event) => setNewPassword(event.target.value)}
+                    <FormField
+                      label="Nouveau mot de passe"
+                      error={
+                        (passwordValues.newPassword?.length ?? 0) > 0 ||
+                        passwordForm.formState.submitCount > 0
+                          ? ((passwordValidation.success
+                              ? null
+                              : passwordValidation.error.issues.find(
+                                  (issue) => issue.path[0] === "newPassword",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={passwordForm.control}
+                        name="newPassword"
+                        render={({ field }) => (
+                          <PasswordInput
+                            aria-label="Nouveau mot de passe"
+                            name={field.name}
+                            value={field.value}
+                            onChange={(event) =>
+                              passwordForm.setValue(
+                                "newPassword",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                          />
+                        )}
                       />
-                    </label>
-                    <PasswordRequirementsHint password={newPassword} />
+                    </FormField>
+                    <PasswordRequirementsHint
+                      password={passwordValues.newPassword ?? ""}
+                    />
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Confirmer le nouveau mot de passe
-                      </span>
-                      <PasswordInput
-                        required
-                        minLength={8}
-                        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}"
-                        title="8 caracteres minimum avec au moins une majuscule, une minuscule et un chiffre."
-                        value={confirmNewPassword}
-                        onChange={(event) =>
-                          setConfirmNewPassword(event.target.value)
-                        }
+                    <FormField
+                      label="Confirmer le nouveau mot de passe"
+                      error={
+                        (passwordValues.confirmNewPassword?.length ?? 0) > 0 ||
+                        passwordForm.formState.submitCount > 0
+                          ? ((passwordValidation.success
+                              ? null
+                              : passwordValidation.error.issues.find(
+                                  (issue) =>
+                                    issue.path[0] === "confirmNewPassword",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={passwordForm.control}
+                        name="confirmNewPassword"
+                        render={({ field }) => (
+                          <PasswordInput
+                            aria-label="Confirmer le nouveau mot de passe"
+                            name={field.name}
+                            value={field.value}
+                            onChange={(event) =>
+                              passwordForm.setValue(
+                                "confirmNewPassword",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                          />
+                        )}
                       />
-                    </label>
+                    </FormField>
 
                     {passwordError ? (
                       <p className="text-sm text-notification">
@@ -886,7 +1106,9 @@ export default function AccountPage() {
                       <p className="text-sm text-primary">{passwordSuccess}</p>
                     ) : null}
 
-                    <SubmitButton disabled={updatingPassword}>
+                    <SubmitButton
+                      disabled={updatingPassword || !passwordValidation.success}
+                    >
                       {updatingPassword
                         ? "Mise a jour..."
                         : "Changer le mot de passe"}
@@ -929,52 +1151,133 @@ export default function AccountPage() {
                 </div>
 
                 {openSecuritySection === "pin" ? (
-                  <form className="grid gap-3 p-4" onSubmit={onChangePin}>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">PIN actuel</span>
-                      <PinInput
-                        required
-                        value={currentPin}
-                        onChange={(event) =>
-                          setCurrentPin(
-                            event.target.value.replace(/\D/g, "").slice(0, 6),
-                          )
-                        }
-                        placeholder="123456"
+                  <form
+                    className="grid gap-3 p-4"
+                    onSubmit={pinForm.handleSubmit(onChangePin)}
+                    noValidate
+                  >
+                    <FormField
+                      label="PIN actuel"
+                      error={
+                        (pinValues.currentPin?.length ?? 0) > 0 ||
+                        pinForm.formState.submitCount > 0
+                          ? ((pinValidation.success
+                              ? null
+                              : pinValidation.error.issues.find(
+                                  (issue) => issue.path[0] === "currentPin",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={pinForm.control}
+                        name="currentPin"
+                        render={({ field }) => (
+                          <PinInput
+                            aria-label="PIN actuel"
+                            name={field.name}
+                            value={field.value}
+                            onChange={(event) =>
+                              pinForm.setValue(
+                                "currentPin",
+                                event.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            placeholder="123456"
+                          />
+                        )}
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Nouveau PIN (6 chiffres)
-                      </span>
-                      <PinInput
-                        required
-                        value={newPin}
-                        onChange={(event) =>
-                          setNewPin(
-                            event.target.value.replace(/\D/g, "").slice(0, 6),
-                          )
-                        }
-                        placeholder="123456"
+                    <FormField
+                      label="Nouveau PIN (6 chiffres)"
+                      error={
+                        (pinValues.newPin?.length ?? 0) > 0 ||
+                        pinForm.formState.submitCount > 0
+                          ? ((pinValidation.success
+                              ? null
+                              : pinValidation.error.issues.find(
+                                  (issue) => issue.path[0] === "newPin",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={pinForm.control}
+                        name="newPin"
+                        render={({ field }) => (
+                          <PinInput
+                            aria-label="Nouveau PIN (6 chiffres)"
+                            name={field.name}
+                            value={field.value}
+                            onChange={(event) =>
+                              pinForm.setValue(
+                                "newPin",
+                                event.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            placeholder="123456"
+                          />
+                        )}
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Confirmation PIN
-                      </span>
-                      <PinInput
-                        required
-                        value={confirmNewPin}
-                        onChange={(event) =>
-                          setConfirmNewPin(
-                            event.target.value.replace(/\D/g, "").slice(0, 6),
-                          )
-                        }
-                        placeholder="123456"
+                    <FormField
+                      label="Confirmation PIN"
+                      error={
+                        (pinValues.confirmNewPin?.length ?? 0) > 0 ||
+                        pinForm.formState.submitCount > 0
+                          ? ((pinValidation.success
+                              ? null
+                              : pinValidation.error.issues.find(
+                                  (issue) => issue.path[0] === "confirmNewPin",
+                                )?.message) ?? null)
+                          : null
+                      }
+                    >
+                      <Controller
+                        control={pinForm.control}
+                        name="confirmNewPin"
+                        render={({ field }) => (
+                          <PinInput
+                            aria-label="Confirmation PIN"
+                            name={field.name}
+                            value={field.value}
+                            onChange={(event) =>
+                              pinForm.setValue(
+                                "confirmNewPin",
+                                event.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            placeholder="123456"
+                          />
+                        )}
                       />
-                    </label>
+                    </FormField>
 
                     {pinError ? (
                       <p className="text-sm text-notification">{pinError}</p>
@@ -983,7 +1286,9 @@ export default function AccountPage() {
                       <p className="text-sm text-primary">{pinSuccess}</p>
                     ) : null}
 
-                    <SubmitButton disabled={updatingPin}>
+                    <SubmitButton
+                      disabled={updatingPin || !pinValidation.success}
+                    >
                       {updatingPin ? "Mise a jour PIN..." : "Changer le PIN"}
                     </SubmitButton>
                   </form>
@@ -1024,7 +1329,11 @@ export default function AccountPage() {
                 </div>
 
                 {openSecuritySection === "recovery" ? (
-                  <form className="grid gap-3 p-4" onSubmit={onUpdateRecovery}>
+                  <form
+                    className="grid gap-3 p-4"
+                    onSubmit={recoveryForm.handleSubmit(onUpdateRecovery)}
+                    noValidate
+                  >
                     <p className="text-xs text-text-secondary">
                       Mettez a jour votre date de naissance et vos 3 questions
                       de recuperation.
@@ -1035,65 +1344,149 @@ export default function AccountPage() {
                       </p>
                     ) : (
                       <>
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            Date de naissance
-                          </span>
-                          <DateInput
-                            value={recoveryBirthDate}
-                            onChange={(event) =>
-                              setRecoveryBirthDate(event.target.value)
-                            }
+                        <FormField
+                          label="Date de naissance"
+                          error={
+                            (recoveryValues.birthDate?.length ?? 0) > 0 ||
+                            recoveryForm.formState.submitCount > 0
+                              ? ((recoveryValidation.success
+                                  ? null
+                                  : recoveryValidation.error.issues.find(
+                                      (issue) => issue.path[0] === "birthDate",
+                                    )?.message) ?? null)
+                              : null
+                          }
+                        >
+                          <Controller
+                            control={recoveryForm.control}
+                            name="birthDate"
+                            render={({ field }) => (
+                              <DateInput
+                                name={field.name}
+                                value={field.value}
+                                onChange={(event) =>
+                                  recoveryForm.setValue(
+                                    "birthDate",
+                                    event.target.value,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  )
+                                }
+                                onBlur={field.onBlur}
+                              />
+                            )}
                           />
-                        </label>
+                        </FormField>
 
                         {recoveryIsParent ? (
                           <>
-                            <label className="grid gap-1 text-sm">
-                              <span className="text-text-secondary">
-                                Classe de votre enfant
-                              </span>
-                              <select
-                                value={recoveryParentClassId}
-                                onChange={(event) =>
-                                  setRecoveryParentClassId(event.target.value)
-                                }
-                                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                              >
-                                <option value="">
-                                  Selectionner une classe
-                                </option>
-                                {recoveryClasses.map((classroom) => (
-                                  <option
-                                    key={classroom.id}
-                                    value={classroom.id}
+                            <FormField
+                              label="Classe de votre enfant"
+                              error={
+                                (recoveryValues.parentClassId?.length ?? 0) >
+                                  0 || recoveryForm.formState.submitCount > 0
+                                  ? ((recoveryValidation.success
+                                      ? null
+                                      : recoveryValidation.error.issues.find(
+                                          (issue) =>
+                                            issue.path[0] === "parentClassId",
+                                        )?.message) ?? null)
+                                  : null
+                              }
+                            >
+                              <Controller
+                                control={recoveryForm.control}
+                                name="parentClassId"
+                                render={({ field }) => (
+                                  <select
+                                    name={field.name}
+                                    ref={field.ref}
+                                    value={field.value}
+                                    onChange={(event) =>
+                                      recoveryForm.setValue(
+                                        "parentClassId",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      )
+                                    }
+                                    onBlur={field.onBlur}
+                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   >
-                                    {classroom.name} (
-                                    {classroom.schoolYearLabel})
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                                    <option value="">
+                                      Selectionner une classe
+                                    </option>
+                                    {recoveryClasses.map((classroom) => (
+                                      <option
+                                        key={classroom.id}
+                                        value={classroom.id}
+                                      >
+                                        {classroom.name} (
+                                        {classroom.schoolYearLabel})
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                              />
+                            </FormField>
 
-                            <label className="grid gap-1 text-sm">
-                              <span className="text-text-secondary">
-                                Nom de votre enfant
-                              </span>
-                              <select
-                                value={recoveryParentStudentId}
-                                onChange={(event) =>
-                                  setRecoveryParentStudentId(event.target.value)
-                                }
-                                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                              >
-                                <option value="">Selectionner un eleve</option>
-                                {recoveryStudents.map((student) => (
-                                  <option key={student.id} value={student.id}>
-                                    {student.lastName} {student.firstName}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                            <FormField
+                              label="Nom de votre enfant"
+                              error={
+                                (recoveryValues.parentStudentId?.length ?? 0) >
+                                  0 || recoveryForm.formState.submitCount > 0
+                                  ? ((recoveryValidation.success
+                                      ? null
+                                      : recoveryValidation.error.issues.find(
+                                          (issue) =>
+                                            issue.path[0] === "parentStudentId",
+                                        )?.message) ?? null)
+                                  : null
+                              }
+                            >
+                              <Controller
+                                control={recoveryForm.control}
+                                name="parentStudentId"
+                                render={({ field }) => (
+                                  <select
+                                    name={field.name}
+                                    ref={field.ref}
+                                    value={field.value}
+                                    onChange={(event) =>
+                                      recoveryForm.setValue(
+                                        "parentStudentId",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      )
+                                    }
+                                    onBlur={field.onBlur}
+                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  >
+                                    <option value="">
+                                      Selectionner un eleve
+                                    </option>
+                                    {recoveryStudents.map((student) => (
+                                      <option
+                                        key={student.id}
+                                        value={student.id}
+                                      >
+                                        {student.lastName} {student.firstName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                              />
+                            </FormField>
                           </>
                         ) : null}
 
@@ -1101,10 +1494,21 @@ export default function AccountPage() {
                           <p className="text-xs text-text-secondary">
                             Choisissez exactement 3 questions
                           </p>
+                          {(recoveryForm.formState.submitCount > 0 ||
+                            (recoveryValues.selectedQuestions?.length ?? 0) >
+                              0) &&
+                          !recoveryValidation.success ? (
+                            <p className="text-xs text-notification">
+                              {recoveryValidation.error.issues.find(
+                                (issue) =>
+                                  issue.path[0] === "selectedQuestions",
+                              )?.message ?? ""}
+                            </p>
+                          ) : null}
                           {recoveryQuestions.map((question) => {
-                            const checked = recoverySelectedQuestions.includes(
-                              question.key,
-                            );
+                            const checked = (
+                              recoveryValues.selectedQuestions ?? []
+                            ).includes(question.key);
 
                             return (
                               <label
@@ -1122,18 +1526,36 @@ export default function AccountPage() {
                                   <span>{question.label}</span>
                                 </span>
                                 {checked ? (
-                                  <input
-                                    type="text"
-                                    value={recoveryAnswers[question.key] ?? ""}
-                                    onChange={(event) =>
-                                      setRecoveryAnswer(
-                                        question.key,
-                                        event.target.value,
-                                      )
-                                    }
-                                    placeholder="Votre reponse"
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
+                                  <>
+                                    <input
+                                      type="text"
+                                      value={
+                                        recoveryValues.answers?.[
+                                          question.key
+                                        ] ?? ""
+                                      }
+                                      onChange={(event) =>
+                                        setRecoveryAnswer(
+                                          question.key,
+                                          event.target.value,
+                                        )
+                                      }
+                                      placeholder="Votre reponse"
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                    {((recoveryValues.answers?.[question.key]
+                                      ?.length ?? 0) > 0 ||
+                                      recoveryForm.formState.submitCount > 0) &&
+                                    !recoveryValidation.success ? (
+                                      <span className="text-xs text-notification">
+                                        {recoveryValidation.error.issues.find(
+                                          (issue) =>
+                                            issue.path[0] === "answers" &&
+                                            issue.path[1] === question.key,
+                                        )?.message ?? ""}
+                                      </span>
+                                    ) : null}
+                                  </>
                                 ) : null}
                               </label>
                             );
@@ -1152,7 +1574,11 @@ export default function AccountPage() {
                     ) : null}
 
                     <SubmitButton
-                      disabled={updatingRecovery || loadingRecovery}
+                      disabled={
+                        updatingRecovery ||
+                        loadingRecovery ||
+                        !recoveryValidation.success
+                      }
                     >
                       {updatingRecovery
                         ? "Mise a jour recovery..."

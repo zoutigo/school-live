@@ -5,6 +5,7 @@
 :root {
   color-scheme: light;
   --site-gutter: 8px;
+  --field-radius: 10px;
 }
 
 @media (min-width: 360px) {
@@ -48,11 +49,45 @@ body {
   scrollbar-gutter: stable both-edges;
 }
 
+@keyframes menu-attention-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(12, 95, 168, 0);
+  }
+  20% {
+    transform: scale(1.07);
+    box-shadow:
+      0 0 0 6px rgba(12, 95, 168, 0.12),
+      0 12px 24px rgba(12, 95, 168, 0.18);
+  }
+  45% {
+    transform: translateX(-2px);
+  }
+  60% {
+    transform: translateX(2px);
+  }
+  75% {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 10px rgba(12, 95, 168, 0.06),
+      0 12px 24px rgba(12, 95, 168, 0.12);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(12, 95, 168, 0);
+  }
+}
+
+.menu-attention-active {
+  animation: menu-attention-pulse 1.6s ease-in-out 1;
+}
+
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
     [type="file"]
   ),
 select,
 textarea {
+  border-radius: var(--field-radius) !important;
   box-shadow: 0 1px 2px rgba(77, 56, 32, 0.04);
 }
 

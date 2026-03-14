@@ -1,11 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { BackLinkButton } from "../../components/ui/back-link-button";
 import { Card } from "../../components/ui/card";
 import { EmailInput } from "../../components/ui/email-input";
+import { FormField } from "../../components/ui/form-field";
 import { PinInput } from "../../components/ui/pin-input";
 import { Button } from "../../components/ui/button";
 
@@ -78,53 +81,46 @@ export function PendingAccountClient({
   initialSchoolSlug,
 }: Props) {
   const router = useRouter();
-  const [email, setEmail] = useState(initialEmail ?? "");
-  const [phone, setPhone] = useState(initialPhone ?? "");
-  const [schoolSlug, setSchoolSlug] = useState(initialSchoolSlug ?? "");
-
   const [context, setContext] = useState<ActivationStartResponse | null>(null);
   const [loadingContext, setLoadingContext] = useState(true);
-
-  const [confirmedPhone, setConfirmedPhone] = useState(initialPhone ?? "");
-  const [newPin, setNewPin] = useState("");
-  const [activationCode, setActivationCode] = useState("");
-  const [initialPin, setInitialPin] = useState("");
-
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const form = useForm<
+    z.input<typeof activationFormSchema>,
+    unknown,
+    z.output<typeof activationFormSchema>
+  >({
+    resolver: zodResolver(activationFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      email: initialEmail ?? "",
+      phone: initialPhone ?? "",
+      schoolSlug: initialSchoolSlug ?? "",
+      confirmedPhone: initialPhone ?? "",
+      newPin: "",
+      activationCode: "",
+      initialPin: "",
+    },
+  });
+  const email = form.watch("email");
+  const phone = form.watch("phone");
+  const schoolSlug = form.watch("schoolSlug");
 
   const canLoadContext = useMemo(
-    () => email.trim().length > 0 || phone.trim().length > 0,
+    () => (email ?? "").trim().length > 0 || (phone ?? "").trim().length > 0,
     [email, phone],
   );
-  const submitValidation = useMemo(
-    () =>
-      activationFormSchema.safeParse({
-        email,
-        phone,
-        schoolSlug,
-        confirmedPhone,
-        newPin,
-        activationCode,
-        initialPin,
-      }),
-    [
-      activationCode,
-      confirmedPhone,
-      email,
-      initialPin,
-      newPin,
-      phone,
-      schoolSlug,
-    ],
-  );
-  const submitDirty =
-    confirmedPhone.length > 0 ||
-    newPin.length > 0 ||
-    activationCode.length > 0 ||
-    initialPin.length > 0;
-
+  const formValues = form.watch();
+  const submitValidation = activationFormSchema.safeParse({
+    email: formValues.email ?? "",
+    phone: formValues.phone ?? "",
+    schoolSlug: formValues.schoolSlug ?? "",
+    confirmedPhone: formValues.confirmedPhone ?? "",
+    newPin: formValues.newPin ?? "",
+    activationCode: formValues.activationCode ?? "",
+    initialPin: formValues.initialPin ?? "",
+  });
   useEffect(() => {
     if (!canLoadContext) {
       setLoadingContext(false);
@@ -155,7 +151,9 @@ export function PendingAccountClient({
         if (!cancelled) {
           setContext(payload);
           if (payload.schoolSlug && !schoolSlug) {
-            setSchoolSlug(payload.schoolSlug);
+            form.setValue("schoolSlug", payload.schoolSlug, {
+              shouldValidate: true,
+            });
           }
         }
       } catch (cause) {
@@ -178,26 +176,11 @@ export function PendingAccountClient({
     return () => {
       cancelled = true;
     };
-  }, [canLoadContext, email, phone, schoolSlug]);
+  }, [canLoadContext, email, form, phone, schoolSlug]);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onSubmit(values: z.infer<typeof activationFormSchema>) {
     setError(null);
     setSuccess(null);
-
-    const parsed = activationFormSchema.safeParse({
-      email,
-      phone,
-      schoolSlug,
-      confirmedPhone,
-      newPin,
-      activationCode,
-      initialPin,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -205,13 +188,13 @@ export function PendingAccountClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: parsed.data.email || undefined,
-          phone: parsed.data.phone || undefined,
-          schoolSlug: parsed.data.schoolSlug || undefined,
-          confirmedPhone: parsed.data.confirmedPhone,
-          newPin: parsed.data.newPin,
-          activationCode: parsed.data.activationCode || undefined,
-          initialPin: parsed.data.initialPin || undefined,
+          email: values.email || undefined,
+          phone: values.phone || undefined,
+          schoolSlug: values.schoolSlug || undefined,
+          confirmedPhone: values.confirmedPhone,
+          newPin: values.newPin,
+          activationCode: values.activationCode || undefined,
+          initialPin: values.initialPin || undefined,
         }),
       });
 
@@ -293,87 +276,234 @@ export function PendingAccountClient({
           {loadingContext ? (
             <p className="text-sm text-text-secondary">Chargement...</p>
           ) : (
-            <form className="grid gap-3" onSubmit={onSubmit}>
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Email</span>
-                <EmailInput
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="prenom.nom@gmail.com"
+            <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
+              <FormField
+                label="Email"
+                error={
+                  (formValues.email?.length ?? 0) > 0 ||
+                  form.formState.submitCount > 0
+                    ? ((submitValidation.success
+                        ? null
+                        : submitValidation.error.issues.find(
+                            (issue) => issue.path[0] === "email",
+                          )?.message) ?? null)
+                    : null
+                }
+              >
+                <Controller
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <EmailInput
+                      name={field.name}
+                      value={field.value}
+                      onChange={(event) =>
+                        form.setValue("email", event.target.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      onBlur={field.onBlur}
+                      placeholder="prenom.nom@gmail.com"
+                    />
+                  )}
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Telephone du compte</span>
-                <input
-                  value={phone}
-                  onChange={(event) =>
-                    setPhone(normalizePhoneInput(event.target.value))
-                  }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="6XXXXXXXX"
+              <FormField
+                label="Telephone du compte"
+                error={
+                  (formValues.phone?.length ?? 0) > 0 ||
+                  form.formState.submitCount > 0
+                    ? ((submitValidation.success
+                        ? null
+                        : submitValidation.error.issues.find(
+                            (issue) => issue.path[0] === "phone",
+                          )?.message) ?? null)
+                    : null
+                }
+              >
+                <Controller
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <input
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value}
+                      onChange={(event) =>
+                        form.setValue(
+                          "phone",
+                          normalizePhoneInput(event.target.value),
+                          {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                      onBlur={field.onBlur}
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="6XXXXXXXX"
+                    />
+                  )}
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Telephone confirme</span>
-                <input
-                  required
-                  value={confirmedPhone}
-                  onChange={(event) =>
-                    setConfirmedPhone(normalizePhoneInput(event.target.value))
-                  }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="6XXXXXXXX"
+              <FormField
+                label="Telephone confirme"
+                error={
+                  (formValues.confirmedPhone?.length ?? 0) > 0 ||
+                  form.formState.submitCount > 0
+                    ? ((submitValidation.success
+                        ? null
+                        : submitValidation.error.issues.find(
+                            (issue) => issue.path[0] === "confirmedPhone",
+                          )?.message) ?? null)
+                    : null
+                }
+              >
+                <Controller
+                  control={form.control}
+                  name="confirmedPhone"
+                  render={({ field }) => (
+                    <input
+                      name={field.name}
+                      ref={field.ref}
+                      required
+                      value={field.value}
+                      onChange={(event) =>
+                        form.setValue(
+                          "confirmedPhone",
+                          normalizePhoneInput(event.target.value),
+                          {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                      onBlur={field.onBlur}
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="6XXXXXXXX"
+                    />
+                  )}
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">
-                  Code d activation (optionnel)
-                </span>
-                <input
-                  value={activationCode}
-                  onChange={(event) => setActivationCode(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Ex: A1B2C3D4"
+              <FormField
+                label="Code d activation (optionnel)"
+                error={
+                  (formValues.activationCode?.length ?? 0) > 0 ||
+                  form.formState.submitCount > 0
+                    ? ((submitValidation.success
+                        ? null
+                        : submitValidation.error.issues.find(
+                            (issue) => issue.path[0] === "activationCode",
+                          )?.message) ?? null)
+                    : null
+                }
+              >
+                <Controller
+                  control={form.control}
+                  name="activationCode"
+                  render={({ field }) => (
+                    <input
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value}
+                      onChange={(event) =>
+                        form.setValue("activationCode", event.target.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      onBlur={field.onBlur}
+                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Ex: A1B2C3D4"
+                    />
+                  )}
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">
-                  PIN initial (optionnel)
-                </span>
-                <PinInput
-                  value={initialPin}
-                  onChange={(event) =>
-                    setInitialPin(
-                      event.target.value.replace(/\D/g, "").slice(0, 6),
-                    )
-                  }
-                  placeholder="PIN temporaire fourni"
+              <FormField
+                label="PIN initial (optionnel)"
+                error={
+                  (formValues.initialPin?.length ?? 0) > 0 ||
+                  form.formState.submitCount > 0
+                    ? ((submitValidation.success
+                        ? null
+                        : submitValidation.error.issues.find(
+                            (issue) => issue.path[0] === "initialPin",
+                          )?.message) ?? null)
+                    : null
+                }
+              >
+                <Controller
+                  control={form.control}
+                  name="initialPin"
+                  render={({ field }) => (
+                    <PinInput
+                      aria-label="PIN initial (optionnel)"
+                      name={field.name}
+                      value={field.value}
+                      onChange={(event) =>
+                        form.setValue(
+                          "initialPin",
+                          event.target.value.replace(/\D/g, "").slice(0, 6),
+                          {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                      onBlur={field.onBlur}
+                      placeholder="PIN temporaire fourni"
+                    />
+                  )}
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">
-                  Nouveau PIN (6 chiffres)
-                </span>
-                <PinInput
-                  required
-                  value={newPin}
-                  onChange={(event) =>
-                    setNewPin(event.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  placeholder="123456"
+              <FormField
+                label="Nouveau PIN (6 chiffres)"
+                error={
+                  (formValues.newPin?.length ?? 0) > 0 ||
+                  form.formState.submitCount > 0
+                    ? ((submitValidation.success
+                        ? null
+                        : submitValidation.error.issues.find(
+                            (issue) => issue.path[0] === "newPin",
+                          )?.message) ?? null)
+                    : null
+                }
+              >
+                <Controller
+                  control={form.control}
+                  name="newPin"
+                  render={({ field }) => (
+                    <PinInput
+                      aria-label="Nouveau PIN (6 chiffres)"
+                      name={field.name}
+                      required
+                      value={field.value}
+                      onChange={(event) =>
+                        form.setValue(
+                          "newPin",
+                          event.target.value.replace(/\D/g, "").slice(0, 6),
+                          {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                      onBlur={field.onBlur}
+                      placeholder="123456"
+                    />
+                  )}
                 />
-              </label>
+              </FormField>
 
               <Button
                 type="submit"
-                disabled={
-                  submitting || !submitDirty || !submitValidation.success
-                }
+                disabled={submitting || !submitValidation.success}
               >
                 {submitting ? "Activation..." : "Activer mon compte"}
               </Button>

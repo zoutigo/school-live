@@ -1,13 +1,16 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PasswordInput } from "../../components/ui/password-input";
@@ -187,12 +190,6 @@ export default function TeachersPage() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
 
-  const [createMode, setCreateMode] = useState<"email" | "phone">("phone");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [initialPassword, setInitialPassword] = useState("");
-  const [initialPin, setInitialPin] = useState("");
-
   const [assignmentSchoolYearId, setAssignmentSchoolYearId] = useState("");
   const [assignmentTeacherUserId, setAssignmentTeacherUserId] = useState("");
   const [assignmentClassId, setAssignmentClassId] = useState("");
@@ -219,6 +216,33 @@ export default function TeachersPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const createTeacherForm = useForm<
+    z.input<typeof createTeacherSchema>,
+    unknown,
+    z.output<typeof createTeacherSchema>
+  >({
+    resolver: zodResolver(createTeacherSchema),
+    mode: "onChange",
+    defaultValues: {
+      mode: "phone",
+      email: "",
+      phone: "",
+      password: "",
+      pin: "",
+    },
+  });
+  const createTeacherValues = createTeacherForm.watch();
+  const createTeacherValidation = useMemo(
+    () =>
+      createTeacherSchema.safeParse({
+        mode: createTeacherValues.mode ?? "phone",
+        email: createTeacherValues.email ?? "",
+        phone: createTeacherValues.phone ?? "",
+        password: createTeacherValues.password ?? "",
+        pin: createTeacherValues.pin ?? "",
+      }),
+    [createTeacherValues],
+  );
 
   useEffect(() => {
     void bootstrap();
@@ -382,27 +406,13 @@ export default function TeachersPage() {
     );
   }
 
-  async function onCreateTeacher(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateTeacher(values: z.output<typeof createTeacherSchema>) {
     if (!schoolSlug) {
       return;
     }
 
     setError(null);
     setSuccess(null);
-
-    const parsed = createTeacherSchema.safeParse({
-      mode: createMode,
-      email,
-      phone,
-      password: initialPassword,
-      pin: initialPin,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -421,14 +431,14 @@ export default function TeachersPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify(
-          parsed.data.mode === "email"
+          values.mode === "email"
             ? {
-                email: parsed.data.email.trim(),
-                password: parsed.data.password.trim(),
+                email: values.email.trim(),
+                password: values.password.trim(),
               }
             : {
-                phone: parsed.data.phone?.trim(),
-                pin: parsed.data.pin.trim(),
+                phone: values.phone?.trim(),
+                pin: values.pin.trim(),
               },
         ),
       });
@@ -445,12 +455,15 @@ export default function TeachersPage() {
         return;
       }
 
-      setEmail("");
-      setPhone("");
-      setInitialPassword("");
-      setInitialPin("");
+      createTeacherForm.reset({
+        mode: values.mode,
+        email: "",
+        phone: "",
+        password: "",
+        pin: "",
+      });
       setSuccess(
-        parsed.data.mode === "phone"
+        values.mode === "phone"
           ? "Enseignant cree/affecte. En cas de nouveau compte, utiliser le flux compte en attente pour activer le PIN."
           : "Enseignant cree/affecte. Si nouveau compte, premiere connexion avec mot de passe initial puis changement obligatoire.",
       );
@@ -820,72 +833,144 @@ export default function TeachersPage() {
               ) : (
                 <form
                   className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
-                  onSubmit={onCreateTeacher}
+                  onSubmit={createTeacherForm.handleSubmit(onCreateTeacher)}
                 >
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Mode creation</span>
+                  <FormField
+                    label="Mode creation"
+                    error={createTeacherForm.formState.errors.mode?.message}
+                  >
                     <select
-                      value={createMode}
-                      onChange={(event) =>
-                        setCreateMode(event.target.value as "email" | "phone")
-                      }
+                      value={createTeacherValues.mode ?? "phone"}
+                      onChange={(event) => {
+                        const nextMode = event.target.value as
+                          | "email"
+                          | "phone";
+                        createTeacherForm.setValue("mode", nextMode, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        });
+                        if (nextMode === "email") {
+                          createTeacherForm.setValue("phone", "", {
+                            shouldValidate: true,
+                          });
+                          createTeacherForm.setValue("pin", "", {
+                            shouldValidate: true,
+                          });
+                        } else {
+                          createTeacherForm.setValue("email", "", {
+                            shouldValidate: true,
+                          });
+                          createTeacherForm.setValue("password", "", {
+                            shouldValidate: true,
+                          });
+                        }
+                      }}
                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="phone">Telephone + PIN</option>
                       <option value="email">Email + mot de passe</option>
                     </select>
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">
-                      {createMode === "email"
+                  </FormField>
+                  <FormField
+                    label={
+                      createTeacherValues.mode === "email"
                         ? "Email enseignant"
-                        : "Telephone enseignant"}
-                    </span>
-                    {createMode === "email" ? (
+                        : "Telephone enseignant"
+                    }
+                    error={
+                      createTeacherValues.mode === "email"
+                        ? createTeacherForm.formState.errors.email?.message
+                        : createTeacherForm.formState.errors.phone?.message
+                    }
+                  >
+                    {createTeacherValues.mode === "email" ? (
                       <EmailInput
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
+                        value={createTeacherValues.email ?? ""}
+                        onChange={(event) => {
+                          createTeacherForm.setValue(
+                            "email",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="enseignant@ecole.com"
                       />
                     ) : (
                       <input
-                        value={phone}
-                        onChange={(event) =>
-                          setPhone(normalizeCmPhoneInput(event.target.value))
-                        }
+                        value={createTeacherValues.phone ?? ""}
+                        onChange={(event) => {
+                          createTeacherForm.setValue(
+                            "phone",
+                            normalizeCmPhoneInput(event.target.value),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="6XXXXXXXX"
                         className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     )}
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">
-                      {createMode === "email"
+                  </FormField>
+                  <FormField
+                    label={
+                      createTeacherValues.mode === "email"
                         ? "Mot de passe initial"
-                        : "PIN initial"}
-                    </span>
-                    {createMode === "email" ? (
+                        : "PIN initial"
+                    }
+                    error={
+                      createTeacherValues.mode === "email"
+                        ? createTeacherForm.formState.errors.password?.message
+                        : createTeacherForm.formState.errors.pin?.message
+                    }
+                  >
+                    {createTeacherValues.mode === "email" ? (
                       <PasswordInput
-                        value={initialPassword}
-                        onChange={(event) =>
-                          setInitialPassword(event.target.value)
-                        }
+                        value={createTeacherValues.password ?? ""}
+                        onChange={(event) => {
+                          createTeacherForm.setValue(
+                            "password",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="MotDePasse123"
                       />
                     ) : (
                       <PinInput
-                        value={initialPin}
-                        onChange={(event) =>
-                          setInitialPin(
+                        value={createTeacherValues.pin ?? ""}
+                        onChange={(event) => {
+                          createTeacherForm.setValue(
+                            "pin",
                             event.target.value.replace(/\D/g, "").slice(0, 6),
-                          )
-                        }
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="123456"
                       />
                     )}
-                  </label>
+                  </FormField>
                   <div className="self-end">
-                    <SubmitButton disabled={submittingTeacher}>
+                    <SubmitButton
+                      disabled={
+                        submittingTeacher || !createTeacherValidation.success
+                      }
+                    >
                       {submittingTeacher ? "Creation..." : "Ajouter"}
                     </SubmitButton>
                   </div>

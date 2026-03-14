@@ -1,11 +1,15 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
@@ -107,6 +111,22 @@ type EvaluationTypeRow = {
   isDefault: boolean;
 };
 
+const createSubjectSchema = z.object({
+  name: z.string().trim().min(1, "Le nom de la matiere est obligatoire."),
+});
+
+const createEvaluationTypeSchema = z.object({
+  code: z.string().trim().min(1, "Le code est obligatoire."),
+  label: z.string().trim().min(1, "Le libelle est obligatoire."),
+});
+
+const createAssignmentSchema = z.object({
+  schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
+  teacherUserId: z.string().trim().min(1, "L'enseignant est obligatoire."),
+  classId: z.string().trim().min(1, "La classe est obligatoire."),
+  subjectId: z.string().trim().min(1, "La matiere est obligatoire."),
+});
+
 export default function SubjectsPage() {
   const router = useRouter();
 
@@ -126,22 +146,14 @@ export default function SubjectsPage() {
   const [classrooms, setClassrooms] = useState<ClassroomOption[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
 
-  const [subjectName, setSubjectName] = useState("");
   const [branchDrafts, setBranchDrafts] = useState<Record<string, string>>({});
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [editSubjectName, setEditSubjectName] = useState("");
-  const [evaluationTypeCode, setEvaluationTypeCode] = useState("");
-  const [evaluationTypeLabel, setEvaluationTypeLabel] = useState("");
   const [editingEvaluationTypeId, setEditingEvaluationTypeId] = useState<
     string | null
   >(null);
   const [editEvaluationTypeCode, setEditEvaluationTypeCode] = useState("");
   const [editEvaluationTypeLabel, setEditEvaluationTypeLabel] = useState("");
-
-  const [assignmentSchoolYearId, setAssignmentSchoolYearId] = useState("");
-  const [assignmentTeacherUserId, setAssignmentTeacherUserId] = useState("");
-  const [assignmentClassId, setAssignmentClassId] = useState("");
-  const [assignmentSubjectId, setAssignmentSubjectId] = useState("");
 
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(
     null,
@@ -174,6 +186,31 @@ export default function SubjectsPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const createSubjectForm = useForm<z.input<typeof createSubjectSchema>>({
+    resolver: zodResolver(createSubjectSchema),
+    mode: "onChange",
+    defaultValues: { name: "" },
+  });
+  const createEvaluationTypeForm = useForm<
+    z.input<typeof createEvaluationTypeSchema>
+  >({
+    resolver: zodResolver(createEvaluationTypeSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const createAssignmentForm = useForm<z.input<typeof createAssignmentSchema>>({
+    resolver: zodResolver(createAssignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      schoolYearId: "",
+      teacherUserId: "",
+      classId: "",
+      subjectId: "",
+    },
+  });
+  const createSubjectValues = createSubjectForm.watch();
+  const createEvaluationTypeValues = createEvaluationTypeForm.watch();
+  const createAssignmentValues = createAssignmentForm.watch();
 
   useEffect(() => {
     void bootstrap();
@@ -311,17 +348,36 @@ export default function SubjectsPage() {
       setClassrooms(classroomsPayload);
       setAssignments(assignmentsPayload);
 
-      if (!assignmentSchoolYearId && schoolYearsPayload.length > 0) {
-        setAssignmentSchoolYearId(
+      if (
+        !createAssignmentForm.getValues("schoolYearId") &&
+        schoolYearsPayload.length > 0
+      ) {
+        createAssignmentForm.setValue(
+          "schoolYearId",
           schoolYearsPayload.find((entry) => entry.isActive)?.id ??
             schoolYearsPayload[0].id,
+          { shouldValidate: true },
         );
       }
-      if (!assignmentTeacherUserId && teachersPayload.length > 0) {
-        setAssignmentTeacherUserId(teachersPayload[0].userId);
+      if (
+        !createAssignmentForm.getValues("teacherUserId") &&
+        teachersPayload.length > 0
+      ) {
+        createAssignmentForm.setValue(
+          "teacherUserId",
+          teachersPayload[0].userId,
+          {
+            shouldValidate: true,
+          },
+        );
       }
-      if (!assignmentSubjectId && subjectsPayload.length > 0) {
-        setAssignmentSubjectId(subjectsPayload[0].id);
+      if (
+        !createAssignmentForm.getValues("subjectId") &&
+        subjectsPayload.length > 0
+      ) {
+        createAssignmentForm.setValue("subjectId", subjectsPayload[0].id, {
+          shouldValidate: true,
+        });
       }
     } catch {
       setError("Erreur reseau.");
@@ -334,30 +390,41 @@ export default function SubjectsPage() {
     () =>
       classrooms.filter(
         (entry) =>
-          !assignmentSchoolYearId ||
-          entry.schoolYear.id === assignmentSchoolYearId,
+          !createAssignmentValues.schoolYearId ||
+          entry.schoolYear.id === createAssignmentValues.schoolYearId,
       ),
-    [classrooms, assignmentSchoolYearId],
+    [classrooms, createAssignmentValues.schoolYearId],
   );
 
   useEffect(() => {
-    if (!assignmentClassId) {
+    if (!createAssignmentValues.classId) {
       if (filteredClassroomsForCreate.length > 0) {
-        setAssignmentClassId(filteredClassroomsForCreate[0].id);
+        createAssignmentForm.setValue(
+          "classId",
+          filteredClassroomsForCreate[0].id,
+          { shouldValidate: true },
+        );
       }
       return;
     }
 
     const exists = filteredClassroomsForCreate.some(
-      (entry) => entry.id === assignmentClassId,
+      (entry) => entry.id === createAssignmentValues.classId,
     );
     if (!exists) {
-      setAssignmentClassId(filteredClassroomsForCreate[0]?.id ?? "");
+      createAssignmentForm.setValue(
+        "classId",
+        filteredClassroomsForCreate[0]?.id ?? "",
+        { shouldValidate: true },
+      );
     }
-  }, [filteredClassroomsForCreate, assignmentClassId]);
+  }, [
+    createAssignmentForm,
+    createAssignmentValues.classId,
+    filteredClassroomsForCreate,
+  ]);
 
-  async function onCreateSubject(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateSubject(values: z.output<typeof createSubjectSchema>) {
     if (!schoolSlug) {
       return;
     }
@@ -381,7 +448,7 @@ export default function SubjectsPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify({ name: subjectName }),
+        body: JSON.stringify(values),
       });
 
       if (!response.ok) {
@@ -396,7 +463,7 @@ export default function SubjectsPage() {
         return;
       }
 
-      setSubjectName("");
+      createSubjectForm.reset({ name: "" });
       setSuccess("Matiere creee.");
       await loadData(schoolSlug);
     } catch {
@@ -539,8 +606,9 @@ export default function SubjectsPage() {
     });
   }
 
-  async function onCreateEvaluationType(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateEvaluationType(
+    values: z.output<typeof createEvaluationTypeSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -566,10 +634,7 @@ export default function SubjectsPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify({
-            code: evaluationTypeCode,
-            label: evaluationTypeLabel,
-          }),
+          body: JSON.stringify(values),
         },
       );
 
@@ -585,8 +650,7 @@ export default function SubjectsPage() {
         return;
       }
 
-      setEvaluationTypeCode("");
-      setEvaluationTypeLabel("");
+      createEvaluationTypeForm.reset({ code: "", label: "" });
       setSuccess("Type d'evaluation cree.");
       await loadData(schoolSlug);
     } catch {
@@ -675,8 +739,9 @@ export default function SubjectsPage() {
     setSuccess(null);
   }
 
-  async function onCreateAssignment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateAssignment(
+    values: z.output<typeof createAssignmentSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -702,12 +767,7 @@ export default function SubjectsPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify({
-            schoolYearId: assignmentSchoolYearId,
-            teacherUserId: assignmentTeacherUserId,
-            classId: assignmentClassId,
-            subjectId: assignmentSubjectId,
-          }),
+          body: JSON.stringify(values),
         },
       );
 
@@ -723,6 +783,12 @@ export default function SubjectsPage() {
         return;
       }
 
+      createAssignmentForm.reset({
+        schoolYearId: values.schoolYearId,
+        teacherUserId: values.teacherUserId,
+        classId: values.classId,
+        subjectId: values.subjectId,
+      });
       setSuccess("Affectation enseignant/matiere creee.");
       await loadData(schoolSlug);
     } catch {
@@ -1012,19 +1078,32 @@ export default function SubjectsPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-[1fr_auto]"
-                onSubmit={onCreateSubject}
+                onSubmit={createSubjectForm.handleSubmit(onCreateSubject)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Nouvelle matiere</span>
+                <FormField
+                  label="Nouvelle matiere"
+                  error={createSubjectForm.formState.errors.name?.message}
+                >
                   <input
-                    value={subjectName}
-                    onChange={(event) => setSubjectName(event.target.value)}
+                    aria-label="Nouvelle matiere"
+                    value={createSubjectValues.name ?? ""}
+                    onChange={(event) => {
+                      createSubjectForm.setValue("name", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="Ex: Mathematiques"
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
+                </FormField>
                 <div className="self-end">
-                  <SubmitButton disabled={submittingSubject}>
+                  <SubmitButton
+                    disabled={
+                      submittingSubject || !createSubjectForm.formState.isValid
+                    }
+                  >
                     {submittingSubject ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
@@ -1202,32 +1281,65 @@ export default function SubjectsPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-[180px_1fr_auto]"
-                onSubmit={onCreateEvaluationType}
+                onSubmit={createEvaluationTypeForm.handleSubmit(
+                  onCreateEvaluationType,
+                )}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Code</span>
+                <FormField
+                  label="Code"
+                  error={
+                    createEvaluationTypeForm.formState.errors.code?.message
+                  }
+                >
                   <input
-                    value={evaluationTypeCode}
-                    onChange={(event) =>
-                      setEvaluationTypeCode(event.target.value)
-                    }
+                    aria-label="Code"
+                    value={createEvaluationTypeValues.code ?? ""}
+                    onChange={(event) => {
+                      createEvaluationTypeForm.setValue(
+                        "code",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     placeholder="DEVOIR"
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Libelle</span>
+                </FormField>
+                <FormField
+                  label="Libelle"
+                  error={
+                    createEvaluationTypeForm.formState.errors.label?.message
+                  }
+                >
                   <input
-                    value={evaluationTypeLabel}
-                    onChange={(event) =>
-                      setEvaluationTypeLabel(event.target.value)
-                    }
+                    aria-label="Libelle"
+                    value={createEvaluationTypeValues.label ?? ""}
+                    onChange={(event) => {
+                      createEvaluationTypeForm.setValue(
+                        "label",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     placeholder="Devoir surveille"
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
+                </FormField>
                 <div className="self-end">
-                  <SubmitButton disabled={submittingEvaluationType}>
+                  <SubmitButton
+                    disabled={
+                      submittingEvaluationType ||
+                      !createEvaluationTypeForm.formState.isValid
+                    }
+                  >
                     {submittingEvaluationType ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
@@ -1346,15 +1458,33 @@ export default function SubjectsPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-4"
-                onSubmit={onCreateAssignment}
+                onSubmit={createAssignmentForm.handleSubmit(onCreateAssignment)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Annee scolaire</span>
+                <FormField
+                  label="Annee scolaire"
+                  error={
+                    createAssignmentForm.formState.errors.schoolYearId?.message
+                  }
+                >
                   <select
-                    value={assignmentSchoolYearId}
-                    onChange={(event) =>
-                      setAssignmentSchoolYearId(event.target.value)
-                    }
+                    aria-label="Annee scolaire"
+                    value={createAssignmentValues.schoolYearId ?? ""}
+                    onChange={(event) => {
+                      createAssignmentForm.setValue(
+                        "schoolYearId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                      createAssignmentForm.setValue("classId", "", {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -1365,15 +1495,28 @@ export default function SubjectsPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Enseignant</span>
+                <FormField
+                  label="Enseignant"
+                  error={
+                    createAssignmentForm.formState.errors.teacherUserId?.message
+                  }
+                >
                   <select
-                    value={assignmentTeacherUserId}
-                    onChange={(event) =>
-                      setAssignmentTeacherUserId(event.target.value)
-                    }
+                    aria-label="Enseignant"
+                    value={createAssignmentValues.teacherUserId ?? ""}
+                    onChange={(event) => {
+                      createAssignmentForm.setValue(
+                        "teacherUserId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -1383,15 +1526,26 @@ export default function SubjectsPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Classe</span>
+                <FormField
+                  label="Classe"
+                  error={createAssignmentForm.formState.errors.classId?.message}
+                >
                   <select
-                    value={assignmentClassId}
-                    onChange={(event) =>
-                      setAssignmentClassId(event.target.value)
-                    }
+                    aria-label="Classe"
+                    value={createAssignmentValues.classId ?? ""}
+                    onChange={(event) => {
+                      createAssignmentForm.setValue(
+                        "classId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -1401,15 +1555,28 @@ export default function SubjectsPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Matiere</span>
+                <FormField
+                  label="Matiere"
+                  error={
+                    createAssignmentForm.formState.errors.subjectId?.message
+                  }
+                >
                   <select
-                    value={assignmentSubjectId}
-                    onChange={(event) =>
-                      setAssignmentSubjectId(event.target.value)
-                    }
+                    aria-label="Matiere"
+                    value={createAssignmentValues.subjectId ?? ""}
+                    onChange={(event) => {
+                      createAssignmentForm.setValue(
+                        "subjectId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
@@ -1419,10 +1586,15 @@ export default function SubjectsPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </FormField>
 
                 <div className="md:col-span-4">
-                  <SubmitButton disabled={submittingAssignment}>
+                  <SubmitButton
+                    disabled={
+                      submittingAssignment ||
+                      !createAssignmentForm.formState.isValid
+                    }
+                  >
                     {submittingAssignment
                       ? "Creation..."
                       : "Ajouter affectation"}
