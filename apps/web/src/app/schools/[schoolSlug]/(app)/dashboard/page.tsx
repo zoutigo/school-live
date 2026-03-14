@@ -5,15 +5,22 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
+  BookOpen,
+  Building2,
   CheckCircle2,
   ChevronRight,
+  ClipboardCheck,
   CreditCard,
   GraduationCap,
   HeartHandshake,
+  LayoutDashboard,
+  MessageSquare,
   ShieldAlert,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page";
+import { getSchoolMessagesUnreadCount } from "../../../../../components/messaging/messaging-api";
 import { STUDENT_NOTES_DEMO_DATA } from "../../../../../components/student-notes/student-notes-demo-data";
 import type {
   StudentNotesTerm,
@@ -121,17 +128,32 @@ export type ParentDashboardSummaryResponse = {
   };
 };
 
-const teacherStats = [
-  { title: "Classes assignées", value: "4" },
-  { title: "Copies à corriger", value: "28" },
-  { title: "Messages parents", value: "6" },
-];
+type TeacherDashboardSummary = {
+  classesCount: number;
+  classNames: string[];
+  unreadMessages: number;
+};
 
-const schoolAdminStats = [
-  { title: "Classes actives", value: "18" },
-  { title: "Élèves inscrits", value: "1320" },
-  { title: "Demandes en attente", value: "11" },
-];
+type SchoolDashboardSummary = {
+  classesCount: number;
+  studentsCount: number;
+  teachersCount: number;
+  assignmentsCount: number;
+  unreadMessages: number;
+};
+
+type DashboardHeroContent = {
+  badge: string;
+  lead: string;
+  chips: string[];
+};
+
+type DashboardQuickLink = {
+  id: string;
+  label: string;
+  value: string;
+  href: string;
+};
 
 function getRoleLabel(role: MeResponse["role"]) {
   switch (role) {
@@ -143,9 +165,85 @@ function getRoleLabel(role: MeResponse["role"]) {
       return "Enseignant";
     case "SCHOOL_ADMIN":
       return "Administration";
+    case "SCHOOL_MANAGER":
+      return "Direction";
+    case "SUPERVISOR":
+      return "Supervision";
+    case "SCHOOL_ACCOUNTANT":
+      return "Comptabilite";
+    case "SUPPORT":
+      return "Support";
+    case "ADMIN":
+      return "Administration plateforme";
+    case "SUPER_ADMIN":
+      return "Super administration";
+    case "SALES":
+      return "Developpement";
     default:
       return role;
   }
+}
+
+function isSchoolOperationsRole(role: MeResponse["role"] | undefined) {
+  return (
+    role === "SCHOOL_ADMIN" ||
+    role === "SCHOOL_MANAGER" ||
+    role === "SUPERVISOR" ||
+    role === "SCHOOL_ACCOUNTANT"
+  );
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("fr-FR").format(value);
+}
+
+function getHeroContent(me: MeResponse | null): DashboardHeroContent {
+  if (!me) {
+    return {
+      badge: "Accueil",
+      lead: "Retrouvez ici vos priorites du moment et vos acces directs utiles.",
+      chips: [],
+    };
+  }
+
+  if (me.role === "PARENT") {
+    const childrenCount = me.linkedStudents?.length ?? 0;
+    return {
+      badge: "Accueil famille",
+      lead: "Suivez en un coup d'oeil la situation scolaire de vos enfants, leurs resultats recents et les actions parent a traiter.",
+      chips: [
+        "Parent",
+        childrenCount > 0
+          ? `${childrenCount} enfant${childrenCount > 1 ? "s" : ""} suivi${childrenCount > 1 ? "s" : ""}`
+          : "Acces famille",
+      ],
+    };
+  }
+
+  if (me.role === "TEACHER") {
+    return {
+      badge: "Accueil enseignant",
+      lead: "Retrouvez vos classes, la saisie pedagogique et les echanges utiles sans passer par plusieurs modules.",
+      chips: ["Enseignant", "Pilotage quotidien"],
+    };
+  }
+
+  if (isSchoolOperationsRole(me.role)) {
+    return {
+      badge:
+        me.role === "SCHOOL_ADMIN"
+          ? "Accueil etablissement"
+          : "Coordination etablissement",
+      lead: "Gardez une lecture courte de la structure, de la scolarite et de la coordination de l'etablissement.",
+      chips: [getRoleLabel(me.role), "Lecture de pilotage"],
+    };
+  }
+
+  return {
+    badge: "Accueil",
+    lead: "Retrouvez ici vos priorites du moment et vos acces directs utiles.",
+    chips: [getRoleLabel(me.role)],
+  };
 }
 
 export function getCurrentTerm(date = new Date()): StudentNotesTerm {
@@ -395,7 +493,7 @@ function WarmWelcomePanel({ me }: { me: MeResponse | null }) {
   const fullName = me
     ? `${me.firstName} ${me.lastName}`
     : "Chargement du profil";
-  const roleLabel = me ? getRoleLabel(me.role) : "Espace famille";
+  const hero = getHeroContent(me);
 
   return (
     <section className="relative w-full min-w-0 overflow-hidden rounded-[20px] border border-orange-100 bg-gradient-to-br from-[#fff7ed] via-[#fffaf4] to-[#fef3c7] p-3 shadow-[0_18px_55px_rgba(180,83,9,0.12)] min-[360px]:rounded-[24px] min-[360px]:p-4 md:p-7">
@@ -405,30 +503,30 @@ function WarmWelcomePanel({ me }: { me: MeResponse | null }) {
         <div className="min-w-0 space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-white/80 px-3 py-1 text-xs font-medium text-orange-900 backdrop-blur sm:text-sm">
             <Sparkles className="h-4 w-4" />
-            Accueil famille
+            {hero.badge}
           </div>
           <h1 className="font-heading text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl">
             Bienvenue, {fullName}
           </h1>
           <p className="max-w-none text-sm leading-6 text-slate-700 sm:text-base sm:leading-7 md:text-lg">
-            Suivez en un coup d&apos;oeil la situation scolaire de vos enfants,
-            leurs resultats recents et les actions parent a traiter.
+            {hero.lead}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <div className="inline-flex items-center gap-2 rounded-2xl bg-white/88 px-3 py-2 text-xs text-slate-700 shadow-sm ring-1 ring-orange-100 sm:px-4 sm:py-2.5 sm:text-sm">
-            <HeartHandshake className="h-4 w-4 text-orange-600" />
-            <span className="font-medium text-slate-900">{roleLabel}</span>
-          </div>
-          {me?.role === "PARENT" && me.linkedStudents?.length ? (
-            <div className="inline-flex items-center gap-2 rounded-2xl bg-white/88 px-3 py-2 text-xs text-slate-700 shadow-sm ring-1 ring-orange-100 sm:px-4 sm:py-2.5 sm:text-sm">
-              <GraduationCap className="h-4 w-4 text-orange-600" />
-              {me.linkedStudents.length} enfant
-              {me.linkedStudents.length > 1 ? "s" : ""} suivi
-              {me.linkedStudents.length > 1 ? "s" : ""}
+          {hero.chips.map((chip) => (
+            <div
+              key={chip}
+              className="inline-flex items-center gap-2 rounded-2xl bg-white/88 px-3 py-2 text-xs text-slate-700 shadow-sm ring-1 ring-orange-100 sm:px-4 sm:py-2.5 sm:text-sm"
+            >
+              {chip.includes("enfant") ? (
+                <GraduationCap className="h-4 w-4 text-orange-600" />
+              ) : (
+                <HeartHandshake className="h-4 w-4 text-orange-600" />
+              )}
+              <span className="font-medium text-slate-900">{chip}</span>
             </div>
-          ) : null}
+          ))}
         </div>
       </div>
     </section>
@@ -724,6 +822,48 @@ function AccountItemRow({
   );
 }
 
+function DashboardActionLink({
+  href,
+  label,
+  hint,
+}: {
+  href: string;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between gap-3 rounded-[16px] border border-white/80 bg-white/82 px-3 py-3 text-sm text-slate-700 ring-1 ring-orange-100/60 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 min-[360px]:rounded-[18px] min-[360px]:px-3.5 min-[360px]:py-3.5"
+    >
+      <div className="min-w-0">
+        <p className="font-semibold text-slate-900">{label}</p>
+        <p className="mt-0.5 text-xs text-slate-500">{hint}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-orange-700" />
+    </Link>
+  );
+}
+
+function QuickMetricRow({ link }: { link: DashboardQuickLink }) {
+  return (
+    <Link
+      href={link.href}
+      className="flex items-center justify-between gap-3 rounded-[16px] border border-white/80 bg-white/82 px-3 py-3 ring-1 ring-orange-100/60 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 min-[360px]:rounded-[18px] min-[360px]:px-3.5 min-[360px]:py-3.5"
+    >
+      <p className="min-w-0 truncate text-sm font-semibold text-slate-900">
+        {link.label}
+      </p>
+      <div className="flex items-center gap-2">
+        <span className="font-heading text-xl font-semibold text-slate-950">
+          {link.value}
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-orange-700" />
+      </div>
+    </Link>
+  );
+}
+
 function ParentAccountCard({
   summary,
   loading,
@@ -789,6 +929,178 @@ function ParentAccountCard({
   );
 }
 
+function TeacherClassesCard({
+  summary,
+  loading,
+  schoolSlug,
+}: {
+  summary: TeacherDashboardSummary;
+  loading: boolean;
+  schoolSlug: string;
+}) {
+  return (
+    <FamilyCardShell
+      title="Mes classes"
+      eyebrow="Pilotage"
+      icon={Building2}
+      accent="from-[#ffe2b8] via-[#fff2dc] to-white"
+    >
+      {loading ? (
+        <div className="h-36 animate-pulse rounded-[18px] bg-white/80" />
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-[18px] border border-white/80 bg-white/85 p-3 ring-1 ring-orange-100/60">
+            <p className="text-xs uppercase tracking-[0.15em] text-slate-500">
+              Classes actives
+            </p>
+            <p className="mt-2 font-heading text-3xl font-semibold text-slate-950">
+              {formatCount(summary.classesCount)}
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              {summary.classNames.length > 0
+                ? summary.classNames.join(" • ")
+                : "Aucune classe affectee pour le moment."}
+            </p>
+          </div>
+          <DashboardActionLink
+            href={`/schools/${schoolSlug}/mes-classes`}
+            label="Ouvrir mes classes"
+            hint="Acceder aux classes suivies et a leurs modules."
+          />
+        </div>
+      )}
+    </FamilyCardShell>
+  );
+}
+
+function TeacherPedagogyCard({
+  summary,
+  loading,
+  schoolSlug,
+}: {
+  summary: TeacherDashboardSummary;
+  loading: boolean;
+  schoolSlug: string;
+}) {
+  return (
+    <FamilyCardShell
+      title="Suivi pedagogique"
+      eyebrow="Evaluations"
+      icon={BookOpen}
+      accent="from-[#ffd9cf] via-[#fff2e8] to-white"
+    >
+      {loading ? (
+        <div className="h-36 animate-pulse rounded-[18px] bg-white/80" />
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-[18px] border border-white/80 bg-white/85 p-3 ring-1 ring-orange-100/60">
+            <p className="text-xs uppercase tracking-[0.15em] text-slate-500">
+              Saisie disponible
+            </p>
+            <p className="mt-2 font-heading text-3xl font-semibold text-slate-950">
+              {formatCount(summary.classesCount)}
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              Acces direct au cahier de notes et aux evaluations de vos classes.
+            </p>
+          </div>
+          <DashboardActionLink
+            href={`/schools/${schoolSlug}/student-grades`}
+            label="Ouvrir le cahier de notes"
+            hint="Saisir, verifier et publier les notes."
+          />
+        </div>
+      )}
+    </FamilyCardShell>
+  );
+}
+
+function TeacherCommunicationCard({
+  summary,
+  loading,
+  schoolSlug,
+}: {
+  summary: TeacherDashboardSummary;
+  loading: boolean;
+  schoolSlug: string;
+}) {
+  return (
+    <FamilyCardShell
+      title="Echanges"
+      eyebrow="Communication"
+      icon={MessageSquare}
+      accent="from-[#d6f2fb] via-[#edf9ff] to-white"
+    >
+      {loading ? (
+        <div className="h-36 animate-pulse rounded-[18px] bg-white/80" />
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-[18px] border border-white/80 bg-slate-900 px-3 py-3 text-white">
+            <p className="text-xs uppercase tracking-[0.15em] text-slate-300">
+              Messages non lus
+            </p>
+            <p className="mt-2 font-heading text-3xl font-semibold">
+              {formatCount(summary.unreadMessages)}
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              {summary.unreadMessages > 0
+                ? "Des parents ou collegues attendent une lecture."
+                : "Boite de reception a jour."}
+            </p>
+          </div>
+          <DashboardActionLink
+            href={`/schools/${schoolSlug}/messagerie`}
+            label="Ouvrir la messagerie"
+            hint="Reprendre les echanges et les suivis de classe."
+          />
+        </div>
+      )}
+    </FamilyCardShell>
+  );
+}
+
+function SchoolOperationsCard({
+  title,
+  eyebrow,
+  icon,
+  accent,
+  links,
+  loading,
+}: {
+  title: string;
+  eyebrow: string;
+  icon: LucideIcon;
+  accent: string;
+  links: DashboardQuickLink[];
+  loading: boolean;
+}) {
+  return (
+    <FamilyCardShell
+      title={title}
+      eyebrow={eyebrow}
+      icon={icon}
+      accent={accent}
+    >
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-16 animate-pulse rounded-[18px] bg-white/80"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {links.map((link) => (
+            <QuickMetricRow key={link.id} link={link} />
+          ))}
+        </div>
+      )}
+    </FamilyCardShell>
+  );
+}
+
 export default function DashboardPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
@@ -802,6 +1114,22 @@ export default function DashboardPage() {
     headline: "Compte parent",
     detail: "Resume de vos actions administratives.",
     items: [],
+  });
+  const [teacherCardsLoading, setTeacherCardsLoading] = useState(false);
+  const [teacherSummary, setTeacherSummary] = useState<TeacherDashboardSummary>(
+    {
+      classesCount: 0,
+      classNames: [],
+      unreadMessages: 0,
+    },
+  );
+  const [schoolCardsLoading, setSchoolCardsLoading] = useState(false);
+  const [schoolSummary, setSchoolSummary] = useState<SchoolDashboardSummary>({
+    classesCount: 0,
+    studentsCount: 0,
+    teachersCount: 0,
+    assignmentsCount: 0,
+    unreadMessages: 0,
   });
 
   useEffect(() => {
@@ -823,6 +1151,16 @@ export default function DashboardPage() {
 
     if (payload.role === "PARENT") {
       await loadParentDashboardData(payload);
+      return;
+    }
+
+    if (payload.role === "TEACHER") {
+      await loadTeacherDashboardData();
+      return;
+    }
+
+    if (isSchoolOperationsRole(payload.role)) {
+      await loadSchoolDashboardData();
     }
   }
 
@@ -944,10 +1282,178 @@ export default function DashboardPage() {
     }
   }
 
+  async function loadTeacherDashboardData() {
+    setTeacherCardsLoading(true);
+
+    try {
+      const [contextPayload, unreadMessages] = await Promise.all([
+        fetch(`${API_URL}/schools/${schoolSlug}/student-grades/context`, {
+          credentials: "include",
+        }).then(async (response) => {
+          if (!response.ok) {
+            throw new Error("TEACHER_CONTEXT_FAILED");
+          }
+          return (await response.json()) as {
+            assignments?: Array<{
+              classId: string;
+              className: string;
+            }>;
+          };
+        }),
+        getSchoolMessagesUnreadCount(schoolSlug).catch(() => 0),
+      ]);
+
+      const classes = Array.from(
+        new Map(
+          (contextPayload.assignments ?? []).map((entry) => [
+            entry.classId,
+            entry.className,
+          ]),
+        ).values(),
+      ).sort((left, right) => left.localeCompare(right));
+
+      setTeacherSummary({
+        classesCount: classes.length,
+        classNames: classes.slice(0, 3),
+        unreadMessages,
+      });
+    } catch {
+      setTeacherSummary({
+        classesCount: 0,
+        classNames: [],
+        unreadMessages: 0,
+      });
+    } finally {
+      setTeacherCardsLoading(false);
+    }
+  }
+
+  async function loadSchoolDashboardData() {
+    setSchoolCardsLoading(true);
+
+    try {
+      const buildAdminPath = (segment: string) =>
+        `${API_URL}/schools/${schoolSlug}/admin/${segment}`;
+
+      const [
+        classesResponse,
+        studentsResponse,
+        teachersResponse,
+        assignmentsResponse,
+        unreadMessages,
+      ] = await Promise.all([
+        fetch(buildAdminPath("classrooms"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath("students"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath("teachers"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath("teacher-assignments"), {
+          credentials: "include",
+        }),
+        getSchoolMessagesUnreadCount(schoolSlug).catch(() => 0),
+      ]);
+
+      const nextSummary: SchoolDashboardSummary = {
+        classesCount: classesResponse.ok
+          ? ((await classesResponse.json()) as Array<unknown>).length
+          : 0,
+        studentsCount: studentsResponse.ok
+          ? ((await studentsResponse.json()) as Array<unknown>).length
+          : 0,
+        teachersCount: teachersResponse.ok
+          ? ((await teachersResponse.json()) as Array<unknown>).length
+          : 0,
+        assignmentsCount: assignmentsResponse.ok
+          ? ((await assignmentsResponse.json()) as Array<unknown>).length
+          : 0,
+        unreadMessages,
+      };
+
+      setSchoolSummary(nextSummary);
+    } catch {
+      setSchoolSummary({
+        classesCount: 0,
+        studentsCount: 0,
+        teachersCount: 0,
+        assignmentsCount: 0,
+        unreadMessages: 0,
+      });
+    } finally {
+      setSchoolCardsLoading(false);
+    }
+  }
+
+  const schoolStructureLinks: DashboardQuickLink[] = [
+    {
+      id: "classes",
+      label: "Classes",
+      value: formatCount(schoolSummary.classesCount),
+      href: "/classes",
+    },
+    {
+      id: "students",
+      label: "Eleves",
+      value: formatCount(schoolSummary.studentsCount),
+      href: "/eleves",
+    },
+    {
+      id: "teachers",
+      label: "Enseignants",
+      value: formatCount(schoolSummary.teachersCount),
+      href: "/teachers",
+    },
+  ];
+
+  const schoolAcademicLinks: DashboardQuickLink[] = [
+    {
+      id: "assignments",
+      label: "Affectations",
+      value: formatCount(schoolSummary.assignmentsCount),
+      href: "/teachers",
+    },
+    {
+      id: "grades",
+      label: "Notes",
+      value: "Module",
+      href: `/schools/${schoolSlug}/student-grades`,
+    },
+    {
+      id: "curriculums",
+      label: "Curriculums",
+      value: "Module",
+      href: "/curriculums",
+    },
+  ];
+
+  const schoolCoordinationLinks: DashboardQuickLink[] = [
+    {
+      id: "messages",
+      label: "Messagerie",
+      value: formatCount(schoolSummary.unreadMessages),
+      href: `/schools/${schoolSlug}/messagerie`,
+    },
+    {
+      id: "feed",
+      label: "Fil d'actualite",
+      value: "Suivre",
+      href: `/schools/${schoolSlug}/fil`,
+    },
+    {
+      id: "settings",
+      label: "Parametres",
+      value: "Ouvrir",
+      href: "/settings",
+    },
+  ];
+
   return (
     <div
       data-testid="dashboard-root"
-      className="mx-auto grid w-full min-w-0 max-w-[1120px] gap-4 overflow-x-hidden min-[360px]:gap-6"
+      className="grid w-full min-w-0 gap-4 overflow-x-hidden min-[360px]:gap-6"
     >
       <WarmWelcomePanel me={me} />
 
@@ -986,34 +1492,51 @@ export default function DashboardPage() {
       ) : null}
 
       {me?.role === "TEACHER" ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {teacherStats.map((item) => (
-            <article
-              key={item.title}
-              className="rounded-[22px] border border-border bg-surface p-5 shadow-card"
-            >
-              <p className="text-sm text-text-secondary">{item.title}</p>
-              <p className="font-heading text-2xl font-bold text-primary">
-                {item.value}
-              </p>
-            </article>
-          ))}
+        <div className="grid gap-3 min-[360px]:gap-4 xl:grid-cols-3">
+          <TeacherClassesCard
+            summary={teacherSummary}
+            loading={teacherCardsLoading}
+            schoolSlug={schoolSlug}
+          />
+          <TeacherPedagogyCard
+            summary={teacherSummary}
+            loading={teacherCardsLoading}
+            schoolSlug={schoolSlug}
+          />
+          <TeacherCommunicationCard
+            summary={teacherSummary}
+            loading={teacherCardsLoading}
+            schoolSlug={schoolSlug}
+          />
         </div>
       ) : null}
 
-      {me?.role === "SCHOOL_ADMIN" ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {schoolAdminStats.map((item) => (
-            <article
-              key={item.title}
-              className="rounded-[22px] border border-border bg-surface p-5 shadow-card"
-            >
-              <p className="text-sm text-text-secondary">{item.title}</p>
-              <p className="font-heading text-2xl font-bold text-primary">
-                {item.value}
-              </p>
-            </article>
-          ))}
+      {isSchoolOperationsRole(me?.role) ? (
+        <div className="grid gap-3 min-[360px]:gap-4 xl:grid-cols-3">
+          <SchoolOperationsCard
+            title="Structure"
+            eyebrow="Etablissement"
+            icon={Users}
+            accent="from-[#ffe2b8] via-[#fff2dc] to-white"
+            links={schoolStructureLinks}
+            loading={schoolCardsLoading}
+          />
+          <SchoolOperationsCard
+            title="Scolarite"
+            eyebrow="Pedagogie"
+            icon={ClipboardCheck}
+            accent="from-[#ffd9cf] via-[#fff2e8] to-white"
+            links={schoolAcademicLinks}
+            loading={schoolCardsLoading}
+          />
+          <SchoolOperationsCard
+            title="Coordination"
+            eyebrow="Pilotage"
+            icon={LayoutDashboard}
+            accent="from-[#d6f2fb] via-[#edf9ff] to-white"
+            links={schoolCoordinationLinks}
+            loading={schoolCardsLoading}
+          />
         </div>
       ) : null}
     </div>

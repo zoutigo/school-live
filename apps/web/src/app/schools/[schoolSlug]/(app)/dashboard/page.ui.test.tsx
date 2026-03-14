@@ -529,6 +529,138 @@ describe("DashboardPage parent cards", () => {
       expect(screen.getByTestId("dashboard-root")).toBeInTheDocument();
     });
 
+    expect(screen.getByTestId("dashboard-root").className).not.toContain(
+      "max-w-[",
+    );
     assertNoHorizontalOverflowAt320(screen.getByTestId("dashboard-root"));
+  });
+});
+
+describe("DashboardPage role dashboards", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    paramsMock = { schoolSlug: "college-vogt" };
+    setViewportWidth(1280);
+  });
+
+  it("renders concise teacher hero and cards", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/me")) {
+        return createJsonResponse({
+          firstName: "Laure",
+          lastName: "Fotsing",
+          role: "TEACHER",
+        });
+      }
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return createJsonResponse({
+          assignments: [
+            { classId: "6e-a", className: "6e A" },
+            { classId: "6e-a", className: "6e A" },
+            { classId: "5e-b", className: "5e B" },
+          ],
+        });
+      }
+
+      if (url.includes("/schools/college-vogt/messages/unread-count")) {
+        return createJsonResponse({ unread: 3 });
+      }
+
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Bienvenue, Laure Fotsing" }),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Accueil enseignant")).toBeInTheDocument();
+    expect(screen.getByText("Mes classes")).toBeInTheDocument();
+    expect(screen.getByText("Suivi pedagogique")).toBeInTheDocument();
+    expect(screen.getByText("Echanges")).toBeInTheDocument();
+    expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getByRole("link", { name: /Ouvrir mes classes/i }),
+    ).toHaveAttribute("href", "/schools/college-vogt/mes-classes");
+    expect(
+      screen.getByRole("link", { name: /Ouvrir le cahier de notes/i }),
+    ).toHaveAttribute("href", "/schools/college-vogt/student-grades");
+    expect(
+      screen.getByRole("link", { name: /Ouvrir la messagerie/i }),
+    ).toHaveAttribute("href", "/schools/college-vogt/messagerie");
+  });
+
+  it("renders school operations hero and cards for school admin", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/me")) {
+        return createJsonResponse({
+          firstName: "Anne",
+          lastName: "Rousselot",
+          role: "SCHOOL_ADMIN",
+        });
+      }
+
+      if (url.includes("/admin/classrooms")) {
+        return createJsonResponse([{ id: "c1" }, { id: "c2" }, { id: "c3" }]);
+      }
+
+      if (url.includes("/admin/students")) {
+        return createJsonResponse([{ id: "s1" }, { id: "s2" }]);
+      }
+
+      if (url.includes("/admin/teachers")) {
+        return createJsonResponse([{ id: "t1" }, { id: "t2" }]);
+      }
+
+      if (url.includes("/admin/teacher-assignments")) {
+        return createJsonResponse([{ id: "a1" }, { id: "a2" }, { id: "a3" }]);
+      }
+
+      if (url.includes("/schools/college-vogt/messages/unread-count")) {
+        return createJsonResponse({ unread: 5 });
+      }
+
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Bienvenue, Anne Rousselot" }),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Accueil etablissement")).toBeInTheDocument();
+    expect(screen.getByText("Structure")).toBeInTheDocument();
+    expect(screen.getByText("Scolarite")).toBeInTheDocument();
+    expect(screen.getByText("Coordination")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Classes\s+3/i })).toHaveAttribute(
+      "href",
+      "/classes",
+    );
+    expect(screen.getByRole("link", { name: /Eleves\s+2/i })).toHaveAttribute(
+      "href",
+      "/eleves",
+    );
+    expect(
+      screen.getByRole("link", { name: /Enseignants\s+2/i }),
+    ).toHaveAttribute("href", "/teachers");
+    const messagingLink = screen
+      .getAllByRole("link")
+      .find(
+        (link) =>
+          link.getAttribute("href") === "/schools/college-vogt/messagerie",
+      );
+    expect(messagingLink).toBeDefined();
   });
 });
