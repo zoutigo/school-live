@@ -149,4 +149,129 @@ describe("Curriculums page forms", () => {
       );
     });
   });
+
+  it("uses inline validation for academic level edition and submits the patch", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/academic-levels")) {
+          if (method === "PATCH") return jsonResponse({ id: "lvl-1" });
+          return jsonResponse([{ id: "lvl-1", code: "6EME", label: "6eme" }]);
+        }
+        if (url.includes("/admin/tracks")) return jsonResponse([]);
+        if (url.includes("/admin/subjects")) return jsonResponse([]);
+        if (url.includes("/admin/curriculums")) return jsonResponse([]);
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<CurriculumsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Niveaux" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
+
+    const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+
+    fireEvent.change(screen.getByLabelText("Code niveau"), {
+      target: { value: "" },
+    });
+    expect(
+      await screen.findByText("Le code est obligatoire."),
+    ).toBeInTheDocument();
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Code niveau"), {
+      target: { value: "5EME" },
+    });
+    fireEvent.change(screen.getByLabelText("Libelle niveau"), {
+      target: { value: "5eme" },
+    });
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/academic-levels/lvl-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ code: "5EME", label: "5eme" }),
+        }),
+      );
+    });
+  });
+
+  it("uses inline validation for track edition and submits the patch", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/academic-levels")) return jsonResponse([]);
+        if (url.includes("/admin/tracks")) {
+          if (method === "PATCH") return jsonResponse({ id: "track-1" });
+          return jsonResponse([
+            { id: "track-1", code: "C", label: "Scientifique" },
+          ]);
+        }
+        if (url.includes("/admin/subjects")) return jsonResponse([]);
+        if (url.includes("/admin/curriculums")) return jsonResponse([]);
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<CurriculumsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Filieres" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
+
+    const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+
+    fireEvent.change(screen.getByLabelText("Code filiere"), {
+      target: { value: "" },
+    });
+    expect(
+      await screen.findByText("Le code est obligatoire."),
+    ).toBeInTheDocument();
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Code filiere"), {
+      target: { value: "D" },
+    });
+    fireEvent.change(screen.getByLabelText("Libelle filiere"), {
+      target: { value: "Litteraire" },
+    });
+
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/tracks/track-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ code: "D", label: "Litteraire" }),
+        }),
+      );
+    });
+  });
 });

@@ -151,12 +151,8 @@ export default function CurriculumsPage() {
   const [editingAcademicLevelId, setEditingAcademicLevelId] = useState<
     string | null
   >(null);
-  const [editAcademicLevelCode, setEditAcademicLevelCode] = useState("");
-  const [editAcademicLevelLabel, setEditAcademicLevelLabel] = useState("");
 
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
-  const [editTrackCode, setEditTrackCode] = useState("");
-  const [editTrackLabel, setEditTrackLabel] = useState("");
 
   const [submittingAcademicLevel, setSubmittingAcademicLevel] = useState(false);
   const [savingAcademicLevel, setSavingAcademicLevel] = useState(false);
@@ -205,10 +201,24 @@ export default function CurriculumsPage() {
       isMandatory: true,
     },
   });
+  const editAcademicLevelForm = useForm<
+    z.input<typeof academicLevelFormSchema>
+  >({
+    resolver: zodResolver(academicLevelFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const editTrackForm = useForm<z.input<typeof trackFormSchema>>({
+    resolver: zodResolver(trackFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
   const academicLevelValues = academicLevelForm.watch();
   const trackValues = trackForm.watch();
   const curriculumValues = curriculumForm.watch();
   const curriculumSubjectValues = curriculumSubjectForm.watch();
+  const editAcademicLevelValues = editAcademicLevelForm.watch();
+  const editTrackValues = editTrackForm.watch();
 
   useEffect(() => {
     void bootstrap();
@@ -440,11 +450,17 @@ export default function CurriculumsPage() {
 
   function startEditAcademicLevel(level: AcademicLevel) {
     setEditingAcademicLevelId(level.id);
-    setEditAcademicLevelCode(level.code);
-    setEditAcademicLevelLabel(level.label);
+    editAcademicLevelForm.reset({
+      code: level.code,
+      label: level.label,
+    });
+    void editAcademicLevelForm.trigger();
   }
 
-  async function saveAcademicLevel(levelId: string) {
+  async function saveAcademicLevel(
+    levelId: string,
+    values: z.output<typeof academicLevelFormSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -469,8 +485,8 @@ export default function CurriculumsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            code: editAcademicLevelCode,
-            label: editAcademicLevelLabel,
+            code: values.code,
+            label: values.label,
           }),
         },
       );
@@ -594,11 +610,17 @@ export default function CurriculumsPage() {
 
   function startEditTrack(track: Track) {
     setEditingTrackId(track.id);
-    setEditTrackCode(track.code);
-    setEditTrackLabel(track.label);
+    editTrackForm.reset({
+      code: track.code,
+      label: track.label,
+    });
+    void editTrackForm.trigger();
   }
 
-  async function saveTrack(trackId: string) {
+  async function saveTrack(
+    trackId: string,
+    values: z.output<typeof trackFormSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -623,8 +645,8 @@ export default function CurriculumsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            code: editTrackCode,
-            label: editTrackLabel,
+            code: values.code,
+            label: values.label,
           }),
         },
       );
@@ -1197,29 +1219,67 @@ export default function CurriculumsPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
-                                  <input
-                                    value={editAcademicLevelCode}
-                                    onChange={(event) =>
-                                      setEditAcademicLevelCode(
-                                        event.target.value,
-                                      )
+                                  <FormField
+                                    label="Code"
+                                    error={
+                                      editAcademicLevelForm.formState.errors
+                                        .code?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
-                                  <input
-                                    value={editAcademicLevelLabel}
-                                    onChange={(event) =>
-                                      setEditAcademicLevelLabel(
-                                        event.target.value,
-                                      )
+                                  >
+                                    <input
+                                      aria-label="Code niveau"
+                                      value={editAcademicLevelValues.code ?? ""}
+                                      onChange={(event) => {
+                                        editAcademicLevelForm.setValue(
+                                          "code",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </FormField>
+                                  <FormField
+                                    label="Libelle"
+                                    error={
+                                      editAcademicLevelForm.formState.errors
+                                        .label?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
+                                  >
+                                    <input
+                                      aria-label="Libelle niveau"
+                                      value={
+                                        editAcademicLevelValues.label ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editAcademicLevelForm.setValue(
+                                          "label",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </FormField>
                                   <Button
                                     type="button"
-                                    disabled={savingAcademicLevel}
+                                    disabled={
+                                      savingAcademicLevel ||
+                                      !editAcademicLevelForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void saveAcademicLevel(level.id);
+                                      void editAcademicLevelForm.handleSubmit(
+                                        (values) =>
+                                          saveAcademicLevel(level.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingAcademicLevel
@@ -1229,9 +1289,10 @@ export default function CurriculumsPage() {
                                   <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() =>
-                                      setEditingAcademicLevelId(null)
-                                    }
+                                    onClick={() => {
+                                      setEditingAcademicLevelId(null);
+                                      editAcademicLevelForm.reset();
+                                    }}
                                   >
                                     Annuler
                                   </Button>
@@ -1373,25 +1434,64 @@ export default function CurriculumsPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
-                                  <input
-                                    value={editTrackCode}
-                                    onChange={(event) =>
-                                      setEditTrackCode(event.target.value)
+                                  <FormField
+                                    label="Code"
+                                    error={
+                                      editTrackForm.formState.errors.code
+                                        ?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
-                                  <input
-                                    value={editTrackLabel}
-                                    onChange={(event) =>
-                                      setEditTrackLabel(event.target.value)
+                                  >
+                                    <input
+                                      aria-label="Code filiere"
+                                      value={editTrackValues.code ?? ""}
+                                      onChange={(event) => {
+                                        editTrackForm.setValue(
+                                          "code",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </FormField>
+                                  <FormField
+                                    label="Libelle"
+                                    error={
+                                      editTrackForm.formState.errors.label
+                                        ?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
+                                  >
+                                    <input
+                                      aria-label="Libelle filiere"
+                                      value={editTrackValues.label ?? ""}
+                                      onChange={(event) => {
+                                        editTrackForm.setValue(
+                                          "label",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </FormField>
                                   <Button
                                     type="button"
-                                    disabled={savingTrack}
+                                    disabled={
+                                      savingTrack ||
+                                      !editTrackForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void saveTrack(track.id);
+                                      void editTrackForm.handleSubmit(
+                                        (values) => saveTrack(track.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingTrack
@@ -1401,7 +1501,10 @@ export default function CurriculumsPage() {
                                   <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => setEditingTrackId(null)}
+                                    onClick={() => {
+                                      setEditingTrackId(null);
+                                      editTrackForm.reset();
+                                    }}
                                   >
                                     Annuler
                                   </Button>

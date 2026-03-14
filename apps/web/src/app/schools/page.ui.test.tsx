@@ -166,4 +166,95 @@ describe("Schools page create form", () => {
       expect(postCall).toBeDefined();
     });
   });
+
+  it("uses inline validation for school edition and submits the patch", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools") && method === "GET") {
+          return jsonResponse([
+            {
+              id: "school-1",
+              slug: "college-vogt",
+              name: "College Vogt",
+              country: "Cameroun",
+              region: "Centre",
+              city: "Yaounde",
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              usersCount: 10,
+              classesCount: 4,
+              studentsCount: 120,
+            },
+          ]);
+        }
+        if (
+          url.endsWith("/api/system/schools/school-1") &&
+          method === "PATCH"
+        ) {
+          return jsonResponse({ id: "school-1" });
+        }
+        if (url.includes("/api/system/schools/slug-preview?")) {
+          return jsonResponse({
+            baseSlug: "college-vogt",
+            suggestedSlug: "college-vogt",
+            baseExists: false,
+          });
+        }
+        if (url.includes("/api/system/users/exists?")) {
+          return jsonResponse({ exists: false });
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Actions ecole" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
+
+    const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+
+    fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
+      target: { value: "" },
+    });
+    expect(
+      await screen.findByText("Le nom de l ecole est obligatoire."),
+    ).toBeInTheDocument();
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
+      target: { value: "College Vogt Premium" },
+    });
+
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/schools/school-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            name: "College Vogt Premium",
+            country: "Cameroun",
+            region: "Centre",
+            city: "Yaounde",
+            logoUrl: null,
+          }),
+        }),
+      );
+    });
+  });
 });

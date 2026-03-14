@@ -443,6 +443,9 @@ describe("Classes page subject color UI", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Affectations" }),
     );
+    fireEvent.change(screen.getByLabelText("Classe"), {
+      target: { value: "class-1" },
+    });
 
     const referentSelect = await screen.findByLabelText(
       "Enseignant referent de la classe",
@@ -782,6 +785,9 @@ describe("Classes page subject color UI", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Affectations" }),
     );
+    fireEvent.change(screen.getByLabelText("Classe"), {
+      target: { value: "class-1" },
+    });
     fireEvent.change(
       screen.getByLabelText("Enseignant referent de la classe"),
       {

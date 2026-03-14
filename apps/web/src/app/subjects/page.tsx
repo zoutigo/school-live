@@ -148,22 +148,13 @@ export default function SubjectsPage() {
 
   const [branchDrafts, setBranchDrafts] = useState<Record<string, string>>({});
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
-  const [editSubjectName, setEditSubjectName] = useState("");
   const [editingEvaluationTypeId, setEditingEvaluationTypeId] = useState<
     string | null
   >(null);
-  const [editEvaluationTypeCode, setEditEvaluationTypeCode] = useState("");
-  const [editEvaluationTypeLabel, setEditEvaluationTypeLabel] = useState("");
 
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(
     null,
   );
-  const [editAssignmentSchoolYearId, setEditAssignmentSchoolYearId] =
-    useState("");
-  const [editAssignmentTeacherUserId, setEditAssignmentTeacherUserId] =
-    useState("");
-  const [editAssignmentClassId, setEditAssignmentClassId] = useState("");
-  const [editAssignmentSubjectId, setEditAssignmentSubjectId] = useState("");
 
   const [submittingSubject, setSubmittingSubject] = useState(false);
   const [savingSubject, setSavingSubject] = useState(false);
@@ -208,9 +199,34 @@ export default function SubjectsPage() {
       subjectId: "",
     },
   });
+  const editSubjectForm = useForm<z.input<typeof createSubjectSchema>>({
+    resolver: zodResolver(createSubjectSchema),
+    mode: "onChange",
+    defaultValues: { name: "" },
+  });
+  const editEvaluationTypeForm = useForm<
+    z.input<typeof createEvaluationTypeSchema>
+  >({
+    resolver: zodResolver(createEvaluationTypeSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const editAssignmentForm = useForm<z.input<typeof createAssignmentSchema>>({
+    resolver: zodResolver(createAssignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      schoolYearId: "",
+      teacherUserId: "",
+      classId: "",
+      subjectId: "",
+    },
+  });
   const createSubjectValues = createSubjectForm.watch();
   const createEvaluationTypeValues = createEvaluationTypeForm.watch();
   const createAssignmentValues = createAssignmentForm.watch();
+  const editSubjectValues = editSubjectForm.watch();
+  const editEvaluationTypeValues = editEvaluationTypeForm.watch();
+  const editAssignmentValues = editAssignmentForm.watch();
 
   useEffect(() => {
     void bootstrap();
@@ -475,12 +491,16 @@ export default function SubjectsPage() {
 
   function startEditSubject(subject: SubjectRow) {
     setEditingSubjectId(subject.id);
-    setEditSubjectName(subject.name);
+    editSubjectForm.reset({ name: subject.name });
+    void editSubjectForm.trigger();
     setError(null);
     setSuccess(null);
   }
 
-  async function saveSubject(subjectId: string) {
+  async function saveSubject(
+    subjectId: string,
+    values: z.output<typeof createSubjectSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -506,7 +526,7 @@ export default function SubjectsPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify({ name: editSubjectName }),
+          body: JSON.stringify({ name: values.name }),
         },
       );
 
@@ -662,13 +682,19 @@ export default function SubjectsPage() {
 
   function startEditEvaluationType(evaluationType: EvaluationTypeRow) {
     setEditingEvaluationTypeId(evaluationType.id);
-    setEditEvaluationTypeCode(evaluationType.code);
-    setEditEvaluationTypeLabel(evaluationType.label);
+    editEvaluationTypeForm.reset({
+      code: evaluationType.code,
+      label: evaluationType.label,
+    });
+    void editEvaluationTypeForm.trigger();
     setError(null);
     setSuccess(null);
   }
 
-  async function saveEvaluationType(evaluationTypeId: string) {
+  async function saveEvaluationType(
+    evaluationTypeId: string,
+    values: z.output<typeof createEvaluationTypeSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -695,8 +721,8 @@ export default function SubjectsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            code: editEvaluationTypeCode,
-            label: editEvaluationTypeLabel,
+            code: values.code,
+            label: values.label,
           }),
         },
       );
@@ -731,10 +757,13 @@ export default function SubjectsPage() {
 
   function startEditAssignment(assignment: AssignmentRow) {
     setEditingAssignmentId(assignment.id);
-    setEditAssignmentSchoolYearId(assignment.schoolYearId);
-    setEditAssignmentTeacherUserId(assignment.teacherUserId);
-    setEditAssignmentClassId(assignment.classId);
-    setEditAssignmentSubjectId(assignment.subjectId);
+    editAssignmentForm.reset({
+      schoolYearId: assignment.schoolYearId,
+      teacherUserId: assignment.teacherUserId,
+      classId: assignment.classId,
+      subjectId: assignment.subjectId,
+    });
+    void editAssignmentForm.trigger();
     setError(null);
     setSuccess(null);
   }
@@ -798,7 +827,10 @@ export default function SubjectsPage() {
     }
   }
 
-  async function saveAssignment(assignmentId: string) {
+  async function saveAssignment(
+    assignmentId: string,
+    values: z.output<typeof createAssignmentSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -825,10 +857,10 @@ export default function SubjectsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            schoolYearId: editAssignmentSchoolYearId,
-            teacherUserId: editAssignmentTeacherUserId,
-            classId: editAssignmentClassId,
-            subjectId: editAssignmentSubjectId,
+            schoolYearId: values.schoolYearId,
+            teacherUserId: values.teacherUserId,
+            classId: values.classId,
+            subjectId: values.subjectId,
           }),
         },
       );
@@ -1231,18 +1263,41 @@ export default function SubjectsPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={6}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                                  <input
-                                    value={editSubjectName}
-                                    onChange={(event) =>
-                                      setEditSubjectName(event.target.value)
+                                  <FormField
+                                    label="Nom de la matiere"
+                                    error={
+                                      editSubjectForm.formState.errors.name
+                                        ?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
+                                  >
+                                    <input
+                                      aria-label="Nom de la matiere"
+                                      value={editSubjectValues.name ?? ""}
+                                      onChange={(event) => {
+                                        editSubjectForm.setValue(
+                                          "name",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                  </FormField>
                                   <Button
                                     type="button"
-                                    disabled={savingSubject}
+                                    disabled={
+                                      savingSubject ||
+                                      !editSubjectForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void saveSubject(subject.id);
+                                      void editSubjectForm.handleSubmit(
+                                        (values) =>
+                                          saveSubject(subject.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingSubject
@@ -1252,7 +1307,10 @@ export default function SubjectsPage() {
                                   <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => setEditingSubjectId(null)}
+                                    onClick={() => {
+                                      setEditingSubjectId(null);
+                                      editSubjectForm.reset();
+                                    }}
                                   >
                                     Annuler
                                   </Button>
@@ -1398,29 +1456,68 @@ export default function SubjectsPage() {
                           <tr className="border-b border-border bg-background">
                             <td className="px-3 py-3" colSpan={4}>
                               <div className="grid gap-3 md:grid-cols-[180px_1fr_auto_auto]">
-                                <input
-                                  value={editEvaluationTypeCode}
-                                  onChange={(event) =>
-                                    setEditEvaluationTypeCode(
-                                      event.target.value,
-                                    )
+                                <FormField
+                                  label="Code"
+                                  error={
+                                    editEvaluationTypeForm.formState.errors.code
+                                      ?.message
                                   }
-                                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                />
-                                <input
-                                  value={editEvaluationTypeLabel}
-                                  onChange={(event) =>
-                                    setEditEvaluationTypeLabel(
-                                      event.target.value,
-                                    )
+                                >
+                                  <input
+                                    aria-label="Code type"
+                                    value={editEvaluationTypeValues.code ?? ""}
+                                    onChange={(event) => {
+                                      editEvaluationTypeForm.setValue(
+                                        "code",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
+                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  />
+                                </FormField>
+                                <FormField
+                                  label="Libelle"
+                                  error={
+                                    editEvaluationTypeForm.formState.errors
+                                      .label?.message
                                   }
-                                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                />
+                                >
+                                  <input
+                                    aria-label="Libelle type"
+                                    value={editEvaluationTypeValues.label ?? ""}
+                                    onChange={(event) => {
+                                      editEvaluationTypeForm.setValue(
+                                        "label",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
+                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  />
+                                </FormField>
                                 <Button
                                   type="button"
-                                  disabled={savingEvaluationType}
+                                  disabled={
+                                    savingEvaluationType ||
+                                    !editEvaluationTypeForm.formState.isValid
+                                  }
                                   onClick={() => {
-                                    void saveEvaluationType(evaluationType.id);
+                                    void editEvaluationTypeForm.handleSubmit(
+                                      (values) =>
+                                        saveEvaluationType(
+                                          evaluationType.id,
+                                          values,
+                                        ),
+                                    )();
                                   }}
                                 >
                                   {savingEvaluationType
@@ -1430,9 +1527,10 @@ export default function SubjectsPage() {
                                 <Button
                                   type="button"
                                   variant="secondary"
-                                  onClick={() =>
-                                    setEditingEvaluationTypeId(null)
-                                  }
+                                  onClick={() => {
+                                    setEditingEvaluationTypeId(null);
+                                    editEvaluationTypeForm.reset();
+                                  }}
                                 >
                                   Annuler
                                 </Button>
@@ -1673,100 +1771,186 @@ export default function SubjectsPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-4">
-                                  <select
-                                    value={editAssignmentSchoolYearId}
-                                    onChange={(event) =>
-                                      setEditAssignmentSchoolYearId(
-                                        event.target.value,
-                                      )
+                                  <FormField
+                                    label="Annee scolaire"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .schoolYearId?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   >
-                                    <option value="">Selectionner annee</option>
-                                    {schoolYears.map((entry) => (
-                                      <option key={entry.id} value={entry.id}>
-                                        {entry.label}
+                                    <select
+                                      aria-label="Annee scolaire edition"
+                                      value={
+                                        editAssignmentValues.schoolYearId ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editAssignmentForm.setValue(
+                                          "schoolYearId",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                        editAssignmentForm.setValue(
+                                          "classId",
+                                          "",
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      <option value="">
+                                        Selectionner annee
                                       </option>
-                                    ))}
-                                  </select>
-
-                                  <select
-                                    value={editAssignmentTeacherUserId}
-                                    onChange={(event) =>
-                                      setEditAssignmentTeacherUserId(
-                                        event.target.value,
-                                      )
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  >
-                                    <option value="">
-                                      Selectionner enseignant
-                                    </option>
-                                    {teachers.map((teacher) => (
-                                      <option
-                                        key={teacher.userId}
-                                        value={teacher.userId}
-                                      >
-                                        {teacher.lastName} {teacher.firstName}
-                                      </option>
-                                    ))}
-                                  </select>
-
-                                  <select
-                                    value={editAssignmentClassId}
-                                    onChange={(event) =>
-                                      setEditAssignmentClassId(
-                                        event.target.value,
-                                      )
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  >
-                                    <option value="">
-                                      Selectionner classe
-                                    </option>
-                                    {classrooms
-                                      .filter(
-                                        (entry) =>
-                                          !editAssignmentSchoolYearId ||
-                                          entry.schoolYear.id ===
-                                            editAssignmentSchoolYearId,
-                                      )
-                                      .map((entry) => (
+                                      {schoolYears.map((entry) => (
                                         <option key={entry.id} value={entry.id}>
-                                          {entry.name}
+                                          {entry.label}
                                         </option>
                                       ))}
-                                  </select>
+                                    </select>
+                                  </FormField>
 
-                                  <select
-                                    value={editAssignmentSubjectId}
-                                    onChange={(event) =>
-                                      setEditAssignmentSubjectId(
-                                        event.target.value,
-                                      )
+                                  <FormField
+                                    label="Enseignant"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .teacherUserId?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   >
-                                    <option value="">
-                                      Selectionner matiere
-                                    </option>
-                                    {sortedSubjects.map((subject) => (
-                                      <option
-                                        key={subject.id}
-                                        value={subject.id}
-                                      >
-                                        {subject.name}
+                                    <select
+                                      aria-label="Enseignant edition"
+                                      value={
+                                        editAssignmentValues.teacherUserId ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editAssignmentForm.setValue(
+                                          "teacherUserId",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      <option value="">
+                                        Selectionner enseignant
                                       </option>
-                                    ))}
-                                  </select>
+                                      {teachers.map((teacher) => (
+                                        <option
+                                          key={teacher.userId}
+                                          value={teacher.userId}
+                                        >
+                                          {teacher.lastName} {teacher.firstName}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </FormField>
+
+                                  <FormField
+                                    label="Classe"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .classId?.message
+                                    }
+                                  >
+                                    <select
+                                      aria-label="Classe edition"
+                                      value={editAssignmentValues.classId ?? ""}
+                                      onChange={(event) => {
+                                        editAssignmentForm.setValue(
+                                          "classId",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      <option value="">
+                                        Selectionner classe
+                                      </option>
+                                      {classrooms
+                                        .filter(
+                                          (entry) =>
+                                            !editAssignmentValues.schoolYearId ||
+                                            entry.schoolYear.id ===
+                                              editAssignmentValues.schoolYearId,
+                                        )
+                                        .map((entry) => (
+                                          <option
+                                            key={entry.id}
+                                            value={entry.id}
+                                          >
+                                            {entry.name}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </FormField>
+
+                                  <FormField
+                                    label="Matiere"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .subjectId?.message
+                                    }
+                                  >
+                                    <select
+                                      aria-label="Matiere edition"
+                                      value={
+                                        editAssignmentValues.subjectId ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editAssignmentForm.setValue(
+                                          "subjectId",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    >
+                                      <option value="">
+                                        Selectionner matiere
+                                      </option>
+                                      {sortedSubjects.map((subject) => (
+                                        <option
+                                          key={subject.id}
+                                          value={subject.id}
+                                        >
+                                          {subject.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </FormField>
                                 </div>
 
                                 <div className="mt-3 flex gap-2">
                                   <Button
                                     type="button"
-                                    disabled={savingAssignment}
+                                    disabled={
+                                      savingAssignment ||
+                                      !editAssignmentForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void saveAssignment(assignment.id);
+                                      void editAssignmentForm.handleSubmit(
+                                        (values) =>
+                                          saveAssignment(assignment.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingAssignment
@@ -1776,7 +1960,10 @@ export default function SubjectsPage() {
                                   <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => setEditingAssignmentId(null)}
+                                    onClick={() => {
+                                      setEditingAssignmentId(null);
+                                      editAssignmentForm.reset();
+                                    }}
                                   >
                                     Annuler
                                   </Button>

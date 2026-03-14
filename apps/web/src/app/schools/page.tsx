@@ -147,7 +147,15 @@ const updateSchoolSchema = z.object({
   country: z.string().trim().nullable().optional(),
   region: z.string().trim().nullable().optional(),
   city: z.string().trim().nullable().optional(),
-  logoUrl: z.string().trim().url().nullable().optional(),
+  logoUrl: z
+    .union([z.string().trim().url(), z.literal(""), z.null(), z.undefined()])
+    .optional()
+    .transform((value) => {
+      if (!value) {
+        return undefined;
+      }
+      return value;
+    }),
 });
 
 function toFileUrl(fileUrl: string | null) {
@@ -185,13 +193,6 @@ export default function SchoolsPage() {
     null,
   );
   const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
-  const [editSchoolName, setEditSchoolName] = useState("");
-  const [editSchoolCountry, setEditSchoolCountry] = useState("");
-  const [editSchoolRegion, setEditSchoolRegion] = useState("");
-  const [editSchoolCity, setEditSchoolCity] = useState("");
-  const [editSchoolLogoUrl, setEditSchoolLogoUrl] = useState<string | null>(
-    null,
-  );
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState<SchoolDetails | null>(
@@ -218,7 +219,19 @@ export default function SchoolsPage() {
       logoUrl: "",
     },
   });
+  const editSchoolForm = useForm<z.input<typeof updateSchoolSchema>>({
+    resolver: zodResolver(updateSchoolSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      country: "",
+      region: "",
+      city: "",
+      logoUrl: "",
+    },
+  });
   const createSchoolValues = createSchoolForm.watch();
+  const editSchoolValues = editSchoolForm.watch();
 
   useEffect(() => {
     void bootstrap();
@@ -495,27 +508,21 @@ export default function SchoolsPage() {
     setEditError(null);
     setOpenActionsSchoolId(null);
     setEditingSchoolId(school.id);
-    setEditSchoolName(school.name);
-    setEditSchoolCountry(school.country ?? "");
-    setEditSchoolRegion(school.region ?? "");
-    setEditSchoolCity(school.city ?? "");
-    setEditSchoolLogoUrl(school.logoUrl);
+    editSchoolForm.reset({
+      name: school.name,
+      country: school.country ?? "",
+      region: school.region ?? "",
+      city: school.city ?? "",
+      logoUrl: school.logoUrl ?? "",
+    });
+    void editSchoolForm.trigger();
   }
 
-  async function onSaveSchool(schoolId: string) {
+  async function onSaveSchool(
+    schoolId: string,
+    values: z.input<typeof updateSchoolSchema>,
+  ) {
     setEditError(null);
-    const parsed = updateSchoolSchema.safeParse({
-      name: editSchoolName,
-      country: editSchoolCountry || null,
-      region: editSchoolRegion || null,
-      city: editSchoolCity || null,
-      logoUrl: editSchoolLogoUrl,
-    });
-
-    if (!parsed.success) {
-      setEditError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -534,11 +541,11 @@ export default function SchoolsPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          name: parsed.data.name,
-          country: parsed.data.country ?? null,
-          region: parsed.data.region ?? null,
-          city: parsed.data.city ?? null,
-          logoUrl: parsed.data.logoUrl ?? null,
+          name: values.name,
+          country: values.country ?? null,
+          region: values.region ?? null,
+          city: values.city ?? null,
+          logoUrl: values.logoUrl ?? null,
         }),
       });
 
@@ -832,61 +839,101 @@ export default function SchoolsPage() {
                           <tr className="border-b border-border bg-background">
                             <td className="px-3 py-3" colSpan={8}>
                               <div className="grid gap-3 md:grid-cols-2">
-                                <label className="grid gap-1 text-sm">
-                                  <span className="text-text-secondary">
-                                    Nom de l ecole
-                                  </span>
+                                <FormField
+                                  label="Nom de l ecole"
+                                  error={
+                                    editSchoolForm.formState.errors.name
+                                      ?.message
+                                  }
+                                >
                                   <input
-                                    value={editSchoolName}
-                                    onChange={(event) =>
-                                      setEditSchoolName(event.target.value)
-                                    }
+                                    aria-label="Nom de l ecole"
+                                    value={editSchoolValues.name ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "name",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
                                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   />
-                                </label>
-                                <label className="grid gap-1 text-sm">
-                                  <span className="text-text-secondary">
-                                    Pays
-                                  </span>
+                                </FormField>
+                                <FormField label="Pays">
                                   <input
-                                    value={editSchoolCountry}
-                                    onChange={(event) =>
-                                      setEditSchoolCountry(event.target.value)
-                                    }
+                                    aria-label="Pays"
+                                    value={editSchoolValues.country ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "country",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
                                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   />
-                                </label>
-                                <label className="grid gap-1 text-sm">
-                                  <span className="text-text-secondary">
-                                    Region
-                                  </span>
+                                </FormField>
+                                <FormField label="Region">
                                   <input
-                                    value={editSchoolRegion}
-                                    onChange={(event) =>
-                                      setEditSchoolRegion(event.target.value)
-                                    }
+                                    aria-label="Region"
+                                    value={editSchoolValues.region ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "region",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
                                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   />
-                                </label>
-                                <label className="grid gap-1 text-sm">
-                                  <span className="text-text-secondary">
-                                    Ville
-                                  </span>
+                                </FormField>
+                                <FormField label="Ville">
                                   <input
-                                    value={editSchoolCity}
-                                    onChange={(event) =>
-                                      setEditSchoolCity(event.target.value)
-                                    }
+                                    aria-label="Ville"
+                                    value={editSchoolValues.city ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "city",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
                                     className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   />
-                                </label>
+                                </FormField>
 
                                 <ImageUploadField
                                   kind="school-logo"
                                   label="Logo"
                                   helperText="Image JPG/PNG/WEBP, maximum 5MB."
-                                  value={editSchoolLogoUrl}
-                                  onChange={setEditSchoolLogoUrl}
+                                  value={editSchoolValues.logoUrl ?? null}
+                                  onChange={(value) => {
+                                    editSchoolForm.setValue(
+                                      "logoUrl",
+                                      value ?? "",
+                                      {
+                                        shouldDirty: true,
+                                        shouldTouch: true,
+                                        shouldValidate: true,
+                                      },
+                                    );
+                                  }}
                                 />
                               </div>
                               {editError ? (
@@ -897,9 +944,14 @@ export default function SchoolsPage() {
                               <div className="mt-3 flex gap-2">
                                 <Button
                                   type="button"
-                                  disabled={savingEdit}
+                                  disabled={
+                                    savingEdit ||
+                                    !editSchoolForm.formState.isValid
+                                  }
                                   onClick={() => {
-                                    void onSaveSchool(school.id);
+                                    void editSchoolForm.handleSubmit((values) =>
+                                      onSaveSchool(school.id, values),
+                                    )();
                                   }}
                                 >
                                   {savingEdit
@@ -912,6 +964,7 @@ export default function SchoolsPage() {
                                   onClick={() => {
                                     setEditingSchoolId(null);
                                     setEditError(null);
+                                    editSchoolForm.reset();
                                   }}
                                 >
                                   Annuler

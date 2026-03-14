@@ -93,7 +93,10 @@ describe("PinRecoveryPage UI", () => {
       expect(screen.getByText(/Compte detecte:/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Date de naissance"), {
+    const birthDateInput = screen.getByLabelText(
+      "Date de naissance",
+    ) as HTMLInputElement;
+    fireEvent.input(birthDateInput, {
       target: { value: "1985-07-14" },
     });
     fireEvent.change(screen.getByLabelText("Ville de naissance"), {
@@ -104,6 +107,11 @@ describe("PinRecoveryPage UI", () => {
     });
     fireEvent.change(screen.getByLabelText("Prenom du pere"), {
       target: { value: "Andre" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Verifier mes reponses" }),
+      ).toBeEnabled();
     });
     fireEvent.click(
       screen.getByRole("button", { name: "Verifier mes reponses" }),

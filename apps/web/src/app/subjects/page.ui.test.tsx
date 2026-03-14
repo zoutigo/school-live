@@ -187,4 +187,306 @@ describe("Subjects page forms", () => {
       );
     });
   });
+
+  it("uses inline validation for subject edition and submits the patch", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/subjects") && !url.includes("/curriculums/")) {
+          if (method === "PATCH") {
+            return jsonResponse({ id: "sub-1" });
+          }
+          return jsonResponse([
+            {
+              id: "sub-1",
+              name: "Mathematiques",
+              branches: [],
+              _count: {
+                assignments: 0,
+                studentGrades: 0,
+                curriculumSubjects: 0,
+                classOverrides: 0,
+              },
+            },
+          ]);
+        }
+        if (url.includes("/admin/evaluation-types")) return jsonResponse([]);
+        if (url.includes("/admin/teachers")) return jsonResponse([]);
+        if (url.includes("/admin/school-years")) {
+          return jsonResponse([
+            { id: "sy-1", label: "2025-2026", isActive: true },
+          ]);
+        }
+        if (url.includes("/admin/classrooms")) return jsonResponse([]);
+        if (url.includes("/admin/teacher-assignments")) return jsonResponse([]);
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SubjectsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
+
+    const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+
+    fireEvent.change(screen.getByLabelText("Nom de la matiere"), {
+      target: { value: "" },
+    });
+    expect(
+      await screen.findByText("Le nom de la matiere est obligatoire."),
+    ).toBeInTheDocument();
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Nom de la matiere"), {
+      target: { value: "Mathematiques avancees" },
+    });
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/subjects/sub-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ name: "Mathematiques avancees" }),
+        }),
+      );
+    });
+  });
+
+  it("uses inline validation for evaluation type edition and submits the patch", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/subjects") && !url.includes("/curriculums/")) {
+          return jsonResponse([]);
+        }
+        if (url.includes("/admin/evaluation-types")) {
+          if (method === "PATCH") {
+            return jsonResponse({ id: "eval-1" });
+          }
+          return jsonResponse([
+            {
+              id: "eval-1",
+              code: "DEVOIR",
+              label: "Devoir surveille",
+              isDefault: false,
+            },
+          ]);
+        }
+        if (url.includes("/admin/teachers")) return jsonResponse([]);
+        if (url.includes("/admin/school-years")) return jsonResponse([]);
+        if (url.includes("/admin/classrooms")) return jsonResponse([]);
+        if (url.includes("/admin/teacher-assignments")) return jsonResponse([]);
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SubjectsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Types d'evaluation" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
+
+    const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+
+    fireEvent.change(screen.getByLabelText("Code type"), {
+      target: { value: "" },
+    });
+    expect(
+      await screen.findByText("Le code est obligatoire."),
+    ).toBeInTheDocument();
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Code type"), {
+      target: { value: "INTERRO" },
+    });
+    fireEvent.change(screen.getByLabelText("Libelle type"), {
+      target: { value: "Interrogation ecrite" },
+    });
+
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/evaluation-types/eval-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            code: "INTERRO",
+            label: "Interrogation ecrite",
+          }),
+        }),
+      );
+    });
+  });
+
+  it("uses inline validation for assignment edition and submits the patch", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/subjects") && !url.includes("/curriculums/")) {
+          return jsonResponse([
+            {
+              id: "sub-1",
+              name: "Mathematiques",
+              branches: [],
+              _count: {
+                assignments: 1,
+                studentGrades: 0,
+                curriculumSubjects: 0,
+                classOverrides: 0,
+              },
+            },
+          ]);
+        }
+        if (url.includes("/admin/evaluation-types")) return jsonResponse([]);
+        if (url.includes("/admin/teachers")) {
+          return jsonResponse([
+            {
+              userId: "teacher-1",
+              firstName: "Albert",
+              lastName: "Mvondo",
+              email: "albert@example.com",
+            },
+            {
+              userId: "teacher-2",
+              firstName: "Laure",
+              lastName: "Fotsing",
+              email: "laure@example.com",
+            },
+          ]);
+        }
+        if (url.includes("/admin/school-years")) {
+          return jsonResponse([
+            { id: "sy-1", label: "2025-2026", isActive: true },
+            { id: "sy-2", label: "2026-2027", isActive: false },
+          ]);
+        }
+        if (url.includes("/admin/classrooms")) {
+          return jsonResponse([
+            {
+              id: "class-1",
+              name: "6eC",
+              schoolYear: { id: "sy-1", label: "2025-2026" },
+            },
+            {
+              id: "class-2",
+              name: "5eA",
+              schoolYear: { id: "sy-2", label: "2026-2027" },
+            },
+          ]);
+        }
+        if (url.includes("/admin/teacher-assignments")) {
+          if (method === "PATCH") {
+            return jsonResponse({ id: "assign-1" });
+          }
+          return jsonResponse([
+            {
+              id: "assign-1",
+              schoolYearId: "sy-1",
+              teacherUserId: "teacher-1",
+              classId: "class-1",
+              subjectId: "sub-1",
+              createdAt: "2026-01-01T00:00:00.000Z",
+              schoolYear: { id: "sy-1", label: "2025-2026" },
+              teacherUser: {
+                id: "teacher-1",
+                firstName: "Albert",
+                lastName: "Mvondo",
+                email: "albert@example.com",
+              },
+              class: { id: "class-1", name: "6eC" },
+              subject: { id: "sub-1", name: "Mathematiques" },
+            },
+          ]);
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SubjectsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Affectations" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
+
+    const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+
+    fireEvent.change(screen.getByLabelText("Enseignant edition"), {
+      target: { value: "" },
+    });
+    expect(
+      await screen.findByText("L'enseignant est obligatoire."),
+    ).toBeInTheDocument();
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Annee scolaire edition"), {
+      target: { value: "sy-2" },
+    });
+    fireEvent.change(screen.getByLabelText("Enseignant edition"), {
+      target: { value: "teacher-2" },
+    });
+    fireEvent.change(screen.getByLabelText("Classe edition"), {
+      target: { value: "class-2" },
+    });
+    fireEvent.change(screen.getByLabelText("Matiere edition"), {
+      target: { value: "sub-1" },
+    });
+
+    await waitFor(() => {
+      expect(saveButton).toBeEnabled();
+    });
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/teacher-assignments/assign-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            schoolYearId: "sy-2",
+            teacherUserId: "teacher-2",
+            classId: "class-2",
+            subjectId: "sub-1",
+          }),
+        }),
+      );
+    });
+  });
 });
