@@ -185,12 +185,35 @@ const DETAIL_BY_ID = {
     ...EVALUATIONS[5],
     students: [],
   },
+  "eval-created": {
+    id: "eval-created",
+    title: "Composition fractions",
+    description: "<p>Consignes <strong>riches</strong>.</p>",
+    coefficient: 1.5,
+    maxScore: 20,
+    term: "TERM_1",
+    status: "DRAFT",
+    scheduledAt: "2026-03-20T08:30:00.000Z",
+    createdAt: "2026-03-20T08:30:00.000Z",
+    updatedAt: "2026-03-20T08:30:00.000Z",
+    subject: { id: "sub-1", name: "Mathematiques" },
+    subjectBranch: { id: "branch-1", name: "Algebre" },
+    evaluationType: { id: "type-1", code: "COMP", label: "Composition" },
+    attachments: [],
+    _count: { scores: 0 },
+    students: [],
+  },
 } as const;
 
 function setupFetchMock(evaluations = EVALUATIONS) {
-  return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+  return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const request = input instanceof Request ? input : null;
     const url = String(input);
+    const method =
+      request?.method ??
+      (typeof init === "object" && init !== null && "method" in init
+        ? init.method
+        : undefined);
 
     if (url.endsWith("/schools/college-vogt/me")) {
       return jsonResponse({ role: "TEACHER" });
@@ -230,13 +253,13 @@ function setupFetchMock(evaluations = EVALUATIONS) {
       !url.includes("/context") &&
       !url.includes("/eval-")
     ) {
-      if (request?.method === "POST") {
+      if (method === "POST") {
         return jsonResponse({ id: "eval-created" }, 201);
       }
       return jsonResponse(evaluations);
     }
     if (url.includes("/classes/class-1/evaluations/eval-1")) {
-      if (request?.method === "PATCH") {
+      if (method === "PATCH") {
         return jsonResponse({ id: "eval-1" });
       }
       return jsonResponse(DETAIL_BY_ID["eval-1"]);
@@ -448,8 +471,18 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("/classes/class-1/evaluations"),
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).includes("/classes/class-1/evaluations") &&
+          !String(url).includes("/context") &&
+          typeof init === "object" &&
+          init !== null &&
+          "method" in init &&
+          init.method === "POST",
+      );
+
+      expect(postCall).toBeDefined();
+      expect(postCall?.[1]).toEqual(
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({
@@ -586,9 +619,14 @@ describe("TeacherClassNotesPage evaluations tab", () => {
   });
 
   it("surfaces the backend upload error message inline", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       const url = String(input);
       const request = input instanceof Request ? input : null;
+      const method =
+        request?.method ??
+        (typeof init === "object" && init !== null && "method" in init
+          ? init.method
+          : undefined);
 
       if (url.endsWith("/schools/college-vogt/me")) {
         return jsonResponse({ role: "TEACHER" });
@@ -619,7 +657,7 @@ describe("TeacherClassNotesPage evaluations tab", () => {
         !url.includes("/context") &&
         !url.includes("/eval-")
       ) {
-        if (request?.method === "POST") {
+        if (method === "POST") {
           return jsonResponse({ id: "eval-created" }, 201);
         }
         return jsonResponse(EVALUATIONS);
