@@ -1,7 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -22,6 +29,7 @@ import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import { PinInput } from "../../components/ui/pin-input";
+import { SuccessRedirectToast } from "../../components/ui/success-redirect-toast";
 import {
   buildRecoveryRows,
   step1PhoneSchema,
@@ -53,6 +61,19 @@ function OnboardingContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [setupToken, setSetupToken] = useState("");
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const onboardingSessionRef = useRef("");
+
+  const emailFromQuery = params.get("email") ?? "";
+  const phoneFromQuery = params.get("phone") ?? "";
+  const schoolSlugFromQuery = params.get("schoolSlug") ?? "";
+  const tokenFromQuery = params.get("token") ?? "";
+  const onboardingSessionKey = [
+    tokenFromQuery,
+    emailFromQuery,
+    phoneFromQuery,
+    schoolSlugFromQuery,
+  ].join("|");
 
   const {
     email,
@@ -74,34 +95,6 @@ function OnboardingContent() {
     setAnswer,
     reset,
   } = useOnboardingStore();
-
-  useEffect(() => {
-    const emailFromQuery = params.get("email") ?? "";
-    const schoolSlugFromQuery = params.get("schoolSlug") ?? "";
-    const tokenFromQuery = params.get("token") ?? "";
-
-    if (emailFromQuery && emailFromQuery !== email) {
-      setField("email", emailFromQuery);
-    }
-    if (schoolSlugFromQuery && schoolSlugFromQuery !== schoolSlug) {
-      setField("schoolSlug", schoolSlugFromQuery);
-    }
-    if (tokenFromQuery && tokenFromQuery !== setupToken) {
-      setSetupToken(tokenFromQuery);
-    }
-  }, [params, setField, email, schoolSlug, setupToken]);
-
-  useEffect(() => {
-    if (!email && !setupToken) {
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      void loadOptions();
-    }, 150);
-
-    return () => clearTimeout(timeout);
-  }, [email, setupToken]);
 
   async function loadOptions() {
     setLoadingOptions(true);
@@ -140,7 +133,10 @@ function OnboardingContent() {
   );
   const isTokenFlow = setupToken.length > 0;
   const totalSteps = isTokenFlow ? 4 : 3;
-  const phoneFromQuery = params.get("phone") ?? "";
+  const loginHref = useMemo(
+    () => (schoolSlug ? `/schools/${schoolSlug}/login` : "/"),
+    [schoolSlug],
+  );
   const passwordStepForm = useForm<
     z.input<typeof step1Schema>,
     unknown,
@@ -240,6 +236,77 @@ function OnboardingContent() {
   ]);
 
   useEffect(() => {
+    if (onboardingSessionRef.current === onboardingSessionKey) {
+      return;
+    }
+
+    onboardingSessionRef.current = onboardingSessionKey;
+    reset();
+    setOptions(null);
+    setError(null);
+    setShowSuccessToast(false);
+    setStep(1);
+    setSetupToken(tokenFromQuery);
+    if (emailFromQuery) {
+      setField("email", emailFromQuery);
+    }
+    if (schoolSlugFromQuery) {
+      setField("schoolSlug", schoolSlugFromQuery);
+    }
+    passwordStepForm.reset({
+      email: emailFromQuery,
+      temporaryPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    tokenStepForm.reset({
+      email: emailFromQuery,
+      setupToken: tokenFromQuery,
+    });
+    profileStepForm.reset({
+      firstName: "",
+      lastName: "",
+      gender: undefined,
+      birthDate: "",
+    });
+    pinStepForm.reset({
+      newPin: "",
+      confirmPin: "",
+    });
+    recoveryStepForm.reset({
+      selectedQuestions: [],
+      answers: {},
+      isParent: false,
+      parentClassId: "",
+      parentStudentId: "",
+    });
+  }, [
+    emailFromQuery,
+    onboardingSessionKey,
+    passwordStepForm,
+    pinStepForm,
+    profileStepForm,
+    recoveryStepForm,
+    reset,
+    schoolSlugFromQuery,
+    setField,
+    tokenFromQuery,
+    tokenStepForm,
+  ]);
+
+  useEffect(() => {
+    if (!email && !setupToken) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      void loadOptions();
+    }, 150);
+
+    return () => clearTimeout(timeout);
+  }, [email, setupToken]);
+
+  useEffect(() => {
     setField("email", passwordStepValues.email ?? "");
     setField("temporaryPassword", passwordStepValues.temporaryPassword ?? "");
     setField("newPassword", passwordStepValues.newPassword ?? "");
@@ -321,6 +388,52 @@ function OnboardingContent() {
       shouldValidate: true,
     });
   }, [isParent, recoveryStepForm]);
+
+  const clearOnboardingState = useCallback(() => {
+    reset();
+    setOptions(null);
+    setError(null);
+    setStep(1);
+    setSetupToken("");
+    passwordStepForm.reset({
+      email: "",
+      temporaryPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    tokenStepForm.reset({
+      email: "",
+      setupToken: "",
+    });
+    profileStepForm.reset({
+      firstName: "",
+      lastName: "",
+      gender: undefined,
+      birthDate: "",
+    });
+    pinStepForm.reset({
+      newPin: "",
+      confirmPin: "",
+    });
+    recoveryStepForm.reset({
+      selectedQuestions: [],
+      answers: {},
+      isParent: false,
+      parentClassId: "",
+      parentStudentId: "",
+    });
+  }, [
+    passwordStepForm,
+    pinStepForm,
+    profileStepForm,
+    recoveryStepForm,
+    reset,
+    tokenStepForm,
+  ]);
+
+  const handleSuccessRedirect = useCallback(() => {
+    router.push(loginHref);
+  }, [loginHref, router]);
 
   async function nextStep() {
     setError(null);
@@ -413,8 +526,8 @@ function OnboardingContent() {
       }
 
       await response.json();
-      reset();
-      router.push("/");
+      clearOnboardingState();
+      setShowSuccessToast(true);
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -428,6 +541,12 @@ function OnboardingContent() {
       contentMaxWidthClassName="max-w-7xl"
       centerContent={false}
     >
+      <SuccessRedirectToast
+        open={showSuccessToast}
+        title="Enregistrement termine"
+        description="Votre compte a bien ete configure. Vous serez redirige vers l ecran de connexion pour vous connecter en toute securite."
+        onComplete={handleSuccessRedirect}
+      />
       <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <section className="order-2 rounded-card border border-border bg-surface p-6 shadow-card lg:p-8 xl:order-1">
           <p className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
@@ -614,11 +733,11 @@ function OnboardingContent() {
               <>
                 <div className="grid gap-3 md:grid-cols-2">
                   <FormField
-                    label="Prenom"
+                    label="Votre prenom"
                     error={profileStepForm.formState.errors.firstName?.message}
                   >
                     <FormTextInput
-                      aria-label="Prenom"
+                      aria-label="Votre prenom"
                       invalid={!!profileStepForm.formState.errors.firstName}
                       value={profileStepValues.firstName ?? ""}
                       onChange={(event) => {
@@ -636,11 +755,11 @@ function OnboardingContent() {
                   </FormField>
 
                   <FormField
-                    label="Nom"
+                    label="Votre nom"
                     error={profileStepForm.formState.errors.lastName?.message}
                   >
                     <FormTextInput
-                      aria-label="Nom"
+                      aria-label="Votre nom"
                       invalid={!!profileStepForm.formState.errors.lastName}
                       value={profileStepValues.lastName ?? ""}
                       onChange={(event) => {
@@ -660,11 +779,11 @@ function OnboardingContent() {
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <FormField
-                    label="Genre"
+                    label="Votre genre"
                     error={profileStepForm.formState.errors.gender?.message}
                   >
                     <FormSelect
-                      aria-label="Genre"
+                      aria-label="Votre genre"
                       invalid={!!profileStepForm.formState.errors.gender}
                       value={profileStepValues.gender ?? ""}
                       onChange={(event) => {
@@ -687,10 +806,11 @@ function OnboardingContent() {
                   </FormField>
 
                   <FormField
-                    label="Date de naissance"
+                    label="Votre date de naissance"
                     error={profileStepForm.formState.errors.birthDate?.message}
                   >
                     <DateInput
+                      aria-label="Votre date de naissance"
                       value={profileStepValues.birthDate ?? ""}
                       onChange={(event) => {
                         profileStepForm.setValue(

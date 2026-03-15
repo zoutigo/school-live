@@ -41,6 +41,21 @@ Primary goals: security (school isolation), maintainability, performance, and cl
 
 ---
 
+## Restricted environment escalation (must follow)
+
+- If a command, hook, test suite, or verification depends on Docker, docker compose, system services, local daemons, privileged sockets, or any resource that may be blocked by the current execution sandbox, the agent MUST:
+  - detect that the current context may be insufficient,
+  - request elevated permissions,
+  - and rerun the command in the proper context before concluding that the dependency is unavailable.
+- The agent must not treat `docker info` / Docker-based e2e as unavailable without first attempting the escalated check when the task depends on it.
+- This applies in particular to:
+  - pre-commit / pre-push hooks,
+  - e2e suites using Dockerized databases or services,
+  - local API/media/worker processes,
+  - and any system-level dependency check.
+
+---
+
 ## Non-negotiables (must follow)
 
 1. **Never trust the client for school context**

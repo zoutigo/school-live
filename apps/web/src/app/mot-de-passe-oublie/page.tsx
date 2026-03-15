@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -25,6 +18,7 @@ import {
 import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
+import { SuccessRedirectToast } from "../../components/ui/success-redirect-toast";
 import {
   buildVerifyResetSchema,
   completeResetSchema,
@@ -51,7 +45,6 @@ type ResetOptionsResponse = {
 function ForgotPasswordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestRedirectTimeoutRef = useRef<number | null>(null);
 
   const [activeToken, setActiveToken] = useState(() => {
     return searchParams.get("token") ?? "";
@@ -72,6 +65,10 @@ function ForgotPasswordPageContent() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [redirectToast, setRedirectToast] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const requestForm = useForm<
     z.input<typeof requestResetSchema>,
     unknown,
@@ -158,14 +155,6 @@ function ForgotPasswordPageContent() {
     return schoolSlug ? `/schools/${schoolSlug}/login` : "/";
   }, [options?.schoolSlug, schoolSlugFromQuery]);
 
-  useEffect(() => {
-    return () => {
-      if (requestRedirectTimeoutRef.current) {
-        window.clearTimeout(requestRedirectTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const loadResetOptions = useCallback(async (token: string) => {
     setLoadingOptions(true);
     setError(null);
@@ -246,6 +235,20 @@ function ForgotPasswordPageContent() {
           "Si ce compte existe, un lien de reinitialisation a ete envoye.",
       );
       requestForm.reset({ email: "" });
+      setError(null);
+      setSuccess(null);
+      setOptions(null);
+      setVerified(false);
+      verifyForm.reset({
+        token: "",
+        birthDate: "",
+        answers: {},
+      });
+      completeForm.reset({
+        token: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
 
       if (payload?.resetToken) {
         const params = new URLSearchParams({ token: payload.resetToken });
@@ -256,12 +259,11 @@ function ForgotPasswordPageContent() {
         return;
       }
 
-      if (requestRedirectTimeoutRef.current) {
-        window.clearTimeout(requestRedirectTimeoutRef.current);
-      }
-      requestRedirectTimeoutRef.current = window.setTimeout(() => {
-        router.replace("/");
-      }, 5000);
+      setRedirectToast({
+        title: "Demande envoyee",
+        description:
+          "Si ce compte existe, la demande de reinitialisation a bien ete prise en compte. Vous allez etre redirige vers la connexion.",
+      });
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -345,7 +347,20 @@ function ForgotPasswordPageContent() {
         return;
       }
 
-      router.replace(loginHref);
+      completeForm.reset({
+        token: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setVerified(false);
+      setOptions(null);
+      setActiveToken("");
+      setSuccess(null);
+      setRedirectToast({
+        title: "Mot de passe reinitialise",
+        description:
+          "Votre nouveau mot de passe a bien ete enregistre. Vous allez etre redirige vers la connexion.",
+      });
       return;
     } catch {
       setError("Erreur reseau.");
@@ -356,6 +371,15 @@ function ForgotPasswordPageContent() {
 
   return (
     <RecoveryShell title="Recuperation de mot de passe">
+      <SuccessRedirectToast
+        open={redirectToast !== null}
+        title={redirectToast?.title ?? ""}
+        description={redirectToast?.description ?? ""}
+        onComplete={() => {
+          setRedirectToast(null);
+          router.replace(loginHref);
+        }}
+      />
       <div className="mx-auto w-full max-w-2xl">
         <Card
           title="Mot de passe oublie"

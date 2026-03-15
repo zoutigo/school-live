@@ -25,7 +25,7 @@ describe("PinRecoveryPage UI", () => {
     expect(screen.getByText("Recuperation de PIN")).toBeInTheDocument();
   });
 
-  it("uses inline zod validation onChange for PIN fields and enables submit when valid", async () => {
+  it("uses inline zod validation onChange for PIN fields and shows a success toast when valid", async () => {
     vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(
         new Response(
@@ -170,7 +170,9 @@ describe("PinRecoveryPage UI", () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith("/");
+      expect(screen.getByTestId("success-redirect-toast")).toHaveTextContent(
+        "PIN reinitialise",
+      );
     });
   });
 

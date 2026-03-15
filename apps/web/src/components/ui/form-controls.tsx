@@ -233,5 +233,9 @@ export function FormSubmitHint({
   if (!visible) {
     return null;
   }
-  return <p className={`text-sm text-notification ${className}`}>{message}</p>;
+  return (
+    <p className={`text-[11px] leading-4 text-notification ${className}`}>
+      {message}
+    </p>
+  );
 }
