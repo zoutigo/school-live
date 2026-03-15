@@ -14,6 +14,10 @@ function setRichTextEditorHtml(container: HTMLElement, value: string) {
 }
 
 const replaceMock = vi.fn();
+const CREATED_EVALUATION_DATETIME = "2026-03-20T09:30";
+const CREATED_EVALUATION_ISO = new Date(
+  CREATED_EVALUATION_DATETIME,
+).toISOString();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ schoolSlug: "college-vogt", classId: "class-1" }),
@@ -193,9 +197,9 @@ const DETAIL_BY_ID = {
     maxScore: 20,
     term: "TERM_1",
     status: "DRAFT",
-    scheduledAt: "2026-03-20T08:30:00.000Z",
-    createdAt: "2026-03-20T08:30:00.000Z",
-    updatedAt: "2026-03-20T08:30:00.000Z",
+    scheduledAt: CREATED_EVALUATION_ISO,
+    createdAt: CREATED_EVALUATION_ISO,
+    updatedAt: CREATED_EVALUATION_ISO,
     subject: { id: "sub-1", name: "Mathematiques" },
     subjectBranch: { id: "branch-1", name: "Algebre" },
     evaluationType: { id: "type-1", code: "COMP", label: "Composition" },
@@ -452,7 +456,7 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     fireEvent.input(titleInput, { target: { value: "Composition fractions" } });
     fireEvent.input(coefficientInput, { target: { value: "0" } });
     fireEvent.input(scheduledAtInput, {
-      target: { value: "2026-03-20T09:30" },
+      target: { value: CREATED_EVALUATION_DATETIME },
     });
 
     expect(
@@ -501,7 +505,7 @@ describe("TeacherClassNotesPage evaluations tab", () => {
         coefficient: 1.5,
         maxScore: 20,
         term: "TERM_1",
-        scheduledAt: "2026-03-20T08:30:00.000Z",
+        scheduledAt: CREATED_EVALUATION_ISO,
         status: "DRAFT",
         attachments: [],
       });
