@@ -8,6 +8,11 @@ import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import {
+  FormCheckbox,
+  FormSelect,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
@@ -502,12 +507,11 @@ export default function EnrollmentsPage() {
               {role === "SUPER_ADMIN" || role === "ADMIN" ? (
                 <label className="mb-4 grid min-w-[260px] max-w-[420px] gap-1 text-sm">
                   <span className="text-text-secondary">Ecole</span>
-                  <select
+                  <FormSelect
                     value={schoolSlug ?? ""}
                     onChange={(event) =>
                       setSchoolSlug(event.target.value || null)
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner une ecole</option>
                     {schools.map((school) => (
@@ -515,7 +519,7 @@ export default function EnrollmentsPage() {
                         {school.name}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </label>
               ) : null}
 
@@ -530,7 +534,7 @@ export default function EnrollmentsPage() {
                     onSubmit={filtersForm.handleSubmit(onApplyFilters)}
                   >
                     <FormField label="Annee scolaire">
-                      <select
+                      <FormSelect
                         aria-label="Annee scolaire"
                         value={filterValues.schoolYearId ?? ""}
                         onChange={(event) => {
@@ -549,7 +553,6 @@ export default function EnrollmentsPage() {
                             shouldValidate: true,
                           });
                         }}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Toutes</option>
                         {schoolYears.map((entry) => (
@@ -558,11 +561,11 @@ export default function EnrollmentsPage() {
                             {entry.isActive ? " (active)" : ""}
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </FormField>
 
                     <FormField label="Classe">
-                      <select
+                      <FormSelect
                         aria-label="Classe"
                         value={filterValues.classId ?? ""}
                         onChange={(event) =>
@@ -572,7 +575,6 @@ export default function EnrollmentsPage() {
                             shouldValidate: true,
                           })
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Toutes</option>
                         {filteredClassrooms.map((entry) => (
@@ -580,11 +582,11 @@ export default function EnrollmentsPage() {
                             {entry.name} ({entry.schoolYear.label})
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </FormField>
 
                     <FormField label="Statut">
-                      <select
+                      <FormSelect
                         aria-label="Statut"
                         value={filterValues.status ?? ""}
                         onChange={(event) =>
@@ -594,14 +596,13 @@ export default function EnrollmentsPage() {
                             shouldValidate: true,
                           })
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Tous</option>
                         <option value="ACTIVE">ACTIVE</option>
                         <option value="TRANSFERRED">TRANSFERRED</option>
                         <option value="WITHDRAWN">WITHDRAWN</option>
                         <option value="GRADUATED">GRADUATED</option>
-                      </select>
+                      </FormSelect>
                     </FormField>
 
                     <FormField
@@ -609,7 +610,7 @@ export default function EnrollmentsPage() {
                       className="md:col-span-2"
                     >
                       <div className="flex gap-2">
-                        <input
+                        <FormTextInput
                           aria-label="Recherche eleve"
                           value={filterValues.search ?? ""}
                           onChange={(event) =>
@@ -620,7 +621,7 @@ export default function EnrollmentsPage() {
                             })
                           }
                           placeholder="Nom ou prenom"
-                          className="w-full rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full"
                         />
                         <SubmitButton disabled={loadingData}>
                           Filtrer
@@ -631,7 +632,7 @@ export default function EnrollmentsPage() {
 
                   <div className="mb-3 flex flex-wrap items-end gap-2 rounded-card border border-border bg-background p-3">
                     <FormField label="Statut cible (selection)">
-                      <select
+                      <FormSelect
                         aria-label="Statut cible"
                         value={bulkValues.status}
                         onChange={(event) =>
@@ -645,13 +646,12 @@ export default function EnrollmentsPage() {
                             },
                           )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="ACTIVE">ACTIVE</option>
                         <option value="TRANSFERRED">TRANSFERRED</option>
                         <option value="WITHDRAWN">WITHDRAWN</option>
                         <option value="GRADUATED">GRADUATED</option>
-                      </select>
+                      </FormSelect>
                     </FormField>
                     <Button
                       type="button"
@@ -702,8 +702,7 @@ export default function EnrollmentsPage() {
                               className="border-b border-border text-text-primary"
                             >
                               <td className="px-3 py-2">
-                                <input
-                                  type="checkbox"
+                                <FormCheckbox
                                   checked={selectedEnrollmentIds.includes(
                                     row.enrollment.id,
                                   )}
@@ -725,7 +724,7 @@ export default function EnrollmentsPage() {
                                 {row.enrollment.class.name}
                               </td>
                               <td className="px-3 py-2">
-                                <select
+                                <FormSelect
                                   value={
                                     statusDraftByEnrollmentId[
                                       row.enrollment.id
@@ -742,7 +741,7 @@ export default function EnrollmentsPage() {
                                         | "GRADUATED",
                                     }))
                                   }
-                                  className="rounded-card border border-border bg-surface px-2 py-1 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  className="px-2 py-1"
                                 >
                                   <option value="ACTIVE">ACTIVE</option>
                                   <option value="TRANSFERRED">
@@ -750,7 +749,7 @@ export default function EnrollmentsPage() {
                                   </option>
                                   <option value="WITHDRAWN">WITHDRAWN</option>
                                   <option value="GRADUATED">GRADUATED</option>
-                                </select>
+                                </FormSelect>
                               </td>
                               <td className="px-3 py-2">
                                 {row.enrollment.isCurrent ? "Oui" : "Non"}

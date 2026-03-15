@@ -9,6 +9,12 @@ import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
+import {
+  FormRadio,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
@@ -531,8 +537,7 @@ export default function SettingsPage() {
                         <span className="font-medium text-text-primary">
                           {ROLE_LABEL[role]}
                         </span>
-                        <input
-                          type="radio"
+                        <FormRadio
                           name="activeRole"
                           value={role}
                           checked={selectedRole === role}
@@ -602,8 +607,9 @@ export default function SettingsPage() {
                         htmlFor="staff-function-name"
                         error={staffFunctionForm.formState.errors.name?.message}
                       >
-                        <input
+                        <FormTextInput
                           id="staff-function-name"
+                          invalid={!!staffFunctionForm.formState.errors.name}
                           value={staffFunctionForm.watch("name")}
                           onChange={(event) =>
                             staffFunctionForm.setValue(
@@ -617,14 +623,14 @@ export default function SettingsPage() {
                             )
                           }
                           placeholder="Ex: Vie scolaire"
-                          className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="h-10 bg-background text-sm"
                         />
                       </FormField>
                       <FormField
                         label="Description"
                         htmlFor="staff-function-description"
                       >
-                        <input
+                        <FormTextInput
                           id="staff-function-description"
                           value={staffFunctionForm.watch("description") ?? ""}
                           onChange={(event) =>
@@ -639,18 +645,23 @@ export default function SettingsPage() {
                             )
                           }
                           placeholder="Description (optionnelle)"
-                          className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="h-10 bg-background text-sm"
                         />
                       </FormField>
                       <div className="flex items-end">
-                        <SubmitButton
-                          disabled={
-                            submittingStaff ||
-                            !staffFunctionForm.formState.isValid
-                          }
-                        >
-                          Ajouter
-                        </SubmitButton>
+                        <div className="grid gap-2">
+                          <FormSubmitHint
+                            visible={!staffFunctionForm.formState.isValid}
+                          />
+                          <SubmitButton
+                            disabled={
+                              submittingStaff ||
+                              !staffFunctionForm.formState.isValid
+                            }
+                          >
+                            Ajouter
+                          </SubmitButton>
+                        </div>
                       </div>
                     </form>
                   ) : null}
@@ -718,8 +729,11 @@ export default function SettingsPage() {
                             ?.message
                         }
                       >
-                        <select
+                        <FormSelect
                           id="staff-assignment-function"
+                          invalid={
+                            !!staffAssignmentForm.formState.errors.functionId
+                          }
                           value={staffAssignmentForm.watch("functionId")}
                           onChange={(event) =>
                             staffAssignmentForm.setValue(
@@ -732,7 +746,7 @@ export default function SettingsPage() {
                               },
                             )
                           }
-                          className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="h-10 bg-background text-sm"
                         >
                           <option value="">Choisir une fonction</option>
                           {staffFunctions.map((entry) => (
@@ -740,7 +754,7 @@ export default function SettingsPage() {
                               {entry.name}
                             </option>
                           ))}
-                        </select>
+                        </FormSelect>
                       </FormField>
                       <FormField
                         label="Personnel"
@@ -749,8 +763,11 @@ export default function SettingsPage() {
                           staffAssignmentForm.formState.errors.userId?.message
                         }
                       >
-                        <select
+                        <FormSelect
                           id="staff-assignment-user"
+                          invalid={
+                            !!staffAssignmentForm.formState.errors.userId
+                          }
                           value={staffAssignmentForm.watch("userId")}
                           onChange={(event) =>
                             staffAssignmentForm.setValue(
@@ -763,7 +780,7 @@ export default function SettingsPage() {
                               },
                             )
                           }
-                          className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          className="h-10 bg-background text-sm"
                         >
                           <option value="">Choisir un personnel</option>
                           {staffCandidates.map((entry) => (
@@ -771,17 +788,22 @@ export default function SettingsPage() {
                               {entry.lastName} {entry.firstName} ({entry.role})
                             </option>
                           ))}
-                        </select>
+                        </FormSelect>
                       </FormField>
                       <div className="flex items-end">
-                        <SubmitButton
-                          disabled={
-                            submittingStaff ||
-                            !staffAssignmentForm.formState.isValid
-                          }
-                        >
-                          Affecter
-                        </SubmitButton>
+                        <div className="grid gap-2">
+                          <FormSubmitHint
+                            visible={!staffAssignmentForm.formState.isValid}
+                          />
+                          <SubmitButton
+                            disabled={
+                              submittingStaff ||
+                              !staffAssignmentForm.formState.isValid
+                            }
+                          >
+                            Affecter
+                          </SubmitButton>
+                        </div>
                       </div>
                     </form>
                   ) : null}

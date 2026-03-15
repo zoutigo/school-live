@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
+import { FormSelect } from "../../../../../components/ui/form-controls";
 import { ModuleHelpTab } from "../../../../../components/ui/module-help-tab";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -263,10 +264,10 @@ export default function TeacherClassesPage() {
           <div className="grid gap-4">
             <label className="grid gap-1 text-sm md:max-w-[320px]">
               <span className="text-text-secondary">Annee scolaire</span>
-              <select
+              <FormSelect
                 value={schoolYearFilter}
                 onChange={(event) => setSchoolYearFilter(event.target.value)}
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                className="bg-surface"
               >
                 <option value="">Toutes</option>
                 {(context?.schoolYears ?? []).map((entry) => (
@@ -275,7 +276,7 @@ export default function TeacherClassesPage() {
                     {entry.isActive ? " (active)" : ""}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </label>
 
             {tab === "list" ? (
@@ -319,10 +320,10 @@ export default function TeacherClassesPage() {
               <div className="grid gap-3">
                 <label className="grid gap-1 text-sm md:max-w-[420px]">
                   <span className="text-text-secondary">Classe</span>
-                  <select
+                  <FormSelect
                     value={selectedClassId}
                     onChange={(event) => setSelectedClassId(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    className="bg-surface"
                   >
                     <option value="">Selectionner</option>
                     {classes.map((entry) => (
@@ -330,7 +331,7 @@ export default function TeacherClassesPage() {
                         {entry.className} ({entry.schoolYearLabel})
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </label>
 
                 {!selectedClass ? (

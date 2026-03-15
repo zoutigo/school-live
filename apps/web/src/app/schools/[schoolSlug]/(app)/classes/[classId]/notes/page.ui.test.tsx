@@ -2,6 +2,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassNotesPage from "./page";
 
+function setRichTextEditorHtml(container: HTMLElement, value: string) {
+  const editor = container.querySelector(
+    '[contenteditable="true"]',
+  ) as HTMLElement | null;
+  if (!editor) {
+    throw new Error("Rich text editor not found");
+  }
+  editor.innerHTML = value;
+  fireEvent.input(editor);
+}
+
 const replaceMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
@@ -22,7 +33,7 @@ const EVALUATIONS = [
   {
     id: "eval-1",
     title: "Composition fractions",
-    description: "Resoudre les exercices 1 a 4.",
+    description: "<p>Resoudre les exercices <strong>1 a 4</strong>.</p>",
     coefficient: 2,
     maxScore: 20,
     term: "TERM_1",
@@ -33,13 +44,21 @@ const EVALUATIONS = [
     subject: { id: "sub-1", name: "Mathematiques" },
     subjectBranch: { id: "branch-1", name: "Algebre" },
     evaluationType: { id: "type-1", code: "COMP", label: "Composition" },
-    attachments: [],
+    attachments: [
+      {
+        id: "att-1",
+        fileName: "consignes-composition.pdf",
+        fileUrl: "https://files.local/consignes-composition.pdf",
+        sizeLabel: "216 Ko",
+        mimeType: "application/pdf",
+      },
+    ],
     _count: { scores: 12 },
   },
   {
     id: "eval-2",
     title: "Problemes geometriques",
-    description: "Figures et constructions.",
+    description: "<p>Figures et constructions.</p>",
     coefficient: 1,
     maxScore: 20,
     term: "TERM_2",
@@ -56,7 +75,7 @@ const EVALUATIONS = [
   {
     id: "eval-3",
     title: "Problemes numeriques",
-    description: "Questions a reponses courtes.",
+    description: "<p>Questions a reponses courtes.</p>",
     coefficient: 1,
     maxScore: 20,
     term: "TERM_2",
@@ -73,7 +92,7 @@ const EVALUATIONS = [
   {
     id: "eval-4",
     title: "Calcul mental",
-    description: "Serie rapide.",
+    description: "<p>Serie rapide.</p>",
     coefficient: 1,
     maxScore: 20,
     term: "TERM_2",
@@ -90,7 +109,7 @@ const EVALUATIONS = [
   {
     id: "eval-5",
     title: "Fractions avancees",
-    description: "Exercices de synthese.",
+    description: "<p>Exercices de synthese.</p>",
     coefficient: 2,
     maxScore: 20,
     term: "TERM_2",
@@ -107,7 +126,7 @@ const EVALUATIONS = [
   {
     id: "eval-6",
     title: "Solides et volumes",
-    description: "Derniere evaluation de la page 2.",
+    description: "<p>Derniere evaluation de la page 2.</p>",
     coefficient: 1,
     maxScore: 20,
     term: "TERM_3",
@@ -216,6 +235,25 @@ function setupFetchMock(evaluations = EVALUATIONS) {
       }
       return jsonResponse(evaluations);
     }
+    if (url.includes("/classes/class-1/evaluations/eval-1")) {
+      if (request?.method === "PATCH") {
+        return jsonResponse({ id: "eval-1" });
+      }
+      return jsonResponse(DETAIL_BY_ID["eval-1"]);
+    }
+    if (url.includes("/evaluations/uploads/attachment")) {
+      return jsonResponse(
+        { url: "https://files.local/doc.pdf", size: 1024 },
+        200,
+      );
+    }
+    if (url.startsWith("https://files.local/")) {
+      return Promise.resolve(
+        new Response(new Blob(["file-content"], { type: "application/pdf" }), {
+          status: 200,
+        }),
+      );
+    }
     if (url.includes("/term-reports?term=")) {
       return jsonResponse([]);
     }
@@ -249,6 +287,10 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     expect(
       screen.getByRole("button", { name: /Saisir les notes/i }),
     ).toBeInTheDocument();
+    const attachmentDownloadButton = screen.getByRole("button", {
+      name: "consignes-composition.pdf",
+    });
+    expect(attachmentDownloadButton).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", { name: /Problemes geometriques/i }),
@@ -275,23 +317,49 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     expect(
       screen.getByRole("button", { name: "Creer l'evaluation" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("validates the creation form on change with inline errors and a disabled submit", async () => {
     setupFetchMock();
 
-    render(<TeacherClassNotesPage />);
+    const { container } = render(<TeacherClassNotesPage />);
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Ajouter une evaluation" }),
     );
 
+    await screen.findByText("Nouvelle evaluation");
     const submitButton = await screen.findByRole("button", {
       name: "Creer l'evaluation",
     });
-    const titleInput = screen.getByLabelText("Titre");
+    const titleInput = container.querySelector(
+      "#evaluation-title",
+    ) as HTMLInputElement | null;
+    const scheduledAtInput = container.querySelector(
+      "#evaluation-scheduled-at",
+    ) as HTMLInputElement | null;
+
+    expect(titleInput).not.toBeNull();
+    expect(scheduledAtInput).not.toBeNull();
+    if (!titleInput || !scheduledAtInput) {
+      throw new Error("Creation form inputs not found");
+    }
 
     expect(submitButton).toBeDisabled();
+    expect(titleInput).toHaveAttribute("aria-invalid", "true");
+    expect(scheduledAtInput).toHaveAttribute("aria-invalid", "true");
+    expect(titleInput.className).toContain("border-notification");
+    expect(scheduledAtInput.className).toContain("border-notification");
+    expect(
+      await screen.findByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
 
     fireEvent.input(titleInput, { target: { value: "Ab" } });
 
@@ -301,27 +369,68 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     expect(submitButton).toBeDisabled();
 
     fireEvent.input(titleInput, { target: { value: "Composition fractions" } });
+    fireEvent.input(scheduledAtInput, {
+      target: { value: "2026-03-20T09:30" },
+    });
+    fireEvent.input(scheduledAtInput, { target: { value: "" } });
+
+    expect(
+      await screen.findByText("La date prevue est obligatoire."),
+    ).toBeInTheDocument();
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(scheduledAtInput, {
+      target: { value: "2026-03-20T09:30" },
+    });
 
     await waitFor(() => expect(submitButton).toBeEnabled());
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("blocks submission when coefficient is invalid then posts the evaluation once fixed", async () => {
     const fetchMock = setupFetchMock();
 
-    render(<TeacherClassNotesPage />);
+    const { container } = render(<TeacherClassNotesPage />);
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Ajouter une evaluation" }),
     );
 
-    const titleInput = await screen.findByLabelText("Titre");
-    const coefficientInput = screen.getByLabelText("Coefficient");
+    await screen.findByText("Nouvelle evaluation");
+    const titleInput = container.querySelector(
+      "#evaluation-title",
+    ) as HTMLInputElement | null;
+    const coefficientInput = container.querySelector(
+      "#evaluation-coefficient",
+    ) as HTMLInputElement | null;
+    const scheduledAtInput = container.querySelector(
+      "#evaluation-scheduled-at",
+    ) as HTMLInputElement | null;
     const submitButton = screen.getByRole("button", {
       name: "Creer l'evaluation",
     });
+    const descriptionEditor = screen.getByTestId(
+      "evaluation-description-editor",
+    );
+
+    expect(titleInput).not.toBeNull();
+    expect(coefficientInput).not.toBeNull();
+    expect(scheduledAtInput).not.toBeNull();
+    if (!titleInput || !coefficientInput || !scheduledAtInput) {
+      throw new Error("Creation form inputs not found");
+    }
 
     fireEvent.input(titleInput, { target: { value: "Composition fractions" } });
     fireEvent.input(coefficientInput, { target: { value: "0" } });
+    fireEvent.input(scheduledAtInput, {
+      target: { value: "2026-03-20T09:30" },
+    });
 
     expect(
       await screen.findByText("Le coefficient doit etre superieur a 0."),
@@ -331,6 +440,10 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     fireEvent.input(coefficientInput, { target: { value: "1.5" } });
 
     await waitFor(() => expect(submitButton).toBeEnabled());
+    setRichTextEditorHtml(
+      descriptionEditor,
+      "<p>Consignes <strong>riches</strong>.</p>",
+    );
 
     fireEvent.click(submitButton);
 
@@ -344,15 +457,203 @@ describe("TeacherClassNotesPage evaluations tab", () => {
             subjectBranchId: "branch-1",
             evaluationTypeId: "type-1",
             title: "Composition fractions",
+            description: "<p>Consignes <strong>riches</strong>.</p>",
             coefficient: 1.5,
             maxScore: 20,
             term: "TERM_1",
+            scheduledAt: "2026-03-20T08:30:00.000Z",
             status: "DRAFT",
             attachments: [],
           }),
         }),
       );
     });
+  });
+
+  it("opens the selected evaluation in edit mode and patches it", async () => {
+    const fetchMock = setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    await screen.findByTestId("evaluation-detail-panel");
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Editer l'evaluation selectionnee",
+      }),
+    );
+
+    expect(await screen.findByText("Editer l'evaluation")).toBeInTheDocument();
+
+    const titleInput = screen.getByLabelText("Titre") as HTMLInputElement;
+    const submitButton = screen.getByRole("button", { name: "Enregistrer" });
+    const descriptionEditor = screen.getByTestId(
+      "evaluation-description-editor",
+    );
+
+    expect(titleInput.value).toBe("Composition fractions");
+    expect(descriptionEditor.textContent).toContain("Resoudre les exercices");
+
+    fireEvent.input(titleInput, {
+      target: { value: "Composition fractions revisee" },
+    });
+    setRichTextEditorHtml(
+      descriptionEditor,
+      "<p>Resoudre les exercices <em>1 a 6</em>.</p>",
+    );
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).includes("/classes/class-1/evaluations/eval-1") &&
+          init &&
+          typeof init === "object" &&
+          "method" in init &&
+          init.method === "PATCH",
+      );
+
+      expect(patchCall).toBeTruthy();
+
+      const payload = JSON.parse(
+        ((patchCall?.[1] as RequestInit | undefined)?.body as string) ?? "{}",
+      ) as Record<string, unknown>;
+
+      expect(payload).toMatchObject({
+        subjectId: "sub-1",
+        subjectBranchId: "branch-1",
+        evaluationTypeId: "type-1",
+        title: "Composition fractions revisee",
+        description: "<p>Resoudre les exercices <em>1 a 6</em>.</p>",
+        coefficient: 2,
+        maxScore: 20,
+        term: "TERM_1",
+        status: "PUBLISHED",
+        attachments: [
+          {
+            fileName: "consignes-composition.pdf",
+            fileUrl: "https://files.local/consignes-composition.pdf",
+            mimeType: "application/pdf",
+            sizeLabel: "216 Ko",
+          },
+        ],
+      });
+      expect(String(payload.scheduledAt)).toMatch(
+        /^2026-03-11T0[78]:00:00.000Z$/,
+      );
+    });
+  });
+
+  it("prefills the edit date with createdAt when scheduledAt is missing", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Problemes geometriques/i }),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Editer l'evaluation selectionnee",
+      }),
+    );
+
+    const scheduledAtInput = (await screen.findByLabelText(
+      "Date prevue",
+    )) as HTMLInputElement;
+
+    expect(scheduledAtInput.value).toBe("2026-03-12T08:00");
+  });
+
+  it("downloads an attachment without navigating away", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "consignes-composition.pdf",
+      }),
+    );
+
+    await waitFor(() =>
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "https://files.local/consignes-composition.pdf",
+      ),
+    );
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the backend upload error message inline", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      const request = input instanceof Request ? input : null;
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER" });
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: { id: "class-1", name: "6eC", schoolYearId: "sy-1" },
+          subjects: [
+            {
+              id: "sub-1",
+              name: "Mathematiques",
+              branches: [{ id: "branch-1", name: "Algebre" }],
+            },
+          ],
+          evaluationTypes: [
+            {
+              id: "type-1",
+              code: "COMP",
+              label: "Composition",
+              isDefault: true,
+            },
+          ],
+          students: [],
+        });
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context") &&
+        !url.includes("/eval-")
+      ) {
+        if (request?.method === "POST") {
+          return jsonResponse({ id: "eval-created" }, 201);
+        }
+        return jsonResponse(EVALUATIONS);
+      }
+      if (url.includes("/classes/class-1/evaluations/eval-")) {
+        const evaluationId = url.split("/").pop() as keyof typeof DETAIL_BY_ID;
+        return jsonResponse(DETAIL_BY_ID[evaluationId]);
+      }
+      if (url.includes("/evaluations/uploads/attachment")) {
+        return jsonResponse({ message: "Type upload non supporte" }, 502);
+      }
+      if (url.includes("/term-reports?term=")) {
+        return jsonResponse([]);
+      }
+
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Ajouter une evaluation" }),
+    );
+
+    const fileInput = screen.getByLabelText(/Ajouter un fichier/i, {
+      selector: 'input[type="file"]',
+    });
+    const file = new File(["bad"], "archive.zip", { type: "application/zip" });
+
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    expect(
+      await screen.findByText("Type upload non supporte"),
+    ).toBeInTheDocument();
   });
 
   it("renders compact metadata in the left list cards", async () => {
@@ -366,7 +667,7 @@ describe("TeacherClassNotesPage evaluations tab", () => {
 
     expect(screen.getAllByText("Publiee").length).toBeGreaterThan(0);
     expect(screen.getByText("11/03/2026")).toBeInTheDocument();
-    expect(screen.getByText("12/20")).toBeInTheDocument();
+    expect(screen.getAllByText("12/20").length).toBeGreaterThan(0);
   });
 
   it("paginates the left evaluations list and opens details from another page", async () => {

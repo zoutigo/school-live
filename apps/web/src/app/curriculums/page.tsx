@@ -8,6 +8,13 @@ import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import {
+  FormCheckbox,
+  FormNumberInput,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
@@ -219,6 +226,38 @@ export default function CurriculumsPage() {
   const curriculumSubjectValues = curriculumSubjectForm.watch();
   const editAcademicLevelValues = editAcademicLevelForm.watch();
   const editTrackValues = editTrackForm.watch();
+  const academicLevelCodeInvalid =
+    !!academicLevelForm.formState.errors.code ||
+    !(academicLevelValues.code ?? "").trim();
+  const academicLevelLabelInvalid =
+    !!academicLevelForm.formState.errors.label ||
+    !(academicLevelValues.label ?? "").trim();
+  const editAcademicLevelCodeInvalid =
+    !!editAcademicLevelForm.formState.errors.code ||
+    !(editAcademicLevelValues.code ?? "").trim();
+  const editAcademicLevelLabelInvalid =
+    !!editAcademicLevelForm.formState.errors.label ||
+    !(editAcademicLevelValues.label ?? "").trim();
+  const trackCodeInvalid =
+    !!trackForm.formState.errors.code || !(trackValues.code ?? "").trim();
+  const trackLabelInvalid =
+    !!trackForm.formState.errors.label || !(trackValues.label ?? "").trim();
+  const editTrackCodeInvalid =
+    !!editTrackForm.formState.errors.code ||
+    !(editTrackValues.code ?? "").trim();
+  const editTrackLabelInvalid =
+    !!editTrackForm.formState.errors.label ||
+    !(editTrackValues.label ?? "").trim();
+  const curriculumAcademicLevelInvalid =
+    !!curriculumForm.formState.errors.academicLevelId ||
+    !(curriculumValues.academicLevelId ?? "").trim();
+  const curriculumSubjectIdInvalid =
+    !!curriculumSubjectForm.formState.errors.subjectId ||
+    !(curriculumSubjectValues.subjectId ?? "").trim();
+  const curriculumCoefficientInvalid =
+    !!curriculumSubjectForm.formState.errors.coefficient;
+  const curriculumWeeklyHoursInvalid =
+    !!curriculumSubjectForm.formState.errors.weeklyHours;
 
   useEffect(() => {
     void bootstrap();
@@ -1047,12 +1086,11 @@ export default function CurriculumsPage() {
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
                 <span className="text-text-secondary">Ecole</span>
-                <select
+                <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Selectionner une ecole</option>
                   {schools.map((school) => (
@@ -1060,7 +1098,7 @@ export default function CurriculumsPage() {
                       {school.name}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
             ) : null}
           </div>
@@ -1107,8 +1145,9 @@ export default function CurriculumsPage() {
                   label="Code"
                   error={academicLevelForm.formState.errors.code?.message}
                 >
-                  <input
+                  <FormTextInput
                     aria-label="Code"
+                    invalid={academicLevelCodeInvalid}
                     value={academicLevelValues.code ?? ""}
                     onChange={(event) => {
                       academicLevelForm.setValue("code", event.target.value, {
@@ -1118,15 +1157,15 @@ export default function CurriculumsPage() {
                       });
                     }}
                     placeholder="Ex: 6EME"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
                 <FormField
                   label="Libelle"
                   error={academicLevelForm.formState.errors.label?.message}
                 >
-                  <input
+                  <FormTextInput
                     aria-label="Libelle"
+                    invalid={academicLevelLabelInvalid}
                     value={academicLevelValues.label ?? ""}
                     onChange={(event) => {
                       academicLevelForm.setValue("label", event.target.value, {
@@ -1136,7 +1175,6 @@ export default function CurriculumsPage() {
                       });
                     }}
                     placeholder="Ex: 6eme"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
                 <div className="self-end">
@@ -1149,6 +1187,10 @@ export default function CurriculumsPage() {
                     {submittingAcademicLevel ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
+                <FormSubmitHint
+                  visible={!academicLevelForm.formState.isValid}
+                  className="md:col-span-3"
+                />
               </form>
 
               <div className="overflow-x-auto">
@@ -1226,8 +1268,9 @@ export default function CurriculumsPage() {
                                         .code?.message
                                     }
                                   >
-                                    <input
+                                    <FormTextInput
                                       aria-label="Code niveau"
+                                      invalid={editAcademicLevelCodeInvalid}
                                       value={editAcademicLevelValues.code ?? ""}
                                       onChange={(event) => {
                                         editAcademicLevelForm.setValue(
@@ -1240,7 +1283,6 @@ export default function CurriculumsPage() {
                                           },
                                         );
                                       }}
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
                                   </FormField>
                                   <FormField
@@ -1250,8 +1292,9 @@ export default function CurriculumsPage() {
                                         .label?.message
                                     }
                                   >
-                                    <input
+                                    <FormTextInput
                                       aria-label="Libelle niveau"
+                                      invalid={editAcademicLevelLabelInvalid}
                                       value={
                                         editAcademicLevelValues.label ?? ""
                                       }
@@ -1266,9 +1309,14 @@ export default function CurriculumsPage() {
                                           },
                                         );
                                       }}
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
                                   </FormField>
+                                  <FormSubmitHint
+                                    visible={
+                                      !editAcademicLevelForm.formState.isValid
+                                    }
+                                    className="md:col-span-4"
+                                  />
                                   <Button
                                     type="button"
                                     disabled={
@@ -1327,8 +1375,9 @@ export default function CurriculumsPage() {
                   label="Code"
                   error={trackForm.formState.errors.code?.message}
                 >
-                  <input
+                  <FormTextInput
                     aria-label="Code"
+                    invalid={trackCodeInvalid}
                     value={trackValues.code ?? ""}
                     onChange={(event) => {
                       trackForm.setValue("code", event.target.value, {
@@ -1338,15 +1387,15 @@ export default function CurriculumsPage() {
                       });
                     }}
                     placeholder="Ex: C"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
                 <FormField
                   label="Libelle"
                   error={trackForm.formState.errors.label?.message}
                 >
-                  <input
+                  <FormTextInput
                     aria-label="Libelle"
+                    invalid={trackLabelInvalid}
                     value={trackValues.label ?? ""}
                     onChange={(event) => {
                       trackForm.setValue("label", event.target.value, {
@@ -1356,7 +1405,6 @@ export default function CurriculumsPage() {
                       });
                     }}
                     placeholder="Ex: Scientifique"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
                 <div className="self-end">
@@ -1366,6 +1414,10 @@ export default function CurriculumsPage() {
                     {submittingTrack ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
+                <FormSubmitHint
+                  visible={!trackForm.formState.isValid}
+                  className="md:col-span-3"
+                />
               </form>
 
               <div className="overflow-x-auto">
@@ -1441,8 +1493,9 @@ export default function CurriculumsPage() {
                                         ?.message
                                     }
                                   >
-                                    <input
+                                    <FormTextInput
                                       aria-label="Code filiere"
+                                      invalid={editTrackCodeInvalid}
                                       value={editTrackValues.code ?? ""}
                                       onChange={(event) => {
                                         editTrackForm.setValue(
@@ -1455,7 +1508,6 @@ export default function CurriculumsPage() {
                                           },
                                         );
                                       }}
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
                                   </FormField>
                                   <FormField
@@ -1465,8 +1517,9 @@ export default function CurriculumsPage() {
                                         ?.message
                                     }
                                   >
-                                    <input
+                                    <FormTextInput
                                       aria-label="Libelle filiere"
+                                      invalid={editTrackLabelInvalid}
                                       value={editTrackValues.label ?? ""}
                                       onChange={(event) => {
                                         editTrackForm.setValue(
@@ -1479,9 +1532,12 @@ export default function CurriculumsPage() {
                                           },
                                         );
                                       }}
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
                                   </FormField>
+                                  <FormSubmitHint
+                                    visible={!editTrackForm.formState.isValid}
+                                    className="md:col-span-4"
+                                  />
                                   <Button
                                     type="button"
                                     disabled={
@@ -1541,8 +1597,9 @@ export default function CurriculumsPage() {
                     curriculumForm.formState.errors.academicLevelId?.message
                   }
                 >
-                  <select
+                  <FormSelect
                     aria-label="Niveau academique"
+                    invalid={curriculumAcademicLevelInvalid}
                     value={curriculumValues.academicLevelId ?? ""}
                     onChange={(event) => {
                       curriculumForm.setValue(
@@ -1555,7 +1612,6 @@ export default function CurriculumsPage() {
                         },
                       );
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
                     {academicLevels.map((level) => (
@@ -1563,11 +1619,11 @@ export default function CurriculumsPage() {
                         {level.code} - {level.label}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </FormField>
 
                 <FormField label="Filiere (optionnel)">
-                  <select
+                  <FormSelect
                     aria-label="Filiere (optionnel)"
                     value={curriculumValues.trackId ?? ""}
                     onChange={(event) => {
@@ -1577,7 +1633,6 @@ export default function CurriculumsPage() {
                         shouldValidate: true,
                       });
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Aucune</option>
                     {tracks.map((track) => (
@@ -1585,7 +1640,7 @@ export default function CurriculumsPage() {
                         {track.code} - {track.label}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </FormField>
 
                 <div className="self-end">
@@ -1597,6 +1652,10 @@ export default function CurriculumsPage() {
                     {submittingCurriculum ? "Creation..." : "Creer"}
                   </SubmitButton>
                 </div>
+                <FormSubmitHint
+                  visible={!curriculumForm.formState.isValid}
+                  className="md:col-span-3"
+                />
               </form>
               <p className="text-xs text-text-secondary">
                 Nom genere automatiquement:{" "}
@@ -1705,12 +1764,11 @@ export default function CurriculumsPage() {
             <div className="grid gap-4">
               <label className="grid max-w-md gap-1 text-sm">
                 <span className="text-text-secondary">Curriculum</span>
-                <select
+                <FormSelect
                   value={selectedCurriculumId}
                   onChange={(event) =>
                     setSelectedCurriculumId(event.target.value)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Selectionner</option>
                   {orderedCurriculums.map((curriculum) => (
@@ -1718,7 +1776,7 @@ export default function CurriculumsPage() {
                       {curriculum.name}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
 
               {selectedCurriculumId ? (
@@ -1736,8 +1794,9 @@ export default function CurriculumsPage() {
                           ?.message
                       }
                     >
-                      <select
+                      <FormSelect
                         aria-label="Matiere"
+                        invalid={curriculumSubjectIdInvalid}
                         value={curriculumSubjectValues.subjectId ?? ""}
                         onChange={(event) => {
                           curriculumSubjectForm.setValue(
@@ -1750,7 +1809,6 @@ export default function CurriculumsPage() {
                             },
                           );
                         }}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Selectionner</option>
                         {subjects.map((subject) => (
@@ -1758,7 +1816,7 @@ export default function CurriculumsPage() {
                             {subject.name}
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </FormField>
 
                     <FormField
@@ -1768,9 +1826,9 @@ export default function CurriculumsPage() {
                           ?.message
                       }
                     >
-                      <input
+                      <FormNumberInput
                         aria-label="Coefficient"
-                        type="number"
+                        invalid={curriculumCoefficientInvalid}
                         min={0}
                         step="0.1"
                         value={curriculumSubjectValues.coefficient ?? ""}
@@ -1786,7 +1844,6 @@ export default function CurriculumsPage() {
                           );
                         }}
                         placeholder="Ex: 4"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </FormField>
 
@@ -1797,9 +1854,9 @@ export default function CurriculumsPage() {
                           ?.message
                       }
                     >
-                      <input
+                      <FormNumberInput
                         aria-label="Heures/sem."
-                        type="number"
+                        invalid={curriculumWeeklyHoursInvalid}
                         min={0}
                         step="0.5"
                         value={curriculumSubjectValues.weeklyHours ?? ""}
@@ -1815,13 +1872,11 @@ export default function CurriculumsPage() {
                           );
                         }}
                         placeholder="Ex: 3"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </FormField>
 
                     <label className="flex items-end gap-2 text-sm">
-                      <input
-                        type="checkbox"
+                      <FormCheckbox
                         checked={curriculumSubjectValues.isMandatory ?? true}
                         onChange={(event) => {
                           curriculumSubjectForm.setValue(
@@ -1839,6 +1894,10 @@ export default function CurriculumsPage() {
                     </label>
 
                     <div className="self-end">
+                      <FormSubmitHint
+                        visible={!curriculumSubjectForm.formState.isValid}
+                        className="mb-2"
+                      />
                       <Button
                         type="submit"
                         disabled={

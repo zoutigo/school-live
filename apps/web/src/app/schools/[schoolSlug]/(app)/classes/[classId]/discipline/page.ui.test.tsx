@@ -96,6 +96,15 @@ describe("Discipline page form", () => {
       name: "Enregistrer l'evenement",
     });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Motif")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
 
     fireEvent.change(screen.getByLabelText("Motif"), {
       target: { value: "Absence non justifiee" },
@@ -103,6 +112,10 @@ describe("Discipline page form", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(screen.getByLabelText("Motif")).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
 
     const durationInput = document.querySelector(
@@ -118,6 +131,12 @@ describe("Discipline page form", () => {
         screen.getByText("La duree doit etre un entier positif."),
       ).toBeInTheDocument();
       expect(submitButton).toBeDisabled();
+      expect(
+        screen.getByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).toBeInTheDocument();
+      expect(durationInput).toHaveAttribute("aria-invalid", "true");
     });
 
     fireEvent.change(durationInput, {
@@ -129,6 +148,7 @@ describe("Discipline page form", () => {
         screen.queryByText("La duree doit etre un entier positif."),
       ).not.toBeInTheDocument();
       expect(submitButton).toBeEnabled();
+      expect(durationInput).toHaveAttribute("aria-invalid", "false");
     });
 
     fireEvent.click(submitButton);
@@ -218,6 +238,11 @@ describe("Discipline page form", () => {
     await waitFor(() => {
       expect(screen.getByText("La date est obligatoire.")).toBeInTheDocument();
       expect(submitButton).toBeDisabled();
+      expect(
+        screen.getAllByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ).length,
+      ).toBeGreaterThan(0);
     });
 
     fireEvent.change(dateInput, {
@@ -229,6 +254,10 @@ describe("Discipline page form", () => {
         screen.queryByText("La date est obligatoire."),
       ).not.toBeInTheDocument();
       expect(submitButton).toBeEnabled();
+      expect(screen.getByLabelText("Date et heure")).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
   });
 

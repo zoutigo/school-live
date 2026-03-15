@@ -11,6 +11,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { ChildModulePage } from "../family/child-module-page";
 import { Card } from "../ui/card";
+import { FormSelect } from "../ui/form-controls";
 import { STUDENT_NOTES_DEMO_DATA } from "./student-notes-demo-data";
 import type {
   StudentEvaluation,
@@ -1259,21 +1260,21 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
               <div className="shrink-0 min-[360px]:hidden">
                 <label className="block">
                   <span className="sr-only">Choisir le trimestre</span>
-                  <select
+                  <FormSelect
                     data-testid="notes-term-select-mobile"
                     aria-label="Choisir le trimestre"
                     value={selectedTerm}
                     onChange={(event) =>
                       setSelectedTerm(event.target.value as StudentNotesTerm)
                     }
-                    className="min-w-[132px] rounded-[8px] border border-border bg-surface px-3 py-2 text-xs font-semibold text-text-primary outline-none transition focus:border-primary"
+                    className="min-w-[132px] bg-surface px-3 py-2 text-xs font-semibold"
                   >
                     {snapshots.map((term) => (
                       <option key={term.term} value={term.term}>
                         {term.label}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </label>
               </div>
             </div>

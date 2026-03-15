@@ -10,6 +10,14 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import {
+  FormCheckbox,
+  FormDateTimeInput,
+  FormNumberInput,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import {
@@ -376,6 +384,57 @@ export default function ElevesPage() {
     },
   });
   const createStudentValues = createStudentForm.watch();
+  const createStudentFirstNameInvalid =
+    !!createStudentForm.formState.errors.firstName ||
+    !(createStudentValues.firstName ?? "").trim();
+  const createStudentLastNameInvalid =
+    !!createStudentForm.formState.errors.lastName ||
+    !(createStudentValues.lastName ?? "").trim();
+  const createStudentClassInvalid =
+    !!createStudentForm.formState.errors.classId ||
+    !(createStudentValues.classId ?? "").trim();
+  const editStudentFirstNameInvalid =
+    !!editStudentForm.formState.errors.firstName ||
+    !(editStudentValues.firstName ?? "").trim();
+  const editStudentLastNameInvalid =
+    !!editStudentForm.formState.errors.lastName ||
+    !(editStudentValues.lastName ?? "").trim();
+  const linkParentMode = linkParentValues.mode ?? "phone";
+  const linkParentPhoneInvalid =
+    linkParentMode === "phone" &&
+    (!!linkParentForm.formState.errors.phone ||
+      !(linkParentValues.phone ?? "").trim());
+  const linkParentPinInvalid =
+    linkParentMode === "phone" &&
+    (!!linkParentForm.formState.errors.pin ||
+      !(linkParentValues.pin ?? "").trim());
+  const linkParentEmailInvalid =
+    linkParentMode === "email" &&
+    (!!linkParentForm.formState.errors.email ||
+      !(linkParentValues.email ?? "").trim());
+  const linkParentPasswordInvalid =
+    linkParentMode === "email" &&
+    (!!linkParentForm.formState.errors.password ||
+      !(linkParentValues.password ?? "").trim());
+  const createLifeEventTypeInvalid =
+    !!createLifeEventForm.formState.errors.type;
+  const createLifeEventOccurredAtInvalid =
+    !!createLifeEventForm.formState.errors.occurredAt ||
+    !(createLifeEventValues.occurredAt ?? "").trim();
+  const createLifeEventReasonInvalid =
+    !!createLifeEventForm.formState.errors.reason ||
+    !(createLifeEventValues.reason ?? "").trim();
+  const createLifeEventDurationInvalid =
+    !!createLifeEventForm.formState.errors.durationMinutes;
+  const editLifeEventTypeInvalid = !!editLifeEventForm.formState.errors.type;
+  const editLifeEventOccurredAtInvalid =
+    !!editLifeEventForm.formState.errors.occurredAt ||
+    !(editLifeEventValues.occurredAt ?? "").trim();
+  const editLifeEventReasonInvalid =
+    !!editLifeEventForm.formState.errors.reason ||
+    !(editLifeEventValues.reason ?? "").trim();
+  const editLifeEventDurationInvalid =
+    !!editLifeEventForm.formState.errors.durationMinutes;
 
   useEffect(() => {
     if (
@@ -1340,12 +1399,11 @@ export default function ElevesPage() {
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
                 <span className="text-text-secondary">Ecole</span>
-                <select
+                <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
-                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">Selectionner une ecole</option>
                   {schools.map((school) => (
@@ -1353,7 +1411,7 @@ export default function ElevesPage() {
                       {school.name}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
             ) : null}
           </div>
@@ -1415,8 +1473,9 @@ export default function ElevesPage() {
                   label="Prenom"
                   error={createStudentForm.formState.errors.firstName?.message}
                 >
-                  <input
+                  <FormTextInput
                     aria-label="Prenom"
+                    invalid={createStudentFirstNameInvalid}
                     value={createStudentValues.firstName ?? ""}
                     onChange={(event) => {
                       createStudentForm.setValue(
@@ -1429,15 +1488,15 @@ export default function ElevesPage() {
                         },
                       );
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
                 <FormField
                   label="Nom"
                   error={createStudentForm.formState.errors.lastName?.message}
                 >
-                  <input
+                  <FormTextInput
                     aria-label="Nom"
+                    invalid={createStudentLastNameInvalid}
                     value={createStudentValues.lastName ?? ""}
                     onChange={(event) => {
                       createStudentForm.setValue(
@@ -1450,15 +1509,15 @@ export default function ElevesPage() {
                         },
                       );
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
                 <FormField
                   label="Classe"
                   error={createStudentForm.formState.errors.classId?.message}
                 >
-                  <select
+                  <FormSelect
                     aria-label="Classe"
+                    invalid={createStudentClassInvalid}
                     value={createStudentValues.classId ?? ""}
                     onChange={(event) => {
                       createStudentForm.setValue(
@@ -1471,7 +1530,6 @@ export default function ElevesPage() {
                         },
                       );
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
                     {classrooms.map((entry) => (
@@ -1479,13 +1537,14 @@ export default function ElevesPage() {
                         {entry.name} ({entry.schoolYear.label})
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </FormField>
                 <FormField
                   label="Email (optionnel)"
                   error={createStudentForm.formState.errors.email?.message}
                 >
                   <EmailInput
+                    invalid={!!createStudentForm.formState.errors.email}
                     value={createStudentValues.email ?? ""}
                     onChange={(event) => {
                       createStudentForm.setValue("email", event.target.value, {
@@ -1501,6 +1560,11 @@ export default function ElevesPage() {
                   error={createStudentForm.formState.errors.email?.message}
                 >
                   <PasswordInput
+                    aria-invalid={
+                      createStudentForm.formState.errors.email
+                        ? "true"
+                        : "false"
+                    }
                     value={createStudentValues.password ?? ""}
                     onChange={(event) => {
                       createStudentForm.setValue(
@@ -1524,6 +1588,10 @@ export default function ElevesPage() {
                     {submitting ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
+                <FormSubmitHint
+                  visible={!createStudentForm.formState.isValid}
+                  className="md:col-span-6"
+                />
               </form>
 
               <form
@@ -1537,19 +1605,17 @@ export default function ElevesPage() {
               >
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Recherche</span>
-                  <input
+                  <FormTextInput
                     value={searchFilter}
                     onChange={(event) => setSearchFilter(event.target.value)}
                     placeholder="Nom ou prenom"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Classe</span>
-                  <select
+                  <FormSelect
                     value={classFilter}
                     onChange={(event) => setClassFilter(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Toutes</option>
                     {classrooms.map((entry) => (
@@ -1557,16 +1623,15 @@ export default function ElevesPage() {
                         {entry.name} ({entry.schoolYear.label})
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Annee scolaire</span>
-                  <select
+                  <FormSelect
                     value={schoolYearFilter}
                     onChange={(event) =>
                       setSchoolYearFilter(event.target.value)
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Toutes</option>
                     {schoolYears.map((entry) => (
@@ -1575,7 +1640,7 @@ export default function ElevesPage() {
                         {entry.isActive ? " (active)" : ""}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </label>
                 <div className="self-end">
                   <SubmitButton disabled={loadingData}>Filtrer</SubmitButton>
@@ -1625,7 +1690,8 @@ export default function ElevesPage() {
                                       ?.message
                                   }
                                 >
-                                  <input
+                                  <FormTextInput
+                                    invalid={editStudentFirstNameInvalid}
                                     value={editStudentValues.firstName ?? ""}
                                     onChange={(event) =>
                                       editStudentForm.setValue(
@@ -1638,7 +1704,7 @@ export default function ElevesPage() {
                                         },
                                       )
                                     }
-                                    className="rounded-card border border-border bg-surface px-2 py-1 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    className="px-2 py-1"
                                   />
                                 </FormField>
                                 <FormField
@@ -1649,7 +1715,8 @@ export default function ElevesPage() {
                                       ?.message
                                   }
                                 >
-                                  <input
+                                  <FormTextInput
+                                    invalid={editStudentLastNameInvalid}
                                     value={editStudentValues.lastName ?? ""}
                                     onChange={(event) =>
                                       editStudentForm.setValue(
@@ -1662,7 +1729,7 @@ export default function ElevesPage() {
                                         },
                                       )
                                     }
-                                    className="rounded-card border border-border bg-surface px-2 py-1 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    className="px-2 py-1"
                                   />
                                 </FormField>
                               </div>
@@ -1685,6 +1752,10 @@ export default function ElevesPage() {
                             <div className="inline-flex gap-2">
                               {editingStudentId === student.id ? (
                                 <>
+                                  <FormSubmitHint
+                                    visible={!editStudentForm.formState.isValid}
+                                    className="self-center"
+                                  />
                                   <Button
                                     type="button"
                                     disabled={
@@ -1761,10 +1832,9 @@ export default function ElevesPage() {
             <div className="grid gap-4">
               <label className="grid gap-1 text-sm md:max-w-[420px]">
                 <span className="text-text-secondary">Eleve</span>
-                <select
+                <FormSelect
                   value={selectedStudentId}
                   onChange={(event) => setSelectedStudentId(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Selectionner</option>
                   {sortedStudents.map((entry) => (
@@ -1772,7 +1842,7 @@ export default function ElevesPage() {
                       {entry.lastName} {entry.firstName}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
 
               {!selectedStudent ? (
@@ -1794,8 +1864,8 @@ export default function ElevesPage() {
 
                   <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
                     <FormField label="Mode parent">
-                      <select
-                        value={linkParentValues.mode ?? "phone"}
+                      <FormSelect
+                        value={linkParentMode}
                         onChange={(event) => {
                           const nextMode = event.target.value as
                             | "email"
@@ -1821,26 +1891,26 @@ export default function ElevesPage() {
                             });
                           }
                         }}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="phone">Telephone + PIN</option>
                         <option value="email">Email + mot de passe</option>
-                      </select>
+                      </FormSelect>
                     </FormField>
                     <FormField
                       label={
-                        linkParentValues.mode === "email"
+                        linkParentMode === "email"
                           ? "Email du parent"
                           : "Telephone du parent"
                       }
                       error={
-                        linkParentValues.mode === "email"
+                        linkParentMode === "email"
                           ? linkParentForm.formState.errors.email?.message
                           : linkParentForm.formState.errors.phone?.message
                       }
                     >
-                      {linkParentValues.mode === "email" ? (
+                      {linkParentMode === "email" ? (
                         <EmailInput
+                          invalid={linkParentEmailInvalid}
                           value={linkParentValues.email ?? ""}
                           onChange={(event) => {
                             linkParentForm.setValue(
@@ -1856,7 +1926,8 @@ export default function ElevesPage() {
                           placeholder="parent@email.com"
                         />
                       ) : (
-                        <input
+                        <FormTextInput
+                          invalid={linkParentPhoneInvalid}
                           value={linkParentValues.phone ?? ""}
                           onChange={(event) => {
                             linkParentForm.setValue(
@@ -1870,24 +1941,26 @@ export default function ElevesPage() {
                             );
                           }}
                           placeholder="6XXXXXXXX"
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       )}
                     </FormField>
                     <FormField
                       label={
-                        linkParentValues.mode === "email"
+                        linkParentMode === "email"
                           ? "Mot de passe initial"
                           : "PIN initial"
                       }
                       error={
-                        linkParentValues.mode === "email"
+                        linkParentMode === "email"
                           ? linkParentForm.formState.errors.password?.message
                           : linkParentForm.formState.errors.pin?.message
                       }
                     >
-                      {linkParentValues.mode === "email" ? (
+                      {linkParentMode === "email" ? (
                         <PasswordInput
+                          aria-invalid={
+                            linkParentPasswordInvalid ? "true" : "false"
+                          }
                           value={linkParentValues.password ?? ""}
                           onChange={(event) => {
                             linkParentForm.setValue(
@@ -1904,6 +1977,7 @@ export default function ElevesPage() {
                         />
                       ) : (
                         <PinInput
+                          aria-invalid={linkParentPinInvalid ? "true" : "false"}
                           value={linkParentValues.pin ?? ""}
                           onChange={(event) => {
                             linkParentForm.setValue(
@@ -1935,6 +2009,10 @@ export default function ElevesPage() {
                         {linkingParent ? "Affectation..." : "Affecter parent"}
                       </Button>
                     </div>
+                    <FormSubmitHint
+                      visible={!linkParentForm.formState.isValid}
+                      className="md:col-span-4"
+                    />
                     <div className="md:col-span-2">
                       <p className="mb-2 text-sm font-medium text-text-primary">
                         Parents lies
@@ -1967,7 +2045,8 @@ export default function ElevesPage() {
                           createLifeEventForm.formState.errors.type?.message
                         }
                       >
-                        <select
+                        <FormSelect
+                          invalid={createLifeEventTypeInvalid}
                           value={createLifeEventValues.type ?? "ABSENCE"}
                           onChange={(event) =>
                             createLifeEventForm.setValue(
@@ -1980,13 +2059,12 @@ export default function ElevesPage() {
                               },
                             )
                           }
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         >
                           <option value="ABSENCE">Absence</option>
                           <option value="RETARD">Retard</option>
                           <option value="SANCTION">Sanction</option>
                           <option value="PUNITION">Punition</option>
-                        </select>
+                        </FormSelect>
                       </FormField>
                       <FormField
                         label="Date/heure"
@@ -1996,8 +2074,8 @@ export default function ElevesPage() {
                             ?.message
                         }
                       >
-                        <input
-                          type="datetime-local"
+                        <FormDateTimeInput
+                          invalid={createLifeEventOccurredAtInvalid}
                           value={createLifeEventValues.occurredAt ?? ""}
                           onChange={(event) =>
                             createLifeEventForm.setValue(
@@ -2010,7 +2088,6 @@ export default function ElevesPage() {
                               },
                             )
                           }
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       </FormField>
                       <FormField
@@ -2020,7 +2097,8 @@ export default function ElevesPage() {
                           createLifeEventForm.formState.errors.reason?.message
                         }
                       >
-                        <input
+                        <FormTextInput
+                          invalid={createLifeEventReasonInvalid}
                           value={createLifeEventValues.reason ?? ""}
                           onChange={(event) =>
                             createLifeEventForm.setValue(
@@ -2034,11 +2112,11 @@ export default function ElevesPage() {
                             )
                           }
                           placeholder="Motif de l'evenement"
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       </FormField>
                       <FormField label="Duree (min)">
-                        <input
+                        <FormNumberInput
+                          invalid={createLifeEventDurationInvalid}
                           value={createLifeEventValues.durationMinutes ?? ""}
                           onChange={(event) =>
                             createLifeEventForm.setValue(
@@ -2052,13 +2130,12 @@ export default function ElevesPage() {
                             )
                           }
                           placeholder="ex: 10"
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       </FormField>
                     </div>
                     <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                       <FormField label="Commentaire">
-                        <input
+                        <FormTextInput
                           value={createLifeEventValues.comment ?? ""}
                           onChange={(event) =>
                             createLifeEventForm.setValue(
@@ -2072,12 +2149,10 @@ export default function ElevesPage() {
                             )
                           }
                           placeholder="Commentaire (optionnel)"
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       </FormField>
                       <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
-                        <input
-                          type="checkbox"
+                        <FormCheckbox
                           checked={createLifeEventValues.justified ?? false}
                           onChange={(event) =>
                             createLifeEventForm.setValue(
@@ -2099,6 +2174,10 @@ export default function ElevesPage() {
                       </label>
                     </div>
                     <div>
+                      <FormSubmitHint
+                        visible={!createLifeEventForm.formState.isValid}
+                        className="mb-2"
+                      />
                       <Button
                         type="button"
                         disabled={
@@ -2123,8 +2202,9 @@ export default function ElevesPage() {
                             editLifeEventForm.formState.errors.type?.message
                           }
                         >
-                          <select
+                          <FormSelect
                             aria-label="Type edition evenement"
+                            invalid={editLifeEventTypeInvalid}
                             value={editLifeEventValues.type ?? "ABSENCE"}
                             onChange={(event) =>
                               editLifeEventForm.setValue(
@@ -2137,13 +2217,12 @@ export default function ElevesPage() {
                                 },
                               )
                             }
-                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           >
                             <option value="ABSENCE">Absence</option>
                             <option value="RETARD">Retard</option>
                             <option value="SANCTION">Sanction</option>
                             <option value="PUNITION">Punition</option>
-                          </select>
+                          </FormSelect>
                         </FormField>
                         <FormField
                           label="Date/heure edition evenement"
@@ -2152,9 +2231,9 @@ export default function ElevesPage() {
                               ?.message
                           }
                         >
-                          <input
+                          <FormDateTimeInput
                             aria-label="Date/heure edition evenement"
-                            type="datetime-local"
+                            invalid={editLifeEventOccurredAtInvalid}
                             value={editLifeEventValues.occurredAt ?? ""}
                             onChange={(event) =>
                               editLifeEventForm.setValue(
@@ -2167,7 +2246,6 @@ export default function ElevesPage() {
                                 },
                               )
                             }
-                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
                         </FormField>
                         <FormField
@@ -2177,8 +2255,9 @@ export default function ElevesPage() {
                             editLifeEventForm.formState.errors.reason?.message
                           }
                         >
-                          <input
+                          <FormTextInput
                             aria-label="Motif edition evenement"
+                            invalid={editLifeEventReasonInvalid}
                             value={editLifeEventValues.reason ?? ""}
                             onChange={(event) =>
                               editLifeEventForm.setValue(
@@ -2191,7 +2270,6 @@ export default function ElevesPage() {
                                 },
                               )
                             }
-                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
                         </FormField>
                         <FormField
@@ -2201,9 +2279,9 @@ export default function ElevesPage() {
                               ?.message
                           }
                         >
-                          <input
+                          <FormNumberInput
                             aria-label="Duree edition evenement (min)"
-                            type="number"
+                            invalid={editLifeEventDurationInvalid}
                             min={0}
                             value={editLifeEventValues.durationMinutes ?? ""}
                             onChange={(event) =>
@@ -2217,14 +2295,13 @@ export default function ElevesPage() {
                                 },
                               )
                             }
-                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
                         </FormField>
                         <FormField
                           label="Commentaire edition evenement"
                           className="md:col-span-2"
                         >
-                          <input
+                          <FormTextInput
                             aria-label="Commentaire edition evenement"
                             value={editLifeEventValues.comment ?? ""}
                             onChange={(event) =>
@@ -2238,12 +2315,10 @@ export default function ElevesPage() {
                                 },
                               )
                             }
-                            className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
                         </FormField>
                         <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
-                          <input
-                            type="checkbox"
+                          <FormCheckbox
                             checked={editLifeEventValues.justified ?? false}
                             onChange={(event) =>
                               editLifeEventForm.setValue(
@@ -2263,6 +2338,10 @@ export default function ElevesPage() {
                           />
                           Justifie
                         </label>
+                        <FormSubmitHint
+                          visible={!editLifeEventForm.formState.isValid}
+                          className="md:col-span-2"
+                        />
                         <div className="flex gap-2 md:col-span-2">
                           <Button
                             type="button"
@@ -2315,12 +2394,11 @@ export default function ElevesPage() {
                       <span className="text-text-secondary">
                         Nouvelle classe
                       </span>
-                      <select
+                      <FormSelect
                         value={targetClassId}
                         onChange={(event) =>
                           setTargetClassId(event.target.value)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Selectionner</option>
                         {classrooms.map((entry) => (
@@ -2328,11 +2406,11 @@ export default function ElevesPage() {
                             {entry.name} ({entry.schoolYear.label})
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </label>
                     <label className="grid gap-1 text-sm">
                       <span className="text-text-secondary">Statut</span>
-                      <select
+                      <FormSelect
                         value={targetStatus}
                         onChange={(event) =>
                           setTargetStatus(
@@ -2343,13 +2421,12 @@ export default function ElevesPage() {
                               | "GRADUATED",
                           )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="ACTIVE">ACTIVE</option>
                         <option value="TRANSFERRED">TRANSFERRED</option>
                         <option value="WITHDRAWN">WITHDRAWN</option>
                         <option value="GRADUATED">GRADUATED</option>
-                      </select>
+                      </FormSelect>
                     </label>
                     <div className="self-end">
                       <Button
@@ -2390,7 +2467,7 @@ export default function ElevesPage() {
                               {enrollment.class.name}
                             </td>
                             <td className="px-3 py-2">
-                              <select
+                              <FormSelect
                                 value={
                                   statusDraftByEnrollmentId[enrollment.id] ??
                                   enrollment.status
@@ -2405,13 +2482,13 @@ export default function ElevesPage() {
                                       | "GRADUATED",
                                   }))
                                 }
-                                className="rounded-card border border-border bg-surface px-2 py-1 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                className="px-2 py-1"
                               >
                                 <option value="ACTIVE">ACTIVE</option>
                                 <option value="TRANSFERRED">TRANSFERRED</option>
                                 <option value="WITHDRAWN">WITHDRAWN</option>
                                 <option value="GRADUATED">GRADUATED</option>
-                              </select>
+                              </FormSelect>
                             </td>
                             <td className="px-3 py-2">
                               {enrollment.isCurrent ? "Oui" : "Non"}

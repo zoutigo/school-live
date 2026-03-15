@@ -74,6 +74,16 @@ describe("Teachers page create modes", () => {
 
     render(<TeachersPage />);
 
+    expect(
+      await screen.findByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText("6XXXXXXXX")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+
     fireEvent.change(await screen.findByDisplayValue("Telephone + PIN"), {
       target: { value: "email" },
     });
@@ -90,6 +100,11 @@ describe("Teachers page create modes", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
 
     fireEvent.click(submitButton);
@@ -246,6 +261,15 @@ describe("Teachers page create modes", () => {
 
     const submitButton = await screen.findByRole("button", { name: "Ajouter" });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getAllByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Classe affectation")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
 
     fireEvent.change(screen.getByLabelText("Classe affectation"), {
       target: { value: "class-1" },
@@ -253,6 +277,11 @@ describe("Teachers page create modes", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
 
     fireEvent.click(submitButton);
@@ -376,6 +405,11 @@ describe("Teachers page create modes", () => {
       await screen.findByText("La classe est obligatoire."),
     ).toBeInTheDocument();
     expect(saveButton).toBeDisabled();
+    expect(
+      screen.getAllByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ).length,
+    ).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText("Classe edition affectation"), {
       target: { value: "class-2" },
@@ -386,6 +420,9 @@ describe("Teachers page create modes", () => {
 
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
+      expect(
+        screen.getByLabelText("Classe edition affectation"),
+      ).toHaveAttribute("aria-invalid", "false");
     });
 
     fireEvent.click(saveButton);

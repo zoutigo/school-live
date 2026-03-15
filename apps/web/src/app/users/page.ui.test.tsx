@@ -72,6 +72,14 @@ describe("Users page create form", () => {
       name: "Creer le compte",
     });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Prenom").className).toContain(
+      "border-notification",
+    );
 
     fireEvent.change(screen.getByLabelText("Prenom"), {
       target: { value: "Albert" },
@@ -108,6 +116,11 @@ describe("Users page create form", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -169,6 +182,11 @@ describe("Users page create form", () => {
         screen.getByText("L'ecole est obligatoire pour ce role."),
       ).toBeInTheDocument();
       expect(submitButton).toBeDisabled();
+      expect(
+        screen.getByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).toBeInTheDocument();
     });
   });
 

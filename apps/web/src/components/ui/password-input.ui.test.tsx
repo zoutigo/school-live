@@ -12,4 +12,12 @@ describe("PasswordInput", () => {
     fireEvent.click(screen.getByRole("button", { name: /Afficher/i }));
     expect(input).toHaveAttribute("type", "text");
   });
+
+  it("supports invalid visual state through aria-invalid", () => {
+    render(<PasswordInput aria-label="password-invalid" aria-invalid="true" />);
+
+    const input = screen.getByLabelText("password-invalid");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input.className).toContain("border-notification");
+  });
 });

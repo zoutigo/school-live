@@ -65,6 +65,15 @@ describe("Curriculums page forms", () => {
 
     const submitButton = screen.getByRole("button", { name: "Ajouter" });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Code")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
 
     fireEvent.change(screen.getByLabelText("Code"), {
       target: { value: "6EME" },
@@ -75,6 +84,10 @@ describe("Curriculums page forms", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(screen.getByLabelText("Code")).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
 
     fireEvent.click(submitButton);
@@ -187,6 +200,11 @@ describe("Curriculums page forms", () => {
       await screen.findByText("Le code est obligatoire."),
     ).toBeInTheDocument();
     expect(saveButton).toBeDisabled();
+    expect(
+      screen.getAllByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ).length,
+    ).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText("Code niveau"), {
       target: { value: "5EME" },
@@ -196,6 +214,10 @@ describe("Curriculums page forms", () => {
     });
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
+      expect(screen.getByLabelText("Code niveau")).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
 
     fireEvent.click(saveButton);
@@ -250,6 +272,11 @@ describe("Curriculums page forms", () => {
       await screen.findByText("Le code est obligatoire."),
     ).toBeInTheDocument();
     expect(saveButton).toBeDisabled();
+    expect(
+      screen.getAllByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ).length,
+    ).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText("Code filiere"), {
       target: { value: "D" },
@@ -260,6 +287,10 @@ describe("Curriculums page forms", () => {
 
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
+      expect(screen.getByLabelText("Code filiere")).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
 
     fireEvent.click(saveButton);

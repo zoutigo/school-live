@@ -1,4 +1,5 @@
 import { Plus, RefreshCw, Search } from "lucide-react";
+import { FormSelect, FormTextInput } from "../ui/form-controls";
 
 type Props = {
   title: string;
@@ -47,21 +48,21 @@ export function MessagingToolbar({
           ) : null}
         </div>
         <div className="flex lg:hidden">
-          <select className="h-8 min-w-0 w-full rounded-card border border-border bg-surface px-3 text-xs text-text-secondary outline-none">
+          <FormSelect className="h-8 min-w-0 w-full bg-surface px-3 text-xs text-text-secondary">
             <option>Annee en cours</option>
             <option>Annee precedente</option>
-          </select>
+          </FormSelect>
         </div>
       </div>
 
       <div data-testid="messaging-toolbar-search" className="min-w-0">
         <label className="relative w-full">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
-          <input
+          <FormTextInput
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Rechercher un message..."
-            className="h-10 w-full rounded-card border border-border bg-surface pl-9 pr-12 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="h-10 w-full bg-surface pl-9 pr-12 text-sm"
           />
           <button
             type="button"
@@ -74,10 +75,10 @@ export function MessagingToolbar({
       </div>
 
       <div className="hidden lg:block">
-        <select className="h-9 min-w-0 w-auto max-w-full rounded-card border border-border bg-surface px-3 text-sm text-text-secondary outline-none lg:min-w-[170px] lg:h-10 lg:w-auto">
+        <FormSelect className="h-9 min-w-0 w-auto max-w-full bg-surface px-3 text-sm text-text-secondary lg:min-w-[170px] lg:h-10 lg:w-auto">
           <option>Annee en cours</option>
           <option>Annee precedente</option>
-        </select>
+        </FormSelect>
       </div>
     </div>
   );

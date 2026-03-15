@@ -10,6 +10,10 @@ import {
   TermReportStatus,
   type Prisma,
 } from "@prisma/client";
+import {
+  hasMeaningfulRichTextContent,
+  sanitizeRichTextHtml,
+} from "../common/rich-text-sanitizer.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import type { CreateEvaluationDto } from "./dto/create-evaluation.dto.js";
@@ -186,6 +190,9 @@ export class EvaluationsService {
       payload.status === "PUBLISHED"
         ? EvaluationStatus.PUBLISHED
         : EvaluationStatus.DRAFT;
+    const sanitizedDescription = sanitizeRichTextHtml(payload.description, {
+      allowImages: false,
+    });
 
     const evaluation = await this.prisma.evaluation.create({
       data: {
@@ -197,7 +204,9 @@ export class EvaluationsService {
         evaluationTypeId: payload.evaluationTypeId,
         authorUserId: user.id,
         title: payload.title.trim(),
-        description: payload.description?.trim() || null,
+        description: hasMeaningfulRichTextContent(sanitizedDescription)
+          ? sanitizedDescription
+          : null,
         coefficient: payload.coefficient,
         maxScore: payload.maxScore,
         term: payload.term,
@@ -318,6 +327,12 @@ export class EvaluationsService {
         : payload.status === "DRAFT"
           ? EvaluationStatus.DRAFT
           : existing.status;
+    const sanitizedDescription =
+      payload.description === undefined
+        ? undefined
+        : sanitizeRichTextHtml(payload.description, {
+            allowImages: false,
+          });
 
     const updated = await this.prisma.evaluation.update({
       where: { id: existing.id },
@@ -332,7 +347,9 @@ export class EvaluationsService {
         description:
           payload.description === undefined
             ? undefined
-            : payload.description?.trim() || null,
+            : hasMeaningfulRichTextContent(sanitizedDescription)
+              ? sanitizedDescription
+              : null,
         coefficient: payload.coefficient,
         maxScore: payload.maxScore,
         term: payload.term,

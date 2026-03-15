@@ -17,6 +17,12 @@ import {
 import { ActionIconButton } from "../ui/action-icon-button";
 import { PaginationControls } from "../ui/pagination-controls";
 import {
+  FormCheckbox,
+  FormFileInput,
+  FormSelect,
+  FormTextInput,
+} from "../ui/form-controls";
+import {
   buildDraftSnapshot,
   canSendMessage,
   hasUnsavedDraftChanges,
@@ -403,10 +409,10 @@ export function MessagingComposer({
                 </div>
               </div>
             ) : (
-              <select
+              <FormSelect
                 value={recipient}
                 onChange={(event) => setRecipient(event.target.value)}
-                className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                className="h-10 text-sm"
               >
                 <option value="">Aucun destinataire selectionne</option>
                 {recipients.map((option) => (
@@ -414,7 +420,7 @@ export function MessagingComposer({
                     {option.label}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             )}
           </div>
 
@@ -423,10 +429,10 @@ export function MessagingComposer({
               Sujet
             </label>
             <div className="grid gap-1">
-              <input
+              <FormTextInput
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
-                className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                className="h-10 text-sm"
                 placeholder="Objet du message"
               />
             </div>
@@ -479,9 +485,8 @@ export function MessagingComposer({
                   <ImagePlus className="h-4 w-4" />
                   Depuis mon ordinateur
                 </button>
-                <input
+                <FormFileInput
                   ref={fileInputRef}
-                  type="file"
                   multiple
                   className="hidden"
                   onChange={(event) => addFiles(event.target.files)}
@@ -679,27 +684,27 @@ function TeacherRecipientsModal({
             Nom de l'enseignant
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
-              <input
+              <FormTextInput
                 value={nameFilter}
                 onChange={(event) => setNameFilter(event.target.value)}
-                className="h-10 w-full rounded-[14px] border border-warm-border bg-warm-surface pl-8 pr-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full pl-8 pr-3 text-sm"
               />
             </div>
           </label>
           <label className="grid gap-1 text-xs text-text-secondary">
             Nom de la matiere
-            <input
+            <FormTextInput
               value={subjectFilter}
               onChange={(event) => setSubjectFilter(event.target.value)}
-              className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+              className="h-10 text-sm"
             />
           </label>
           <label className="grid gap-1 text-xs text-text-secondary">
             Classe
-            <input
+            <FormTextInput
               value={classFilter}
               onChange={(event) => setClassFilter(event.target.value)}
-              className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+              className="h-10 text-sm"
             />
           </label>
         </div>
@@ -721,8 +726,7 @@ function TeacherRecipientsModal({
                   className={index % 2 === 0 ? "bg-warm-highlight/30" : ""}
                 >
                   <td className="px-2 py-2">
-                    <input
-                      type="checkbox"
+                    <FormCheckbox
                       checked={Boolean(selected[row.value])}
                       onChange={(event) =>
                         setSelected((prev) => ({
@@ -869,19 +873,19 @@ function StaffRecipientsModal({
             Nom
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
-              <input
+              <FormTextInput
                 value={nameFilter}
                 onChange={(event) => setNameFilter(event.target.value)}
-                className="h-10 w-full rounded-[14px] border border-warm-border bg-warm-surface pl-8 pr-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full pl-8 pr-3 text-sm"
               />
             </div>
           </label>
           <label className="grid gap-1 text-xs text-text-secondary">
             Fonction
-            <select
+            <FormSelect
               value={functionFilter}
               onChange={(event) => setFunctionFilter(event.target.value)}
-              className="h-10 rounded-[14px] border border-warm-border bg-warm-surface px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+              className="h-10 text-sm"
             >
               <option value="">Toutes les fonctions</option>
               {functionOptions.map((entry) => (
@@ -889,7 +893,7 @@ function StaffRecipientsModal({
                   {entry.label}
                 </option>
               ))}
-            </select>
+            </FormSelect>
           </label>
         </div>
 
@@ -911,8 +915,7 @@ function StaffRecipientsModal({
                     className={index % 2 === 0 ? "bg-warm-highlight/30" : ""}
                   >
                     <td className="px-2 py-2">
-                      <input
-                        type="checkbox"
+                      <FormCheckbox
                         checked={Boolean(selected[key])}
                         onChange={(event) =>
                           setSelected((prev) => ({

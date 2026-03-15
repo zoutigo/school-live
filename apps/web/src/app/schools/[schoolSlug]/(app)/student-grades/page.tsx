@@ -4,6 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
+import {
+  FormNumberInput,
+  FormSelect,
+  FormSubmitHint,
+} from "../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../components/ui/form-field";
 import { SubmitButton } from "../../../../../components/ui/form-buttons";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
@@ -120,6 +125,25 @@ export default function StudentGradesPage() {
     Number.isFinite(gradeValues.assessmentWeight)
       ? gradeValues.assessmentWeight
       : 1;
+  const schoolYearInvalid =
+    !!createGradeForm.formState.errors.schoolYearId ||
+    !(gradeValues.schoolYearId ?? "").trim();
+  const assignmentInvalid =
+    !!createGradeForm.formState.errors.assignmentKey ||
+    !(gradeValues.assignmentKey ?? "").trim();
+  const studentInvalid =
+    !!createGradeForm.formState.errors.studentId ||
+    !(gradeValues.studentId ?? "").trim();
+  const termInvalid = !!createGradeForm.formState.errors.term;
+  const valueInvalid =
+    !!createGradeForm.formState.errors.value ||
+    !(
+      typeof gradeValues.value === "number" &&
+      Number.isFinite(gradeValues.value)
+    );
+  const maxValueInvalid = !!createGradeForm.formState.errors.maxValue;
+  const assessmentWeightInvalid =
+    !!createGradeForm.formState.errors.assessmentWeight;
 
   useEffect(() => {
     void bootstrap();
@@ -406,8 +430,9 @@ export default function StudentGradesPage() {
               label="Annee scolaire"
               error={createGradeForm.formState.errors.schoolYearId?.message}
             >
-              <select
+              <FormSelect
                 aria-label="Annee scolaire"
+                invalid={schoolYearInvalid}
                 value={gradeValues.schoolYearId ?? ""}
                 onChange={(event) => {
                   const next = event.target.value;
@@ -419,7 +444,6 @@ export default function StudentGradesPage() {
                   void loadContext(next);
                 }}
                 disabled={loadingContext}
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Selectionner</option>
                 {(context?.schoolYears ?? []).map((entry) => (
@@ -428,7 +452,7 @@ export default function StudentGradesPage() {
                     {entry.isActive ? " (active)" : ""}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </FormField>
 
             <FormField
@@ -436,8 +460,9 @@ export default function StudentGradesPage() {
               error={createGradeForm.formState.errors.assignmentKey?.message}
               className="md:col-span-2"
             >
-              <select
+              <FormSelect
                 aria-label="Affectation"
+                invalid={assignmentInvalid}
                 value={gradeValues.assignmentKey ?? ""}
                 onChange={(event) =>
                   createGradeForm.setValue(
@@ -451,7 +476,6 @@ export default function StudentGradesPage() {
                   )
                 }
                 disabled={loadingContext}
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Selectionner</option>
                 {assignmentOptions.map((entry) => (
@@ -459,15 +483,16 @@ export default function StudentGradesPage() {
                     {entry.label}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </FormField>
 
             <FormField
               label="Eleve"
               error={createGradeForm.formState.errors.studentId?.message}
             >
-              <select
+              <FormSelect
                 aria-label="Eleve"
+                invalid={studentInvalid}
                 value={gradeValues.studentId ?? ""}
                 onChange={(event) =>
                   createGradeForm.setValue("studentId", event.target.value, {
@@ -477,7 +502,6 @@ export default function StudentGradesPage() {
                   })
                 }
                 disabled={loadingContext}
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Selectionner</option>
                 {studentOptions.map((entry) => (
@@ -485,15 +509,16 @@ export default function StudentGradesPage() {
                     {entry.label}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </FormField>
 
             <FormField
               label="Periode"
               error={createGradeForm.formState.errors.term?.message}
             >
-              <select
+              <FormSelect
                 aria-label="Periode"
+                invalid={termInvalid}
                 value={gradeValues.term ?? "TERM_1"}
                 onChange={(event) =>
                   createGradeForm.setValue(
@@ -506,21 +531,20 @@ export default function StudentGradesPage() {
                     },
                   )
                 }
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="TERM_1">TERM_1</option>
                 <option value="TERM_2">TERM_2</option>
                 <option value="TERM_3">TERM_3</option>
-              </select>
+              </FormSelect>
             </FormField>
 
             <FormField
               label="Note"
               error={createGradeForm.formState.errors.value?.message}
             >
-              <input
+              <FormNumberInput
                 aria-label="Note"
-                type="number"
+                invalid={valueInvalid}
                 min={0}
                 step="0.01"
                 value={noteValue}
@@ -535,7 +559,6 @@ export default function StudentGradesPage() {
                     },
                   )
                 }
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               />
             </FormField>
 
@@ -543,9 +566,9 @@ export default function StudentGradesPage() {
               label="Note max"
               error={createGradeForm.formState.errors.maxValue?.message}
             >
-              <input
+              <FormNumberInput
                 aria-label="Note max"
-                type="number"
+                invalid={maxValueInvalid}
                 min={1}
                 step="0.01"
                 value={noteMaxValue}
@@ -560,7 +583,6 @@ export default function StudentGradesPage() {
                     },
                   )
                 }
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               />
             </FormField>
 
@@ -568,9 +590,9 @@ export default function StudentGradesPage() {
               label="Coef. evaluation"
               error={createGradeForm.formState.errors.assessmentWeight?.message}
             >
-              <input
+              <FormNumberInput
                 aria-label="Coef. evaluation"
-                type="number"
+                invalid={assessmentWeightInvalid}
                 min={0}
                 step="0.1"
                 value={noteWeightValue}
@@ -585,11 +607,14 @@ export default function StudentGradesPage() {
                     },
                   )
                 }
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               />
             </FormField>
 
             <div className="self-end md:col-span-3">
+              <FormSubmitHint
+                visible={!createGradeForm.formState.isValid}
+                className="mb-2"
+              />
               <SubmitButton
                 disabled={
                   saving || loadingContext || !createGradeForm.formState.isValid

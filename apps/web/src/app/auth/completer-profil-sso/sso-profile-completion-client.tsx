@@ -8,6 +8,11 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
+import {
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../../components/ui/form-controls";
 import { FormField } from "../../../components/ui/form-field";
 import { PinInput } from "../../../components/ui/pin-input";
 
@@ -373,13 +378,13 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
               control={form.control}
               name="firstName"
               render={({ field }) => (
-                <input
+                <FormTextInput
                   name={field.name}
                   ref={field.ref}
+                  invalid={!!form.formState.errors.firstName}
                   value={field.value ?? ""}
                   onChange={(event) => field.onChange(event.target.value)}
                   onBlur={field.onBlur}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
               )}
             />
@@ -393,13 +398,13 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
               control={form.control}
               name="lastName"
               render={({ field }) => (
-                <input
+                <FormTextInput
                   name={field.name}
                   ref={field.ref}
+                  invalid={!!form.formState.errors.lastName}
                   value={field.value ?? ""}
                   onChange={(event) => field.onChange(event.target.value)}
                   onBlur={field.onBlur}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
               )}
             />
@@ -413,20 +418,20 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
               control={form.control}
               name="gender"
               render={({ field }) => (
-                <select
+                <FormSelect
                   name={field.name}
                   ref={field.ref}
+                  invalid={!!form.formState.errors.gender}
                   value={field.value ?? "M"}
                   onChange={(event) =>
                     field.onChange(event.target.value as "M" | "F" | "OTHER")
                   }
                   onBlur={field.onBlur}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="M">Masculin</option>
                   <option value="F">Feminin</option>
                   <option value="OTHER">Autre</option>
-                </select>
+                </FormSelect>
               )}
             />
           </FormField>
@@ -439,16 +444,16 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
               control={form.control}
               name="phone"
               render={({ field }) => (
-                <input
+                <FormTextInput
                   name={field.name}
                   ref={field.ref}
+                  invalid={!!form.formState.errors.phone}
                   value={field.value ?? ""}
                   onChange={(event) =>
                     field.onChange(normalizePhoneInput(event.target.value))
                   }
                   onBlur={field.onBlur}
                   placeholder="6XXXXXXXX"
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
               )}
             />
@@ -484,6 +489,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           ) : null}
 
           {error ? <p className="text-sm text-notification">{error}</p> : null}
+          <FormSubmitHint visible={!form.formState.isValid} />
 
           <Button type="submit" disabled={saving || !form.formState.isValid}>
             {saving ? "Enregistrement..." : "Finaliser mon profil"}

@@ -34,6 +34,7 @@ type Props = {
   initialHtml?: string;
   minHeightClassName?: string;
   hint?: string;
+  allowInlineImages?: boolean;
   onTextChange?: (text: string) => void;
   onHtmlChange?: (html: string) => void;
   onUploadInlineImage?: (file: File) => Promise<string>;
@@ -52,6 +53,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       initialHtml = "",
       minHeightClassName = "min-h-[220px]",
       hint = "Astuce: utilisez les styles de titre et les listes pour une lecture plus claire.",
+      allowInlineImages = true,
       onTextChange,
       onHtmlChange,
       onUploadInlineImage,
@@ -62,24 +64,31 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     const inlineImageInputRef = useRef<HTMLInputElement | null>(null);
     const textColorInputRef = useRef<HTMLInputElement | null>(null);
     const bgColorInputRef = useRef<HTMLInputElement | null>(null);
+    const onTextChangeRef = useRef(onTextChange);
+    const onHtmlChangeRef = useRef(onHtmlChange);
 
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      onTextChangeRef.current = onTextChange;
+      onHtmlChangeRef.current = onHtmlChange;
+    }, [onTextChange, onHtmlChange]);
 
     useEffect(() => {
       if (!editorRef.current) {
         return;
       }
       editorRef.current.innerHTML = initialHtml;
-      onTextChange?.(editorRef.current.innerText ?? "");
-      onHtmlChange?.(editorRef.current.innerHTML ?? "");
-    }, [initialHtml, onTextChange, onHtmlChange]);
+      onTextChangeRef.current?.(editorRef.current.innerText ?? "");
+      onHtmlChangeRef.current?.(editorRef.current.innerHTML ?? "");
+    }, [initialHtml]);
 
     useImperativeHandle(ref, () => ({
       clear() {
         if (editorRef.current) {
           editorRef.current.innerHTML = "";
-          onTextChange?.("");
-          onHtmlChange?.("");
+          onTextChangeRef.current?.("");
+          onHtmlChangeRef.current?.("");
         }
       },
       focus() {
@@ -94,8 +103,8 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     }));
 
     function syncEditorState() {
-      onTextChange?.(editorRef.current?.innerText ?? "");
-      onHtmlChange?.(editorRef.current?.innerHTML ?? "");
+      onTextChangeRef.current?.(editorRef.current?.innerText ?? "");
+      onHtmlChangeRef.current?.(editorRef.current?.innerHTML ?? "");
     }
 
     function applyCommand(command: string, value?: string) {
@@ -203,24 +212,28 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
             }}
             icon={Link2}
           />
-          <ToolbarBtn
-            onClick={() => inlineImageInputRef.current?.click()}
-            icon={ImagePlus}
-          />
-          <input
-            ref={inlineImageInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={async (event: ChangeEvent<HTMLInputElement>) => {
-              const input = event.currentTarget;
-              const file = event.target.files?.[0];
-              if (file) {
-                await handleInlineImageFile(file);
-              }
-              input.value = "";
-            }}
-          />
+          {allowInlineImages ? (
+            <>
+              <ToolbarBtn
+                onClick={() => inlineImageInputRef.current?.click()}
+                icon={ImagePlus}
+              />
+              <input
+                ref={inlineImageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (event: ChangeEvent<HTMLInputElement>) => {
+                  const input = event.currentTarget;
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    await handleInlineImageFile(file);
+                  }
+                  input.value = "";
+                }}
+              />
+            </>
+          ) : null}
           <ToolbarDivider />
           <ToolbarBtn
             onClick={() => applyCommand("justifyLeft")}

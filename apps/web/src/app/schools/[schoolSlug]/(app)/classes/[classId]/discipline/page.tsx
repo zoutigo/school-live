@@ -8,6 +8,15 @@ import { z } from "zod";
 import { Card } from "../../../../../../../components/ui/card";
 import { Button } from "../../../../../../../components/ui/button";
 import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog";
+import {
+  FormCheckbox,
+  FormDateTimeInput,
+  FormNumberInput,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+  FormTextarea,
+} from "../../../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../../../components/ui/form-field";
 import {
   LifeEventsList,
@@ -162,6 +171,21 @@ export default function TeacherClassDisciplinePage() {
 
   const createEventValues = createEventForm.watch();
   const editEventValues = editEventForm.watch();
+  const createOccurredAtInvalid =
+    !!createEventForm.formState.errors.occurredAt ||
+    !(createEventValues.occurredAt ?? "").trim();
+  const createReasonInvalid =
+    !!createEventForm.formState.errors.reason ||
+    !(createEventValues.reason ?? "").trim();
+  const createDurationInvalid =
+    !!createEventForm.formState.errors.durationMinutes;
+  const editOccurredAtInvalid =
+    !!editEventForm.formState.errors.occurredAt ||
+    !(editEventValues.occurredAt ?? "").trim();
+  const editReasonInvalid =
+    !!editEventForm.formState.errors.reason ||
+    !(editEventValues.reason ?? "").trim();
+  const editDurationInvalid = !!editEventForm.formState.errors.durationMinutes;
 
   useEffect(() => {
     if (
@@ -580,17 +604,16 @@ export default function TeacherClassDisciplinePage() {
           <div className="grid gap-4">
             <label className="grid gap-1 text-sm md:max-w-[420px]">
               <span className="text-text-secondary">Eleve</span>
-              <select
+              <FormSelect
                 value={selectedStudentId}
                 onChange={(event) => setSelectedStudentId(event.target.value)}
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               >
                 {classContext.students.map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {entry.lastName} {entry.firstName}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </label>
 
             {error ? (
@@ -605,7 +628,7 @@ export default function TeacherClassDisciplinePage() {
                 noValidate
               >
                 <FormField label="Type d'evenement" htmlFor="discipline-type">
-                  <select
+                  <FormSelect
                     id="discipline-type"
                     value={createEventValues.type}
                     onChange={(event) =>
@@ -619,21 +642,20 @@ export default function TeacherClassDisciplinePage() {
                         },
                       )
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="ABSENCE">Absence</option>
                     <option value="RETARD">Retard</option>
                     <option value="SANCTION">Sanction</option>
                     <option value="PUNITION">Punition</option>
-                  </select>
+                  </FormSelect>
                 </FormField>
 
                 <FormField
                   label="Date et heure"
                   error={createEventForm.formState.errors.occurredAt?.message}
                 >
-                  <input
-                    type="datetime-local"
+                  <FormDateTimeInput
+                    invalid={createOccurredAtInvalid}
                     value={createEventValues.occurredAt}
                     onChange={(event) =>
                       createEventForm.setValue(
@@ -646,7 +668,6 @@ export default function TeacherClassDisciplinePage() {
                         },
                       )
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
 
@@ -655,8 +676,8 @@ export default function TeacherClassDisciplinePage() {
                   error={createEventForm.formState.errors.reason?.message}
                   className="md:col-span-2"
                 >
-                  <input
-                    type="text"
+                  <FormTextInput
+                    invalid={createReasonInvalid}
                     value={createEventValues.reason}
                     onChange={(event) =>
                       createEventForm.setValue("reason", event.target.value, {
@@ -666,7 +687,6 @@ export default function TeacherClassDisciplinePage() {
                       })
                     }
                     placeholder="Ex: travail non rendu, absence non justifiee"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
 
@@ -676,8 +696,8 @@ export default function TeacherClassDisciplinePage() {
                     createEventForm.formState.errors.durationMinutes?.message
                   }
                 >
-                  <input
-                    type="number"
+                  <FormNumberInput
+                    invalid={createDurationInvalid}
                     min={0}
                     value={createEventValues.durationMinutes}
                     onChange={(event) =>
@@ -691,7 +711,6 @@ export default function TeacherClassDisciplinePage() {
                         },
                       )
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
 
@@ -699,7 +718,7 @@ export default function TeacherClassDisciplinePage() {
                   label="Commentaire (optionnel)"
                   className="md:col-span-2"
                 >
-                  <textarea
+                  <FormTextarea
                     value={createEventValues.comment}
                     onChange={(event) =>
                       createEventForm.setValue("comment", event.target.value, {
@@ -709,13 +728,11 @@ export default function TeacherClassDisciplinePage() {
                       })
                     }
                     rows={3}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </FormField>
 
                 <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
-                  <input
-                    type="checkbox"
+                  <FormCheckbox
                     checked={createEventValues.justified ?? false}
                     onChange={(event) =>
                       createEventForm.setValue(
@@ -737,6 +754,10 @@ export default function TeacherClassDisciplinePage() {
                 </label>
 
                 <div className="md:col-span-2">
+                  <FormSubmitHint
+                    visible={!createEventForm.formState.isValid}
+                    className="mb-2"
+                  />
                   <SubmitButton
                     disabled={
                       saving ||
@@ -756,7 +777,7 @@ export default function TeacherClassDisciplinePage() {
                       label="Type d'evenement edition"
                       error={editEventForm.formState.errors.type?.message}
                     >
-                      <select
+                      <FormSelect
                         aria-label="Type d'evenement edition"
                         value={editEventValues.type ?? "ABSENCE"}
                         onChange={(event) =>
@@ -770,22 +791,21 @@ export default function TeacherClassDisciplinePage() {
                             },
                           )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="ABSENCE">Absence</option>
                         <option value="RETARD">Retard</option>
                         <option value="SANCTION">Sanction</option>
                         <option value="PUNITION">Punition</option>
-                      </select>
+                      </FormSelect>
                     </FormField>
 
                     <FormField
                       label="Date et heure edition"
                       error={editEventForm.formState.errors.occurredAt?.message}
                     >
-                      <input
+                      <FormDateTimeInput
                         aria-label="Date et heure edition"
-                        type="datetime-local"
+                        invalid={editOccurredAtInvalid}
                         value={editEventValues.occurredAt ?? ""}
                         onChange={(event) =>
                           editEventForm.setValue(
@@ -798,7 +818,6 @@ export default function TeacherClassDisciplinePage() {
                             },
                           )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </FormField>
 
@@ -807,9 +826,9 @@ export default function TeacherClassDisciplinePage() {
                       className="md:col-span-2"
                       error={editEventForm.formState.errors.reason?.message}
                     >
-                      <input
+                      <FormTextInput
                         aria-label="Motif edition"
-                        type="text"
+                        invalid={editReasonInvalid}
                         value={editEventValues.reason ?? ""}
                         onChange={(event) =>
                           editEventForm.setValue("reason", event.target.value, {
@@ -818,7 +837,6 @@ export default function TeacherClassDisciplinePage() {
                             shouldValidate: true,
                           })
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </FormField>
 
@@ -828,9 +846,9 @@ export default function TeacherClassDisciplinePage() {
                         editEventForm.formState.errors.durationMinutes?.message
                       }
                     >
-                      <input
+                      <FormNumberInput
                         aria-label="Duree edition (minutes, optionnel)"
-                        type="number"
+                        invalid={editDurationInvalid}
                         min={0}
                         value={editEventValues.durationMinutes ?? ""}
                         onChange={(event) =>
@@ -844,7 +862,6 @@ export default function TeacherClassDisciplinePage() {
                             },
                           )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </FormField>
 
@@ -852,7 +869,7 @@ export default function TeacherClassDisciplinePage() {
                       label="Commentaire edition (optionnel)"
                       className="md:col-span-2"
                     >
-                      <textarea
+                      <FormTextarea
                         aria-label="Commentaire edition (optionnel)"
                         value={editEventValues.comment ?? ""}
                         onChange={(event) =>
@@ -867,13 +884,11 @@ export default function TeacherClassDisciplinePage() {
                           )
                         }
                         rows={3}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     </FormField>
 
                     <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
-                      <input
-                        type="checkbox"
+                      <FormCheckbox
                         checked={editEventValues.justified ?? false}
                         onChange={(event) =>
                           editEventForm.setValue(
@@ -895,6 +910,10 @@ export default function TeacherClassDisciplinePage() {
                     </label>
 
                     <div className="flex gap-2 md:col-span-2">
+                      <FormSubmitHint
+                        visible={!editEventForm.formState.isValid}
+                        className="self-center"
+                      />
                       <Button
                         type="button"
                         disabled={

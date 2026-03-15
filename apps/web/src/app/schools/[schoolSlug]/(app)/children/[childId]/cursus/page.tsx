@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../../../components/ui/card";
+import { FormSelect } from "../../../../../../../components/ui/form-controls";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -313,12 +314,12 @@ export default function ChildCursusPage() {
               <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-[1fr_1fr_1fr_auto_auto] print:hidden">
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Annee</span>
-                  <select
+                  <FormSelect
                     value={schoolYearFilter}
                     onChange={(event) =>
                       setSchoolYearFilter(event.target.value)
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    className="bg-surface"
                   >
                     <option value="ALL">Toutes</option>
                     {schoolYearOptions.map((option) => (
@@ -326,14 +327,14 @@ export default function ChildCursusPage() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Classe</span>
-                  <select
+                  <FormSelect
                     value={classFilter}
                     onChange={(event) => setClassFilter(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    className="bg-surface"
                   >
                     <option value="ALL">Toutes</option>
                     {classOptions.map((option) => (
@@ -341,23 +342,23 @@ export default function ChildCursusPage() {
                         {option}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Type</span>
-                  <select
+                  <FormSelect
                     value={eventTypeFilter}
                     onChange={(event) =>
                       setEventTypeFilter(event.target.value as EventTypeFilter)
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    className="bg-surface"
                   >
                     <option value="ALL">Tous</option>
                     <option value="ABSENCE">Absences</option>
                     <option value="RETARD">Retards</option>
                     <option value="SANCTION">Sanctions</option>
                     <option value="PUNITION">Punitions</option>
-                  </select>
+                  </FormSelect>
                 </label>
                 <div className="self-end">
                   <button

@@ -193,6 +193,15 @@ describe("Agenda page forms", () => {
         screen.getByText("L'heure de debut doit etre avant l'heure de fin."),
       ).toBeInTheDocument();
       expect(submitButton).toBeDisabled();
+      expect(
+        screen.getByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).toBeInTheDocument();
+      expect(slotTimeInputs[1] as HTMLInputElement).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
     });
 
     fireEvent.change(slotTimeInputs[1] as HTMLInputElement, {
@@ -201,6 +210,10 @@ describe("Agenda page forms", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(slotTimeInputs[1] as HTMLInputElement).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
 
     fireEvent.click(submitButton);
@@ -281,6 +294,15 @@ describe("Agenda page forms", () => {
         screen.getByText("L'heure de debut doit etre avant l'heure de fin."),
       ).toBeInTheDocument();
       expect(submitButton).toBeDisabled();
+      expect(
+        screen.getByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).toBeInTheDocument();
+      expect(occurrenceTimeInputs[1] as HTMLInputElement).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
     });
 
     fireEvent.change(occurrenceTimeInputs[1] as HTMLInputElement, {
@@ -289,6 +311,10 @@ describe("Agenda page forms", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(occurrenceTimeInputs[1] as HTMLInputElement).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
 
     fireEvent.click(submitButton);

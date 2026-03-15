@@ -8,6 +8,7 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "../ui/button";
 import { EmailInput } from "../ui/email-input";
+import { FormSubmitHint, FormTextInput } from "../ui/form-controls";
 import { FormField } from "../ui/form-field";
 import { PasswordInput } from "../ui/password-input";
 import { PinInput } from "../ui/pin-input";
@@ -377,11 +378,14 @@ export function LandingLoginForm() {
                 control={phoneForm.control}
                 name="phone"
                 render={({ field }) => (
-                  <input
+                  <FormTextInput
                     name={field.name}
                     ref={field.ref}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                    type="text"
+                    invalid={
+                      showPhoneErrors
+                        ? !!getZodFieldError(phoneValidation, "phone")
+                        : false
+                    }
                     value={field.value}
                     onChange={(event) =>
                       phoneForm.setValue(
@@ -412,6 +416,13 @@ export function LandingLoginForm() {
                   <PinInput
                     aria-label="PIN"
                     name={field.name}
+                    aria-invalid={
+                      showPhoneErrors
+                        ? getZodFieldError(phoneValidation, "pin")
+                          ? "true"
+                          : "false"
+                        : "false"
+                    }
                     value={field.value}
                     onChange={(event) =>
                       phoneForm.setValue("pin", event.target.value, {
@@ -425,6 +436,7 @@ export function LandingLoginForm() {
                 )}
               />
             </FormField>
+            <FormSubmitHint visible={!phoneValidation.success} />
 
             <Button
               type="submit"
@@ -467,6 +479,11 @@ export function LandingLoginForm() {
                 render={({ field }) => (
                   <EmailInput
                     name={field.name}
+                    invalid={
+                      showCredentialErrors
+                        ? !!getZodFieldError(credentialsValidation, "email")
+                        : false
+                    }
                     value={field.value}
                     onChange={(event) =>
                       credentialsForm.setValue("email", event.target.value, {
@@ -496,6 +513,13 @@ export function LandingLoginForm() {
                   <PasswordInput
                     aria-label="Mot de passe"
                     name={field.name}
+                    aria-invalid={
+                      showCredentialErrors
+                        ? getZodFieldError(credentialsValidation, "password")
+                          ? "true"
+                          : "false"
+                        : "false"
+                    }
                     value={field.value}
                     onChange={(event) =>
                       credentialsForm.setValue("password", event.target.value, {
@@ -508,6 +532,7 @@ export function LandingLoginForm() {
                 )}
               />
             </FormField>
+            <FormSubmitHint visible={!credentialsValidation.success} />
             <Button
               type="submit"
               disabled={loading || !credentialsValidation.success}

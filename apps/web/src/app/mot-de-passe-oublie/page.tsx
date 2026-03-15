@@ -18,6 +18,10 @@ import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
 import { EmailInput } from "../../components/ui/email-input";
 import { SubmitButton } from "../../components/ui/form-buttons";
+import {
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
@@ -380,6 +384,7 @@ function ForgotPasswordPageContent() {
                     <EmailInput
                       name={field.name}
                       required
+                      invalid={!!requestForm.formState.errors.email}
                       value={field.value}
                       onChange={(event) =>
                         requestForm.setValue("email", event.target.value, {
@@ -394,6 +399,7 @@ function ForgotPasswordPageContent() {
                   )}
                 />
               </FormField>
+              <FormSubmitHint visible={!requestForm.formState.isValid} />
 
               <SubmitButton
                 disabled={requesting || !requestForm.formState.isValid}
@@ -432,6 +438,7 @@ function ForgotPasswordPageContent() {
                   render={({ field }) => (
                     <DateInput
                       name={field.name}
+                      invalid={!!verifyForm.formState.errors.birthDate}
                       value={field.value}
                       onChange={(event) =>
                         verifyForm.setValue("birthDate", event.target.value, {
@@ -461,9 +468,14 @@ function ForgotPasswordPageContent() {
                       name={`answers.${question.key}`}
                       defaultValue={verifyDefaultAnswers[question.key] ?? ""}
                       render={({ field }) => (
-                        <input
+                        <FormTextInput
                           name={field.name}
                           ref={field.ref}
+                          invalid={
+                            !!verifyForm.formState.errors.answers?.[
+                              question.key
+                            ]
+                          }
                           value={field.value ?? ""}
                           onChange={(event) =>
                             verifyForm.setValue(
@@ -477,13 +489,13 @@ function ForgotPasswordPageContent() {
                             )
                           }
                           onBlur={field.onBlur}
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       )}
                     />
                   </FormField>
                 ))}
               </div>
+              <FormSubmitHint visible={!verifyForm.formState.isValid} />
 
               <SubmitButton
                 disabled={verifying || !verifyForm.formState.isValid}
@@ -507,6 +519,11 @@ function ForgotPasswordPageContent() {
                     <PasswordInput
                       aria-label="Nouveau mot de passe"
                       name={field.name}
+                      aria-invalid={
+                        completeForm.formState.errors.newPassword
+                          ? "true"
+                          : "false"
+                      }
                       value={field.value}
                       onChange={(event) =>
                         completeForm.setValue(
@@ -555,6 +572,7 @@ function ForgotPasswordPageContent() {
                   )}
                 />
               </FormField>
+              <FormSubmitHint visible={!completeForm.formState.isValid} />
 
               <SubmitButton
                 disabled={completing || !completeForm.formState.isValid}

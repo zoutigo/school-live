@@ -10,6 +10,10 @@ import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
 import { EmailInput } from "../../components/ui/email-input";
 import { SubmitButton } from "../../components/ui/form-buttons";
+import {
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PinInput } from "../../components/ui/pin-input";
 import {
@@ -304,6 +308,7 @@ function PinRecoveryPageContent() {
                     render={({ field }) => (
                       <EmailInput
                         name={field.name}
+                        invalid={!!requestForm.formState.errors.email}
                         value={field.value}
                         onChange={(event) => {
                           requestForm.setValue("email", event.target.value, {
@@ -328,10 +333,10 @@ function PinRecoveryPageContent() {
                     control={requestForm.control}
                     name="phone"
                     render={({ field }) => (
-                      <input
+                      <FormTextInput
                         name={field.name}
                         ref={field.ref}
-                        type="text"
+                        invalid={!!requestForm.formState.errors.phone}
                         value={field.value}
                         onChange={(event) => {
                           requestForm.setValue(
@@ -347,11 +352,11 @@ function PinRecoveryPageContent() {
                         }}
                         onBlur={field.onBlur}
                         placeholder="6XXXXXXXX"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     )}
                   />
                 </FormField>
+                <FormSubmitHint visible={!requestForm.formState.isValid} />
 
                 <SubmitButton
                   disabled={loadingOptions || !requestForm.formState.isValid}
@@ -386,6 +391,7 @@ function PinRecoveryPageContent() {
                       <DateInput
                         aria-label="Date de naissance"
                         name={field.name}
+                        invalid={!!verifyForm.formState.errors.birthDate}
                         value={field.value}
                         onChange={(event) =>
                           verifyForm.setValue("birthDate", event.target.value, {
@@ -413,11 +419,15 @@ function PinRecoveryPageContent() {
                       name={`answers.${question.key}`}
                       defaultValue=""
                       render={({ field }) => (
-                        <input
+                        <FormTextInput
                           aria-label={question.label}
                           name={field.name}
                           ref={field.ref}
-                          type="text"
+                          invalid={
+                            !!verifyForm.formState.errors.answers?.[
+                              question.key
+                            ]
+                          }
                           value={field.value ?? ""}
                           onChange={(event) =>
                             verifyForm.setValue(
@@ -431,12 +441,12 @@ function PinRecoveryPageContent() {
                             )
                           }
                           onBlur={field.onBlur}
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                         />
                       )}
                     />
                   </FormField>
                 ))}
+                <FormSubmitHint visible={!verifyForm.formState.isValid} />
                 <SubmitButton
                   disabled={verifying || !verifyForm.formState.isValid}
                 >
@@ -462,6 +472,11 @@ function PinRecoveryPageContent() {
                       <PinInput
                         aria-label="Nouveau PIN (6 chiffres)"
                         name={field.name}
+                        aria-invalid={
+                          completeForm.formState.errors.newPin
+                            ? "true"
+                            : "false"
+                        }
                         value={field.value}
                         onChange={(event) =>
                           completeForm.setValue(
@@ -491,6 +506,11 @@ function PinRecoveryPageContent() {
                       <PinInput
                         aria-label="Confirmer le PIN"
                         name={field.name}
+                        aria-invalid={
+                          completeForm.formState.errors.confirmPin
+                            ? "true"
+                            : "false"
+                        }
                         value={field.value}
                         onChange={(event) =>
                           completeForm.setValue(
@@ -509,6 +529,7 @@ function PinRecoveryPageContent() {
                     )}
                   />
                 </FormField>
+                <FormSubmitHint visible={!completeForm.formState.isValid} />
                 <SubmitButton
                   disabled={completing || !completeForm.formState.isValid}
                 >

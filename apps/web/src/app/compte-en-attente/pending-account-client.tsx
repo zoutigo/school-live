@@ -8,6 +8,10 @@ import { z } from "zod";
 import { BackLinkButton } from "../../components/ui/back-link-button";
 import { Card } from "../../components/ui/card";
 import { EmailInput } from "../../components/ui/email-input";
+import {
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PinInput } from "../../components/ui/pin-input";
 import { Button } from "../../components/ui/button";
@@ -320,9 +324,13 @@ export function PendingAccountClient({
                   control={form.control}
                   name="phone"
                   render={({ field }) => (
-                    <input
+                    <FormTextInput
                       name={field.name}
                       ref={field.ref}
+                      invalid={
+                        !!errors.phone &&
+                        (touchedFields.phone || submitCount > 0)
+                      }
                       value={field.value}
                       onChange={(event) =>
                         form.setValue(
@@ -336,7 +344,6 @@ export function PendingAccountClient({
                         )
                       }
                       onBlur={field.onBlur}
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       placeholder="6XXXXXXXX"
                     />
                   )}
@@ -355,9 +362,13 @@ export function PendingAccountClient({
                   control={form.control}
                   name="confirmedPhone"
                   render={({ field }) => (
-                    <input
+                    <FormTextInput
                       name={field.name}
                       ref={field.ref}
+                      invalid={
+                        !!errors.confirmedPhone &&
+                        (touchedFields.confirmedPhone || submitCount > 0)
+                      }
                       required
                       value={field.value}
                       onChange={(event) =>
@@ -372,7 +383,6 @@ export function PendingAccountClient({
                         )
                       }
                       onBlur={field.onBlur}
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       placeholder="6XXXXXXXX"
                     />
                   )}
@@ -387,9 +397,10 @@ export function PendingAccountClient({
                   control={form.control}
                   name="activationCode"
                   render={({ field }) => (
-                    <input
+                    <FormTextInput
                       name={field.name}
                       ref={field.ref}
+                      invalid={!!activationMethodError}
                       value={field.value}
                       onChange={(event) => {
                         form.setValue("activationCode", event.target.value, {
@@ -400,7 +411,6 @@ export function PendingAccountClient({
                         void form.trigger();
                       }}
                       onBlur={field.onBlur}
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       placeholder="Ex: A1B2C3D4"
                     />
                   )}
@@ -472,6 +482,8 @@ export function PendingAccountClient({
                   )}
                 />
               </FormField>
+
+              <FormSubmitHint visible={!isValid} />
 
               <Button type="submit" disabled={submitting || !isValid}>
                 {submitting ? "Activation..." : "Activer mon compte"}

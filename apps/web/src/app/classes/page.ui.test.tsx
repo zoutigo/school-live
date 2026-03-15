@@ -529,6 +529,17 @@ describe("Classes page subject color UI", () => {
 
     const submitButton = await screen.findByRole("button", { name: "Ajouter" });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Nom de classe").className).toContain(
+      "border-notification",
+    );
+    expect(screen.getByLabelText("Curriculum").className).toContain(
+      "border-notification",
+    );
 
     await waitFor(() => {
       expect(
@@ -545,6 +556,11 @@ describe("Classes page subject color UI", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
 
     fireEvent.click(submitButton);
@@ -960,6 +976,11 @@ describe("Classes page subject color UI", () => {
 
     const submitButton = await screen.findByRole("button", { name: "Ajouter" });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
 
     await waitFor(() => {
       expect(
@@ -993,6 +1014,11 @@ describe("Classes page subject color UI", () => {
         screen.queryByText("Le curriculum est obligatoire."),
       ).not.toBeInTheDocument();
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 });

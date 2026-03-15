@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   getCreateEvaluationDefaults,
   getEvaluationListMeta,
+  hasMeaningfulRichTextContent,
+  normalizeOptionalRichTextHtml,
   paginateEvaluations,
 } from "./page-logic";
 
@@ -57,5 +59,14 @@ describe("TeacherClassNotesPage evaluations list logic", () => {
       scheduledAt: "",
       status: "DRAFT",
     });
+  });
+
+  it("normalizes optional rich text content", () => {
+    expect(normalizeOptionalRichTextHtml("<p><br></p>")).toBeUndefined();
+    expect(normalizeOptionalRichTextHtml("  <p>Consigne</p>  ")).toBe(
+      "<p>Consigne</p>",
+    );
+    expect(hasMeaningfulRichTextContent("<p>&nbsp;</p>")).toBe(false);
+    expect(hasMeaningfulRichTextContent("<p>Texte</p>")).toBe(true);
   });
 });

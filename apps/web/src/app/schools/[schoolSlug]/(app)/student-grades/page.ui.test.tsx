@@ -81,6 +81,15 @@ describe("Student grades page form", () => {
       name: "Ajouter la note",
     });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Note")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
 
     fireEvent.change(screen.getByLabelText("Note"), {
       target: { value: "15.5", valueAsNumber: 15.5 },
@@ -88,6 +97,10 @@ describe("Student grades page form", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(screen.getByLabelText("Note")).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
 
     fireEvent.click(submitButton);

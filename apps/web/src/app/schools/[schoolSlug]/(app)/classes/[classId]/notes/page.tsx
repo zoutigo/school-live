@@ -3,23 +3,45 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarDays, ClipboardCheck, FileText, Plus } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardCheck,
+  FileText,
+  Pencil,
+  Plus,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Card } from "../../../../../../../components/ui/card";
 import { BackButton } from "../../../../../../../components/ui/form-buttons";
+import {
+  FormDateTimeInput,
+  FormFileInput,
+  FormNumberInput,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+  FormTextarea,
+} from "../../../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../../../components/ui/form-field";
+import { FormRichTextEditor } from "../../../../../../../components/ui/form-rich-text-editor";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { PaginationControls } from "../../../../../../../components/ui/pagination-controls";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
   getCreateEvaluationDefaults,
   getEvaluationListMeta,
+  hasMeaningfulRichTextContent,
+  normalizeOptionalRichTextHtml,
   paginateEvaluations,
   type CreateEvaluationFormValues,
 } from "./page-logic";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+const EVALUATION_ATTACHMENT_ACCEPT =
+  ".jpg,.jpeg,.png,.webp,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
+const EVALUATION_ATTACHMENT_HINT =
+  "Formats acceptes: JPG, PNG, WEBP, PDF, TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX. Taille maximale: 10 Mo.";
 
 type TabKey = "evaluations" | "scores" | "council" | "help";
 
@@ -117,7 +139,7 @@ const createEvaluationSchema = z.object({
   coefficient: z.number().gt(0, "Le coefficient doit etre superieur a 0."),
   maxScore: z.number().gt(0, "Le bareme doit etre superieur a 0."),
   term: z.enum(["TERM_1", "TERM_2", "TERM_3"]),
-  scheduledAt: z.string(),
+  scheduledAt: z.string().min(1, "La date prevue est obligatoire."),
   status: z.enum(["DRAFT", "PUBLISHED"]),
 });
 
@@ -133,6 +155,7 @@ export default function TeacherClassNotesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [savingScores, setSavingScores] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -143,9 +166,11 @@ export default function TeacherClassNotesPage() {
     useState<EvaluationDetail | null>(null);
   const [evaluationPage, setEvaluationPage] = useState(1);
   const [evaluationPanelMode, setEvaluationPanelMode] = useState<
-    "details" | "create"
+    "details" | "create" | "edit"
   >("details");
   const [attachments, setAttachments] = useState<AttachmentDraft[]>([]);
+  const [descriptionEditorInitialHtml, setDescriptionEditorInitialHtml] =
+    useState("");
   const [councilTerm, setCouncilTerm] = useState("TERM_1");
   const [councilStatus, setCouncilStatus] = useState<"DRAFT" | "PUBLISHED">(
     "DRAFT",
@@ -173,6 +198,7 @@ export default function TeacherClassNotesPage() {
   const {
     register,
     handleSubmit,
+    trigger,
     watch,
     setValue,
     getValues,
@@ -190,7 +216,15 @@ export default function TeacherClassNotesPage() {
       return;
     }
     reset(getCreateEvaluationDefaults(context));
+    resetDescriptionEditor("");
   }, [context, reset]);
+
+  useEffect(() => {
+    if (evaluationPanelMode !== "create" && evaluationPanelMode !== "edit") {
+      return;
+    }
+    void trigger();
+  }, [evaluationPanelMode, trigger]);
 
   useEffect(() => {
     if (!context) {
@@ -237,6 +271,7 @@ export default function TeacherClassNotesPage() {
 
   async function bootstrap() {
     setLoading(true);
+    setPageError(null);
     setError(null);
     setSuccess(null);
 
@@ -261,7 +296,7 @@ export default function TeacherClassNotesPage() {
 
       await Promise.all([loadContext(), loadEvaluations()]);
     } catch {
-      setError("Impossible de charger le module evaluations.");
+      setPageError("Impossible de charger le module evaluations.");
     } finally {
       setLoading(false);
     }
@@ -401,7 +436,13 @@ export default function TeacherClassNotesPage() {
       );
 
       if (!response.ok) {
-        throw new Error("attachment-upload-failed");
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message = Array.isArray(payload?.message)
+          ? payload.message.join(", ")
+          : payload?.message;
+        throw new Error(message ?? "Impossible de televerser la piece jointe.");
       }
 
       const payload = (await response.json()) as {
@@ -419,10 +460,40 @@ export default function TeacherClassNotesPage() {
           mimeType: payload.mimeType,
         },
       ]);
-    } catch {
-      setError("Impossible de televerser la piece jointe.");
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message.trim().length > 0
+          ? err.message
+          : "Impossible de televerser la piece jointe.",
+      );
     } finally {
       setUploadingAttachment(false);
+    }
+  }
+
+  async function handleDownloadAttachment(url: string, fileName: string) {
+    setError(null);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Impossible de telecharger la piece jointe.");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message.trim().length > 0
+          ? err.message
+          : "Impossible de telecharger la piece jointe.",
+      );
     }
   }
 
@@ -447,7 +518,7 @@ export default function TeacherClassNotesPage() {
             subjectBranchId: values.subjectBranchId || undefined,
             evaluationTypeId: values.evaluationTypeId,
             title: values.title.trim(),
-            description: values.description.trim() || undefined,
+            description: normalizeOptionalRichTextHtml(values.description),
             coefficient: values.coefficient,
             maxScore: values.maxScore,
             term: values.term,
@@ -482,12 +553,72 @@ export default function TeacherClassNotesPage() {
           term: values.term,
         }),
       );
+      resetDescriptionEditor("");
       setAttachments([]);
       setEvaluationPanelMode("details");
       await loadEvaluations();
       if (createdEvaluation?.id) {
         setSelectedEvaluationId(createdEvaluation.id);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur reseau.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleUpdateEvaluation(values: CreateEvaluationFormValues) {
+    if (!selectedEvaluation) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const csrfToken = getCsrfTokenCookie();
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/classes/${classId}/evaluations/${selectedEvaluation.id}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+          },
+          body: JSON.stringify({
+            subjectId: values.subjectId,
+            subjectBranchId: values.subjectBranchId || undefined,
+            evaluationTypeId: values.evaluationTypeId,
+            title: values.title.trim(),
+            description: normalizeOptionalRichTextHtml(values.description),
+            coefficient: values.coefficient,
+            maxScore: values.maxScore,
+            term: values.term,
+            scheduledAt: values.scheduledAt
+              ? new Date(values.scheduledAt).toISOString()
+              : null,
+            status: values.status,
+            attachments,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message = Array.isArray(payload?.message)
+          ? payload?.message.join(", ")
+          : payload?.message;
+        throw new Error(message ?? "Echec mise a jour evaluation");
+      }
+
+      setSuccess("Evaluation mise a jour.");
+      setEvaluationPanelMode("details");
+      await loadEvaluations();
+      await loadEvaluationDetail(selectedEvaluation.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur reseau.");
     } finally {
@@ -623,7 +754,50 @@ export default function TeacherClassNotesPage() {
     0;
 
   function startCreateEvaluation() {
+    if (context) {
+      reset(getCreateEvaluationDefaults(context));
+    }
+    setAttachments([]);
+    resetDescriptionEditor("");
     setEvaluationPanelMode("create");
+    setSuccess(null);
+    setError(null);
+  }
+
+  function startEditEvaluation() {
+    if (!context || !selectedEvaluation) {
+      return;
+    }
+
+    reset(
+      getCreateEvaluationDefaults(context, {
+        subjectId: selectedEvaluation.subject.id,
+        subjectBranchId: selectedEvaluation.subjectBranch?.id ?? "",
+        evaluationTypeId: selectedEvaluation.evaluationType.id,
+        title: selectedEvaluation.title,
+        description: selectedEvaluation.description ?? "",
+        coefficient: selectedEvaluation.coefficient,
+        maxScore: selectedEvaluation.maxScore,
+        term: selectedEvaluation.term as CreateEvaluationFormValues["term"],
+        scheduledAt: new Date(
+          selectedEvaluation.scheduledAt ?? selectedEvaluation.createdAt,
+        )
+          .toISOString()
+          .slice(0, 16),
+        status:
+          selectedEvaluation.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
+      }),
+    );
+    resetDescriptionEditor(selectedEvaluation.description ?? "");
+    setAttachments(
+      selectedEvaluation.attachments.map((attachment) => ({
+        fileName: attachment.fileName,
+        fileUrl: attachment.fileUrl ?? undefined,
+        sizeLabel: attachment.sizeLabel ?? undefined,
+        mimeType: attachment.mimeType ?? undefined,
+      })),
+    );
+    setEvaluationPanelMode("edit");
     setSuccess(null);
     setError(null);
   }
@@ -632,6 +806,10 @@ export default function TeacherClassNotesPage() {
     setEvaluationPanelMode("details");
     setSelectedEvaluationId(evaluationId);
     setSuccess(null);
+  }
+
+  function resetDescriptionEditor(nextHtml: string) {
+    setDescriptionEditorInitialHtml(nextHtml);
   }
 
   useEffect(() => {
@@ -666,8 +844,8 @@ export default function TeacherClassNotesPage() {
 
         {loading ? (
           <p className="text-sm text-text-secondary">Chargement...</p>
-        ) : error ? (
-          <p className="text-sm text-notification">{error}</p>
+        ) : pageError ? (
+          <p className="text-sm text-notification">{pageError}</p>
         ) : !context ? (
           <p className="text-sm text-notification">
             Classe non accessible avec vos affectations.
@@ -728,9 +906,12 @@ export default function TeacherClassNotesPage() {
                   type="button"
                   aria-label="Ajouter une evaluation"
                   onClick={startCreateEvaluation}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition hover:bg-primary-dark"
+                  className="group inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-primary px-3 text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition-all duration-200 hover:bg-primary-dark"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-5 w-5 shrink-0" />
+                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-40 group-hover:opacity-100">
+                    Ajouter une evaluation
+                  </span>
                 </button>
               </div>
 
@@ -806,16 +987,20 @@ export default function TeacherClassNotesPage() {
             </aside>
 
             <section className="content-panel min-w-0 p-4 sm:p-5">
-              {evaluationPanelMode === "create" ? (
+              {evaluationPanelMode === "create" ||
+              evaluationPanelMode === "edit" ? (
                 <div className="grid gap-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-heading text-xl font-semibold text-text-primary">
-                        Nouvelle evaluation
+                        {evaluationPanelMode === "edit"
+                          ? "Editer l'evaluation"
+                          : "Nouvelle evaluation"}
                       </p>
                       <p className="text-sm text-text-secondary">
-                        Preparez une evaluation puis publiez-la ou gardez-la en
-                        brouillon.
+                        {evaluationPanelMode === "edit"
+                          ? "Mettez a jour l'evaluation selectionnee puis enregistrez les changements."
+                          : "Preparez une evaluation puis publiez-la ou gardez-la en brouillon."}
                       </p>
                     </div>
                     {selectedEvaluation ? (
@@ -830,7 +1015,11 @@ export default function TeacherClassNotesPage() {
                   <form
                     className="grid gap-4"
                     noValidate
-                    onSubmit={handleSubmit(handleCreateEvaluation)}
+                    onSubmit={handleSubmit(
+                      evaluationPanelMode === "edit"
+                        ? handleUpdateEvaluation
+                        : handleCreateEvaluation,
+                    )}
                   >
                     <div className="grid gap-3 md:grid-cols-2">
                       <FormField
@@ -838,20 +1027,17 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-subject"
                         error={createEvaluationErrors.subjectId?.message}
                       >
-                        <select
+                        <FormSelect
                           id="evaluation-subject"
-                          aria-invalid={
-                            createEvaluationErrors.subjectId ? "true" : "false"
-                          }
                           {...register("subjectId")}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(createEvaluationErrors.subjectId)}
                         >
                           {context.subjects.map((subject) => (
                             <option key={subject.id} value={subject.id}>
                               {subject.name}
                             </option>
                           ))}
-                        </select>
+                        </FormSelect>
                       </FormField>
 
                       <FormField
@@ -859,15 +1045,12 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-subject-branch"
                         error={createEvaluationErrors.subjectBranchId?.message}
                       >
-                        <select
+                        <FormSelect
                           id="evaluation-subject-branch"
-                          aria-invalid={
-                            createEvaluationErrors.subjectBranchId
-                              ? "true"
-                              : "false"
-                          }
                           {...register("subjectBranchId")}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(
+                            createEvaluationErrors.subjectBranchId,
+                          )}
                         >
                           <option value="">Aucune sous-branche</option>
                           {(selectedSubject?.branches ?? []).map((branch) => (
@@ -875,7 +1058,7 @@ export default function TeacherClassNotesPage() {
                               {branch.name}
                             </option>
                           ))}
-                        </select>
+                        </FormSelect>
                       </FormField>
 
                       <FormField
@@ -883,22 +1066,19 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-type"
                         error={createEvaluationErrors.evaluationTypeId?.message}
                       >
-                        <select
+                        <FormSelect
                           id="evaluation-type"
-                          aria-invalid={
-                            createEvaluationErrors.evaluationTypeId
-                              ? "true"
-                              : "false"
-                          }
                           {...register("evaluationTypeId")}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(
+                            createEvaluationErrors.evaluationTypeId,
+                          )}
                         >
                           {context.evaluationTypes.map((item) => (
                             <option key={item.id} value={item.id}>
                               {item.label}
                             </option>
                           ))}
-                        </select>
+                        </FormSelect>
                       </FormField>
 
                       <FormField
@@ -906,18 +1086,15 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-term"
                         error={createEvaluationErrors.term?.message}
                       >
-                        <select
+                        <FormSelect
                           id="evaluation-term"
-                          aria-invalid={
-                            createEvaluationErrors.term ? "true" : "false"
-                          }
                           {...register("term")}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(createEvaluationErrors.term)}
                         >
                           <option value="TERM_1">1er trimestre</option>
                           <option value="TERM_2">2eme trimestre</option>
                           <option value="TERM_3">3eme trimestre</option>
-                        </select>
+                        </FormSelect>
                       </FormField>
 
                       <FormField
@@ -926,53 +1103,43 @@ export default function TeacherClassNotesPage() {
                         error={createEvaluationErrors.title?.message}
                         className="md:col-span-2"
                       >
-                        <input
+                        <FormTextInput
                           id="evaluation-title"
-                          aria-invalid={
-                            createEvaluationErrors.title ? "true" : "false"
-                          }
                           {...register("title")}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(createEvaluationErrors.title)}
                           placeholder="Ex. Composition sur les fractions"
                         />
                       </FormField>
 
-                      <FormField
+                      <FormRichTextEditor
                         label="Contenu / consignes"
-                        htmlFor="evaluation-description"
                         error={createEvaluationErrors.description?.message}
+                        invalid={Boolean(createEvaluationErrors.description)}
                         className="md:col-span-2"
-                      >
-                        <textarea
-                          id="evaluation-description"
-                          aria-invalid={
-                            createEvaluationErrors.description
-                              ? "true"
-                              : "false"
-                          }
-                          {...register("description")}
-                          className="min-h-[120px] rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
-                          placeholder="Precisions, notions travaillees, attentes..."
-                        />
-                      </FormField>
+                        editorTestId="evaluation-description-editor"
+                        value={descriptionEditorInitialHtml}
+                        allowInlineImages={false}
+                        minHeightClassName="min-h-[180px]"
+                        hint="Ajoutez les consignes, notions a evaluer et attentes de correction."
+                        onChange={(html) => {
+                          setValue("description", html, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                      />
 
                       <FormField
                         label="Coefficient"
                         htmlFor="evaluation-coefficient"
                         error={createEvaluationErrors.coefficient?.message}
                       >
-                        <input
+                        <FormNumberInput
                           id="evaluation-coefficient"
-                          type="number"
                           min="0.1"
                           step="0.1"
-                          aria-invalid={
-                            createEvaluationErrors.coefficient
-                              ? "true"
-                              : "false"
-                          }
                           {...register("coefficient", { valueAsNumber: true })}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(createEvaluationErrors.coefficient)}
                         />
                       </FormField>
 
@@ -981,16 +1148,12 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-max-score"
                         error={createEvaluationErrors.maxScore?.message}
                       >
-                        <input
+                        <FormNumberInput
                           id="evaluation-max-score"
-                          type="number"
                           min="0.1"
                           step="0.1"
-                          aria-invalid={
-                            createEvaluationErrors.maxScore ? "true" : "false"
-                          }
                           {...register("maxScore", { valueAsNumber: true })}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(createEvaluationErrors.maxScore)}
                         />
                       </FormField>
 
@@ -999,16 +1162,10 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-scheduled-at"
                         error={createEvaluationErrors.scheduledAt?.message}
                       >
-                        <input
+                        <FormDateTimeInput
                           id="evaluation-scheduled-at"
-                          type="datetime-local"
-                          aria-invalid={
-                            createEvaluationErrors.scheduledAt
-                              ? "true"
-                              : "false"
-                          }
                           {...register("scheduledAt")}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(createEvaluationErrors.scheduledAt)}
                         />
                       </FormField>
 
@@ -1017,17 +1174,14 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-status"
                         error={createEvaluationErrors.status?.message}
                       >
-                        <select
+                        <FormSelect
                           id="evaluation-status"
-                          aria-invalid={
-                            createEvaluationErrors.status ? "true" : "false"
-                          }
                           {...register("status")}
-                          className="rounded-[10px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                          invalid={Boolean(createEvaluationErrors.status)}
                         >
                           <option value="DRAFT">Brouillon</option>
                           <option value="PUBLISHED">Publie</option>
-                        </select>
+                        </FormSelect>
                       </FormField>
                     </div>
 
@@ -1038,16 +1192,16 @@ export default function TeacherClassNotesPage() {
                             Piece jointe
                           </p>
                           <p className="text-xs text-text-secondary">
-                            Support de cours, enonce, PDF ou image.
+                            {EVALUATION_ATTACHMENT_HINT}
                           </p>
                         </div>
                         <label className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2 text-sm font-semibold text-primary shadow-sm transition-colors hover:bg-warm-highlight">
                           {uploadingAttachment
                             ? "Televersement..."
                             : "Ajouter un fichier"}
-                          <input
-                            type="file"
+                          <FormFileInput
                             className="hidden"
+                            accept={EVALUATION_ATTACHMENT_ACCEPT}
                             onChange={(event) =>
                               void handleAttachmentSelection(event.target.files)
                             }
@@ -1055,47 +1209,69 @@ export default function TeacherClassNotesPage() {
                         </label>
                       </div>
 
-                      <div className="mt-3 grid gap-2">
+                      <div className="mt-3">
                         {attachments.length === 0 ? (
                           <p className="text-sm text-text-secondary">
                             Aucune piece jointe.
                           </p>
                         ) : (
-                          attachments.map((attachment) => (
-                            <div
-                              key={`${attachment.fileName}-${attachment.fileUrl ?? "local"}`}
-                              className="flex items-center justify-between rounded-[16px] border border-warm-border bg-surface px-3 py-2 text-sm shadow-sm"
-                            >
-                              <div>
-                                <p className="font-medium text-text-primary">
-                                  {attachment.fileName}
-                                </p>
-                                <p className="text-xs text-text-secondary">
-                                  {attachment.sizeLabel ?? "-"}
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setAttachments((prev) =>
-                                    prev.filter(
-                                      (entry) => entry !== attachment,
-                                    ),
-                                  )
-                                }
-                                className="text-xs font-semibold text-notification"
+                          <ul className="list-disc space-y-2 pl-5 text-sm text-text-primary">
+                            {attachments.map((attachment) => (
+                              <li
+                                key={`${attachment.fileName}-${attachment.fileUrl ?? "local"}`}
+                                className="flex items-start justify-between gap-3"
                               >
-                                Retirer
-                              </button>
-                            </div>
-                          ))
+                                <div className="min-w-0">
+                                  <p className="break-words font-medium text-text-primary">
+                                    {attachment.fileName}
+                                  </p>
+                                  <p className="text-xs text-text-secondary">
+                                    {attachment.sizeLabel ?? "-"}
+                                  </p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-3">
+                                  {attachment.fileUrl ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void handleDownloadAttachment(
+                                          attachment.fileUrl!,
+                                          attachment.fileName,
+                                        )
+                                      }
+                                      className="text-xs font-semibold text-primary underline underline-offset-2"
+                                    >
+                                      Telecharger
+                                    </button>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setAttachments((prev) =>
+                                        prev.filter(
+                                          (entry) => entry !== attachment,
+                                        ),
+                                      )
+                                    }
+                                    className="text-xs font-semibold text-notification"
+                                  >
+                                    Retirer
+                                  </button>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
                         )}
                       </div>
                     </div>
 
+                    {error ? (
+                      <p className="text-sm text-notification">{error}</p>
+                    ) : null}
                     {success ? (
                       <p className="text-sm text-accent-teal">{success}</p>
                     ) : null}
+                    <FormSubmitHint visible={!isCreateFormValid} />
                     <div className="flex flex-wrap gap-3">
                       <button
                         type="submit"
@@ -1104,7 +1280,9 @@ export default function TeacherClassNotesPage() {
                       >
                         {submitting
                           ? "Enregistrement..."
-                          : "Creer l'evaluation"}
+                          : evaluationPanelMode === "edit"
+                            ? "Enregistrer"
+                            : "Creer l'evaluation"}
                       </button>
                       {selectedEvaluation ? (
                         <BackButton
@@ -1171,50 +1349,61 @@ export default function TeacherClassNotesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={startCreateEvaluation}
-                        className="inline-flex items-center gap-2 rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2 text-sm font-semibold text-text-primary"
+                        aria-label="Editer l'evaluation selectionnee"
+                        onClick={startEditEvaluation}
+                        className="group inline-flex h-10 items-center gap-2 overflow-hidden rounded-full border border-warm-border bg-warm-surface px-3 text-text-primary shadow-[0_10px_22px_rgba(77,56,32,0.08)] transition-all duration-200 hover:border-primary/30 hover:bg-warm-highlight"
                       >
-                        <Plus className="h-4 w-4" />
-                        Nouvelle
+                        <Pencil className="h-4 w-4 shrink-0" />
+                        <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-40 group-hover:opacity-100">
+                          Editer l'evaluation
+                        </span>
                       </button>
                     </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-[18px] border border-warm-border bg-background/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.24em] text-text-secondary">
-                        Periode
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-text-primary">
-                        {selectedEvaluation.term === "TERM_1"
-                          ? "1er trimestre"
-                          : selectedEvaluation.term === "TERM_2"
-                            ? "2eme trimestre"
-                            : "3eme trimestre"}
-                      </p>
-                    </div>
-                    <div className="rounded-[18px] border border-warm-border bg-background/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.24em] text-text-secondary">
-                        Bareme
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-text-primary">
-                        {selectedEvaluation.maxScore}
+                    <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
+                      <p className="flex items-center justify-between gap-3 text-sm leading-tight">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
+                          Periode
+                        </span>
+                        <span className="font-semibold text-text-primary">
+                          {selectedEvaluation.term === "TERM_1"
+                            ? "1er trimestre"
+                            : selectedEvaluation.term === "TERM_2"
+                              ? "2eme trimestre"
+                              : "3eme trimestre"}
+                        </span>
                       </p>
                     </div>
-                    <div className="rounded-[18px] border border-warm-border bg-background/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.24em] text-text-secondary">
-                        Coefficient
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-text-primary">
-                        {selectedEvaluation.coefficient}
+                    <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
+                      <p className="flex items-center justify-between gap-3 text-sm leading-tight">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
+                          Bareme
+                        </span>
+                        <span className="font-semibold text-text-primary">
+                          {selectedEvaluation.maxScore}
+                        </span>
                       </p>
                     </div>
-                    <div className="rounded-[18px] border border-warm-border bg-background/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.24em] text-text-secondary">
-                        Notes saisies
+                    <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
+                      <p className="flex items-center justify-between gap-3 text-sm leading-tight">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
+                          Coefficient
+                        </span>
+                        <span className="font-semibold text-text-primary">
+                          {selectedEvaluation.coefficient}
+                        </span>
                       </p>
-                      <p className="mt-2 text-lg font-semibold text-text-primary">
-                        {selectedEvaluationScoresCount}
+                    </div>
+                    <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
+                      <p className="flex items-center justify-between gap-3 text-sm leading-tight">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
+                          Notes saisies
+                        </span>
+                        <span className="font-semibold text-text-primary">
+                          {selectedEvaluationScoresCount}/{studentCount}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -1225,10 +1414,20 @@ export default function TeacherClassNotesPage() {
                         <p className="text-sm font-semibold text-text-primary">
                           Contenu / consignes
                         </p>
-                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
-                          {selectedEvaluation.description?.trim() ||
-                            "Aucune consigne detaillee pour cette evaluation."}
-                        </p>
+                        {hasMeaningfulRichTextContent(
+                          selectedEvaluation.description,
+                        ) ? (
+                          <div
+                            className="mt-3 space-y-3 text-sm leading-6 text-text-secondary [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-warm-border [&_blockquote]:pl-3 [&_h1]:font-heading [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:font-heading [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:whitespace-pre-wrap [&_ul]:list-disc [&_ul]:pl-5"
+                            dangerouslySetInnerHTML={{
+                              __html: selectedEvaluation.description ?? "",
+                            }}
+                          />
+                        ) : (
+                          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
+                            Aucune consigne detaillee pour cette evaluation.
+                          </p>
+                        )}
                       </div>
 
                       <div className="rounded-[18px] border border-warm-border bg-background/80 p-4 shadow-[0_10px_24px_rgba(77,56,32,0.06)]">
@@ -1238,27 +1437,45 @@ export default function TeacherClassNotesPage() {
                             Pieces jointes
                           </p>
                         </div>
-                        <div className="mt-3 grid gap-2">
+                        <div className="mt-3">
                           {selectedEvaluation.attachments.length === 0 ? (
                             <p className="text-sm text-text-secondary">
                               Aucune piece jointe.
                             </p>
                           ) : (
-                            selectedEvaluation.attachments.map((attachment) => (
-                              <div
-                                key={attachment.id}
-                                className="rounded-[16px] border border-warm-border bg-surface px-3 py-2"
-                              >
-                                <p className="text-sm font-medium text-text-primary">
-                                  {attachment.fileName}
-                                </p>
-                                <p className="text-xs text-text-secondary">
-                                  {attachment.sizeLabel ??
-                                    attachment.mimeType ??
-                                    "-"}
-                                </p>
-                              </div>
-                            ))
+                            <ul className="list-disc space-y-2 pl-5 text-sm text-text-primary">
+                              {selectedEvaluation.attachments.map(
+                                (attachment) => (
+                                  <li key={attachment.id}>
+                                    {attachment.fileUrl ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void handleDownloadAttachment(
+                                            attachment.fileUrl!,
+                                            attachment.fileName,
+                                          )
+                                        }
+                                        className="font-medium text-primary underline underline-offset-2"
+                                      >
+                                        {attachment.fileName}
+                                      </button>
+                                    ) : (
+                                      <span className="font-medium text-text-primary">
+                                        {attachment.fileName}
+                                      </span>
+                                    )}{" "}
+                                    <span className="text-xs text-text-secondary">
+                                      (
+                                      {attachment.sizeLabel ??
+                                        attachment.mimeType ??
+                                        "-"}
+                                      )
+                                    </span>
+                                  </li>
+                                ),
+                              )}
+                            </ul>
                           )}
                         </div>
                       </div>
@@ -1273,11 +1490,10 @@ export default function TeacherClassNotesPage() {
                           </p>
                         </div>
                         <p className="mt-3 text-sm text-text-secondary">
-                          {selectedEvaluation.scheduledAt
-                            ? new Date(
-                                selectedEvaluation.scheduledAt,
-                              ).toLocaleString("fr-FR")
-                            : "Aucune date planifiee."}
+                          {new Date(
+                            selectedEvaluation.scheduledAt ??
+                              selectedEvaluation.createdAt,
+                          ).toLocaleString("fr-FR")}
                         </p>
                       </div>
 
@@ -1323,12 +1539,11 @@ export default function TeacherClassNotesPage() {
             <div className="flex flex-wrap items-center gap-3">
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">Evaluation</span>
-                <select
+                <FormSelect
                   value={selectedEvaluationId}
                   onChange={(event) =>
                     setSelectedEvaluationId(event.target.value)
                   }
-                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">Selectionner</option>
                   {evaluations.map((evaluation) => (
@@ -1336,7 +1551,7 @@ export default function TeacherClassNotesPage() {
                       {evaluation.title} - {evaluation.subject.name}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
             </div>
 
@@ -1381,7 +1596,7 @@ export default function TeacherClassNotesPage() {
                             {student.lastName} {student.firstName}
                           </td>
                           <td className="px-3 py-2">
-                            <select
+                            <FormSelect
                               value={
                                 scoreDrafts[student.id]?.status ?? "NOT_GRADED"
                               }
@@ -1397,17 +1612,15 @@ export default function TeacherClassNotesPage() {
                                   },
                                 }))
                               }
-                              className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                             >
                               <option value="ENTERED">Note saisie</option>
                               <option value="ABSENT">Absent</option>
                               <option value="EXCUSED">Dispense</option>
                               <option value="NOT_GRADED">Non note</option>
-                            </select>
+                            </FormSelect>
                           </td>
                           <td className="px-3 py-2">
-                            <input
-                              type="number"
+                            <FormNumberInput
                               min="0"
                               max={selectedEvaluation.maxScore}
                               step="0.1"
@@ -1428,11 +1641,11 @@ export default function TeacherClassNotesPage() {
                                 (scoreDrafts[student.id]?.status ??
                                   "ENTERED") !== "ENTERED"
                               }
-                              className="w-28 rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                              className="w-28"
                             />
                           </td>
                           <td className="px-3 py-2">
-                            <input
+                            <FormTextInput
                               value={scoreDrafts[student.id]?.comment ?? ""}
                               onChange={(event) =>
                                 setScoreDrafts((prev) => ({
@@ -1446,7 +1659,7 @@ export default function TeacherClassNotesPage() {
                                   },
                                 }))
                               }
-                              className="min-w-[220px] rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 placeholder:text-text-secondary/70 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                              className="min-w-[220px]"
                               placeholder="Commentaire optionnel"
                             />
                           </td>
@@ -1456,6 +1669,9 @@ export default function TeacherClassNotesPage() {
                   </table>
                 </div>
 
+                {error ? (
+                  <p className="text-sm text-notification">{error}</p>
+                ) : null}
                 {success ? (
                   <p className="text-sm text-accent-teal">{success}</p>
                 ) : null}
@@ -1475,39 +1691,35 @@ export default function TeacherClassNotesPage() {
             <div className="grid gap-3 md:grid-cols-[180px_220px_180px]">
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">Trimestre</span>
-                <select
+                <FormSelect
                   value={councilTerm}
                   onChange={(event) => setCouncilTerm(event.target.value)}
-                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="TERM_1">1er trimestre</option>
                   <option value="TERM_2">2eme trimestre</option>
                   <option value="TERM_3">3eme trimestre</option>
-                </select>
+                </FormSelect>
               </label>
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">Date du conseil</span>
-                <input
-                  type="datetime-local"
+                <FormDateTimeInput
                   value={councilHeldAt}
                   onChange={(event) => setCouncilHeldAt(event.target.value)}
-                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 />
               </label>
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">Publication</span>
-                <select
+                <FormSelect
                   value={councilStatus}
                   onChange={(event) =>
                     setCouncilStatus(
                       event.target.value as "DRAFT" | "PUBLISHED",
                     )
                   }
-                  className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="DRAFT">Brouillon</option>
                   <option value="PUBLISHED">Publie</option>
-                </select>
+                </FormSelect>
               </label>
             </div>
 
@@ -1530,7 +1742,7 @@ export default function TeacherClassNotesPage() {
                       <span className="text-text-secondary">
                         Appreciation generale
                       </span>
-                      <textarea
+                      <FormTextarea
                         value={
                           councilDrafts[student.id]?.generalAppreciation ?? ""
                         }
@@ -1550,7 +1762,7 @@ export default function TeacherClassNotesPage() {
                             },
                           }))
                         }
-                        className="min-h-[90px] rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                        className="min-h-[90px]"
                         placeholder="Synthese generale du trimestre..."
                       />
                     </label>
@@ -1561,7 +1773,7 @@ export default function TeacherClassNotesPage() {
                           <span className="text-text-secondary">
                             {subject.name}
                           </span>
-                          <textarea
+                          <FormTextarea
                             value={
                               councilDrafts[student.id]?.subjects[subject.id] ??
                               ""
@@ -1579,7 +1791,7 @@ export default function TeacherClassNotesPage() {
                                 },
                               }))
                             }
-                            className="min-h-[88px] rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
+                            className="min-h-[88px]"
                             placeholder={`Appreciation ${subject.name.toLowerCase()}...`}
                           />
                         </label>
@@ -1590,6 +1802,9 @@ export default function TeacherClassNotesPage() {
               ))}
             </div>
 
+            {error ? (
+              <p className="text-sm text-notification">{error}</p>
+            ) : null}
             {success ? (
               <p className="text-sm text-accent-teal">{success}</p>
             ) : null}

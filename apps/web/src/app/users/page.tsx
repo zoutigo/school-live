@@ -11,6 +11,12 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import {
+  FormCheckbox,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { FormField } from "../../components/ui/form-field";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
@@ -375,6 +381,13 @@ export default function UsersPage() {
       state: stateFilter,
     });
   }, [roleFilter, schoolFilter, stateFilter, isReady, tab]);
+
+  useEffect(() => {
+    if (tab !== "create") {
+      return;
+    }
+    void createUserForm.trigger();
+  }, [createUserForm, tab]);
 
   async function bootstrap() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -987,12 +1000,11 @@ export default function UsersPage() {
                   <div className="filter-panel flex flex-wrap items-end justify-end gap-2">
                     <label className="grid min-w-[170px] gap-1 text-sm">
                       <span className="text-text-secondary">Role</span>
-                      <select
+                      <FormSelect
                         value={roleFilter}
                         onChange={(event) =>
                           setRoleFilter(event.target.value as "ALL" | Role)
                         }
-                        className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="ALL">Tous</option>
                         <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -1008,17 +1020,16 @@ export default function UsersPage() {
                         <option value="TEACHER">TEACHER</option>
                         <option value="PARENT">PARENT</option>
                         <option value="STUDENT">STUDENT</option>
-                      </select>
+                      </FormSelect>
                     </label>
 
                     <label className="grid min-w-[190px] gap-1 text-sm">
                       <span className="text-text-secondary">Ecole</span>
-                      <select
+                      <FormSelect
                         value={schoolFilter}
                         onChange={(event) =>
                           setSchoolFilter(event.target.value)
                         }
-                        className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="ALL">Toutes</option>
                         {schools.map((school) => (
@@ -1026,24 +1037,23 @@ export default function UsersPage() {
                             {school.name}
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </label>
 
                     <label className="grid min-w-[190px] gap-1 text-sm">
                       <span className="text-text-secondary">Etat</span>
-                      <select
+                      <FormSelect
                         value={stateFilter}
                         onChange={(event) =>
                           setStateFilter(event.target.value as UserStateFilter)
                         }
-                        className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="ALL">Tous</option>
                         <option value="ACTIVE">Actif</option>
                         <option value="PASSWORD_CHANGE_REQUIRED">
                           Mot de passe a changer
                         </option>
-                      </select>
+                      </FormSelect>
                     </label>
                   </div>
                 ) : null}
@@ -1054,11 +1064,10 @@ export default function UsersPage() {
                   <span className="text-text-secondary">
                     Recherche (nom ou email)
                   </span>
-                  <input
+                  <FormTextInput
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Ex: Michelle ou mbele"
-                    className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2.5 text-text-primary outline-none transition-all duration-200 placeholder:text-text-secondary/70 focus:border-primary focus:bg-surface focus:ring-2 focus:ring-primary/20"
                   />
                 </label>
               </div>
@@ -1217,8 +1226,12 @@ export default function UsersPage() {
                                     <span className="text-text-secondary">
                                       Prenom
                                     </span>
-                                    <input
+                                    <FormTextInput
                                       aria-label="Prenom edition"
+                                      invalid={
+                                        !!editUserForm.formState.errors
+                                          .firstName
+                                      }
                                       value={editUserValues.firstName ?? ""}
                                       onChange={(event) =>
                                         editUserForm.setValue(
@@ -1231,7 +1244,6 @@ export default function UsersPage() {
                                           },
                                         )
                                       }
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
                                     {editUserForm.formState.errors.firstName ? (
                                       <span className="text-xs text-notification">
@@ -1247,8 +1259,11 @@ export default function UsersPage() {
                                     <span className="text-text-secondary">
                                       Nom
                                     </span>
-                                    <input
+                                    <FormTextInput
                                       aria-label="Nom edition"
+                                      invalid={
+                                        !!editUserForm.formState.errors.lastName
+                                      }
                                       value={editUserValues.lastName ?? ""}
                                       onChange={(event) =>
                                         editUserForm.setValue(
@@ -1261,7 +1276,6 @@ export default function UsersPage() {
                                           },
                                         )
                                       }
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
                                     {editUserForm.formState.errors.lastName ? (
                                       <span className="text-xs text-notification">
@@ -1284,8 +1298,7 @@ export default function UsersPage() {
                                             key={roleOption}
                                             className="flex items-center gap-2 text-xs text-text-primary"
                                           >
-                                            <input
-                                              type="checkbox"
+                                            <FormCheckbox
                                               checked={(
                                                 editUserValues.platformRoles ??
                                                 []
@@ -1336,8 +1349,7 @@ export default function UsersPage() {
                                           key={roleOption}
                                           className="flex items-center gap-2 text-xs text-text-primary"
                                         >
-                                          <input
-                                            type="checkbox"
+                                          <FormCheckbox
                                             checked={(
                                               editUserValues.schoolRoles ?? []
                                             ).includes(roleOption)}
@@ -1376,8 +1388,11 @@ export default function UsersPage() {
                                     <span className="text-text-secondary">
                                       Telephone
                                     </span>
-                                    <input
+                                    <FormTextInput
                                       aria-label="Telephone edition"
+                                      invalid={
+                                        !!editUserForm.formState.errors.phone
+                                      }
                                       value={editUserValues.phone ?? ""}
                                       onChange={(event) =>
                                         editUserForm.setValue(
@@ -1393,7 +1408,6 @@ export default function UsersPage() {
                                         )
                                       }
                                       placeholder="6XXXXXXXX"
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
                                     {editUserForm.formState.errors.phone ? (
                                       <span className="text-xs text-notification">
@@ -1410,6 +1424,10 @@ export default function UsersPage() {
                                     {editError}
                                   </p>
                                 ) : null}
+                                <FormSubmitHint
+                                  visible={!editUserForm.formState.isValid}
+                                  className="mt-2"
+                                />
                                 <div className="mt-3 flex gap-2">
                                   <Button
                                     type="button"
@@ -1589,7 +1607,7 @@ export default function UsersPage() {
                                 : " - classe actuelle: non assignee"}
                             </p>
                             <div className="mt-2 grid gap-2 md:grid-cols-[1fr_auto]">
-                              <select
+                              <FormSelect
                                 value={
                                   selectedClassByStudentId[profile.id] ?? ""
                                 }
@@ -1599,7 +1617,7 @@ export default function UsersPage() {
                                     [profile.id]: event.target.value,
                                   }))
                                 }
-                                className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                className="bg-background px-3 py-2 text-sm"
                               >
                                 <option value="">
                                   Selectionner une classe
@@ -1612,7 +1630,7 @@ export default function UsersPage() {
                                     {entry.schoolYear.label} - {entry.name}
                                   </option>
                                 ))}
-                              </select>
+                              </FormSelect>
                               <Button
                                 type="button"
                                 disabled={Boolean(
@@ -1644,7 +1662,7 @@ export default function UsersPage() {
                                         : ""}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                      <select
+                                      <FormSelect
                                         value={
                                           enrollmentStatusDraftById[
                                             enrollment.id
@@ -1659,7 +1677,7 @@ export default function UsersPage() {
                                             }),
                                           )
                                         }
-                                        className="rounded-card border border-border bg-surface px-2 py-1 text-xs text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                        className="bg-surface px-2 py-1 text-xs"
                                       >
                                         <option value="ACTIVE">ACTIVE</option>
                                         <option value="TRANSFERRED">
@@ -1671,7 +1689,7 @@ export default function UsersPage() {
                                         <option value="GRADUATED">
                                           GRADUATED
                                         </option>
-                                      </select>
+                                      </FormSelect>
                                       <Button
                                         type="button"
                                         variant="secondary"
@@ -1794,7 +1812,7 @@ export default function UsersPage() {
                 label="Prenom"
                 error={createUserForm.formState.errors.firstName?.message}
               >
-                <input
+                <FormTextInput
                   aria-label="Prenom"
                   value={createValues.firstName ?? ""}
                   onChange={(event) => {
@@ -1804,7 +1822,10 @@ export default function UsersPage() {
                       shouldValidate: true,
                     });
                   }}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  invalid={
+                    Boolean(createUserForm.formState.errors.firstName) ||
+                    !String(createValues.firstName ?? "").trim()
+                  }
                 />
               </FormField>
 
@@ -1812,7 +1833,7 @@ export default function UsersPage() {
                 label="Nom"
                 error={createUserForm.formState.errors.lastName?.message}
               >
-                <input
+                <FormTextInput
                   aria-label="Nom"
                   value={createValues.lastName ?? ""}
                   onChange={(event) => {
@@ -1822,7 +1843,10 @@ export default function UsersPage() {
                       shouldValidate: true,
                     });
                   }}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  invalid={
+                    Boolean(createUserForm.formState.errors.lastName) ||
+                    !String(createValues.lastName ?? "").trim()
+                  }
                 />
               </FormField>
 
@@ -1840,6 +1864,10 @@ export default function UsersPage() {
                       shouldValidate: true,
                     });
                   }}
+                  invalid={
+                    Boolean(createUserForm.formState.errors.email) ||
+                    !String(createValues.email ?? "").trim()
+                  }
                 />
               </FormField>
 
@@ -1848,7 +1876,7 @@ export default function UsersPage() {
                 className="md:col-span-2"
                 error={createUserForm.formState.errors.phone?.message}
               >
-                <input
+                <FormTextInput
                   aria-label="Telephone"
                   type="text"
                   value={createValues.phone ?? ""}
@@ -1864,7 +1892,10 @@ export default function UsersPage() {
                     );
                   }}
                   placeholder="6XXXXXXXX"
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  invalid={
+                    Boolean(createUserForm.formState.errors.phone) ||
+                    !String(createValues.phone ?? "").trim()
+                  }
                 />
               </FormField>
 
@@ -1894,8 +1925,7 @@ export default function UsersPage() {
                       key={`create-platform-${roleOption}`}
                       className="flex items-center gap-2 text-xs text-text-primary"
                     >
-                      <input
-                        type="checkbox"
+                      <FormCheckbox
                         checked={(createValues.platformRoles ?? []).includes(
                           roleOption,
                         )}
@@ -1938,8 +1968,7 @@ export default function UsersPage() {
                       key={`create-school-${roleOption}`}
                       className="flex items-center gap-2 text-xs text-text-primary"
                     >
-                      <input
-                        type="checkbox"
+                      <FormCheckbox
                         checked={(createValues.schoolRoles ?? []).includes(
                           roleOption,
                         )}
@@ -1977,7 +2006,7 @@ export default function UsersPage() {
                   createUserForm.formState.errors.temporaryPassword?.message
                 }
               >
-                <input
+                <FormTextInput
                   aria-label="Mot de passe provisoire"
                   type="text"
                   value={createValues.temporaryPassword ?? ""}
@@ -1992,7 +2021,11 @@ export default function UsersPage() {
                       },
                     );
                   }}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  invalid={
+                    Boolean(
+                      createUserForm.formState.errors.temporaryPassword,
+                    ) || !String(createValues.temporaryPassword ?? "").trim()
+                  }
                 />
               </FormField>
 
@@ -2002,7 +2035,7 @@ export default function UsersPage() {
                   className="md:col-span-2"
                   error={createUserForm.formState.errors.schoolSlug?.message}
                 >
-                  <select
+                  <FormSelect
                     value={createValues.schoolSlug ?? ""}
                     onChange={(event) => {
                       createUserForm.setValue(
@@ -2015,7 +2048,10 @@ export default function UsersPage() {
                         },
                       );
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    invalid={
+                      Boolean(createUserForm.formState.errors.schoolSlug) ||
+                      !(createValues.schoolSlug ?? "")
+                    }
                   >
                     <option value="">Selectionner une ecole</option>
                     {schools.map((school) => (
@@ -2023,7 +2059,7 @@ export default function UsersPage() {
                         {school.name} ({school.slug})
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </FormField>
               ) : null}
 
@@ -2037,6 +2073,9 @@ export default function UsersPage() {
                   {submitSuccess}
                 </p>
               ) : null}
+              <div className="md:col-span-2">
+                <FormSubmitHint visible={!createUserForm.formState.isValid} />
+              </div>
 
               <div className="md:col-span-2">
                 <SubmitButton

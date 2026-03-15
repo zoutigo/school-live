@@ -269,6 +269,14 @@ describe("Eleves page parent link modes", () => {
       name: "Affecter parent",
     });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getAllByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      await screen.findByPlaceholderText("parent@email.com"),
+    ).toHaveAttribute("aria-invalid", "true");
 
     fireEvent.input(await screen.findByPlaceholderText("parent@email.com"), {
       target: { value: "bad-email" },
@@ -291,6 +299,10 @@ describe("Eleves page parent link modes", () => {
         screen.queryByText("Email parent invalide."),
       ).not.toBeInTheDocument();
       expect(submitButton).toBeEnabled();
+      expect(screen.getByPlaceholderText("parent@email.com")).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
   });
 
@@ -309,6 +321,15 @@ describe("Eleves page parent link modes", () => {
       name: "Signaler",
     });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getAllByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText("Motif de l'evenement")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
 
     fireEvent.change(screen.getByPlaceholderText("Motif de l'evenement"), {
       target: { value: "Absence justifiee" },
@@ -316,6 +337,9 @@ describe("Eleves page parent link modes", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.getByPlaceholderText("Motif de l'evenement"),
+      ).toHaveAttribute("aria-invalid", "false");
     });
 
     fireEvent.click(submitButton);

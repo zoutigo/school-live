@@ -90,3 +90,27 @@ export function getEvaluationListMeta(
     ).toLocaleDateString("fr-FR"),
   };
 }
+
+export function hasMeaningfulRichTextContent(input: string | null | undefined) {
+  if (!input) {
+    return false;
+  }
+
+  return (
+    input
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .trim().length > 0
+  );
+}
+
+export function normalizeOptionalRichTextHtml(
+  input: string | null | undefined,
+) {
+  if (!input) {
+    return undefined;
+  }
+
+  const trimmed = input.trim();
+  return hasMeaningfulRichTextContent(trimmed) ? trimmed : undefined;
+}

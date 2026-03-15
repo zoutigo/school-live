@@ -11,6 +11,12 @@ import { ActionIconButton } from "../../components/ui/action-icon-button";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
+import {
+  FormCheckbox,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { PasswordInput } from "../../components/ui/password-input";
@@ -286,6 +292,27 @@ export default function AccountPage() {
     }
     void loadRecoveryOptions();
   }, [tab, recoveryReady, loadingRecovery]);
+
+  useEffect(() => {
+    if (!editingPersonal) {
+      return;
+    }
+    void personalForm.trigger();
+  }, [editingPersonal, personalForm]);
+
+  useEffect(() => {
+    if (openSecuritySection === "password") {
+      void passwordForm.trigger();
+      return;
+    }
+    if (openSecuritySection === "pin") {
+      void pinForm.trigger();
+      return;
+    }
+    if (openSecuritySection === "recovery" && recoveryReady) {
+      void recoveryForm.trigger();
+    }
+  }, [openSecuritySection, passwordForm, pinForm, recoveryForm, recoveryReady]);
 
   async function loadMe() {
     const response = await fetch(`${API_URL}/me`, {
@@ -710,7 +737,7 @@ export default function AccountPage() {
                         control={personalForm.control}
                         name="firstName"
                         render={({ field }) => (
-                          <input
+                          <FormTextInput
                             name={field.name}
                             ref={field.ref}
                             type="text"
@@ -727,7 +754,11 @@ export default function AccountPage() {
                               )
                             }
                             onBlur={field.onBlur}
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                            invalid={
+                              Boolean(
+                                personalForm.formState.errors.firstName,
+                              ) || !String(field.value ?? "").trim()
+                            }
                           />
                         )}
                       />
@@ -741,7 +772,7 @@ export default function AccountPage() {
                         control={personalForm.control}
                         name="lastName"
                         render={({ field }) => (
-                          <input
+                          <FormTextInput
                             name={field.name}
                             ref={field.ref}
                             type="text"
@@ -758,7 +789,10 @@ export default function AccountPage() {
                               )
                             }
                             onBlur={field.onBlur}
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                            invalid={
+                              Boolean(personalForm.formState.errors.lastName) ||
+                              !String(field.value ?? "").trim()
+                            }
                           />
                         )}
                       />
@@ -772,7 +806,7 @@ export default function AccountPage() {
                         control={personalForm.control}
                         name="gender"
                         render={({ field }) => (
-                          <select
+                          <FormSelect
                             name={field.name}
                             ref={field.ref}
                             value={field.value}
@@ -788,12 +822,14 @@ export default function AccountPage() {
                               )
                             }
                             onBlur={field.onBlur}
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                            invalid={Boolean(
+                              personalForm.formState.errors.gender,
+                            )}
                           >
                             <option value="M">Masculin</option>
                             <option value="F">Feminin</option>
                             <option value="OTHER">Autre</option>
-                          </select>
+                          </FormSelect>
                         )}
                       />
                     </FormField>
@@ -806,7 +842,7 @@ export default function AccountPage() {
                         control={personalForm.control}
                         name="phone"
                         render={({ field }) => (
-                          <input
+                          <FormTextInput
                             name={field.name}
                             ref={field.ref}
                             type="text"
@@ -824,7 +860,10 @@ export default function AccountPage() {
                             }
                             onBlur={field.onBlur}
                             placeholder="6XXXXXXXX"
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                            invalid={
+                              Boolean(personalForm.formState.errors.phone) ||
+                              !String(field.value ?? "").trim()
+                            }
                           />
                         )}
                       />
@@ -838,6 +877,7 @@ export default function AccountPage() {
                     {personalSuccess ? (
                       <p className="text-sm text-primary">{personalSuccess}</p>
                     ) : null}
+                    <FormSubmitHint visible={!personalForm.formState.isValid} />
 
                     <SubmitButton
                       disabled={
@@ -932,6 +972,11 @@ export default function AccountPage() {
                             aria-label="Ancien mot de passe"
                             name={field.name}
                             value={field.value}
+                            aria-invalid={
+                              passwordForm.formState.errors.currentPassword
+                                ? "true"
+                                : "false"
+                            }
                             onChange={(event) =>
                               passwordForm.setValue(
                                 "currentPassword",
@@ -961,6 +1006,11 @@ export default function AccountPage() {
                             aria-label="Nouveau mot de passe"
                             name={field.name}
                             value={field.value}
+                            aria-invalid={
+                              passwordForm.formState.errors.newPassword
+                                ? "true"
+                                : "false"
+                            }
                             onChange={(event) =>
                               passwordForm.setValue(
                                 "newPassword",
@@ -996,6 +1046,11 @@ export default function AccountPage() {
                             aria-label="Confirmer le nouveau mot de passe"
                             name={field.name}
                             value={field.value}
+                            aria-invalid={
+                              passwordForm.formState.errors.confirmNewPassword
+                                ? "true"
+                                : "false"
+                            }
                             onChange={(event) =>
                               passwordForm.setValue(
                                 "confirmNewPassword",
@@ -1021,6 +1076,7 @@ export default function AccountPage() {
                     {passwordSuccess ? (
                       <p className="text-sm text-primary">{passwordSuccess}</p>
                     ) : null}
+                    <FormSubmitHint visible={!passwordForm.formState.isValid} />
 
                     <SubmitButton
                       disabled={
@@ -1086,6 +1142,11 @@ export default function AccountPage() {
                             aria-label="PIN actuel"
                             name={field.name}
                             value={field.value}
+                            aria-invalid={
+                              pinForm.formState.errors.currentPin
+                                ? "true"
+                                : "false"
+                            }
                             onChange={(event) =>
                               pinForm.setValue(
                                 "currentPin",
@@ -1118,6 +1179,9 @@ export default function AccountPage() {
                             aria-label="Nouveau PIN (6 chiffres)"
                             name={field.name}
                             value={field.value}
+                            aria-invalid={
+                              pinForm.formState.errors.newPin ? "true" : "false"
+                            }
                             onChange={(event) =>
                               pinForm.setValue(
                                 "newPin",
@@ -1150,6 +1214,11 @@ export default function AccountPage() {
                             aria-label="Confirmation PIN"
                             name={field.name}
                             value={field.value}
+                            aria-invalid={
+                              pinForm.formState.errors.confirmNewPin
+                                ? "true"
+                                : "false"
+                            }
                             onChange={(event) =>
                               pinForm.setValue(
                                 "confirmNewPin",
@@ -1176,6 +1245,7 @@ export default function AccountPage() {
                     {pinSuccess ? (
                       <p className="text-sm text-primary">{pinSuccess}</p>
                     ) : null}
+                    <FormSubmitHint visible={!pinForm.formState.isValid} />
 
                     <SubmitButton
                       disabled={updatingPin || !pinForm.formState.isValid}
@@ -1248,6 +1318,11 @@ export default function AccountPage() {
                               <DateInput
                                 name={field.name}
                                 value={field.value}
+                                invalid={
+                                  Boolean(
+                                    recoveryForm.formState.errors.birthDate,
+                                  ) || !String(field.value ?? "").trim()
+                                }
                                 onChange={(event) =>
                                   recoveryForm.setValue(
                                     "birthDate",
@@ -1278,7 +1353,7 @@ export default function AccountPage() {
                                 control={recoveryForm.control}
                                 name="parentClassId"
                                 render={({ field }) => (
-                                  <select
+                                  <FormSelect
                                     name={field.name}
                                     ref={field.ref}
                                     value={field.value}
@@ -1294,7 +1369,12 @@ export default function AccountPage() {
                                       )
                                     }
                                     onBlur={field.onBlur}
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    invalid={
+                                      Boolean(
+                                        recoveryForm.formState.errors
+                                          .parentClassId,
+                                      ) || !(field.value ?? "")
+                                    }
                                   >
                                     <option value="">
                                       Selectionner une classe
@@ -1308,7 +1388,7 @@ export default function AccountPage() {
                                         {classroom.schoolYearLabel})
                                       </option>
                                     ))}
-                                  </select>
+                                  </FormSelect>
                                 )}
                               />
                             </FormField>
@@ -1324,7 +1404,7 @@ export default function AccountPage() {
                                 control={recoveryForm.control}
                                 name="parentStudentId"
                                 render={({ field }) => (
-                                  <select
+                                  <FormSelect
                                     name={field.name}
                                     ref={field.ref}
                                     value={field.value}
@@ -1340,7 +1420,12 @@ export default function AccountPage() {
                                       )
                                     }
                                     onBlur={field.onBlur}
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    invalid={
+                                      Boolean(
+                                        recoveryForm.formState.errors
+                                          .parentStudentId,
+                                      ) || !(field.value ?? "")
+                                    }
                                   >
                                     <option value="">
                                       Selectionner un eleve
@@ -1353,7 +1438,7 @@ export default function AccountPage() {
                                         {student.lastName} {student.firstName}
                                       </option>
                                     ))}
-                                  </select>
+                                  </FormSelect>
                                 )}
                               />
                             </FormField>
@@ -1384,18 +1469,23 @@ export default function AccountPage() {
                                 className="grid gap-1 rounded-card border border-border px-3 py-2 text-sm"
                               >
                                 <span className="inline-flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
+                                  <FormCheckbox
                                     checked={checked}
                                     onChange={() =>
                                       toggleRecoveryQuestion(question.key)
+                                    }
+                                    invalid={
+                                      Boolean(
+                                        recoveryForm.formState.errors
+                                          .selectedQuestions,
+                                      ) && !checked
                                     }
                                   />
                                   <span>{question.label}</span>
                                 </span>
                                 {checked ? (
                                   <>
-                                    <input
+                                    <FormTextInput
                                       type="text"
                                       value={
                                         recoveryValues.answers?.[
@@ -1409,7 +1499,17 @@ export default function AccountPage() {
                                         )
                                       }
                                       placeholder="Votre reponse"
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                      invalid={
+                                        Boolean(
+                                          recoveryForm.formState.errors
+                                            .answers?.[question.key],
+                                        ) ||
+                                        !String(
+                                          recoveryValues.answers?.[
+                                            question.key
+                                          ] ?? "",
+                                        ).trim()
+                                      }
                                     />
                                     {recoveryForm.formState.errors.answers?.[
                                       question.key
@@ -1438,6 +1538,11 @@ export default function AccountPage() {
                     {recoverySuccess ? (
                       <p className="text-sm text-primary">{recoverySuccess}</p>
                     ) : null}
+                    <FormSubmitHint
+                      visible={
+                        !loadingRecovery && !recoveryForm.formState.isValid
+                      }
+                    />
 
                     <SubmitButton
                       disabled={

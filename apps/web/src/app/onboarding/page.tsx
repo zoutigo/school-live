@@ -12,6 +12,12 @@ import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
 import { EmailInput } from "../../components/ui/email-input";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
+import {
+  FormCheckbox,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
@@ -611,8 +617,9 @@ function OnboardingContent() {
                     label="Prenom"
                     error={profileStepForm.formState.errors.firstName?.message}
                   >
-                    <input
+                    <FormTextInput
                       aria-label="Prenom"
+                      invalid={!!profileStepForm.formState.errors.firstName}
                       value={profileStepValues.firstName ?? ""}
                       onChange={(event) => {
                         profileStepForm.setValue(
@@ -625,11 +632,6 @@ function OnboardingContent() {
                           },
                         );
                       }}
-                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
-                        profileStepForm.formState.errors.firstName
-                          ? "border-notification"
-                          : "border-border"
-                      }`}
                     />
                   </FormField>
 
@@ -637,8 +639,9 @@ function OnboardingContent() {
                     label="Nom"
                     error={profileStepForm.formState.errors.lastName?.message}
                   >
-                    <input
+                    <FormTextInput
                       aria-label="Nom"
+                      invalid={!!profileStepForm.formState.errors.lastName}
                       value={profileStepValues.lastName ?? ""}
                       onChange={(event) => {
                         profileStepForm.setValue(
@@ -651,11 +654,6 @@ function OnboardingContent() {
                           },
                         );
                       }}
-                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
-                        profileStepForm.formState.errors.lastName
-                          ? "border-notification"
-                          : "border-border"
-                      }`}
                     />
                   </FormField>
                 </div>
@@ -665,8 +663,9 @@ function OnboardingContent() {
                     label="Genre"
                     error={profileStepForm.formState.errors.gender?.message}
                   >
-                    <select
+                    <FormSelect
                       aria-label="Genre"
+                      invalid={!!profileStepForm.formState.errors.gender}
                       value={profileStepValues.gender ?? ""}
                       onChange={(event) => {
                         profileStepForm.setValue(
@@ -679,17 +678,12 @@ function OnboardingContent() {
                           },
                         );
                       }}
-                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
-                        profileStepForm.formState.errors.gender
-                          ? "border-notification"
-                          : "border-border"
-                      }`}
                     >
                       <option value="">Selectionner</option>
                       <option value="M">Masculin</option>
                       <option value="F">Feminin</option>
                       <option value="OTHER">Autre</option>
-                    </select>
+                    </FormSelect>
                   </FormField>
 
                   <FormField
@@ -802,8 +796,7 @@ function OnboardingContent() {
                           className="grid gap-1 text-sm"
                         >
                           <span className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
+                            <FormCheckbox
                               checked={checked}
                               disabled={!canSelectMore}
                               onChange={() => {
@@ -837,8 +830,13 @@ function OnboardingContent() {
                                 ]?.message
                               }
                             >
-                              <input
+                              <FormTextInput
                                 aria-label={question.label}
+                                invalid={
+                                  !!recoveryStepForm.formState.errors.answers?.[
+                                    question.key
+                                  ]
+                                }
                                 value={
                                   recoveryStepValues.answers?.[question.key] ??
                                   ""
@@ -855,7 +853,6 @@ function OnboardingContent() {
                                   );
                                 }}
                                 placeholder="Votre reponse"
-                                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                               />
                             </FormField>
                           ) : null}
@@ -873,7 +870,10 @@ function OnboardingContent() {
                         recoveryStepForm.formState.errors.parentClassId?.message
                       }
                     >
-                      <select
+                      <FormSelect
+                        invalid={
+                          !!recoveryStepForm.formState.errors.parentClassId
+                        }
                         value={recoveryStepValues.parentClassId ?? ""}
                         onChange={(event) => {
                           recoveryStepForm.setValue(
@@ -886,7 +886,6 @@ function OnboardingContent() {
                             },
                           );
                         }}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Selectionner une classe</option>
                         {(options?.classes ?? []).map((entry) => (
@@ -894,7 +893,7 @@ function OnboardingContent() {
                             {entry.name} ({entry.year})
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </FormField>
 
                     <FormField
@@ -904,7 +903,10 @@ function OnboardingContent() {
                           ?.message
                       }
                     >
-                      <select
+                      <FormSelect
+                        invalid={
+                          !!recoveryStepForm.formState.errors.parentStudentId
+                        }
                         value={recoveryStepValues.parentStudentId ?? ""}
                         onChange={(event) => {
                           recoveryStepForm.setValue(
@@ -917,7 +919,6 @@ function OnboardingContent() {
                             },
                           );
                         }}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Selectionner un eleve</option>
                         {(options?.students ?? []).map((entry) => (
@@ -925,7 +926,7 @@ function OnboardingContent() {
                             {entry.lastName} {entry.firstName}
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </FormField>
                   </div>
                 ) : null}
@@ -940,6 +941,7 @@ function OnboardingContent() {
             {error ? (
               <p className="text-sm text-notification">{error}</p>
             ) : null}
+            <FormSubmitHint visible={!canContinueCurrentStep} />
 
             <div className="flex flex-wrap gap-2">
               {step > 1 ? <BackButton onClick={previousStep} /> : null}

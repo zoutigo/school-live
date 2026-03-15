@@ -67,6 +67,14 @@ describe("Schools page create form", () => {
 
     const submitButton = screen.getByRole("button", { name: "Creer l ecole" });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Nom de l ecole").className).toContain(
+      "border-notification",
+    );
 
     fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
       target: { value: "College Vogt" },
@@ -86,6 +94,11 @@ describe("Schools page create form", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -230,6 +243,11 @@ describe("Schools page create form", () => {
       await screen.findByText("Le nom de l ecole est obligatoire."),
     ).toBeInTheDocument();
     expect(saveButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
       target: { value: "College Vogt Premium" },
@@ -237,6 +255,11 @@ describe("Schools page create form", () => {
 
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
 
     fireEvent.click(saveButton);

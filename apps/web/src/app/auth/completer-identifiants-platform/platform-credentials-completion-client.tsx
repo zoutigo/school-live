@@ -6,6 +6,10 @@ import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Card } from "../../../components/ui/card";
+import {
+  FormSubmitHint,
+  FormTextInput,
+} from "../../../components/ui/form-controls";
 import { FormField } from "../../../components/ui/form-field";
 import { SubmitButton } from "../../../components/ui/form-buttons";
 import { PasswordInput } from "../../../components/ui/password-input";
@@ -318,10 +322,10 @@ export function PlatformCredentialsCompletionClient({
                     control={form.control}
                     name="phone"
                     render={({ field }) => (
-                      <input
+                      <FormTextInput
                         name={field.name}
                         ref={field.ref}
-                        type="text"
+                        invalid={!!form.formState.errors.phone}
                         value={field.value ?? ""}
                         onChange={(event) =>
                           form.setValue(
@@ -336,7 +340,6 @@ export function PlatformCredentialsCompletionClient({
                         }
                         onBlur={field.onBlur}
                         placeholder="6XXXXXXXX"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     )}
                   />
@@ -349,10 +352,10 @@ export function PlatformCredentialsCompletionClient({
                     control={form.control}
                     name="confirmPhone"
                     render={({ field }) => (
-                      <input
+                      <FormTextInput
                         name={field.name}
                         ref={field.ref}
-                        type="text"
+                        invalid={!!form.formState.errors.confirmPhone}
                         value={field.value ?? ""}
                         onChange={(event) =>
                           form.setValue(
@@ -367,7 +370,6 @@ export function PlatformCredentialsCompletionClient({
                         }
                         onBlur={field.onBlur}
                         placeholder="6XXXXXXXX"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     )}
                   />
@@ -434,6 +436,8 @@ export function PlatformCredentialsCompletionClient({
             {error ? (
               <p className="text-sm text-notification">{error}</p>
             ) : null}
+
+            <FormSubmitHint visible={!form.formState.isValid} />
 
             <SubmitButton disabled={saving || !form.formState.isValid}>
               {saving ? "Validation..." : "Valider"}

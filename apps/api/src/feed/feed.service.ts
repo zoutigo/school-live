@@ -16,6 +16,7 @@ import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
 import { MediaClientService } from "../media-client/media-client.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { sanitizeRichTextHtml } from "../common/rich-text-sanitizer.js";
 import type { CreateFeedCommentDto } from "./dto/create-feed-comment.dto.js";
 import type {
   CreateFeedPostDto,
@@ -194,6 +195,7 @@ export class FeedService {
     );
     const pollData = this.resolvePollData(type, payload);
     const attachments = this.normalizeAttachments(payload.attachments);
+    const sanitizedBodyHtml = sanitizeRichTextHtml(payload.bodyHtml);
 
     const created = await this.prisma.feedPost.create({
       data: {
@@ -201,7 +203,7 @@ export class FeedService {
         authorUserId: user.id,
         type,
         title: payload.title.trim(),
-        bodyHtml: payload.bodyHtml.trim(),
+        bodyHtml: sanitizedBodyHtml,
         audienceScope: audience.scope,
         audienceLabel: audience.label,
         audienceClassId: audience.classId,
@@ -226,7 +228,7 @@ export class FeedService {
       scope: "FEED",
       entityType: InlineMediaEntityType.FEED_POST,
       entityId: created.id,
-      nextBodyHtml: payload.bodyHtml,
+      nextBodyHtml: sanitizedBodyHtml,
       deleteRemovedPhysically: false,
     });
 
@@ -263,12 +265,13 @@ export class FeedService {
     );
     const pollData = this.resolvePollData(type, payload);
     const attachments = this.normalizeAttachments(payload.attachments);
+    const sanitizedBodyHtml = sanitizeRichTextHtml(payload.bodyHtml);
     const urlsToCleanup = this.computeUrlsToCleanup({
       existingBodyHtml: existingMedia.bodyHtml,
       existingAttachmentUrls: existingMedia.attachments
         .map((attachment) => attachment.fileUrl)
         .filter((url): url is string => Boolean(url)),
-      nextBodyHtml: payload.bodyHtml,
+      nextBodyHtml: sanitizedBodyHtml,
       nextAttachmentUrls:
         payload.attachments === undefined
           ? existingMedia.attachments
@@ -288,7 +291,7 @@ export class FeedService {
       entityType: InlineMediaEntityType.FEED_POST,
       entityId: postId,
       previousBodyHtml: existingMedia.bodyHtml,
-      nextBodyHtml: payload.bodyHtml,
+      nextBodyHtml: sanitizedBodyHtml,
       deleteRemovedPhysically: false,
     });
 
@@ -298,7 +301,7 @@ export class FeedService {
         data: {
           type,
           title: payload.title.trim(),
-          bodyHtml: payload.bodyHtml.trim(),
+          bodyHtml: sanitizedBodyHtml,
           audienceScope: audience.scope,
           audienceLabel: audience.label,
           audienceClassId: audience.classId,

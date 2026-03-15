@@ -8,6 +8,7 @@ describe("MessagingService", () => {
     },
     internalMessage: {
       create: jest.fn(),
+      findFirst: jest.fn(),
     },
   };
 
@@ -37,7 +38,9 @@ describe("MessagingService", () => {
   beforeEach(() => {
     prisma.internalMessageRecipient.count.mockReset();
     prisma.internalMessage.create.mockReset();
+    prisma.internalMessage.findFirst.mockReset();
     mailService.sendInternalMessageNotification.mockReset();
+    inlineMediaService.syncEntityImages.mockReset();
   });
 
   it("returns unread count for a user in school scope", async () => {
@@ -95,6 +98,50 @@ describe("MessagingService", () => {
     expect(prisma.internalMessageRecipient.count).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ schoolId: "school-42" }),
+      }),
+    );
+  });
+
+  it("sanitizes rich html before storing and syncing draft bodies", async () => {
+    prisma.internalMessage.create.mockResolvedValue({ id: "draft-1" });
+    prisma.internalMessage.findFirst.mockResolvedValue({
+      id: "draft-1",
+      schoolId: "school-1",
+      senderUserId: "user-1",
+      status: "DRAFT",
+      subject: "Sujet",
+      body: '<p>Bonjour</p><a rel="noopener noreferrer" target="_blank">bad</a>',
+      createdAt: new Date("2026-03-15T10:00:00.000Z"),
+      sentAt: null,
+      senderArchivedAt: null,
+      senderUser: {
+        id: "user-1",
+        firstName: "Valery",
+        lastName: "MBELE",
+        email: "valery@example.com",
+      },
+      recipients: [],
+    });
+
+    await service.createMessage(baseUser, "school-1", {
+      recipientUserIds: [],
+      subject: " Sujet ",
+      body: '<p onclick="alert(1)">Bonjour</p><script>alert(1)</script><a href="javascript:alert(1)">bad</a>',
+      isDraft: true,
+    });
+
+    expect(prisma.internalMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          subject: "Sujet",
+          body: '<p>Bonjour</p><a rel="noopener noreferrer" target="_blank">bad</a>',
+        }),
+      }),
+    );
+    expect(inlineMediaService.syncEntityImages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nextBodyHtml:
+          '<p>Bonjour</p><a rel="noopener noreferrer" target="_blank">bad</a>',
       }),
     );
   });

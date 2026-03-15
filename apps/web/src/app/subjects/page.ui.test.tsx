@@ -72,6 +72,14 @@ describe("Subjects page forms", () => {
 
     const submitButton = await screen.findByRole("button", { name: "Ajouter" });
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Nouvelle matiere").className).toContain(
+      "border-notification",
+    );
 
     fireEvent.change(screen.getByLabelText("Nouvelle matiere"), {
       target: { value: "Mathematiques" },
@@ -79,6 +87,11 @@ describe("Subjects page forms", () => {
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
 
     fireEvent.click(submitButton);
@@ -134,6 +147,13 @@ describe("Subjects page forms", () => {
     const labelInput = screen.getByLabelText("Libelle");
 
     expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(codeInput.className).toContain("border-notification");
+    expect(labelInput.className).toContain("border-notification");
 
     fireEvent.change(labelInput, {
       target: { value: "Interrogation ecrite" },
@@ -160,6 +180,11 @@ describe("Subjects page forms", () => {
         screen.queryByText("Le code est obligatoire."),
       ).not.toBeInTheDocument();
       expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
     });
 
     fireEvent.click(submitButton);

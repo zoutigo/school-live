@@ -17,6 +17,12 @@ import { Card } from "../../../../../../../components/ui/card";
 import { Button } from "../../../../../../../components/ui/button";
 import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog";
 import { DateInput } from "../../../../../../../components/ui/date-input";
+import {
+  FormColorInput,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../../../components/ui/form-field";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { TimeInput } from "../../../../../../../components/ui/time-input";
@@ -638,6 +644,27 @@ export default function TeacherClassAgendaPage() {
   const slotValues = slotForm.watch();
   const occurrenceValues = occurrenceForm.watch();
   const occurrenceActionType = occurrenceValues.actionType;
+  const slotWeekdayInvalid = !!slotForm.formState.errors.weekday;
+  const slotStartInvalid = !!slotForm.formState.errors.start;
+  const slotEndInvalid = !!slotForm.formState.errors.end;
+  const slotSubjectInvalid =
+    !!slotForm.formState.errors.subjectId ||
+    !(slotValues.subjectId ?? "").trim();
+  const slotTeacherInvalid =
+    !!slotForm.formState.errors.teacherUserId ||
+    !(slotValues.teacherUserId ?? "").trim();
+  const vacationLabelInvalid =
+    !!vacationForm.formState.errors.label ||
+    !(vacationForm.watch("label") ?? "").trim();
+  const vacationScopeInvalid = !!vacationForm.formState.errors.scope;
+  const occurrenceStartInvalid = !!occurrenceForm.formState.errors.start;
+  const occurrenceEndInvalid = !!occurrenceForm.formState.errors.end;
+  const occurrenceSubjectInvalid =
+    !!occurrenceForm.formState.errors.subjectId ||
+    !(occurrenceValues.subjectId ?? "").trim();
+  const occurrenceTeacherInvalid =
+    !!occurrenceForm.formState.errors.teacherUserId ||
+    !(occurrenceValues.teacherUserId ?? "").trim();
 
   const canManageCalendar =
     meRole !== null && CAN_MANAGE_CALENDAR_ROLES.includes(meRole);
@@ -1863,8 +1890,7 @@ export default function TeacherClassAgendaPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <input
-                            type="color"
+                          <FormColorInput
                             value={currentColor}
                             onChange={(event) => {
                               setSubjectColorsBySubjectId((current) => ({
@@ -1872,7 +1898,6 @@ export default function TeacherClassAgendaPage() {
                                 [subject.id]: event.target.value.toUpperCase(),
                               }));
                             }}
-                            className="h-8 w-10 cursor-pointer rounded border border-border bg-surface p-0.5"
                             aria-label={`Couleur ${subject.name}`}
                           />
                           <Button
@@ -1911,8 +1936,9 @@ export default function TeacherClassAgendaPage() {
                           htmlFor="slot-weekday"
                           error={slotForm.formState.errors.weekday?.message}
                         >
-                          <select
+                          <FormSelect
                             id="slot-weekday"
+                            invalid={slotWeekdayInvalid}
                             value={slotValues.weekday}
                             onChange={(event) =>
                               slotForm.setValue("weekday", event.target.value, {
@@ -1921,14 +1947,13 @@ export default function TeacherClassAgendaPage() {
                                 shouldValidate: true,
                               })
                             }
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           >
                             {WEEKDAY_OPTIONS.map((weekday) => (
                               <option key={weekday.value} value={weekday.value}>
                                 {weekday.label}
                               </option>
                             ))}
-                          </select>
+                          </FormSelect>
                         </FormField>
 
                         <FormField
@@ -1936,6 +1961,7 @@ export default function TeacherClassAgendaPage() {
                           error={slotForm.formState.errors.start?.message}
                         >
                           <TimeInput
+                            invalid={slotStartInvalid}
                             value={slotValues.start}
                             onChange={(event) =>
                               slotForm.setValue("start", event.target.value, {
@@ -1953,6 +1979,7 @@ export default function TeacherClassAgendaPage() {
                           error={slotForm.formState.errors.end?.message}
                         >
                           <TimeInput
+                            invalid={slotEndInvalid}
                             value={slotValues.end}
                             onChange={(event) =>
                               slotForm.setValue("end", event.target.value, {
@@ -1970,8 +1997,9 @@ export default function TeacherClassAgendaPage() {
                           htmlFor="slot-subject"
                           error={slotForm.formState.errors.subjectId?.message}
                         >
-                          <select
+                          <FormSelect
                             id="slot-subject"
+                            invalid={slotSubjectInvalid}
                             value={slotValues.subjectId}
                             onChange={(event) =>
                               slotForm.setValue(
@@ -1984,7 +2012,6 @@ export default function TeacherClassAgendaPage() {
                                 },
                               )
                             }
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           >
                             {context.allowedSubjects.length === 0 ? (
                               <option value="">
@@ -1996,7 +2023,7 @@ export default function TeacherClassAgendaPage() {
                                 {subject.name}
                               </option>
                             ))}
-                          </select>
+                          </FormSelect>
                         </FormField>
 
                         <FormField
@@ -2006,8 +2033,9 @@ export default function TeacherClassAgendaPage() {
                             slotForm.formState.errors.teacherUserId?.message
                           }
                         >
-                          <select
+                          <FormSelect
                             id="slot-teacher"
+                            invalid={slotTeacherInvalid}
                             value={slotValues.teacherUserId}
                             onChange={(event) =>
                               slotForm.setValue(
@@ -2020,7 +2048,6 @@ export default function TeacherClassAgendaPage() {
                                 },
                               )
                             }
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           >
                             {teacherChoices.length === 0 ? (
                               <option value="">
@@ -2032,16 +2059,15 @@ export default function TeacherClassAgendaPage() {
                                 {teacher.label}
                               </option>
                             ))}
-                          </select>
+                          </FormSelect>
                         </FormField>
 
                         <FormField
                           label="Salle (optionnel)"
                           htmlFor="slot-room"
                         >
-                          <input
+                          <FormTextInput
                             id="slot-room"
-                            type="text"
                             value={slotValues.room}
                             onChange={(event) =>
                               slotForm.setValue("room", event.target.value, {
@@ -2051,7 +2077,7 @@ export default function TeacherClassAgendaPage() {
                               })
                             }
                             placeholder="ex: B14"
-                            className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                            className="text-sm"
                           />
                         </FormField>
 
@@ -2177,6 +2203,10 @@ export default function TeacherClassAgendaPage() {
                           </Button>
                         ) : null}
                       </div>
+                      <FormSubmitHint
+                        visible={!slotForm.formState.isValid}
+                        className="mt-2"
+                      />
                     </form>
                   ) : null}
 
@@ -2257,9 +2287,9 @@ export default function TeacherClassAgendaPage() {
                         error={vacationForm.formState.errors.label?.message}
                         className="md:col-span-2 xl:col-span-2"
                       >
-                        <input
+                        <FormTextInput
                           id="vacation-label"
-                          type="text"
+                          invalid={vacationLabelInvalid}
                           value={vacationForm.watch("label")}
                           onChange={(event) =>
                             vacationForm.setValue("label", event.target.value, {
@@ -2268,7 +2298,7 @@ export default function TeacherClassAgendaPage() {
                               shouldValidate: true,
                             })
                           }
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          className="text-sm"
                         />
                       </FormField>
 
@@ -2277,8 +2307,9 @@ export default function TeacherClassAgendaPage() {
                         htmlFor="vacation-scope"
                         error={vacationForm.formState.errors.scope?.message}
                       >
-                        <select
+                        <FormSelect
                           id="vacation-scope"
+                          invalid={vacationScopeInvalid}
                           value={vacationForm.watch("scope")}
                           onChange={(event) =>
                             vacationForm.setValue(
@@ -2294,14 +2325,13 @@ export default function TeacherClassAgendaPage() {
                               },
                             )
                           }
-                          className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                         >
                           <option value="CLASS">Classe</option>
                           {context.class.academicLevelId ? (
                             <option value="ACADEMIC_LEVEL">Niveau</option>
                           ) : null}
                           <option value="SCHOOL">Ecole</option>
-                        </select>
+                        </FormSelect>
                       </FormField>
 
                       <div className="hidden xl:block" />
@@ -2381,6 +2411,10 @@ export default function TeacherClassAgendaPage() {
                           </Button>
                         ) : null}
                       </div>
+                      <FormSubmitHint
+                        visible={!vacationForm.formState.isValid}
+                        className="mt-2"
+                      />
                     </div>
                   </form>
                 ) : (
@@ -2748,6 +2782,7 @@ export default function TeacherClassAgendaPage() {
                       error={occurrenceForm.formState.errors.start?.message}
                     >
                       <TimeInput
+                        invalid={occurrenceStartInvalid}
                         value={occurrenceValues.start}
                         onChange={(event) =>
                           occurrenceForm.setValue("start", event.target.value, {
@@ -2764,6 +2799,7 @@ export default function TeacherClassAgendaPage() {
                       error={occurrenceForm.formState.errors.end?.message}
                     >
                       <TimeInput
+                        invalid={occurrenceEndInvalid}
                         value={occurrenceValues.end}
                         onChange={(event) =>
                           occurrenceForm.setValue("end", event.target.value, {
@@ -2780,8 +2816,9 @@ export default function TeacherClassAgendaPage() {
                       htmlFor="occurrence-subject"
                       error={occurrenceForm.formState.errors.subjectId?.message}
                     >
-                      <select
+                      <FormSelect
                         id="occurrence-subject"
+                        invalid={occurrenceSubjectInvalid}
                         value={occurrenceValues.subjectId}
                         onChange={(event) =>
                           occurrenceForm.setValue(
@@ -2794,7 +2831,6 @@ export default function TeacherClassAgendaPage() {
                             },
                           )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                       >
                         {(context?.allowedSubjects ?? []).map((subject) => (
                           <option
@@ -2804,7 +2840,7 @@ export default function TeacherClassAgendaPage() {
                             {subject.name}
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </FormField>
                     <FormField
                       label="Enseignant"
@@ -2813,8 +2849,9 @@ export default function TeacherClassAgendaPage() {
                         occurrenceForm.formState.errors.teacherUserId?.message
                       }
                     >
-                      <select
+                      <FormSelect
                         id="occurrence-teacher"
+                        invalid={occurrenceTeacherInvalid}
                         value={occurrenceValues.teacherUserId}
                         onChange={(event) =>
                           occurrenceForm.setValue(
@@ -2827,7 +2864,6 @@ export default function TeacherClassAgendaPage() {
                             },
                           )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                       >
                         {occurrenceTeacherChoices.map((teacher) => (
                           <option
@@ -2837,16 +2873,15 @@ export default function TeacherClassAgendaPage() {
                             {teacher.label}
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </FormField>
                     <FormField
                       label="Salle (optionnel)"
                       htmlFor="occurrence-room"
                       className="md:col-span-2"
                     >
-                      <input
+                      <FormTextInput
                         id="occurrence-room"
-                        type="text"
                         value={occurrenceValues.room}
                         onChange={(event) =>
                           occurrenceForm.setValue("room", event.target.value, {
@@ -2855,7 +2890,7 @@ export default function TeacherClassAgendaPage() {
                             shouldValidate: true,
                           })
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                        className="text-sm"
                       />
                     </FormField>
                   </div>
@@ -2872,6 +2907,10 @@ export default function TeacherClassAgendaPage() {
                     Retour
                   </Button>
                   <div className="flex items-center gap-2">
+                    <FormSubmitHint
+                      visible={!occurrenceForm.formState.isValid}
+                      className="mr-2"
+                    />
                     <Button
                       type="button"
                       variant="secondary"

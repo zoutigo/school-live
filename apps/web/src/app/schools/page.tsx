@@ -11,6 +11,10 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import {
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
@@ -277,6 +281,13 @@ export default function SchoolsPage() {
 
     return () => clearTimeout(timeout);
   }, [createSchoolValues.schoolAdminEmail]);
+
+  useEffect(() => {
+    if (tab !== "create") {
+      return;
+    }
+    void createSchoolForm.trigger();
+  }, [createSchoolForm, tab]);
 
   async function bootstrap() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -846,7 +857,7 @@ export default function SchoolsPage() {
                                       ?.message
                                   }
                                 >
-                                  <input
+                                  <FormTextInput
                                     aria-label="Nom de l ecole"
                                     value={editSchoolValues.name ?? ""}
                                     onChange={(event) => {
@@ -860,11 +871,18 @@ export default function SchoolsPage() {
                                         },
                                       );
                                     }}
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    invalid={
+                                      Boolean(
+                                        editSchoolForm.formState.errors.name,
+                                      ) ||
+                                      !String(
+                                        editSchoolValues.name ?? "",
+                                      ).trim()
+                                    }
                                   />
                                 </FormField>
                                 <FormField label="Pays">
-                                  <input
+                                  <FormTextInput
                                     aria-label="Pays"
                                     value={editSchoolValues.country ?? ""}
                                     onChange={(event) => {
@@ -878,11 +896,13 @@ export default function SchoolsPage() {
                                         },
                                       );
                                     }}
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    invalid={Boolean(
+                                      editSchoolForm.formState.errors.country,
+                                    )}
                                   />
                                 </FormField>
                                 <FormField label="Region">
-                                  <input
+                                  <FormTextInput
                                     aria-label="Region"
                                     value={editSchoolValues.region ?? ""}
                                     onChange={(event) => {
@@ -896,11 +916,13 @@ export default function SchoolsPage() {
                                         },
                                       );
                                     }}
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    invalid={Boolean(
+                                      editSchoolForm.formState.errors.region,
+                                    )}
                                   />
                                 </FormField>
                                 <FormField label="Ville">
-                                  <input
+                                  <FormTextInput
                                     aria-label="Ville"
                                     value={editSchoolValues.city ?? ""}
                                     onChange={(event) => {
@@ -914,7 +936,9 @@ export default function SchoolsPage() {
                                         },
                                       );
                                     }}
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                    invalid={Boolean(
+                                      editSchoolForm.formState.errors.city,
+                                    )}
                                   />
                                 </FormField>
 
@@ -941,6 +965,10 @@ export default function SchoolsPage() {
                                   {editError}
                                 </p>
                               ) : null}
+                              <FormSubmitHint
+                                visible={!editSchoolForm.formState.isValid}
+                                className="mt-2"
+                              />
                               <div className="mt-3 flex gap-2">
                                 <Button
                                   type="button"
@@ -1137,7 +1165,7 @@ export default function SchoolsPage() {
                         : null
                 }
               >
-                <input
+                <FormTextInput
                   aria-label="Nom de l ecole"
                   value={createSchoolValues.name ?? ""}
                   onChange={(event) => {
@@ -1147,7 +1175,10 @@ export default function SchoolsPage() {
                       shouldValidate: true,
                     });
                   }}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  invalid={
+                    Boolean(createSchoolForm.formState.errors.name) ||
+                    !String(createSchoolValues.name ?? "").trim()
+                  }
                 />
               </FormField>
 
@@ -1155,7 +1186,7 @@ export default function SchoolsPage() {
                 label="Pays (optionnel)"
                 error={createSchoolForm.formState.errors.country?.message}
               >
-                <input
+                <FormTextInput
                   aria-label="Pays"
                   value={createSchoolValues.country ?? ""}
                   onChange={(event) => {
@@ -1165,7 +1196,7 @@ export default function SchoolsPage() {
                       shouldValidate: true,
                     });
                   }}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  invalid={Boolean(createSchoolForm.formState.errors.country)}
                 />
               </FormField>
 
@@ -1173,7 +1204,7 @@ export default function SchoolsPage() {
                 label="Region (optionnel)"
                 error={createSchoolForm.formState.errors.region?.message}
               >
-                <input
+                <FormTextInput
                   aria-label="Region"
                   value={createSchoolValues.region ?? ""}
                   onChange={(event) => {
@@ -1183,7 +1214,7 @@ export default function SchoolsPage() {
                       shouldValidate: true,
                     });
                   }}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  invalid={Boolean(createSchoolForm.formState.errors.region)}
                 />
               </FormField>
 
@@ -1192,7 +1223,7 @@ export default function SchoolsPage() {
                 className="md:col-span-2"
                 error={createSchoolForm.formState.errors.city?.message}
               >
-                <input
+                <FormTextInput
                   aria-label="Ville"
                   value={createSchoolValues.city ?? ""}
                   onChange={(event) => {
@@ -1202,7 +1233,7 @@ export default function SchoolsPage() {
                       shouldValidate: true,
                     });
                   }}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  invalid={Boolean(createSchoolForm.formState.errors.city)}
                 />
               </FormField>
 
@@ -1240,6 +1271,12 @@ export default function SchoolsPage() {
                       },
                     );
                   }}
+                  invalid={
+                    Boolean(
+                      createSchoolForm.formState.errors.schoolAdminEmail,
+                    ) ||
+                    !String(createSchoolValues.schoolAdminEmail ?? "").trim()
+                  }
                 />
               </FormField>
 
@@ -1275,6 +1312,9 @@ export default function SchoolsPage() {
                   {submitSuccess}
                 </p>
               ) : null}
+              <div className="md:col-span-2">
+                <FormSubmitHint visible={!createSchoolForm.formState.isValid} />
+              </div>
 
               <div className="md:col-span-2">
                 <SubmitButton

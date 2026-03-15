@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Paperclip } from "lucide-react";
+import { FormCheckbox } from "../ui/form-controls";
 import type { FolderKey, MessagingMessage } from "./types";
 import {
   formatSenderForList,
@@ -41,11 +42,10 @@ export function MessagingMessagesList({
         </p>
         {folder === "inbox" && onUnreadOnlyChange ? (
           <label className="inline-flex items-center gap-2 text-xs font-medium text-text-secondary sm:justify-self-end">
-            <input
-              type="checkbox"
+            <FormCheckbox
               checked={unreadOnly}
               onChange={(event) => onUnreadOnlyChange(event.target.checked)}
-              className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary"
+              className="h-3.5 w-3.5"
             />
             Non lus
           </label>
