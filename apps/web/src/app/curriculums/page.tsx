@@ -1,10 +1,21 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import {
+  FormCheckbox,
+  FormNumberInput,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
@@ -84,6 +95,46 @@ type CurriculumSubject = {
   subject: Subject;
 };
 
+const academicLevelFormSchema = z.object({
+  code: z.string().trim().min(1, "Le code est obligatoire."),
+  label: z.string().trim().min(1, "Le libelle est obligatoire."),
+});
+
+const trackFormSchema = z.object({
+  code: z.string().trim().min(1, "Le code est obligatoire."),
+  label: z.string().trim().min(1, "Le libelle est obligatoire."),
+});
+
+const curriculumFormSchema = z.object({
+  academicLevelId: z
+    .string()
+    .trim()
+    .min(1, "Le niveau academique est obligatoire."),
+  trackId: z
+    .union([z.string().trim(), z.literal("")])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+});
+
+const curriculumSubjectFormSchema = z.object({
+  subjectId: z.string().trim().min(1, "La matiere est obligatoire."),
+  coefficient: z
+    .union([z.string().trim(), z.literal("")])
+    .optional()
+    .refine(
+      (value) => !value || (!Number.isNaN(Number(value)) && Number(value) >= 0),
+      "Le coefficient doit etre positif.",
+    ),
+  weeklyHours: z
+    .union([z.string().trim(), z.literal("")])
+    .optional()
+    .refine(
+      (value) => !value || (!Number.isNaN(Number(value)) && Number(value) >= 0),
+      "Les heures doivent etre positives.",
+    ),
+  isMandatory: z.boolean(),
+});
+
 export default function CurriculumsPage() {
   const router = useRouter();
 
@@ -104,28 +155,11 @@ export default function CurriculumsPage() {
 
   const [selectedCurriculumId, setSelectedCurriculumId] = useState("");
 
-  const [curriculumAcademicLevelId, setCurriculumAcademicLevelId] =
-    useState("");
-  const [curriculumTrackId, setCurriculumTrackId] = useState("");
-
-  const [academicLevelCode, setAcademicLevelCode] = useState("");
-  const [academicLevelLabel, setAcademicLevelLabel] = useState("");
   const [editingAcademicLevelId, setEditingAcademicLevelId] = useState<
     string | null
   >(null);
-  const [editAcademicLevelCode, setEditAcademicLevelCode] = useState("");
-  const [editAcademicLevelLabel, setEditAcademicLevelLabel] = useState("");
 
-  const [trackCode, setTrackCode] = useState("");
-  const [trackLabel, setTrackLabel] = useState("");
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
-  const [editTrackCode, setEditTrackCode] = useState("");
-  const [editTrackLabel, setEditTrackLabel] = useState("");
-
-  const [selectedSubjectId, setSelectedSubjectId] = useState("");
-  const [subjectIsMandatory, setSubjectIsMandatory] = useState(true);
-  const [subjectCoefficient, setSubjectCoefficient] = useState("");
-  const [subjectWeeklyHours, setSubjectWeeklyHours] = useState("");
 
   const [submittingAcademicLevel, setSubmittingAcademicLevel] = useState(false);
   const [savingAcademicLevel, setSavingAcademicLevel] = useState(false);
@@ -147,6 +181,83 @@ export default function CurriculumsPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const academicLevelForm = useForm<z.input<typeof academicLevelFormSchema>>({
+    resolver: zodResolver(academicLevelFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const trackForm = useForm<z.input<typeof trackFormSchema>>({
+    resolver: zodResolver(trackFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const curriculumForm = useForm<z.input<typeof curriculumFormSchema>>({
+    resolver: zodResolver(curriculumFormSchema),
+    mode: "onChange",
+    defaultValues: { academicLevelId: "", trackId: "" },
+  });
+  const curriculumSubjectForm = useForm<
+    z.input<typeof curriculumSubjectFormSchema>
+  >({
+    resolver: zodResolver(curriculumSubjectFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      subjectId: "",
+      coefficient: "",
+      weeklyHours: "",
+      isMandatory: true,
+    },
+  });
+  const editAcademicLevelForm = useForm<
+    z.input<typeof academicLevelFormSchema>
+  >({
+    resolver: zodResolver(academicLevelFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const editTrackForm = useForm<z.input<typeof trackFormSchema>>({
+    resolver: zodResolver(trackFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const academicLevelValues = academicLevelForm.watch();
+  const trackValues = trackForm.watch();
+  const curriculumValues = curriculumForm.watch();
+  const curriculumSubjectValues = curriculumSubjectForm.watch();
+  const editAcademicLevelValues = editAcademicLevelForm.watch();
+  const editTrackValues = editTrackForm.watch();
+  const academicLevelCodeInvalid =
+    !!academicLevelForm.formState.errors.code ||
+    !(academicLevelValues.code ?? "").trim();
+  const academicLevelLabelInvalid =
+    !!academicLevelForm.formState.errors.label ||
+    !(academicLevelValues.label ?? "").trim();
+  const editAcademicLevelCodeInvalid =
+    !!editAcademicLevelForm.formState.errors.code ||
+    !(editAcademicLevelValues.code ?? "").trim();
+  const editAcademicLevelLabelInvalid =
+    !!editAcademicLevelForm.formState.errors.label ||
+    !(editAcademicLevelValues.label ?? "").trim();
+  const trackCodeInvalid =
+    !!trackForm.formState.errors.code || !(trackValues.code ?? "").trim();
+  const trackLabelInvalid =
+    !!trackForm.formState.errors.label || !(trackValues.label ?? "").trim();
+  const editTrackCodeInvalid =
+    !!editTrackForm.formState.errors.code ||
+    !(editTrackValues.code ?? "").trim();
+  const editTrackLabelInvalid =
+    !!editTrackForm.formState.errors.label ||
+    !(editTrackValues.label ?? "").trim();
+  const curriculumAcademicLevelInvalid =
+    !!curriculumForm.formState.errors.academicLevelId ||
+    !(curriculumValues.academicLevelId ?? "").trim();
+  const curriculumSubjectIdInvalid =
+    !!curriculumSubjectForm.formState.errors.subjectId ||
+    !(curriculumSubjectValues.subjectId ?? "").trim();
+  const curriculumCoefficientInvalid =
+    !!curriculumSubjectForm.formState.errors.coefficient;
+  const curriculumWeeklyHoursInvalid =
+    !!curriculumSubjectForm.formState.errors.weeklyHours;
 
   useEffect(() => {
     void bootstrap();
@@ -271,14 +382,24 @@ export default function CurriculumsPage() {
       setSubjects(subjectsPayload);
       setCurriculums(curriculumsPayload);
 
-      if (!curriculumAcademicLevelId && levelsPayload.length > 0) {
-        setCurriculumAcademicLevelId(levelsPayload[0].id);
+      if (
+        !curriculumForm.getValues("academicLevelId") &&
+        levelsPayload.length > 0
+      ) {
+        curriculumForm.setValue("academicLevelId", levelsPayload[0].id, {
+          shouldValidate: true,
+        });
       }
       if (!selectedCurriculumId && curriculumsPayload.length > 0) {
         setSelectedCurriculumId(curriculumsPayload[0].id);
       }
-      if (!selectedSubjectId && subjectsPayload.length > 0) {
-        setSelectedSubjectId(subjectsPayload[0].id);
+      if (
+        !curriculumSubjectForm.getValues("subjectId") &&
+        subjectsPayload.length > 0
+      ) {
+        curriculumSubjectForm.setValue("subjectId", subjectsPayload[0].id, {
+          shouldValidate: true,
+        });
       }
     } catch {
       setError("Erreur reseau.");
@@ -313,8 +434,9 @@ export default function CurriculumsPage() {
     }
   }
 
-  async function onCreateAcademicLevel(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateAcademicLevel(
+    values: z.output<typeof academicLevelFormSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -339,10 +461,7 @@ export default function CurriculumsPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify({
-            code: academicLevelCode,
-            label: academicLevelLabel,
-          }),
+          body: JSON.stringify(values),
         },
       );
 
@@ -358,8 +477,7 @@ export default function CurriculumsPage() {
         return;
       }
 
-      setAcademicLevelCode("");
-      setAcademicLevelLabel("");
+      academicLevelForm.reset({ code: "", label: "" });
       setSuccess("Niveau academique cree.");
       await loadData(schoolSlug);
     } catch {
@@ -371,11 +489,17 @@ export default function CurriculumsPage() {
 
   function startEditAcademicLevel(level: AcademicLevel) {
     setEditingAcademicLevelId(level.id);
-    setEditAcademicLevelCode(level.code);
-    setEditAcademicLevelLabel(level.label);
+    editAcademicLevelForm.reset({
+      code: level.code,
+      label: level.label,
+    });
+    void editAcademicLevelForm.trigger();
   }
 
-  async function saveAcademicLevel(levelId: string) {
+  async function saveAcademicLevel(
+    levelId: string,
+    values: z.output<typeof academicLevelFormSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -400,8 +524,8 @@ export default function CurriculumsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            code: editAcademicLevelCode,
-            label: editAcademicLevelLabel,
+            code: values.code,
+            label: values.label,
           }),
         },
       );
@@ -475,8 +599,7 @@ export default function CurriculumsPage() {
     }
   }
 
-  async function onCreateTrack(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateTrack(values: z.output<typeof trackFormSchema>) {
     if (!schoolSlug) {
       return;
     }
@@ -499,10 +622,7 @@ export default function CurriculumsPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify({
-          code: trackCode,
-          label: trackLabel,
-        }),
+        body: JSON.stringify(values),
       });
 
       if (!response.ok) {
@@ -517,8 +637,7 @@ export default function CurriculumsPage() {
         return;
       }
 
-      setTrackCode("");
-      setTrackLabel("");
+      trackForm.reset({ code: "", label: "" });
       setSuccess("Filiere creee.");
       await loadData(schoolSlug);
     } catch {
@@ -530,11 +649,17 @@ export default function CurriculumsPage() {
 
   function startEditTrack(track: Track) {
     setEditingTrackId(track.id);
-    setEditTrackCode(track.code);
-    setEditTrackLabel(track.label);
+    editTrackForm.reset({
+      code: track.code,
+      label: track.label,
+    });
+    void editTrackForm.trigger();
   }
 
-  async function saveTrack(trackId: string) {
+  async function saveTrack(
+    trackId: string,
+    values: z.output<typeof trackFormSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -559,8 +684,8 @@ export default function CurriculumsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            code: editTrackCode,
-            label: editTrackLabel,
+            code: values.code,
+            label: values.label,
           }),
         },
       );
@@ -634,8 +759,9 @@ export default function CurriculumsPage() {
     }
   }
 
-  async function onCreateCurriculum(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateCurriculum(
+    values: z.input<typeof curriculumFormSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -660,8 +786,8 @@ export default function CurriculumsPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          academicLevelId: curriculumAcademicLevelId,
-          trackId: curriculumTrackId || undefined,
+          academicLevelId: values.academicLevelId,
+          trackId: values.trackId || undefined,
         }),
       });
 
@@ -677,7 +803,10 @@ export default function CurriculumsPage() {
         return;
       }
 
-      setCurriculumTrackId("");
+      curriculumForm.reset({
+        academicLevelId: values.academicLevelId,
+        trackId: "",
+      });
       setSuccess("Curriculum cree.");
       await loadData(schoolSlug);
     } catch {
@@ -738,8 +867,9 @@ export default function CurriculumsPage() {
     }
   }
 
-  async function onUpsertCurriculumSubject(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onUpsertCurriculumSubject(
+    values: z.output<typeof curriculumSubjectFormSchema>,
+  ) {
     if (!schoolSlug || !selectedCurriculumId) {
       return;
     }
@@ -769,16 +899,16 @@ export default function CurriculumsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            subjectId: selectedSubjectId,
-            isMandatory: subjectIsMandatory,
+            subjectId: values.subjectId,
+            isMandatory: values.isMandatory,
             coefficient:
-              subjectCoefficient.trim() === ""
+              !values.coefficient || values.coefficient.trim() === ""
                 ? undefined
-                : Number(subjectCoefficient),
+                : Number(values.coefficient),
             weeklyHours:
-              subjectWeeklyHours.trim() === ""
+              !values.weeklyHours || values.weeklyHours.trim() === ""
                 ? undefined
-                : Number(subjectWeeklyHours),
+                : Number(values.weeklyHours),
           }),
         },
       );
@@ -796,8 +926,12 @@ export default function CurriculumsPage() {
       }
 
       setSuccess("Matiere du curriculum enregistree.");
-      setSubjectCoefficient("");
-      setSubjectWeeklyHours("");
+      curriculumSubjectForm.reset({
+        subjectId: values.subjectId,
+        coefficient: "",
+        weeklyHours: "",
+        isMandatory: values.isMandatory,
+      });
       await loadCurriculumSubjects(schoolSlug, selectedCurriculumId);
       await loadData(schoolSlug);
     } catch {
@@ -871,14 +1005,19 @@ export default function CurriculumsPage() {
   );
   const generatedCurriculumName = useMemo(() => {
     const level = academicLevels.find(
-      (entry) => entry.id === curriculumAcademicLevelId,
+      (entry) => entry.id === curriculumValues.academicLevelId,
     );
     if (!level) {
       return "";
     }
-    const track = tracks.find((entry) => entry.id === curriculumTrackId);
+    const track = tracks.find((entry) => entry.id === curriculumValues.trackId);
     return `${level.code} - ${track?.code ?? "TRONC_COMMUN"}`;
-  }, [academicLevels, tracks, curriculumAcademicLevelId, curriculumTrackId]);
+  }, [
+    academicLevels,
+    tracks,
+    curriculumValues.academicLevelId,
+    curriculumValues.trackId,
+  ]);
 
   return (
     <AppShell schoolSlug={schoolSlug} schoolName="Gestion des curriculums">
@@ -947,12 +1086,11 @@ export default function CurriculumsPage() {
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
                 <span className="text-text-secondary">Ecole</span>
-                <select
+                <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Selectionner une ecole</option>
                   {schools.map((school) => (
@@ -960,7 +1098,7 @@ export default function CurriculumsPage() {
                       {school.name}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
             ) : null}
           </div>
@@ -1001,35 +1139,58 @@ export default function CurriculumsPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-[1fr_2fr_auto]"
-                onSubmit={onCreateAcademicLevel}
+                onSubmit={academicLevelForm.handleSubmit(onCreateAcademicLevel)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Code</span>
-                  <input
-                    value={academicLevelCode}
-                    onChange={(event) =>
-                      setAcademicLevelCode(event.target.value)
-                    }
+                <FormField
+                  label="Code"
+                  error={academicLevelForm.formState.errors.code?.message}
+                >
+                  <FormTextInput
+                    aria-label="Code"
+                    invalid={academicLevelCodeInvalid}
+                    value={academicLevelValues.code ?? ""}
+                    onChange={(event) => {
+                      academicLevelForm.setValue("code", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="Ex: 6EME"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Libelle</span>
-                  <input
-                    value={academicLevelLabel}
-                    onChange={(event) =>
-                      setAcademicLevelLabel(event.target.value)
-                    }
+                </FormField>
+                <FormField
+                  label="Libelle"
+                  error={academicLevelForm.formState.errors.label?.message}
+                >
+                  <FormTextInput
+                    aria-label="Libelle"
+                    invalid={academicLevelLabelInvalid}
+                    value={academicLevelValues.label ?? ""}
+                    onChange={(event) => {
+                      academicLevelForm.setValue("label", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="Ex: 6eme"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
+                </FormField>
                 <div className="self-end">
-                  <SubmitButton disabled={submittingAcademicLevel}>
+                  <SubmitButton
+                    disabled={
+                      submittingAcademicLevel ||
+                      !academicLevelForm.formState.isValid
+                    }
+                  >
                     {submittingAcademicLevel ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
+                <FormSubmitHint
+                  visible={!academicLevelForm.formState.isValid}
+                  className="md:col-span-3"
+                />
               </form>
 
               <div className="overflow-x-auto">
@@ -1100,29 +1261,73 @@ export default function CurriculumsPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
-                                  <input
-                                    value={editAcademicLevelCode}
-                                    onChange={(event) =>
-                                      setEditAcademicLevelCode(
-                                        event.target.value,
-                                      )
+                                  <FormField
+                                    label="Code"
+                                    error={
+                                      editAcademicLevelForm.formState.errors
+                                        .code?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
-                                  <input
-                                    value={editAcademicLevelLabel}
-                                    onChange={(event) =>
-                                      setEditAcademicLevelLabel(
-                                        event.target.value,
-                                      )
+                                  >
+                                    <FormTextInput
+                                      aria-label="Code niveau"
+                                      invalid={editAcademicLevelCodeInvalid}
+                                      value={editAcademicLevelValues.code ?? ""}
+                                      onChange={(event) => {
+                                        editAcademicLevelForm.setValue(
+                                          "code",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    />
+                                  </FormField>
+                                  <FormField
+                                    label="Libelle"
+                                    error={
+                                      editAcademicLevelForm.formState.errors
+                                        .label?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  >
+                                    <FormTextInput
+                                      aria-label="Libelle niveau"
+                                      invalid={editAcademicLevelLabelInvalid}
+                                      value={
+                                        editAcademicLevelValues.label ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editAcademicLevelForm.setValue(
+                                          "label",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    />
+                                  </FormField>
+                                  <FormSubmitHint
+                                    visible={
+                                      !editAcademicLevelForm.formState.isValid
+                                    }
+                                    className="md:col-span-4"
                                   />
                                   <Button
                                     type="button"
-                                    disabled={savingAcademicLevel}
+                                    disabled={
+                                      savingAcademicLevel ||
+                                      !editAcademicLevelForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void saveAcademicLevel(level.id);
+                                      void editAcademicLevelForm.handleSubmit(
+                                        (values) =>
+                                          saveAcademicLevel(level.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingAcademicLevel
@@ -1132,9 +1337,10 @@ export default function CurriculumsPage() {
                                   <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() =>
-                                      setEditingAcademicLevelId(null)
-                                    }
+                                    onClick={() => {
+                                      setEditingAcademicLevelId(null);
+                                      editAcademicLevelForm.reset();
+                                    }}
                                   >
                                     Annuler
                                   </Button>
@@ -1163,31 +1369,55 @@ export default function CurriculumsPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-[1fr_2fr_auto]"
-                onSubmit={onCreateTrack}
+                onSubmit={trackForm.handleSubmit(onCreateTrack)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Code</span>
-                  <input
-                    value={trackCode}
-                    onChange={(event) => setTrackCode(event.target.value)}
+                <FormField
+                  label="Code"
+                  error={trackForm.formState.errors.code?.message}
+                >
+                  <FormTextInput
+                    aria-label="Code"
+                    invalid={trackCodeInvalid}
+                    value={trackValues.code ?? ""}
+                    onChange={(event) => {
+                      trackForm.setValue("code", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="Ex: C"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Libelle</span>
-                  <input
-                    value={trackLabel}
-                    onChange={(event) => setTrackLabel(event.target.value)}
+                </FormField>
+                <FormField
+                  label="Libelle"
+                  error={trackForm.formState.errors.label?.message}
+                >
+                  <FormTextInput
+                    aria-label="Libelle"
+                    invalid={trackLabelInvalid}
+                    value={trackValues.label ?? ""}
+                    onChange={(event) => {
+                      trackForm.setValue("label", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="Ex: Scientifique"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
+                </FormField>
                 <div className="self-end">
-                  <SubmitButton disabled={submittingTrack}>
+                  <SubmitButton
+                    disabled={submittingTrack || !trackForm.formState.isValid}
+                  >
                     {submittingTrack ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
+                <FormSubmitHint
+                  visible={!trackForm.formState.isValid}
+                  className="md:col-span-3"
+                />
               </form>
 
               <div className="overflow-x-auto">
@@ -1256,25 +1486,68 @@ export default function CurriculumsPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
-                                  <input
-                                    value={editTrackCode}
-                                    onChange={(event) =>
-                                      setEditTrackCode(event.target.value)
+                                  <FormField
+                                    label="Code"
+                                    error={
+                                      editTrackForm.formState.errors.code
+                                        ?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
-                                  <input
-                                    value={editTrackLabel}
-                                    onChange={(event) =>
-                                      setEditTrackLabel(event.target.value)
+                                  >
+                                    <FormTextInput
+                                      aria-label="Code filiere"
+                                      invalid={editTrackCodeInvalid}
+                                      value={editTrackValues.code ?? ""}
+                                      onChange={(event) => {
+                                        editTrackForm.setValue(
+                                          "code",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    />
+                                  </FormField>
+                                  <FormField
+                                    label="Libelle"
+                                    error={
+                                      editTrackForm.formState.errors.label
+                                        ?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  >
+                                    <FormTextInput
+                                      aria-label="Libelle filiere"
+                                      invalid={editTrackLabelInvalid}
+                                      value={editTrackValues.label ?? ""}
+                                      onChange={(event) => {
+                                        editTrackForm.setValue(
+                                          "label",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    />
+                                  </FormField>
+                                  <FormSubmitHint
+                                    visible={!editTrackForm.formState.isValid}
+                                    className="md:col-span-4"
                                   />
                                   <Button
                                     type="button"
-                                    disabled={savingTrack}
+                                    disabled={
+                                      savingTrack ||
+                                      !editTrackForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void saveTrack(track.id);
+                                      void editTrackForm.handleSubmit(
+                                        (values) => saveTrack(track.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingTrack
@@ -1284,7 +1557,10 @@ export default function CurriculumsPage() {
                                   <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => setEditingTrackId(null)}
+                                    onClick={() => {
+                                      setEditingTrackId(null);
+                                      editTrackForm.reset();
+                                    }}
                                   >
                                     Annuler
                                   </Button>
@@ -1313,16 +1589,29 @@ export default function CurriculumsPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-3"
-                onSubmit={onCreateCurriculum}
+                onSubmit={curriculumForm.handleSubmit(onCreateCurriculum)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Niveau academique</span>
-                  <select
-                    value={curriculumAcademicLevelId}
-                    onChange={(event) =>
-                      setCurriculumAcademicLevelId(event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                <FormField
+                  label="Niveau academique"
+                  error={
+                    curriculumForm.formState.errors.academicLevelId?.message
+                  }
+                >
+                  <FormSelect
+                    aria-label="Niveau academique"
+                    invalid={curriculumAcademicLevelInvalid}
+                    value={curriculumValues.academicLevelId ?? ""}
+                    onChange={(event) => {
+                      curriculumForm.setValue(
+                        "academicLevelId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                   >
                     <option value="">Selectionner</option>
                     {academicLevels.map((level) => (
@@ -1330,19 +1619,20 @@ export default function CurriculumsPage() {
                         {level.code} - {level.label}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Filiere (optionnel)
-                  </span>
-                  <select
-                    value={curriculumTrackId}
-                    onChange={(event) =>
-                      setCurriculumTrackId(event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                <FormField label="Filiere (optionnel)">
+                  <FormSelect
+                    aria-label="Filiere (optionnel)"
+                    value={curriculumValues.trackId ?? ""}
+                    onChange={(event) => {
+                      curriculumForm.setValue("trackId", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                   >
                     <option value="">Aucune</option>
                     {tracks.map((track) => (
@@ -1350,14 +1640,22 @@ export default function CurriculumsPage() {
                         {track.code} - {track.label}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
                 <div className="self-end">
-                  <SubmitButton disabled={submittingCurriculum}>
+                  <SubmitButton
+                    disabled={
+                      submittingCurriculum || !curriculumForm.formState.isValid
+                    }
+                  >
                     {submittingCurriculum ? "Creation..." : "Creer"}
                   </SubmitButton>
                 </div>
+                <FormSubmitHint
+                  visible={!curriculumForm.formState.isValid}
+                  className="md:col-span-3"
+                />
               </form>
               <p className="text-xs text-text-secondary">
                 Nom genere automatiquement:{" "}
@@ -1466,12 +1764,11 @@ export default function CurriculumsPage() {
             <div className="grid gap-4">
               <label className="grid max-w-md gap-1 text-sm">
                 <span className="text-text-secondary">Curriculum</span>
-                <select
+                <FormSelect
                   value={selectedCurriculumId}
                   onChange={(event) =>
                     setSelectedCurriculumId(event.target.value)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Selectionner</option>
                   {orderedCurriculums.map((curriculum) => (
@@ -1479,23 +1776,39 @@ export default function CurriculumsPage() {
                       {curriculum.name}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
 
               {selectedCurriculumId ? (
                 <>
                   <form
                     className="grid gap-3 md:grid-cols-5"
-                    onSubmit={onUpsertCurriculumSubject}
+                    onSubmit={curriculumSubjectForm.handleSubmit(
+                      onUpsertCurriculumSubject,
+                    )}
                   >
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Matiere</span>
-                      <select
-                        value={selectedSubjectId}
-                        onChange={(event) =>
-                          setSelectedSubjectId(event.target.value)
-                        }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    <FormField
+                      label="Matiere"
+                      error={
+                        curriculumSubjectForm.formState.errors.subjectId
+                          ?.message
+                      }
+                    >
+                      <FormSelect
+                        aria-label="Matiere"
+                        invalid={curriculumSubjectIdInvalid}
+                        value={curriculumSubjectValues.subjectId ?? ""}
+                        onChange={(event) => {
+                          curriculumSubjectForm.setValue(
+                            "subjectId",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                       >
                         <option value="">Selectionner</option>
                         {subjects.map((subject) => (
@@ -1503,54 +1816,94 @@ export default function CurriculumsPage() {
                             {subject.name}
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </FormSelect>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Coefficient</span>
-                      <input
-                        type="number"
+                    <FormField
+                      label="Coefficient"
+                      error={
+                        curriculumSubjectForm.formState.errors.coefficient
+                          ?.message
+                      }
+                    >
+                      <FormNumberInput
+                        aria-label="Coefficient"
+                        invalid={curriculumCoefficientInvalid}
                         min={0}
                         step="0.1"
-                        value={subjectCoefficient}
-                        onChange={(event) =>
-                          setSubjectCoefficient(event.target.value)
-                        }
+                        value={curriculumSubjectValues.coefficient ?? ""}
+                        onChange={(event) => {
+                          curriculumSubjectForm.setValue(
+                            "coefficient",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="Ex: 4"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Heures/sem.</span>
-                      <input
-                        type="number"
+                    <FormField
+                      label="Heures/sem."
+                      error={
+                        curriculumSubjectForm.formState.errors.weeklyHours
+                          ?.message
+                      }
+                    >
+                      <FormNumberInput
+                        aria-label="Heures/sem."
+                        invalid={curriculumWeeklyHoursInvalid}
                         min={0}
                         step="0.5"
-                        value={subjectWeeklyHours}
-                        onChange={(event) =>
-                          setSubjectWeeklyHours(event.target.value)
-                        }
+                        value={curriculumSubjectValues.weeklyHours ?? ""}
+                        onChange={(event) => {
+                          curriculumSubjectForm.setValue(
+                            "weeklyHours",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="Ex: 3"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
 
                     <label className="flex items-end gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={subjectIsMandatory}
-                        onChange={(event) =>
-                          setSubjectIsMandatory(event.target.checked)
-                        }
+                      <FormCheckbox
+                        checked={curriculumSubjectValues.isMandatory ?? true}
+                        onChange={(event) => {
+                          curriculumSubjectForm.setValue(
+                            "isMandatory",
+                            event.target.checked,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                       />
                       <span className="text-text-secondary">Obligatoire</span>
                     </label>
 
                     <div className="self-end">
+                      <FormSubmitHint
+                        visible={!curriculumSubjectForm.formState.isValid}
+                        className="mb-2"
+                      />
                       <Button
                         type="submit"
-                        disabled={submittingCurriculumSubject}
+                        disabled={
+                          submittingCurriculumSubject ||
+                          !curriculumSubjectForm.formState.isValid
+                        }
                       >
                         {submittingCurriculumSubject
                           ? "Enregistrement..."

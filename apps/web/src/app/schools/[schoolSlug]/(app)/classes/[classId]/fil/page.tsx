@@ -68,7 +68,7 @@ export default function TeacherClassFeedPage() {
       setViewerRole(me.role as typeof viewerRole);
 
       const contextResponse = await fetch(
-        `${API_URL}/schools/${schoolSlug}/grades/context`,
+        `${API_URL}/schools/${schoolSlug}/student-grades/context`,
         {
           credentials: "include",
         },

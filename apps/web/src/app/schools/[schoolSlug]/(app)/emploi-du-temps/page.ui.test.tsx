@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StudentTimetablePage from "./page";
 
 const replaceMock = vi.fn();
@@ -215,10 +215,16 @@ function mockCompactViewport() {
 
 describe("StudentTimetablePage UI", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-03-16T08:00:00.000Z"));
     vi.restoreAllMocks();
     replaceMock.mockReset();
     paramsMock = { schoolSlug: "college-vogt" };
     searchParamsMock = new URLSearchParams();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("renders student timetable in day mode with class and room details", async () => {

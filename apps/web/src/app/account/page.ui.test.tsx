@@ -98,7 +98,7 @@ describe("AccountPage recovery settings UI", () => {
     expect(screen.getByText("Votre sport prefere")).toBeInTheDocument();
   });
 
-  it("shows validation error when recovery form is incomplete", async () => {
+  it("keeps recovery submit disabled while the form is incomplete", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.endsWith("/me")) {
@@ -157,13 +157,9 @@ describe("AccountPage recovery settings UI", () => {
       screen.getByLabelText("Modifier les questions de recuperation"),
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Mettre a jour la recuperation" }),
-    );
-
     expect(
-      screen.getByText("Choisissez exactement 3 questions."),
-    ).toBeInTheDocument();
+      screen.getByRole("button", { name: "Mettre a jour la recuperation" }),
+    ).toBeDisabled();
   });
 
   it("submits recovery update and shows success message", async () => {
@@ -252,9 +248,13 @@ describe("AccountPage recovery settings UI", () => {
       target: { value: "Football" },
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Mettre a jour la recuperation" }),
-    );
+    const recoverySubmitButton = screen.getByRole("button", {
+      name: "Mettre a jour la recuperation",
+    });
+    await waitFor(() => {
+      expect(recoverySubmitButton).toBeEnabled();
+    });
+    fireEvent.click(recoverySubmitButton);
 
     await waitFor(() => {
       expect(
@@ -339,11 +339,174 @@ describe("AccountPage recovery settings UI", () => {
     fireEvent.change(screen.getByLabelText("Telephone"), {
       target: { value: "650597838" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    const submitButton = screen.getByRole("button", { name: "Enregistrer" });
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+    fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText("Michel")).toBeInTheDocument();
     });
     expect(screen.getByText("650597838")).toBeInTheDocument();
+  });
+
+  it("shows inline password validation and keeps submit disabled until valid", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SUPER_ADMIN",
+              schoolSlug: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      if (url.endsWith("/auth/change-password")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ success: true }), {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Securite" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Modifier le mot de passe" }),
+    );
+
+    const submitButton = screen.getByRole("button", {
+      name: "Changer le mot de passe",
+    });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(screen.getByLabelText("Nouveau mot de passe"), {
+      target: { value: "abc" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(screen.getByLabelText("Ancien mot de passe"), {
+      target: { value: "CurrentPass123" },
+    });
+    fireEvent.input(screen.getByLabelText("Nouveau mot de passe"), {
+      target: { value: "ValidPass123" },
+    });
+    fireEvent.input(
+      screen.getByLabelText("Confirmer le nouveau mot de passe"),
+      {
+        target: { value: "ValidPass124" },
+      },
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "La confirmation du nouveau mot de passe ne correspond pas.",
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(
+      screen.getByLabelText("Confirmer le nouveau mot de passe"),
+      {
+        target: { value: "ValidPass123" },
+      },
+    );
+    await waitFor(() => expect(submitButton).toBeEnabled());
+  });
+
+  it("shows inline PIN validation and keeps submit disabled until valid", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SUPER_ADMIN",
+              schoolSlug: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      if (url.endsWith("/auth/change-pin")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ success: true }), {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Securite" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier le PIN" }));
+
+    const submitButton = screen.getByRole("button", { name: "Changer le PIN" });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(screen.getByLabelText("Nouveau PIN (6 chiffres)"), {
+      target: { value: "12345" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le nouveau PIN doit contenir 6 chiffres."),
+      ).toBeInTheDocument();
+    });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(screen.getByLabelText("PIN actuel"), {
+      target: { value: "111111" },
+    });
+    fireEvent.input(screen.getByLabelText("Nouveau PIN (6 chiffres)"), {
+      target: { value: "222222" },
+    });
+    fireEvent.input(screen.getByLabelText("Confirmation PIN"), {
+      target: { value: "333333" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText("La confirmation du nouveau PIN ne correspond pas."),
+      ).toBeInTheDocument();
+    });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(screen.getByLabelText("Confirmation PIN"), {
+      target: { value: "222222" },
+    });
+    await waitFor(() => expect(submitButton).toBeEnabled());
   });
 });

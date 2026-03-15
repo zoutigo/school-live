@@ -1,11 +1,23 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Card } from "../../../../../../../components/ui/card";
 import { Button } from "../../../../../../../components/ui/button";
 import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog";
+import {
+  FormCheckbox,
+  FormDateTimeInput,
+  FormNumberInput,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+  FormTextarea,
+} from "../../../../../../../components/ui/form-controls";
+import { FormField } from "../../../../../../../components/ui/form-field";
 import {
   LifeEventsList,
   lifeEventTypeLabel,
@@ -13,6 +25,7 @@ import {
   type LifeEventType,
 } from "../../../../../../../components/life-events/life-events-list";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
+import { SubmitButton } from "../../../../../../../components/ui/form-buttons";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
   API_URL,
@@ -29,6 +42,17 @@ const createEventSchema = z.object({
   type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]),
   occurredAt: z.string().trim().min(1, "La date est obligatoire."),
   reason: z.string().trim().min(1, "Le motif est obligatoire."),
+  durationMinutes: z
+    .string()
+    .trim()
+    .refine(
+      (value) =>
+        value.length === 0 ||
+        (/^\d+$/.test(value) && Number.parseInt(value, 10) >= 0),
+      {
+        message: "La duree doit etre un entier positif.",
+      },
+    ),
   justified: z.boolean().optional(),
   comment: z.string().trim().optional(),
 });
@@ -58,33 +82,56 @@ export default function TeacherClassDisciplinePage() {
   const [context, setContext] = useState<GradesContext | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [events, setEvents] = useState<LifeEventRow[]>([]);
-
-  const [eventType, setEventType] = useState<EventType>("ABSENCE");
-  const [eventOccurredAt, setEventOccurredAt] = useState("");
-  const [eventReason, setEventReason] = useState("");
-  const [eventDurationMinutes, setEventDurationMinutes] = useState("");
-  const [eventJustified, setEventJustified] = useState(false);
-  const [eventComment, setEventComment] = useState("");
+  const createEventForm = useForm<
+    z.input<typeof createEventSchema>,
+    unknown,
+    z.output<typeof createEventSchema>
+  >({
+    resolver: zodResolver(createEventSchema),
+    mode: "onChange",
+    defaultValues: {
+      type: "ABSENCE",
+      occurredAt: "",
+      reason: "",
+      durationMinutes: "",
+      justified: false,
+      comment: "",
+    },
+  });
+  const editEventForm = useForm<
+    z.input<typeof createEventSchema>,
+    unknown,
+    z.output<typeof createEventSchema>
+  >({
+    resolver: zodResolver(createEventSchema),
+    mode: "onChange",
+    defaultValues: {
+      type: "ABSENCE",
+      occurredAt: "",
+      reason: "",
+      durationMinutes: "",
+      justified: false,
+      comment: "",
+    },
+  });
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [editingType, setEditingType] = useState<EventType>("ABSENCE");
-  const [editingOccurredAt, setEditingOccurredAt] = useState("");
-  const [editingReason, setEditingReason] = useState("");
-  const [editingDurationMinutes, setEditingDurationMinutes] = useState("");
-  const [editingJustified, setEditingJustified] = useState(false);
-  const [editingComment, setEditingComment] = useState("");
   const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LifeEventRow | null>(null);
 
   useEffect(() => {
-    if (eventOccurredAt) {
+    if (createEventForm.getValues("occurredAt")) {
       return;
     }
 
     const now = new Date();
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    setEventOccurredAt(local.toISOString().slice(0, 16));
-  }, [eventOccurredAt]);
+    createEventForm.setValue("occurredAt", local.toISOString().slice(0, 16), {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: true,
+    });
+  }, [createEventForm]);
 
   useEffect(() => {
     void bootstrap();
@@ -122,6 +169,50 @@ export default function TeacherClassDisciplinePage() {
     setEditingEventId(null);
   }, [selectedStudentId]);
 
+  const createEventValues = createEventForm.watch();
+  const editEventValues = editEventForm.watch();
+  const createOccurredAtInvalid =
+    !!createEventForm.formState.errors.occurredAt ||
+    !(createEventValues.occurredAt ?? "").trim();
+  const createReasonInvalid =
+    !!createEventForm.formState.errors.reason ||
+    !(createEventValues.reason ?? "").trim();
+  const createDurationInvalid =
+    !!createEventForm.formState.errors.durationMinutes;
+  const editOccurredAtInvalid =
+    !!editEventForm.formState.errors.occurredAt ||
+    !(editEventValues.occurredAt ?? "").trim();
+  const editReasonInvalid =
+    !!editEventForm.formState.errors.reason ||
+    !(editEventValues.reason ?? "").trim();
+  const editDurationInvalid = !!editEventForm.formState.errors.durationMinutes;
+
+  useEffect(() => {
+    if (
+      createEventValues.type === "SANCTION" ||
+      createEventValues.type === "PUNITION"
+    ) {
+      createEventForm.setValue("justified", false, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+    }
+  }, [createEventForm, createEventValues.type]);
+
+  useEffect(() => {
+    if (
+      editEventValues.type === "SANCTION" ||
+      editEventValues.type === "PUNITION"
+    ) {
+      editEventForm.setValue("justified", false, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+    }
+  }, [editEventForm, editEventValues.type]);
+
   async function bootstrap() {
     setLoading(true);
     setError(null);
@@ -143,7 +234,7 @@ export default function TeacherClassDisciplinePage() {
       }
 
       const contextResponse = await fetch(
-        `${API_URL}/schools/${schoolSlug}/grades/context`,
+        `${API_URL}/schools/${schoolSlug}/student-grades/context`,
         {
           credentials: "include",
         },
@@ -188,42 +279,18 @@ export default function TeacherClassDisciplinePage() {
     }
   }
 
-  async function createEvent() {
+  async function createEvent(values: z.output<typeof createEventSchema>) {
     if (!schoolSlug || !selectedStudentId) {
       return;
     }
 
-    const occurredAtIso = eventOccurredAt
-      ? new Date(eventOccurredAt).toISOString()
+    const occurredAtIso = values.occurredAt
+      ? new Date(values.occurredAt).toISOString()
       : "";
-    const parsed = createEventSchema.safeParse({
-      type: eventType,
-      occurredAt: occurredAtIso,
-      reason: eventReason,
-      justified:
-        eventType === "SANCTION" || eventType === "PUNITION"
-          ? undefined
-          : eventJustified,
-      comment: eventComment,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
-
-    const durationValue = eventDurationMinutes.trim();
+    const durationValue = values.durationMinutes.trim();
     let durationMinutes: number | undefined;
     if (durationValue.length > 0) {
-      const parsedDurationMinutes = Number.parseInt(durationValue, 10);
-      if (
-        !Number.isFinite(parsedDurationMinutes) ||
-        parsedDurationMinutes < 0
-      ) {
-        setError("La duree doit etre un entier positif.");
-        return;
-      }
-      durationMinutes = parsedDurationMinutes;
+      durationMinutes = Number.parseInt(durationValue, 10);
     }
 
     const csrfToken = getCsrfTokenCookie();
@@ -248,12 +315,15 @@ export default function TeacherClassDisciplinePage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            type: parsed.data.type,
-            occurredAt: parsed.data.occurredAt,
-            reason: parsed.data.reason,
+            type: values.type,
+            occurredAt: occurredAtIso,
+            reason: values.reason,
             durationMinutes,
-            justified: parsed.data.justified,
-            comment: parsed.data.comment || undefined,
+            justified:
+              values.type === "SANCTION" || values.type === "PUNITION"
+                ? undefined
+                : values.justified,
+            comment: values.comment || undefined,
             classId,
           }),
         },
@@ -271,10 +341,14 @@ export default function TeacherClassDisciplinePage() {
         return;
       }
 
-      setEventReason("");
-      setEventDurationMinutes("");
-      setEventComment("");
-      setEventJustified(false);
+      createEventForm.reset({
+        type: values.type,
+        occurredAt: values.occurredAt,
+        reason: "",
+        durationMinutes: "",
+        justified: false,
+        comment: "",
+      });
       setSuccess("Evenement discipline enregistre.");
       await loadStudentEvents(schoolSlug, selectedStudentId);
       setTab("history");
@@ -287,48 +361,42 @@ export default function TeacherClassDisciplinePage() {
 
   function startEditEvent(row: LifeEventRow) {
     setEditingEventId(row.id);
-    setEditingType(row.type);
-    setEditingOccurredAt(toDateTimeLocalInput(row.occurredAt));
-    setEditingReason(row.reason);
-    setEditingDurationMinutes(
-      typeof row.durationMinutes === "number"
-        ? String(row.durationMinutes)
-        : "",
-    );
-    setEditingJustified(Boolean(row.justified));
-    setEditingComment(row.comment ?? "");
+    editEventForm.reset({
+      type: row.type,
+      occurredAt: toDateTimeLocalInput(row.occurredAt),
+      reason: row.reason,
+      durationMinutes:
+        typeof row.durationMinutes === "number"
+          ? String(row.durationMinutes)
+          : "",
+      justified: Boolean(row.justified),
+      comment: row.comment ?? "",
+    });
     setError(null);
     setSuccess(null);
   }
 
   function cancelEditEvent() {
     setEditingEventId(null);
+    editEventForm.reset({
+      type: "ABSENCE",
+      occurredAt: "",
+      reason: "",
+      durationMinutes: "",
+      justified: false,
+      comment: "",
+    });
   }
 
-  async function saveEditedEvent() {
+  async function saveEditedEvent(values: z.output<typeof createEventSchema>) {
     if (!schoolSlug || !selectedStudentId || !editingEventId) {
       return;
     }
 
-    const occurredAtIso = editingOccurredAt
-      ? new Date(editingOccurredAt).toISOString()
+    const occurredAtIso = values.occurredAt
+      ? new Date(values.occurredAt).toISOString()
       : "";
-    const parsed = createEventSchema.safeParse({
-      type: editingType,
-      occurredAt: occurredAtIso,
-      reason: editingReason,
-      justified:
-        editingType === "SANCTION" || editingType === "PUNITION"
-          ? undefined
-          : editingJustified,
-      comment: editingComment,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
-
-    const durationValue = editingDurationMinutes.trim();
+    const durationValue = values.durationMinutes.trim();
     let durationMinutes: number | undefined;
     if (durationValue.length > 0) {
       const parsedDurationMinutes = Number.parseInt(durationValue, 10);
@@ -363,12 +431,15 @@ export default function TeacherClassDisciplinePage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            type: parsed.data.type,
-            occurredAt: parsed.data.occurredAt,
-            reason: parsed.data.reason,
+            type: values.type,
+            occurredAt: occurredAtIso,
+            reason: values.reason,
             durationMinutes,
-            justified: parsed.data.justified,
-            comment: parsed.data.comment || undefined,
+            justified:
+              values.type === "SANCTION" || values.type === "PUNITION"
+                ? undefined
+                : values.justified,
+            comment: values.comment || undefined,
             classId,
           }),
         },
@@ -387,6 +458,14 @@ export default function TeacherClassDisciplinePage() {
       }
 
       setEditingEventId(null);
+      editEventForm.reset({
+        type: "ABSENCE",
+        occurredAt: "",
+        reason: "",
+        durationMinutes: "",
+        justified: false,
+        comment: "",
+      });
       setSuccess("Evenement modifie.");
       await loadStudentEvents(schoolSlug, selectedStudentId);
     } catch {
@@ -525,17 +604,16 @@ export default function TeacherClassDisciplinePage() {
           <div className="grid gap-4">
             <label className="grid gap-1 text-sm md:max-w-[420px]">
               <span className="text-text-secondary">Eleve</span>
-              <select
+              <FormSelect
                 value={selectedStudentId}
                 onChange={(event) => setSelectedStudentId(event.target.value)}
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               >
                 {classContext.students.map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {entry.lastName} {entry.firstName}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </label>
 
             {error ? (
@@ -544,194 +622,307 @@ export default function TeacherClassDisciplinePage() {
             {success ? <p className="text-sm text-success">{success}</p> : null}
 
             {tab === "entry" ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Type d'evenement</span>
-                  <select
-                    value={eventType}
+              <form
+                className="grid gap-3 md:grid-cols-2"
+                onSubmit={createEventForm.handleSubmit(createEvent)}
+                noValidate
+              >
+                <FormField label="Type d'evenement" htmlFor="discipline-type">
+                  <FormSelect
+                    id="discipline-type"
+                    value={createEventValues.type}
                     onChange={(event) =>
-                      setEventType(event.target.value as EventType)
+                      createEventForm.setValue(
+                        "type",
+                        event.target.value as EventType,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="ABSENCE">Absence</option>
                     <option value="RETARD">Retard</option>
                     <option value="SANCTION">Sanction</option>
                     <option value="PUNITION">Punition</option>
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Date et heure</span>
-                  <input
-                    type="datetime-local"
-                    value={eventOccurredAt}
-                    onChange={(event) => setEventOccurredAt(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </label>
-
-                <label className="grid gap-1 text-sm md:col-span-2">
-                  <span className="text-text-secondary">Motif</span>
-                  <input
-                    type="text"
-                    value={eventReason}
-                    onChange={(event) => setEventReason(event.target.value)}
-                    placeholder="Ex: travail non rendu, absence non justifiee"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </label>
-
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">
-                    Duree (minutes, optionnel)
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={eventDurationMinutes}
+                <FormField
+                  label="Date et heure"
+                  error={createEventForm.formState.errors.occurredAt?.message}
+                >
+                  <FormDateTimeInput
+                    invalid={createOccurredAtInvalid}
+                    value={createEventValues.occurredAt}
                     onChange={(event) =>
-                      setEventDurationMinutes(event.target.value)
+                      createEventForm.setValue(
+                        "occurredAt",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
-                </label>
+                </FormField>
 
-                <label className="grid gap-1 text-sm md:col-span-2">
-                  <span className="text-text-secondary">
-                    Commentaire (optionnel)
-                  </span>
-                  <textarea
-                    value={eventComment}
-                    onChange={(event) => setEventComment(event.target.value)}
-                    rows={3}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                <FormField
+                  label="Motif"
+                  error={createEventForm.formState.errors.reason?.message}
+                  className="md:col-span-2"
+                >
+                  <FormTextInput
+                    invalid={createReasonInvalid}
+                    value={createEventValues.reason}
+                    onChange={(event) =>
+                      createEventForm.setValue("reason", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    placeholder="Ex: travail non rendu, absence non justifiee"
                   />
-                </label>
+                </FormField>
+
+                <FormField
+                  label="Duree (minutes, optionnel)"
+                  error={
+                    createEventForm.formState.errors.durationMinutes?.message
+                  }
+                >
+                  <FormNumberInput
+                    invalid={createDurationInvalid}
+                    min={0}
+                    value={createEventValues.durationMinutes}
+                    onChange={(event) =>
+                      createEventForm.setValue(
+                        "durationMinutes",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField
+                  label="Commentaire (optionnel)"
+                  className="md:col-span-2"
+                >
+                  <FormTextarea
+                    value={createEventValues.comment}
+                    onChange={(event) =>
+                      createEventForm.setValue("comment", event.target.value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    rows={3}
+                  />
+                </FormField>
 
                 <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
-                  <input
-                    type="checkbox"
-                    checked={eventJustified}
+                  <FormCheckbox
+                    checked={createEventValues.justified ?? false}
                     onChange={(event) =>
-                      setEventJustified(event.target.checked)
+                      createEventForm.setValue(
+                        "justified",
+                        event.target.checked,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
                     }
                     disabled={
-                      eventType === "SANCTION" || eventType === "PUNITION"
+                      createEventValues.type === "SANCTION" ||
+                      createEventValues.type === "PUNITION"
                     }
                   />
                   Justifie (absence / retard)
                 </label>
 
                 <div className="md:col-span-2">
-                  <Button
-                    type="button"
-                    disabled={saving || !selectedStudentId}
-                    onClick={() => {
-                      void createEvent();
-                    }}
+                  <FormSubmitHint
+                    visible={!createEventForm.formState.isValid}
+                    className="mb-2"
+                  />
+                  <SubmitButton
+                    disabled={
+                      saving ||
+                      !selectedStudentId ||
+                      !createEventForm.formState.isValid
+                    }
                   >
                     {saving ? "Enregistrement..." : "Enregistrer l'evenement"}
-                  </Button>
+                  </SubmitButton>
                 </div>
-              </div>
+              </form>
             ) : (
               <div className="grid gap-3">
                 {editingEventId ? (
                   <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-2">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Type d'evenement
-                      </span>
-                      <select
-                        value={editingType}
+                    <FormField
+                      label="Type d'evenement edition"
+                      error={editEventForm.formState.errors.type?.message}
+                    >
+                      <FormSelect
+                        aria-label="Type d'evenement edition"
+                        value={editEventValues.type ?? "ABSENCE"}
                         onChange={(event) =>
-                          setEditingType(event.target.value as EventType)
+                          editEventForm.setValue(
+                            "type",
+                            event.target.value as EventType,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="ABSENCE">Absence</option>
                         <option value="RETARD">Retard</option>
                         <option value="SANCTION">Sanction</option>
                         <option value="PUNITION">Punition</option>
-                      </select>
-                    </label>
+                      </FormSelect>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Date et heure</span>
-                      <input
-                        type="datetime-local"
-                        value={editingOccurredAt}
+                    <FormField
+                      label="Date et heure edition"
+                      error={editEventForm.formState.errors.occurredAt?.message}
+                    >
+                      <FormDateTimeInput
+                        aria-label="Date et heure edition"
+                        invalid={editOccurredAtInvalid}
+                        value={editEventValues.occurredAt ?? ""}
                         onChange={(event) =>
-                          setEditingOccurredAt(event.target.value)
+                          editEventForm.setValue(
+                            "occurredAt",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm md:col-span-2">
-                      <span className="text-text-secondary">Motif</span>
-                      <input
-                        type="text"
-                        value={editingReason}
+                    <FormField
+                      label="Motif edition"
+                      className="md:col-span-2"
+                      error={editEventForm.formState.errors.reason?.message}
+                    >
+                      <FormTextInput
+                        aria-label="Motif edition"
+                        invalid={editReasonInvalid}
+                        value={editEventValues.reason ?? ""}
                         onChange={(event) =>
-                          setEditingReason(event.target.value)
+                          editEventForm.setValue("reason", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Duree (minutes, optionnel)
-                      </span>
-                      <input
-                        type="number"
+                    <FormField
+                      label="Duree edition (minutes, optionnel)"
+                      error={
+                        editEventForm.formState.errors.durationMinutes?.message
+                      }
+                    >
+                      <FormNumberInput
+                        aria-label="Duree edition (minutes, optionnel)"
+                        invalid={editDurationInvalid}
                         min={0}
-                        value={editingDurationMinutes}
+                        value={editEventValues.durationMinutes ?? ""}
                         onChange={(event) =>
-                          setEditingDurationMinutes(event.target.value)
+                          editEventForm.setValue(
+                            "durationMinutes",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm md:col-span-2">
-                      <span className="text-text-secondary">
-                        Commentaire (optionnel)
-                      </span>
-                      <textarea
-                        value={editingComment}
+                    <FormField
+                      label="Commentaire edition (optionnel)"
+                      className="md:col-span-2"
+                    >
+                      <FormTextarea
+                        aria-label="Commentaire edition (optionnel)"
+                        value={editEventValues.comment ?? ""}
                         onChange={(event) =>
-                          setEditingComment(event.target.value)
+                          editEventForm.setValue(
+                            "comment",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
                         }
                         rows={3}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
-                    </label>
+                    </FormField>
 
                     <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
-                      <input
-                        type="checkbox"
-                        checked={editingJustified}
+                      <FormCheckbox
+                        checked={editEventValues.justified ?? false}
                         onChange={(event) =>
-                          setEditingJustified(event.target.checked)
+                          editEventForm.setValue(
+                            "justified",
+                            event.target.checked,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
                         }
                         disabled={
-                          editingType === "SANCTION" ||
-                          editingType === "PUNITION"
+                          editEventValues.type === "SANCTION" ||
+                          editEventValues.type === "PUNITION"
                         }
                       />
                       Justifie (absence / retard)
                     </label>
 
                     <div className="flex gap-2 md:col-span-2">
+                      <FormSubmitHint
+                        visible={!editEventForm.formState.isValid}
+                        className="self-center"
+                      />
                       <Button
                         type="button"
-                        disabled={updatingEventId === editingEventId}
-                        onClick={() => {
-                          void saveEditedEvent();
-                        }}
+                        disabled={
+                          updatingEventId === editingEventId ||
+                          !editEventForm.formState.isValid
+                        }
+                        onClick={() =>
+                          void editEventForm.handleSubmit(saveEditedEvent)()
+                        }
                       >
                         {updatingEventId === editingEventId
                           ? "Enregistrement..."

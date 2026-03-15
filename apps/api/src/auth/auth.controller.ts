@@ -123,6 +123,15 @@ export class AuthController {
     return this.authService.getMe(user.id, schoolId);
   }
 
+  @Get("me/parent-dashboard-summary")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard)
+  parentDashboardSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+  ) {
+    return this.authService.getParentDashboardSummary(user.id, schoolId);
+  }
+
   private getRequestContext(req: Request) {
     const userAgent = req.headers["user-agent"];
     return {

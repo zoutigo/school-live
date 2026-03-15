@@ -41,7 +41,7 @@ export interface AcademicPeriod {
   endsAt: string;
 }
 
-export interface Grade {
+export interface StudentGrade {
   id: string;
   studentId: string;
   subject: string;

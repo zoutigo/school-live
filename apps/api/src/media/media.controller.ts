@@ -21,7 +21,7 @@ export class MediaController {
   @UseInterceptors(
     FileInterceptor("file", {
       limits: {
-        fileSize: 8 * 1024 * 1024,
+        fileSize: 10 * 1024 * 1024,
       },
     }),
   )
@@ -38,7 +38,8 @@ export class MediaController {
     if (
       kind !== "school-logo" &&
       kind !== "user-avatar" &&
-      kind !== "messaging-inline-image"
+      kind !== "messaging-inline-image" &&
+      kind !== "evaluation-attachment"
     ) {
       throw new BadRequestException("Type upload non supporte");
     }

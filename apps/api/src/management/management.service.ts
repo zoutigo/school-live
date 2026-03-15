@@ -21,7 +21,9 @@ import type { BulkUpdateEnrollmentStatusDto } from "./dto/bulk-update-enrollment
 import type { CreateClassroomDto } from "./dto/create-classroom.dto.js";
 import type { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import type { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
+import type { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
 import type { CreateSubjectDto } from "./dto/create-subject.dto.js";
+import type { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
 import type { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
 import type { CreateSchoolDto } from "./dto/create-school.dto.js";
 import type { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
@@ -50,9 +52,11 @@ import type { UpdateStudentDto } from "./dto/update-student.dto.js";
 import type { UpdateStudentEnrollmentDto } from "./dto/update-student-enrollment.dto.js";
 import type { UpdateStudentLifeEventDto } from "./dto/update-student-life-event.dto.js";
 import type { UpdateSubjectDto } from "./dto/update-subject.dto.js";
+import type { UpdateSubjectBranchDto } from "./dto/update-subject-branch.dto.js";
 import type { UpdateTeacherAssignmentDto } from "./dto/update-teacher-assignment.dto.js";
 import type { UpdateTrackDto } from "./dto/update-track.dto.js";
 import type { UpdateUserDto } from "./dto/update-user.dto.js";
+import type { UpdateEvaluationTypeDto } from "./dto/update-evaluation-type.dto.js";
 import type { UpsertCurriculumSubjectDto } from "./dto/upsert-curriculum-subject.dto.js";
 
 const PLATFORM_ROLES = ["SUPER_ADMIN", "ADMIN", "SALES", "SUPPORT"] as const;
@@ -82,6 +86,13 @@ const CREATABLE_ROLES = [
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 const SCHOOL_LOGO_URL_REGEX = /^https?:\/\/.+$/;
 const USER_AVATAR_URL_REGEX = /^https?:\/\/.+$/;
+const DEFAULT_EVALUATION_TYPES = [
+  { code: "DEVOIR", label: "Devoir" },
+  { code: "INTERROGATION", label: "Interrogation" },
+  { code: "COMPOSITION", label: "Composition" },
+  { code: "TP", label: "TP / Projet" },
+  { code: "ORAL", label: "Oral" },
+] as const;
 
 const createUserSchema = z.object({
   firstName: z.string().trim().min(1),
@@ -844,7 +855,7 @@ export class ManagementService {
             classes: true,
             students: true,
             teachers: true,
-            grades: true,
+            studentGrades: true,
           },
         },
       },
@@ -869,7 +880,7 @@ export class ManagementService {
         classesCount: school._count.classes,
         studentsCount: school._count.students,
         teachersCount: school._count.teachers,
-        gradesCount: school._count.grades,
+        gradesCount: school._count.studentGrades,
       },
       schoolAdmins: school.memberships.map((membership) => ({
         id: membership.user.id,
@@ -1050,7 +1061,7 @@ export class ManagementService {
       this.prisma.user.count(),
       this.prisma.student.count(),
       this.prisma.teacher.count(),
-      this.prisma.grade.count(),
+      this.prisma.studentGrade.count(),
       this.prisma.platformRoleAssignment.count({ where: { role: "ADMIN" } }),
       this.prisma.schoolMembership.count({ where: { role: "SCHOOL_ADMIN" } }),
     ]);
@@ -1268,7 +1279,7 @@ export class ManagementService {
         },
         _count: {
           select: {
-            gradesGiven: true,
+            studentGradesGiven: true,
             recoveryAnswers: true,
           },
         },
@@ -1340,7 +1351,7 @@ export class ManagementService {
         },
       })),
       stats: {
-        gradesGivenCount: user._count.gradesGiven,
+        gradesGivenCount: user._count.studentGradesGiven,
         recoveryAnswersCount: user._count.recoveryAnswers,
       },
     };
@@ -1998,7 +2009,7 @@ export class ManagementService {
                 classes: true,
                 enrollments: true,
                 teachingAssignments: true,
-                grades: true,
+                studentGrades: true,
               },
             },
           },
@@ -2635,10 +2646,13 @@ export class ManagementService {
       where: { schoolId },
       orderBy: [{ name: "asc" }],
       include: {
+        branches: {
+          orderBy: [{ name: "asc" }],
+        },
         _count: {
           select: {
             assignments: true,
-            grades: true,
+            studentGrades: true,
             curriculumSubjects: true,
             classOverrides: true,
           },
@@ -2698,7 +2712,7 @@ export class ManagementService {
         _count: {
           select: {
             assignments: true,
-            grades: true,
+            studentGrades: true,
             curriculumSubjects: true,
             classOverrides: true,
           },
@@ -2712,12 +2726,12 @@ export class ManagementService {
 
     if (
       subject._count.assignments > 0 ||
-      subject._count.grades > 0 ||
+      subject._count.studentGrades > 0 ||
       subject._count.curriculumSubjects > 0 ||
       subject._count.classOverrides > 0
     ) {
       throw new BadRequestException(
-        "Cannot delete a subject used by curriculums, assignments, class overrides or grades",
+        "Cannot delete a subject used by curriculums, assignments, class overrides or student grades",
       );
     }
 
@@ -2726,6 +2740,172 @@ export class ManagementService {
     });
 
     return { success: true };
+  }
+
+  async createSubjectBranch(
+    schoolId: string,
+    subjectId: string,
+    payload: CreateSubjectBranchDto,
+  ) {
+    await this.ensureSubjectInSchool(subjectId, schoolId);
+    const name = payload.name?.trim();
+    if (!name) {
+      throw new BadRequestException("Branch name is required");
+    }
+
+    return this.prisma.subjectBranch.create({
+      data: {
+        schoolId,
+        subjectId,
+        name,
+        code: payload.code?.trim() || null,
+      },
+    });
+  }
+
+  async updateSubjectBranch(
+    schoolId: string,
+    branchId: string,
+    payload: UpdateSubjectBranchDto,
+  ) {
+    const branch = await this.prisma.subjectBranch.findFirst({
+      where: { id: branchId, schoolId },
+      select: { id: true },
+    });
+    if (!branch) {
+      throw new NotFoundException("Subject branch not found");
+    }
+
+    return this.prisma.subjectBranch.update({
+      where: { id: branchId },
+      data: {
+        name: payload.name?.trim(),
+        code:
+          payload.code === undefined ? undefined : payload.code.trim() || null,
+      },
+    });
+  }
+
+  async deleteSubjectBranch(schoolId: string, branchId: string) {
+    const branch = await this.prisma.subjectBranch.findFirst({
+      where: { id: branchId, schoolId },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            evaluations: true,
+          },
+        },
+      },
+    });
+    if (!branch) {
+      throw new NotFoundException("Subject branch not found");
+    }
+    if (branch._count.evaluations > 0) {
+      throw new BadRequestException(
+        "Cannot delete a subject branch already used by evaluations",
+      );
+    }
+    await this.prisma.subjectBranch.delete({ where: { id: branchId } });
+    return { success: true };
+  }
+
+  async listEvaluationTypes(schoolId: string) {
+    await this.ensureDefaultEvaluationTypes(schoolId);
+    return this.prisma.evaluationType.findMany({
+      where: { schoolId },
+      orderBy: [{ isDefault: "desc" }, { label: "asc" }],
+    });
+  }
+
+  async createEvaluationType(
+    schoolId: string,
+    payload: CreateEvaluationTypeDto,
+  ) {
+    const code = payload.code?.trim().toUpperCase();
+    const label = payload.label?.trim();
+    if (!code || !label) {
+      throw new BadRequestException("Code and label are required");
+    }
+
+    return this.prisma.evaluationType.create({
+      data: {
+        schoolId,
+        code,
+        label,
+      },
+    });
+  }
+
+  async updateEvaluationType(
+    schoolId: string,
+    evaluationTypeId: string,
+    payload: UpdateEvaluationTypeDto,
+  ) {
+    const evaluationType = await this.prisma.evaluationType.findFirst({
+      where: { id: evaluationTypeId, schoolId },
+      select: { id: true, isDefault: true },
+    });
+    if (!evaluationType) {
+      throw new NotFoundException("Evaluation type not found");
+    }
+
+    return this.prisma.evaluationType.update({
+      where: { id: evaluationTypeId },
+      data: {
+        code: payload.code?.trim().toUpperCase(),
+        label: payload.label?.trim(),
+      },
+    });
+  }
+
+  async deleteEvaluationType(schoolId: string, evaluationTypeId: string) {
+    const evaluationType = await this.prisma.evaluationType.findFirst({
+      where: { id: evaluationTypeId, schoolId },
+      select: {
+        id: true,
+        isDefault: true,
+        _count: {
+          select: {
+            evaluations: true,
+          },
+        },
+      },
+    });
+    if (!evaluationType) {
+      throw new NotFoundException("Evaluation type not found");
+    }
+    if (evaluationType.isDefault) {
+      throw new BadRequestException(
+        "Default evaluation types cannot be deleted",
+      );
+    }
+    if (evaluationType._count.evaluations > 0) {
+      throw new BadRequestException(
+        "Cannot delete an evaluation type already used by evaluations",
+      );
+    }
+    await this.prisma.evaluationType.delete({
+      where: { id: evaluationTypeId },
+    });
+    return { success: true };
+  }
+
+  private async ensureDefaultEvaluationTypes(schoolId: string) {
+    await Promise.all(
+      DEFAULT_EVALUATION_TYPES.map((type) =>
+        this.prisma.evaluationType.upsert({
+          where: { schoolId_code: { schoolId, code: type.code } },
+          update: { label: type.label, isDefault: true },
+          create: {
+            schoolId,
+            code: type.code,
+            label: type.label,
+            isDefault: true,
+          },
+        }),
+      ),
+    );
   }
 
   async listSchoolStaffFunctions(schoolId: string) {

@@ -18,8 +18,15 @@ model School {
   teachers           Teacher[]
   classes            Class[]
   subjects           Subject[]
+  subjectBranches    SubjectBranch[]
   assignments        TeacherClassSubject[]
-  grades             Grade[]
+  studentGrades      StudentGrade[]
+  evaluationTypes    EvaluationType[]
+  evaluations        Evaluation[]
+  evaluationAttachments EvaluationAttachment[]
+  evaluationAuditLogs EvaluationAuditLog[]
+  studentTermReports StudentTermReport[]
+  studentTermReportEntries StudentTermReportEntry[]
   enrollments        Enrollment[]
   classSubjectOverrides ClassSubjectOverride[]
   academicLevels     AcademicLevel[]
@@ -69,7 +76,11 @@ model User {
   teacherProfiles    Teacher[]
   studentProfiles    Student[]
   parentLinks        ParentStudent[]          @relation("ParentLinks")
-  gradesGiven        Grade[]                  @relation("GradeTeacher")
+  studentGradesGiven StudentGrade[]           @relation("StudentGradeTeacher")
+  evaluationsAuthored Evaluation[]            @relation("EvaluationAuthor")
+  evaluationAuditLogs EvaluationAuditLog[]    @relation("EvaluationAuditActor")
+  studentTermReportsAuthored StudentTermReport[] @relation("StudentTermReportUpdatedBy")
+  studentTermReportEntriesAuthored StudentTermReportEntry[] @relation("StudentTermReportEntryUpdatedBy")
   teachingAssignments TeacherClassSubject[]
   refreshTokens      RefreshToken[]
   passwordResetTokens PasswordResetToken[]

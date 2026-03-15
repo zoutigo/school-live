@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "../ui/button";
 import { EmailInput } from "../ui/email-input";
+import { FormSubmitHint, FormTextInput } from "../ui/form-controls";
 import { FormField } from "../ui/form-field";
 import { PasswordInput } from "../ui/password-input";
 import { PinInput } from "../ui/pin-input";
@@ -101,31 +104,44 @@ function getZodFieldError(
 
 export function LandingLoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [pin, setPin] = useState("");
-  const [touchedPhone, setTouchedPhone] = useState(false);
-  const [touchedPin, setTouchedPin] = useState(false);
-  const [touchedEmail, setTouchedEmail] = useState(false);
-  const [touchedPassword, setTouchedPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingPhone, setLoadingPhone] = useState(false);
-  const phonePinValidation = useMemo(
-    () => phonePinSchema.safeParse({ phone, pin }),
-    [phone, pin],
-  );
-  const credentialsValidation = useMemo(
-    () => credentialsSchema.safeParse({ email, password }),
-    [email, password],
-  );
-  const phonePinDirty = phone.length > 0 || pin.length > 0;
-  const credentialsDirty = email.length > 0 || password.length > 0;
-  const phoneError = getZodFieldError(phonePinValidation, "phone");
-  const pinError = getZodFieldError(phonePinValidation, "pin");
-  const emailError = getZodFieldError(credentialsValidation, "email");
-  const passwordError = getZodFieldError(credentialsValidation, "password");
+  const phoneForm = useForm<z.infer<typeof phonePinSchema>>({
+    resolver: zodResolver(phonePinSchema),
+    mode: "onChange",
+    defaultValues: {
+      phone: "",
+      pin: "",
+    },
+  });
+  const credentialsForm = useForm<z.infer<typeof credentialsSchema>>({
+    resolver: zodResolver(credentialsSchema),
+    mode: "onChange",
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+  const phone = phoneForm.watch("phone");
+  const email = credentialsForm.watch("email");
+  const password = credentialsForm.watch("password");
+  const phoneValidation = phonePinSchema.safeParse({
+    phone: phone ?? "",
+    pin: phoneForm.watch("pin") ?? "",
+  });
+  const credentialsValidation = credentialsSchema.safeParse({
+    email: email ?? "",
+    password: password ?? "",
+  });
+  const showPhoneErrors =
+    phone.length > 0 ||
+    (phoneForm.watch("pin")?.length ?? 0) > 0 ||
+    phoneForm.formState.submitCount > 0;
+  const showCredentialErrors =
+    email.length > 0 ||
+    password.length > 0 ||
+    credentialsForm.formState.submitCount > 0;
 
   async function redirectAfterLogin() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -173,16 +189,8 @@ export function LandingLoginForm() {
     router.push(`/compte-en-attente?${query.toString()}`);
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onSubmit(values: z.infer<typeof credentialsSchema>) {
     setError(null);
-    const parsed = credentialsSchema.safeParse({ email, password });
-    if (!parsed.success) {
-      setTouchedEmail(true);
-      setTouchedPassword(true);
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
     setLoading(true);
 
     try {
@@ -191,8 +199,8 @@ export function LandingLoginForm() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: parsed.data.email,
-          password: parsed.data.password,
+          email: values.email,
+          password: values.password,
         }),
       });
 
@@ -258,16 +266,8 @@ export function LandingLoginForm() {
     }
   }
 
-  async function onPhoneSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onPhoneSubmit(values: z.infer<typeof phonePinSchema>) {
     setError(null);
-    const parsed = phonePinSchema.safeParse({ phone, pin });
-    if (!parsed.success) {
-      setTouchedPhone(true);
-      setTouchedPin(true);
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
     setLoadingPhone(true);
 
     try {
@@ -276,8 +276,8 @@ export function LandingLoginForm() {
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: parsed.data.phone,
-          pin: parsed.data.pin,
+          phone: values.phone,
+          pin: values.pin,
         }),
       });
 
@@ -287,7 +287,7 @@ export function LandingLoginForm() {
           const parsed = parseApiError(payload);
           if (parsed.code === "ACCOUNT_VALIDATION_REQUIRED") {
             redirectToPendingAccount({
-              phone,
+              phone: values.phone,
               schoolSlug: parsed.schoolSlug,
             });
             return;
@@ -298,8 +298,8 @@ export function LandingLoginForm() {
             if (parsed.email) {
               params.set("email", parsed.email);
             }
-            if (phone) {
-              params.set("phone", phone);
+            if (values.phone) {
+              params.set("phone", values.phone);
             }
             if (parsed.schoolSlug) {
               params.set("schoolSlug", parsed.schoolSlug);
@@ -316,8 +316,8 @@ export function LandingLoginForm() {
             if (parsed.setupToken) {
               params.set("token", parsed.setupToken);
             }
-            if (phone) {
-              params.set("phone", phone);
+            if (values.phone) {
+              params.set("phone", values.phone);
             }
             if (parsed.schoolSlug) {
               params.set("schoolSlug", parsed.schoolSlug);
@@ -361,41 +361,86 @@ export function LandingLoginForm() {
             Telephone + PIN
           </h3>
           <p className="mb-3 text-xs text-text-secondary">Connexion rapide</p>
-          <form className="grid gap-3" onSubmit={onPhoneSubmit} noValidate>
+          <form
+            className="grid gap-3"
+            onSubmit={phoneForm.handleSubmit(onPhoneSubmit)}
+            noValidate
+          >
             <FormField
               label="Telephone"
-              error={touchedPhone ? phoneError : null}
+              error={
+                showPhoneErrors
+                  ? getZodFieldError(phoneValidation, "phone")
+                  : null
+              }
             >
-              <input
-                className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                type="text"
-                value={phone}
-                onChange={(event) => {
-                  setTouchedPhone(true);
-                  setPhone(normalizePhoneInput(event.target.value));
-                }}
-                onBlur={() => setTouchedPhone(true)}
-                placeholder="6XXXXXXXX"
+              <Controller
+                control={phoneForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormTextInput
+                    name={field.name}
+                    ref={field.ref}
+                    invalid={
+                      showPhoneErrors
+                        ? !!getZodFieldError(phoneValidation, "phone")
+                        : false
+                    }
+                    value={field.value}
+                    onChange={(event) =>
+                      phoneForm.setValue(
+                        "phone",
+                        normalizePhoneInput(event.target.value),
+                        { shouldDirty: true, shouldValidate: true },
+                      )
+                    }
+                    onBlur={field.onBlur}
+                    placeholder="6XXXXXXXX"
+                  />
+                )}
               />
             </FormField>
 
-            <FormField label="PIN" error={touchedPin ? pinError : null}>
-              <PinInput
-                value={pin}
-                onChange={(event) => {
-                  setTouchedPin(true);
-                  setPin(event.target.value);
-                }}
-                onBlur={() => setTouchedPin(true)}
-                placeholder="123456"
+            <FormField
+              label="PIN"
+              error={
+                showPhoneErrors
+                  ? getZodFieldError(phoneValidation, "pin")
+                  : null
+              }
+            >
+              <Controller
+                control={phoneForm.control}
+                name="pin"
+                render={({ field }) => (
+                  <PinInput
+                    aria-label="PIN"
+                    name={field.name}
+                    aria-invalid={
+                      showPhoneErrors
+                        ? getZodFieldError(phoneValidation, "pin")
+                          ? "true"
+                          : "false"
+                        : "false"
+                    }
+                    value={field.value}
+                    onChange={(event) =>
+                      phoneForm.setValue("pin", event.target.value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    onBlur={field.onBlur}
+                    placeholder="123456"
+                  />
+                )}
               />
             </FormField>
+            <FormSubmitHint visible={!phoneValidation.success} />
 
             <Button
               type="submit"
-              disabled={
-                loadingPhone || !phonePinDirty || !phonePinValidation.success
-              }
+              disabled={loadingPhone || !phoneValidation.success}
             >
               {loadingPhone ? "Connexion PIN..." : "Connexion telephone + PIN"}
             </Button>
@@ -415,37 +460,82 @@ export function LandingLoginForm() {
           <p className="mb-3 text-xs text-text-secondary">
             Connexion classique
           </p>
-          <form className="grid gap-3" onSubmit={onSubmit} noValidate>
-            <FormField label="Email" error={touchedEmail ? emailError : null}>
-              <EmailInput
-                value={email}
-                onChange={(event) => {
-                  setTouchedEmail(true);
-                  setEmail(event.target.value);
-                }}
-                onBlur={() => setTouchedEmail(true)}
-                placeholder="prenom.nom@gmail.com"
+          <form
+            className="grid gap-3"
+            onSubmit={credentialsForm.handleSubmit(onSubmit)}
+            noValidate
+          >
+            <FormField
+              label="Email"
+              error={
+                showCredentialErrors
+                  ? getZodFieldError(credentialsValidation, "email")
+                  : null
+              }
+            >
+              <Controller
+                control={credentialsForm.control}
+                name="email"
+                render={({ field }) => (
+                  <EmailInput
+                    name={field.name}
+                    invalid={
+                      showCredentialErrors
+                        ? !!getZodFieldError(credentialsValidation, "email")
+                        : false
+                    }
+                    value={field.value}
+                    onChange={(event) =>
+                      credentialsForm.setValue("email", event.target.value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    onBlur={field.onBlur}
+                    placeholder="prenom.nom@gmail.com"
+                  />
+                )}
               />
             </FormField>
 
             <FormField
               label="Mot de passe"
-              error={touchedPassword ? passwordError : null}
+              error={
+                showCredentialErrors
+                  ? getZodFieldError(credentialsValidation, "password")
+                  : null
+              }
             >
-              <PasswordInput
-                value={password}
-                onChange={(event) => {
-                  setTouchedPassword(true);
-                  setPassword(event.target.value);
-                }}
-                onBlur={() => setTouchedPassword(true)}
+              <Controller
+                control={credentialsForm.control}
+                name="password"
+                render={({ field }) => (
+                  <PasswordInput
+                    aria-label="Mot de passe"
+                    name={field.name}
+                    aria-invalid={
+                      showCredentialErrors
+                        ? getZodFieldError(credentialsValidation, "password")
+                          ? "true"
+                          : "false"
+                        : "false"
+                    }
+                    value={field.value}
+                    onChange={(event) =>
+                      credentialsForm.setValue("password", event.target.value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    onBlur={field.onBlur}
+                  />
+                )}
               />
             </FormField>
+            <FormSubmitHint visible={!credentialsValidation.success} />
             <Button
               type="submit"
-              disabled={
-                loading || !credentialsDirty || !credentialsValidation.success
-              }
+              disabled={loading || !credentialsValidation.success}
             >
               {loading ? "Connexion..." : "Se connecter"}
             </Button>

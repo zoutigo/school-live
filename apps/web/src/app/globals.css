@@ -4,10 +4,101 @@
 
 :root {
   color-scheme: light;
+  --site-gutter: 8px;
+  --field-radius: 10px;
+}
+
+@media (min-width: 360px) {
+  :root {
+    --site-gutter: 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --site-gutter: 24px;
+  }
 }
 
 body {
   @apply m-0 bg-background font-body text-text-primary;
+  background-image:
+    radial-gradient(
+      circle at top left,
+      rgba(216, 155, 91, 0.12),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at top right,
+      rgba(12, 95, 168, 0.08),
+      transparent 24%
+    ),
+    linear-gradient(180deg, #fcfaf7 0%, #f7f1e8 100%);
+  background-attachment: fixed;
+}
+
+.site-inline-gutter {
+  padding-inline: var(--site-gutter);
+}
+
+.site-main-gutter {
+  padding: var(--site-gutter);
+}
+
+.site-scroll-frame {
+  scrollbar-gutter: stable both-edges;
+}
+
+@keyframes menu-attention-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(12, 95, 168, 0);
+  }
+  20% {
+    transform: scale(1.07);
+    box-shadow:
+      0 0 0 6px rgba(12, 95, 168, 0.12),
+      0 12px 24px rgba(12, 95, 168, 0.18);
+  }
+  45% {
+    transform: translateX(-2px);
+  }
+  60% {
+    transform: translateX(2px);
+  }
+  75% {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 10px rgba(12, 95, 168, 0.06),
+      0 12px 24px rgba(12, 95, 168, 0.12);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(12, 95, 168, 0);
+  }
+}
+
+.menu-attention-active {
+  animation: menu-attention-pulse 1.6s ease-in-out 1;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="file"]
+  ),
+select,
+textarea {
+  border-radius: var(--field-radius) !important;
+  box-shadow: 0 1px 2px rgba(77, 56, 32, 0.04);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="file"]
+  ):focus,
+select:focus,
+textarea:focus {
+  box-shadow:
+    0 0 0 2px rgba(12, 95, 168, 0.16),
+    0 8px 18px rgba(12, 95, 168, 0.08);
 }
 
 a {
@@ -20,5 +111,118 @@ a:hover {
 
 /* Zebra striping for data tables: improves row tracking while keeping contrast subtle. */
 table.min-w-full.border-collapse > tbody > tr:nth-child(even) {
-  background-color: rgba(2, 6, 23, 0.03);
+  background-color: rgba(243, 223, 199, 0.22);
+}
+
+table.min-w-full.border-collapse thead tr {
+  background: rgba(255, 248, 240, 0.85);
+}
+
+table.min-w-full.border-collapse th {
+  color: #5f5a52;
+  font-weight: 600;
+}
+
+table.min-w-full.border-collapse tbody tr {
+  transition: background-color 160ms ease;
+}
+
+table.min-w-full.border-collapse tbody tr:hover {
+  background-color: rgba(216, 155, 91, 0.12);
+}
+
+.rounded-t-card {
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.rounded-t-card:hover {
+  transform: translateY(-1px);
+}
+
+.rounded-card.border.border-border.bg-background.p-3,
+.rounded-card.border.border-border.bg-surface.p-3,
+.grid.gap-3.rounded-card.border.border-border.bg-background.p-3,
+.grid.gap-3.rounded-card.border.border-border.bg-surface.p-3,
+.overflow-x-auto.rounded-card.border.border-border.bg-background.p-3 {
+  border-radius: 18px;
+  border-color: #e7d8c8;
+  box-shadow: 0 10px 26px rgba(77, 56, 32, 0.06);
+}
+
+.rounded-card.border.border-border.bg-background.p-3,
+.grid.gap-3.rounded-card.border.border-border.bg-background.p-3,
+.overflow-x-auto.rounded-card.border.border-border.bg-background.p-3 {
+  background: rgba(255, 248, 240, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.mb-3.flex.flex-wrap.items-end.gap-2.rounded-card.border.border-border.bg-background.p-3,
+.grid.gap-3.rounded-card.border.border-border.bg-background.p-3.md\:grid-cols-3,
+.grid.gap-3.rounded-card.border.border-border.bg-background.p-3.md\:grid-cols-4,
+.grid.gap-3.rounded-card.border.border-border.bg-background.p-3.md\:grid-cols-2,
+.grid.gap-3.rounded-card.border.border-border.bg-background.p-3.md\:grid-cols-\[1fr_1fr_1fr_auto\],
+.grid.gap-3.rounded-card.border.border-border.bg-background.p-3.md\:grid-cols-\[1fr_1fr_1fr_auto_auto\] {
+  background: rgba(255, 248, 240, 0.8);
+}
+
+.border-b.border-border {
+  border-color: rgba(231, 216, 200, 0.95);
+}
+
+.section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(231, 216, 200, 0.95);
+}
+
+.section-tab {
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  padding: 0.65rem 1rem;
+  font-family: Poppins, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #5f5a52;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.section-tab:hover {
+  transform: translateY(-1px);
+  color: #0c5fa8;
+}
+
+.section-tab-active {
+  border: 1px solid #e7d8c8;
+  border-bottom-color: #fffdfc;
+  background: linear-gradient(180deg, #fffdfc 0%, #fff8f0 100%);
+  color: #0c5fa8;
+  box-shadow: 0 10px 22px rgba(77, 56, 32, 0.08);
+}
+
+.filter-panel {
+  border-radius: 18px;
+  border: 1px solid #e7d8c8;
+  background: rgba(255, 248, 240, 0.82);
+  padding: 0.875rem;
+  box-shadow: 0 10px 26px rgba(77, 56, 32, 0.06);
+  backdrop-filter: blur(6px);
+}
+
+.content-panel {
+  border-radius: 20px;
+  border: 1px solid #e7d8c8;
+  background: linear-gradient(180deg, #fffdfc 0%, #fff8f0 100%);
+  box-shadow: 0 14px 30px rgba(77, 56, 32, 0.07);
 }

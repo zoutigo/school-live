@@ -1,13 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SsoProfileCompletionClient } from "./sso-profile-completion-client";
 
 const replaceMock = vi.fn();
 const getSessionMock = vi.fn();
 const signOutMock = vi.fn();
+const routerMock = { replace: replaceMock };
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => routerMock,
 }));
 
 vi.mock("next-auth/react", () => ({
@@ -23,7 +25,18 @@ describe("SsoProfileCompletionClient UI", () => {
     vi.restoreAllMocks();
   });
 
+  async function waitForProfileFormReady() {
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Champs manquants detectes: firstName, lastName, gender, phone",
+        ),
+      ).toBeInTheDocument();
+    });
+  }
+
   it("completes missing SSO profile then redirects to school dashboard", async () => {
+    const user = userEvent.setup();
     getSessionMock.mockResolvedValue({
       user: {
         email: "sso.user@example.test",
@@ -86,21 +99,17 @@ describe("SsoProfileCompletionClient UI", () => {
 
     render(<SsoProfileCompletionClient schoolSlug="college-vogt" />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Completer votre profil")).toBeInTheDocument();
-    });
+    await waitForProfileFormReady();
 
-    fireEvent.change(screen.getByLabelText("Prenom"), {
-      target: { value: "Aline" },
-    });
-    fireEvent.change(screen.getByLabelText("Nom"), {
-      target: { value: "Mbella" },
-    });
-    fireEvent.change(screen.getByLabelText("Telephone"), {
-      target: { value: "+237612345678" },
-    });
-    fireEvent.change(screen.getByLabelText("PIN (6 chiffres)"), {
-      target: { value: "123456" },
+    await user.type(screen.getByLabelText("Prenom"), "Aline");
+    await user.type(screen.getByLabelText("Nom"), "Mbella");
+    await user.type(screen.getByLabelText("Telephone"), "+237612345678");
+    await user.type(screen.getByLabelText("PIN (6 chiffres)"), "123456");
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Finaliser mon profil" }),
+      ).toBeEnabled();
     });
 
     fireEvent.click(
@@ -115,6 +124,7 @@ describe("SsoProfileCompletionClient UI", () => {
   });
 
   it("blocks submission when PIN is not 6 digits", async () => {
+    const user = userEvent.setup();
     getSessionMock.mockResolvedValue({
       user: {
         email: "sso.user@example.test",
@@ -150,38 +160,98 @@ describe("SsoProfileCompletionClient UI", () => {
 
     render(<SsoProfileCompletionClient schoolSlug="college-vogt" />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Completer votre profil")).toBeInTheDocument();
-    });
+    await waitForProfileFormReady();
 
     expect(
       screen.queryByText("Le PIN doit contenir exactement 6 chiffres."),
     ).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Prenom"), {
-      target: { value: "Aline" },
-    });
-    fireEvent.change(screen.getByLabelText("Nom"), {
-      target: { value: "Mbella" },
-    });
-    fireEvent.change(screen.getByLabelText("Telephone"), {
-      target: { value: "+237612345678" },
-    });
-    fireEvent.change(screen.getByLabelText("PIN (6 chiffres)"), {
-      target: { value: "12345" },
-    });
-
-    expect(
-      screen.getByText("Le PIN doit contenir exactement 6 chiffres."),
-    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Prenom"), "Aline");
+    await user.type(screen.getByLabelText("Nom"), "Mbella");
+    await user.type(screen.getByLabelText("Telephone"), "+237612345678");
+    await user.type(screen.getByLabelText("PIN (6 chiffres)"), "12345");
 
     const submitButton = screen.getByRole("button", {
       name: "Finaliser mon profil",
     });
-    expect(submitButton).toBeDisabled();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le PIN doit contenir exactement 6 chiffres."),
+      ).toBeInTheDocument();
+      expect(submitButton).toBeDisabled();
+    });
+
     expect(fetchMock).not.toHaveBeenCalledWith(
       expect.stringContaining("/auth/sso/profile/complete"),
       expect.anything(),
     );
+  });
+
+  it("shows inline phone validation onChange and enables submit only when valid", async () => {
+    const user = userEvent.setup();
+    getSessionMock.mockResolvedValue({
+      user: {
+        email: "sso.user@example.test",
+        provider: "GOOGLE",
+        providerAccountId: "google-123",
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/auth/sso/profile/options")) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            firstName: "",
+            lastName: "",
+            gender: null,
+            phone: null,
+            schoolSlug: "college-vogt",
+            missingFields: ["firstName", "lastName", "gender", "phone"],
+            needsProfileCompletion: true,
+          }),
+          {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      return new Response("not-found", { status: 404 });
+    });
+
+    render(<SsoProfileCompletionClient schoolSlug="college-vogt" />);
+
+    await waitForProfileFormReady();
+
+    await user.type(screen.getByLabelText("Prenom"), "Aline");
+    await user.type(screen.getByLabelText("Nom"), "Mbella");
+    const phoneInput = screen.getByLabelText("Telephone");
+    const pinInput = screen.getByLabelText("PIN (6 chiffres)");
+
+    await user.type(phoneInput, "61234");
+
+    const submitButton = screen.getByRole("button", {
+      name: "Finaliser mon profil",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Numero invalide (9 chiffres attendus)."),
+      ).toBeInTheDocument();
+      expect(submitButton).toBeDisabled();
+    });
+
+    await user.clear(phoneInput);
+    await user.type(phoneInput, "+237612345678");
+    await user.type(pinInput, "123456");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Numero invalide (9 chiffres attendus)."),
+      ).not.toBeInTheDocument();
+      expect(submitButton).toBeEnabled();
+    });
   });
 });

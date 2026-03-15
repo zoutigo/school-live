@@ -9,7 +9,9 @@ model Student {
   school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   parentLinks ParentStudent[] @relation("StudentLinks")
-  grades      Grade[]
+  studentGrades StudentGrade[]
+  evaluationScores StudentEvaluationScore[]
+  termReports   StudentTermReport[]
   enrollments Enrollment[]
   lifeEvents  StudentLifeEvent[]
 

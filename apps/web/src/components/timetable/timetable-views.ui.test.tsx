@@ -66,7 +66,7 @@ describe("TimetableViews", () => {
       screen.getByRole("button", { name: "Periode suivante (day)" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Aujourd'hui" }),
+      screen.getByRole("button", { name: /10 mars|Aujourd'hui/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/08:45 - 10:00 · Francais/i)).toBeInTheDocument();
     expect(screen.getByText(/Mr\s+NDEM\s+Guy/i)).toBeInTheDocument();
@@ -107,7 +107,11 @@ describe("TimetableViews", () => {
 
     const calendarDay = screen
       .getAllByRole("button")
-      .find((btn) => /\b10\b/.test(btn.textContent ?? ""));
+      .find((btn) =>
+        /mardi 10 mars|10/.test(
+          `${btn.getAttribute("title") ?? ""} ${btn.textContent ?? ""}`,
+        ),
+      );
     expect(calendarDay).toBeDefined();
     fireEvent.click(calendarDay!);
 

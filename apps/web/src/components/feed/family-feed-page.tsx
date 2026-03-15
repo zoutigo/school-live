@@ -22,6 +22,12 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import {
+  FormFileInput,
+  FormSelect,
+  FormTextInput,
+  FormTextarea,
+} from "../ui/form-controls";
+import {
   RichTextEditor,
   type RichTextEditorRef,
 } from "../editor/rich-text-editor";
@@ -908,32 +914,35 @@ export function FamilyFeedPage({
 
   return (
     <div className="grid gap-4">
-      <section className="relative overflow-hidden rounded-card border border-primary/20 bg-gradient-to-br from-primary/10 via-surface to-surface p-4">
+      <section
+        data-testid="family-feed-header"
+        className="relative min-w-0 overflow-hidden rounded-card border border-primary/20 bg-gradient-to-br from-primary/10 via-surface to-surface p-3 min-[360px]:p-4"
+      >
         <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/15 blur-2xl" />
         <div className="absolute -bottom-8 -left-8 h-28 w-28 rounded-full bg-success/20 blur-2xl" />
         <div className="relative grid gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+            <div className="min-w-0">
               {hideSectionLabel ? null : (
                 <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
                   <Sparkles className="h-3.5 w-3.5" />
                   Fil d'actualite famille
                 </p>
               )}
-              <h2 className="font-heading text-xl font-semibold text-text-primary">
+              <h2 className="mt-1 text-balance font-heading text-lg font-semibold leading-tight text-text-primary min-[360px]:text-xl">
                 {headingTitle ??
                   `Bonjour, suivez ${scopeLabel} de ${childFullName}`}
               </h2>
             </div>
             {allowComposer ? (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid gap-2 min-[360px]:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
                 <Button
                   variant={
                     openComposerMode === "POST" ? "secondary" : "primary"
                   }
                   iconLeft={<FileText className="h-4 w-4" />}
                   onClick={() => toggleComposer("POST")}
-                  className="h-9 px-3"
+                  className="h-10 w-full justify-center px-3 text-sm lg:w-auto"
                 >
                   Publier une info
                 </Button>
@@ -943,7 +952,7 @@ export function FamilyFeedPage({
                   }
                   iconLeft={<Vote className="h-4 w-4" />}
                   onClick={() => toggleComposer("POLL")}
-                  className="h-9 px-3"
+                  className="h-10 w-full justify-center px-3 text-sm lg:w-auto"
                 >
                   Realiser un sondage
                 </Button>
@@ -960,14 +969,17 @@ export function FamilyFeedPage({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
+          <div
+            data-testid="family-feed-toolbar"
+            className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+          >
+            <FormTextInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Rechercher dans le fil..."
-              className="h-10 min-w-0 flex-1 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              className="h-10 min-w-0 w-full bg-background text-sm"
             />
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="-mx-1 flex min-w-0 items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
               <FilterButton
                 label="Tous"
                 active={filter === "all"}
@@ -1012,7 +1024,7 @@ export function FamilyFeedPage({
                 ))}
               </div>
               {staffViewFilter === "LEVEL" || staffViewFilter === "CLASS" ? (
-                <select
+                <FormSelect
                   value={staffFilterLevelId}
                   onChange={(event) => {
                     const levelId = event.target.value;
@@ -1024,24 +1036,24 @@ export function FamilyFeedPage({
                       setStaffFilterClassId(firstClass.id);
                     }
                   }}
-                  className="h-9 rounded-card border border-border bg-surface px-3 text-sm text-text-primary outline-none"
+                  className="h-9 bg-surface text-sm"
                 >
                   {levelOptions.map((entry) => (
                     <option key={entry.id} value={entry.id}>
                       {entry.label}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               ) : (
                 <span />
               )}
               {staffViewFilter === "CLASS" ? (
-                <select
+                <FormSelect
                   value={staffFilterClassId}
                   onChange={(event) =>
                     setStaffFilterClassId(event.target.value)
                   }
-                  className="h-9 rounded-card border border-border bg-surface px-3 text-sm text-text-primary outline-none"
+                  className="h-9 bg-surface text-sm"
                 >
                   {classOptions
                     .filter((entry) => entry.levelId === staffFilterLevelId)
@@ -1050,7 +1062,7 @@ export function FamilyFeedPage({
                         {entry.label}
                       </option>
                     ))}
-                </select>
+                </FormSelect>
               ) : (
                 <span />
               )}
@@ -1069,7 +1081,7 @@ export function FamilyFeedPage({
                   : "sm:grid-cols-[1fr_260px]"
               }`}
             >
-              <input
+              <FormTextInput
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder={
@@ -1077,30 +1089,30 @@ export function FamilyFeedPage({
                     ? "Titre du sondage"
                     : "Titre de la publication"
                 }
-                className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 bg-background text-sm"
               />
               {viewerRole === "PARENT" || viewerRole === "STUDENT" ? null : (
-                <select
+                <FormSelect
                   value={selectedAudienceScope}
                   onChange={(event) =>
                     setSelectedAudienceScope(
                       event.target.value as FeedAudienceScope,
                     )
                   }
-                  className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="h-10 bg-background text-sm"
                 >
                   {audienceOptions.map((entry) => (
                     <option key={entry.scope} value={entry.scope}>
                       {entry.label}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               )}
             </div>
 
             {isStaff(viewerRole) && selectedAudienceScope === "CLASS" ? (
               <div className="grid gap-2 sm:grid-cols-2">
-                <select
+                <FormSelect
                   value={selectedAudienceLevelId}
                   onChange={(event) => {
                     const nextLevelId = event.target.value;
@@ -1112,20 +1124,20 @@ export function FamilyFeedPage({
                       setSelectedAudienceClassId(firstClass.id);
                     }
                   }}
-                  className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="h-10 bg-background text-sm"
                 >
                   {levelOptions.map((entry) => (
                     <option key={entry.id} value={entry.id}>
                       {entry.label}
                     </option>
                   ))}
-                </select>
-                <select
+                </FormSelect>
+                <FormSelect
                   value={selectedAudienceClassId}
                   onChange={(event) =>
                     setSelectedAudienceClassId(event.target.value)
                   }
-                  className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="h-10 bg-background text-sm"
                 >
                   {classOptions
                     .filter(
@@ -1136,14 +1148,14 @@ export function FamilyFeedPage({
                         {entry.label}
                       </option>
                     ))}
-                </select>
+                </FormSelect>
               </div>
             ) : null}
 
-            <input
+            <FormTextInput
               readOnly
               value={`Public cible: ${getSelectedAudience().label}`}
-              className="h-9 rounded-card border border-border bg-muted px-3 text-xs text-text-secondary"
+              className="h-9 bg-muted px-3 text-xs text-text-secondary"
             />
 
             <RichTextEditor
@@ -1160,14 +1172,14 @@ export function FamilyFeedPage({
 
             {openComposerMode === "POLL" ? (
               <div className="grid gap-2 rounded-card border border-border bg-background p-3">
-                <input
+                <FormTextInput
                   value={pollQuestion}
                   onChange={(event) => setPollQuestion(event.target.value)}
                   placeholder="Question du sondage"
-                  className="h-10 rounded-card border border-border bg-surface px-3 text-sm text-text-primary outline-none"
+                  className="h-10 bg-surface text-sm"
                 />
                 {pollOptions.map((option, index) => (
-                  <input
+                  <FormTextInput
                     key={`poll-option-${index + 1}`}
                     value={option}
                     onChange={(event) =>
@@ -1178,7 +1190,7 @@ export function FamilyFeedPage({
                       )
                     }
                     placeholder={`Option ${index + 1}`}
-                    className="h-10 rounded-card border border-border bg-surface px-3 text-sm text-text-primary outline-none"
+                    className="h-10 bg-surface text-sm"
                   />
                 ))}
                 {pollOptions.length < 5 ? (
@@ -1195,8 +1207,7 @@ export function FamilyFeedPage({
             ) : null}
 
             <div className="grid gap-2 p-0">
-              <input
-                type="file"
+              <FormFileInput
                 multiple
                 aria-label="Ajouter des pieces jointes a la publication"
                 onChange={(event) => onAttachmentPick(event.target.files)}
@@ -1220,19 +1231,19 @@ export function FamilyFeedPage({
               <div className="inline-flex items-center gap-2 text-sm text-text-secondary">
                 <CalendarDays className="h-4 w-4" />
                 Mise en avant (jours)
-                <select
+                <FormSelect
                   value={featuredDays}
                   onChange={(event) =>
                     setFeaturedDays(Number(event.target.value))
                   }
-                  className="h-8 rounded border border-border bg-background px-2"
+                  className="h-8 bg-background px-2"
                 >
                   <option value={0}>Aucune</option>
                   <option value={1}>1 jour</option>
                   <option value={3}>3 jours</option>
                   <option value={5}>5 jours</option>
                   <option value={7}>7 jours</option>
-                </select>
+                </FormSelect>
               </div>
               <Button
                 onClick={publishPost}
@@ -1393,11 +1404,11 @@ export function FamilyFeedPage({
 
             {editingPostId === post.id ? (
               <div className="mt-4 grid gap-3 rounded-card border border-primary/25 bg-primary/5 p-3">
-                <input
+                <FormTextInput
                   value={editTitle}
                   onChange={(event) => setEditTitle(event.target.value)}
                   placeholder="Titre de la publication"
-                  className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="h-10 bg-background text-sm"
                 />
 
                 <RichTextEditor
@@ -1414,16 +1425,16 @@ export function FamilyFeedPage({
 
                 {post.type === "POLL" ? (
                   <div className="grid gap-2 rounded-card border border-border bg-background p-3">
-                    <input
+                    <FormTextInput
                       value={editPollQuestion}
                       onChange={(event) =>
                         setEditPollQuestion(event.target.value)
                       }
                       placeholder="Question du sondage"
-                      className="h-10 rounded-card border border-border bg-surface px-3 text-sm text-text-primary outline-none"
+                      className="h-10 bg-surface text-sm"
                     />
                     {editPollOptions.map((option, index) => (
-                      <input
+                      <FormTextInput
                         key={`edit-poll-option-${index + 1}`}
                         value={option}
                         onChange={(event) =>
@@ -1434,7 +1445,7 @@ export function FamilyFeedPage({
                           )
                         }
                         placeholder={`Option ${index + 1}`}
-                        className="h-10 rounded-card border border-border bg-surface px-3 text-sm text-text-primary outline-none"
+                        className="h-10 bg-surface text-sm"
                       />
                     ))}
                     {editPollOptions.length < 5 ? (
@@ -1453,8 +1464,7 @@ export function FamilyFeedPage({
                 ) : null}
 
                 <div className="grid gap-2 p-0">
-                  <input
-                    type="file"
+                  <FormFileInput
                     multiple
                     aria-label="Modifier les pieces jointes de la publication"
                     onChange={(event) =>
@@ -1622,13 +1632,13 @@ export function FamilyFeedPage({
 
               {commentFormOpenByPostId[post.id] ? (
                 <div className="grid gap-2">
-                  <textarea
+                  <FormTextarea
                     value={commentInputByPostId[post.id] ?? ""}
                     onChange={(event) =>
                       updateCommentDraft(post.id, event.target.value)
                     }
                     placeholder="Ajouter un commentaire..."
-                    className="min-h-[78px] rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="min-h-[78px] bg-surface text-sm"
                   />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="inline-flex items-center gap-1">
@@ -1966,7 +1976,7 @@ function FilterButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={`rounded-card border text-sm font-semibold transition ${
+      className={`shrink-0 rounded-card border text-sm font-semibold transition ${
         iconOnly ? "h-10 w-10 px-0" : "h-10 px-3"
       } ${
         active

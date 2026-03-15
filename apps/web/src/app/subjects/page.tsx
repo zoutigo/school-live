@@ -1,11 +1,20 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import {
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
@@ -25,7 +34,7 @@ type Role =
   | "PARENT"
   | "STUDENT";
 
-type Tab = "catalog" | "assignments" | "help";
+type Tab = "catalog" | "assignments" | "evaluation-types" | "help";
 
 type MeResponse = {
   role: Role;
@@ -44,9 +53,14 @@ type SubjectRow = {
   name: string;
   createdAt: string;
   updatedAt: string;
+  branches: Array<{
+    id: string;
+    name: string;
+    code?: string | null;
+  }>;
   _count: {
     assignments: number;
-    grades: number;
+    studentGrades: number;
     curriculumSubjects: number;
     classOverrides: number;
   };
@@ -95,6 +109,29 @@ type AssignmentRow = {
   };
 };
 
+type EvaluationTypeRow = {
+  id: string;
+  code: string;
+  label: string;
+  isDefault: boolean;
+};
+
+const createSubjectSchema = z.object({
+  name: z.string().trim().min(1, "Le nom de la matiere est obligatoire."),
+});
+
+const createEvaluationTypeSchema = z.object({
+  code: z.string().trim().min(1, "Le code est obligatoire."),
+  label: z.string().trim().min(1, "Le libelle est obligatoire."),
+});
+
+const createAssignmentSchema = z.object({
+  schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
+  teacherUserId: z.string().trim().min(1, "L'enseignant est obligatoire."),
+  classId: z.string().trim().min(1, "La classe est obligatoire."),
+  subjectId: z.string().trim().min(1, "La matiere est obligatoire."),
+});
+
 export default function SubjectsPage() {
   const router = useRouter();
 
@@ -106,48 +143,102 @@ export default function SubjectsPage() {
   const [schools, setSchools] = useState<SchoolOption[]>([]);
 
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
+  const [evaluationTypes, setEvaluationTypes] = useState<EvaluationTypeRow[]>(
+    [],
+  );
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
   const [classrooms, setClassrooms] = useState<ClassroomOption[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
 
-  const [subjectName, setSubjectName] = useState("");
+  const [branchDrafts, setBranchDrafts] = useState<Record<string, string>>({});
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
-  const [editSubjectName, setEditSubjectName] = useState("");
-
-  const [assignmentSchoolYearId, setAssignmentSchoolYearId] = useState("");
-  const [assignmentTeacherUserId, setAssignmentTeacherUserId] = useState("");
-  const [assignmentClassId, setAssignmentClassId] = useState("");
-  const [assignmentSubjectId, setAssignmentSubjectId] = useState("");
+  const [editingEvaluationTypeId, setEditingEvaluationTypeId] = useState<
+    string | null
+  >(null);
 
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(
     null,
   );
-  const [editAssignmentSchoolYearId, setEditAssignmentSchoolYearId] =
-    useState("");
-  const [editAssignmentTeacherUserId, setEditAssignmentTeacherUserId] =
-    useState("");
-  const [editAssignmentClassId, setEditAssignmentClassId] = useState("");
-  const [editAssignmentSubjectId, setEditAssignmentSubjectId] = useState("");
 
   const [submittingSubject, setSubmittingSubject] = useState(false);
   const [savingSubject, setSavingSubject] = useState(false);
+  const [submittingBranchForSubjectId, setSubmittingBranchForSubjectId] =
+    useState<string | null>(null);
+  const [submittingEvaluationType, setSubmittingEvaluationType] =
+    useState(false);
+  const [savingEvaluationType, setSavingEvaluationType] = useState(false);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<
     | { kind: "subject"; id: string; label: string }
+    | { kind: "branch"; id: string; label: string }
+    | { kind: "evaluation-type"; id: string; label: string }
     | { kind: "assignment"; id: string; label: string }
     | null
   >(null);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const createSubjectForm = useForm<z.input<typeof createSubjectSchema>>({
+    resolver: zodResolver(createSubjectSchema),
+    mode: "onChange",
+    defaultValues: { name: "" },
+  });
+  const createEvaluationTypeForm = useForm<
+    z.input<typeof createEvaluationTypeSchema>
+  >({
+    resolver: zodResolver(createEvaluationTypeSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const createAssignmentForm = useForm<z.input<typeof createAssignmentSchema>>({
+    resolver: zodResolver(createAssignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      schoolYearId: "",
+      teacherUserId: "",
+      classId: "",
+      subjectId: "",
+    },
+  });
+  const editSubjectForm = useForm<z.input<typeof createSubjectSchema>>({
+    resolver: zodResolver(createSubjectSchema),
+    mode: "onChange",
+    defaultValues: { name: "" },
+  });
+  const editEvaluationTypeForm = useForm<
+    z.input<typeof createEvaluationTypeSchema>
+  >({
+    resolver: zodResolver(createEvaluationTypeSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const editAssignmentForm = useForm<z.input<typeof createAssignmentSchema>>({
+    resolver: zodResolver(createAssignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      schoolYearId: "",
+      teacherUserId: "",
+      classId: "",
+      subjectId: "",
+    },
+  });
+  const createSubjectValues = createSubjectForm.watch();
+  const createEvaluationTypeValues = createEvaluationTypeForm.watch();
+  const createAssignmentValues = createAssignmentForm.watch();
+  const editAssignmentValues = editAssignmentForm.watch();
 
   useEffect(() => {
     void bootstrap();
   }, []);
+
+  useEffect(() => {
+    void createSubjectForm.trigger();
+    void createEvaluationTypeForm.trigger();
+  }, [createEvaluationTypeForm, createSubjectForm]);
 
   useEffect(() => {
     if (!schoolSlug) {
@@ -224,12 +315,16 @@ export default function SubjectsPage() {
     try {
       const [
         subjectsResponse,
+        evaluationTypesResponse,
         teachersResponse,
         schoolYearsResponse,
         classroomsResponse,
         assignmentsResponse,
       ] = await Promise.all([
         fetch(buildAdminPath(currentSchoolSlug, "subjects"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "evaluation-types"), {
           credentials: "include",
         }),
         fetch(buildAdminPath(currentSchoolSlug, "teachers"), {
@@ -248,6 +343,7 @@ export default function SubjectsPage() {
 
       if (
         !subjectsResponse.ok ||
+        !evaluationTypesResponse.ok ||
         !teachersResponse.ok ||
         !schoolYearsResponse.ok ||
         !classroomsResponse.ok ||
@@ -258,6 +354,8 @@ export default function SubjectsPage() {
       }
 
       const subjectsPayload = (await subjectsResponse.json()) as SubjectRow[];
+      const evaluationTypesPayload =
+        (await evaluationTypesResponse.json()) as EvaluationTypeRow[];
       const teachersPayload =
         (await teachersResponse.json()) as TeacherOption[];
       const schoolYearsPayload =
@@ -268,22 +366,42 @@ export default function SubjectsPage() {
         (await assignmentsResponse.json()) as AssignmentRow[];
 
       setSubjects(subjectsPayload);
+      setEvaluationTypes(evaluationTypesPayload);
       setTeachers(teachersPayload);
       setSchoolYears(schoolYearsPayload);
       setClassrooms(classroomsPayload);
       setAssignments(assignmentsPayload);
 
-      if (!assignmentSchoolYearId && schoolYearsPayload.length > 0) {
-        setAssignmentSchoolYearId(
+      if (
+        !createAssignmentForm.getValues("schoolYearId") &&
+        schoolYearsPayload.length > 0
+      ) {
+        createAssignmentForm.setValue(
+          "schoolYearId",
           schoolYearsPayload.find((entry) => entry.isActive)?.id ??
             schoolYearsPayload[0].id,
+          { shouldValidate: true },
         );
       }
-      if (!assignmentTeacherUserId && teachersPayload.length > 0) {
-        setAssignmentTeacherUserId(teachersPayload[0].userId);
+      if (
+        !createAssignmentForm.getValues("teacherUserId") &&
+        teachersPayload.length > 0
+      ) {
+        createAssignmentForm.setValue(
+          "teacherUserId",
+          teachersPayload[0].userId,
+          {
+            shouldValidate: true,
+          },
+        );
       }
-      if (!assignmentSubjectId && subjectsPayload.length > 0) {
-        setAssignmentSubjectId(subjectsPayload[0].id);
+      if (
+        !createAssignmentForm.getValues("subjectId") &&
+        subjectsPayload.length > 0
+      ) {
+        createAssignmentForm.setValue("subjectId", subjectsPayload[0].id, {
+          shouldValidate: true,
+        });
       }
     } catch {
       setError("Erreur reseau.");
@@ -296,30 +414,41 @@ export default function SubjectsPage() {
     () =>
       classrooms.filter(
         (entry) =>
-          !assignmentSchoolYearId ||
-          entry.schoolYear.id === assignmentSchoolYearId,
+          !createAssignmentValues.schoolYearId ||
+          entry.schoolYear.id === createAssignmentValues.schoolYearId,
       ),
-    [classrooms, assignmentSchoolYearId],
+    [classrooms, createAssignmentValues.schoolYearId],
   );
 
   useEffect(() => {
-    if (!assignmentClassId) {
+    if (!createAssignmentValues.classId) {
       if (filteredClassroomsForCreate.length > 0) {
-        setAssignmentClassId(filteredClassroomsForCreate[0].id);
+        createAssignmentForm.setValue(
+          "classId",
+          filteredClassroomsForCreate[0].id,
+          { shouldValidate: true },
+        );
       }
       return;
     }
 
     const exists = filteredClassroomsForCreate.some(
-      (entry) => entry.id === assignmentClassId,
+      (entry) => entry.id === createAssignmentValues.classId,
     );
     if (!exists) {
-      setAssignmentClassId(filteredClassroomsForCreate[0]?.id ?? "");
+      createAssignmentForm.setValue(
+        "classId",
+        filteredClassroomsForCreate[0]?.id ?? "",
+        { shouldValidate: true },
+      );
     }
-  }, [filteredClassroomsForCreate, assignmentClassId]);
+  }, [
+    createAssignmentForm,
+    createAssignmentValues.classId,
+    filteredClassroomsForCreate,
+  ]);
 
-  async function onCreateSubject(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateSubject(values: z.output<typeof createSubjectSchema>) {
     if (!schoolSlug) {
       return;
     }
@@ -343,7 +472,7 @@ export default function SubjectsPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify({ name: subjectName }),
+        body: JSON.stringify(values),
       });
 
       if (!response.ok) {
@@ -358,7 +487,7 @@ export default function SubjectsPage() {
         return;
       }
 
-      setSubjectName("");
+      createSubjectForm.reset({ name: "" });
       setSuccess("Matiere creee.");
       await loadData(schoolSlug);
     } catch {
@@ -370,12 +499,16 @@ export default function SubjectsPage() {
 
   function startEditSubject(subject: SubjectRow) {
     setEditingSubjectId(subject.id);
-    setEditSubjectName(subject.name);
+    editSubjectForm.reset({ name: subject.name });
+    void editSubjectForm.trigger();
     setError(null);
     setSuccess(null);
   }
 
-  async function saveSubject(subjectId: string) {
+  async function saveSubject(
+    subjectId: string,
+    values: z.output<typeof createSubjectSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -401,7 +534,7 @@ export default function SubjectsPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify({ name: editSubjectName }),
+          body: JSON.stringify({ name: values.name }),
         },
       );
 
@@ -431,18 +564,221 @@ export default function SubjectsPage() {
     setDeleteTarget({ kind: "subject", id: subject.id, label: subject.name });
   }
 
-  function startEditAssignment(assignment: AssignmentRow) {
-    setEditingAssignmentId(assignment.id);
-    setEditAssignmentSchoolYearId(assignment.schoolYearId);
-    setEditAssignmentTeacherUserId(assignment.teacherUserId);
-    setEditAssignmentClassId(assignment.classId);
-    setEditAssignmentSubjectId(assignment.subjectId);
+  async function onCreateBranch(subjectId: string) {
+    if (!schoolSlug) {
+      return;
+    }
+
+    const name = branchDrafts[subjectId]?.trim();
+    if (!name) {
+      setError("Nom de sous-branche requis.");
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingBranchForSubjectId(subjectId);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `subjects/${subjectId}/branches`),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ name }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Creation sous-branche impossible.");
+        setError(String(message));
+        return;
+      }
+
+      setBranchDrafts((prev) => ({ ...prev, [subjectId]: "" }));
+      setSuccess("Sous-branche creee.");
+      await loadData(schoolSlug);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSubmittingBranchForSubjectId(null);
+    }
+  }
+
+  function askDeleteBranch(
+    subject: SubjectRow,
+    branchId: string,
+    label: string,
+  ) {
+    setDeleteTarget({
+      kind: "branch",
+      id: branchId,
+      label: `${subject.name} - ${label}`,
+    });
+  }
+
+  async function onCreateEvaluationType(
+    values: z.output<typeof createEvaluationTypeSchema>,
+  ) {
+    if (!schoolSlug) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingEvaluationType(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, "evaluation-types"),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify(values),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Creation type impossible.");
+        setError(String(message));
+        return;
+      }
+
+      createEvaluationTypeForm.reset({ code: "", label: "" });
+      setSuccess("Type d'evaluation cree.");
+      await loadData(schoolSlug);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSubmittingEvaluationType(false);
+    }
+  }
+
+  function startEditEvaluationType(evaluationType: EvaluationTypeRow) {
+    setEditingEvaluationTypeId(evaluationType.id);
+    editEvaluationTypeForm.reset({
+      code: evaluationType.code,
+      label: evaluationType.label,
+    });
+    void editEvaluationTypeForm.trigger();
     setError(null);
     setSuccess(null);
   }
 
-  async function onCreateAssignment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function saveEvaluationType(
+    evaluationTypeId: string,
+    values: z.output<typeof createEvaluationTypeSchema>,
+  ) {
+    if (!schoolSlug) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSavingEvaluationType(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, `evaluation-types/${evaluationTypeId}`),
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            code: values.code,
+            label: values.label,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Mise a jour type impossible.");
+        setError(String(message));
+        return;
+      }
+      setEditingEvaluationTypeId(null);
+      setSuccess("Type d'evaluation modifie.");
+      await loadData(schoolSlug);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSavingEvaluationType(false);
+    }
+  }
+
+  function askDeleteEvaluationType(evaluationType: EvaluationTypeRow) {
+    setDeleteTarget({
+      kind: "evaluation-type",
+      id: evaluationType.id,
+      label: evaluationType.label,
+    });
+  }
+
+  function startEditAssignment(assignment: AssignmentRow) {
+    setEditingAssignmentId(assignment.id);
+    editAssignmentForm.reset({
+      schoolYearId: assignment.schoolYearId,
+      teacherUserId: assignment.teacherUserId,
+      classId: assignment.classId,
+      subjectId: assignment.subjectId,
+    });
+    void editAssignmentForm.trigger();
+    setError(null);
+    setSuccess(null);
+  }
+
+  async function onCreateAssignment(
+    values: z.output<typeof createAssignmentSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -468,12 +804,7 @@ export default function SubjectsPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify({
-            schoolYearId: assignmentSchoolYearId,
-            teacherUserId: assignmentTeacherUserId,
-            classId: assignmentClassId,
-            subjectId: assignmentSubjectId,
-          }),
+          body: JSON.stringify(values),
         },
       );
 
@@ -489,6 +820,12 @@ export default function SubjectsPage() {
         return;
       }
 
+      createAssignmentForm.reset({
+        schoolYearId: values.schoolYearId,
+        teacherUserId: values.teacherUserId,
+        classId: values.classId,
+        subjectId: values.subjectId,
+      });
       setSuccess("Affectation enseignant/matiere creee.");
       await loadData(schoolSlug);
     } catch {
@@ -498,7 +835,10 @@ export default function SubjectsPage() {
     }
   }
 
-  async function saveAssignment(assignmentId: string) {
+  async function saveAssignment(
+    assignmentId: string,
+    values: z.output<typeof createAssignmentSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
@@ -525,10 +865,10 @@ export default function SubjectsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            schoolYearId: editAssignmentSchoolYearId,
-            teacherUserId: editAssignmentTeacherUserId,
-            classId: editAssignmentClassId,
-            subjectId: editAssignmentSubjectId,
+            schoolYearId: values.schoolYearId,
+            teacherUserId: values.teacherUserId,
+            classId: values.classId,
+            subjectId: values.subjectId,
           }),
         },
       );
@@ -583,7 +923,11 @@ export default function SubjectsPage() {
       const segment =
         deleteTarget.kind === "subject"
           ? `subjects/${deleteTarget.id}`
-          : `teacher-assignments/${deleteTarget.id}`;
+          : deleteTarget.kind === "branch"
+            ? `subjects/branches/${deleteTarget.id}`
+            : deleteTarget.kind === "evaluation-type"
+              ? `evaluation-types/${deleteTarget.id}`
+              : `teacher-assignments/${deleteTarget.id}`;
 
       const response = await fetch(buildAdminPath(schoolSlug, segment), {
         method: "DELETE",
@@ -609,7 +953,11 @@ export default function SubjectsPage() {
       setSuccess(
         deleteTarget.kind === "subject"
           ? "Matiere supprimee."
-          : "Affectation supprimee.",
+          : deleteTarget.kind === "branch"
+            ? "Sous-branche supprimee."
+            : deleteTarget.kind === "evaluation-type"
+              ? "Type d'evaluation supprime."
+              : "Affectation supprimee.",
       );
       await loadData(schoolSlug);
     } catch {
@@ -639,7 +987,7 @@ export default function SubjectsPage() {
       <div className="grid gap-4">
         <Card
           title="Matieres"
-          subtitle="Catalogue et affectations enseignant-classe-matiere"
+          subtitle="Catalogue, sous-branches, types d'evaluation et affectations"
         >
           <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
             <button
@@ -666,6 +1014,17 @@ export default function SubjectsPage() {
             </button>
             <button
               type="button"
+              onClick={() => setTab("evaluation-types")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "evaluation-types"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              Types d'evaluation
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("help")}
               className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
                 tab === "help"
@@ -679,12 +1038,11 @@ export default function SubjectsPage() {
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
                 <span className="text-text-secondary">Ecole</span>
-                <select
+                <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Selectionner une ecole</option>
                   {schools.map((school) => (
@@ -692,7 +1050,7 @@ export default function SubjectsPage() {
                       {school.name}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
             ) : null}
           </div>
@@ -700,7 +1058,7 @@ export default function SubjectsPage() {
           {tab === "help" ? (
             <ModuleHelpTab
               moduleName="Matieres"
-              moduleSummary="ce module gere le catalogue des matieres et les affectations enseignants par classe et annee scolaire."
+              moduleSummary="ce module gere le catalogue des matieres, les sous-branches, les types d'evaluation et les affectations enseignants par classe."
               actions={[
                 {
                   name: "Creer une matiere",
@@ -710,7 +1068,7 @@ export default function SubjectsPage() {
                   moduleImpact:
                     "la matiere devient selectionnable dans le module Matieres.",
                   crossModuleImpact:
-                    "elle pourra etre rattachee aux curriculums, classes et notes.",
+                    "elle pourra etre rattachee aux curriculums, classes, sous-branches et evaluations.",
                 },
                 {
                   name: "Affecter un enseignant",
@@ -722,6 +1080,17 @@ export default function SubjectsPage() {
                     "l'affectation apparait dans la liste operationnelle.",
                   crossModuleImpact:
                     "le professeur pourra saisir/consulter les notes sur son perimetre assigne.",
+                },
+                {
+                  name: "Structurer les evaluations",
+                  purpose:
+                    "parametrer les sous-branches de matiere et les types d'evaluation.",
+                  howTo:
+                    "ajouter des sous-branches dans Catalogue et gerer les types dans l'onglet dedie.",
+                  moduleImpact:
+                    "les enseignants creent ensuite des evaluations mieux classees.",
+                  crossModuleImpact:
+                    "le module Notes parent/eleve restitue la matiere et la sous-branche correspondantes.",
                 },
                 {
                   name: "Modifier/Supprimer",
@@ -748,19 +1117,31 @@ export default function SubjectsPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-[1fr_auto]"
-                onSubmit={onCreateSubject}
+                onSubmit={createSubjectForm.handleSubmit(onCreateSubject)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Nouvelle matiere</span>
-                  <input
-                    value={subjectName}
-                    onChange={(event) => setSubjectName(event.target.value)}
+                <FormField
+                  label="Nouvelle matiere"
+                  error={createSubjectForm.formState.errors.name?.message}
+                >
+                  <FormTextInput
+                    aria-label="Nouvelle matiere"
+                    {...createSubjectForm.register("name")}
                     placeholder="Ex: Mathematiques"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    invalid={
+                      Boolean(createSubjectForm.formState.errors.name) ||
+                      !String(createSubjectValues.name ?? "").trim()
+                    }
                   />
-                </label>
+                </FormField>
                 <div className="self-end">
-                  <SubmitButton disabled={submittingSubject}>
+                  <FormSubmitHint
+                    visible={!createSubjectForm.formState.isValid}
+                  />
+                  <SubmitButton
+                    disabled={
+                      submittingSubject || !createSubjectForm.formState.isValid
+                    }
+                  >
                     {submittingSubject ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
@@ -771,6 +1152,7 @@ export default function SubjectsPage() {
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
                       <th className="px-3 py-2 font-medium">Matiere</th>
+                      <th className="px-3 py-2 font-medium">Sous-branches</th>
                       <th className="px-3 py-2 font-medium">Curriculums</th>
                       <th className="px-3 py-2 font-medium">Affectations</th>
                       <th className="px-3 py-2 font-medium">Notes</th>
@@ -784,7 +1166,7 @@ export default function SubjectsPage() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={6}
                         >
                           Chargement...
                         </td>
@@ -798,13 +1180,71 @@ export default function SubjectsPage() {
                           <tr className="border-b border-border text-text-primary">
                             <td className="px-3 py-2">{subject.name}</td>
                             <td className="px-3 py-2">
+                              <div className="flex flex-wrap gap-2">
+                                {subject.branches.length === 0 ? (
+                                  <span className="text-text-secondary">
+                                    Aucune
+                                  </span>
+                                ) : (
+                                  subject.branches.map((branch) => (
+                                    <span
+                                      key={branch.id}
+                                      className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs"
+                                    >
+                                      {branch.name}
+                                      <button
+                                        type="button"
+                                        className="font-semibold text-notification"
+                                        onClick={() =>
+                                          askDeleteBranch(
+                                            subject,
+                                            branch.id,
+                                            branch.name,
+                                          )
+                                        }
+                                      >
+                                        x
+                                      </button>
+                                    </span>
+                                  ))
+                                )}
+                              </div>
+                              <div className="mt-2 flex gap-2">
+                                <FormTextInput
+                                  value={branchDrafts[subject.id] ?? ""}
+                                  onChange={(event) =>
+                                    setBranchDrafts((prev) => ({
+                                      ...prev,
+                                      [subject.id]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder="Nouvelle sous-branche"
+                                  className="min-w-[180px] text-xs"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    void onCreateBranch(subject.id);
+                                  }}
+                                  disabled={
+                                    submittingBranchForSubjectId === subject.id
+                                  }
+                                >
+                                  {submittingBranchForSubjectId === subject.id
+                                    ? "Ajout..."
+                                    : "Ajouter"}
+                                </Button>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
                               {subject._count.curriculumSubjects}
                             </td>
                             <td className="px-3 py-2">
                               {subject._count.assignments}
                             </td>
                             <td className="px-3 py-2">
-                              {subject._count.grades}
+                              {subject._count.studentGrades}
                             </td>
                             <td className="px-3 py-2 text-right">
                               <div className="inline-flex gap-2">
@@ -827,20 +1267,41 @@ export default function SubjectsPage() {
                           </tr>
                           {editingSubjectId === subject.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={5}>
+                              <td className="px-3 py-3" colSpan={6}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                                  <input
-                                    value={editSubjectName}
-                                    onChange={(event) =>
-                                      setEditSubjectName(event.target.value)
+                                  <FormField
+                                    label="Nom de la matiere"
+                                    error={
+                                      editSubjectForm.formState.errors.name
+                                        ?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  />
+                                  >
+                                    <FormTextInput
+                                      aria-label="Nom de la matiere"
+                                      {...editSubjectForm.register("name")}
+                                      invalid={Boolean(
+                                        editSubjectForm.formState.errors.name,
+                                      )}
+                                    />
+                                  </FormField>
+                                  <div className="self-end">
+                                    <FormSubmitHint
+                                      visible={
+                                        !editSubjectForm.formState.isValid
+                                      }
+                                    />
+                                  </div>
                                   <Button
                                     type="button"
-                                    disabled={savingSubject}
+                                    disabled={
+                                      savingSubject ||
+                                      !editSubjectForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void saveSubject(subject.id);
+                                      void editSubjectForm.handleSubmit(
+                                        (values) =>
+                                          saveSubject(subject.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingSubject
@@ -850,7 +1311,10 @@ export default function SubjectsPage() {
                                   <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => setEditingSubjectId(null)}
+                                    onClick={() => {
+                                      setEditingSubjectId(null);
+                                      editSubjectForm.reset();
+                                    }}
                                   >
                                     Annuler
                                   </Button>
@@ -865,7 +1329,7 @@ export default function SubjectsPage() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={5}
+                          colSpan={6}
                         >
                           Aucune matiere.
                         </td>
@@ -875,20 +1339,239 @@ export default function SubjectsPage() {
                 </table>
               </div>
             </div>
+          ) : tab === "evaluation-types" ? (
+            <div className="grid gap-4">
+              <form
+                className="grid gap-3 md:grid-cols-[180px_1fr_auto]"
+                onSubmit={createEvaluationTypeForm.handleSubmit(
+                  onCreateEvaluationType,
+                )}
+              >
+                <FormField
+                  label="Code"
+                  error={
+                    createEvaluationTypeForm.formState.errors.code?.message
+                  }
+                >
+                  <FormTextInput
+                    aria-label="Code"
+                    {...createEvaluationTypeForm.register("code")}
+                    placeholder="DEVOIR"
+                    invalid={
+                      Boolean(createEvaluationTypeForm.formState.errors.code) ||
+                      !String(createEvaluationTypeValues.code ?? "").trim()
+                    }
+                  />
+                </FormField>
+                <FormField
+                  label="Libelle"
+                  error={
+                    createEvaluationTypeForm.formState.errors.label?.message
+                  }
+                >
+                  <FormTextInput
+                    aria-label="Libelle"
+                    {...createEvaluationTypeForm.register("label")}
+                    placeholder="Devoir surveille"
+                    invalid={
+                      Boolean(
+                        createEvaluationTypeForm.formState.errors.label,
+                      ) ||
+                      !String(createEvaluationTypeValues.label ?? "").trim()
+                    }
+                  />
+                </FormField>
+                <div className="self-end">
+                  <FormSubmitHint
+                    visible={!createEvaluationTypeForm.formState.isValid}
+                  />
+                  <SubmitButton
+                    disabled={
+                      submittingEvaluationType ||
+                      !createEvaluationTypeForm.formState.isValid
+                    }
+                  >
+                    {submittingEvaluationType ? "Creation..." : "Ajouter"}
+                  </SubmitButton>
+                </div>
+              </form>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-text-secondary">
+                      <th className="px-3 py-2 font-medium">Code</th>
+                      <th className="px-3 py-2 font-medium">Libelle</th>
+                      <th className="px-3 py-2 font-medium">Origine</th>
+                      <th className="px-3 py-2 font-medium text-right">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {evaluationTypes.map((evaluationType) => (
+                      <Fragment key={evaluationType.id}>
+                        <tr className="border-b border-border text-text-primary">
+                          <td className="px-3 py-2 font-mono">
+                            {evaluationType.code}
+                          </td>
+                          <td className="px-3 py-2">{evaluationType.label}</td>
+                          <td className="px-3 py-2">
+                            {evaluationType.isDefault
+                              ? "Defaut"
+                              : "Personnalise"}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <div className="inline-flex gap-2">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() =>
+                                  startEditEvaluationType(evaluationType)
+                                }
+                              >
+                                Modifier
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={evaluationType.isDefault}
+                                onClick={() =>
+                                  askDeleteEvaluationType(evaluationType)
+                                }
+                              >
+                                Supprimer
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                        {editingEvaluationTypeId === evaluationType.id ? (
+                          <tr className="border-b border-border bg-background">
+                            <td className="px-3 py-3" colSpan={4}>
+                              <div className="grid gap-3 md:grid-cols-[180px_1fr_auto_auto]">
+                                <FormField
+                                  label="Code"
+                                  error={
+                                    editEvaluationTypeForm.formState.errors.code
+                                      ?.message
+                                  }
+                                >
+                                  <FormTextInput
+                                    aria-label="Code type"
+                                    {...editEvaluationTypeForm.register("code")}
+                                    invalid={Boolean(
+                                      editEvaluationTypeForm.formState.errors
+                                        .code,
+                                    )}
+                                  />
+                                </FormField>
+                                <FormField
+                                  label="Libelle"
+                                  error={
+                                    editEvaluationTypeForm.formState.errors
+                                      .label?.message
+                                  }
+                                >
+                                  <FormTextInput
+                                    aria-label="Libelle type"
+                                    {...editEvaluationTypeForm.register(
+                                      "label",
+                                    )}
+                                    invalid={Boolean(
+                                      editEvaluationTypeForm.formState.errors
+                                        .label,
+                                    )}
+                                  />
+                                </FormField>
+                                <div className="self-end">
+                                  <FormSubmitHint
+                                    visible={
+                                      !editEvaluationTypeForm.formState.isValid
+                                    }
+                                  />
+                                </div>
+                                <Button
+                                  type="button"
+                                  disabled={
+                                    savingEvaluationType ||
+                                    !editEvaluationTypeForm.formState.isValid
+                                  }
+                                  onClick={() => {
+                                    void editEvaluationTypeForm.handleSubmit(
+                                      (values) =>
+                                        saveEvaluationType(
+                                          evaluationType.id,
+                                          values,
+                                        ),
+                                    )();
+                                  }}
+                                >
+                                  {savingEvaluationType
+                                    ? "Enregistrement..."
+                                    : "Enregistrer"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setEditingEvaluationTypeId(null);
+                                    editEvaluationTypeForm.reset();
+                                  }}
+                                >
+                                  Annuler
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {!loading && !loadingData && evaluationTypes.length === 0 ? (
+                <p className="text-sm text-text-secondary">
+                  Les types par defaut seront initialises automatiquement des la
+                  premiere creation d'evaluation. Vous pouvez aussi preparer vos
+                  propres types ici.
+                </p>
+              ) : null}
+            </div>
           ) : (
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-4"
-                onSubmit={onCreateAssignment}
+                onSubmit={createAssignmentForm.handleSubmit(onCreateAssignment)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Annee scolaire</span>
-                  <select
-                    value={assignmentSchoolYearId}
-                    onChange={(event) =>
-                      setAssignmentSchoolYearId(event.target.value)
+                <FormField
+                  label="Annee scolaire"
+                  error={
+                    createAssignmentForm.formState.errors.schoolYearId?.message
+                  }
+                >
+                  <FormSelect
+                    aria-label="Annee scolaire"
+                    invalid={
+                      !!createAssignmentForm.formState.errors.schoolYearId
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    value={createAssignmentValues.schoolYearId ?? ""}
+                    onChange={(event) => {
+                      createAssignmentForm.setValue(
+                        "schoolYearId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                      createAssignmentForm.setValue("classId", "", {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
                   >
                     <option value="">Selectionner</option>
                     {schoolYears.map((entry) => (
@@ -897,17 +1580,32 @@ export default function SubjectsPage() {
                         {entry.isActive ? " (active)" : ""}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Enseignant</span>
-                  <select
-                    value={assignmentTeacherUserId}
-                    onChange={(event) =>
-                      setAssignmentTeacherUserId(event.target.value)
+                <FormField
+                  label="Enseignant"
+                  error={
+                    createAssignmentForm.formState.errors.teacherUserId?.message
+                  }
+                >
+                  <FormSelect
+                    aria-label="Enseignant"
+                    invalid={
+                      !!createAssignmentForm.formState.errors.teacherUserId
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    value={createAssignmentValues.teacherUserId ?? ""}
+                    onChange={(event) => {
+                      createAssignmentForm.setValue(
+                        "teacherUserId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                   >
                     <option value="">Selectionner</option>
                     {teachers.map((teacher) => (
@@ -915,17 +1613,28 @@ export default function SubjectsPage() {
                         {teacher.lastName} {teacher.firstName}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Classe</span>
-                  <select
-                    value={assignmentClassId}
-                    onChange={(event) =>
-                      setAssignmentClassId(event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                <FormField
+                  label="Classe"
+                  error={createAssignmentForm.formState.errors.classId?.message}
+                >
+                  <FormSelect
+                    aria-label="Classe"
+                    invalid={!!createAssignmentForm.formState.errors.classId}
+                    value={createAssignmentValues.classId ?? ""}
+                    onChange={(event) => {
+                      createAssignmentForm.setValue(
+                        "classId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                   >
                     <option value="">Selectionner</option>
                     {filteredClassroomsForCreate.map((entry) => (
@@ -933,17 +1642,30 @@ export default function SubjectsPage() {
                         {entry.name}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Matiere</span>
-                  <select
-                    value={assignmentSubjectId}
-                    onChange={(event) =>
-                      setAssignmentSubjectId(event.target.value)
-                    }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                <FormField
+                  label="Matiere"
+                  error={
+                    createAssignmentForm.formState.errors.subjectId?.message
+                  }
+                >
+                  <FormSelect
+                    aria-label="Matiere"
+                    invalid={!!createAssignmentForm.formState.errors.subjectId}
+                    value={createAssignmentValues.subjectId ?? ""}
+                    onChange={(event) => {
+                      createAssignmentForm.setValue(
+                        "subjectId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
                   >
                     <option value="">Selectionner</option>
                     {sortedSubjects.map((subject) => (
@@ -951,11 +1673,16 @@ export default function SubjectsPage() {
                         {subject.name}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
                 <div className="md:col-span-4">
-                  <SubmitButton disabled={submittingAssignment}>
+                  <SubmitButton
+                    disabled={
+                      submittingAssignment ||
+                      !createAssignmentForm.formState.isValid
+                    }
+                  >
                     {submittingAssignment
                       ? "Creation..."
                       : "Ajouter affectation"}
@@ -1034,100 +1761,205 @@ export default function SubjectsPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-4">
-                                  <select
-                                    value={editAssignmentSchoolYearId}
-                                    onChange={(event) =>
-                                      setEditAssignmentSchoolYearId(
-                                        event.target.value,
-                                      )
+                                  <FormField
+                                    label="Annee scolaire"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .schoolYearId?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   >
-                                    <option value="">Selectionner annee</option>
-                                    {schoolYears.map((entry) => (
-                                      <option key={entry.id} value={entry.id}>
-                                        {entry.label}
+                                    <FormSelect
+                                      aria-label="Annee scolaire edition"
+                                      invalid={
+                                        !!editAssignmentForm.formState.errors
+                                          .schoolYearId
+                                      }
+                                      value={
+                                        editAssignmentValues.schoolYearId ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editAssignmentForm.setValue(
+                                          "schoolYearId",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                        editAssignmentForm.setValue(
+                                          "classId",
+                                          "",
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    >
+                                      <option value="">
+                                        Selectionner annee
                                       </option>
-                                    ))}
-                                  </select>
-
-                                  <select
-                                    value={editAssignmentTeacherUserId}
-                                    onChange={(event) =>
-                                      setEditAssignmentTeacherUserId(
-                                        event.target.value,
-                                      )
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  >
-                                    <option value="">
-                                      Selectionner enseignant
-                                    </option>
-                                    {teachers.map((teacher) => (
-                                      <option
-                                        key={teacher.userId}
-                                        value={teacher.userId}
-                                      >
-                                        {teacher.lastName} {teacher.firstName}
-                                      </option>
-                                    ))}
-                                  </select>
-
-                                  <select
-                                    value={editAssignmentClassId}
-                                    onChange={(event) =>
-                                      setEditAssignmentClassId(
-                                        event.target.value,
-                                      )
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                                  >
-                                    <option value="">
-                                      Selectionner classe
-                                    </option>
-                                    {classrooms
-                                      .filter(
-                                        (entry) =>
-                                          !editAssignmentSchoolYearId ||
-                                          entry.schoolYear.id ===
-                                            editAssignmentSchoolYearId,
-                                      )
-                                      .map((entry) => (
+                                      {schoolYears.map((entry) => (
                                         <option key={entry.id} value={entry.id}>
-                                          {entry.name}
+                                          {entry.label}
                                         </option>
                                       ))}
-                                  </select>
+                                    </FormSelect>
+                                  </FormField>
 
-                                  <select
-                                    value={editAssignmentSubjectId}
-                                    onChange={(event) =>
-                                      setEditAssignmentSubjectId(
-                                        event.target.value,
-                                      )
+                                  <FormField
+                                    label="Enseignant"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .teacherUserId?.message
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   >
-                                    <option value="">
-                                      Selectionner matiere
-                                    </option>
-                                    {sortedSubjects.map((subject) => (
-                                      <option
-                                        key={subject.id}
-                                        value={subject.id}
-                                      >
-                                        {subject.name}
+                                    <FormSelect
+                                      aria-label="Enseignant edition"
+                                      invalid={
+                                        !!editAssignmentForm.formState.errors
+                                          .teacherUserId
+                                      }
+                                      value={
+                                        editAssignmentValues.teacherUserId ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editAssignmentForm.setValue(
+                                          "teacherUserId",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    >
+                                      <option value="">
+                                        Selectionner enseignant
                                       </option>
-                                    ))}
-                                  </select>
+                                      {teachers.map((teacher) => (
+                                        <option
+                                          key={teacher.userId}
+                                          value={teacher.userId}
+                                        >
+                                          {teacher.lastName} {teacher.firstName}
+                                        </option>
+                                      ))}
+                                    </FormSelect>
+                                  </FormField>
+
+                                  <FormField
+                                    label="Classe"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .classId?.message
+                                    }
+                                  >
+                                    <FormSelect
+                                      aria-label="Classe edition"
+                                      invalid={
+                                        !!editAssignmentForm.formState.errors
+                                          .classId
+                                      }
+                                      value={editAssignmentValues.classId ?? ""}
+                                      onChange={(event) => {
+                                        editAssignmentForm.setValue(
+                                          "classId",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    >
+                                      <option value="">
+                                        Selectionner classe
+                                      </option>
+                                      {classrooms
+                                        .filter(
+                                          (entry) =>
+                                            !editAssignmentValues.schoolYearId ||
+                                            entry.schoolYear.id ===
+                                              editAssignmentValues.schoolYearId,
+                                        )
+                                        .map((entry) => (
+                                          <option
+                                            key={entry.id}
+                                            value={entry.id}
+                                          >
+                                            {entry.name}
+                                          </option>
+                                        ))}
+                                    </FormSelect>
+                                  </FormField>
+
+                                  <FormField
+                                    label="Matiere"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .subjectId?.message
+                                    }
+                                  >
+                                    <FormSelect
+                                      aria-label="Matiere edition"
+                                      invalid={
+                                        !!editAssignmentForm.formState.errors
+                                          .subjectId
+                                      }
+                                      value={
+                                        editAssignmentValues.subjectId ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editAssignmentForm.setValue(
+                                          "subjectId",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    >
+                                      <option value="">
+                                        Selectionner matiere
+                                      </option>
+                                      {sortedSubjects.map((subject) => (
+                                        <option
+                                          key={subject.id}
+                                          value={subject.id}
+                                        >
+                                          {subject.name}
+                                        </option>
+                                      ))}
+                                    </FormSelect>
+                                  </FormField>
+                                  <div className="md:col-span-4">
+                                    <FormSubmitHint
+                                      visible={
+                                        !editAssignmentForm.formState.isValid
+                                      }
+                                    />
+                                  </div>
                                 </div>
 
                                 <div className="mt-3 flex gap-2">
                                   <Button
                                     type="button"
-                                    disabled={savingAssignment}
+                                    disabled={
+                                      savingAssignment ||
+                                      !editAssignmentForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void saveAssignment(assignment.id);
+                                      void editAssignmentForm.handleSubmit(
+                                        (values) =>
+                                          saveAssignment(assignment.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingAssignment
@@ -1137,7 +1969,10 @@ export default function SubjectsPage() {
                                   <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => setEditingAssignmentId(null)}
+                                    onClick={() => {
+                                      setEditingAssignmentId(null);
+                                      editAssignmentForm.reset();
+                                    }}
                                   >
                                     Annuler
                                   </Button>

@@ -209,9 +209,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       },
       {
         label: "Notes",
-        href: `${schoolBase}/grades`,
+        href: `${schoolBase}/student-grades`,
         icon: BookOpen,
-        matchPrefix: `${schoolBase}/grades`,
+        matchPrefix: `${schoolBase}/student-grades`,
       },
       {
         label: "Messagerie",
@@ -256,9 +256,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       },
       {
         label: "Cahier de notes",
-        href: `${schoolBase}/grades`,
+        href: `${schoolBase}/student-grades`,
         icon: BookOpen,
-        matchPrefix: `${schoolBase}/grades`,
+        matchPrefix: `${schoolBase}/student-grades`,
       },
       {
         label: "Messagerie",
@@ -385,9 +385,9 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
     },
     {
       label: "Notes & devoirs",
-      href: `${schoolBase}/grades`,
+      href: `${schoolBase}/student-grades`,
       icon: BookOpen,
-      matchPrefix: `${schoolBase}/grades`,
+      matchPrefix: `${schoolBase}/student-grades`,
     },
   ];
 }
@@ -614,7 +614,7 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
   async function loadTeacherClasses(currentSchoolSlug: string) {
     try {
       const response = await fetch(
-        `${API_URL}/schools/${currentSchoolSlug}/grades/context`,
+        `${API_URL}/schools/${currentSchoolSlug}/student-grades/context`,
         {
           credentials: "include",
         },
@@ -711,10 +711,20 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
     }
   }, [role, pathname, teacherClassesWithItems, openTeacherSection]);
 
+  const sidebarItemClass = (active: boolean) =>
+    active
+      ? "bg-warm-surface text-primary shadow-[0_10px_20px_rgba(77,56,32,0.08)]"
+      : "text-surface hover:bg-white/10 focus-visible:bg-white/10 hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,248,240,0.18)]";
+
+  const sidebarIconClass = (active: boolean) =>
+    active
+      ? "bg-warm-highlight text-primary"
+      : "bg-primary-dark/80 text-surface";
+
   return (
-    <aside className="group h-full w-[236px] shrink-0 bg-sidebar-bg px-2 py-4 text-surface transition-all duration-300 md:w-[72px] md:hover:w-[236px] md:px-3">
+    <aside className="group h-full w-[236px] shrink-0 bg-gradient-to-b from-sidebar-bg via-primary to-[#083a64] px-2 py-4 text-surface shadow-[10px_0_30px_rgba(8,38,66,0.12)] transition-all duration-300 md:w-[72px] md:hover:w-[236px] md:px-3">
       {isFamilySpace ? (
-        <div className="mb-4 rounded-card bg-primary-dark/80 px-3 py-2 text-center font-heading text-xs font-bold tracking-wide text-surface">
+        <div className="mb-4 rounded-[18px] border border-white/10 bg-white/10 px-3 py-2 text-center font-heading text-xs font-bold tracking-wide text-surface backdrop-blur">
           <div className="flex items-center justify-center md:justify-start">
             <Home className="h-4 w-4 md:mx-auto md:group-hover:mx-0" />
             <span className="ml-2 md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[140px] md:group-hover:opacity-100">
@@ -725,23 +735,19 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
       ) : null}
       {role === "TEACHER" ? (
         <div className="grid gap-3">
-          <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
+          <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
             <button
               type="button"
               onClick={() => setOpenTeacherSection("classes")}
-              className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
-                openTeacherSection === "classes"
-                  ? "bg-surface text-primary"
-                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-              }`}
+              className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                openTeacherSection === "classes",
+              )}`}
             >
               <span
                 aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  openTeacherSection === "classes"
-                    ? "bg-background text-primary"
-                    : "bg-primary-dark text-surface"
-                }`}
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                  openTeacherSection === "classes",
+                )}`}
               >
                 <School className="h-4 w-4" />
               </span>
@@ -766,19 +772,15 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                       key={`teacher-general-${item.label}-${item.href}`}
                       href={item.href}
                       onClick={onNavigate}
-                      className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
-                        active
-                          ? "bg-surface text-primary"
-                          : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                      }`}
+                      className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
+                        active,
+                      )}`}
                     >
                       <span
                         aria-hidden="true"
-                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                          active
-                            ? "bg-background text-primary"
-                            : "bg-primary-dark text-surface"
-                        }`}
+                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                          active,
+                        )}`}
                       >
                         <Icon className="h-3.5 w-3.5" />
                       </span>
@@ -806,24 +808,20 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
             return (
               <div
                 key={entry.classId}
-                className="rounded-card border border-surface/20 bg-primary-dark/40 p-2"
+                className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur"
               >
                 <button
                   type="button"
                   onClick={() => setOpenTeacherSection(sectionKey)}
-                  className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
-                    isOpen
-                      ? "bg-surface text-primary"
-                      : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                  }`}
+                  className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                    isOpen,
+                  )}`}
                 >
                   <span
                     aria-hidden="true"
-                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                      isOpen
-                        ? "bg-background text-primary"
-                        : "bg-primary-dark text-surface"
-                    }`}
+                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                      isOpen,
+                    )}`}
                   >
                     <School className="h-4 w-4" />
                   </span>
@@ -848,19 +846,15 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                           key={`${entry.classId}-${item.label}-${item.href}`}
                           href={item.href}
                           onClick={onNavigate}
-                          className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
-                            active
-                              ? "bg-surface text-primary"
-                              : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                          }`}
+                          className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
+                            active,
+                          )}`}
                         >
                           <span
                             aria-hidden="true"
-                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                              active
-                                ? "bg-background text-primary"
-                                : "bg-primary-dark text-surface"
-                            }`}
+                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                              active,
+                            )}`}
                           >
                             <Icon className="h-3.5 w-3.5" />
                           </span>
@@ -880,19 +874,15 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
             <Link
               href={teacherSettingsItem.href}
               onClick={onNavigate}
-              className={`flex items-center rounded-card px-2 py-2 text-sm font-heading font-semibold transition-colors ${
-                pathname.startsWith(teacherSettingsItem.matchPrefix ?? "")
-                  ? "bg-surface text-primary"
-                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-              }`}
+              className={`flex items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                pathname.startsWith(teacherSettingsItem.matchPrefix ?? ""),
+              )}`}
             >
               <span
                 aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  pathname.startsWith(teacherSettingsItem.matchPrefix ?? "")
-                    ? "bg-background text-primary"
-                    : "bg-primary-dark text-surface"
-                }`}
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                  pathname.startsWith(teacherSettingsItem.matchPrefix ?? ""),
+                )}`}
               >
                 <Settings className="h-4 w-4" />
               </span>
@@ -915,20 +905,16 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                 key={`${item.label}-${item.href}`}
                 href={item.href}
                 onClick={onNavigate}
-                className={`flex items-center rounded-card px-2 py-2 text-sm font-heading font-semibold transition-colors ${
-                  active
-                    ? "bg-surface text-primary"
-                    : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                }`}
+                className={`flex items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                  active,
+                )}`}
               >
                 <span className="flex min-w-0 items-center">
                   <span
                     aria-hidden="true"
-                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                      active
-                        ? "bg-background text-primary"
-                        : "bg-primary-dark text-surface"
-                    }`}
+                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                      active,
+                    )}`}
                   >
                     <Icon className="h-4 w-4" />
                   </span>
@@ -947,23 +933,19 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
         </nav>
       ) : (
         <div className="grid gap-3">
-          <div className="rounded-card border border-surface/20 bg-primary-dark/40 p-2">
+          <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
             <button
               type="button"
               onClick={() => setOpenParentSection("general")}
-              className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
-                openParentSection === "general"
-                  ? "bg-surface text-primary"
-                  : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-              }`}
+              className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                openParentSection === "general",
+              )}`}
             >
               <span
                 aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  openParentSection === "general"
-                    ? "bg-background text-primary"
-                    : "bg-primary-dark text-surface"
-                }`}
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                  openParentSection === "general",
+                )}`}
               >
                 <Home className="h-4 w-4" />
               </span>
@@ -985,19 +967,15 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                       key={`general-${item.label}-${item.href}`}
                       href={item.href}
                       onClick={onNavigate}
-                      className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
-                        active
-                          ? "bg-surface text-primary"
-                          : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                      }`}
+                      className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
+                        active,
+                      )}`}
                     >
                       <span
                         aria-hidden="true"
-                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                          active
-                            ? "bg-background text-primary"
-                            : "bg-primary-dark text-surface"
-                        }`}
+                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                          active,
+                        )}`}
                       >
                         <Icon className="h-3.5 w-3.5" />
                       </span>
@@ -1025,16 +1003,14 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
             return (
               <div
                 key={child.id}
-                className="rounded-card border border-surface/20 bg-primary-dark/40 p-2"
+                className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur"
               >
                 <button
                   type="button"
                   onClick={() => setOpenParentSection(sectionKey)}
-                  className={`flex w-full items-center rounded-card px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${
-                    isOpen
-                      ? "bg-surface text-primary"
-                      : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                  }`}
+                  className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                    isOpen,
+                  )}`}
                 >
                   {child.avatarUrl ? (
                     <img
@@ -1045,11 +1021,9 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                   ) : (
                     <span
                       aria-hidden="true"
-                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                        isOpen
-                          ? "bg-background text-primary"
-                          : "bg-primary-dark text-surface"
-                      }`}
+                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                        isOpen,
+                      )}`}
                     >
                       <UserRound className="h-4 w-4" />
                     </span>
@@ -1076,19 +1050,15 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
                           key={`${child.id}-${item.label}-${item.href}`}
                           href={item.href}
                           onClick={onNavigate}
-                          className={`flex items-center rounded-card px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${
-                            active
-                              ? "bg-surface text-primary"
-                              : "text-surface hover:bg-[#09529C] focus-visible:bg-[#09529C] hover:text-surface focus-visible:text-surface hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)]"
-                          }`}
+                          className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
+                            active,
+                          )}`}
                         >
                           <span
                             aria-hidden="true"
-                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                              active
-                                ? "bg-background text-primary"
-                                : "bg-primary-dark text-surface"
-                            }`}
+                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                              active,
+                            )}`}
                           >
                             <Icon className="h-3.5 w-3.5" />
                           </span>

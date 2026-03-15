@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  FormEvent,
   Suspense,
   useCallback,
   useEffect,
@@ -10,6 +9,8 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import { RecoveryShell } from "../../components/layout/recovery-shell";
 import { BackLinkButton } from "../../components/ui/back-link-button";
 import { Button } from "../../components/ui/button";
@@ -17,6 +18,10 @@ import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
 import { EmailInput } from "../../components/ui/email-input";
 import { SubmitButton } from "../../components/ui/form-buttons";
+import {
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
@@ -26,6 +31,7 @@ import {
   requestResetSchema,
   type RecoveryQuestion,
 } from "./forgot-password-schema";
+import type { z } from "zod";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -53,8 +59,6 @@ function ForgotPasswordPageContent() {
   const [schoolSlugFromQuery, setSchoolSlugFromQuery] = useState(() => {
     return searchParams.get("schoolSlug") ?? "";
   });
-  const [email, setEmail] = useState(() => searchParams.get("email") ?? "");
-
   const [requesting, setRequesting] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
@@ -64,15 +68,21 @@ function ForgotPasswordPageContent() {
   const [verifying, setVerifying] = useState(false);
   const [completing, setCompleting] = useState(false);
 
-  const [birthDate, setBirthDate] = useState("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [verified, setVerified] = useState(false);
-
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const requestForm = useForm<
+    z.input<typeof requestResetSchema>,
+    unknown,
+    z.output<typeof requestResetSchema>
+  >({
+    resolver: zodResolver(requestResetSchema),
+    mode: "onChange",
+    defaultValues: {
+      email: searchParams.get("email") ?? "",
+    },
+  });
 
   useEffect(() => {
     const token = searchParams.get("token") ?? "";
@@ -80,20 +90,68 @@ function ForgotPasswordPageContent() {
     const initialEmail = searchParams.get("email") ?? "";
     setActiveToken(token);
     setSchoolSlugFromQuery(schoolSlug);
-    if (!email && initialEmail) {
-      setEmail(initialEmail);
+    if (!requestForm.getValues("email") && initialEmail) {
+      requestForm.setValue("email", initialEmail, { shouldValidate: true });
     }
-  }, [searchParams, email]);
+  }, [requestForm, searchParams]);
 
   const verifySchema = useMemo(
     () => buildVerifyResetSchema(options?.questions ?? []),
     [options?.questions],
   );
-  const requestValidation = useMemo(
-    () => requestResetSchema.safeParse({ email }),
-    [email],
+  const verifyForm = useForm<{
+    token: string;
+    birthDate: string;
+    answers: Record<string, string>;
+  }>({
+    resolver: zodResolver(verifySchema),
+    mode: "onChange",
+    defaultValues: {
+      token: activeToken,
+      birthDate: "",
+      answers: {} as Record<string, string>,
+    },
+  });
+  const completeForm = useForm<
+    z.input<typeof completeResetSchema>,
+    unknown,
+    z.output<typeof completeResetSchema>
+  >({
+    resolver: zodResolver(completeResetSchema),
+    mode: "onChange",
+    defaultValues: {
+      token: activeToken,
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+  const newPassword = completeForm.watch("newPassword");
+
+  useEffect(() => {
+    verifyForm.reset({
+      token: activeToken,
+      birthDate: "",
+      answers: Object.fromEntries(
+        (options?.questions ?? []).map((question) => [question.key, ""]),
+      ),
+    });
+  }, [activeToken, options?.questions, verifyForm]);
+
+  useEffect(() => {
+    completeForm.reset({
+      token: activeToken,
+      newPassword: "",
+      confirmPassword: "",
+    });
+  }, [activeToken, completeForm]);
+
+  const verifyDefaultAnswers = useMemo(
+    () =>
+      Object.fromEntries(
+        (options?.questions ?? []).map((question) => [question.key, ""]),
+      ) as Record<string, string>,
+    [options?.questions],
   );
-  const canSubmitRequest = requestValidation.success && !requesting;
 
   const loginHref = useMemo(() => {
     const schoolSlug = options?.schoolSlug ?? schoolSlugFromQuery;
@@ -136,11 +194,13 @@ function ForgotPasswordPageContent() {
 
       const payload = (await response.json()) as ResetOptionsResponse;
       setOptions(payload);
-      const initialAnswers: Record<string, string> = {};
-      for (const question of payload.questions) {
-        initialAnswers[question.key] = "";
-      }
-      setAnswers(initialAnswers);
+      verifyForm.reset({
+        token,
+        birthDate: "",
+        answers: Object.fromEntries(
+          payload.questions.map((question) => [question.key, ""]),
+        ),
+      });
       setVerified(false);
       setRequestSent(false);
       setRequestMessage(null);
@@ -159,23 +219,16 @@ function ForgotPasswordPageContent() {
     void loadResetOptions(activeToken);
   }, [activeToken, loadResetOptions]);
 
-  async function onRequestReset(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onRequestReset(values: z.infer<typeof requestResetSchema>) {
     setError(null);
     setSuccess(null);
-
-    const parsed = requestResetSchema.safeParse({ email });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Email invalide.");
-      return;
-    }
 
     setRequesting(true);
     try {
       const response = await fetch(`${API_URL}/auth/forgot-password/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(values),
       });
 
       const payload = (await response
@@ -192,7 +245,7 @@ function ForgotPasswordPageContent() {
         payload?.message ??
           "Si ce compte existe, un lien de reinitialisation a ete envoye.",
       );
-      setEmail("");
+      requestForm.reset({ email: "" });
 
       if (payload?.resetToken) {
         const params = new URLSearchParams({ token: payload.resetToken });
@@ -216,30 +269,22 @@ function ForgotPasswordPageContent() {
     }
   }
 
-  async function onVerifyIdentity(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onVerifyIdentity(values: {
+    token: string;
+    birthDate: string;
+    answers: Record<string, string>;
+  }) {
     setError(null);
     setSuccess(null);
-
-    const parsed = verifySchema.safeParse({
-      token: activeToken,
-      birthDate,
-      answers,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Verification invalide.");
-      return;
-    }
 
     setVerifying(true);
     try {
       const payload = {
-        token: activeToken,
-        birthDate,
+        token: values.token,
+        birthDate: values.birthDate,
         answers: (options?.questions ?? []).map((question) => ({
           questionKey: question.key,
-          answer: answers[question.key] ?? "",
+          answer: values.answers[question.key] ?? "",
         })),
       };
 
@@ -273,20 +318,9 @@ function ForgotPasswordPageContent() {
     }
   }
 
-  async function onCompleteReset(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCompleteReset(values: z.infer<typeof completeResetSchema>) {
     setError(null);
     setSuccess(null);
-
-    const parsed = completeResetSchema.safeParse({
-      token: activeToken,
-      newPassword,
-      confirmPassword,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     setCompleting(true);
     try {
@@ -294,8 +328,8 @@ function ForgotPasswordPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: activeToken,
-          newPassword: parsed.data.newPassword,
+          token: values.token,
+          newPassword: values.newPassword,
         }),
       });
 
@@ -335,25 +369,43 @@ function ForgotPasswordPageContent() {
           className="lg:mt-2"
         >
           {!activeToken ? (
-            <form className="grid gap-3" onSubmit={onRequestReset}>
-              <FormField label="Email du compte">
-                <EmailInput
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="prenom.nom@gmail.com"
+            <form
+              className="grid gap-3"
+              onSubmit={requestForm.handleSubmit(onRequestReset)}
+            >
+              <FormField
+                label="Email du compte"
+                error={requestForm.formState.errors.email?.message}
+              >
+                <Controller
+                  control={requestForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <EmailInput
+                      name={field.name}
+                      required
+                      invalid={!!requestForm.formState.errors.email}
+                      value={field.value}
+                      onChange={(event) =>
+                        requestForm.setValue("email", event.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      onBlur={field.onBlur}
+                      placeholder="prenom.nom@gmail.com"
+                    />
+                  )}
                 />
               </FormField>
+              <FormSubmitHint visible={!requestForm.formState.isValid} />
 
-              <SubmitButton disabled={!canSubmitRequest}>
+              <SubmitButton
+                disabled={requesting || !requestForm.formState.isValid}
+              >
                 {requesting ? "Envoi en cours..." : "Envoyer le lien"}
               </SubmitButton>
-
-              {!canSubmitRequest && email.trim().length > 0 ? (
-                <p className="text-xs text-notification">
-                  Saisissez un email valide pour continuer.
-                </p>
-              ) : null}
 
               {requestSent && requestMessage ? (
                 <p
@@ -367,62 +419,164 @@ function ForgotPasswordPageContent() {
           ) : loadingOptions ? (
             <p className="text-sm text-text-secondary">Chargement du lien...</p>
           ) : options && !verified ? (
-            <form className="grid gap-3" onSubmit={onVerifyIdentity}>
+            <form
+              className="grid gap-3"
+              onSubmit={verifyForm.handleSubmit(onVerifyIdentity)}
+            >
               <div className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-secondary">
                 Compte detecte:{" "}
                 <span className="font-semibold">{options.emailHint}</span>
               </div>
 
-              <FormField label="Date de naissance">
-                <DateInput
-                  value={birthDate}
-                  onChange={(event) => setBirthDate(event.target.value)}
+              <FormField
+                label="Date de naissance"
+                error={verifyForm.formState.errors.birthDate?.message}
+              >
+                <Controller
+                  control={verifyForm.control}
+                  name="birthDate"
+                  render={({ field }) => (
+                    <DateInput
+                      name={field.name}
+                      invalid={!!verifyForm.formState.errors.birthDate}
+                      value={field.value}
+                      onChange={(event) =>
+                        verifyForm.setValue("birthDate", event.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      onBlur={field.onBlur}
+                    />
+                  )}
                 />
               </FormField>
 
               <div className="grid gap-3">
                 {options.questions.map((question) => (
-                  <label key={question.key} className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">
-                      {question.label}
-                    </span>
-                    <input
-                      value={answers[question.key] ?? ""}
-                      onChange={(event) =>
-                        setAnswers((current) => ({
-                          ...current,
-                          [question.key]: event.target.value,
-                        }))
-                      }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  <FormField
+                    key={question.key}
+                    label={question.label}
+                    error={
+                      verifyForm.formState.errors.answers?.[question.key]
+                        ?.message
+                    }
+                  >
+                    <Controller
+                      control={verifyForm.control}
+                      name={`answers.${question.key}`}
+                      defaultValue={verifyDefaultAnswers[question.key] ?? ""}
+                      render={({ field }) => (
+                        <FormTextInput
+                          name={field.name}
+                          ref={field.ref}
+                          invalid={
+                            !!verifyForm.formState.errors.answers?.[
+                              question.key
+                            ]
+                          }
+                          value={field.value ?? ""}
+                          onChange={(event) =>
+                            verifyForm.setValue(
+                              `answers.${question.key}`,
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
+                          }
+                          onBlur={field.onBlur}
+                        />
+                      )}
                     />
-                  </label>
+                  </FormField>
                 ))}
               </div>
+              <FormSubmitHint visible={!verifyForm.formState.isValid} />
 
-              <SubmitButton disabled={verifying}>
+              <SubmitButton
+                disabled={verifying || !verifyForm.formState.isValid}
+              >
                 {verifying ? "Verification..." : "Verifier mon identite"}
               </SubmitButton>
             </form>
           ) : options && verified ? (
-            <form className="grid gap-3" onSubmit={onCompleteReset}>
-              <FormField label="Nouveau mot de passe">
-                <PasswordInput
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
+            <form
+              className="grid gap-3"
+              onSubmit={completeForm.handleSubmit(onCompleteReset)}
+            >
+              <FormField
+                label="Nouveau mot de passe"
+                error={completeForm.formState.errors.newPassword?.message}
+              >
+                <Controller
+                  control={completeForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <PasswordInput
+                      aria-label="Nouveau mot de passe"
+                      name={field.name}
+                      aria-invalid={
+                        completeForm.formState.errors.newPassword
+                          ? "true"
+                          : "false"
+                      }
+                      value={field.value}
+                      onChange={(event) =>
+                        completeForm.setValue(
+                          "newPassword",
+                          event.target.value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                      onBlur={field.onBlur}
+                    />
+                  )}
                 />
               </FormField>
 
               <PasswordRequirementsHint password={newPassword} />
 
-              <FormField label="Confirmation">
-                <PasswordInput
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
+              <FormField
+                label="Confirmation"
+                error={completeForm.formState.errors.confirmPassword?.message}
+              >
+                <Controller
+                  control={completeForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <PasswordInput
+                      aria-label="Confirmation"
+                      name={field.name}
+                      value={field.value}
+                      onChange={(event) =>
+                        completeForm.setValue(
+                          "confirmPassword",
+                          event.target.value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                      onBlur={field.onBlur}
+                    />
+                  )}
                 />
               </FormField>
+              <FormSubmitHint visible={!completeForm.formState.isValid} />
 
-              <SubmitButton disabled={completing}>
+              <SubmitButton
+                disabled={completing || !completeForm.formState.isValid}
+              >
                 {completing
                   ? "Reinitialisation..."
                   : "Reinitialiser mon mot de passe"}
@@ -441,6 +595,16 @@ function ForgotPasswordPageContent() {
                   setOptions(null);
                   setVerified(false);
                   setSuccess(null);
+                  verifyForm.reset({
+                    token: "",
+                    birthDate: "",
+                    answers: {},
+                  });
+                  completeForm.reset({
+                    token: "",
+                    newPassword: "",
+                    confirmPassword: "",
+                  });
                 }}
               >
                 Nouvelle demande

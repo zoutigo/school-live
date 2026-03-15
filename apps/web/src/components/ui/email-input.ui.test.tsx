@@ -19,4 +19,12 @@ describe("EmailInput", () => {
     fireEvent.change(input, { target: { value: "a@b.com" } });
     expect(onChange).toHaveBeenCalled();
   });
+
+  it("supports the invalid visual state", () => {
+    render(<EmailInput aria-label="email-invalid" invalid value="" readOnly />);
+
+    const input = screen.getByLabelText("email-invalid");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input.className).toContain("border-notification");
+  });
 });

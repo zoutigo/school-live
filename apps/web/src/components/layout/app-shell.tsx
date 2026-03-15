@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppHeader } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
 import {
@@ -41,10 +41,13 @@ type Props = {
 export function AppShell({ schoolSlug, schoolName, children }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [headerHidden, setHeaderHidden] = useState(false);
   const [schoolBranding, setSchoolBranding] = useState<{
     name: string;
     logoUrl?: string | null;
   } | null>(null);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const lastScrollTopRef = useRef(0);
 
   useEffect(() => {
     void loadMe();
@@ -105,6 +108,45 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
       });
     }
   }
+
+  useEffect(() => {
+    const frame = mainRef.current;
+    if (!frame) {
+      return;
+    }
+
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (ticking) {
+        return;
+      }
+
+      ticking = true;
+      requestAnimationFrame(() => {
+        const nextScrollTop = frame.scrollTop;
+        const previousScrollTop = lastScrollTopRef.current;
+        const delta = nextScrollTop - previousScrollTop;
+
+        if (nextScrollTop <= 8) {
+          setHeaderHidden(false);
+        } else if (delta >= 16) {
+          setHeaderHidden(true);
+        } else if (delta <= -4) {
+          setHeaderHidden(false);
+        }
+
+        lastScrollTopRef.current = nextScrollTop;
+        ticking = false;
+      });
+    };
+
+    frame.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      frame.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -191,6 +233,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
         userInitials={userInitials}
         userDisplayName={userDisplayName}
         onToggleMenu={() => setMobileOpen((prev) => !prev)}
+        hidden={headerHidden && !mobileOpen}
       />
 
       <div className="relative flex min-h-0 flex-1">
@@ -218,7 +261,11 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
           </div>
         ) : null}
 
-        <main className="min-w-0 flex-1 overflow-y-auto bg-background p-6">
+        <main
+          ref={mainRef}
+          data-testid="app-shell-main"
+          className="site-main-gutter site-scroll-frame min-w-0 flex-1 overflow-y-auto bg-background"
+        >
           {children}
         </main>
       </div>

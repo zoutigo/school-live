@@ -1,14 +1,23 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { RecoveryShell } from "../../components/layout/recovery-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
 import { EmailInput } from "../../components/ui/email-input";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
+import {
+  FormCheckbox,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
@@ -63,7 +72,6 @@ function OnboardingContent() {
     answers,
     setField,
     setAnswer,
-    toggleQuestion,
     reset,
   } = useOnboardingStore();
 
@@ -133,201 +141,200 @@ function OnboardingContent() {
   const isTokenFlow = setupToken.length > 0;
   const totalSteps = isTokenFlow ? 4 : 3;
   const phoneFromQuery = params.get("phone") ?? "";
-  const step2Validation = useMemo(
-    () =>
-      step2Schema.safeParse({
-        firstName,
-        lastName,
-        gender,
-        birthDate,
-      }),
-    [firstName, lastName, gender, birthDate],
-  );
-  const [step2Touched, setStep2Touched] = useState({
-    firstName: false,
-    lastName: false,
-    gender: false,
-    birthDate: false,
+  const passwordStepForm = useForm<
+    z.input<typeof step1Schema>,
+    unknown,
+    z.output<typeof step1Schema>
+  >({
+    resolver: zodResolver(step1Schema),
+    mode: "onChange",
+    defaultValues: {
+      email,
+      temporaryPassword,
+      newPassword,
+      confirmPassword,
+    },
   });
-  const step2FieldErrors = useMemo(() => {
-    if (step2Validation.success) {
-      return {
-        firstName: null as string | null,
-        lastName: null as string | null,
-        gender: null as string | null,
-        birthDate: null as string | null,
-      };
-    }
-    return {
-      firstName:
-        step2Validation.error.issues.find(
-          (issue) => issue.path[0] === "firstName",
-        )?.message ?? null,
-      lastName:
-        step2Validation.error.issues.find(
-          (issue) => issue.path[0] === "lastName",
-        )?.message ?? null,
-      gender:
-        step2Validation.error.issues.find((issue) => issue.path[0] === "gender")
-          ?.message ?? null,
-      birthDate:
-        step2Validation.error.issues.find(
-          (issue) => issue.path[0] === "birthDate",
-        )?.message ?? null,
-    };
-  }, [step2Validation]);
-  const [pinTouched, setPinTouched] = useState({
-    newPin: false,
-    confirmPin: false,
+  const tokenStepForm = useForm<
+    z.input<typeof step1PhoneSchema>,
+    unknown,
+    z.output<typeof step1PhoneSchema>
+  >({
+    resolver: zodResolver(step1PhoneSchema),
+    mode: "onChange",
+    defaultValues: {
+      email,
+      setupToken,
+    },
   });
-  const pinValidation = useMemo(
-    () =>
-      step3PinSchema.safeParse({
-        newPin,
-        confirmPin,
-      }),
-    [newPin, confirmPin],
-  );
-  const pinFieldErrors = useMemo(() => {
-    if (pinValidation.success) {
-      return {
-        newPin: null as string | null,
-        confirmPin: null as string | null,
-      };
-    }
-    return {
-      newPin:
-        pinValidation.error.issues.find((issue) => issue.path[0] === "newPin")
-          ?.message ?? null,
-      confirmPin:
-        pinValidation.error.issues.find(
-          (issue) => issue.path[0] === "confirmPin",
-        )?.message ?? null,
-    };
-  }, [pinValidation]);
+  const profileStepForm = useForm<
+    z.input<typeof step2Schema>,
+    unknown,
+    z.output<typeof step2Schema>
+  >({
+    resolver: zodResolver(step2Schema),
+    mode: "onChange",
+    defaultValues: {
+      firstName,
+      lastName,
+      gender: gender || undefined,
+      birthDate,
+    },
+  });
+  const pinStepForm = useForm<
+    z.input<typeof step3PinSchema>,
+    unknown,
+    z.output<typeof step3PinSchema>
+  >({
+    resolver: zodResolver(step3PinSchema),
+    mode: "onChange",
+    defaultValues: {
+      newPin,
+      confirmPin,
+    },
+  });
+  const recoveryStepForm = useForm<
+    z.input<typeof step4Schema>,
+    unknown,
+    z.output<typeof step4Schema>
+  >({
+    resolver: zodResolver(step4Schema),
+    mode: "onChange",
+    defaultValues: {
+      selectedQuestions,
+      answers,
+      isParent,
+      parentClassId,
+      parentStudentId,
+    },
+  });
+  const passwordStepValues = passwordStepForm.watch();
+  const tokenStepValues = tokenStepForm.watch();
+  const profileStepValues = profileStepForm.watch();
+  const pinStepValues = pinStepForm.watch();
+  const recoveryStepValues = recoveryStepForm.watch();
   const canContinueCurrentStep = useMemo(() => {
     if (step === 1) {
       return isTokenFlow
-        ? step1PhoneSchema.safeParse({ email, setupToken }).success
-        : step1Schema.safeParse({
-            email,
-            temporaryPassword,
-            newPassword,
-            confirmPassword,
-          }).success;
+        ? tokenStepForm.formState.isValid
+        : passwordStepForm.formState.isValid;
     }
     if (step === 2) {
-      return step2Validation.success;
+      return profileStepForm.formState.isValid;
     }
     if (step === 3 && isTokenFlow) {
-      return pinValidation.success;
+      return pinStepForm.formState.isValid;
     }
     if ((step === 3 && !isTokenFlow) || (step === 4 && isTokenFlow)) {
-      return step4Schema.safeParse({
-        selectedQuestions,
-        answers,
-        isParent,
-        parentClassId: parentClassId || undefined,
-        parentStudentId: parentStudentId || undefined,
-      }).success;
+      return recoveryStepForm.formState.isValid;
     }
     return true;
   }, [
     step,
     isTokenFlow,
-    email,
-    setupToken,
-    temporaryPassword,
-    newPassword,
-    confirmPassword,
-    step2Validation.success,
-    pinValidation.success,
-    selectedQuestions,
-    answers,
-    isParent,
-    parentClassId,
-    parentStudentId,
+    tokenStepForm.formState.isValid,
+    passwordStepForm.formState.isValid,
+    profileStepForm.formState.isValid,
+    pinStepForm.formState.isValid,
+    recoveryStepForm.formState.isValid,
   ]);
 
-  function validateRecoveryStep() {
-    const parsed = step4Schema.safeParse({
-      selectedQuestions,
-      answers,
-      isParent,
-      parentClassId: parentClassId || undefined,
-      parentStudentId: parentStudentId || undefined,
+  useEffect(() => {
+    setField("email", passwordStepValues.email ?? "");
+    setField("temporaryPassword", passwordStepValues.temporaryPassword ?? "");
+    setField("newPassword", passwordStepValues.newPassword ?? "");
+    setField("confirmPassword", passwordStepValues.confirmPassword ?? "");
+  }, [
+    passwordStepValues.email,
+    passwordStepValues.temporaryPassword,
+    passwordStepValues.newPassword,
+    passwordStepValues.confirmPassword,
+    setField,
+  ]);
+
+  useEffect(() => {
+    setField("email", tokenStepValues.email ?? "");
+  }, [tokenStepValues.email, setField]);
+
+  useEffect(() => {
+    setField("firstName", profileStepValues.firstName ?? "");
+    setField("lastName", profileStepValues.lastName ?? "");
+    setField("gender", (profileStepValues.gender ?? "") as "M" | "F" | "OTHER");
+    setField("birthDate", profileStepValues.birthDate ?? "");
+  }, [
+    profileStepValues.firstName,
+    profileStepValues.lastName,
+    profileStepValues.gender,
+    profileStepValues.birthDate,
+    setField,
+  ]);
+
+  useEffect(() => {
+    setField("newPin", pinStepValues.newPin ?? "");
+    setField("confirmPin", pinStepValues.confirmPin ?? "");
+  }, [pinStepValues.newPin, pinStepValues.confirmPin, setField]);
+
+  useEffect(() => {
+    const nextSelectedQuestions = recoveryStepValues.selectedQuestions ?? [];
+    const nextAnswers = recoveryStepValues.answers ?? {};
+    const nextParentClassId = recoveryStepValues.parentClassId ?? "";
+    const nextParentStudentId = recoveryStepValues.parentStudentId ?? "";
+
+    if (
+      JSON.stringify(nextSelectedQuestions) !==
+      JSON.stringify(selectedQuestions)
+    ) {
+      setField("selectedQuestions", nextSelectedQuestions);
+    }
+    if (JSON.stringify(nextAnswers) !== JSON.stringify(answers)) {
+      for (const questionKey of Object.keys(nextAnswers)) {
+        setAnswer(questionKey as QuestionKey, nextAnswers[questionKey] ?? "");
+      }
+    }
+    if (parentClassId !== nextParentClassId) {
+      setField("parentClassId", nextParentClassId);
+    }
+    if (parentStudentId !== nextParentStudentId) {
+      setField("parentStudentId", nextParentStudentId);
+    }
+  }, [
+    recoveryStepValues.selectedQuestions,
+    recoveryStepValues.answers,
+    recoveryStepValues.parentClassId,
+    recoveryStepValues.parentStudentId,
+    selectedQuestions,
+    answers,
+    parentClassId,
+    parentStudentId,
+    setField,
+    setAnswer,
+  ]);
+
+  useEffect(() => {
+    tokenStepForm.setValue("setupToken", setupToken, {
+      shouldValidate: true,
     });
-    if (!parsed.success) {
-      setError(
-        parsed.error.issues[0]?.message ?? "Etape de securite invalide.",
-      );
-      return false;
-    }
-    return true;
-  }
+  }, [setupToken, tokenStepForm]);
 
-  function validateStep(target: StepKey): boolean {
+  useEffect(() => {
+    recoveryStepForm.setValue("isParent", isParent, {
+      shouldValidate: true,
+    });
+  }, [isParent, recoveryStepForm]);
+
+  async function nextStep() {
     setError(null);
-
-    if (target === 1) {
-      const parsed = isTokenFlow
-        ? step1PhoneSchema.safeParse({
-            email,
-            setupToken,
-          })
-        : step1Schema.safeParse({
-            email,
-            temporaryPassword,
-            newPassword,
-            confirmPassword,
-          });
-      if (!parsed.success) {
-        setError(parsed.error.issues[0]?.message ?? "Etape 1 invalide.");
-        return false;
-      }
-      return true;
-    }
-
-    if (target === 2) {
-      if (!step2Validation.success) {
-        setError(
-          step2Validation.error.issues[0]?.message ?? "Etape 2 invalide.",
-        );
-        return false;
-      }
-      return true;
-    }
-
-    if (target === 3 && isTokenFlow) {
-      if (!pinValidation.success) {
-        setError(pinValidation.error.issues[0]?.message ?? "Etape 3 invalide.");
-        return false;
-      }
-      return true;
-    }
-
-    if (!validateRecoveryStep()) {
-      return false;
-    }
-    return true;
-  }
-
-  function nextStep() {
-    if (step === 2) {
-      setStep2Touched({
-        firstName: true,
-        lastName: true,
-        gender: true,
-        birthDate: true,
-      });
-    }
-    if (step === 3 && isTokenFlow) {
-      setPinTouched({
-        newPin: true,
-        confirmPin: true,
-      });
-    }
-    if (!validateStep(step)) {
+    const isCurrentStepValid =
+      step === 1
+        ? isTokenFlow
+          ? await tokenStepForm.trigger()
+          : await passwordStepForm.trigger()
+        : step === 2
+          ? await profileStepForm.trigger()
+          : step === 3 && isTokenFlow
+            ? await pinStepForm.trigger()
+            : await recoveryStepForm.trigger();
+    if (!isCurrentStepValid) {
       return;
     }
     if (step < totalSteps) {
@@ -342,19 +349,30 @@ function OnboardingContent() {
     }
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onSubmit() {
     setError(null);
 
-    const requiredSteps = isTokenFlow ? [1, 2, 3, 4] : [1, 2, 3];
-    const isFlowValid = requiredSteps.every((requiredStep) =>
-      validateStep(requiredStep as StepKey),
-    );
-    if (!isFlowValid) {
+    const isPasswordStepValid = isTokenFlow
+      ? true
+      : await passwordStepForm.trigger();
+    const isTokenStepValid = isTokenFlow ? await tokenStepForm.trigger() : true;
+    const isProfileStepValid = await profileStepForm.trigger();
+    const isPinStepValid = isTokenFlow ? await pinStepForm.trigger() : true;
+    const isRecoveryStepValid = await recoveryStepForm.trigger();
+    if (
+      !isPasswordStepValid ||
+      !isTokenStepValid ||
+      !isProfileStepValid ||
+      !isPinStepValid ||
+      !isRecoveryStepValid
+    ) {
       return;
     }
 
-    const recoveryRows = buildRecoveryRows(selectedQuestions, answers);
+    const recoveryRows = buildRecoveryRows(
+      recoveryStepValues.selectedQuestions ?? [],
+      recoveryStepValues.answers ?? {},
+    );
     setSubmitting(true);
     try {
       const response = await fetch(`${API_URL}/auth/onboarding/complete`, {
@@ -364,21 +382,21 @@ function OnboardingContent() {
           ...(isTokenFlow
             ? {
                 setupToken,
-                email: email.trim() || undefined,
-                newPin,
+                email: (tokenStepValues.email ?? "").trim() || undefined,
+                newPin: pinStepValues.newPin ?? "",
               }
             : {
-                email,
-                temporaryPassword,
-                newPassword,
+                email: passwordStepValues.email ?? "",
+                temporaryPassword: passwordStepValues.temporaryPassword ?? "",
+                newPassword: passwordStepValues.newPassword ?? "",
               }),
-          firstName,
-          lastName,
-          gender,
-          birthDate,
+          firstName: profileStepValues.firstName ?? "",
+          lastName: profileStepValues.lastName ?? "",
+          gender: profileStepValues.gender ?? "",
+          birthDate: profileStepValues.birthDate ?? "",
           answers: recoveryRows,
-          parentClassId: parentClassId || undefined,
-          parentStudentId: parentStudentId || undefined,
+          parentClassId: recoveryStepValues.parentClassId || undefined,
+          parentStudentId: recoveryStepValues.parentStudentId || undefined,
         }),
       });
 
@@ -473,11 +491,20 @@ function OnboardingContent() {
           subtitle={`Etape ${step} / ${totalSteps}`}
           className="order-1 self-start xl:order-2 xl:sticky xl:top-6"
         >
-          <form className="grid gap-3" onSubmit={onSubmit}>
+          <form
+            className="grid gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void onSubmit();
+            }}
+          >
             <div className="grid gap-1 text-sm">
               <span className="text-text-secondary">Compte concerne</span>
               <div className="rounded-card border border-border bg-background px-3 py-2 text-text-primary">
-                {email || phoneFromQuery || "Compte en attente"}
+                {passwordStepValues.email ||
+                  tokenStepValues.email ||
+                  phoneFromQuery ||
+                  "Compte en attente"}
               </div>
             </div>
 
@@ -485,12 +512,19 @@ function OnboardingContent() {
               <>
                 {isTokenFlow ? (
                   <>
-                    <FormField label="Email (optionnel)">
+                    <FormField
+                      label="Email (optionnel)"
+                      error={tokenStepForm.formState.errors.email?.message}
+                    >
                       <EmailInput
-                        value={email}
-                        onChange={(event) =>
-                          setField("email", event.target.value)
-                        }
+                        value={tokenStepValues.email ?? ""}
+                        onChange={(event) => {
+                          tokenStepForm.setValue("email", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                        }}
                         placeholder="prenom.nom@gmail.com"
                       />
                     </FormField>
@@ -501,31 +535,74 @@ function OnboardingContent() {
                   </>
                 ) : (
                   <>
-                    <FormField label="Mot de passe provisoire">
+                    <FormField
+                      label="Mot de passe provisoire"
+                      error={
+                        passwordStepForm.formState.errors.temporaryPassword
+                          ?.message
+                      }
+                    >
                       <PasswordInput
-                        value={temporaryPassword}
-                        onChange={(event) =>
-                          setField("temporaryPassword", event.target.value)
-                        }
+                        value={passwordStepValues.temporaryPassword ?? ""}
+                        onChange={(event) => {
+                          passwordStepForm.setValue(
+                            "temporaryPassword",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                       />
                     </FormField>
 
-                    <FormField label="Nouveau mot de passe">
+                    <FormField
+                      label="Nouveau mot de passe"
+                      error={
+                        passwordStepForm.formState.errors.newPassword?.message
+                      }
+                    >
                       <PasswordInput
-                        value={newPassword}
-                        onChange={(event) =>
-                          setField("newPassword", event.target.value)
-                        }
+                        value={passwordStepValues.newPassword ?? ""}
+                        onChange={(event) => {
+                          passwordStepForm.setValue(
+                            "newPassword",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                       />
                     </FormField>
-                    <PasswordRequirementsHint password={newPassword} />
+                    <PasswordRequirementsHint
+                      password={passwordStepValues.newPassword ?? ""}
+                    />
 
-                    <FormField label="Confirmation">
+                    <FormField
+                      label="Confirmation"
+                      error={
+                        passwordStepForm.formState.errors.confirmPassword
+                          ?.message
+                      }
+                    >
                       <PasswordInput
-                        value={confirmPassword}
-                        onChange={(event) =>
-                          setField("confirmPassword", event.target.value)
-                        }
+                        value={passwordStepValues.confirmPassword ?? ""}
+                        onChange={(event) => {
+                          passwordStepForm.setValue(
+                            "confirmPassword",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                       />
                     </FormField>
                   </>
@@ -538,51 +615,45 @@ function OnboardingContent() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <FormField
                     label="Prenom"
-                    error={
-                      step2Touched.firstName ? step2FieldErrors.firstName : null
-                    }
+                    error={profileStepForm.formState.errors.firstName?.message}
                   >
-                    <input
-                      value={firstName}
-                      onChange={(event) =>
-                        setField("firstName", event.target.value)
-                      }
-                      onBlur={() =>
-                        setStep2Touched((state) => ({
-                          ...state,
-                          firstName: true,
-                        }))
-                      }
-                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
-                        step2Touched.firstName && step2FieldErrors.firstName
-                          ? "border-notification"
-                          : "border-border"
-                      }`}
+                    <FormTextInput
+                      aria-label="Prenom"
+                      invalid={!!profileStepForm.formState.errors.firstName}
+                      value={profileStepValues.firstName ?? ""}
+                      onChange={(event) => {
+                        profileStepForm.setValue(
+                          "firstName",
+                          event.target.value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        );
+                      }}
                     />
                   </FormField>
 
                   <FormField
                     label="Nom"
-                    error={
-                      step2Touched.lastName ? step2FieldErrors.lastName : null
-                    }
+                    error={profileStepForm.formState.errors.lastName?.message}
                   >
-                    <input
-                      value={lastName}
-                      onChange={(event) =>
-                        setField("lastName", event.target.value)
-                      }
-                      onBlur={() =>
-                        setStep2Touched((state) => ({
-                          ...state,
-                          lastName: true,
-                        }))
-                      }
-                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
-                        step2Touched.lastName && step2FieldErrors.lastName
-                          ? "border-notification"
-                          : "border-border"
-                      }`}
+                    <FormTextInput
+                      aria-label="Nom"
+                      invalid={!!profileStepForm.formState.errors.lastName}
+                      value={profileStepValues.lastName ?? ""}
+                      onChange={(event) => {
+                        profileStepForm.setValue(
+                          "lastName",
+                          event.target.value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        );
+                      }}
                     />
                   </FormField>
                 </div>
@@ -590,51 +661,50 @@ function OnboardingContent() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <FormField
                     label="Genre"
-                    error={step2Touched.gender ? step2FieldErrors.gender : null}
+                    error={profileStepForm.formState.errors.gender?.message}
                   >
-                    <select
-                      value={gender}
-                      onChange={(event) =>
-                        setField(
+                    <FormSelect
+                      aria-label="Genre"
+                      invalid={!!profileStepForm.formState.errors.gender}
+                      value={profileStepValues.gender ?? ""}
+                      onChange={(event) => {
+                        profileStepForm.setValue(
                           "gender",
                           event.target.value as "M" | "F" | "OTHER",
-                        )
-                      }
-                      onBlur={() =>
-                        setStep2Touched((state) => ({ ...state, gender: true }))
-                      }
-                      className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
-                        step2Touched.gender && step2FieldErrors.gender
-                          ? "border-notification"
-                          : "border-border"
-                      }`}
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        );
+                      }}
                     >
                       <option value="">Selectionner</option>
                       <option value="M">Masculin</option>
                       <option value="F">Feminin</option>
                       <option value="OTHER">Autre</option>
-                    </select>
+                    </FormSelect>
                   </FormField>
 
                   <FormField
                     label="Date de naissance"
-                    error={
-                      step2Touched.birthDate ? step2FieldErrors.birthDate : null
-                    }
+                    error={profileStepForm.formState.errors.birthDate?.message}
                   >
                     <DateInput
-                      value={birthDate}
-                      onChange={(event) =>
-                        setField("birthDate", event.target.value)
-                      }
-                      onBlur={() =>
-                        setStep2Touched((state) => ({
-                          ...state,
-                          birthDate: true,
-                        }))
-                      }
+                      value={profileStepValues.birthDate ?? ""}
+                      onChange={(event) => {
+                        profileStepForm.setValue(
+                          "birthDate",
+                          event.target.value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        );
+                      }}
                       className={`rounded-card border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary ${
-                        step2Touched.birthDate && step2FieldErrors.birthDate
+                        profileStepForm.formState.errors.birthDate
                           ? "border-notification"
                           : "border-border"
                       }`}
@@ -653,22 +723,24 @@ function OnboardingContent() {
                   <div className="grid gap-3">
                     <FormField
                       label="Nouveau PIN"
-                      error={pinTouched.newPin ? pinFieldErrors.newPin : null}
+                      error={pinStepForm.formState.errors.newPin?.message}
                     >
                       <PinInput
-                        value={newPin}
-                        onChange={(event) =>
-                          setField(
+                        value={pinStepValues.newPin ?? ""}
+                        onChange={(event) => {
+                          pinStepForm.setValue(
                             "newPin",
                             event.target.value.replace(/\D/g, "").slice(0, 6),
-                          )
-                        }
-                        onBlur={() =>
-                          setPinTouched((state) => ({ ...state, newPin: true }))
-                        }
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="654321"
                         className={`${
-                          pinTouched.newPin && pinFieldErrors.newPin
+                          pinStepForm.formState.errors.newPin
                             ? "border-notification"
                             : "border-border"
                         }`}
@@ -676,27 +748,24 @@ function OnboardingContent() {
                     </FormField>
                     <FormField
                       label="Confirmer PIN"
-                      error={
-                        pinTouched.confirmPin ? pinFieldErrors.confirmPin : null
-                      }
+                      error={pinStepForm.formState.errors.confirmPin?.message}
                     >
                       <PinInput
-                        value={confirmPin}
-                        onChange={(event) =>
-                          setField(
+                        value={pinStepValues.confirmPin ?? ""}
+                        onChange={(event) => {
+                          pinStepForm.setValue(
                             "confirmPin",
                             event.target.value.replace(/\D/g, "").slice(0, 6),
-                          )
-                        }
-                        onBlur={() =>
-                          setPinTouched((state) => ({
-                            ...state,
-                            confirmPin: true,
-                          }))
-                        }
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="654321"
                         className={`${
-                          pinTouched.confirmPin && pinFieldErrors.confirmPin
+                          pinStepForm.formState.errors.confirmPin
                             ? "border-notification"
                             : "border-border"
                         }`}
@@ -715,32 +784,77 @@ function OnboardingContent() {
                   </p>
                   <div className="grid gap-2">
                     {(options?.questions ?? []).map((question) => {
-                      const checked = selectedQuestions.includes(question.key);
+                      const checked = (
+                        recoveryStepValues.selectedQuestions ?? []
+                      ).includes(question.key);
                       const canSelectMore =
-                        checked || selectedQuestions.length < 3;
+                        checked ||
+                        (recoveryStepValues.selectedQuestions ?? []).length < 3;
                       return (
                         <label
                           key={question.key}
                           className="grid gap-1 text-sm"
                         >
                           <span className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
+                            <FormCheckbox
                               checked={checked}
                               disabled={!canSelectMore}
-                              onChange={() => toggleQuestion(question.key)}
+                              onChange={() => {
+                                const currentQuestions =
+                                  recoveryStepValues.selectedQuestions ?? [];
+                                const nextQuestions = checked
+                                  ? currentQuestions.filter(
+                                      (entry) => entry !== question.key,
+                                    )
+                                  : [...currentQuestions, question.key];
+                                recoveryStepForm.setValue(
+                                  "selectedQuestions",
+                                  nextQuestions,
+                                  {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  },
+                                );
+                              }}
                             />
                             <span>{question.label}</span>
                           </span>
                           {checked ? (
-                            <input
-                              value={answers[question.key] ?? ""}
-                              onChange={(event) =>
-                                setAnswer(question.key, event.target.value)
+                            <FormField
+                              label="Votre reponse"
+                              className="pl-6"
+                              error={
+                                recoveryStepForm.formState.errors.answers?.[
+                                  question.key
+                                ]?.message
                               }
-                              placeholder="Votre reponse"
-                              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                            />
+                            >
+                              <FormTextInput
+                                aria-label={question.label}
+                                invalid={
+                                  !!recoveryStepForm.formState.errors.answers?.[
+                                    question.key
+                                  ]
+                                }
+                                value={
+                                  recoveryStepValues.answers?.[question.key] ??
+                                  ""
+                                }
+                                onChange={(event) => {
+                                  recoveryStepForm.setValue(
+                                    `answers.${question.key}`,
+                                    event.target.value,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                placeholder="Votre reponse"
+                              />
+                            </FormField>
                           ) : null}
                         </label>
                       );
@@ -750,16 +864,28 @@ function OnboardingContent() {
 
                 {isParent ? (
                   <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Classe de votre enfant
-                      </span>
-                      <select
-                        value={parentClassId}
-                        onChange={(event) =>
-                          setField("parentClassId", event.target.value)
+                    <FormField
+                      label="Classe de votre enfant"
+                      error={
+                        recoveryStepForm.formState.errors.parentClassId?.message
+                      }
+                    >
+                      <FormSelect
+                        invalid={
+                          !!recoveryStepForm.formState.errors.parentClassId
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        value={recoveryStepValues.parentClassId ?? ""}
+                        onChange={(event) => {
+                          recoveryStepForm.setValue(
+                            "parentClassId",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                       >
                         <option value="">Selectionner une classe</option>
                         {(options?.classes ?? []).map((entry) => (
@@ -767,19 +893,32 @@ function OnboardingContent() {
                             {entry.name} ({entry.year})
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </FormSelect>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Nom de l&apos;enfant
-                      </span>
-                      <select
-                        value={parentStudentId}
-                        onChange={(event) =>
-                          setField("parentStudentId", event.target.value)
+                    <FormField
+                      label="Nom de l'enfant"
+                      error={
+                        recoveryStepForm.formState.errors.parentStudentId
+                          ?.message
+                      }
+                    >
+                      <FormSelect
+                        invalid={
+                          !!recoveryStepForm.formState.errors.parentStudentId
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                        value={recoveryStepValues.parentStudentId ?? ""}
+                        onChange={(event) => {
+                          recoveryStepForm.setValue(
+                            "parentStudentId",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                       >
                         <option value="">Selectionner un eleve</option>
                         {(options?.students ?? []).map((entry) => (
@@ -787,8 +926,8 @@ function OnboardingContent() {
                             {entry.lastName} {entry.firstName}
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </FormSelect>
+                    </FormField>
                   </div>
                 ) : null}
               </>
@@ -802,6 +941,7 @@ function OnboardingContent() {
             {error ? (
               <p className="text-sm text-notification">{error}</p>
             ) : null}
+            <FormSubmitHint visible={!canContinueCurrentStep} />
 
             <div className="flex flex-wrap gap-2">
               {step > 1 ? <BackButton onClick={previousStep} /> : null}
@@ -815,7 +955,7 @@ function OnboardingContent() {
                   Continuer
                 </Button>
               ) : (
-                <SubmitButton disabled={submitting}>
+                <SubmitButton disabled={submitting || !canContinueCurrentStep}>
                   {submitting ? "Validation..." : "Finaliser l'activation"}
                 </SubmitButton>
               )}

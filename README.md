@@ -184,6 +184,13 @@ npm run build
 npm run test
 ```
 
+## Convention UI forms
+
+- Norme UI pour les formulaires web: `react-hook-form` + `zodResolver`
+- Validation en `mode: "onChange"`
+- Erreurs inline affichees pendant la saisie
+- Actions de submit actives uniquement quand le schema Zod passe (`formState.isValid`)
+
 ## Authentification (logique claire)
 
 ### Vue d ensemble

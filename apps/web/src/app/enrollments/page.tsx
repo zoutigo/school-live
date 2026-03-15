@@ -1,10 +1,19 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
+import {
+  FormCheckbox,
+  FormSelect,
+  FormTextInput,
+} from "../../components/ui/form-controls";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
@@ -75,6 +84,24 @@ type FlatEnrollmentRow = {
   enrollment: EnrollmentRow;
 };
 
+const statusSchema = z.enum([
+  "ACTIVE",
+  "TRANSFERRED",
+  "WITHDRAWN",
+  "GRADUATED",
+]);
+
+const filtersSchema = z.object({
+  schoolYearId: z.string().optional().default(""),
+  classId: z.string().optional().default(""),
+  status: z.string().optional().default(""),
+  search: z.string().optional().default(""),
+});
+
+const bulkStatusSchema = z.object({
+  status: statusSchema,
+});
+
 export default function EnrollmentsPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("manage");
@@ -94,17 +121,28 @@ export default function EnrollmentsPage() {
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  const [schoolYearFilter, setSchoolYearFilter] = useState("");
-  const [classFilter, setClassFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [searchFilter, setSearchFilter] = useState("");
-  const [bulkStatus, setBulkStatus] = useState<
-    "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "GRADUATED"
-  >("ACTIVE");
   const [statusDraftByEnrollmentId, setStatusDraftByEnrollmentId] = useState<
     Record<string, "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "GRADUATED">
   >({});
+  const filtersForm = useForm<z.input<typeof filtersSchema>>({
+    resolver: zodResolver(filtersSchema),
+    mode: "onChange",
+    defaultValues: {
+      schoolYearId: "",
+      classId: "",
+      status: "",
+      search: "",
+    },
+  });
+  const bulkForm = useForm<z.input<typeof bulkStatusSchema>>({
+    resolver: zodResolver(bulkStatusSchema),
+    mode: "onChange",
+    defaultValues: {
+      status: "ACTIVE",
+    },
+  });
+  const filterValues = filtersForm.watch();
+  const bulkValues = bulkForm.watch();
 
   useEffect(() => {
     void bootstrap();
@@ -175,17 +213,17 @@ export default function EnrollmentsPage() {
     setStatusDraftByEnrollmentId({});
     try {
       const params = new URLSearchParams();
-      if (schoolYearFilter) {
-        params.set("schoolYearId", schoolYearFilter);
+      if (filterValues.schoolYearId) {
+        params.set("schoolYearId", filterValues.schoolYearId);
       }
-      if (classFilter) {
-        params.set("classId", classFilter);
+      if (filterValues.classId) {
+        params.set("classId", filterValues.classId);
       }
-      if (statusFilter) {
-        params.set("status", statusFilter);
+      if (filterValues.status) {
+        params.set("status", filterValues.status);
       }
-      if (searchFilter.trim()) {
-        params.set("search", searchFilter.trim());
+      if ((filterValues.search ?? "").trim()) {
+        params.set("search", (filterValues.search ?? "").trim());
       }
 
       const [schoolYearsResponse, classroomsResponse, studentsResponse] =
@@ -222,9 +260,13 @@ export default function EnrollmentsPage() {
       setClassrooms(classroomsPayload);
       setStudents(studentsPayload);
 
-      if (!schoolYearFilter && schoolYearsPayload.length > 0) {
+      if (!filterValues.schoolYearId && schoolYearsPayload.length > 0) {
         const active = schoolYearsPayload.find((entry) => entry.isActive);
-        setSchoolYearFilter(active?.id ?? "");
+        filtersForm.setValue("schoolYearId", active?.id ?? "", {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: false,
+        });
       }
     } catch {
       setError("Erreur reseau.");
@@ -246,8 +288,7 @@ export default function EnrollmentsPage() {
     [students],
   );
 
-  async function onApplyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onApplyFilters() {
     if (!schoolSlug) {
       return;
     }
@@ -348,7 +389,7 @@ export default function EnrollmentsPage() {
           },
           body: JSON.stringify({
             enrollmentIds: selectedEnrollmentIds,
-            status: bulkStatus,
+            status: bulkValues.status,
           }),
         },
       );
@@ -378,9 +419,10 @@ export default function EnrollmentsPage() {
     () =>
       classrooms.filter(
         (entry) =>
-          !schoolYearFilter || entry.schoolYear.id === schoolYearFilter,
+          !filterValues.schoolYearId ||
+          entry.schoolYear.id === filterValues.schoolYearId,
       ),
-    [classrooms, schoolYearFilter],
+    [classrooms, filterValues.schoolYearId],
   );
 
   return (
@@ -465,12 +507,11 @@ export default function EnrollmentsPage() {
               {role === "SUPER_ADMIN" || role === "ADMIN" ? (
                 <label className="mb-4 grid min-w-[260px] max-w-[420px] gap-1 text-sm">
                   <span className="text-text-secondary">Ecole</span>
-                  <select
+                  <FormSelect
                     value={schoolSlug ?? ""}
                     onChange={(event) =>
                       setSchoolSlug(event.target.value || null)
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner une ecole</option>
                     {schools.map((school) => (
@@ -478,7 +519,7 @@ export default function EnrollmentsPage() {
                         {school.name}
                       </option>
                     ))}
-                  </select>
+                  </FormSelect>
                 </label>
               ) : null}
 
@@ -490,19 +531,28 @@ export default function EnrollmentsPage() {
                 <>
                   <form
                     className="mb-4 grid gap-3 md:grid-cols-5"
-                    onSubmit={onApplyFilters}
+                    onSubmit={filtersForm.handleSubmit(onApplyFilters)}
                   >
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Annee scolaire
-                      </span>
-                      <select
-                        value={schoolYearFilter}
+                    <FormField label="Annee scolaire">
+                      <FormSelect
+                        aria-label="Annee scolaire"
+                        value={filterValues.schoolYearId ?? ""}
                         onChange={(event) => {
-                          setSchoolYearFilter(event.target.value);
-                          setClassFilter("");
+                          filtersForm.setValue(
+                            "schoolYearId",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                          filtersForm.setValue("classId", "", {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
                         }}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Toutes</option>
                         {schoolYears.map((entry) => (
@@ -511,15 +561,20 @@ export default function EnrollmentsPage() {
                             {entry.isActive ? " (active)" : ""}
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </FormSelect>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Classe</span>
-                      <select
-                        value={classFilter}
-                        onChange={(event) => setClassFilter(event.target.value)}
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    <FormField label="Classe">
+                      <FormSelect
+                        aria-label="Classe"
+                        value={filterValues.classId ?? ""}
+                        onChange={(event) =>
+                          filtersForm.setValue("classId", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
+                        }
                       >
                         <option value="">Toutes</option>
                         {filteredClassrooms.map((entry) => (
@@ -527,70 +582,77 @@ export default function EnrollmentsPage() {
                             {entry.name} ({entry.schoolYear.label})
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </FormSelect>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Statut</span>
-                      <select
-                        value={statusFilter}
+                    <FormField label="Statut">
+                      <FormSelect
+                        aria-label="Statut"
+                        value={filterValues.status ?? ""}
                         onChange={(event) =>
-                          setStatusFilter(event.target.value)
+                          filtersForm.setValue("status", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="">Tous</option>
                         <option value="ACTIVE">ACTIVE</option>
                         <option value="TRANSFERRED">TRANSFERRED</option>
                         <option value="WITHDRAWN">WITHDRAWN</option>
                         <option value="GRADUATED">GRADUATED</option>
-                      </select>
-                    </label>
+                      </FormSelect>
+                    </FormField>
 
-                    <label className="grid gap-1 text-sm md:col-span-2">
-                      <span className="text-text-secondary">
-                        Recherche eleve
-                      </span>
+                    <FormField
+                      label="Recherche eleve"
+                      className="md:col-span-2"
+                    >
                       <div className="flex gap-2">
-                        <input
-                          value={searchFilter}
+                        <FormTextInput
+                          aria-label="Recherche eleve"
+                          value={filterValues.search ?? ""}
                           onChange={(event) =>
-                            setSearchFilter(event.target.value)
+                            filtersForm.setValue("search", event.target.value, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
                           }
                           placeholder="Nom ou prenom"
-                          className="w-full rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full"
                         />
                         <SubmitButton disabled={loadingData}>
                           Filtrer
                         </SubmitButton>
                       </div>
-                    </label>
+                    </FormField>
                   </form>
 
                   <div className="mb-3 flex flex-wrap items-end gap-2 rounded-card border border-border bg-background p-3">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        Statut cible (selection)
-                      </span>
-                      <select
-                        value={bulkStatus}
+                    <FormField label="Statut cible (selection)">
+                      <FormSelect
+                        aria-label="Statut cible"
+                        value={bulkValues.status}
                         onChange={(event) =>
-                          setBulkStatus(
-                            event.target.value as
-                              | "ACTIVE"
-                              | "TRANSFERRED"
-                              | "WITHDRAWN"
-                              | "GRADUATED",
+                          bulkForm.setValue(
+                            "status",
+                            event.target.value as z.infer<typeof statusSchema>,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
                           )
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="ACTIVE">ACTIVE</option>
                         <option value="TRANSFERRED">TRANSFERRED</option>
                         <option value="WITHDRAWN">WITHDRAWN</option>
                         <option value="GRADUATED">GRADUATED</option>
-                      </select>
-                    </label>
+                      </FormSelect>
+                    </FormField>
                     <Button
                       type="button"
                       disabled={
@@ -640,8 +702,7 @@ export default function EnrollmentsPage() {
                               className="border-b border-border text-text-primary"
                             >
                               <td className="px-3 py-2">
-                                <input
-                                  type="checkbox"
+                                <FormCheckbox
                                   checked={selectedEnrollmentIds.includes(
                                     row.enrollment.id,
                                   )}
@@ -663,7 +724,7 @@ export default function EnrollmentsPage() {
                                 {row.enrollment.class.name}
                               </td>
                               <td className="px-3 py-2">
-                                <select
+                                <FormSelect
                                   value={
                                     statusDraftByEnrollmentId[
                                       row.enrollment.id
@@ -680,7 +741,7 @@ export default function EnrollmentsPage() {
                                         | "GRADUATED",
                                     }))
                                   }
-                                  className="rounded-card border border-border bg-surface px-2 py-1 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                  className="px-2 py-1"
                                 >
                                   <option value="ACTIVE">ACTIVE</option>
                                   <option value="TRANSFERRED">
@@ -688,7 +749,7 @@ export default function EnrollmentsPage() {
                                   </option>
                                   <option value="WITHDRAWN">WITHDRAWN</option>
                                   <option value="GRADUATED">GRADUATED</option>
-                                </select>
+                                </FormSelect>
                               </td>
                               <td className="px-3 py-2">
                                 {row.enrollment.isCurrent ? "Oui" : "Non"}

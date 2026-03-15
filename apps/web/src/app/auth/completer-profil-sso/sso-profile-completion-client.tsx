@@ -1,11 +1,19 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import { getSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
+import {
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../../components/ui/form-controls";
+import { FormField } from "../../../components/ui/form-field";
 import { PinInput } from "../../../components/ui/pin-input";
 
 type Role =
@@ -80,18 +88,23 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
   const [email, setEmail] = useState("");
   const [provider, setProvider] = useState<"GOOGLE" | "APPLE" | null>(null);
   const [providerAccountId, setProviderAccountId] = useState("");
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [gender, setGender] = useState<"M" | "F" | "OTHER">("M");
-  const [phone, setPhone] = useState("");
-  const [newPin, setNewPin] = useState("");
   const [missingFields, setMissingFields] = useState<string[]>([]);
-  const [firstNameTouched, setFirstNameTouched] = useState(false);
-  const [lastNameTouched, setLastNameTouched] = useState(false);
-  const [genderTouched, setGenderTouched] = useState(false);
-  const [phoneTouched, setPhoneTouched] = useState(false);
-  const [newPinTouched, setNewPinTouched] = useState(false);
+  const form = useForm<
+    z.input<typeof ssoCompletionSchema>,
+    unknown,
+    z.output<typeof ssoCompletionSchema>
+  >({
+    resolver: zodResolver(ssoCompletionSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      gender: "M",
+      phone: "",
+      newPin: "",
+    },
+  });
+  const resetForm = form.reset;
 
   const cleanSchoolSlug = useMemo(() => {
     if (!schoolSlug) {
@@ -100,48 +113,6 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
     const trimmed = schoolSlug.trim();
     return trimmed.length > 0 ? trimmed : undefined;
   }, [schoolSlug]);
-  const completionValidation = useMemo(
-    () =>
-      ssoCompletionSchema.safeParse({
-        firstName,
-        lastName,
-        gender,
-        phone,
-        newPin,
-      }),
-    [firstName, lastName, gender, phone, newPin],
-  );
-  const completionDirty =
-    firstName.length > 0 ||
-    lastName.length > 0 ||
-    phone.length > 0 ||
-    newPin.length > 0;
-  const completionErrors = useMemo(() => {
-    if (completionValidation.success) {
-      return {} as Partial<
-        Record<"firstName" | "lastName" | "gender" | "phone" | "newPin", string>
-      >;
-    }
-    return completionValidation.error.issues.reduce(
-      (accumulator, issue) => {
-        const key = issue.path[0];
-        if (
-          (key === "firstName" ||
-            key === "lastName" ||
-            key === "gender" ||
-            key === "phone" ||
-            key === "newPin") &&
-          !accumulator[key]
-        ) {
-          accumulator[key] = issue.message;
-        }
-        return accumulator;
-      },
-      {} as Partial<
-        Record<"firstName" | "lastName" | "gender" | "phone" | "newPin", string>
-      >,
-    );
-  }, [completionValidation]);
 
   async function finalizeAppSession(input: {
     provider: "GOOGLE" | "APPLE";
@@ -156,8 +127,8 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
         provider: input.provider,
         providerAccountId: input.providerAccountId,
         email: input.email,
-        firstName,
-        lastName,
+        firstName: form.getValues("firstName"),
+        lastName: form.getValues("lastName"),
         schoolSlug: cleanSchoolSlug,
       }),
     });
@@ -300,10 +271,13 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
         const options = (await optionsResponse.json()) as SsoOptionsResponse;
 
         if (!cancelled) {
-          setFirstName(options.firstName ?? "");
-          setLastName(options.lastName ?? "");
-          setGender(options.gender ?? "M");
-          setPhone(toLocalPhoneDisplay(options.phone));
+          resetForm({
+            firstName: options.firstName ?? "",
+            lastName: options.lastName ?? "",
+            gender: options.gender ?? "M",
+            phone: toLocalPhoneDisplay(options.phone),
+            newPin: "",
+          });
           setMissingFields(options.missingFields ?? []);
         }
 
@@ -331,31 +305,13 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [cleanSchoolSlug, router]);
+  }, [cleanSchoolSlug, resetForm, router]);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onSubmit(values: z.output<typeof ssoCompletionSchema>) {
     setError(null);
 
     if (!provider || !providerAccountId || !email) {
       setError("Session SSO invalide.");
-      return;
-    }
-
-    const parsed = ssoCompletionSchema.safeParse({
-      firstName,
-      lastName,
-      gender,
-      phone,
-      newPin,
-    });
-    if (!parsed.success) {
-      setFirstNameTouched(true);
-      setLastNameTouched(true);
-      setGenderTouched(true);
-      setPhoneTouched(true);
-      setNewPinTouched(true);
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
       return;
     }
 
@@ -368,12 +324,12 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           provider,
           providerAccountId,
           email,
-          firstName: parsed.data.firstName,
-          lastName: parsed.data.lastName,
-          gender: parsed.data.gender,
-          phone: parsed.data.phone,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          gender: values.gender,
+          phone: values.phone,
           schoolSlug: cleanSchoolSlug,
-          newPin: parsed.data.newPin,
+          newPin: values.newPin,
         }),
       });
 
@@ -405,100 +361,126 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
       {loading ? (
         <p className="text-sm text-text-secondary">Chargement...</p>
       ) : (
-        <form className="grid gap-3" onSubmit={onSubmit} noValidate>
+        <form
+          className="grid gap-3"
+          onSubmit={form.handleSubmit(onSubmit)}
+          noValidate
+        >
           <div className="rounded-card border border-border bg-background px-3 py-2 text-xs text-text-secondary">
             Finalisez votre profil SSO pour securiser l acces a votre compte.
           </div>
 
-          <label className="grid gap-1 text-sm">
-            <span className="text-text-secondary">Prenom</span>
-            <input
-              value={firstName}
-              onChange={(event) => {
-                setFirstName(event.target.value);
-                setFirstNameTouched(true);
-              }}
-              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+          <FormField
+            label="Prenom"
+            error={form.formState.errors.firstName?.message}
+          >
+            <Controller
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormTextInput
+                  name={field.name}
+                  ref={field.ref}
+                  invalid={!!form.formState.errors.firstName}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                />
+              )}
             />
-            {firstNameTouched && completionErrors.firstName ? (
-              <span className="text-xs text-notification">
-                {completionErrors.firstName}
-              </span>
-            ) : null}
-          </label>
+          </FormField>
 
-          <label className="grid gap-1 text-sm">
-            <span className="text-text-secondary">Nom</span>
-            <input
-              value={lastName}
-              onChange={(event) => {
-                setLastName(event.target.value);
-                setLastNameTouched(true);
-              }}
-              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+          <FormField
+            label="Nom"
+            error={form.formState.errors.lastName?.message}
+          >
+            <Controller
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormTextInput
+                  name={field.name}
+                  ref={field.ref}
+                  invalid={!!form.formState.errors.lastName}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                />
+              )}
             />
-            {lastNameTouched && completionErrors.lastName ? (
-              <span className="text-xs text-notification">
-                {completionErrors.lastName}
-              </span>
-            ) : null}
-          </label>
+          </FormField>
 
-          <label className="grid gap-1 text-sm">
-            <span className="text-text-secondary">Genre</span>
-            <select
-              value={gender}
-              onChange={(event) => {
-                setGender(event.target.value as "M" | "F" | "OTHER");
-                setGenderTouched(true);
-              }}
-              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="M">Masculin</option>
-              <option value="F">Feminin</option>
-              <option value="OTHER">Autre</option>
-            </select>
-            {genderTouched && completionErrors.gender ? (
-              <span className="text-xs text-notification">
-                {completionErrors.gender}
-              </span>
-            ) : null}
-          </label>
-
-          <label className="grid gap-1 text-sm">
-            <span className="text-text-secondary">Telephone</span>
-            <input
-              value={phone}
-              onChange={(event) => {
-                setPhone(normalizePhoneInput(event.target.value));
-                setPhoneTouched(true);
-              }}
-              placeholder="6XXXXXXXX"
-              className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+          <FormField
+            label="Genre"
+            error={form.formState.errors.gender?.message}
+          >
+            <Controller
+              control={form.control}
+              name="gender"
+              render={({ field }) => (
+                <FormSelect
+                  name={field.name}
+                  ref={field.ref}
+                  invalid={!!form.formState.errors.gender}
+                  value={field.value ?? "M"}
+                  onChange={(event) =>
+                    field.onChange(event.target.value as "M" | "F" | "OTHER")
+                  }
+                  onBlur={field.onBlur}
+                >
+                  <option value="M">Masculin</option>
+                  <option value="F">Feminin</option>
+                  <option value="OTHER">Autre</option>
+                </FormSelect>
+              )}
             />
-            {phoneTouched && completionErrors.phone ? (
-              <span className="text-xs text-notification">
-                {completionErrors.phone}
-              </span>
-            ) : null}
-          </label>
+          </FormField>
 
-          <label className="grid gap-1 text-sm">
-            <span className="text-text-secondary">PIN (6 chiffres)</span>
-            <PinInput
-              value={newPin}
-              onChange={(event) => {
-                setNewPin(event.target.value.replace(/\D/g, "").slice(0, 6));
-                setNewPinTouched(true);
-              }}
-              placeholder="123456"
+          <FormField
+            label="Telephone"
+            error={form.formState.errors.phone?.message}
+          >
+            <Controller
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormTextInput
+                  name={field.name}
+                  ref={field.ref}
+                  invalid={!!form.formState.errors.phone}
+                  value={field.value ?? ""}
+                  onChange={(event) =>
+                    field.onChange(normalizePhoneInput(event.target.value))
+                  }
+                  onBlur={field.onBlur}
+                  placeholder="6XXXXXXXX"
+                />
+              )}
             />
-            {newPinTouched && completionErrors.newPin ? (
-              <span className="text-xs text-notification">
-                {completionErrors.newPin}
-              </span>
-            ) : null}
-          </label>
+          </FormField>
+
+          <FormField
+            label="PIN (6 chiffres)"
+            error={form.formState.errors.newPin?.message}
+          >
+            <Controller
+              control={form.control}
+              name="newPin"
+              render={({ field }) => (
+                <PinInput
+                  name={field.name}
+                  value={field.value ?? ""}
+                  onChange={(event) =>
+                    field.onChange(
+                      event.target.value.replace(/\D/g, "").slice(0, 6),
+                    )
+                  }
+                  onBlur={field.onBlur}
+                  placeholder="123456"
+                />
+              )}
+            />
+          </FormField>
 
           {missingFields.length > 0 ? (
             <p className="text-xs text-text-secondary">
@@ -507,13 +489,9 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           ) : null}
 
           {error ? <p className="text-sm text-notification">{error}</p> : null}
+          <FormSubmitHint visible={!form.formState.isValid} />
 
-          <Button
-            type="submit"
-            disabled={
-              saving || !completionDirty || !completionValidation.success
-            }
-          >
+          <Button type="submit" disabled={saving || !form.formState.isValid}>
             {saving ? "Enregistrement..." : "Finaliser mon profil"}
           </Button>
         </form>

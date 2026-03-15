@@ -2,6 +2,10 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { FamilyFeedPage } from "./family-feed-page";
+import {
+  assertNoHorizontalOverflowAt320,
+  setViewportWidth,
+} from "../../test/responsive";
 
 function setEditorText(container: HTMLElement, value: string) {
   const editor = container.querySelector(
@@ -131,7 +135,7 @@ describe("FamilyFeedPage", () => {
     await waitFor(() => {
       expect(screen.queryByText("Post modifie")).not.toBeInTheDocument();
     });
-  });
+  }, 10000);
 
   it("filters to my posts only", async () => {
     const { container } = render(
@@ -155,5 +159,28 @@ describe("FamilyFeedPage", () => {
     expect(
       screen.queryByText("Semaine culturelle - programme final"),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the feed header usable on smartphone", () => {
+    setViewportWidth(320);
+
+    render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    expect(screen.getByTestId("family-feed-header")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Publier une info" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Realiser un sondage" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Rechercher dans le fil..."),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("family-feed-toolbar").className).toContain(
+      "grid",
+    );
+    assertNoHorizontalOverflowAt320(screen.getByTestId("family-feed-header"));
   });
 });

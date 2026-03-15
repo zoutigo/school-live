@@ -16,44 +16,57 @@ import { CurrentSchoolId } from "../auth/decorators/current-school-id.decorator.
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
-import { CreateGradeDto } from "./dto/create-grade.dto.js";
-import { ListGradesDto } from "./dto/list-grades.dto.js";
-import { UpdateGradeDto } from "./dto/update-grade.dto.js";
-import { GradesService } from "./grades.service.js";
+import { CreateStudentGradeDto } from "./dto/create-student-grade.dto.js";
+import { ListStudentGradesDto } from "./dto/list-student-grades.dto.js";
+import { UpdateStudentGradeDto } from "./dto/update-student-grade.dto.js";
+import { StudentGradesService } from "./student-grades.service.js";
 
-@Controller("schools/:schoolSlug/grades")
+@Controller("schools/:schoolSlug/student-grades")
 @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-export class GradesController {
-  constructor(private readonly gradesService: GradesService) {}
+export class StudentGradesController {
+  constructor(private readonly studentGradesService: StudentGradesService) {}
 
   @Post()
   @Roles("SCHOOL_ADMIN", "TEACHER", "SUPER_ADMIN")
   create(
     @CurrentUser() user: AuthenticatedUser,
     @CurrentSchoolId() schoolId: string,
-    @Body() payload: CreateGradeDto,
+    @Body() payload: CreateStudentGradeDto,
   ) {
-    return this.gradesService.create(user, schoolId, payload);
+    return this.studentGradesService.create(user, schoolId, payload);
   }
 
   @Get()
-  @Roles("SCHOOL_ADMIN", "TEACHER", "PARENT", "STUDENT", "SUPER_ADMIN")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "STUDENT",
+    "SUPER_ADMIN",
+  )
   list(
     @CurrentUser() user: AuthenticatedUser,
     @CurrentSchoolId() schoolId: string,
-    @Query() filters: ListGradesDto,
+    @Query() filters: ListStudentGradesDto,
   ) {
-    return this.gradesService.list(user, schoolId, filters);
+    return this.studentGradesService.list(user, schoolId, filters);
   }
 
   @Get("context")
-  @Roles("SCHOOL_ADMIN", "TEACHER", "SUPER_ADMIN")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "SUPER_ADMIN",
+  )
   context(
     @CurrentUser() user: AuthenticatedUser,
     @CurrentSchoolId() schoolId: string,
     @Query("schoolYearId") schoolYearId?: string,
   ) {
-    return this.gradesService.context(user, schoolId, schoolYearId);
+    return this.studentGradesService.context(user, schoolId, schoolYearId);
   }
 
   @Patch(":id")
@@ -62,9 +75,9 @@ export class GradesController {
     @CurrentUser() user: AuthenticatedUser,
     @CurrentSchoolId() schoolId: string,
     @Param("id") gradeId: string,
-    @Body() payload: UpdateGradeDto,
+    @Body() payload: UpdateStudentGradeDto,
   ) {
-    return this.gradesService.update(user, schoolId, gradeId, payload);
+    return this.studentGradesService.update(user, schoolId, gradeId, payload);
   }
 
   @Delete(":id")
@@ -74,6 +87,6 @@ export class GradesController {
     @CurrentSchoolId() schoolId: string,
     @Param("id") gradeId: string,
   ) {
-    return this.gradesService.remove(user, schoolId, gradeId);
+    return this.studentGradesService.remove(user, schoolId, gradeId);
   }
 }

@@ -443,27 +443,582 @@ describe("Classes page subject color UI", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Affectations" }),
     );
+    fireEvent.change(screen.getByLabelText("Classe"), {
+      target: { value: "class-1" },
+    });
 
     const referentSelect = await screen.findByLabelText(
       "Enseignant referent de la classe",
     );
     fireEvent.change(referentSelect, { target: { value: "teacher-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Affecter referent" }));
+    const referentButton = screen.getByRole("button", {
+      name: "Affecter referent",
+    });
+
+    await waitFor(() => {
+      expect(referentButton).toBeEnabled();
+    });
+
+    fireEvent.click(referentButton);
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).includes("/admin/classrooms/class-1") &&
+          init?.method === "PATCH",
+      );
+      expect(patchCall).toBeDefined();
+      expect(String((patchCall?.[1]?.body as string) ?? "")).toContain(
+        '"referentTeacherUserId":"teacher-1"',
+      );
+    });
+  });
+
+  it("keeps class creation submit disabled until the form is valid and submits valid values", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+
+        if (
+          url.includes("/admin/classrooms") &&
+          !url.includes("subject-overrides") &&
+          method === "GET"
+        ) {
+          return jsonResponse([]);
+        }
+
+        if (url.endsWith("/admin/classrooms") && method === "POST") {
+          return jsonResponse({ id: "class-1" }, 201);
+        }
+
+        if (url.includes("/admin/school-years")) {
+          return jsonResponse([
+            { id: "sy-1", label: "2025-2026", isActive: true },
+          ]);
+        }
+
+        if (url.includes("/admin/curriculums") && !url.includes("/subjects")) {
+          return jsonResponse([{ id: "cur-1", name: "6EME - TRONC_COMMUN" }]);
+        }
+
+        if (url.includes("/admin/teachers")) {
+          return jsonResponse([]);
+        }
+
+        if (url.includes("/admin/subjects") && !url.includes("/curriculums/")) {
+          return jsonResponse([]);
+        }
+
+        if (url.includes("/admin/students")) {
+          return jsonResponse([]);
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<ClassesPage />);
+
+    const submitButton = await screen.findByRole("button", { name: "Ajouter" });
+    expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Nom de classe").className).toContain(
+      "border-notification",
+    );
+    expect(screen.getByLabelText("Curriculum").className).toContain(
+      "border-notification",
+    );
 
     await waitFor(() => {
       expect(
-        screen.getByText("Enseignant referent affecte a la classe."),
-      ).toBeInTheDocument();
+        (screen.getByLabelText("Annee scolaire") as HTMLSelectElement).value,
+      ).toBe("sy-1");
     });
 
-    const patchCall = fetchMock.mock.calls.find(
+    fireEvent.change(screen.getByLabelText("Nom de classe"), {
+      target: { value: "6e A" },
+    });
+    fireEvent.change(screen.getByLabelText("Curriculum"), {
+      target: { value: "cur-1" },
+    });
+
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/classrooms") && init?.method === "POST",
+      );
+      expect(postCall).toBeDefined();
+    });
+
+    const postCall = fetchMock.mock.calls.find(
       ([url, init]) =>
-        String(url).includes("/admin/classrooms/class-1") &&
-        init?.method === "PATCH",
+        String(url).endsWith("/admin/classrooms") && init?.method === "POST",
     );
-    expect(patchCall).toBeDefined();
-    expect(String((patchCall?.[1]?.body as string) ?? "")).toContain(
-      '"referentTeacherUserId":"teacher-1"',
+    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
+      '"name":"6e A"',
     );
+    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
+      '"schoolYearId":"sy-1"',
+    );
+    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
+      '"curriculumId":"cur-1"',
+    );
+  });
+
+  it("keeps teacher assignment submit disabled until the form is valid and submits values", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+
+        if (
+          url.includes("/admin/classrooms") &&
+          !url.includes("subject-overrides")
+        ) {
+          return jsonResponse([
+            {
+              id: "class-1",
+              schoolId: "school-1",
+              name: "6eB",
+              schoolYear: { id: "sy-1", label: "2025-2026" },
+              academicLevel: { id: "lvl-1", code: "6EME", label: "6eme" },
+              track: null,
+              curriculum: { id: "cur-1", name: "6EME - TRONC_COMMUN" },
+              _count: { enrollments: 1 },
+            },
+          ]);
+        }
+
+        if (url.includes("/admin/school-years")) {
+          return jsonResponse([
+            { id: "sy-1", label: "2025-2026", isActive: true },
+          ]);
+        }
+
+        if (url.includes("/admin/curriculums") && !url.includes("/subjects")) {
+          return jsonResponse([{ id: "cur-1", name: "6EME - TRONC_COMMUN" }]);
+        }
+
+        if (url.includes("/admin/teachers")) {
+          return jsonResponse([
+            {
+              userId: "teacher-1",
+              firstName: "Valery",
+              lastName: "MBELE",
+              email: "valery@example.com",
+            },
+          ]);
+        }
+
+        if (url.includes("/admin/subjects") && !url.includes("/curriculums/")) {
+          return jsonResponse([{ id: "sub-1", name: "Anglais" }]);
+        }
+
+        if (url.includes("/admin/students")) {
+          return jsonResponse([]);
+        }
+
+        if (url.includes("/admin/teacher-assignments?classId=class-1")) {
+          return jsonResponse([]);
+        }
+
+        if (url.includes("/admin/classrooms/class-1/subject-overrides")) {
+          return jsonResponse([]);
+        }
+
+        if (url.includes("/admin/curriculums/cur-1/subjects")) {
+          return jsonResponse([
+            {
+              id: "cs-1",
+              subjectId: "sub-1",
+              isMandatory: true,
+              coefficient: 1,
+              weeklyHours: 3,
+              subject: { id: "sub-1", name: "Anglais" },
+            },
+          ]);
+        }
+
+        if (
+          url.endsWith("/api/schools/college-vogt/admin/teacher-assignments") &&
+          method === "POST"
+        ) {
+          return jsonResponse({ id: "assign-1" }, 201);
+        }
+
+        if (
+          url.includes("/api/schools/college-vogt/timetable/classes/class-1") &&
+          method === "GET"
+        ) {
+          return jsonResponse({
+            class: {
+              id: "class-1",
+              schoolYearId: "sy-1",
+              academicLevelId: "lvl-1",
+            },
+            slots: [],
+            calendarEvents: [],
+            subjectStyles: [{ subjectId: "sub-1", colorHex: "#2563EB" }],
+          });
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<ClassesPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Affectations" }),
+    );
+
+    const submitButton = await screen.findByRole("button", {
+      name: "Affecter enseignant",
+    });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Matiere"), {
+      target: { value: "sub-1" },
+    });
+
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/teacher-assignments") &&
+          init?.method === "POST",
+      );
+      expect(postCall).toBeDefined();
+    });
+  });
+
+  it("submits referent teacher update from the assignments panel", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (
+          url.includes("/admin/classrooms") &&
+          !url.includes("subject-overrides")
+        ) {
+          return jsonResponse([
+            {
+              id: "class-1",
+              schoolId: "school-1",
+              name: "6eB",
+              referentTeacher: null,
+              schoolYear: { id: "sy-1", label: "2025-2026" },
+              academicLevel: { id: "lvl-1", code: "6EME", label: "6eme" },
+              track: null,
+              curriculum: { id: "cur-1", name: "6EME - TRONC_COMMUN" },
+              _count: { enrollments: 1 },
+            },
+          ]);
+        }
+        if (url.includes("/admin/school-years"))
+          return jsonResponse([
+            { id: "sy-1", label: "2025-2026", isActive: true },
+          ]);
+        if (url.includes("/admin/curriculums") && !url.includes("/subjects"))
+          return jsonResponse([{ id: "cur-1", name: "6EME - TRONC_COMMUN" }]);
+        if (url.includes("/admin/teachers"))
+          return jsonResponse([
+            {
+              userId: "teacher-1",
+              firstName: "Valery",
+              lastName: "MBELE",
+              email: "valery@example.com",
+            },
+          ]);
+        if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
+          return jsonResponse([]);
+        if (url.includes("/admin/students")) return jsonResponse([]);
+        if (url.includes("/admin/teacher-assignments?classId=class-1"))
+          return jsonResponse([]);
+        if (url.includes("/admin/classrooms/class-1/subject-overrides"))
+          return jsonResponse([]);
+        if (url.includes("/admin/curriculums/cur-1/subjects"))
+          return jsonResponse([]);
+        if (
+          url.endsWith("/api/schools/college-vogt/admin/classrooms/class-1") &&
+          method === "PATCH"
+        ) {
+          return jsonResponse({ success: true });
+        }
+        if (
+          url.includes("/api/schools/college-vogt/timetable/classes/class-1") &&
+          method === "GET"
+        ) {
+          return jsonResponse({
+            class: {
+              id: "class-1",
+              schoolYearId: "sy-1",
+              academicLevelId: "lvl-1",
+            },
+            slots: [],
+            calendarEvents: [],
+            subjectStyles: [],
+          });
+        }
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<ClassesPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Affectations" }),
+    );
+    fireEvent.change(screen.getByLabelText("Classe"), {
+      target: { value: "class-1" },
+    });
+    fireEvent.change(
+      screen.getByLabelText("Enseignant referent de la classe"),
+      {
+        target: { value: "teacher-1" },
+      },
+    );
+
+    const referentButton = screen.getByRole("button", {
+      name: "Affecter referent",
+    });
+
+    await waitFor(() => {
+      expect(referentButton).toBeEnabled();
+    });
+
+    fireEvent.click(referentButton);
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/classrooms/class-1") &&
+          init?.method === "PATCH" &&
+          String(init?.body).includes('"referentTeacherUserId":"teacher-1"'),
+      );
+      expect(patchCall).toBeDefined();
+    });
+  });
+
+  it("submits student assignment to selected class", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me"))
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        if (
+          url.includes("/admin/classrooms") &&
+          !url.includes("subject-overrides")
+        ) {
+          return jsonResponse([
+            {
+              id: "class-1",
+              schoolId: "school-1",
+              name: "6eB",
+              referentTeacher: null,
+              schoolYear: { id: "sy-1", label: "2025-2026" },
+              academicLevel: { id: "lvl-1", code: "6EME", label: "6eme" },
+              track: null,
+              curriculum: { id: "cur-1", name: "6EME - TRONC_COMMUN" },
+              _count: { enrollments: 1 },
+            },
+          ]);
+        }
+        if (url.includes("/admin/school-years"))
+          return jsonResponse([
+            { id: "sy-1", label: "2025-2026", isActive: true },
+          ]);
+        if (url.includes("/admin/curriculums") && !url.includes("/subjects"))
+          return jsonResponse([{ id: "cur-1", name: "6EME - TRONC_COMMUN" }]);
+        if (url.includes("/admin/teachers")) return jsonResponse([]);
+        if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
+          return jsonResponse([]);
+        if (url.includes("/admin/students"))
+          return jsonResponse([
+            {
+              id: "student-1",
+              firstName: "Lisa",
+              lastName: "MBELE",
+              parentLinks: [],
+              currentEnrollment: null,
+              enrollments: [],
+            },
+          ]);
+        if (url.includes("/admin/teacher-assignments?classId=class-1"))
+          return jsonResponse([]);
+        if (url.includes("/admin/classrooms/class-1/subject-overrides"))
+          return jsonResponse([]);
+        if (url.includes("/admin/curriculums/cur-1/subjects"))
+          return jsonResponse([]);
+        if (
+          url.endsWith(
+            "/api/schools/college-vogt/admin/students/student-1/enrollments",
+          ) &&
+          method === "POST"
+        )
+          return jsonResponse({ id: "enr-1" }, 201);
+        if (
+          url.includes("/api/schools/college-vogt/timetable/classes/class-1") &&
+          method === "GET"
+        )
+          return jsonResponse({
+            class: {
+              id: "class-1",
+              schoolYearId: "sy-1",
+              academicLevelId: "lvl-1",
+            },
+            slots: [],
+            calendarEvents: [],
+            subjectStyles: [],
+          });
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<ClassesPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Affectations" }),
+    );
+    fireEvent.change(screen.getByLabelText("Classe"), {
+      target: { value: "class-1" },
+    });
+
+    const studentButton = await screen.findByRole("button", {
+      name: "Affecter eleve",
+    });
+    await waitFor(() => {
+      expect(studentButton).toBeEnabled();
+    });
+    fireEvent.click(studentButton);
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/students/student-1/enrollments") &&
+          init?.method === "POST",
+      );
+      expect(postCall).toBeDefined();
+    });
+  });
+
+  it("shows inline create-class validation and enables submit only when valid", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (url.includes("/admin/classrooms") && method === "GET")
+        return jsonResponse([]);
+      if (url.includes("/admin/school-years"))
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      if (url.includes("/admin/curriculums") && !url.includes("/subjects"))
+        return jsonResponse([{ id: "cur-1", name: "6EME - TRONC_COMMUN" }]);
+      if (url.includes("/admin/teachers")) return jsonResponse([]);
+      if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
+        return jsonResponse([]);
+      if (url.includes("/admin/students")) return jsonResponse([]);
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+
+    render(<ClassesPage />);
+
+    const submitButton = await screen.findByRole("button", { name: "Ajouter" });
+    expect(submitButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Vous devez remplir correctement les champs obligatoires.",
+      ),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        (screen.getByLabelText("Annee scolaire") as HTMLSelectElement).value,
+      ).toBe("sy-1");
+    });
+
+    fireEvent.change(screen.getByLabelText("Nom de classe"), {
+      target: { value: "6e A" },
+    });
+    fireEvent.change(screen.getByLabelText("Curriculum"), {
+      target: { value: "cur-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Curriculum"), {
+      target: { value: "" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le curriculum est obligatoire."),
+      ).toBeInTheDocument();
+      expect(submitButton).toBeDisabled();
+    });
+
+    fireEvent.change(screen.getByLabelText("Curriculum"), {
+      target: { value: "cur-1" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Le curriculum est obligatoire."),
+      ).not.toBeInTheDocument();
+      expect(submitButton).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Vous devez remplir correctement les champs obligatoires.",
+        ),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -135,6 +135,17 @@ Implement ownership checks in services (not controllers):
 - The layout at `apps/web/app/schools/[schoolSlug]/layout.tsx` should:
   - load school branding (name/logo/colors) by slug
   - provide a SchoolContext to children
+- Mobile-first spacing must explicitly support `320px` width:
+  - the site-wide horizontal gutter rule is `8px` at `320px`,
+  - `12px` from `360px`,
+  - `24px` from `768px`,
+  - agents should reuse shared gutter utilities/classes instead of hardcoding large `p-6` / `px-6` mobile spacing on key page shells.
+- Web forms standard:
+  - use `react-hook-form` with `zod` validation by default,
+  - validation mode must be `onChange`,
+  - inline field errors are required,
+  - primary submit actions stay disabled until the form is valid,
+  - reuse shared form helpers/components before introducing local form wrappers.
 
 ### Frontend role gating
 
@@ -223,6 +234,42 @@ Every PR must include:
 - Migration(s) if DB changes
 - Minimal tests for critical authorization paths
 - Updated docs if it changes routing or environment variables
+
+---
+
+## GitHub PR workflow (standard, must follow)
+
+Use `gh` (GitHub CLI) for PR lifecycle when available.
+
+### 1) Before creating PR
+
+- Ensure working tree is clean.
+- Push branch to remote.
+- Check if an equivalent PR already exists.
+
+### 2) Create PR
+
+- Open PR from `dev` to `main` with clear title/body.
+- Monitor checks until completion.
+- If conflicts appear, merge `main` into `dev`, resolve conflicts, push `dev`, wait checks again.
+
+### 3) Merge PR
+
+- Merge only when PR is `MERGEABLE` and required checks are green.
+- Confirm merge commit and merged timestamp.
+
+### 4) Reset cycle after merge (important)
+
+After `dev -> main` merge is done:
+
+1. Checkout local `main`
+2. Pull latest `origin/main` (fast-forward only)
+3. Delete local `dev`
+4. Delete remote `dev`
+5. Create new local `dev` from updated local `main`
+6. Push new `dev` and set upstream tracking
+
+This keeps `dev` aligned with `main` and avoids long-lived drift.
 
 ---
 

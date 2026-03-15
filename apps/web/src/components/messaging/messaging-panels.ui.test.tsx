@@ -2,6 +2,10 @@ import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Archive, FileText, Inbox, Send } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
+import {
+  assertNoHorizontalOverflowAt320,
+  setViewportWidth,
+} from "../../test/responsive";
 import { MessagingFoldersPanel } from "./messaging-folders-panel";
 import { MessagingMessagesList } from "./messaging-messages-list";
 import type { MessagingFolder, MessagingMessage } from "./types";
@@ -86,6 +90,34 @@ describe("MessagingFoldersPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Archives/ }));
     expect(onSelectFolder).toHaveBeenCalledWith("archive");
+  });
+
+  it("keeps folders panel compact and scroll-safe on smartphone", () => {
+    setViewportWidth(320);
+
+    render(
+      <MessagingFoldersPanel
+        folders={FOLDERS}
+        activeFolder="inbox"
+        onSelectFolder={vi.fn()}
+        inboxUnreadCount={19}
+        draftsCount={3}
+        archiveCount={2}
+        showComposeButton
+        onCompose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("messaging-folders-panel")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Boite de reception/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Nouveau message" }),
+    ).toBeInTheDocument();
+    assertNoHorizontalOverflowAt320(
+      screen.getByTestId("messaging-folders-panel"),
+    );
   });
 });
 

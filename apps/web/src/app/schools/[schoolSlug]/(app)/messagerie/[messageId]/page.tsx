@@ -18,6 +18,7 @@ import type {
   MessageAttachment,
   MessagingMessage,
 } from "../../../../../../components/messaging/types";
+import { Button } from "../../../../../../components/ui/button";
 import { ConfirmDialog } from "../../../../../../components/ui/confirm-dialog";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -173,22 +174,28 @@ export default function SchoolMessagerieMessagePage() {
               message ? (
                 <div className="flex w-full flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => openComposeFromMessage("reply")}
-                      className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
+                      iconLeft={<Reply className="h-4 w-4" />}
+                      aria-label="Repondre"
+                      className="px-2.5 min-[360px]:px-4"
                     >
-                      <Reply className="h-4 w-4" />
-                      Repondre
-                    </button>
-                    <button
+                      <span className="hidden min-[360px]:inline">
+                        Repondre
+                      </span>
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => openComposeFromMessage("forward")}
-                      className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
+                      iconLeft={<Forward className="h-4 w-4" />}
+                      aria-label="Transferer"
+                      className="px-2.5 min-[360px]:px-4"
                     >
-                      <Forward className="h-4 w-4" />
-                      Transferer
-                    </button>
+                      <span className="hidden min-[360px]:inline">
+                        Transferer
+                      </span>
+                    </Button>
                   </div>
                   <MessagingMessageActions
                     archivedView={folderParam === "archive"}

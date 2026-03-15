@@ -1,15 +1,24 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MoreVertical } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import {
+  FormCheckbox,
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
+import { FormField } from "../../components/ui/form-field";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PaginationControls } from "../../components/ui/pagination-controls";
@@ -214,7 +223,15 @@ const createUserSchema = z
         "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
       ),
     schoolSlug: z.string().optional(),
-    avatarUrl: z.string().trim().url().optional(),
+    avatarUrl: z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          value.length === 0 || z.string().url().safeParse(value).success,
+        "L'URL de l'avatar est invalide.",
+      )
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (value.platformRoles.length === 0 && value.schoolRoles.length === 0) {
@@ -270,20 +287,6 @@ export default function UsersPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [createPlatformRoles, setCreatePlatformRoles] = useState<
-    PlatformCreatableRole[]
-  >([]);
-  const [createSchoolRoles, setCreateSchoolRoles] = useState<
-    SchoolCreatableRole[]
-  >([]);
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [schoolSlug, setSchoolSlug] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"ALL" | Role>("ALL");
   const [schoolFilter, setSchoolFilter] = useState<string>("ALL");
@@ -294,15 +297,6 @@ export default function UsersPage() {
     null,
   );
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editPlatformRoles, setEditPlatformRoles] = useState<
-    PlatformCreatableRole[]
-  >([]);
-  const [editSchoolRoles, setEditSchoolRoles] = useState<SchoolCreatableRole[]>(
-    [],
-  );
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
@@ -335,6 +329,42 @@ export default function UsersPage() {
     total: 0,
     totalPages: 1,
   });
+  const createUserForm = useForm<
+    z.input<typeof createUserSchema>,
+    unknown,
+    z.output<typeof createUserSchema>
+  >({
+    resolver: zodResolver(createUserSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      platformRoles: [],
+      schoolRoles: [],
+      temporaryPassword: "",
+      schoolSlug: "",
+      avatarUrl: "",
+    },
+  });
+  const createValues = createUserForm.watch();
+  const editUserForm = useForm<
+    z.input<typeof updateUserSchema>,
+    unknown,
+    z.output<typeof updateUserSchema>
+  >({
+    resolver: zodResolver(updateUserSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      phone: "",
+      platformRoles: [],
+      schoolRoles: [],
+    },
+  });
+  const editUserValues = editUserForm.watch();
 
   useEffect(() => {
     void bootstrap();
@@ -351,6 +381,13 @@ export default function UsersPage() {
       state: stateFilter,
     });
   }, [roleFilter, schoolFilter, stateFilter, isReady, tab]);
+
+  useEffect(() => {
+    if (tab !== "create") {
+      return;
+    }
+    void createUserForm.trigger();
+  }, [createUserForm, tab]);
 
   async function bootstrap() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -706,38 +743,15 @@ export default function UsersPage() {
     }
   }
 
-  async function onCreateUser(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateUser(values: z.output<typeof createUserSchema>) {
     setSubmitError(null);
     setSubmitSuccess(null);
 
-    if (createSchoolRoles.length > 0 && !schoolSlug) {
-      setSubmitError("L'ecole est obligatoire pour ce role.");
-      return;
-    }
-
     if (
-      createPlatformRoles.includes("ADMIN") &&
+      values.platformRoles.includes("ADMIN") &&
       currentRole !== "SUPER_ADMIN"
     ) {
       setSubmitError("Seul SUPER_ADMIN peut creer un ADMIN.");
-      return;
-    }
-
-    const parsed = createUserSchema.safeParse({
-      firstName,
-      lastName,
-      email,
-      phone: phone.trim() ? phone.trim() : undefined,
-      platformRoles: createPlatformRoles,
-      schoolRoles: createSchoolRoles,
-      temporaryPassword,
-      schoolSlug: createSchoolRoles.length > 0 ? schoolSlug : undefined,
-      avatarUrl: avatarUrl ?? undefined,
-    });
-
-    if (!parsed.success) {
-      setSubmitError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
       return;
     }
 
@@ -757,7 +771,7 @@ export default function UsersPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(values),
       });
 
       if (!response.ok) {
@@ -773,15 +787,17 @@ export default function UsersPage() {
       }
 
       setSubmitSuccess("Utilisateur cree et email envoye.");
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-      setPhone("");
-      setTemporaryPassword("");
-      setCreatePlatformRoles([]);
-      setCreateSchoolRoles([]);
-      setSchoolSlug("");
-      setAvatarUrl(null);
+      createUserForm.reset({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        platformRoles: [],
+        schoolRoles: [],
+        temporaryPassword: "",
+        schoolSlug: "",
+        avatarUrl: "",
+      });
       await loadUsers(page);
       setTab("list");
     } catch {
@@ -795,31 +811,22 @@ export default function UsersPage() {
     setEditError(null);
     setEditingUserId(user.id);
     setOpenActionsUserId(null);
-    setEditFirstName(user.firstName);
-    setEditLastName(user.lastName);
-    setEditPhone(user.phone ?? "");
-    setEditPlatformRoles(
-      user.platformRoles.filter(
+    editUserForm.reset({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone ?? "",
+      platformRoles: user.platformRoles.filter(
         (entry) => entry !== "SUPER_ADMIN",
       ) as PlatformCreatableRole[],
-    );
-    setEditSchoolRoles(user.schoolRoles as SchoolCreatableRole[]);
+      schoolRoles: user.schoolRoles as SchoolCreatableRole[],
+    });
   }
 
-  async function onSaveUser(userId: string) {
+  async function onSaveUser(
+    userId: string,
+    values: z.output<typeof updateUserSchema>,
+  ) {
     setEditError(null);
-    const parsed = updateUserSchema.safeParse({
-      firstName: editFirstName,
-      lastName: editLastName,
-      phone: editPhone.trim() ? editPhone.trim() : undefined,
-      platformRoles: editPlatformRoles,
-      schoolRoles: editSchoolRoles,
-    });
-
-    if (!parsed.success) {
-      setEditError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -837,7 +844,7 @@ export default function UsersPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(values),
       });
 
       if (!response.ok) {
@@ -944,26 +951,18 @@ export default function UsersPage() {
           title="Utilisateurs"
           subtitle="Gestion des comptes plateforme et ecoles"
         >
-          <div className="mb-4 flex items-end gap-2 border-b border-border">
+          <div className="section-tabs mb-4">
             <button
               type="button"
               onClick={() => setTab("list")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "list"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "list" ? "section-tab-active" : ""}`}
             >
               Liste des utilisateurs
             </button>
             <button
               type="button"
               onClick={() => setTab("create")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "create"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "create" ? "section-tab-active" : ""}`}
             >
               Creer un utilisateur
             </button>
@@ -971,11 +970,7 @@ export default function UsersPage() {
               <button
                 type="button"
                 onClick={() => setTab("details")}
-                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                  tab === "details"
-                    ? "border border-border border-b-surface bg-surface text-primary"
-                    : "text-text-secondary"
-                }`}
+                className={`section-tab ${tab === "details" ? "section-tab-active" : ""}`}
               >
                 Details
               </button>
@@ -983,11 +978,7 @@ export default function UsersPage() {
             <button
               type="button"
               onClick={() => setTab("help")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "help"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
+              className={`section-tab ${tab === "help" ? "section-tab-active" : ""}`}
             >
               Aide
             </button>
@@ -1006,15 +997,14 @@ export default function UsersPage() {
                 </Button>
 
                 {showFilters ? (
-                  <>
+                  <div className="filter-panel flex flex-wrap items-end justify-end gap-2">
                     <label className="grid min-w-[170px] gap-1 text-sm">
                       <span className="text-text-secondary">Role</span>
-                      <select
+                      <FormSelect
                         value={roleFilter}
                         onChange={(event) =>
                           setRoleFilter(event.target.value as "ALL" | Role)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="ALL">Tous</option>
                         <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -1030,17 +1020,16 @@ export default function UsersPage() {
                         <option value="TEACHER">TEACHER</option>
                         <option value="PARENT">PARENT</option>
                         <option value="STUDENT">STUDENT</option>
-                      </select>
+                      </FormSelect>
                     </label>
 
                     <label className="grid min-w-[190px] gap-1 text-sm">
                       <span className="text-text-secondary">Ecole</span>
-                      <select
+                      <FormSelect
                         value={schoolFilter}
                         onChange={(event) =>
                           setSchoolFilter(event.target.value)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="ALL">Toutes</option>
                         {schools.map((school) => (
@@ -1048,26 +1037,25 @@ export default function UsersPage() {
                             {school.name}
                           </option>
                         ))}
-                      </select>
+                      </FormSelect>
                     </label>
 
                     <label className="grid min-w-[190px] gap-1 text-sm">
                       <span className="text-text-secondary">Etat</span>
-                      <select
+                      <FormSelect
                         value={stateFilter}
                         onChange={(event) =>
                           setStateFilter(event.target.value as UserStateFilter)
                         }
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       >
                         <option value="ALL">Tous</option>
                         <option value="ACTIVE">Actif</option>
                         <option value="PASSWORD_CHANGE_REQUIRED">
                           Mot de passe a changer
                         </option>
-                      </select>
+                      </FormSelect>
                     </label>
-                  </>
+                  </div>
                 ) : null}
               </div>
 
@@ -1076,11 +1064,10 @@ export default function UsersPage() {
                   <span className="text-text-secondary">
                     Recherche (nom ou email)
                   </span>
-                  <input
+                  <FormTextInput
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Ex: Michelle ou mbele"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   />
                 </label>
               </div>
@@ -1239,26 +1226,65 @@ export default function UsersPage() {
                                     <span className="text-text-secondary">
                                       Prenom
                                     </span>
-                                    <input
-                                      value={editFirstName}
-                                      onChange={(event) =>
-                                        setEditFirstName(event.target.value)
+                                    <FormTextInput
+                                      aria-label="Prenom edition"
+                                      invalid={
+                                        !!editUserForm.formState.errors
+                                          .firstName
                                       }
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                      value={editUserValues.firstName ?? ""}
+                                      onChange={(event) =>
+                                        editUserForm.setValue(
+                                          "firstName",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        )
+                                      }
                                     />
+                                    {editUserForm.formState.errors.firstName ? (
+                                      <span className="text-xs text-notification">
+                                        {
+                                          editUserForm.formState.errors
+                                            .firstName.message
+                                        }
+                                      </span>
+                                    ) : null}
                                   </label>
 
                                   <label className="grid gap-1 text-sm">
                                     <span className="text-text-secondary">
                                       Nom
                                     </span>
-                                    <input
-                                      value={editLastName}
-                                      onChange={(event) =>
-                                        setEditLastName(event.target.value)
+                                    <FormTextInput
+                                      aria-label="Nom edition"
+                                      invalid={
+                                        !!editUserForm.formState.errors.lastName
                                       }
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                      value={editUserValues.lastName ?? ""}
+                                      onChange={(event) =>
+                                        editUserForm.setValue(
+                                          "lastName",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        )
+                                      }
                                     />
+                                    {editUserForm.formState.errors.lastName ? (
+                                      <span className="text-xs text-notification">
+                                        {
+                                          editUserForm.formState.errors.lastName
+                                            .message
+                                        }
+                                      </span>
+                                    ) : null}
                                   </label>
 
                                   <div className="grid gap-1 text-sm">
@@ -1272,30 +1298,37 @@ export default function UsersPage() {
                                             key={roleOption}
                                             className="flex items-center gap-2 text-xs text-text-primary"
                                           >
-                                            <input
-                                              type="checkbox"
-                                              checked={editPlatformRoles.includes(
-                                                roleOption,
-                                              )}
+                                            <FormCheckbox
+                                              checked={(
+                                                editUserValues.platformRoles ??
+                                                []
+                                              ).includes(roleOption)}
                                               disabled={
                                                 roleOption === "ADMIN" &&
                                                 currentRole !== "SUPER_ADMIN"
                                               }
                                               onChange={(event) => {
-                                                setEditPlatformRoles(
-                                                  (current) =>
-                                                    event.target.checked
-                                                      ? Array.from(
-                                                          new Set([
-                                                            ...current,
-                                                            roleOption,
-                                                          ]),
-                                                        )
-                                                      : current.filter(
-                                                          (value) =>
-                                                            value !==
-                                                            roleOption,
-                                                        ),
+                                                const currentRoles =
+                                                  editUserValues.platformRoles ??
+                                                  [];
+                                                editUserForm.setValue(
+                                                  "platformRoles",
+                                                  event.target.checked
+                                                    ? Array.from(
+                                                        new Set([
+                                                          ...currentRoles,
+                                                          roleOption,
+                                                        ]),
+                                                      )
+                                                    : currentRoles.filter(
+                                                        (value) =>
+                                                          value !== roleOption,
+                                                      ),
+                                                  {
+                                                    shouldDirty: true,
+                                                    shouldTouch: true,
+                                                    shouldValidate: true,
+                                                  },
                                                 );
                                               }}
                                             />
@@ -1316,24 +1349,32 @@ export default function UsersPage() {
                                           key={roleOption}
                                           className="flex items-center gap-2 text-xs text-text-primary"
                                         >
-                                          <input
-                                            type="checkbox"
-                                            checked={editSchoolRoles.includes(
-                                              roleOption,
-                                            )}
+                                          <FormCheckbox
+                                            checked={(
+                                              editUserValues.schoolRoles ?? []
+                                            ).includes(roleOption)}
                                             onChange={(event) => {
-                                              setEditSchoolRoles((current) =>
+                                              const currentRoles =
+                                                editUserValues.schoolRoles ??
+                                                [];
+                                              editUserForm.setValue(
+                                                "schoolRoles",
                                                 event.target.checked
                                                   ? Array.from(
                                                       new Set([
-                                                        ...current,
+                                                        ...currentRoles,
                                                         roleOption,
                                                       ]),
                                                     )
-                                                  : current.filter(
+                                                  : currentRoles.filter(
                                                       (value) =>
                                                         value !== roleOption,
                                                     ),
+                                                {
+                                                  shouldDirty: true,
+                                                  shouldTouch: true,
+                                                  shouldValidate: true,
+                                                },
                                               );
                                             }}
                                           />
@@ -1347,18 +1388,35 @@ export default function UsersPage() {
                                     <span className="text-text-secondary">
                                       Telephone
                                     </span>
-                                    <input
-                                      value={editPhone}
+                                    <FormTextInput
+                                      aria-label="Telephone edition"
+                                      invalid={
+                                        !!editUserForm.formState.errors.phone
+                                      }
+                                      value={editUserValues.phone ?? ""}
                                       onChange={(event) =>
-                                        setEditPhone(
+                                        editUserForm.setValue(
+                                          "phone",
                                           normalizeCmPhoneInput(
                                             event.target.value,
                                           ),
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
                                       placeholder="6XXXXXXXX"
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
+                                    {editUserForm.formState.errors.phone ? (
+                                      <span className="text-xs text-notification">
+                                        {
+                                          editUserForm.formState.errors.phone
+                                            .message
+                                        }
+                                      </span>
+                                    ) : null}
                                   </label>
                                 </div>
                                 {editError ? (
@@ -1366,12 +1424,21 @@ export default function UsersPage() {
                                     {editError}
                                   </p>
                                 ) : null}
+                                <FormSubmitHint
+                                  visible={!editUserForm.formState.isValid}
+                                  className="mt-2"
+                                />
                                 <div className="mt-3 flex gap-2">
                                   <Button
                                     type="button"
-                                    disabled={savingEdit}
+                                    disabled={
+                                      savingEdit ||
+                                      !editUserForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void onSaveUser(user.id);
+                                      void editUserForm.handleSubmit((values) =>
+                                        onSaveUser(user.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingEdit
@@ -1384,6 +1451,7 @@ export default function UsersPage() {
                                     onClick={() => {
                                       setEditingUserId(null);
                                       setEditError(null);
+                                      editUserForm.reset();
                                     }}
                                   >
                                     Annuler
@@ -1539,7 +1607,7 @@ export default function UsersPage() {
                                 : " - classe actuelle: non assignee"}
                             </p>
                             <div className="mt-2 grid gap-2 md:grid-cols-[1fr_auto]">
-                              <select
+                              <FormSelect
                                 value={
                                   selectedClassByStudentId[profile.id] ?? ""
                                 }
@@ -1549,7 +1617,7 @@ export default function UsersPage() {
                                     [profile.id]: event.target.value,
                                   }))
                                 }
-                                className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                className="bg-background px-3 py-2 text-sm"
                               >
                                 <option value="">
                                   Selectionner une classe
@@ -1562,7 +1630,7 @@ export default function UsersPage() {
                                     {entry.schoolYear.label} - {entry.name}
                                   </option>
                                 ))}
-                              </select>
+                              </FormSelect>
                               <Button
                                 type="button"
                                 disabled={Boolean(
@@ -1594,7 +1662,7 @@ export default function UsersPage() {
                                         : ""}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                      <select
+                                      <FormSelect
                                         value={
                                           enrollmentStatusDraftById[
                                             enrollment.id
@@ -1609,7 +1677,7 @@ export default function UsersPage() {
                                             }),
                                           )
                                         }
-                                        className="rounded-card border border-border bg-surface px-2 py-1 text-xs text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                        className="bg-surface px-2 py-1 text-xs"
                                       >
                                         <option value="ACTIVE">ACTIVE</option>
                                         <option value="TRANSFERRED">
@@ -1621,7 +1689,7 @@ export default function UsersPage() {
                                         <option value="GRADUATED">
                                           GRADUATED
                                         </option>
-                                      </select>
+                                      </FormSelect>
                                       <Button
                                         type="button"
                                         variant="secondary"
@@ -1736,79 +1804,151 @@ export default function UsersPage() {
               ]}
             />
           ) : (
-            <form className="grid gap-3 md:grid-cols-2" onSubmit={onCreateUser}>
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Prenom</span>
-                <input
-                  required
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
-
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Nom</span>
-                <input
-                  required
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                />
-              </label>
-
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Email</span>
-                <EmailInput
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </label>
-
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Telephone</span>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(event) =>
-                    setPhone(normalizeCmPhoneInput(event.target.value))
+            <form
+              className="grid gap-3 md:grid-cols-2"
+              onSubmit={createUserForm.handleSubmit(onCreateUser)}
+            >
+              <FormField
+                label="Prenom"
+                error={createUserForm.formState.errors.firstName?.message}
+              >
+                <FormTextInput
+                  aria-label="Prenom"
+                  value={createValues.firstName ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue("firstName", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  invalid={
+                    Boolean(createUserForm.formState.errors.firstName) ||
+                    !String(createValues.firstName ?? "").trim()
                   }
-                  placeholder="6XXXXXXXX"
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
-              </label>
+              </FormField>
+
+              <FormField
+                label="Nom"
+                error={createUserForm.formState.errors.lastName?.message}
+              >
+                <FormTextInput
+                  aria-label="Nom"
+                  value={createValues.lastName ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue("lastName", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  invalid={
+                    Boolean(createUserForm.formState.errors.lastName) ||
+                    !String(createValues.lastName ?? "").trim()
+                  }
+                />
+              </FormField>
+
+              <FormField
+                label="Email"
+                className="md:col-span-2"
+                error={createUserForm.formState.errors.email?.message}
+              >
+                <EmailInput
+                  value={createValues.email ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue("email", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  invalid={
+                    Boolean(createUserForm.formState.errors.email) ||
+                    !String(createValues.email ?? "").trim()
+                  }
+                />
+              </FormField>
+
+              <FormField
+                label="Telephone"
+                className="md:col-span-2"
+                error={createUserForm.formState.errors.phone?.message}
+              >
+                <FormTextInput
+                  aria-label="Telephone"
+                  type="text"
+                  value={createValues.phone ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue(
+                      "phone",
+                      normalizeCmPhoneInput(event.target.value),
+                      {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      },
+                    );
+                  }}
+                  placeholder="6XXXXXXXX"
+                  invalid={
+                    Boolean(createUserForm.formState.errors.phone) ||
+                    !String(createValues.phone ?? "").trim()
+                  }
+                />
+              </FormField>
 
               <div className="md:col-span-2">
                 <ImageUploadField
                   kind="user-avatar"
                   label="Photo de profil (optionnel)"
                   helperText="Image JPG/PNG/WEBP, maximum 5MB. La photo est recadree et compressee automatiquement."
-                  value={avatarUrl}
-                  onChange={setAvatarUrl}
+                  value={createValues.avatarUrl || null}
+                  onChange={(value) => {
+                    createUserForm.setValue("avatarUrl", value ?? "", {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                 />
               </div>
 
-              <div className="grid gap-1 text-sm">
-                <span className="text-text-secondary">PlatformRoles</span>
+              <FormField
+                label="PlatformRoles"
+                error={createUserForm.formState.errors.platformRoles?.message}
+              >
                 <div className="grid gap-1 rounded-card border border-border bg-surface px-3 py-2">
                   {PLATFORM_ROLE_OPTIONS.map((roleOption) => (
                     <label
                       key={`create-platform-${roleOption}`}
                       className="flex items-center gap-2 text-xs text-text-primary"
                     >
-                      <input
-                        type="checkbox"
-                        checked={createPlatformRoles.includes(roleOption)}
+                      <FormCheckbox
+                        checked={(createValues.platformRoles ?? []).includes(
+                          roleOption,
+                        )}
                         disabled={
                           roleOption === "ADMIN" &&
                           currentRole !== "SUPER_ADMIN"
                         }
                         onChange={(event) => {
-                          setCreatePlatformRoles((current) =>
+                          const currentRoles = createValues.platformRoles ?? [];
+                          createUserForm.setValue(
+                            "platformRoles",
                             event.target.checked
-                              ? Array.from(new Set([...current, roleOption]))
-                              : current.filter((value) => value !== roleOption),
+                              ? Array.from(
+                                  new Set([...currentRoles, roleOption]),
+                                )
+                              : currentRoles.filter(
+                                  (value) => value !== roleOption,
+                                ),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
                           );
                         }}
                       />
@@ -1816,57 +1956,102 @@ export default function UsersPage() {
                     </label>
                   ))}
                 </div>
-              </div>
+              </FormField>
 
-              <div className="grid gap-1 text-sm">
-                <span className="text-text-secondary">SchoolRoles</span>
+              <FormField
+                label="SchoolRoles"
+                error={createUserForm.formState.errors.schoolRoles?.message}
+              >
                 <div className="grid gap-1 rounded-card border border-border bg-surface px-3 py-2">
                   {SCHOOL_ROLE_OPTIONS.map((roleOption) => (
                     <label
                       key={`create-school-${roleOption}`}
                       className="flex items-center gap-2 text-xs text-text-primary"
                     >
-                      <input
-                        type="checkbox"
-                        checked={createSchoolRoles.includes(roleOption)}
+                      <FormCheckbox
+                        checked={(createValues.schoolRoles ?? []).includes(
+                          roleOption,
+                        )}
                         onChange={(event) => {
-                          setCreateSchoolRoles((current) =>
-                            event.target.checked
-                              ? Array.from(new Set([...current, roleOption]))
-                              : current.filter((value) => value !== roleOption),
-                          );
+                          const currentRoles = createValues.schoolRoles ?? [];
+                          const nextRoles = event.target.checked
+                            ? Array.from(new Set([...currentRoles, roleOption]))
+                            : currentRoles.filter(
+                                (value) => value !== roleOption,
+                              );
+                          createUserForm.setValue("schoolRoles", nextRoles, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                          if (nextRoles.length === 0) {
+                            createUserForm.setValue("schoolSlug", "", {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            });
+                          }
+                          void createUserForm.trigger("schoolSlug");
                         }}
                       />
                       <span>{roleOption}</span>
                     </label>
                   ))}
                 </div>
-              </div>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">
-                  Mot de passe provisoire
-                </span>
-                <input
+              <FormField
+                label="Mot de passe provisoire"
+                error={
+                  createUserForm.formState.errors.temporaryPassword?.message
+                }
+              >
+                <FormTextInput
+                  aria-label="Mot de passe provisoire"
                   type="text"
-                  required
-                  minLength={8}
-                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}"
-                  title="8 caracteres minimum avec au moins une majuscule, une minuscule et un chiffre."
-                  value={temporaryPassword}
-                  onChange={(event) => setTemporaryPassword(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  value={createValues.temporaryPassword ?? ""}
+                  onChange={(event) => {
+                    createUserForm.setValue(
+                      "temporaryPassword",
+                      event.target.value,
+                      {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      },
+                    );
+                  }}
+                  invalid={
+                    Boolean(
+                      createUserForm.formState.errors.temporaryPassword,
+                    ) || !String(createValues.temporaryPassword ?? "").trim()
+                  }
                 />
-              </label>
+              </FormField>
 
-              {createSchoolRoles.length > 0 ? (
-                <label className="grid gap-1 text-sm md:col-span-2">
-                  <span className="text-text-secondary">Ecole assignee</span>
-                  <select
-                    required
-                    value={schoolSlug}
-                    onChange={(event) => setSchoolSlug(event.target.value)}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+              {(createValues.schoolRoles ?? []).length > 0 ? (
+                <FormField
+                  label="Ecole assignee"
+                  className="md:col-span-2"
+                  error={createUserForm.formState.errors.schoolSlug?.message}
+                >
+                  <FormSelect
+                    value={createValues.schoolSlug ?? ""}
+                    onChange={(event) => {
+                      createUserForm.setValue(
+                        "schoolSlug",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
+                    invalid={
+                      Boolean(createUserForm.formState.errors.schoolSlug) ||
+                      !(createValues.schoolSlug ?? "")
+                    }
                   >
                     <option value="">Selectionner une ecole</option>
                     {schools.map((school) => (
@@ -1874,8 +2059,8 @@ export default function UsersPage() {
                         {school.name} ({school.slug})
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
               ) : null}
 
               {submitError ? (
@@ -1888,9 +2073,14 @@ export default function UsersPage() {
                   {submitSuccess}
                 </p>
               ) : null}
+              <div className="md:col-span-2">
+                <FormSubmitHint visible={!createUserForm.formState.isValid} />
+              </div>
 
               <div className="md:col-span-2">
-                <SubmitButton disabled={submitting}>
+                <SubmitButton
+                  disabled={submitting || !createUserForm.formState.isValid}
+                >
                   {submitting ? "Creation..." : "Creer le compte"}
                 </SubmitButton>
               </div>

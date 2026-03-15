@@ -19,7 +19,7 @@ describe("AppSidebar teacher class links", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
-      if (url.includes("/schools/college-vogt/grades/context")) {
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
         return new Response(
           JSON.stringify({
             assignments: [

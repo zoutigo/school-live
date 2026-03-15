@@ -9,6 +9,7 @@ import { MailService } from "../mail/mail.service.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { sanitizeRichTextHtml } from "../common/rich-text-sanitizer.js";
 import type { ArchiveMessageDto } from "./dto/archive-message.dto.js";
 import type { CreateMessageDto } from "./dto/create-message.dto.js";
 import type { ListMessagesDto } from "./dto/list-messages.dto.js";
@@ -324,6 +325,7 @@ export class MessagingService {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const recipientIds = this.normalizeRecipientIds(payload.recipientUserIds);
     const isDraft = payload.isDraft ?? false;
+    const sanitizedBody = sanitizeRichTextHtml(payload.body);
 
     if (!isDraft && recipientIds.length === 0) {
       throw new BadRequestException("At least one recipient is required");
@@ -339,7 +341,7 @@ export class MessagingService {
         senderUserId: user.id,
         status: isDraft ? "DRAFT" : "SENT",
         subject: payload.subject.trim(),
-        body: payload.body,
+        body: sanitizedBody,
         sentAt: isDraft ? null : new Date(),
         recipients: recipientIds.length
           ? {
@@ -363,7 +365,7 @@ export class MessagingService {
       scope: "MESSAGING",
       entityType: InlineMediaEntityType.INTERNAL_MESSAGE,
       entityId: created.id,
-      nextBodyHtml: payload.body,
+      nextBodyHtml: sanitizedBody,
       deleteRemovedPhysically: true,
     });
 
@@ -411,6 +413,10 @@ export class MessagingService {
       payload.recipientUserIds === undefined
         ? undefined
         : this.normalizeRecipientIds(payload.recipientUserIds);
+    const sanitizedBody =
+      payload.body === undefined
+        ? undefined
+        : sanitizeRichTextHtml(payload.body);
 
     if (recipientIds) {
       await this.ensureRecipientsInSchool(effectiveSchoolId, recipientIds);
@@ -421,7 +427,7 @@ export class MessagingService {
         where: { id: messageId },
         data: {
           subject: payload.subject?.trim(),
-          body: payload.body,
+          body: sanitizedBody,
         },
       });
 
@@ -449,7 +455,7 @@ export class MessagingService {
       entityType: InlineMediaEntityType.INTERNAL_MESSAGE,
       entityId: messageId,
       previousBodyHtml: draft.body,
-      nextBodyHtml: payload.body ?? draft.body,
+      nextBodyHtml: sanitizedBody ?? draft.body,
       deleteRemovedPhysically: true,
     });
 

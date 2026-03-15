@@ -14,6 +14,7 @@ describe("FeedService permissions + media cleanup on PATCH/DELETE", () => {
     },
     feedPost: {
       findFirst: jest.fn(),
+      create: jest.fn(),
       delete: jest.fn(),
       update: jest.fn(),
     },
@@ -85,6 +86,7 @@ describe("FeedService permissions + media cleanup on PATCH/DELETE", () => {
     prisma.enrollment.findMany.mockReset();
     prisma.teacherClassSubject.findMany.mockReset();
     prisma.feedPost.findFirst.mockReset();
+    prisma.feedPost.create.mockReset();
     prisma.feedPost.delete.mockReset();
     prisma.feedPost.update.mockReset();
     prisma.feedPostAttachment.deleteMany.mockReset();
@@ -258,5 +260,59 @@ describe("FeedService permissions + media cleanup on PATCH/DELETE", () => {
         },
       ],
     });
+  });
+
+  it("sanitizes rich html before creating a post", async () => {
+    const context = {
+      schoolId,
+      roles: new Set(["SCHOOL_STAFF"]),
+      classIds: new Set<string>(),
+      levelIds: new Set<string>(),
+      isStaff: true,
+      isParent: false,
+      isStudent: false,
+    };
+
+    prisma.feedPost.create.mockResolvedValue({ id: "post-1" });
+    (service as any).resolveViewerContext = jest
+      .fn()
+      .mockResolvedValue(context);
+    (service as any).resolveAudienceForCreate = jest.fn().mockResolvedValue({
+      scope: "SCHOOL_ALL",
+      label: "Toute l'ecole",
+      classId: null,
+      levelId: null,
+    });
+    (service as any).resolveFeaturedUntil = jest.fn().mockReturnValue(null);
+    (service as any).resolvePollData = jest
+      .fn()
+      .mockReturnValue({ question: null, options: undefined });
+    (service as any).normalizeAttachments = jest.fn().mockReturnValue([]);
+    (service as any).loadPostForViewer = jest.fn().mockResolvedValue({
+      id: "post-1",
+    });
+    (service as any).mapPost = jest.fn().mockReturnValue({ id: "post-1" });
+
+    await service.createPost(baseUser, schoolId, {
+      title: "Titre",
+      bodyHtml:
+        '<p onclick="alert(1)">Body</p><script>alert(1)</script><img src="javascript:alert(1)" /><a href="javascript:alert(1)">bad</a>',
+      audienceScope: "SCHOOL_ALL",
+    });
+
+    expect(prisma.feedPost.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          bodyHtml:
+            '<p>Body</p><a rel="noopener noreferrer" target="_blank">bad</a>',
+        }),
+      }),
+    );
+    expect(inlineMediaService.syncEntityImages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nextBodyHtml:
+          '<p>Body</p><a rel="noopener noreferrer" target="_blank">bad</a>',
+      }),
+    );
   });
 });

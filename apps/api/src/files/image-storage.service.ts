@@ -11,8 +11,9 @@ import { URL } from "node:url";
 export type UploadKind =
   | "school-logo"
   | "user-avatar"
-  | "messaging-inline-image";
-type UploadedImageFile = {
+  | "messaging-inline-image"
+  | "evaluation-attachment";
+type UploadedMediaFile = {
   buffer: Buffer;
   mimetype: string;
   size: number;
@@ -20,6 +21,20 @@ type UploadedImageFile = {
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+]);
 
 @Injectable()
 export class ImageStorageService {
@@ -37,9 +52,13 @@ export class ImageStorageService {
     };
   }
 
-  async storeImage(kind: UploadKind, file?: UploadedImageFile) {
+  async storeImage(kind: UploadKind, file?: UploadedMediaFile) {
     if (!file) {
       throw new BadRequestException("Fichier image manquant");
+    }
+
+    if (kind === "evaluation-attachment") {
+      return this.storeAttachment(file);
     }
 
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
@@ -80,6 +99,36 @@ export class ImageStorageService {
       width: outputMetadata.width ?? null,
       height: outputMetadata.height ?? null,
       mimeType: "image/webp",
+    };
+  }
+
+  async storeAttachment(file?: UploadedMediaFile) {
+    if (!file) {
+      throw new BadRequestException("Fichier piece jointe manquant");
+    }
+
+    if (!ALLOWED_ATTACHMENT_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException("Type de piece jointe non supporte");
+    }
+
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      throw new PayloadTooLargeException(
+        "Piece jointe trop lourde. Taille maximale: 10MB",
+      );
+    }
+
+    const extension = this.extensionFromMimeType(file.mimetype);
+    const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
+    const objectKey = `evaluations/attachments/${fileName}`;
+    await this.ensureBucket();
+    await this.putObject(objectKey, file.buffer, file.mimetype);
+
+    return {
+      url: this.toPublicUrl(objectKey),
+      size: file.size,
+      width: null,
+      height: null,
+      mimeType: file.mimetype,
     };
   }
 
@@ -271,6 +320,35 @@ export class ImageStorageService {
       .split("/")
       .map((part) => decodeURIComponent(part))
       .join("/");
+  }
+
+  private extensionFromMimeType(mimeType: string) {
+    switch (mimeType) {
+      case "image/jpeg":
+        return "jpg";
+      case "image/png":
+        return "png";
+      case "image/webp":
+        return "webp";
+      case "application/pdf":
+        return "pdf";
+      case "text/plain":
+        return "txt";
+      case "application/msword":
+        return "doc";
+      case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        return "docx";
+      case "application/vnd.ms-excel":
+        return "xls";
+      case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        return "xlsx";
+      case "application/vnd.ms-powerpoint":
+        return "ppt";
+      case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        return "pptx";
+      default:
+        return "bin";
+    }
   }
 
   private async signedRequest(params: {

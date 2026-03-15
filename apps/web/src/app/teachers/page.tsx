@@ -1,13 +1,21 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import {
+  FormSelect,
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
+import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PasswordInput } from "../../components/ui/password-input";
@@ -187,26 +195,9 @@ export default function TeachersPage() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
 
-  const [createMode, setCreateMode] = useState<"email" | "phone">("phone");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [initialPassword, setInitialPassword] = useState("");
-  const [initialPin, setInitialPin] = useState("");
-
-  const [assignmentSchoolYearId, setAssignmentSchoolYearId] = useState("");
-  const [assignmentTeacherUserId, setAssignmentTeacherUserId] = useState("");
-  const [assignmentClassId, setAssignmentClassId] = useState("");
-  const [assignmentSubjectId, setAssignmentSubjectId] = useState("");
-
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(
     null,
   );
-  const [editAssignmentSchoolYearId, setEditAssignmentSchoolYearId] =
-    useState("");
-  const [editAssignmentTeacherUserId, setEditAssignmentTeacherUserId] =
-    useState("");
-  const [editAssignmentClassId, setEditAssignmentClassId] = useState("");
-  const [editAssignmentSubjectId, setEditAssignmentSubjectId] = useState("");
 
   const [submittingTeacher, setSubmittingTeacher] = useState(false);
   const [submittingAssignment, setSubmittingAssignment] = useState(false);
@@ -219,6 +210,93 @@ export default function TeachersPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const createTeacherForm = useForm<
+    z.input<typeof createTeacherSchema>,
+    unknown,
+    z.output<typeof createTeacherSchema>
+  >({
+    resolver: zodResolver(createTeacherSchema),
+    mode: "onChange",
+    defaultValues: {
+      mode: "phone",
+      email: "",
+      phone: "",
+      password: "",
+      pin: "",
+    },
+  });
+  const createTeacherValues = createTeacherForm.watch();
+  const createAssignmentForm = useForm<
+    z.input<typeof assignmentSchema>,
+    unknown,
+    z.output<typeof assignmentSchema>
+  >({
+    resolver: zodResolver(assignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      schoolYearId: "",
+      teacherUserId: "",
+      classId: "",
+      subjectId: "",
+    },
+  });
+  const createAssignmentValues = createAssignmentForm.watch();
+  const editAssignmentForm = useForm<
+    z.input<typeof assignmentSchema>,
+    unknown,
+    z.output<typeof assignmentSchema>
+  >({
+    resolver: zodResolver(assignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      schoolYearId: "",
+      teacherUserId: "",
+      classId: "",
+      subjectId: "",
+    },
+  });
+  const editAssignmentValues = editAssignmentForm.watch();
+  const createTeacherMode = createTeacherValues.mode ?? "phone";
+  const createTeacherPhoneInvalid =
+    createTeacherMode === "phone" &&
+    (!!createTeacherForm.formState.errors.phone ||
+      !(createTeacherValues.phone ?? "").trim());
+  const createTeacherPinInvalid =
+    createTeacherMode === "phone" &&
+    (!!createTeacherForm.formState.errors.pin ||
+      !(createTeacherValues.pin ?? "").trim());
+  const createTeacherEmailInvalid =
+    createTeacherMode === "email" &&
+    (!!createTeacherForm.formState.errors.email ||
+      !(createTeacherValues.email ?? "").trim());
+  const createTeacherPasswordInvalid =
+    createTeacherMode === "email" &&
+    (!!createTeacherForm.formState.errors.password ||
+      !(createTeacherValues.password ?? "").trim());
+  const createAssignmentSchoolYearInvalid =
+    !!createAssignmentForm.formState.errors.schoolYearId ||
+    !(createAssignmentValues.schoolYearId ?? "").trim();
+  const createAssignmentTeacherInvalid =
+    !!createAssignmentForm.formState.errors.teacherUserId ||
+    !(createAssignmentValues.teacherUserId ?? "").trim();
+  const createAssignmentClassInvalid =
+    !!createAssignmentForm.formState.errors.classId ||
+    !(createAssignmentValues.classId ?? "").trim();
+  const createAssignmentSubjectInvalid =
+    !!createAssignmentForm.formState.errors.subjectId ||
+    !(createAssignmentValues.subjectId ?? "").trim();
+  const editAssignmentSchoolYearInvalid =
+    !!editAssignmentForm.formState.errors.schoolYearId ||
+    !(editAssignmentValues.schoolYearId ?? "").trim();
+  const editAssignmentTeacherInvalid =
+    !!editAssignmentForm.formState.errors.teacherUserId ||
+    !(editAssignmentValues.teacherUserId ?? "").trim();
+  const editAssignmentClassInvalid =
+    !!editAssignmentForm.formState.errors.classId ||
+    !(editAssignmentValues.classId ?? "").trim();
+  const editAssignmentSubjectInvalid =
+    !!editAssignmentForm.formState.errors.subjectId ||
+    !(editAssignmentValues.subjectId ?? "").trim();
 
   useEffect(() => {
     void bootstrap();
@@ -347,17 +425,32 @@ export default function TeachersPage() {
       setSubjects(subjectsPayload);
       setAssignments(assignmentsPayload);
 
-      if (!assignmentSchoolYearId && schoolYearsPayload.length > 0) {
+      if (
+        !createAssignmentValues.schoolYearId &&
+        schoolYearsPayload.length > 0
+      ) {
         const active = schoolYearsPayload.find((entry) => entry.isActive);
-        setAssignmentSchoolYearId(active?.id ?? schoolYearsPayload[0].id);
+        createAssignmentForm.setValue(
+          "schoolYearId",
+          active?.id ?? schoolYearsPayload[0].id,
+          { shouldDirty: false, shouldTouch: false, shouldValidate: true },
+        );
       }
 
-      if (!assignmentTeacherUserId && teachersPayload.length > 0) {
-        setAssignmentTeacherUserId(teachersPayload[0].userId);
+      if (!createAssignmentValues.teacherUserId && teachersPayload.length > 0) {
+        createAssignmentForm.setValue(
+          "teacherUserId",
+          teachersPayload[0].userId,
+          { shouldDirty: false, shouldTouch: false, shouldValidate: true },
+        );
       }
 
-      if (!assignmentSubjectId && subjectsPayload.length > 0) {
-        setAssignmentSubjectId(subjectsPayload[0].id);
+      if (!createAssignmentValues.subjectId && subjectsPayload.length > 0) {
+        createAssignmentForm.setValue("subjectId", subjectsPayload[0].id, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: true,
+        });
       }
     } catch {
       setError("Erreur reseau.");
@@ -369,40 +462,26 @@ export default function TeachersPage() {
   function filteredClassesForCreate() {
     return classrooms.filter(
       (entry) =>
-        !assignmentSchoolYearId ||
-        entry.schoolYear.id === assignmentSchoolYearId,
+        !createAssignmentValues.schoolYearId ||
+        entry.schoolYear.id === createAssignmentValues.schoolYearId,
     );
   }
 
   function filteredClassesForEdit() {
     return classrooms.filter(
       (entry) =>
-        !editAssignmentSchoolYearId ||
-        entry.schoolYear.id === editAssignmentSchoolYearId,
+        !editAssignmentValues.schoolYearId ||
+        entry.schoolYear.id === editAssignmentValues.schoolYearId,
     );
   }
 
-  async function onCreateTeacher(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateTeacher(values: z.output<typeof createTeacherSchema>) {
     if (!schoolSlug) {
       return;
     }
 
     setError(null);
     setSuccess(null);
-
-    const parsed = createTeacherSchema.safeParse({
-      mode: createMode,
-      email,
-      phone,
-      password: initialPassword,
-      pin: initialPin,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -421,14 +500,14 @@ export default function TeachersPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify(
-          parsed.data.mode === "email"
+          values.mode === "email"
             ? {
-                email: parsed.data.email.trim(),
-                password: parsed.data.password.trim(),
+                email: values.email.trim(),
+                password: values.password.trim(),
               }
             : {
-                phone: parsed.data.phone?.trim(),
-                pin: parsed.data.pin.trim(),
+                phone: values.phone?.trim(),
+                pin: values.pin.trim(),
               },
         ),
       });
@@ -445,12 +524,15 @@ export default function TeachersPage() {
         return;
       }
 
-      setEmail("");
-      setPhone("");
-      setInitialPassword("");
-      setInitialPin("");
+      createTeacherForm.reset({
+        mode: values.mode,
+        email: "",
+        phone: "",
+        password: "",
+        pin: "",
+      });
       setSuccess(
-        parsed.data.mode === "phone"
+        values.mode === "phone"
           ? "Enseignant cree/affecte. En cas de nouveau compte, utiliser le flux compte en attente pour activer le PIN."
           : "Enseignant cree/affecte. Si nouveau compte, premiere connexion avec mot de passe initial puis changement obligatoire.",
       );
@@ -462,26 +544,13 @@ export default function TeachersPage() {
     }
   }
 
-  async function onCreateAssignment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateAssignment(values: z.output<typeof assignmentSchema>) {
     if (!schoolSlug) {
       return;
     }
 
     setError(null);
     setSuccess(null);
-
-    const parsed = assignmentSchema.safeParse({
-      schoolYearId: assignmentSchoolYearId,
-      teacherUserId: assignmentTeacherUserId,
-      classId: assignmentClassId,
-      subjectId: assignmentSubjectId,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -501,7 +570,7 @@ export default function TeachersPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify(parsed.data),
+          body: JSON.stringify(values),
         },
       );
 
@@ -517,7 +586,12 @@ export default function TeachersPage() {
         return;
       }
 
-      setAssignmentClassId("");
+      createAssignmentForm.reset({
+        schoolYearId: values.schoolYearId,
+        teacherUserId: values.teacherUserId,
+        classId: "",
+        subjectId: values.subjectId,
+      });
       setSuccess("Affectation enseignant creee.");
       await loadData(schoolSlug);
     } catch {
@@ -529,29 +603,23 @@ export default function TeachersPage() {
 
   function startEditAssignment(entry: AssignmentRow) {
     setEditingAssignmentId(entry.id);
-    setEditAssignmentSchoolYearId(entry.schoolYearId);
-    setEditAssignmentTeacherUserId(entry.teacherUserId);
-    setEditAssignmentClassId(entry.classId);
-    setEditAssignmentSubjectId(entry.subjectId);
+    editAssignmentForm.reset({
+      schoolYearId: entry.schoolYearId,
+      teacherUserId: entry.teacherUserId,
+      classId: entry.classId,
+      subjectId: entry.subjectId,
+    });
   }
 
-  async function saveAssignment(assignmentId: string) {
+  async function saveAssignment(
+    assignmentId: string,
+    values: z.output<typeof assignmentSchema>,
+  ) {
     if (!schoolSlug) {
       return;
     }
 
     setError(null);
-    const parsed = assignmentSchema.safeParse({
-      schoolYearId: editAssignmentSchoolYearId,
-      teacherUserId: editAssignmentTeacherUserId,
-      classId: editAssignmentClassId,
-      subjectId: editAssignmentSubjectId,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -571,7 +639,7 @@ export default function TeachersPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify(parsed.data),
+          body: JSON.stringify(values),
         },
       );
 
@@ -588,6 +656,12 @@ export default function TeachersPage() {
       }
 
       setEditingAssignmentId(null);
+      editAssignmentForm.reset({
+        schoolYearId: "",
+        teacherUserId: "",
+        classId: "",
+        subjectId: "",
+      });
       setSuccess("Affectation modifiee.");
       await loadData(schoolSlug);
     } catch {
@@ -748,12 +822,11 @@ export default function TeachersPage() {
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
                 <span className="text-text-secondary">Ecole</span>
-                <select
+                <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Selectionner une ecole</option>
                   {schools.map((school) => (
@@ -761,7 +834,7 @@ export default function TeachersPage() {
                       {school.name}
                     </option>
                   ))}
-                </select>
+                </FormSelect>
               </label>
             ) : null}
           </div>
@@ -820,75 +893,159 @@ export default function TeachersPage() {
               ) : (
                 <form
                   className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
-                  onSubmit={onCreateTeacher}
+                  onSubmit={createTeacherForm.handleSubmit(onCreateTeacher)}
                 >
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">Mode creation</span>
-                    <select
-                      value={createMode}
-                      onChange={(event) =>
-                        setCreateMode(event.target.value as "email" | "phone")
-                      }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  <FormField
+                    label="Mode creation"
+                    error={createTeacherForm.formState.errors.mode?.message}
+                  >
+                    <FormSelect
+                      value={createTeacherMode}
+                      invalid={false}
+                      onChange={(event) => {
+                        const nextMode = event.target.value as
+                          | "email"
+                          | "phone";
+                        createTeacherForm.setValue("mode", nextMode, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        });
+                        if (nextMode === "email") {
+                          createTeacherForm.setValue("phone", "", {
+                            shouldValidate: true,
+                          });
+                          createTeacherForm.setValue("pin", "", {
+                            shouldValidate: true,
+                          });
+                        } else {
+                          createTeacherForm.setValue("email", "", {
+                            shouldValidate: true,
+                          });
+                          createTeacherForm.setValue("password", "", {
+                            shouldValidate: true,
+                          });
+                        }
+                      }}
                     >
                       <option value="phone">Telephone + PIN</option>
                       <option value="email">Email + mot de passe</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">
-                      {createMode === "email"
+                    </FormSelect>
+                  </FormField>
+                  <FormField
+                    label={
+                      createTeacherMode === "email"
                         ? "Email enseignant"
-                        : "Telephone enseignant"}
-                    </span>
-                    {createMode === "email" ? (
+                        : "Telephone enseignant"
+                    }
+                    error={
+                      createTeacherMode === "email"
+                        ? createTeacherForm.formState.errors.email?.message
+                        : createTeacherForm.formState.errors.phone?.message
+                    }
+                  >
+                    {createTeacherMode === "email" ? (
                       <EmailInput
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
+                        value={createTeacherValues.email ?? ""}
+                        invalid={createTeacherEmailInvalid}
+                        onChange={(event) => {
+                          createTeacherForm.setValue(
+                            "email",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="enseignant@ecole.com"
                       />
                     ) : (
-                      <input
-                        value={phone}
-                        onChange={(event) =>
-                          setPhone(normalizeCmPhoneInput(event.target.value))
-                        }
+                      <FormTextInput
+                        value={createTeacherValues.phone ?? ""}
+                        invalid={createTeacherPhoneInvalid}
+                        onChange={(event) => {
+                          createTeacherForm.setValue(
+                            "phone",
+                            normalizeCmPhoneInput(event.target.value),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="6XXXXXXXX"
-                        className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       />
                     )}
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">
-                      {createMode === "email"
+                  </FormField>
+                  <FormField
+                    label={
+                      createTeacherMode === "email"
                         ? "Mot de passe initial"
-                        : "PIN initial"}
-                    </span>
-                    {createMode === "email" ? (
+                        : "PIN initial"
+                    }
+                    error={
+                      createTeacherMode === "email"
+                        ? createTeacherForm.formState.errors.password?.message
+                        : createTeacherForm.formState.errors.pin?.message
+                    }
+                  >
+                    {createTeacherMode === "email" ? (
                       <PasswordInput
-                        value={initialPassword}
-                        onChange={(event) =>
-                          setInitialPassword(event.target.value)
+                        value={createTeacherValues.password ?? ""}
+                        aria-invalid={
+                          createTeacherPasswordInvalid ? "true" : "false"
                         }
+                        onChange={(event) => {
+                          createTeacherForm.setValue(
+                            "password",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="MotDePasse123"
                       />
                     ) : (
                       <PinInput
-                        value={initialPin}
-                        onChange={(event) =>
-                          setInitialPin(
-                            event.target.value.replace(/\D/g, "").slice(0, 6),
-                          )
+                        value={createTeacherValues.pin ?? ""}
+                        aria-invalid={
+                          createTeacherPinInvalid ? "true" : "false"
                         }
+                        onChange={(event) => {
+                          createTeacherForm.setValue(
+                            "pin",
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
                         placeholder="123456"
                       />
                     )}
-                  </label>
+                  </FormField>
                   <div className="self-end">
-                    <SubmitButton disabled={submittingTeacher}>
+                    <SubmitButton
+                      disabled={
+                        submittingTeacher ||
+                        !createTeacherForm.formState.isValid
+                      }
+                    >
                       {submittingTeacher ? "Creation..." : "Ajouter"}
                     </SubmitButton>
                   </div>
+                  <FormSubmitHint
+                    visible={!createTeacherForm.formState.isValid}
+                    className="md:col-span-3"
+                  />
                   {error ? (
                     <p className="text-sm text-notification md:col-span-3">
                       {error}
@@ -981,17 +1138,34 @@ export default function TeachersPage() {
             <div className="grid gap-4">
               <form
                 className="grid gap-3 md:grid-cols-5"
-                onSubmit={onCreateAssignment}
+                onSubmit={createAssignmentForm.handleSubmit(onCreateAssignment)}
               >
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Annee scolaire</span>
-                  <select
-                    value={assignmentSchoolYearId}
+                <FormField
+                  label="Annee scolaire"
+                  error={
+                    createAssignmentForm.formState.errors.schoolYearId?.message
+                  }
+                >
+                  <FormSelect
+                    aria-label="Annee scolaire affectation"
+                    invalid={createAssignmentSchoolYearInvalid}
+                    value={createAssignmentValues.schoolYearId ?? ""}
                     onChange={(event) => {
-                      setAssignmentSchoolYearId(event.target.value);
-                      setAssignmentClassId("");
+                      createAssignmentForm.setValue(
+                        "schoolYearId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                      createAssignmentForm.setValue("classId", "", {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
                     }}
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
                     {schoolYears.map((entry) => (
@@ -1000,17 +1174,30 @@ export default function TeachersPage() {
                         {entry.isActive ? " (active)" : ""}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Enseignant</span>
-                  <select
-                    value={assignmentTeacherUserId}
+                <FormField
+                  label="Enseignant"
+                  error={
+                    createAssignmentForm.formState.errors.teacherUserId?.message
+                  }
+                >
+                  <FormSelect
+                    aria-label="Enseignant affectation"
+                    invalid={createAssignmentTeacherInvalid}
+                    value={createAssignmentValues.teacherUserId ?? ""}
                     onChange={(event) =>
-                      setAssignmentTeacherUserId(event.target.value)
+                      createAssignmentForm.setValue(
+                        "teacherUserId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
                     {sortedTeachers.map((entry) => (
@@ -1018,17 +1205,28 @@ export default function TeachersPage() {
                         {entry.lastName} {entry.firstName}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Classe</span>
-                  <select
-                    value={assignmentClassId}
+                <FormField
+                  label="Classe"
+                  error={createAssignmentForm.formState.errors.classId?.message}
+                >
+                  <FormSelect
+                    aria-label="Classe affectation"
+                    invalid={createAssignmentClassInvalid}
+                    value={createAssignmentValues.classId ?? ""}
                     onChange={(event) =>
-                      setAssignmentClassId(event.target.value)
+                      createAssignmentForm.setValue(
+                        "classId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
                     {filteredClassesForCreate().map((entry) => (
@@ -1036,17 +1234,30 @@ export default function TeachersPage() {
                         {entry.name}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
-                <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Matiere</span>
-                  <select
-                    value={assignmentSubjectId}
+                <FormField
+                  label="Matiere"
+                  error={
+                    createAssignmentForm.formState.errors.subjectId?.message
+                  }
+                >
+                  <FormSelect
+                    aria-label="Matiere affectation"
+                    invalid={createAssignmentSubjectInvalid}
+                    value={createAssignmentValues.subjectId ?? ""}
                     onChange={(event) =>
-                      setAssignmentSubjectId(event.target.value)
+                      createAssignmentForm.setValue(
+                        "subjectId",
+                        event.target.value,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
                     }
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Selectionner</option>
                     {subjects.map((entry) => (
@@ -1054,14 +1265,23 @@ export default function TeachersPage() {
                         {entry.name}
                       </option>
                     ))}
-                  </select>
-                </label>
+                  </FormSelect>
+                </FormField>
 
                 <div className="self-end">
-                  <SubmitButton disabled={submittingAssignment}>
+                  <SubmitButton
+                    disabled={
+                      submittingAssignment ||
+                      !createAssignmentForm.formState.isValid
+                    }
+                  >
                     {submittingAssignment ? "Creation..." : "Ajouter"}
                   </SubmitButton>
                 </div>
+                <FormSubmitHint
+                  visible={!createAssignmentForm.formState.isValid}
+                  className="md:col-span-5"
+                />
               </form>
 
               <div className="overflow-x-auto">
@@ -1131,19 +1351,39 @@ export default function TeachersPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-4">
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Annee
-                                    </span>
-                                    <select
-                                      value={editAssignmentSchoolYearId}
+                                  <FormField
+                                    label="Annee"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .schoolYearId?.message
+                                    }
+                                  >
+                                    <FormSelect
+                                      aria-label="Annee edition affectation"
+                                      invalid={editAssignmentSchoolYearInvalid}
+                                      value={
+                                        editAssignmentValues.schoolYearId ?? ""
+                                      }
                                       onChange={(event) => {
-                                        setEditAssignmentSchoolYearId(
+                                        editAssignmentForm.setValue(
+                                          "schoolYearId",
                                           event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         );
-                                        setEditAssignmentClassId("");
+                                        editAssignmentForm.setValue(
+                                          "classId",
+                                          "",
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
                                       }}
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     >
                                       <option value="">Selectionner</option>
                                       {schoolYears.map((year) => (
@@ -1151,20 +1391,32 @@ export default function TeachersPage() {
                                           {year.label}
                                         </option>
                                       ))}
-                                    </select>
-                                  </label>
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Enseignant
-                                    </span>
-                                    <select
-                                      value={editAssignmentTeacherUserId}
+                                    </FormSelect>
+                                  </FormField>
+                                  <FormField
+                                    label="Enseignant"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .teacherUserId?.message
+                                    }
+                                  >
+                                    <FormSelect
+                                      aria-label="Enseignant edition affectation"
+                                      invalid={editAssignmentTeacherInvalid}
+                                      value={
+                                        editAssignmentValues.teacherUserId ?? ""
+                                      }
                                       onChange={(event) =>
-                                        setEditAssignmentTeacherUserId(
+                                        editAssignmentForm.setValue(
+                                          "teacherUserId",
                                           event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     >
                                       <option value="">Selectionner</option>
                                       {sortedTeachers.map((teacher) => (
@@ -1175,20 +1427,30 @@ export default function TeachersPage() {
                                           {teacher.lastName} {teacher.firstName}
                                         </option>
                                       ))}
-                                    </select>
-                                  </label>
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Classe
-                                    </span>
-                                    <select
-                                      value={editAssignmentClassId}
+                                    </FormSelect>
+                                  </FormField>
+                                  <FormField
+                                    label="Classe"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .classId?.message
+                                    }
+                                  >
+                                    <FormSelect
+                                      aria-label="Classe edition affectation"
+                                      invalid={editAssignmentClassInvalid}
+                                      value={editAssignmentValues.classId ?? ""}
                                       onChange={(event) =>
-                                        setEditAssignmentClassId(
+                                        editAssignmentForm.setValue(
+                                          "classId",
                                           event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     >
                                       <option value="">Selectionner</option>
                                       {filteredClassesForEdit().map((c) => (
@@ -1196,20 +1458,32 @@ export default function TeachersPage() {
                                           {c.name}
                                         </option>
                                       ))}
-                                    </select>
-                                  </label>
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Matiere
-                                    </span>
-                                    <select
-                                      value={editAssignmentSubjectId}
+                                    </FormSelect>
+                                  </FormField>
+                                  <FormField
+                                    label="Matiere"
+                                    error={
+                                      editAssignmentForm.formState.errors
+                                        .subjectId?.message
+                                    }
+                                  >
+                                    <FormSelect
+                                      aria-label="Matiere edition affectation"
+                                      invalid={editAssignmentSubjectInvalid}
+                                      value={
+                                        editAssignmentValues.subjectId ?? ""
+                                      }
                                       onChange={(event) =>
-                                        setEditAssignmentSubjectId(
+                                        editAssignmentForm.setValue(
+                                          "subjectId",
                                           event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
-                                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     >
                                       <option value="">Selectionner</option>
                                       {subjects.map((subject) => (
@@ -1220,15 +1494,27 @@ export default function TeachersPage() {
                                           {subject.name}
                                         </option>
                                       ))}
-                                    </select>
-                                  </label>
+                                    </FormSelect>
+                                  </FormField>
+                                  <FormSubmitHint
+                                    visible={
+                                      !editAssignmentForm.formState.isValid
+                                    }
+                                    className="md:col-span-4"
+                                  />
                                   <div className="flex gap-2 md:col-span-4">
                                     <Button
                                       type="button"
-                                      disabled={savingAssignment}
-                                      onClick={() => {
-                                        void saveAssignment(entry.id);
-                                      }}
+                                      disabled={
+                                        savingAssignment ||
+                                        !editAssignmentForm.formState.isValid
+                                      }
+                                      onClick={() =>
+                                        void editAssignmentForm.handleSubmit(
+                                          (values) =>
+                                            saveAssignment(entry.id, values),
+                                        )()
+                                      }
                                     >
                                       {savingAssignment
                                         ? "Enregistrement..."
@@ -1237,9 +1523,15 @@ export default function TeachersPage() {
                                     <Button
                                       type="button"
                                       variant="secondary"
-                                      onClick={() =>
-                                        setEditingAssignmentId(null)
-                                      }
+                                      onClick={() => {
+                                        setEditingAssignmentId(null);
+                                        editAssignmentForm.reset({
+                                          schoolYearId: "",
+                                          teacherUserId: "",
+                                          classId: "",
+                                          subjectId: "",
+                                        });
+                                      }}
                                     >
                                       Annuler
                                     </Button>

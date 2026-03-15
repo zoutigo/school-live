@@ -1,14 +1,21 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MoreVertical } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
+import {
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
+import { FormField } from "../../components/ui/form-field";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
@@ -128,7 +135,15 @@ const createSchoolSchema = z.object({
     .string()
     .trim()
     .email("L'email du school admin est invalide."),
-  logoUrl: z.string().trim().url().optional(),
+  logoUrl: z
+    .union([z.string().trim().url(), z.literal(""), z.undefined()])
+    .optional()
+    .transform((value) => {
+      if (!value) {
+        return undefined;
+      }
+      return value;
+    }),
 });
 
 const updateSchoolSchema = z.object({
@@ -136,7 +151,15 @@ const updateSchoolSchema = z.object({
   country: z.string().trim().nullable().optional(),
   region: z.string().trim().nullable().optional(),
   city: z.string().trim().nullable().optional(),
-  logoUrl: z.string().trim().url().nullable().optional(),
+  logoUrl: z
+    .union([z.string().trim().url(), z.literal(""), z.null(), z.undefined()])
+    .optional()
+    .transform((value) => {
+      if (!value) {
+        return undefined;
+      }
+      return value;
+    }),
 });
 
 function toFileUrl(fileUrl: string | null) {
@@ -160,12 +183,6 @@ export default function SchoolsPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
-  const [name, setName] = useState("");
-  const [schoolAdminEmail, setSchoolAdminEmail] = useState("");
-  const [country, setCountry] = useState("");
-  const [region, setRegion] = useState("");
-  const [city, setCity] = useState("");
-  const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
   const [slugPreview, setSlugPreview] = useState<SlugPreviewState>({
     loading: false,
     baseSlug: null,
@@ -180,13 +197,6 @@ export default function SchoolsPage() {
     null,
   );
   const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
-  const [editSchoolName, setEditSchoolName] = useState("");
-  const [editSchoolCountry, setEditSchoolCountry] = useState("");
-  const [editSchoolRegion, setEditSchoolRegion] = useState("");
-  const [editSchoolCity, setEditSchoolCity] = useState("");
-  const [editSchoolLogoUrl, setEditSchoolLogoUrl] = useState<string | null>(
-    null,
-  );
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState<SchoolDetails | null>(
@@ -201,13 +211,38 @@ export default function SchoolsPage() {
   const [sendingInviteAdminId, setSendingInviteAdminId] = useState<
     string | null
   >(null);
+  const createSchoolForm = useForm<z.input<typeof createSchoolSchema>>({
+    resolver: zodResolver(createSchoolSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      country: "",
+      region: "",
+      city: "",
+      schoolAdminEmail: "",
+      logoUrl: "",
+    },
+  });
+  const editSchoolForm = useForm<z.input<typeof updateSchoolSchema>>({
+    resolver: zodResolver(updateSchoolSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      country: "",
+      region: "",
+      city: "",
+      logoUrl: "",
+    },
+  });
+  const createSchoolValues = createSchoolForm.watch();
+  const editSchoolValues = editSchoolForm.watch();
 
   useEffect(() => {
     void bootstrap();
   }, []);
 
   useEffect(() => {
-    const value = name.trim();
+    const value = (createSchoolValues.name ?? "").trim();
     if (!value) {
       setSlugPreview({
         loading: false,
@@ -224,10 +259,10 @@ export default function SchoolsPage() {
     }, 350);
 
     return () => clearTimeout(timeout);
-  }, [name]);
+  }, [createSchoolValues.name]);
 
   useEffect(() => {
-    const email = schoolAdminEmail.trim();
+    const email = (createSchoolValues.schoolAdminEmail ?? "").trim();
     if (!email) {
       setEmailCheckState("idle");
       setEmailCheckName(null);
@@ -245,7 +280,14 @@ export default function SchoolsPage() {
     }, 350);
 
     return () => clearTimeout(timeout);
-  }, [schoolAdminEmail]);
+  }, [createSchoolValues.schoolAdminEmail]);
+
+  useEffect(() => {
+    if (tab !== "create") {
+      return;
+    }
+    void createSchoolForm.trigger();
+  }, [createSchoolForm, tab]);
 
   async function bootstrap() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -395,24 +437,9 @@ export default function SchoolsPage() {
     }
   }
 
-  async function onCreateSchool(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onCreateSchool(values: z.input<typeof createSchoolSchema>) {
     setSubmitError(null);
     setSubmitSuccess(null);
-
-    const parsed = createSchoolSchema.safeParse({
-      name,
-      country,
-      region,
-      city,
-      schoolAdminEmail,
-      logoUrl: schoolLogoUrl ?? undefined,
-    });
-
-    if (!parsed.success) {
-      setSubmitError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -430,7 +457,7 @@ export default function SchoolsPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(createSchoolSchema.parse(values)),
       });
 
       if (!response.ok) {
@@ -462,12 +489,14 @@ export default function SchoolsPage() {
         );
       }
 
-      setName("");
-      setSchoolAdminEmail("");
-      setCountry("");
-      setRegion("");
-      setCity("");
-      setSchoolLogoUrl(null);
+      createSchoolForm.reset({
+        name: "",
+        country: "",
+        region: "",
+        city: "",
+        schoolAdminEmail: "",
+        logoUrl: "",
+      });
       setSlugPreview({
         loading: false,
         baseSlug: null,
@@ -490,27 +519,21 @@ export default function SchoolsPage() {
     setEditError(null);
     setOpenActionsSchoolId(null);
     setEditingSchoolId(school.id);
-    setEditSchoolName(school.name);
-    setEditSchoolCountry(school.country ?? "");
-    setEditSchoolRegion(school.region ?? "");
-    setEditSchoolCity(school.city ?? "");
-    setEditSchoolLogoUrl(school.logoUrl);
+    editSchoolForm.reset({
+      name: school.name,
+      country: school.country ?? "",
+      region: school.region ?? "",
+      city: school.city ?? "",
+      logoUrl: school.logoUrl ?? "",
+    });
+    void editSchoolForm.trigger();
   }
 
-  async function onSaveSchool(schoolId: string) {
+  async function onSaveSchool(
+    schoolId: string,
+    values: z.input<typeof updateSchoolSchema>,
+  ) {
     setEditError(null);
-    const parsed = updateSchoolSchema.safeParse({
-      name: editSchoolName,
-      country: editSchoolCountry || null,
-      region: editSchoolRegion || null,
-      city: editSchoolCity || null,
-      logoUrl: editSchoolLogoUrl,
-    });
-
-    if (!parsed.success) {
-      setEditError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -529,11 +552,11 @@ export default function SchoolsPage() {
           "X-CSRF-Token": csrfToken,
         },
         body: JSON.stringify({
-          name: parsed.data.name,
-          country: parsed.data.country ?? null,
-          region: parsed.data.region ?? null,
-          city: parsed.data.city ?? null,
-          logoUrl: parsed.data.logoUrl ?? null,
+          name: values.name,
+          country: values.country ?? null,
+          region: values.region ?? null,
+          city: values.city ?? null,
+          logoUrl: values.logoUrl ?? null,
         }),
       });
 
@@ -827,61 +850,114 @@ export default function SchoolsPage() {
                           <tr className="border-b border-border bg-background">
                             <td className="px-3 py-3" colSpan={8}>
                               <div className="grid gap-3 md:grid-cols-2">
-                                <label className="grid gap-1 text-sm">
-                                  <span className="text-text-secondary">
-                                    Nom de l ecole
-                                  </span>
-                                  <input
-                                    value={editSchoolName}
-                                    onChange={(event) =>
-                                      setEditSchoolName(event.target.value)
+                                <FormField
+                                  label="Nom de l ecole"
+                                  error={
+                                    editSchoolForm.formState.errors.name
+                                      ?.message
+                                  }
+                                >
+                                  <FormTextInput
+                                    aria-label="Nom de l ecole"
+                                    value={editSchoolValues.name ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "name",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
+                                    invalid={
+                                      Boolean(
+                                        editSchoolForm.formState.errors.name,
+                                      ) ||
+                                      !String(
+                                        editSchoolValues.name ?? "",
+                                      ).trim()
                                     }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                   />
-                                </label>
-                                <label className="grid gap-1 text-sm">
-                                  <span className="text-text-secondary">
-                                    Pays
-                                  </span>
-                                  <input
-                                    value={editSchoolCountry}
-                                    onChange={(event) =>
-                                      setEditSchoolCountry(event.target.value)
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                </FormField>
+                                <FormField label="Pays">
+                                  <FormTextInput
+                                    aria-label="Pays"
+                                    value={editSchoolValues.country ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "country",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
+                                    invalid={Boolean(
+                                      editSchoolForm.formState.errors.country,
+                                    )}
                                   />
-                                </label>
-                                <label className="grid gap-1 text-sm">
-                                  <span className="text-text-secondary">
-                                    Region
-                                  </span>
-                                  <input
-                                    value={editSchoolRegion}
-                                    onChange={(event) =>
-                                      setEditSchoolRegion(event.target.value)
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                </FormField>
+                                <FormField label="Region">
+                                  <FormTextInput
+                                    aria-label="Region"
+                                    value={editSchoolValues.region ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "region",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
+                                    invalid={Boolean(
+                                      editSchoolForm.formState.errors.region,
+                                    )}
                                   />
-                                </label>
-                                <label className="grid gap-1 text-sm">
-                                  <span className="text-text-secondary">
-                                    Ville
-                                  </span>
-                                  <input
-                                    value={editSchoolCity}
-                                    onChange={(event) =>
-                                      setEditSchoolCity(event.target.value)
-                                    }
-                                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                                </FormField>
+                                <FormField label="Ville">
+                                  <FormTextInput
+                                    aria-label="Ville"
+                                    value={editSchoolValues.city ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "city",
+                                        event.target.value,
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
+                                    invalid={Boolean(
+                                      editSchoolForm.formState.errors.city,
+                                    )}
                                   />
-                                </label>
+                                </FormField>
 
                                 <ImageUploadField
                                   kind="school-logo"
                                   label="Logo"
                                   helperText="Image JPG/PNG/WEBP, maximum 5MB."
-                                  value={editSchoolLogoUrl}
-                                  onChange={setEditSchoolLogoUrl}
+                                  value={editSchoolValues.logoUrl ?? null}
+                                  onChange={(value) => {
+                                    editSchoolForm.setValue(
+                                      "logoUrl",
+                                      value ?? "",
+                                      {
+                                        shouldDirty: true,
+                                        shouldTouch: true,
+                                        shouldValidate: true,
+                                      },
+                                    );
+                                  }}
                                 />
                               </div>
                               {editError ? (
@@ -889,12 +965,21 @@ export default function SchoolsPage() {
                                   {editError}
                                 </p>
                               ) : null}
+                              <FormSubmitHint
+                                visible={!editSchoolForm.formState.isValid}
+                                className="mt-2"
+                              />
                               <div className="mt-3 flex gap-2">
                                 <Button
                                   type="button"
-                                  disabled={savingEdit}
+                                  disabled={
+                                    savingEdit ||
+                                    !editSchoolForm.formState.isValid
+                                  }
                                   onClick={() => {
-                                    void onSaveSchool(school.id);
+                                    void editSchoolForm.handleSubmit((values) =>
+                                      onSaveSchool(school.id, values),
+                                    )();
                                   }}
                                 >
                                   {savingEdit
@@ -907,6 +992,7 @@ export default function SchoolsPage() {
                                   onClick={() => {
                                     setEditingSchoolId(null);
                                     setEditError(null);
+                                    editSchoolForm.reset();
                                   }}
                                 >
                                   Annuler
@@ -1061,91 +1147,152 @@ export default function SchoolsPage() {
           {tab === "create" ? (
             <form
               className="grid gap-3 md:grid-cols-2"
-              onSubmit={onCreateSchool}
+              onSubmit={createSchoolForm.handleSubmit(onCreateSchool)}
             >
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Nom de l ecole</span>
-                <input
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
-                />
-                <span className="text-xs text-text-secondary">
-                  {slugPreview.loading
+              <FormField
+                label="Nom de l ecole"
+                className="md:col-span-2"
+                error={createSchoolForm.formState.errors.name?.message}
+                hint={
+                  slugPreview.loading
                     ? "Generation/verifications du slug..."
-                    : null}
-                  {!slugPreview.loading && slugPreview.error
-                    ? slugPreview.error
-                    : null}
-                  {!slugPreview.loading &&
-                  !slugPreview.error &&
-                  slugPreview.suggestedSlug
-                    ? slugPreview.baseExists
-                      ? `Slug detecte deja pris (${slugPreview.baseSlug}). Le slug final sera ${slugPreview.suggestedSlug}.`
-                      : `Slug genere: ${slugPreview.suggestedSlug}.`
-                    : null}
-                </span>
-              </label>
-
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Pays (optionnel)</span>
-                <input
-                  value={country}
-                  onChange={(event) => setCountry(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                    : !slugPreview.loading && slugPreview.error
+                      ? slugPreview.error
+                      : !slugPreview.loading && slugPreview.suggestedSlug
+                        ? slugPreview.baseExists
+                          ? `Slug detecte deja pris (${slugPreview.baseSlug}). Le slug final sera ${slugPreview.suggestedSlug}.`
+                          : `Slug genere: ${slugPreview.suggestedSlug}.`
+                        : null
+                }
+              >
+                <FormTextInput
+                  aria-label="Nom de l ecole"
+                  value={createSchoolValues.name ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue("name", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  invalid={
+                    Boolean(createSchoolForm.formState.errors.name) ||
+                    !String(createSchoolValues.name ?? "").trim()
+                  }
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Region (optionnel)</span>
-                <input
-                  value={region}
-                  onChange={(event) => setRegion(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+              <FormField
+                label="Pays (optionnel)"
+                error={createSchoolForm.formState.errors.country?.message}
+              >
+                <FormTextInput
+                  aria-label="Pays"
+                  value={createSchoolValues.country ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue("country", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  invalid={Boolean(createSchoolForm.formState.errors.country)}
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Ville (optionnel)</span>
-                <input
-                  value={city}
-                  onChange={(event) => setCity(event.target.value)}
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+              <FormField
+                label="Region (optionnel)"
+                error={createSchoolForm.formState.errors.region?.message}
+              >
+                <FormTextInput
+                  aria-label="Region"
+                  value={createSchoolValues.region ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue("region", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  invalid={Boolean(createSchoolForm.formState.errors.region)}
                 />
-              </label>
+              </FormField>
 
-              <label className="grid gap-1 text-sm md:col-span-2">
-                <span className="text-text-secondary">Email School Admin</span>
-                <EmailInput
-                  required
-                  value={schoolAdminEmail}
-                  onChange={(event) => setSchoolAdminEmail(event.target.value)}
+              <FormField
+                label="Ville (optionnel)"
+                className="md:col-span-2"
+                error={createSchoolForm.formState.errors.city?.message}
+              >
+                <FormTextInput
+                  aria-label="Ville"
+                  value={createSchoolValues.city ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue("city", event.target.value, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                  invalid={Boolean(createSchoolForm.formState.errors.city)}
                 />
-                <span className="text-xs text-text-secondary">
-                  {emailCheckState === "checking"
+              </FormField>
+
+              <FormField
+                label="Email School Admin"
+                className="md:col-span-2"
+                error={
+                  createSchoolForm.formState.errors.schoolAdminEmail?.message
+                }
+                hint={
+                  emailCheckState === "checking"
                     ? "Verification de l email..."
-                    : null}
-                  {emailCheckState === "invalid" ? "Email invalide." : null}
-                  {emailCheckState === "exists"
-                    ? `Compte existant detecte (${emailCheckName ?? "utilisateur"}). Il recevra le role SCHOOL_ADMIN pour cette ecole.`
-                    : null}
-                  {emailCheckState === "not_found"
-                    ? "Aucun compte existant: un nouveau school admin sera cree et recevra un mot de passe provisoire genere automatiquement."
-                    : null}
-                  {emailCheckState === "error"
-                    ? "Verification email indisponible."
-                    : null}
-                </span>
-              </label>
+                    : emailCheckState === "invalid"
+                      ? "Email invalide."
+                      : emailCheckState === "exists"
+                        ? `Compte existant detecte (${emailCheckName ?? "utilisateur"}). Il recevra le role SCHOOL_ADMIN pour cette ecole.`
+                        : emailCheckState === "not_found"
+                          ? "Aucun compte existant: un nouveau school admin sera cree et recevra un mot de passe provisoire genere automatiquement."
+                          : emailCheckState === "error"
+                            ? "Verification email indisponible."
+                            : null
+                }
+              >
+                <EmailInput
+                  aria-label="Email School Admin"
+                  value={createSchoolValues.schoolAdminEmail ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue(
+                      "schoolAdminEmail",
+                      event.target.value,
+                      {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      },
+                    );
+                  }}
+                  invalid={
+                    Boolean(
+                      createSchoolForm.formState.errors.schoolAdminEmail,
+                    ) ||
+                    !String(createSchoolValues.schoolAdminEmail ?? "").trim()
+                  }
+                />
+              </FormField>
 
               <div className="md:col-span-2">
                 <ImageUploadField
                   kind="school-logo"
                   label="Logo de l ecole (optionnel)"
                   helperText="Image JPG/PNG/WEBP, maximum 5MB. Le logo est optimise automatiquement."
-                  value={schoolLogoUrl}
-                  onChange={setSchoolLogoUrl}
+                  value={createSchoolValues.logoUrl || null}
+                  onChange={(value) => {
+                    createSchoolForm.setValue("logoUrl", value ?? "", {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    });
+                  }}
                 />
               </div>
 
@@ -1165,9 +1312,14 @@ export default function SchoolsPage() {
                   {submitSuccess}
                 </p>
               ) : null}
+              <div className="md:col-span-2">
+                <FormSubmitHint visible={!createSchoolForm.formState.isValid} />
+              </div>
 
               <div className="md:col-span-2">
-                <SubmitButton disabled={submitting}>
+                <SubmitButton
+                  disabled={submitting || !createSchoolForm.formState.isValid}
+                >
                   {submitting ? "Creation..." : "Creer l ecole"}
                 </SubmitButton>
               </div>

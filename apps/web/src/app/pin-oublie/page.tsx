@@ -1,13 +1,19 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller, useForm } from "react-hook-form";
 import { BackLinkButton } from "../../components/ui/back-link-button";
 import { RecoveryShell } from "../../components/layout/recovery-shell";
 import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
 import { EmailInput } from "../../components/ui/email-input";
 import { SubmitButton } from "../../components/ui/form-buttons";
+import {
+  FormSubmitHint,
+  FormTextInput,
+} from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PinInput } from "../../components/ui/pin-input";
 import {
@@ -16,6 +22,7 @@ import {
   requestPinRecoverySchema,
   type RecoveryQuestion,
 } from "./pin-recovery-schema";
+import type { z } from "zod";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -43,8 +50,6 @@ type PinRecoveryVerifyResponse = {
 function PinRecoveryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState(() => searchParams.get("email") ?? "");
-  const [phone, setPhone] = useState(() => searchParams.get("phone") ?? "");
   const [schoolSlug, setSchoolSlug] = useState(
     () => searchParams.get("schoolSlug") ?? "",
   );
@@ -56,18 +61,22 @@ function PinRecoveryPageContent() {
   const [options, setOptions] = useState<PinRecoveryOptionsResponse | null>(
     null,
   );
-  const [birthDate, setBirthDate] = useState("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [recoveryToken, setRecoveryToken] = useState("");
-  const [newPin, setNewPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-  const [emailTouched, setEmailTouched] = useState(false);
-  const [phoneTouched, setPhoneTouched] = useState(false);
-  const [pinTouched, setPinTouched] = useState(false);
-  const [confirmPinTouched, setConfirmPinTouched] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const requestForm = useForm<
+    z.input<typeof requestPinRecoverySchema>,
+    unknown,
+    z.output<typeof requestPinRecoverySchema>
+  >({
+    resolver: zodResolver(requestPinRecoverySchema),
+    mode: "onChange",
+    defaultValues: {
+      email: searchParams.get("email") ?? "",
+      phone: searchParams.get("phone") ?? "",
+    },
+  });
 
   useEffect(() => {
     const querySchoolSlug = searchParams.get("schoolSlug") ?? "";
@@ -76,80 +85,64 @@ function PinRecoveryPageContent() {
     }
   }, [searchParams]);
 
-  const requestValidation = useMemo(
-    () => requestPinRecoverySchema.safeParse({ email, phone }),
-    [email, phone],
-  );
-  const requestDirty = email.length > 0 || phone.length > 0;
-  const requestErrors = useMemo(() => {
-    if (requestValidation.success) {
-      return {} as Partial<Record<"email" | "phone", string>>;
-    }
-    return requestValidation.error.issues.reduce(
-      (accumulator, issue) => {
-        const key = issue.path[0];
-        if ((key === "email" || key === "phone") && !accumulator[key]) {
-          accumulator[key] = issue.message;
-        }
-        return accumulator;
-      },
-      {} as Partial<Record<"email" | "phone", string>>,
-    );
-  }, [requestValidation]);
-
   const verifySchema = useMemo(
     () => buildVerifyPinRecoverySchema(options?.questions ?? []),
     [options?.questions],
   );
-  const verifyDirty =
-    birthDate.length > 0 ||
-    Object.values(answers).some((answer) => answer.length > 0);
-  const verifyValidation = useMemo(
-    () => verifySchema.safeParse({ birthDate, answers }),
-    [answers, birthDate, verifySchema],
-  );
-  const completeValidation = useMemo(
-    () =>
-      completePinRecoverySchema.safeParse({
-        recoveryToken,
-        newPin,
-        confirmPin,
-      }),
-    [confirmPin, newPin, recoveryToken],
-  );
-  const completeDirty = newPin.length > 0 || confirmPin.length > 0;
-  const completeErrors = useMemo(() => {
-    if (completeValidation.success) {
-      return {} as Partial<Record<"newPin" | "confirmPin", string>>;
-    }
-    return completeValidation.error.issues.reduce(
-      (accumulator, issue) => {
-        const key = issue.path[0];
-        if ((key === "newPin" || key === "confirmPin") && !accumulator[key]) {
-          accumulator[key] = issue.message;
-        }
-        return accumulator;
-      },
-      {} as Partial<Record<"newPin" | "confirmPin", string>>,
-    );
-  }, [completeValidation]);
+  const verifyForm = useForm<{
+    birthDate: string;
+    answers: Record<string, string>;
+  }>({
+    resolver: zodResolver(verifySchema),
+    mode: "onChange",
+    defaultValues: {
+      birthDate: "",
+      answers: {} as Record<string, string>,
+    },
+  });
+  const completeForm = useForm<
+    z.input<typeof completePinRecoverySchema>,
+    unknown,
+    z.output<typeof completePinRecoverySchema>
+  >({
+    resolver: zodResolver(completePinRecoverySchema),
+    mode: "onChange",
+    defaultValues: {
+      recoveryToken: "",
+      newPin: "",
+      confirmPin: "",
+    },
+  });
+  const email = requestForm.watch("email");
+  const phone = requestForm.watch("phone");
+
+  useEffect(() => {
+    verifyForm.reset({
+      birthDate: "",
+      answers: Object.fromEntries(
+        (options?.questions ?? []).map((question) => [question.key, ""]),
+      ),
+    });
+  }, [options?.questions, verifyForm]);
+
+  useEffect(() => {
+    completeForm.reset({
+      recoveryToken,
+      newPin: "",
+      confirmPin: "",
+    });
+  }, [completeForm, recoveryToken]);
 
   const loginHref = useMemo(() => {
     const targetSchoolSlug = options?.schoolSlug ?? schoolSlug;
     return targetSchoolSlug ? `/schools/${targetSchoolSlug}/login` : "/";
   }, [options?.schoolSlug, schoolSlug]);
 
-  async function onLoadOptions(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onLoadOptions(
+    values: z.infer<typeof requestPinRecoverySchema>,
+  ) {
     setError(null);
     setSuccess(null);
-
-    const parsed = requestPinRecoverySchema.safeParse({ email, phone });
-    if (!parsed.success) {
-      setEmailTouched(true);
-      setPhoneTouched(true);
-      return;
-    }
 
     setLoadingOptions(true);
     try {
@@ -157,8 +150,8 @@ function PinRecoveryPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: parsed.data.email || undefined,
-          phone: parsed.data.phone || undefined,
+          email: values.email || undefined,
+          phone: values.phone || undefined,
         }),
       });
 
@@ -183,11 +176,12 @@ function PinRecoveryPageContent() {
       const validPayload = payload as PinRecoveryOptionsResponse;
       setOptions(validPayload);
       setSchoolSlug(validPayload.schoolSlug ?? schoolSlug);
-      const nextAnswers: Record<string, string> = {};
-      for (const question of validPayload.questions) {
-        nextAnswers[question.key] = "";
-      }
-      setAnswers(nextAnswers);
+      verifyForm.reset({
+        birthDate: "",
+        answers: Object.fromEntries(
+          validPayload.questions.map((question) => [question.key, ""]),
+        ),
+      });
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -195,18 +189,14 @@ function PinRecoveryPageContent() {
     }
   }
 
-  async function onVerify(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onVerify(values: {
+    birthDate: string;
+    answers: Record<string, string>;
+  }) {
     setError(null);
     setSuccess(null);
     if (!options) {
       setError("Chargez d abord les questions de recuperation.");
-      return;
-    }
-
-    const parsed = verifySchema.safeParse({ birthDate, answers });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Verification invalide.");
       return;
     }
 
@@ -218,10 +208,10 @@ function PinRecoveryPageContent() {
         body: JSON.stringify({
           email: email || undefined,
           phone: phone || undefined,
-          birthDate,
+          birthDate: values.birthDate,
           answers: options.questions.map((question) => ({
             questionKey: question.key,
-            answer: answers[question.key] ?? "",
+            answer: values.answers[question.key] ?? "",
           })),
         }),
       });
@@ -253,20 +243,9 @@ function PinRecoveryPageContent() {
     }
   }
 
-  async function onComplete(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onComplete(values: z.infer<typeof completePinRecoverySchema>) {
     setError(null);
     setSuccess(null);
-
-    const parsed = completePinRecoverySchema.safeParse({
-      recoveryToken,
-      newPin,
-      confirmPin,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     setCompleting(true);
     try {
@@ -274,8 +253,8 @@ function PinRecoveryPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          recoveryToken: parsed.data.recoveryToken,
-          newPin: parsed.data.newPin,
+          recoveryToken: values.recoveryToken,
+          newPin: values.newPin,
         }),
       });
 
@@ -314,45 +293,73 @@ function PinRecoveryPageContent() {
         >
           <div className="grid gap-5">
             {!options ? (
-              <form className="grid gap-3" onSubmit={onLoadOptions} noValidate>
+              <form
+                className="grid gap-3"
+                onSubmit={requestForm.handleSubmit(onLoadOptions)}
+                noValidate
+              >
                 <FormField
                   label="Email (optionnel)"
-                  error={emailTouched ? requestErrors.email : null}
+                  error={requestForm.formState.errors.email?.message}
                 >
-                  <EmailInput
-                    value={email}
-                    onChange={(event) => {
-                      setEmailTouched(true);
-                      setEmail(event.target.value);
-                    }}
-                    placeholder="prenom.nom@gmail.com"
+                  <Controller
+                    control={requestForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <EmailInput
+                        name={field.name}
+                        invalid={!!requestForm.formState.errors.email}
+                        value={field.value}
+                        onChange={(event) => {
+                          requestForm.setValue("email", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                          void requestForm.trigger(["email", "phone"]);
+                        }}
+                        onBlur={field.onBlur}
+                        placeholder="prenom.nom@gmail.com"
+                      />
+                    )}
                   />
                 </FormField>
 
                 <FormField
                   label="Telephone (optionnel)"
-                  error={
-                    phoneTouched || emailTouched ? requestErrors.phone : null
-                  }
+                  error={requestForm.formState.errors.phone?.message}
                 >
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(event) => {
-                      setPhoneTouched(true);
-                      setPhone(normalizePhoneInput(event.target.value));
-                    }}
-                    placeholder="6XXXXXXXX"
-                    className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  <Controller
+                    control={requestForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormTextInput
+                        name={field.name}
+                        ref={field.ref}
+                        invalid={!!requestForm.formState.errors.phone}
+                        value={field.value}
+                        onChange={(event) => {
+                          requestForm.setValue(
+                            "phone",
+                            normalizePhoneInput(event.target.value),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                          void requestForm.trigger(["email", "phone"]);
+                        }}
+                        onBlur={field.onBlur}
+                        placeholder="6XXXXXXXX"
+                      />
+                    )}
                   />
                 </FormField>
+                <FormSubmitHint visible={!requestForm.formState.isValid} />
 
                 <SubmitButton
-                  disabled={
-                    loadingOptions ||
-                    !requestDirty ||
-                    !requestValidation.success
-                  }
+                  disabled={loadingOptions || !requestForm.formState.isValid}
                 >
                   {loadingOptions
                     ? "Chargement..."
@@ -362,41 +369,86 @@ function PinRecoveryPageContent() {
             ) : null}
 
             {options && !recoveryToken ? (
-              <form className="grid gap-3" onSubmit={onVerify} noValidate>
+              <form
+                className="grid gap-3"
+                onSubmit={verifyForm.handleSubmit(onVerify)}
+                noValidate
+              >
                 <p className="text-sm text-text-secondary">
                   Compte detecte:{" "}
                   <span className="font-medium text-text-primary">
                     {options.principalHint}
                   </span>
                 </p>
-                <FormField label="Date de naissance">
-                  <DateInput
-                    value={birthDate}
-                    onChange={(event) => setBirthDate(event.target.value)}
+                <FormField
+                  label="Date de naissance"
+                  error={verifyForm.formState.errors.birthDate?.message}
+                >
+                  <Controller
+                    control={verifyForm.control}
+                    name="birthDate"
+                    render={({ field }) => (
+                      <DateInput
+                        aria-label="Date de naissance"
+                        name={field.name}
+                        invalid={!!verifyForm.formState.errors.birthDate}
+                        value={field.value}
+                        onChange={(event) =>
+                          verifyForm.setValue("birthDate", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
+                        }
+                        onBlur={field.onBlur}
+                      />
+                    )}
                   />
                 </FormField>
                 {options.questions.map((question) => (
-                  <label key={question.key} className="grid gap-1 text-sm">
-                    <span className="text-text-secondary">
-                      {question.label}
-                    </span>
-                    <input
-                      type="text"
-                      value={answers[question.key] ?? ""}
-                      onChange={(event) =>
-                        setAnswers((previous) => ({
-                          ...previous,
-                          [question.key]: event.target.value,
-                        }))
-                      }
-                      className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  <FormField
+                    key={question.key}
+                    label={question.label}
+                    error={
+                      verifyForm.formState.errors.answers?.[question.key]
+                        ?.message
+                    }
+                  >
+                    <Controller
+                      control={verifyForm.control}
+                      name={`answers.${question.key}`}
+                      defaultValue=""
+                      render={({ field }) => (
+                        <FormTextInput
+                          aria-label={question.label}
+                          name={field.name}
+                          ref={field.ref}
+                          invalid={
+                            !!verifyForm.formState.errors.answers?.[
+                              question.key
+                            ]
+                          }
+                          value={field.value ?? ""}
+                          onChange={(event) =>
+                            verifyForm.setValue(
+                              `answers.${question.key}`,
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
+                          }
+                          onBlur={field.onBlur}
+                        />
+                      )}
                     />
-                  </label>
+                  </FormField>
                 ))}
+                <FormSubmitHint visible={!verifyForm.formState.isValid} />
                 <SubmitButton
-                  disabled={
-                    verifying || !verifyDirty || !verifyValidation.success
-                  }
+                  disabled={verifying || !verifyForm.formState.isValid}
                 >
                   {verifying ? "Verification..." : "Verifier mes reponses"}
                 </SubmitButton>
@@ -404,41 +456,82 @@ function PinRecoveryPageContent() {
             ) : null}
 
             {recoveryToken ? (
-              <form className="grid gap-3" onSubmit={onComplete} noValidate>
+              <form
+                className="grid gap-3"
+                onSubmit={completeForm.handleSubmit(onComplete)}
+                noValidate
+              >
                 <FormField
                   label="Nouveau PIN (6 chiffres)"
-                  error={pinTouched ? completeErrors.newPin : null}
+                  error={completeForm.formState.errors.newPin?.message}
                 >
-                  <PinInput
-                    value={newPin}
-                    onChange={(event) => {
-                      setPinTouched(true);
-                      setNewPin(
-                        event.target.value.replace(/\D/g, "").slice(0, 6),
-                      );
-                    }}
-                    placeholder="123456"
+                  <Controller
+                    control={completeForm.control}
+                    name="newPin"
+                    render={({ field }) => (
+                      <PinInput
+                        aria-label="Nouveau PIN (6 chiffres)"
+                        name={field.name}
+                        aria-invalid={
+                          completeForm.formState.errors.newPin
+                            ? "true"
+                            : "false"
+                        }
+                        value={field.value}
+                        onChange={(event) =>
+                          completeForm.setValue(
+                            "newPin",
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }
+                        onBlur={field.onBlur}
+                        placeholder="123456"
+                      />
+                    )}
                   />
                 </FormField>
                 <FormField
                   label="Confirmer le PIN"
-                  error={confirmPinTouched ? completeErrors.confirmPin : null}
+                  error={completeForm.formState.errors.confirmPin?.message}
                 >
-                  <PinInput
-                    value={confirmPin}
-                    onChange={(event) => {
-                      setConfirmPinTouched(true);
-                      setConfirmPin(
-                        event.target.value.replace(/\D/g, "").slice(0, 6),
-                      );
-                    }}
-                    placeholder="123456"
+                  <Controller
+                    control={completeForm.control}
+                    name="confirmPin"
+                    render={({ field }) => (
+                      <PinInput
+                        aria-label="Confirmer le PIN"
+                        name={field.name}
+                        aria-invalid={
+                          completeForm.formState.errors.confirmPin
+                            ? "true"
+                            : "false"
+                        }
+                        value={field.value}
+                        onChange={(event) =>
+                          completeForm.setValue(
+                            "confirmPin",
+                            event.target.value.replace(/\D/g, "").slice(0, 6),
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }
+                        onBlur={field.onBlur}
+                        placeholder="123456"
+                      />
+                    )}
                   />
                 </FormField>
+                <FormSubmitHint visible={!completeForm.formState.isValid} />
                 <SubmitButton
-                  disabled={
-                    completing || !completeDirty || !completeValidation.success
-                  }
+                  disabled={completing || !completeForm.formState.isValid}
                 >
                   {completing
                     ? "Reinitialisation..."

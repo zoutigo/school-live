@@ -15,4 +15,12 @@ describe("DateInput and TimeInput", () => {
     expect(screen.getByLabelText("date-test")).toHaveAttribute("type", "date");
     expect(screen.getByLabelText("time-test")).toHaveAttribute("type", "time");
   });
+
+  it("supports invalid visual state on the date input", () => {
+    render(<DateInput aria-label="date-invalid" invalid value="" readOnly />);
+
+    const input = screen.getByLabelText("date-invalid");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input.className).toContain("border-notification");
+  });
 });

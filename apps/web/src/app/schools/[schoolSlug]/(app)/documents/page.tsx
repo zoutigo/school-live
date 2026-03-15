@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Download, FileBadge2, GraduationCap, ReceiptText } from "lucide-react";
 import { Button } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
+import { FormSelect } from "../../../../../components/ui/form-controls";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -330,17 +331,17 @@ export default function ParentDocumentsPage() {
                 <span className="text-xs text-text-secondary">
                   Acces aux archives
                 </span>
-                <select
+                <FormSelect
                   value={archive}
                   onChange={(event) =>
                     setArchive(event.target.value as ArchiveYear)
                   }
-                  className="rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:ring-2 focus:ring-primary"
+                  className="bg-surface px-3 py-2 text-sm"
                 >
                   <option value="2025-2026">2025-2026</option>
                   <option value="2024-2025">2024-2025</option>
                   <option value="2023-2024">2023-2024</option>
-                </select>
+                </FormSelect>
               </label>
             </div>
 

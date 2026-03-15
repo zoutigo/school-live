@@ -56,6 +56,7 @@ export class AuthService {
   private static readonly DEFAULT_MAX_FAILED_ATTEMPTS = 5;
   private static readonly DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 15 * 60;
   private static readonly DEFAULT_RATE_LIMIT_BLOCK_SECONDS = 15 * 60;
+  private static readonly RECENT_PARENT_DOCUMENTS_WINDOW_DAYS = 90;
 
   async login(
     email: string,
@@ -2794,6 +2795,128 @@ export class AuthService {
     };
   }
 
+  async getParentDashboardSummary(userId: string, schoolId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        memberships: {
+          where: { schoolId },
+          select: { role: true },
+        },
+        parentLinks: {
+          where: { schoolId },
+          select: {
+            studentId: true,
+            student: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user || user.memberships.length === 0) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    const isParent = user.memberships.some(
+      (membership) => membership.role === "PARENT",
+    );
+    if (!isParent) {
+      throw new ForbiddenException("Parent dashboard summary not accessible");
+    }
+
+    const linkedStudentIds = user.parentLinks.map((link) => link.studentId);
+    const recentDocumentsSince = new Date();
+    recentDocumentsSince.setDate(
+      recentDocumentsSince.getDate() -
+        AuthService.RECENT_PARENT_DOCUMENTS_WINDOW_DAYS,
+    );
+
+    const [unreadMessages, recentPublishedReports, totalPublishedReports] =
+      await Promise.all([
+        this.prisma.internalMessageRecipient.count({
+          where: {
+            schoolId,
+            recipientUserId: userId,
+            readAt: null,
+            archivedAt: null,
+            deletedAt: null,
+            message: {
+              status: "SENT",
+            },
+          },
+        }),
+        linkedStudentIds.length
+          ? this.prisma.studentTermReport.findMany({
+              where: {
+                schoolId,
+                studentId: { in: linkedStudentIds },
+                status: "PUBLISHED",
+                publishedAt: {
+                  not: null,
+                  gte: recentDocumentsSince,
+                },
+              },
+              orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+              take: 3,
+              select: {
+                id: true,
+                term: true,
+                publishedAt: true,
+                student: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            })
+          : Promise.resolve([]),
+        linkedStudentIds.length
+          ? this.prisma.studentTermReport.count({
+              where: {
+                schoolId,
+                studentId: { in: linkedStudentIds },
+                status: "PUBLISHED",
+                publishedAt: {
+                  not: null,
+                },
+              },
+            })
+          : Promise.resolve(0),
+      ]);
+
+    return {
+      unreadMessages,
+      payments: {
+        connected: false,
+        pendingCount: null,
+        overdueCount: null,
+        detail:
+          "Le module comptable n'est pas encore connecte aux donnees parent.",
+      },
+      documents: {
+        recentCount: recentPublishedReports.length,
+        totalPublishedCount: totalPublishedReports,
+        detail:
+          recentPublishedReports.length > 0
+            ? `${recentPublishedReports.length} bulletin${recentPublishedReports.length > 1 ? "s" : ""} publie${recentPublishedReports.length > 1 ? "s" : ""} sur les ${AuthService.RECENT_PARENT_DOCUMENTS_WINDOW_DAYS} derniers jours.`
+            : "Aucun bulletin publie recemment.",
+        latest: recentPublishedReports.map((report) => ({
+          id: report.id,
+          title:
+            `${this.termLabel(report.term)} - ${report.student.firstName} ${report.student.lastName}`.trim(),
+          publishedAt: report.publishedAt?.toISOString() ?? null,
+        })),
+      },
+    };
+  }
+
   async getGlobalMe(userId: string): Promise<
     AuthenticatedUser & {
       schoolSlug: string | null;
@@ -2862,6 +2985,19 @@ export class AuthService {
       gender: user.gender,
       schoolSlug: user.memberships[0]?.school?.slug ?? null,
     };
+  }
+
+  private termLabel(term: "TERM_1" | "TERM_2" | "TERM_3") {
+    switch (term) {
+      case "TERM_1":
+        return "1er trimestre";
+      case "TERM_2":
+        return "2eme trimestre";
+      case "TERM_3":
+        return "3eme trimestre";
+      default:
+        return term;
+    }
   }
 
   async setActiveRole(userId: string, role: AppRole) {
