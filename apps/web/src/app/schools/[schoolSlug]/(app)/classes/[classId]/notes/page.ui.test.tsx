@@ -482,24 +482,29 @@ describe("TeacherClassNotesPage evaluations tab", () => {
       );
 
       expect(postCall).toBeDefined();
-      expect(postCall?.[1]).toEqual(
+      const requestInit = postCall?.[1];
+      expect(requestInit).toEqual(
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({
-            subjectId: "sub-1",
-            subjectBranchId: "branch-1",
-            evaluationTypeId: "type-1",
-            title: "Composition fractions",
-            description: "<p>Consignes <strong>riches</strong>.</p>",
-            coefficient: 1.5,
-            maxScore: 20,
-            term: "TERM_1",
-            scheduledAt: "2026-03-20T08:30:00.000Z",
-            status: "DRAFT",
-            attachments: [],
-          }),
         }),
       );
+      expect(
+        JSON.parse(
+          typeof requestInit?.body === "string" ? requestInit.body : "{}",
+        ),
+      ).toEqual({
+        subjectId: "sub-1",
+        subjectBranchId: "branch-1",
+        evaluationTypeId: "type-1",
+        title: "Composition fractions",
+        description: "<p>Consignes <strong>riches</strong>.</p>",
+        coefficient: 1.5,
+        maxScore: 20,
+        term: "TERM_1",
+        scheduledAt: "2026-03-20T08:30:00.000Z",
+        status: "DRAFT",
+        attachments: [],
+      });
     });
   });
 

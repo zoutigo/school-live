@@ -135,7 +135,7 @@ describe("Enrollments page forms", () => {
       expect(studentsCalls.length).toBeGreaterThan(0);
 
       const lastStudentsUrl = String(studentsCalls.at(-1)?.[0] ?? "");
-      const params = new URL(lastStudentsUrl).searchParams;
+      const params = new URL(lastStudentsUrl, "http://localhost").searchParams;
       expect(params.get("classId")).toBe("class-1");
       expect(params.get("status")).toBe("WITHDRAWN");
       expect(params.get("search")).toBe("Ntamack");
