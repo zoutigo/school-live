@@ -337,9 +337,6 @@ export default function ClassesPage() {
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(
     null,
   );
-  const [editAssignmentTeacherUserId, setEditAssignmentTeacherUserId] =
-    useState("");
-  const [editAssignmentSubjectId, setEditAssignmentSubjectId] = useState("");
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [savingClassReferent, setSavingClassReferent] = useState(false);
   const [assigningStudent, setAssigningStudent] = useState(false);
@@ -371,14 +368,19 @@ export default function ClassesPage() {
     },
   });
   const createTeacherAssignmentValues = createTeacherAssignmentForm.watch();
-  const createTeacherAssignmentValidation = useMemo(
-    () =>
-      createTeacherAssignmentSchema.safeParse({
-        teacherUserId: createTeacherAssignmentValues.teacherUserId ?? "",
-        subjectId: createTeacherAssignmentValues.subjectId ?? "",
-      }),
-    [createTeacherAssignmentValues],
-  );
+  const editTeacherAssignmentForm = useForm<
+    z.input<typeof createTeacherAssignmentSchema>,
+    unknown,
+    z.output<typeof createTeacherAssignmentSchema>
+  >({
+    resolver: zodResolver(createTeacherAssignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      teacherUserId: "",
+      subjectId: "",
+    },
+  });
+  const editTeacherAssignmentValues = editTeacherAssignmentForm.watch();
   const editClassForm = useForm<
     z.input<typeof updateClassroomSchema>,
     unknown,
@@ -393,15 +395,6 @@ export default function ClassesPage() {
     },
   });
   const editClassValues = editClassForm.watch();
-  const editClassValidation = useMemo(
-    () =>
-      updateClassroomSchema.safeParse({
-        name: editClassValues.name ?? "",
-        schoolYearId: editClassValues.schoolYearId ?? "",
-        curriculumId: editClassValues.curriculumId ?? "",
-      }),
-    [editClassValues],
-  );
   const assignStudentForm = useForm<
     z.input<typeof assignStudentSchema>,
     unknown,
@@ -415,14 +408,6 @@ export default function ClassesPage() {
     },
   });
   const assignStudentValues = assignStudentForm.watch();
-  const assignStudentValidation = useMemo(
-    () =>
-      assignStudentSchema.safeParse({
-        studentId: assignStudentValues.studentId ?? "",
-        status: assignStudentValues.status ?? "ACTIVE",
-      }),
-    [assignStudentValues],
-  );
   const referentForm = useForm<
     z.input<typeof classReferentSchema>,
     unknown,
@@ -435,13 +420,6 @@ export default function ClassesPage() {
     },
   });
   const referentValues = referentForm.watch();
-  const referentValidation = useMemo(
-    () =>
-      classReferentSchema.safeParse({
-        teacherUserId: referentValues.teacherUserId ?? "",
-      }),
-    [referentValues],
-  );
   const createClassForm = useForm<
     z.input<typeof createClassroomSchema>,
     unknown,
@@ -456,15 +434,6 @@ export default function ClassesPage() {
     },
   });
   const createClassValues = createClassForm.watch();
-  const createClassValidation = useMemo(
-    () =>
-      createClassroomSchema.safeParse({
-        name: createClassValues.name ?? "",
-        schoolYearId: createClassValues.schoolYearId ?? "",
-        curriculumId: createClassValues.curriculumId ?? "",
-      }),
-    [createClassValues],
-  );
 
   useEffect(() => {
     void bootstrap();
@@ -1012,22 +981,17 @@ export default function ClassesPage() {
 
   function startEditAssignment(assignment: AssignmentRow) {
     setEditingAssignmentId(assignment.id);
-    setEditAssignmentTeacherUserId(assignment.teacherUserId);
-    setEditAssignmentSubjectId(assignment.subjectId);
+    editTeacherAssignmentForm.reset({
+      teacherUserId: assignment.teacherUserId,
+      subjectId: assignment.subjectId,
+    });
   }
 
-  async function saveAssignment(assignmentId: string) {
+  async function saveAssignment(
+    assignmentId: string,
+    values: z.output<typeof createTeacherAssignmentSchema>,
+  ) {
     if (!schoolSlug || !selectedClass) {
-      return;
-    }
-
-    const parsed = createTeacherAssignmentSchema.safeParse({
-      teacherUserId: editAssignmentTeacherUserId,
-      subjectId: editAssignmentSubjectId,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
       return;
     }
 
@@ -1053,8 +1017,8 @@ export default function ClassesPage() {
           body: JSON.stringify({
             schoolYearId: selectedClass.schoolYear.id,
             classId: selectedClass.id,
-            teacherUserId: parsed.data.teacherUserId,
-            subjectId: parsed.data.subjectId,
+            teacherUserId: values.teacherUserId,
+            subjectId: values.subjectId,
           }),
         },
       );
@@ -1072,6 +1036,10 @@ export default function ClassesPage() {
       }
 
       setEditingAssignmentId(null);
+      editTeacherAssignmentForm.reset({
+        teacherUserId: "",
+        subjectId: "",
+      });
       setSuccess("Affectation enseignant modifiee.");
       await loadClassDetails(schoolSlug, selectedClass);
     } catch {
@@ -1655,7 +1623,9 @@ export default function ClassesPage() {
 
                 <div className="md:col-span-6">
                   <SubmitButton
-                    disabled={submittingClass || !createClassValidation.success}
+                    disabled={
+                      submittingClass || !createClassForm.formState.isValid
+                    }
                   >
                     {submittingClass ? "Creation..." : "Ajouter"}
                   </SubmitButton>
@@ -1849,7 +1819,7 @@ export default function ClassesPage() {
                                       type="button"
                                       disabled={
                                         savingClass ||
-                                        !editClassValidation.success
+                                        !editClassForm.formState.isValid
                                       }
                                       onClick={() => {
                                         void saveClass(entry.id);
@@ -2142,7 +2112,7 @@ export default function ClassesPage() {
                   <Button
                     type="button"
                     disabled={
-                      savingClassReferent || !referentValidation.success
+                      savingClassReferent || !referentForm.formState.isValid
                     }
                     onClick={() => {
                       void referentForm.handleSubmit(
@@ -2215,7 +2185,7 @@ export default function ClassesPage() {
                   <Button
                     type="button"
                     disabled={
-                      assigningStudent || !assignStudentValidation.success
+                      assigningStudent || !assignStudentForm.formState.isValid
                     }
                     onClick={() => {
                       void assignStudentForm.handleSubmit(
@@ -2306,7 +2276,7 @@ export default function ClassesPage() {
                   <SubmitButton
                     disabled={
                       submittingTeacherAssignment ||
-                      !createTeacherAssignmentValidation.success
+                      !createTeacherAssignmentForm.formState.isValid
                     }
                   >
                     {submittingTeacherAssignment
@@ -2378,15 +2348,28 @@ export default function ClassesPage() {
                             <tr className="border-b border-border bg-background">
                               <td className="px-3 py-3" colSpan={4}>
                                 <div className="grid gap-3 md:grid-cols-3">
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Enseignant
-                                    </span>
+                                  <FormField
+                                    label="Enseignant edition affectation"
+                                    error={
+                                      editTeacherAssignmentForm.formState.errors
+                                        .teacherUserId?.message
+                                    }
+                                  >
                                     <select
-                                      value={editAssignmentTeacherUserId}
+                                      aria-label="Enseignant edition affectation"
+                                      value={
+                                        editTeacherAssignmentValues.teacherUserId ??
+                                        ""
+                                      }
                                       onChange={(event) =>
-                                        setEditAssignmentTeacherUserId(
+                                        editTeacherAssignmentForm.setValue(
+                                          "teacherUserId",
                                           event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -2401,16 +2384,29 @@ export default function ClassesPage() {
                                         </option>
                                       ))}
                                     </select>
-                                  </label>
-                                  <label className="grid gap-1 text-sm">
-                                    <span className="text-text-secondary">
-                                      Matiere
-                                    </span>
+                                  </FormField>
+                                  <FormField
+                                    label="Matiere edition affectation"
+                                    error={
+                                      editTeacherAssignmentForm.formState.errors
+                                        .subjectId?.message
+                                    }
+                                  >
                                     <select
-                                      value={editAssignmentSubjectId}
+                                      aria-label="Matiere edition affectation"
+                                      value={
+                                        editTeacherAssignmentValues.subjectId ??
+                                        ""
+                                      }
                                       onChange={(event) =>
-                                        setEditAssignmentSubjectId(
+                                        editTeacherAssignmentForm.setValue(
+                                          "subjectId",
                                           event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -2431,14 +2427,24 @@ export default function ClassesPage() {
                                         </option>
                                       ))}
                                     </select>
-                                  </label>
+                                  </FormField>
                                   <div className="flex items-end gap-2">
                                     <Button
                                       type="button"
-                                      disabled={savingAssignment}
-                                      onClick={() => {
-                                        void saveAssignment(assignment.id);
-                                      }}
+                                      disabled={
+                                        savingAssignment ||
+                                        !editTeacherAssignmentForm.formState
+                                          .isValid
+                                      }
+                                      onClick={() =>
+                                        void editTeacherAssignmentForm.handleSubmit(
+                                          (values) =>
+                                            saveAssignment(
+                                              assignment.id,
+                                              values,
+                                            ),
+                                        )()
+                                      }
                                     >
                                       {savingAssignment
                                         ? "Enregistrement..."
@@ -2447,9 +2453,13 @@ export default function ClassesPage() {
                                     <Button
                                       type="button"
                                       variant="secondary"
-                                      onClick={() =>
-                                        setEditingAssignmentId(null)
-                                      }
+                                      onClick={() => {
+                                        setEditingAssignmentId(null);
+                                        editTeacherAssignmentForm.reset({
+                                          teacherUserId: "",
+                                          subjectId: "",
+                                        });
+                                      }}
                                     >
                                       Annuler
                                     </Button>

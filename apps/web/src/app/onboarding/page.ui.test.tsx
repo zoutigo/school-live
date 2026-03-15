@@ -131,4 +131,58 @@ describe("OnboardingPage phone PIN step", () => {
       expect(screen.getByRole("button", { name: "Continuer" })).toBeEnabled();
     });
   });
+
+  it("shows inline email validation on step 1 token flow before enabling continue", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/auth/onboarding/options")) {
+        return new Response(
+          JSON.stringify({
+            schoolSlug: "college-vogt",
+            schoolRoles: ["TEACHER"],
+            questions: [],
+            classes: [],
+            students: [],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<OnboardingPage />);
+
+    const continueButton = await screen.findByRole("button", {
+      name: "Continuer",
+    });
+    expect(continueButton).toBeEnabled();
+
+    const emailInput = screen.getByLabelText("Email (optionnel)");
+
+    fireEvent.change(emailInput, {
+      target: { value: "bad-email" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Adresse email invalide.")).toBeInTheDocument();
+      expect(continueButton).toBeDisabled();
+    });
+
+    fireEvent.change(emailInput, {
+      target: { value: "teacher@example.test" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Adresse email invalide."),
+      ).not.toBeInTheDocument();
+      expect(continueButton).toBeEnabled();
+    });
+  });
 });

@@ -1,10 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
+import { FormField } from "../../../../../components/ui/form-field";
 import { SubmitButton } from "../../../../../components/ui/form-buttons";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -59,6 +63,18 @@ type StudentGradesContext = {
   }>;
 };
 
+const createGradeSchema = z.object({
+  schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
+  assignmentKey: z.string().trim().min(1, "L'affectation est obligatoire."),
+  studentId: z.string().trim().min(1, "L'eleve est obligatoire."),
+  term: z.enum(["TERM_1", "TERM_2", "TERM_3"]),
+  value: z.coerce.number().min(0, "La note doit etre positive."),
+  maxValue: z.coerce.number().gt(0, "La note max doit etre superieure a 0."),
+  assessmentWeight: z.coerce
+    .number()
+    .min(0, "Le coefficient doit etre positif."),
+});
+
 export default function StudentGradesPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
@@ -69,17 +85,41 @@ export default function StudentGradesPage() {
   const [loadingContext, setLoadingContext] = useState(false);
   const [context, setContext] = useState<StudentGradesContext | null>(null);
 
-  const [selectedSchoolYearId, setSelectedSchoolYearId] = useState("");
-  const [selectedAssignmentKey, setSelectedAssignmentKey] = useState("");
-  const [selectedStudentId, setSelectedStudentId] = useState("");
-  const [term, setTerm] = useState("TERM_1");
-  const [value, setValue] = useState("");
-  const [maxValue, setMaxValue] = useState("20");
-  const [assessmentWeight, setAssessmentWeight] = useState("1");
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const createGradeForm = useForm<
+    z.input<typeof createGradeSchema>,
+    unknown,
+    z.output<typeof createGradeSchema>
+  >({
+    resolver: zodResolver(createGradeSchema),
+    mode: "onChange",
+    defaultValues: {
+      schoolYearId: "",
+      assignmentKey: "",
+      studentId: "",
+      term: "TERM_1",
+      value: undefined,
+      maxValue: 20,
+      assessmentWeight: 1,
+    },
+  });
+  const gradeValues = createGradeForm.watch();
+  const noteValue =
+    typeof gradeValues.value === "number" && Number.isFinite(gradeValues.value)
+      ? gradeValues.value
+      : "";
+  const noteMaxValue =
+    typeof gradeValues.maxValue === "number" &&
+    Number.isFinite(gradeValues.maxValue)
+      ? gradeValues.maxValue
+      : 20;
+  const noteWeightValue =
+    typeof gradeValues.assessmentWeight === "number" &&
+    Number.isFinite(gradeValues.assessmentWeight)
+      ? gradeValues.assessmentWeight
+      : 1;
 
   useEffect(() => {
     void bootstrap();
@@ -153,7 +193,11 @@ export default function StudentGradesPage() {
 
       const schoolYearToUse =
         schoolYearId ?? payload.selectedSchoolYearId ?? "";
-      setSelectedSchoolYearId(schoolYearToUse);
+      createGradeForm.setValue("schoolYearId", schoolYearToUse, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
 
       const assignmentRows = payload.assignments.filter(
         (entry) => !schoolYearToUse || entry.schoolYearId === schoolYearToUse,
@@ -163,12 +207,19 @@ export default function StudentGradesPage() {
           ? `${assignmentRows[0].classId}::${assignmentRows[0].subjectId}`
           : "";
 
-      setSelectedAssignmentKey((current) => {
-        const exists = assignmentRows.some(
-          (entry) => `${entry.classId}::${entry.subjectId}` === current,
-        );
-        return exists ? current : firstKey;
-      });
+      const currentAssignment = createGradeForm.getValues("assignmentKey");
+      const assignmentExists = assignmentRows.some(
+        (entry) => `${entry.classId}::${entry.subjectId}` === currentAssignment,
+      );
+      createGradeForm.setValue(
+        "assignmentKey",
+        assignmentExists ? currentAssignment : firstKey,
+        {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: true,
+        },
+      );
     } finally {
       setLoadingContext(false);
     }
@@ -187,7 +238,8 @@ export default function StudentGradesPage() {
     return context.assignments
       .filter(
         (entry) =>
-          !selectedSchoolYearId || entry.schoolYearId === selectedSchoolYearId,
+          !gradeValues.schoolYearId ||
+          entry.schoolYearId === gradeValues.schoolYearId,
       )
       .map((entry) => ({
         key: `${entry.classId}::${entry.subjectId}`,
@@ -196,13 +248,13 @@ export default function StudentGradesPage() {
         label: `${entry.className} - ${entry.subjectName}`,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [context, selectedSchoolYearId]);
+  }, [context, gradeValues.schoolYearId]);
 
   const selectedAssignment = useMemo(() => {
     return assignmentOptions.find(
-      (entry) => entry.key === selectedAssignmentKey,
+      (entry) => entry.key === gradeValues.assignmentKey,
     );
-  }, [assignmentOptions, selectedAssignmentKey]);
+  }, [assignmentOptions, gradeValues.assignmentKey]);
 
   const studentOptions = useMemo(() => {
     if (!context || !selectedAssignment) {
@@ -220,36 +272,55 @@ export default function StudentGradesPage() {
 
   useEffect(() => {
     if (assignmentOptions.length === 0) {
-      setSelectedAssignmentKey("");
-      setSelectedStudentId("");
+      createGradeForm.setValue("assignmentKey", "", {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
+      createGradeForm.setValue("studentId", "", {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
       return;
     }
 
     const exists = assignmentOptions.some(
-      (entry) => entry.key === selectedAssignmentKey,
+      (entry) => entry.key === gradeValues.assignmentKey,
     );
     if (!exists) {
-      setSelectedAssignmentKey(assignmentOptions[0].key);
+      createGradeForm.setValue("assignmentKey", assignmentOptions[0].key, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
     }
-  }, [assignmentOptions, selectedAssignmentKey]);
+  }, [assignmentOptions, createGradeForm, gradeValues.assignmentKey]);
 
   useEffect(() => {
     if (studentOptions.length === 0) {
-      setSelectedStudentId("");
+      createGradeForm.setValue("studentId", "", {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
       return;
     }
 
     const exists = studentOptions.some(
-      (entry) => entry.id === selectedStudentId,
+      (entry) => entry.id === gradeValues.studentId,
     );
     if (!exists) {
-      setSelectedStudentId(studentOptions[0].id);
+      createGradeForm.setValue("studentId", studentOptions[0].id, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
     }
-  }, [studentOptions, selectedStudentId]);
+  }, [createGradeForm, gradeValues.studentId, studentOptions]);
 
-  async function onCreateGrade(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedAssignment || !selectedStudentId) {
+  async function onCreateGrade(values: z.output<typeof createGradeSchema>) {
+    if (!selectedAssignment || !values.studentId) {
       setError("Selectionnez une affectation et un eleve.");
       return;
     }
@@ -276,13 +347,13 @@ export default function StudentGradesPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            studentId: selectedStudentId,
+            studentId: values.studentId,
             classId: selectedAssignment.classId,
             subjectId: selectedAssignment.subjectId,
-            value: Number(value),
-            maxValue: Number(maxValue),
-            assessmentWeight: Number(assessmentWeight),
-            term,
+            value: values.value,
+            maxValue: values.maxValue,
+            assessmentWeight: values.assessmentWeight,
+            term: values.term,
           }),
         },
       );
@@ -299,9 +370,15 @@ export default function StudentGradesPage() {
         return;
       }
 
-      setValue("");
-      setMaxValue("20");
-      setAssessmentWeight("1");
+      createGradeForm.reset({
+        schoolYearId: values.schoolYearId,
+        assignmentKey: values.assignmentKey,
+        studentId: values.studentId,
+        term: values.term,
+        value: undefined,
+        maxValue: 20,
+        assessmentWeight: 1,
+      });
       setSuccess("Note enregistree.");
       await loadStudentGrades();
     } catch {
@@ -323,15 +400,22 @@ export default function StudentGradesPage() {
         {canWrite ? (
           <form
             className="mb-4 grid gap-3 border-b border-border pb-4 md:grid-cols-3"
-            onSubmit={onCreateGrade}
+            onSubmit={createGradeForm.handleSubmit(onCreateGrade)}
           >
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Annee scolaire</span>
+            <FormField
+              label="Annee scolaire"
+              error={createGradeForm.formState.errors.schoolYearId?.message}
+            >
               <select
-                value={selectedSchoolYearId}
+                aria-label="Annee scolaire"
+                value={gradeValues.schoolYearId ?? ""}
                 onChange={(event) => {
                   const next = event.target.value;
-                  setSelectedSchoolYearId(next);
+                  createGradeForm.setValue("schoolYearId", next, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
+                  });
                   void loadContext(next);
                 }}
                 disabled={loadingContext}
@@ -345,16 +429,26 @@ export default function StudentGradesPage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </FormField>
 
-            <label className="grid gap-1 text-sm md:col-span-2">
-              <span className="text-text-secondary">
-                Affectation (classe + matiere)
-              </span>
+            <FormField
+              label="Affectation (classe + matiere)"
+              error={createGradeForm.formState.errors.assignmentKey?.message}
+              className="md:col-span-2"
+            >
               <select
-                value={selectedAssignmentKey}
+                aria-label="Affectation"
+                value={gradeValues.assignmentKey ?? ""}
                 onChange={(event) =>
-                  setSelectedAssignmentKey(event.target.value)
+                  createGradeForm.setValue(
+                    "assignmentKey",
+                    event.target.value,
+                    {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    },
+                  )
                 }
                 disabled={loadingContext}
                 className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -366,13 +460,22 @@ export default function StudentGradesPage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </FormField>
 
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Eleve</span>
+            <FormField
+              label="Eleve"
+              error={createGradeForm.formState.errors.studentId?.message}
+            >
               <select
-                value={selectedStudentId}
-                onChange={(event) => setSelectedStudentId(event.target.value)}
+                aria-label="Eleve"
+                value={gradeValues.studentId ?? ""}
+                onChange={(event) =>
+                  createGradeForm.setValue("studentId", event.target.value, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
+                  })
+                }
                 disabled={loadingContext}
                 className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               >
@@ -383,59 +486,115 @@ export default function StudentGradesPage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </FormField>
 
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Periode</span>
+            <FormField
+              label="Periode"
+              error={createGradeForm.formState.errors.term?.message}
+            >
               <select
-                value={term}
-                onChange={(event) => setTerm(event.target.value)}
+                aria-label="Periode"
+                value={gradeValues.term ?? "TERM_1"}
+                onChange={(event) =>
+                  createGradeForm.setValue(
+                    "term",
+                    event.target.value as "TERM_1" | "TERM_2" | "TERM_3",
+                    {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    },
+                  )
+                }
                 className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="TERM_1">TERM_1</option>
                 <option value="TERM_2">TERM_2</option>
                 <option value="TERM_3">TERM_3</option>
               </select>
-            </label>
+            </FormField>
 
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Note</span>
+            <FormField
+              label="Note"
+              error={createGradeForm.formState.errors.value?.message}
+            >
               <input
+                aria-label="Note"
                 type="number"
                 min={0}
                 step="0.01"
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
+                value={noteValue}
+                onChange={(event) =>
+                  createGradeForm.setValue(
+                    "value",
+                    event.target.valueAsNumber,
+                    {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    },
+                  )
+                }
                 className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               />
-            </label>
+            </FormField>
 
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Note max</span>
+            <FormField
+              label="Note max"
+              error={createGradeForm.formState.errors.maxValue?.message}
+            >
               <input
+                aria-label="Note max"
                 type="number"
                 min={1}
                 step="0.01"
-                value={maxValue}
-                onChange={(event) => setMaxValue(event.target.value)}
+                value={noteMaxValue}
+                onChange={(event) =>
+                  createGradeForm.setValue(
+                    "maxValue",
+                    event.target.valueAsNumber,
+                    {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    },
+                  )
+                }
                 className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               />
-            </label>
+            </FormField>
 
-            <label className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Coef. evaluation</span>
+            <FormField
+              label="Coef. evaluation"
+              error={createGradeForm.formState.errors.assessmentWeight?.message}
+            >
               <input
+                aria-label="Coef. evaluation"
                 type="number"
                 min={0}
                 step="0.1"
-                value={assessmentWeight}
-                onChange={(event) => setAssessmentWeight(event.target.value)}
+                value={noteWeightValue}
+                onChange={(event) =>
+                  createGradeForm.setValue(
+                    "assessmentWeight",
+                    event.target.valueAsNumber,
+                    {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    },
+                  )
+                }
                 className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
               />
-            </label>
+            </FormField>
 
             <div className="self-end md:col-span-3">
-              <SubmitButton disabled={saving || loadingContext}>
+              <SubmitButton
+                disabled={
+                  saving || loadingContext || !createGradeForm.formState.isValid
+                }
+              >
                 {saving ? "Enregistrement..." : "Ajouter la note"}
               </SubmitButton>
             </div>

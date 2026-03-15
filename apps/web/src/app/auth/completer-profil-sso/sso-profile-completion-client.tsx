@@ -99,7 +99,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
       newPin: "",
     },
   });
-  const values = form.watch();
+  const resetForm = form.reset;
 
   const cleanSchoolSlug = useMemo(() => {
     if (!schoolSlug) {
@@ -108,50 +108,6 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
     const trimmed = schoolSlug.trim();
     return trimmed.length > 0 ? trimmed : undefined;
   }, [schoolSlug]);
-  const completionValidation = useMemo(
-    () =>
-      ssoCompletionSchema.safeParse({
-        firstName: values.firstName ?? "",
-        lastName: values.lastName ?? "",
-        gender: values.gender ?? "M",
-        phone: values.phone ?? "",
-        newPin: values.newPin ?? "",
-      }),
-    [
-      values.firstName,
-      values.gender,
-      values.lastName,
-      values.newPin,
-      values.phone,
-    ],
-  );
-  const completionDirty = form.formState.isDirty;
-  const completionErrors = useMemo(() => {
-    if (completionValidation.success) {
-      return {} as Partial<
-        Record<"firstName" | "lastName" | "gender" | "phone" | "newPin", string>
-      >;
-    }
-    return completionValidation.error.issues.reduce(
-      (accumulator, issue) => {
-        const key = issue.path[0];
-        if (
-          (key === "firstName" ||
-            key === "lastName" ||
-            key === "gender" ||
-            key === "phone" ||
-            key === "newPin") &&
-          !accumulator[key]
-        ) {
-          accumulator[key] = issue.message;
-        }
-        return accumulator;
-      },
-      {} as Partial<
-        Record<"firstName" | "lastName" | "gender" | "phone" | "newPin", string>
-      >,
-    );
-  }, [completionValidation]);
 
   async function finalizeAppSession(input: {
     provider: "GOOGLE" | "APPLE";
@@ -310,7 +266,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
         const options = (await optionsResponse.json()) as SsoOptionsResponse;
 
         if (!cancelled) {
-          form.reset({
+          resetForm({
             firstName: options.firstName ?? "",
             lastName: options.lastName ?? "",
             gender: options.gender ?? "M",
@@ -344,7 +300,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [cleanSchoolSlug, form, router]);
+  }, [cleanSchoolSlug, resetForm, router]);
 
   async function onSubmit(values: z.output<typeof ssoCompletionSchema>) {
     setError(null);
@@ -411,12 +367,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           <FormField
             label="Prenom"
-            error={
-              (values.firstName?.length ?? 0) > 0 ||
-              form.formState.submitCount > 0
-                ? (completionErrors.firstName ?? null)
-                : null
-            }
+            error={form.formState.errors.firstName?.message}
           >
             <Controller
               control={form.control}
@@ -426,12 +377,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
                   name={field.name}
                   ref={field.ref}
                   value={field.value ?? ""}
-                  onChange={(event) =>
-                    form.setValue("firstName", event.target.value, {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    })
-                  }
+                  onChange={(event) => field.onChange(event.target.value)}
                   onBlur={field.onBlur}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -441,12 +387,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           <FormField
             label="Nom"
-            error={
-              (values.lastName?.length ?? 0) > 0 ||
-              form.formState.submitCount > 0
-                ? (completionErrors.lastName ?? null)
-                : null
-            }
+            error={form.formState.errors.lastName?.message}
           >
             <Controller
               control={form.control}
@@ -456,12 +397,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
                   name={field.name}
                   ref={field.ref}
                   value={field.value ?? ""}
-                  onChange={(event) =>
-                    form.setValue("lastName", event.target.value, {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    })
-                  }
+                  onChange={(event) => field.onChange(event.target.value)}
                   onBlur={field.onBlur}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -471,11 +407,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           <FormField
             label="Genre"
-            error={
-              form.formState.isDirty || form.formState.submitCount > 0
-                ? (completionErrors.gender ?? null)
-                : null
-            }
+            error={form.formState.errors.gender?.message}
           >
             <Controller
               control={form.control}
@@ -486,14 +418,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
                   ref={field.ref}
                   value={field.value ?? "M"}
                   onChange={(event) =>
-                    form.setValue(
-                      "gender",
-                      event.target.value as "M" | "F" | "OTHER",
-                      {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      },
-                    )
+                    field.onChange(event.target.value as "M" | "F" | "OTHER")
                   }
                   onBlur={field.onBlur}
                   className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -508,11 +433,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           <FormField
             label="Telephone"
-            error={
-              (values.phone?.length ?? 0) > 0 || form.formState.submitCount > 0
-                ? (completionErrors.phone ?? null)
-                : null
-            }
+            error={form.formState.errors.phone?.message}
           >
             <Controller
               control={form.control}
@@ -523,14 +444,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
                   ref={field.ref}
                   value={field.value ?? ""}
                   onChange={(event) =>
-                    form.setValue(
-                      "phone",
-                      normalizePhoneInput(event.target.value),
-                      {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      },
-                    )
+                    field.onChange(normalizePhoneInput(event.target.value))
                   }
                   onBlur={field.onBlur}
                   placeholder="6XXXXXXXX"
@@ -542,11 +456,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           <FormField
             label="PIN (6 chiffres)"
-            error={
-              (values.newPin?.length ?? 0) > 0 || form.formState.submitCount > 0
-                ? (completionErrors.newPin ?? null)
-                : null
-            }
+            error={form.formState.errors.newPin?.message}
           >
             <Controller
               control={form.control}
@@ -556,13 +466,8 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
                   name={field.name}
                   value={field.value ?? ""}
                   onChange={(event) =>
-                    form.setValue(
-                      "newPin",
+                    field.onChange(
                       event.target.value.replace(/\D/g, "").slice(0, 6),
-                      {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      },
                     )
                   }
                   onBlur={field.onBlur}
@@ -580,12 +485,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           {error ? <p className="text-sm text-notification">{error}</p> : null}
 
-          <Button
-            type="submit"
-            disabled={
-              saving || !completionDirty || !completionValidation.success
-            }
-          >
+          <Button type="submit" disabled={saving || !form.formState.isValid}>
             {saving ? "Enregistrement..." : "Finaliser mon profil"}
           </Button>
         </form>

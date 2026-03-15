@@ -63,7 +63,9 @@ describe("ForgotPasswordPage UI", () => {
     expect(submitButton).toBeDisabled();
 
     fireEvent.change(emailInput, { target: { value: "parent@example.test" } });
-    expect(submitButton).toBeEnabled();
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
 
     fireEvent.click(submitButton);
 
@@ -125,7 +127,15 @@ describe("ForgotPasswordPage UI", () => {
       expect(screen.getByText(/Compte detecte:/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Date de naissance"), {
+    const birthDateInput = screen.getByLabelText(
+      "Date de naissance",
+    ) as HTMLInputElement;
+
+    await waitFor(() => {
+      expect(birthDateInput.value).toBe("");
+    });
+
+    fireEvent.change(birthDateInput, {
       target: { value: "1985-07-14" },
     });
     fireEvent.change(screen.getByLabelText("Ville de naissance"), {
@@ -138,12 +148,22 @@ describe("ForgotPasswordPage UI", () => {
       target: { value: "Andre" },
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Verifier mon identite" }),
-    );
+    const verifyButton = screen.getByRole("button", {
+      name: "Verifier mon identite",
+    });
 
     await waitFor(() => {
-      expect(screen.getByText("Nouveau mot de passe")).toBeInTheDocument();
+      expect(verifyButton).toBeEnabled();
+    });
+
+    fireEvent.click(verifyButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", {
+          name: "Reinitialiser mon mot de passe",
+        }),
+      ).toBeInTheDocument();
     });
 
     expect(
@@ -160,6 +180,134 @@ describe("ForgotPasswordPage UI", () => {
       expect.stringContaining("/auth/forgot-password/verify"),
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("shows inline zod errors during identity verification and password reset", async () => {
+    currentSearchParams = new URLSearchParams(
+      "token=0123456789abcdefghijklmnop&schoolSlug=college-vogt",
+    );
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            success: true,
+            emailHint: "p***t@example.test",
+            schoolSlug: "college-vogt",
+            questions: [
+              { key: "BIRTH_CITY", label: "Ville de naissance" },
+              { key: "FAVORITE_SPORT", label: "Sport prefere" },
+              { key: "FATHER_FIRST_NAME", label: "Prenom du pere" },
+            ],
+          }),
+          {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, verified: true }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+    render(<ForgotPasswordPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Compte detecte:/i)).toBeInTheDocument();
+    });
+
+    const verifyButton = screen.getByRole("button", {
+      name: "Verifier mon identite",
+    });
+    expect(verifyButton).toBeDisabled();
+
+    const cityInput = document.querySelector(
+      'input[name="answers.BIRTH_CITY"]',
+    ) as HTMLInputElement;
+    const sportInput = document.querySelector(
+      'input[name="answers.FAVORITE_SPORT"]',
+    ) as HTMLInputElement;
+    const fatherInput = document.querySelector(
+      'input[name="answers.FATHER_FIRST_NAME"]',
+    ) as HTMLInputElement;
+
+    fireEvent.change(cityInput, {
+      target: { value: "D" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Too small: expected string to have >=2 characters"),
+      ).toBeInTheDocument();
+      expect(verifyButton).toBeDisabled();
+    });
+
+    fireEvent.change(screen.getByLabelText("Date de naissance"), {
+      target: { value: "1985-07-14" },
+    });
+    fireEvent.change(cityInput, {
+      target: { value: "Douala" },
+    });
+    fireEvent.change(sportInput, {
+      target: { value: "Football" },
+    });
+    fireEvent.change(fatherInput, {
+      target: { value: "Andre" },
+    });
+
+    await waitFor(() => {
+      expect(verifyButton).toBeEnabled();
+    });
+
+    fireEvent.click(verifyButton);
+
+    const completeButton = await screen.findByRole("button", {
+      name: "Reinitialiser mon mot de passe",
+    });
+    expect(completeButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Nouveau mot de passe"), {
+      target: { value: "abc" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le mot de passe doit faire au moins 8 caracteres."),
+      ).toBeInTheDocument();
+      expect(completeButton).toBeDisabled();
+    });
+
+    fireEvent.change(screen.getByLabelText("Nouveau mot de passe"), {
+      target: { value: "ValidPass123" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirmation"), {
+      target: { value: "ValidPass124" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "La confirmation ne correspond pas au nouveau mot de passe.",
+        ),
+      ).toBeInTheDocument();
+      expect(completeButton).toBeDisabled();
+    });
+
+    fireEvent.change(screen.getByLabelText("Confirmation"), {
+      target: { value: "ValidPass123" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          "La confirmation ne correspond pas au nouveau mot de passe.",
+        ),
+      ).not.toBeInTheDocument();
+      expect(completeButton).toBeEnabled();
+    });
   });
 
   it("redirects to login after successful password reset completion", async () => {
@@ -205,24 +353,56 @@ describe("ForgotPasswordPage UI", () => {
       expect(screen.getByText(/Compte detecte:/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText("Date de naissance"), {
+    const birthDateInput = screen.getByLabelText(
+      "Date de naissance",
+    ) as HTMLInputElement;
+    await waitFor(() => {
+      expect(birthDateInput.value).toBe("");
+    });
+
+    fireEvent.change(birthDateInput, {
       target: { value: "1985-07-14" },
     });
-    fireEvent.change(screen.getByLabelText("Ville de naissance"), {
-      target: { value: "Douala" },
-    });
-    fireEvent.change(screen.getByLabelText("Sport prefere"), {
-      target: { value: "Football" },
-    });
-    fireEvent.change(screen.getByLabelText("Prenom du pere"), {
-      target: { value: "Andre" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Verifier mon identite" }),
+    fireEvent.change(
+      document.querySelector(
+        'input[name="answers.BIRTH_CITY"]',
+      ) as HTMLInputElement,
+      {
+        target: { value: "Douala" },
+      },
     );
+    fireEvent.change(
+      document.querySelector(
+        'input[name="answers.FAVORITE_SPORT"]',
+      ) as HTMLInputElement,
+      {
+        target: { value: "Football" },
+      },
+    );
+    fireEvent.change(
+      document.querySelector(
+        'input[name="answers.FATHER_FIRST_NAME"]',
+      ) as HTMLInputElement,
+      {
+        target: { value: "Andre" },
+      },
+    );
+    const verifyButton = screen.getByRole("button", {
+      name: "Verifier mon identite",
+    });
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Nouveau mot de passe")).toBeInTheDocument();
+      expect(verifyButton).toBeEnabled();
+    });
+
+    fireEvent.click(verifyButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", {
+          name: "Reinitialiser mon mot de passe",
+        }),
+      ).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByLabelText("Nouveau mot de passe"), {
@@ -231,9 +411,16 @@ describe("ForgotPasswordPage UI", () => {
     fireEvent.change(screen.getByLabelText("Confirmation"), {
       target: { value: "ValidPass123" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Reinitialiser mon mot de passe" }),
-    );
+
+    const completeButton = screen.getByRole("button", {
+      name: "Reinitialiser mon mot de passe",
+    });
+
+    await waitFor(() => {
+      expect(completeButton).toBeEnabled();
+    });
+
+    fireEvent.click(completeButton);
 
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith("/schools/college-vogt/login");

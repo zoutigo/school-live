@@ -94,6 +94,90 @@ describe("Subjects page forms", () => {
     });
   });
 
+  it("shows inline zod errors for evaluation type creation and posts once valid", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/subjects") && !url.includes("/curriculums/")) {
+          return jsonResponse([]);
+        }
+        if (url.includes("/admin/evaluation-types")) {
+          if (method === "POST") {
+            return jsonResponse({ id: "eval-1" }, 201);
+          }
+          return jsonResponse([]);
+        }
+        if (url.includes("/admin/teachers")) return jsonResponse([]);
+        if (url.includes("/admin/school-years")) return jsonResponse([]);
+        if (url.includes("/admin/classrooms")) return jsonResponse([]);
+        if (url.includes("/admin/teacher-assignments")) return jsonResponse([]);
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SubjectsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Types d'evaluation" }),
+    );
+
+    const submitButton = await screen.findByRole("button", { name: "Ajouter" });
+    const codeInput = screen.getByLabelText("Code");
+    const labelInput = screen.getByLabelText("Libelle");
+
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.change(labelInput, {
+      target: { value: "Interrogation ecrite" },
+    });
+    fireEvent.change(codeInput, {
+      target: { value: "INT" },
+    });
+    fireEvent.change(codeInput, {
+      target: { value: "" },
+    });
+    fireEvent.blur(codeInput);
+
+    expect(
+      await screen.findByText("Le code est obligatoire."),
+    ).toBeInTheDocument();
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.change(codeInput, {
+      target: { value: "INT" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Le code est obligatoire."),
+      ).not.toBeInTheDocument();
+      expect(submitButton).toBeEnabled();
+    });
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/admin/evaluation-types"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            code: "INT",
+            label: "Interrogation ecrite",
+          }),
+        }),
+      );
+    });
+  });
+
   it("submits the validated assignment form", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 import {
   CalendarDays,
   ChevronLeft,
@@ -10,10 +12,12 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { z } from "zod";
 import { Card } from "../../../../../../../components/ui/card";
 import { Button } from "../../../../../../../components/ui/button";
 import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog";
 import { DateInput } from "../../../../../../../components/ui/date-input";
+import { FormField } from "../../../../../../../components/ui/form-field";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { TimeInput } from "../../../../../../../components/ui/time-input";
 import {
@@ -170,6 +174,163 @@ const WEEKDAY_OPTIONS = [
   { value: 6, label: "Samedi" },
   { value: 7, label: "Dimanche" },
 ];
+
+const vacationFormSchema = z
+  .object({
+    label: z.string().trim().min(1, "Le libelle est obligatoire."),
+    scope: z.enum(["SCHOOL", "ACADEMIC_LEVEL", "CLASS"]),
+    startDate: z.string().min(1, "La date de debut est obligatoire."),
+    endDate: z.string().min(1, "La date de fin est obligatoire."),
+  })
+  .refine(
+    (value) =>
+      !Number.isNaN(new Date(value.startDate).getTime()) &&
+      !Number.isNaN(new Date(value.endDate).getTime()),
+    {
+      path: ["startDate"],
+      message: "Dates invalides.",
+    },
+  )
+  .refine(
+    (value) =>
+      Number.isNaN(new Date(value.startDate).getTime()) ||
+      Number.isNaN(new Date(value.endDate).getTime()) ||
+      new Date(value.startDate) <= new Date(value.endDate),
+    {
+      path: ["endDate"],
+      message: "La date de debut doit etre avant la date de fin.",
+    },
+  );
+
+const slotFormSchema = z
+  .object({
+    weekday: z.string(),
+    start: z.string(),
+    end: z.string(),
+    subjectId: z.string().min(1, "Selectionnez une matiere."),
+    teacherUserId: z.string().min(1, "Selectionnez un enseignant."),
+    room: z.string(),
+    activeFromDate: z.string(),
+    activeToDate: z.string(),
+    effectiveFromDate: z.string(),
+  })
+  .superRefine((value, context) => {
+    const weekday = Number.parseInt(value.weekday, 10);
+    if (!Number.isFinite(weekday) || weekday < 1 || weekday > 7) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["weekday"],
+        message: "Jour invalide.",
+      });
+    }
+
+    const startMinute = timeValueToMinutes(value.start);
+    const endMinute = timeValueToMinutes(value.end);
+    if (!Number.isFinite(startMinute)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["start"],
+        message: "Horaire invalide.",
+      });
+    }
+    if (!Number.isFinite(endMinute)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["end"],
+        message: "Horaire invalide.",
+      });
+    }
+    if (
+      Number.isFinite(startMinute) &&
+      Number.isFinite(endMinute) &&
+      startMinute >= endMinute
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["end"],
+        message: "L'heure de debut doit etre avant l'heure de fin.",
+      });
+    }
+  });
+
+const occurrenceFormSchema = z
+  .object({
+    actionType: z.enum([
+      "DELETE_OCCURRENCE",
+      "UPDATE_OCCURRENCE",
+      "UPDATE_SERIES",
+      "DELETE_SERIES",
+    ]),
+    occurrenceDateInput: z.string(),
+    occurrenceSeriesEndDate: z.string(),
+    subjectId: z.string(),
+    teacherUserId: z.string(),
+    start: z.string(),
+    end: z.string(),
+    room: z.string(),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.actionType !== "DELETE_SERIES" &&
+      value.occurrenceDateInput.trim().length === 0
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["occurrenceDateInput"],
+        message: "Selectionnez la date d'occurrence.",
+      });
+    }
+
+    if (
+      value.actionType === "DELETE_OCCURRENCE" ||
+      value.actionType === "DELETE_SERIES"
+    ) {
+      return;
+    }
+
+    if (value.subjectId.trim().length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["subjectId"],
+        message: "Selectionnez une matiere.",
+      });
+    }
+    if (value.teacherUserId.trim().length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["teacherUserId"],
+        message: "Selectionnez un enseignant.",
+      });
+    }
+
+    const startMinute = timeValueToMinutes(value.start);
+    const endMinute = timeValueToMinutes(value.end);
+    if (!Number.isFinite(startMinute)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["start"],
+        message: "Horaire invalide.",
+      });
+    }
+    if (!Number.isFinite(endMinute)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["end"],
+        message: "Horaire invalide.",
+      });
+    }
+    if (
+      Number.isFinite(startMinute) &&
+      Number.isFinite(endMinute) &&
+      startMinute >= endMinute
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["end"],
+        message: "L'heure de debut doit etre avant l'heure de fin.",
+      });
+    }
+  });
 
 function parseApiError(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== "object") {
@@ -392,15 +553,6 @@ export default function TeacherClassAgendaPage() {
   >(null);
 
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
-  const [slotWeekday, setSlotWeekday] = useState("1");
-  const [slotStart, setSlotStart] = useState("08:45");
-  const [slotEnd, setSlotEnd] = useState("09:40");
-  const [slotSubjectId, setSlotSubjectId] = useState("");
-  const [slotTeacherUserId, setSlotTeacherUserId] = useState("");
-  const [slotRoom, setSlotRoom] = useState("");
-  const [slotActiveFromDate, setSlotActiveFromDate] = useState("");
-  const [slotActiveToDate, setSlotActiveToDate] = useState("");
-  const [slotEffectiveFromDate, setSlotEffectiveFromDate] = useState("");
   const [slotDrafts, setSlotDrafts] = useState<
     Array<{
       weekday: number;
@@ -415,29 +567,65 @@ export default function TeacherClassAgendaPage() {
   >([]);
   const [occurrences, setOccurrences] = useState<TimetableOccurrenceRow[]>([]);
   const [savingOccurrenceAction, setSavingOccurrenceAction] = useState(false);
-  const [occurrenceActionType, setOccurrenceActionType] =
-    useState<OccurrenceModalAction>("DELETE_OCCURRENCE");
-  const [occurrenceDateInput, setOccurrenceDateInput] = useState("");
-  const [occurrenceSeriesEndDate, setOccurrenceSeriesEndDate] = useState("");
-  const [occurrenceSubjectId, setOccurrenceSubjectId] = useState("");
-  const [occurrenceTeacherUserId, setOccurrenceTeacherUserId] = useState("");
-  const [occurrenceStart, setOccurrenceStart] = useState("08:45");
-  const [occurrenceEnd, setOccurrenceEnd] = useState("09:40");
-  const [occurrenceRoom, setOccurrenceRoom] = useState("");
   const [occurrenceModalSlot, setOccurrenceModalSlot] =
     useState<TimetableOccurrenceRow | null>(null);
   const [occurrenceModalStep, setOccurrenceModalStep] =
     useState<OccurrenceModalStep>("action");
 
-  const [vacationLabel, setVacationLabel] = useState("Vacances scolaires");
-  const [vacationScope, setVacationScope] = useState<
-    "SCHOOL" | "ACADEMIC_LEVEL" | "CLASS"
-  >("CLASS");
-  const [vacationStartDate, setVacationStartDate] = useState("");
-  const [vacationEndDate, setVacationEndDate] = useState("");
   const [editingVacationId, setEditingVacationId] = useState<string | null>(
     null,
   );
+  const vacationForm = useForm<
+    z.input<typeof vacationFormSchema>,
+    unknown,
+    z.output<typeof vacationFormSchema>
+  >({
+    resolver: zodResolver(vacationFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      label: "Vacances scolaires",
+      scope: "CLASS",
+      startDate: "",
+      endDate: "",
+    },
+  });
+  const slotForm = useForm<
+    z.input<typeof slotFormSchema>,
+    unknown,
+    z.output<typeof slotFormSchema>
+  >({
+    resolver: zodResolver(slotFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      weekday: "1",
+      start: "08:45",
+      end: "09:40",
+      subjectId: "",
+      teacherUserId: "",
+      room: "",
+      activeFromDate: "",
+      activeToDate: "",
+      effectiveFromDate: "",
+    },
+  });
+  const occurrenceForm = useForm<
+    z.input<typeof occurrenceFormSchema>,
+    unknown,
+    z.output<typeof occurrenceFormSchema>
+  >({
+    resolver: zodResolver(occurrenceFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      actionType: "DELETE_OCCURRENCE",
+      occurrenceDateInput: "",
+      occurrenceSeriesEndDate: "",
+      subjectId: "",
+      teacherUserId: "",
+      start: "08:45",
+      end: "09:40",
+      room: "",
+    },
+  });
 
   const [slotToDelete, setSlotToDelete] = useState<SlotRow | null>(null);
   const [eventToDelete, setEventToDelete] = useState<CalendarEventRow | null>(
@@ -447,6 +635,9 @@ export default function TeacherClassAgendaPage() {
   const [cursorDate, setCursorDate] = useState(stripTime(new Date()));
   const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [showSlotCreateForm, setShowSlotCreateForm] = useState(false);
+  const slotValues = slotForm.watch();
+  const occurrenceValues = occurrenceForm.watch();
+  const occurrenceActionType = occurrenceValues.actionType;
 
   const canManageCalendar =
     meRole !== null && CAN_MANAGE_CALENDAR_ROLES.includes(meRole);
@@ -486,23 +677,31 @@ export default function TeacherClassAgendaPage() {
   useEffect(() => {
     if (context?.allowedSubjects.length) {
       const subjectStillExists = context.allowedSubjects.some(
-        (subject) => subject.id === slotSubjectId,
+        (subject) => subject.id === slotValues.subjectId,
       );
       if (!subjectStillExists) {
-        setSlotSubjectId(context.allowedSubjects[0].id);
+        slotForm.setValue("subjectId", context.allowedSubjects[0].id, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: true,
+        });
       }
       return;
     }
-    setSlotSubjectId("");
-  }, [context, slotSubjectId]);
+    slotForm.setValue("subjectId", "", {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate: true,
+    });
+  }, [context, slotForm, slotValues.subjectId]);
 
   const teacherChoices = useMemo(() => {
-    if (!context || !slotSubjectId) {
+    if (!context || !slotValues.subjectId) {
       return [] as Array<{ id: string; label: string }>;
     }
 
     const rows = context.assignments.filter(
-      (entry) => entry.subjectId === slotSubjectId,
+      (entry) => entry.subjectId === slotValues.subjectId,
     );
 
     const seen = new Set<string>();
@@ -520,15 +719,15 @@ export default function TeacherClassAgendaPage() {
     });
 
     return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [context, slotSubjectId]);
+  }, [context, slotValues.subjectId]);
 
   const occurrenceTeacherChoices = useMemo(() => {
-    if (!context || !occurrenceSubjectId) {
+    if (!context || !occurrenceValues.subjectId) {
       return [] as Array<{ id: string; label: string }>;
     }
 
     const rows = context.assignments.filter(
-      (entry) => entry.subjectId === occurrenceSubjectId,
+      (entry) => entry.subjectId === occurrenceValues.subjectId,
     );
     const seen = new Set<string>();
     const options: Array<{ id: string; label: string }> = [];
@@ -543,72 +742,106 @@ export default function TeacherClassAgendaPage() {
       });
     });
     return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [context, occurrenceSubjectId]);
+  }, [context, occurrenceValues.subjectId]);
 
   useEffect(() => {
     if (teacherChoices.length === 0) {
-      setSlotTeacherUserId("");
+      slotForm.setValue("teacherUserId", "", {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
       return;
     }
 
     const stillExists = teacherChoices.some(
-      (entry) => entry.id === slotTeacherUserId,
+      (entry) => entry.id === slotValues.teacherUserId,
     );
     if (!stillExists) {
-      setSlotTeacherUserId(teacherChoices[0].id);
+      slotForm.setValue("teacherUserId", teacherChoices[0].id, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
     }
-  }, [teacherChoices, slotTeacherUserId]);
+  }, [slotForm, slotValues.teacherUserId, teacherChoices]);
 
   useEffect(() => {
     if (!context?.allowedSubjects.length) {
-      setOccurrenceSubjectId("");
+      occurrenceForm.setValue("subjectId", "", {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
       return;
     }
     const exists = context.allowedSubjects.some(
-      (subject) => subject.id === occurrenceSubjectId,
+      (subject) => subject.id === occurrenceValues.subjectId,
     );
     if (!exists) {
-      setOccurrenceSubjectId(context.allowedSubjects[0].id);
+      occurrenceForm.setValue("subjectId", context.allowedSubjects[0].id, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
     }
-  }, [context, occurrenceSubjectId]);
+  }, [context, occurrenceForm, occurrenceValues.subjectId]);
 
   useEffect(() => {
     if (occurrenceTeacherChoices.length === 0) {
-      setOccurrenceTeacherUserId("");
+      occurrenceForm.setValue("teacherUserId", "", {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
       return;
     }
     const exists = occurrenceTeacherChoices.some(
-      (entry) => entry.id === occurrenceTeacherUserId,
+      (entry) => entry.id === occurrenceValues.teacherUserId,
     );
     if (!exists) {
-      setOccurrenceTeacherUserId(occurrenceTeacherChoices[0].id);
+      occurrenceForm.setValue("teacherUserId", occurrenceTeacherChoices[0].id, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
     }
-  }, [occurrenceTeacherChoices, occurrenceTeacherUserId]);
+  }, [
+    occurrenceForm,
+    occurrenceTeacherChoices,
+    occurrenceValues.teacherUserId,
+  ]);
 
   useEffect(() => {
-    setOccurrenceDateInput(toIsoDateString(cursorDate));
-  }, [cursorDate]);
+    occurrenceForm.setValue(
+      "occurrenceDateInput",
+      toIsoDateString(cursorDate),
+      {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      },
+    );
+  }, [cursorDate, occurrenceForm]);
 
   function openOccurrenceModal(slot: TimetableOccurrenceRow) {
     setOccurrenceModalSlot(slot);
-    setOccurrenceDateInput(slot.occurrenceDate);
-    setOccurrenceSeriesEndDate(
-      slot.slotId
+    occurrenceForm.reset({
+      actionType: slot.slotId
+        ? slot.status === "CANCELLED"
+          ? "UPDATE_OCCURRENCE"
+          : "DELETE_OCCURRENCE"
+        : "UPDATE_OCCURRENCE",
+      occurrenceDateInput: slot.occurrenceDate,
+      occurrenceSeriesEndDate: slot.slotId
         ? (slots.find((entry) => entry.id === slot.slotId)?.activeToDate ?? "")
         : "",
-    );
-    setOccurrenceStart(minutesToTimeValue(slot.startMinute));
-    setOccurrenceEnd(minutesToTimeValue(slot.endMinute));
-    setOccurrenceSubjectId(slot.subject.id);
-    setOccurrenceTeacherUserId(slot.teacherUser.id);
-    setOccurrenceRoom(slot.room ?? "");
-    if (slot.slotId) {
-      setOccurrenceActionType(
-        slot.status === "CANCELLED" ? "UPDATE_OCCURRENCE" : "DELETE_OCCURRENCE",
-      );
-    } else {
-      setOccurrenceActionType("UPDATE_OCCURRENCE");
-    }
+      start: minutesToTimeValue(slot.startMinute),
+      end: minutesToTimeValue(slot.endMinute),
+      subjectId: slot.subject.id,
+      teacherUserId: slot.teacherUser.id,
+      room: slot.room ?? "",
+    });
     setOccurrenceModalStep("action");
     setError(null);
     setSuccess(null);
@@ -786,13 +1019,17 @@ export default function TeacherClassAgendaPage() {
 
   function resetSlotForm() {
     setEditingSlotId(null);
-    setSlotWeekday("1");
-    setSlotStart("08:45");
-    setSlotEnd("09:40");
-    setSlotRoom("");
-    setSlotActiveFromDate("");
-    setSlotActiveToDate("");
-    setSlotEffectiveFromDate("");
+    slotForm.reset({
+      weekday: "1",
+      start: "08:45",
+      end: "09:40",
+      subjectId: context?.allowedSubjects[0]?.id ?? "",
+      teacherUserId: "",
+      room: "",
+      activeFromDate: "",
+      activeToDate: "",
+      effectiveFromDate: "",
+    });
     setSlotDrafts([]);
   }
 
@@ -888,38 +1125,10 @@ export default function TeacherClassAgendaPage() {
     }
   }
 
-  async function onSubmitSlot(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!slotSubjectId) {
-      setError("Selectionnez une matiere.");
-      return;
-    }
-
-    if (!slotTeacherUserId) {
-      setError("Selectionnez un enseignant.");
-      return;
-    }
-
-    const weekday = Number.parseInt(slotWeekday, 10);
-    const startMinute = timeValueToMinutes(slotStart);
-    const endMinute = timeValueToMinutes(slotEnd);
-
-    if (!Number.isFinite(weekday) || weekday < 1 || weekday > 7) {
-      setError("Jour invalide.");
-      return;
-    }
-
-    if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
-      setError("Horaire invalide.");
-      return;
-    }
-
-    if (startMinute >= endMinute) {
-      setError("L'heure de debut doit etre avant l'heure de fin.");
-      return;
-    }
-
+  async function onSubmitSlot(values: z.output<typeof slotFormSchema>) {
+    const weekday = Number.parseInt(values.weekday, 10);
+    const startMinute = timeValueToMinutes(values.start);
+    const endMinute = timeValueToMinutes(values.end);
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
       setError("Session CSRF invalide. Reconnectez-vous.");
@@ -946,12 +1155,12 @@ export default function TeacherClassAgendaPage() {
               weekday,
               startMinute,
               endMinute,
-              subjectId: slotSubjectId,
-              teacherUserId: slotTeacherUserId,
-              room: slotRoom.trim() || undefined,
-              activeFromDate: slotActiveFromDate || undefined,
-              activeToDate: slotActiveToDate || undefined,
-              effectiveFromDate: slotEffectiveFromDate || undefined,
+              subjectId: values.subjectId,
+              teacherUserId: values.teacherUserId,
+              room: values.room.trim() || undefined,
+              activeFromDate: values.activeFromDate || undefined,
+              activeToDate: values.activeToDate || undefined,
+              effectiveFromDate: values.effectiveFromDate || undefined,
             }),
           },
         );
@@ -975,11 +1184,11 @@ export default function TeacherClassAgendaPage() {
           weekday,
           startMinute,
           endMinute,
-          subjectId: slotSubjectId,
-          teacherUserId: slotTeacherUserId,
-          room: slotRoom.trim(),
-          activeFromDate: slotActiveFromDate,
-          activeToDate: slotActiveToDate,
+          subjectId: values.subjectId,
+          teacherUserId: values.teacherUserId,
+          room: values.room.trim(),
+          activeFromDate: values.activeFromDate,
+          activeToDate: values.activeToDate,
         },
       ];
 
@@ -1019,7 +1228,11 @@ export default function TeacherClassAgendaPage() {
           ? `${drafts.length} creneaux ajoutes.`
           : "Creneau ajoute.",
       );
-      setSlotRoom("");
+      slotForm.setValue("room", "", {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
       setSlotDrafts([]);
     } catch {
       setError("Erreur reseau.");
@@ -1028,27 +1241,10 @@ export default function TeacherClassAgendaPage() {
     }
   }
 
-  function addCurrentSlotToDrafts() {
-    if (!slotSubjectId || !slotTeacherUserId) {
-      setError("Selectionnez une matiere et un enseignant.");
-      return;
-    }
-    const weekday = Number.parseInt(slotWeekday, 10);
-    const startMinute = timeValueToMinutes(slotStart);
-    const endMinute = timeValueToMinutes(slotEnd);
-    if (!Number.isFinite(weekday) || weekday < 1 || weekday > 7) {
-      setError("Jour invalide.");
-      return;
-    }
-    if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
-      setError("Horaire invalide.");
-      return;
-    }
-    if (startMinute >= endMinute) {
-      setError("L'heure de debut doit etre avant l'heure de fin.");
-      return;
-    }
-
+  function addCurrentSlotToDrafts(values: z.output<typeof slotFormSchema>) {
+    const weekday = Number.parseInt(values.weekday, 10);
+    const startMinute = timeValueToMinutes(values.start);
+    const endMinute = timeValueToMinutes(values.end);
     setError(null);
     setSlotDrafts((current) => [
       ...current,
@@ -1056,28 +1252,39 @@ export default function TeacherClassAgendaPage() {
         weekday,
         startMinute,
         endMinute,
-        subjectId: slotSubjectId,
-        teacherUserId: slotTeacherUserId,
-        room: slotRoom.trim(),
-        activeFromDate: slotActiveFromDate,
-        activeToDate: slotActiveToDate,
+        subjectId: values.subjectId,
+        teacherUserId: values.teacherUserId,
+        room: values.room.trim(),
+        activeFromDate: values.activeFromDate,
+        activeToDate: values.activeToDate,
       },
     ]);
-    setSlotStart(minutesToTimeValue(endMinute));
-    setSlotEnd(minutesToTimeValue(Math.min(endMinute + 55, 23 * 60 + 59)));
-    setSlotRoom("");
+    slotForm.setValue("start", minutesToTimeValue(endMinute), {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    slotForm.setValue(
+      "end",
+      minutesToTimeValue(Math.min(endMinute + 55, 23 * 60 + 59)),
+      {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      },
+    );
+    slotForm.setValue("room", "", {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
   }
 
-  async function onSubmitOccurrenceAction(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function onSubmitOccurrenceAction(
+    values: z.output<typeof occurrenceFormSchema>,
+  ) {
     if (!occurrenceModalSlot) {
       setError("Aucun creneau selectionne.");
-      return;
-    }
-
-    if (occurrenceActionType !== "DELETE_SERIES" && !occurrenceDateInput) {
-      setError("Selectionnez la date d'occurrence.");
       return;
     }
 
@@ -1093,7 +1300,7 @@ export default function TeacherClassAgendaPage() {
     setSuccess(null);
 
     try {
-      if (occurrenceActionType === "DELETE_OCCURRENCE") {
+      if (values.actionType === "DELETE_OCCURRENCE") {
         if (occurrenceModalSlot.oneOffSlotId) {
           const response = await fetch(
             `${API_URL}/schools/${schoolSlug}/timetable/one-off-slots/${occurrenceModalSlot.oneOffSlotId}`,
@@ -1121,7 +1328,7 @@ export default function TeacherClassAgendaPage() {
                 "X-CSRF-Token": csrfToken,
               },
               body: JSON.stringify({
-                occurrenceDate: occurrenceDateInput,
+                occurrenceDate: values.occurrenceDateInput,
                 type: "CANCEL",
               }),
             },
@@ -1138,21 +1345,9 @@ export default function TeacherClassAgendaPage() {
           return;
         }
         setSuccess("Occurrence supprimee.");
-      } else if (occurrenceActionType === "UPDATE_OCCURRENCE") {
-        const startMinute = timeValueToMinutes(occurrenceStart);
-        const endMinute = timeValueToMinutes(occurrenceEnd);
-        if (!occurrenceSubjectId || !occurrenceTeacherUserId) {
-          setError("Selectionnez la matiere et l'enseignant.");
-          return;
-        }
-        if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
-          setError("Horaire invalide.");
-          return;
-        }
-        if (startMinute >= endMinute) {
-          setError("L'heure de debut doit etre avant l'heure de fin.");
-          return;
-        }
+      } else if (values.actionType === "UPDATE_OCCURRENCE") {
+        const startMinute = timeValueToMinutes(values.start);
+        const endMinute = timeValueToMinutes(values.end);
         if (occurrenceModalSlot.oneOffSlotId) {
           const response = await fetch(
             `${API_URL}/schools/${schoolSlug}/timetable/one-off-slots/${occurrenceModalSlot.oneOffSlotId}`,
@@ -1164,12 +1359,12 @@ export default function TeacherClassAgendaPage() {
                 "X-CSRF-Token": csrfToken,
               },
               body: JSON.stringify({
-                occurrenceDate: occurrenceDateInput,
+                occurrenceDate: values.occurrenceDateInput,
                 startMinute,
                 endMinute,
-                subjectId: occurrenceSubjectId,
-                teacherUserId: occurrenceTeacherUserId,
-                room: occurrenceRoom.trim() || undefined,
+                subjectId: values.subjectId,
+                teacherUserId: values.teacherUserId,
+                room: values.room.trim() || undefined,
               }),
             },
           );
@@ -1191,13 +1386,13 @@ export default function TeacherClassAgendaPage() {
                 "X-CSRF-Token": csrfToken,
               },
               body: JSON.stringify({
-                occurrenceDate: occurrenceDateInput,
+                occurrenceDate: values.occurrenceDateInput,
                 type: "OVERRIDE",
                 startMinute,
                 endMinute,
-                subjectId: occurrenceSubjectId,
-                teacherUserId: occurrenceTeacherUserId,
-                room: occurrenceRoom.trim() || undefined,
+                subjectId: values.subjectId,
+                teacherUserId: values.teacherUserId,
+                room: values.room.trim() || undefined,
               }),
             },
           );
@@ -1213,25 +1408,13 @@ export default function TeacherClassAgendaPage() {
           return;
         }
         setSuccess("Occurrence modifiee.");
-      } else if (occurrenceActionType === "UPDATE_SERIES") {
+      } else if (values.actionType === "UPDATE_SERIES") {
         if (!occurrenceModalSlot.slotId) {
           setError("Cette occurrence ponctuelle n'a pas de serie a modifier.");
           return;
         }
-        const startMinute = timeValueToMinutes(occurrenceStart);
-        const endMinute = timeValueToMinutes(occurrenceEnd);
-        if (!occurrenceSubjectId || !occurrenceTeacherUserId) {
-          setError("Selectionnez la matiere et l'enseignant.");
-          return;
-        }
-        if (!Number.isFinite(startMinute) || !Number.isFinite(endMinute)) {
-          setError("Horaire invalide.");
-          return;
-        }
-        if (startMinute >= endMinute) {
-          setError("L'heure de debut doit etre avant l'heure de fin.");
-          return;
-        }
+        const startMinute = timeValueToMinutes(values.start);
+        const endMinute = timeValueToMinutes(values.end);
         const response = await fetch(
           `${API_URL}/schools/${schoolSlug}/timetable/slots/${occurrenceModalSlot.slotId}`,
           {
@@ -1245,11 +1428,11 @@ export default function TeacherClassAgendaPage() {
               weekday: occurrenceModalSlot.weekday,
               startMinute,
               endMinute,
-              subjectId: occurrenceSubjectId,
-              teacherUserId: occurrenceTeacherUserId,
-              room: occurrenceRoom.trim() || undefined,
-              effectiveFromDate: occurrenceDateInput,
-              activeToDate: occurrenceSeriesEndDate || undefined,
+              subjectId: values.subjectId,
+              teacherUserId: values.teacherUserId,
+              room: values.room.trim() || undefined,
+              effectiveFromDate: values.occurrenceDateInput,
+              activeToDate: values.occurrenceSeriesEndDate || undefined,
             }),
           },
         );
@@ -1261,7 +1444,7 @@ export default function TeacherClassAgendaPage() {
           return;
         }
         setSuccess("Serie mise a jour.");
-      } else if (occurrenceActionType === "DELETE_SERIES") {
+      } else if (values.actionType === "DELETE_SERIES") {
         if (!occurrenceModalSlot.slotId) {
           setError("Cette occurrence ponctuelle n'a pas de serie a supprimer.");
           return;
@@ -1343,32 +1526,19 @@ export default function TeacherClassAgendaPage() {
     }
   }
 
-  async function onSubmitVacation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function resetVacationForm() {
+    setEditingVacationId(null);
+    vacationForm.reset({
+      label: "Vacances scolaires",
+      scope: "CLASS",
+      startDate: "",
+      endDate: "",
+    });
+  }
 
+  async function submitVacation(values: z.output<typeof vacationFormSchema>) {
     if (!canManageCalendar) {
       setError("Vous ne pouvez pas modifier les vacances.");
-      return;
-    }
-
-    if (!vacationLabel.trim()) {
-      setError("Le libelle est obligatoire.");
-      return;
-    }
-
-    if (!vacationStartDate || !vacationEndDate) {
-      setError("Les dates de debut et fin sont obligatoires.");
-      return;
-    }
-
-    const start = new Date(vacationStartDate);
-    const end = new Date(vacationEndDate);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      setError("Dates invalides.");
-      return;
-    }
-    if (start > end) {
-      setError("La date de debut doit etre avant la date de fin.");
       return;
     }
 
@@ -1399,13 +1569,13 @@ export default function TeacherClassAgendaPage() {
           body: JSON.stringify({
             schoolYearId: selectedSchoolYearId ?? undefined,
             type: "HOLIDAY",
-            scope: vacationScope,
-            label: vacationLabel.trim(),
-            startDate: vacationStartDate,
-            endDate: vacationEndDate,
-            classId: vacationScope === "CLASS" ? classId : undefined,
+            scope: values.scope,
+            label: values.label,
+            startDate: values.startDate,
+            endDate: values.endDate,
+            classId: values.scope === "CLASS" ? classId : undefined,
             academicLevelId:
-              vacationScope === "ACADEMIC_LEVEL"
+              values.scope === "ACADEMIC_LEVEL"
                 ? (context?.class.academicLevelId ?? undefined)
                 : undefined,
           }),
@@ -1431,11 +1601,7 @@ export default function TeacherClassAgendaPage() {
           ? "Periode de vacances mise a jour."
           : "Periode de vacances enregistree.",
       );
-      setVacationLabel("Vacances scolaires");
-      setVacationScope("CLASS");
-      setVacationStartDate("");
-      setVacationEndDate("");
-      setEditingVacationId(null);
+      resetVacationForm();
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -1482,11 +1648,7 @@ export default function TeacherClassAgendaPage() {
       await refreshTimetable();
       setSuccess("Periode supprimee.");
       if (editingVacationId === eventToDelete.id) {
-        setEditingVacationId(null);
-        setVacationLabel("Vacances scolaires");
-        setVacationScope("CLASS");
-        setVacationStartDate("");
-        setVacationEndDate("");
+        resetVacationForm();
       }
       setEventToDelete(null);
     } catch {
@@ -1498,10 +1660,12 @@ export default function TeacherClassAgendaPage() {
 
   function onEditVacation(event: CalendarEventRow) {
     setEditingVacationId(event.id);
-    setVacationLabel(event.label);
-    setVacationScope(event.scope);
-    setVacationStartDate(toDateInputValue(event.startDate));
-    setVacationEndDate(toDateInputValue(event.endDate));
+    vacationForm.reset({
+      label: event.label,
+      scope: event.scope,
+      startDate: toDateInputValue(event.startDate),
+      endDate: toDateInputValue(event.endDate),
+    });
     setTab("vacations");
     setSuccess(null);
     setError(null);
@@ -1738,15 +1902,24 @@ export default function TeacherClassAgendaPage() {
                   {showSlotCreateForm ? (
                     <form
                       className="grid gap-3 rounded-card border border-border bg-background p-4"
-                      onSubmit={onSubmitSlot}
+                      onSubmit={slotForm.handleSubmit(onSubmitSlot)}
+                      noValidate
                     >
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">Jour</span>
+                        <FormField
+                          label="Jour"
+                          htmlFor="slot-weekday"
+                          error={slotForm.formState.errors.weekday?.message}
+                        >
                           <select
-                            value={slotWeekday}
+                            id="slot-weekday"
+                            value={slotValues.weekday}
                             onChange={(event) =>
-                              setSlotWeekday(event.target.value)
+                              slotForm.setValue("weekday", event.target.value, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              })
                             }
                             className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           >
@@ -1756,34 +1929,60 @@ export default function TeacherClassAgendaPage() {
                               </option>
                             ))}
                           </select>
-                        </label>
+                        </FormField>
 
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">Debut</span>
+                        <FormField
+                          label="Debut"
+                          error={slotForm.formState.errors.start?.message}
+                        >
                           <TimeInput
-                            value={slotStart}
+                            value={slotValues.start}
                             onChange={(event) =>
-                              setSlotStart(event.target.value)
+                              slotForm.setValue("start", event.target.value, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              })
                             }
                             className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           />
-                        </label>
+                        </FormField>
 
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">Fin</span>
+                        <FormField
+                          label="Fin"
+                          error={slotForm.formState.errors.end?.message}
+                        >
                           <TimeInput
-                            value={slotEnd}
-                            onChange={(event) => setSlotEnd(event.target.value)}
+                            value={slotValues.end}
+                            onChange={(event) =>
+                              slotForm.setValue("end", event.target.value, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              })
+                            }
                             className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           />
-                        </label>
+                        </FormField>
 
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">Matiere</span>
+                        <FormField
+                          label="Matiere"
+                          htmlFor="slot-subject"
+                          error={slotForm.formState.errors.subjectId?.message}
+                        >
                           <select
-                            value={slotSubjectId}
+                            id="slot-subject"
+                            value={slotValues.subjectId}
                             onChange={(event) =>
-                              setSlotSubjectId(event.target.value)
+                              slotForm.setValue(
+                                "subjectId",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           >
@@ -1798,16 +1997,28 @@ export default function TeacherClassAgendaPage() {
                               </option>
                             ))}
                           </select>
-                        </label>
+                        </FormField>
 
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            Enseignant
-                          </span>
+                        <FormField
+                          label="Enseignant"
+                          htmlFor="slot-teacher"
+                          error={
+                            slotForm.formState.errors.teacherUserId?.message
+                          }
+                        >
                           <select
-                            value={slotTeacherUserId}
+                            id="slot-teacher"
+                            value={slotValues.teacherUserId}
                             onChange={(event) =>
-                              setSlotTeacherUserId(event.target.value)
+                              slotForm.setValue(
+                                "teacherUserId",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           >
@@ -1822,62 +2033,82 @@ export default function TeacherClassAgendaPage() {
                               </option>
                             ))}
                           </select>
-                        </label>
+                        </FormField>
 
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            Salle (optionnel)
-                          </span>
+                        <FormField
+                          label="Salle (optionnel)"
+                          htmlFor="slot-room"
+                        >
                           <input
+                            id="slot-room"
                             type="text"
-                            value={slotRoom}
+                            value={slotValues.room}
                             onChange={(event) =>
-                              setSlotRoom(event.target.value)
+                              slotForm.setValue("room", event.target.value, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              })
                             }
                             placeholder="ex: B14"
                             className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           />
-                        </label>
+                        </FormField>
 
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            Debut occurrences (optionnel)
-                          </span>
+                        <FormField label="Debut occurrences (optionnel)">
                           <DateInput
-                            value={slotActiveFromDate}
+                            value={slotValues.activeFromDate}
                             onChange={(event) =>
-                              setSlotActiveFromDate(event.target.value)
+                              slotForm.setValue(
+                                "activeFromDate",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           />
-                        </label>
+                        </FormField>
 
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            Fin occurrences (optionnel)
-                          </span>
+                        <FormField label="Fin occurrences (optionnel)">
                           <DateInput
-                            value={slotActiveToDate}
+                            value={slotValues.activeToDate}
                             onChange={(event) =>
-                              setSlotActiveToDate(event.target.value)
+                              slotForm.setValue(
+                                "activeToDate",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                           />
-                        </label>
+                        </FormField>
 
                         {editingSlotId ? (
-                          <label className="grid gap-1 text-sm">
-                            <span className="text-text-secondary">
-                              Appliquer a partir du (optionnel)
-                            </span>
+                          <FormField label="Appliquer a partir du (optionnel)">
                             <DateInput
-                              value={slotEffectiveFromDate}
+                              value={slotValues.effectiveFromDate}
                               onChange={(event) =>
-                                setSlotEffectiveFromDate(event.target.value)
+                                slotForm.setValue(
+                                  "effectiveFromDate",
+                                  event.target.value,
+                                  {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  },
+                                )
                               }
                               className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                             />
-                          </label>
+                          </FormField>
                         ) : null}
                       </div>
 
@@ -1886,9 +2117,15 @@ export default function TeacherClassAgendaPage() {
                           <Button
                             type="button"
                             variant="secondary"
-                            onClick={addCurrentSlotToDrafts}
+                            onClick={() =>
+                              void slotForm.handleSubmit(
+                                addCurrentSlotToDrafts,
+                              )()
+                            }
                             disabled={
-                              savingSlot || context.allowedSubjects.length === 0
+                              savingSlot ||
+                              context.allowedSubjects.length === 0 ||
+                              !slotForm.formState.isValid
                             }
                             iconLeft={<Plus size={14} />}
                           >
@@ -1898,7 +2135,9 @@ export default function TeacherClassAgendaPage() {
                         <Button
                           type="submit"
                           disabled={
-                            savingSlot || context.allowedSubjects.length === 0
+                            savingSlot ||
+                            context.allowedSubjects.length === 0 ||
+                            !slotForm.formState.isValid
                           }
                           iconLeft={
                             editingSlotId ? (
@@ -2008,31 +2247,51 @@ export default function TeacherClassAgendaPage() {
                 {canManageCalendar ? (
                   <form
                     className="grid gap-3 rounded-card border border-border bg-background p-4"
-                    onSubmit={onSubmitVacation}
+                    onSubmit={vacationForm.handleSubmit(submitVacation)}
+                    noValidate
                   >
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                      <label className="grid gap-1 text-sm md:col-span-2 xl:col-span-2">
-                        <span className="text-text-secondary">Libelle</span>
+                      <FormField
+                        label="Libelle"
+                        htmlFor="vacation-label"
+                        error={vacationForm.formState.errors.label?.message}
+                        className="md:col-span-2 xl:col-span-2"
+                      >
                         <input
+                          id="vacation-label"
                           type="text"
-                          value={vacationLabel}
+                          value={vacationForm.watch("label")}
                           onChange={(event) =>
-                            setVacationLabel(event.target.value)
+                            vacationForm.setValue("label", event.target.value, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
                           }
                           className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                         />
-                      </label>
+                      </FormField>
 
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Portee</span>
+                      <FormField
+                        label="Portee"
+                        htmlFor="vacation-scope"
+                        error={vacationForm.formState.errors.scope?.message}
+                      >
                         <select
-                          value={vacationScope}
+                          id="vacation-scope"
+                          value={vacationForm.watch("scope")}
                           onChange={(event) =>
-                            setVacationScope(
+                            vacationForm.setValue(
+                              "scope",
                               event.target.value as
                                 | "SCHOOL"
                                 | "ACADEMIC_LEVEL"
                                 | "CLASS",
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
                             )
                           }
                           className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
@@ -2043,38 +2302,60 @@ export default function TeacherClassAgendaPage() {
                           ) : null}
                           <option value="SCHOOL">Ecole</option>
                         </select>
-                      </label>
+                      </FormField>
 
                       <div className="hidden xl:block" />
 
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Debut</span>
+                      <FormField
+                        label="Debut"
+                        error={vacationForm.formState.errors.startDate?.message}
+                      >
                         <DateInput
-                          value={vacationStartDate}
+                          value={vacationForm.watch("startDate")}
                           onChange={(event) =>
-                            setVacationStartDate(event.target.value)
+                            vacationForm.setValue(
+                              "startDate",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                         />
-                      </label>
+                      </FormField>
 
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">Fin</span>
+                      <FormField
+                        label="Fin"
+                        error={vacationForm.formState.errors.endDate?.message}
+                      >
                         <DateInput
-                          value={vacationEndDate}
+                          value={vacationForm.watch("endDate")}
                           onChange={(event) =>
-                            setVacationEndDate(event.target.value)
+                            vacationForm.setValue(
+                              "endDate",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                         />
-                      </label>
+                      </FormField>
                     </div>
 
                     <div>
                       <div className="flex flex-wrap gap-2">
                         <Button
                           type="submit"
-                          disabled={savingVacation}
+                          disabled={
+                            savingVacation || !vacationForm.formState.isValid
+                          }
                           iconLeft={
                             editingVacationId ? (
                               <Pencil size={14} />
@@ -2093,13 +2374,7 @@ export default function TeacherClassAgendaPage() {
                           <Button
                             type="button"
                             variant="secondary"
-                            onClick={() => {
-                              setEditingVacationId(null);
-                              setVacationLabel("Vacances scolaires");
-                              setVacationScope("CLASS");
-                              setVacationStartDate("");
-                              setVacationEndDate("");
-                            }}
+                            onClick={resetVacationForm}
                             disabled={savingVacation}
                           >
                             Annuler la modification
@@ -2226,7 +2501,7 @@ export default function TeacherClassAgendaPage() {
                     day: "2-digit",
                     month: "long",
                     year: "numeric",
-                  }).format(new Date(occurrenceDateInput))}
+                  }).format(new Date(occurrenceValues.occurrenceDateInput))}
                   {" · "}
                   {minutesToTimeValue(occurrenceModalSlot.startMinute)} -{" "}
                   {minutesToTimeValue(occurrenceModalSlot.endMinute)}
@@ -2262,7 +2537,13 @@ export default function TeacherClassAgendaPage() {
                     <button
                       key={`occ-action-${action}`}
                       type="button"
-                      onClick={() => setOccurrenceActionType(action)}
+                      onClick={() =>
+                        occurrenceForm.setValue("actionType", action, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }
                       className={`rounded-card border px-3 py-2 text-left text-sm transition ${
                         occurrenceActionType === action
                           ? "border-primary bg-[#EAF3FF] text-primary"
@@ -2294,7 +2575,11 @@ export default function TeacherClassAgendaPage() {
                 </div>
               </div>
             ) : (
-              <form className="grid gap-3" onSubmit={onSubmitOccurrenceAction}>
+              <form
+                className="grid gap-3"
+                onSubmit={occurrenceForm.handleSubmit(onSubmitOccurrenceAction)}
+                noValidate
+              >
                 {occurrenceActionType === "DELETE_OCCURRENCE" ||
                 occurrenceActionType === "DELETE_SERIES" ? (
                   (() => {
@@ -2399,33 +2684,51 @@ export default function TeacherClassAgendaPage() {
                   })()
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        {occurrenceActionType === "UPDATE_SERIES"
+                    <FormField
+                      label={
+                        occurrenceActionType === "UPDATE_SERIES"
                           ? "Date de debut d'effet"
-                          : "Date"}
-                      </span>
+                          : "Date"
+                      }
+                      error={
+                        occurrenceForm.formState.errors.occurrenceDateInput
+                          ?.message
+                      }
+                    >
                       <DateInput
-                        value={occurrenceDateInput}
+                        value={occurrenceValues.occurrenceDateInput}
                         onChange={(event) =>
-                          setOccurrenceDateInput(event.target.value)
+                          occurrenceForm.setValue(
+                            "occurrenceDateInput",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
                         }
                         className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                       />
-                    </label>
+                    </FormField>
                     {occurrenceActionType === "UPDATE_SERIES" ? (
-                      <label className="grid gap-1 text-sm">
-                        <span className="text-text-secondary">
-                          Date de fin de serie (optionnel)
-                        </span>
+                      <FormField label="Date de fin de serie (optionnel)">
                         <DateInput
-                          value={occurrenceSeriesEndDate}
+                          value={occurrenceValues.occurrenceSeriesEndDate}
                           onChange={(event) =>
-                            setOccurrenceSeriesEndDate(event.target.value)
+                            occurrenceForm.setValue(
+                              "occurrenceSeriesEndDate",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
                           }
                           className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                         />
-                      </label>
+                      </FormField>
                     ) : null}
                   </div>
                 )}
@@ -2440,32 +2743,56 @@ export default function TeacherClassAgendaPage() {
                 {occurrenceActionType !== "DELETE_OCCURRENCE" &&
                 occurrenceActionType !== "DELETE_SERIES" ? (
                   <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Debut</span>
+                    <FormField
+                      label="Debut"
+                      error={occurrenceForm.formState.errors.start?.message}
+                    >
                       <TimeInput
-                        value={occurrenceStart}
+                        value={occurrenceValues.start}
                         onChange={(event) =>
-                          setOccurrenceStart(event.target.value)
+                          occurrenceForm.setValue("start", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
                         }
                         className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                       />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Fin</span>
+                    </FormField>
+                    <FormField
+                      label="Fin"
+                      error={occurrenceForm.formState.errors.end?.message}
+                    >
                       <TimeInput
-                        value={occurrenceEnd}
+                        value={occurrenceValues.end}
                         onChange={(event) =>
-                          setOccurrenceEnd(event.target.value)
+                          occurrenceForm.setValue("end", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
                         }
                         className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                       />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Matiere</span>
+                    </FormField>
+                    <FormField
+                      label="Matiere"
+                      htmlFor="occurrence-subject"
+                      error={occurrenceForm.formState.errors.subjectId?.message}
+                    >
                       <select
-                        value={occurrenceSubjectId}
+                        id="occurrence-subject"
+                        value={occurrenceValues.subjectId}
                         onChange={(event) =>
-                          setOccurrenceSubjectId(event.target.value)
+                          occurrenceForm.setValue(
+                            "subjectId",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
                         }
                         className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                       >
@@ -2478,13 +2805,27 @@ export default function TeacherClassAgendaPage() {
                           </option>
                         ))}
                       </select>
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">Enseignant</span>
+                    </FormField>
+                    <FormField
+                      label="Enseignant"
+                      htmlFor="occurrence-teacher"
+                      error={
+                        occurrenceForm.formState.errors.teacherUserId?.message
+                      }
+                    >
                       <select
-                        value={occurrenceTeacherUserId}
+                        id="occurrence-teacher"
+                        value={occurrenceValues.teacherUserId}
                         onChange={(event) =>
-                          setOccurrenceTeacherUserId(event.target.value)
+                          occurrenceForm.setValue(
+                            "teacherUserId",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
                         }
                         className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                       >
@@ -2497,20 +2838,26 @@ export default function TeacherClassAgendaPage() {
                           </option>
                         ))}
                       </select>
-                    </label>
-                    <label className="grid gap-1 text-sm md:col-span-2">
-                      <span className="text-text-secondary">
-                        Salle (optionnel)
-                      </span>
+                    </FormField>
+                    <FormField
+                      label="Salle (optionnel)"
+                      htmlFor="occurrence-room"
+                      className="md:col-span-2"
+                    >
                       <input
+                        id="occurrence-room"
                         type="text"
-                        value={occurrenceRoom}
+                        value={occurrenceValues.room}
                         onChange={(event) =>
-                          setOccurrenceRoom(event.target.value)
+                          occurrenceForm.setValue("room", event.target.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
                         }
                         className="rounded-card border border-border bg-surface px-3 py-2 text-sm"
                       />
-                    </label>
+                    </FormField>
                   </div>
                 ) : null}
 
@@ -2536,7 +2883,13 @@ export default function TeacherClassAgendaPage() {
                     >
                       Annuler
                     </Button>
-                    <Button type="submit" disabled={savingOccurrenceAction}>
+                    <Button
+                      type="submit"
+                      disabled={
+                        savingOccurrenceAction ||
+                        !occurrenceForm.formState.isValid
+                      }
+                    >
                       {savingOccurrenceAction
                         ? "Enregistrement..."
                         : "Appliquer l'action"}

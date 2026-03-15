@@ -248,9 +248,13 @@ describe("AccountPage recovery settings UI", () => {
       target: { value: "Football" },
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Mettre a jour la recuperation" }),
-    );
+    const recoverySubmitButton = screen.getByRole("button", {
+      name: "Mettre a jour la recuperation",
+    });
+    await waitFor(() => {
+      expect(recoverySubmitButton).toBeEnabled();
+    });
+    fireEvent.click(recoverySubmitButton);
 
     await waitFor(() => {
       expect(
@@ -335,7 +339,12 @@ describe("AccountPage recovery settings UI", () => {
     fireEvent.change(screen.getByLabelText("Telephone"), {
       target: { value: "650597838" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    const submitButton = screen.getByRole("button", { name: "Enregistrer" });
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+    fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText("Michel")).toBeInTheDocument();
@@ -390,11 +399,13 @@ describe("AccountPage recovery settings UI", () => {
     fireEvent.input(screen.getByLabelText("Nouveau mot de passe"), {
       target: { value: "abc" },
     });
-    expect(
-      screen.getByText(
-        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+        ),
+      ).toBeInTheDocument();
+    });
     expect(submitButton).toBeDisabled();
 
     fireEvent.input(screen.getByLabelText("Ancien mot de passe"), {
@@ -409,11 +420,13 @@ describe("AccountPage recovery settings UI", () => {
         target: { value: "ValidPass124" },
       },
     );
-    expect(
-      screen.getByText(
-        "La confirmation du nouveau mot de passe ne correspond pas.",
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "La confirmation du nouveau mot de passe ne correspond pas.",
+        ),
+      ).toBeInTheDocument();
+    });
     expect(submitButton).toBeDisabled();
 
     fireEvent.input(
@@ -468,9 +481,11 @@ describe("AccountPage recovery settings UI", () => {
     fireEvent.input(screen.getByLabelText("Nouveau PIN (6 chiffres)"), {
       target: { value: "12345" },
     });
-    expect(
-      screen.getByText("Le nouveau PIN doit contenir 6 chiffres."),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le nouveau PIN doit contenir 6 chiffres."),
+      ).toBeInTheDocument();
+    });
     expect(submitButton).toBeDisabled();
 
     fireEvent.input(screen.getByLabelText("PIN actuel"), {
@@ -482,9 +497,11 @@ describe("AccountPage recovery settings UI", () => {
     fireEvent.input(screen.getByLabelText("Confirmation PIN"), {
       target: { value: "333333" },
     });
-    expect(
-      screen.getByText("La confirmation du nouveau PIN ne correspond pas."),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("La confirmation du nouveau PIN ne correspond pas."),
+      ).toBeInTheDocument();
+    });
     expect(submitButton).toBeDisabled();
 
     fireEvent.input(screen.getByLabelText("Confirmation PIN"), {

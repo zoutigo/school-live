@@ -273,34 +273,8 @@ export default function AccountPage() {
       parentStudentId: "",
     },
   });
-  const personalValues = personalForm.watch();
   const passwordValues = passwordForm.watch();
-  const pinValues = pinForm.watch();
   const recoveryValues = recoveryForm.watch();
-  const personalValidation = personalProfileSchema.safeParse({
-    firstName: personalValues.firstName ?? "",
-    lastName: personalValues.lastName ?? "",
-    gender: personalValues.gender ?? "M",
-    phone: personalValues.phone ?? "",
-  });
-  const passwordValidation = changePasswordSchema.safeParse({
-    currentPassword: passwordValues.currentPassword ?? "",
-    newPassword: passwordValues.newPassword ?? "",
-    confirmNewPassword: passwordValues.confirmNewPassword ?? "",
-  });
-  const pinValidation = changePinSchema.safeParse({
-    currentPin: pinValues.currentPin ?? "",
-    newPin: pinValues.newPin ?? "",
-    confirmNewPin: pinValues.confirmNewPin ?? "",
-  });
-  const recoveryValidation = recoverySchema.safeParse({
-    birthDate: recoveryValues.birthDate ?? "",
-    selectedQuestions: recoveryValues.selectedQuestions ?? [],
-    answers: recoveryValues.answers ?? {},
-    isParent: recoveryIsParent,
-    parentClassId: recoveryValues.parentClassId || undefined,
-    parentStudentId: recoveryValues.parentStudentId || undefined,
-  });
 
   useEffect(() => {
     void loadMe();
@@ -730,16 +704,7 @@ export default function AccountPage() {
                   >
                     <FormField
                       label="Prenom"
-                      error={
-                        (personalValues.firstName?.length ?? 0) > 0 ||
-                        personalForm.formState.submitCount > 0
-                          ? ((personalValidation.success
-                              ? null
-                              : personalValidation.error.issues.find(
-                                  (issue) => issue.path[0] === "firstName",
-                                )?.message) ?? null)
-                          : null
-                      }
+                      error={personalForm.formState.errors.firstName?.message}
                     >
                       <Controller
                         control={personalForm.control}
@@ -770,16 +735,7 @@ export default function AccountPage() {
 
                     <FormField
                       label="Nom"
-                      error={
-                        (personalValues.lastName?.length ?? 0) > 0 ||
-                        personalForm.formState.submitCount > 0
-                          ? ((personalValidation.success
-                              ? null
-                              : personalValidation.error.issues.find(
-                                  (issue) => issue.path[0] === "lastName",
-                                )?.message) ?? null)
-                          : null
-                      }
+                      error={personalForm.formState.errors.lastName?.message}
                     >
                       <Controller
                         control={personalForm.control}
@@ -810,16 +766,7 @@ export default function AccountPage() {
 
                     <FormField
                       label="Genre"
-                      error={
-                        personalForm.formState.isDirty ||
-                        personalForm.formState.submitCount > 0
-                          ? ((personalValidation.success
-                              ? null
-                              : personalValidation.error.issues.find(
-                                  (issue) => issue.path[0] === "gender",
-                                )?.message) ?? null)
-                          : null
-                      }
+                      error={personalForm.formState.errors.gender?.message}
                     >
                       <Controller
                         control={personalForm.control}
@@ -853,16 +800,7 @@ export default function AccountPage() {
 
                     <FormField
                       label="Telephone"
-                      error={
-                        (personalValues.phone?.length ?? 0) > 0 ||
-                        personalForm.formState.submitCount > 0
-                          ? ((personalValidation.success
-                              ? null
-                              : personalValidation.error.issues.find(
-                                  (issue) => issue.path[0] === "phone",
-                                )?.message) ?? null)
-                          : null
-                      }
+                      error={personalForm.formState.errors.phone?.message}
                     >
                       <Controller
                         control={personalForm.control}
@@ -902,7 +840,9 @@ export default function AccountPage() {
                     ) : null}
 
                     <SubmitButton
-                      disabled={updatingPersonal || !personalValidation.success}
+                      disabled={
+                        updatingPersonal || !personalForm.formState.isValid
+                      }
                     >
                       {updatingPersonal ? "Mise a jour..." : "Enregistrer"}
                     </SubmitButton>
@@ -981,15 +921,7 @@ export default function AccountPage() {
                     <FormField
                       label="Ancien mot de passe"
                       error={
-                        (passwordValues.currentPassword?.length ?? 0) > 0 ||
-                        passwordForm.formState.submitCount > 0
-                          ? ((passwordValidation.success
-                              ? null
-                              : passwordValidation.error.issues.find(
-                                  (issue) =>
-                                    issue.path[0] === "currentPassword",
-                                )?.message) ?? null)
-                          : null
+                        passwordForm.formState.errors.currentPassword?.message
                       }
                     >
                       <Controller
@@ -1019,16 +951,7 @@ export default function AccountPage() {
 
                     <FormField
                       label="Nouveau mot de passe"
-                      error={
-                        (passwordValues.newPassword?.length ?? 0) > 0 ||
-                        passwordForm.formState.submitCount > 0
-                          ? ((passwordValidation.success
-                              ? null
-                              : passwordValidation.error.issues.find(
-                                  (issue) => issue.path[0] === "newPassword",
-                                )?.message) ?? null)
-                          : null
-                      }
+                      error={passwordForm.formState.errors.newPassword?.message}
                     >
                       <Controller
                         control={passwordForm.control}
@@ -1061,15 +984,8 @@ export default function AccountPage() {
                     <FormField
                       label="Confirmer le nouveau mot de passe"
                       error={
-                        (passwordValues.confirmNewPassword?.length ?? 0) > 0 ||
-                        passwordForm.formState.submitCount > 0
-                          ? ((passwordValidation.success
-                              ? null
-                              : passwordValidation.error.issues.find(
-                                  (issue) =>
-                                    issue.path[0] === "confirmNewPassword",
-                                )?.message) ?? null)
-                          : null
+                        passwordForm.formState.errors.confirmNewPassword
+                          ?.message
                       }
                     >
                       <Controller
@@ -1107,7 +1023,9 @@ export default function AccountPage() {
                     ) : null}
 
                     <SubmitButton
-                      disabled={updatingPassword || !passwordValidation.success}
+                      disabled={
+                        updatingPassword || !passwordForm.formState.isValid
+                      }
                     >
                       {updatingPassword
                         ? "Mise a jour..."
@@ -1158,16 +1076,7 @@ export default function AccountPage() {
                   >
                     <FormField
                       label="PIN actuel"
-                      error={
-                        (pinValues.currentPin?.length ?? 0) > 0 ||
-                        pinForm.formState.submitCount > 0
-                          ? ((pinValidation.success
-                              ? null
-                              : pinValidation.error.issues.find(
-                                  (issue) => issue.path[0] === "currentPin",
-                                )?.message) ?? null)
-                          : null
-                      }
+                      error={pinForm.formState.errors.currentPin?.message}
                     >
                       <Controller
                         control={pinForm.control}
@@ -1199,16 +1108,7 @@ export default function AccountPage() {
 
                     <FormField
                       label="Nouveau PIN (6 chiffres)"
-                      error={
-                        (pinValues.newPin?.length ?? 0) > 0 ||
-                        pinForm.formState.submitCount > 0
-                          ? ((pinValidation.success
-                              ? null
-                              : pinValidation.error.issues.find(
-                                  (issue) => issue.path[0] === "newPin",
-                                )?.message) ?? null)
-                          : null
-                      }
+                      error={pinForm.formState.errors.newPin?.message}
                     >
                       <Controller
                         control={pinForm.control}
@@ -1240,16 +1140,7 @@ export default function AccountPage() {
 
                     <FormField
                       label="Confirmation PIN"
-                      error={
-                        (pinValues.confirmNewPin?.length ?? 0) > 0 ||
-                        pinForm.formState.submitCount > 0
-                          ? ((pinValidation.success
-                              ? null
-                              : pinValidation.error.issues.find(
-                                  (issue) => issue.path[0] === "confirmNewPin",
-                                )?.message) ?? null)
-                          : null
-                      }
+                      error={pinForm.formState.errors.confirmNewPin?.message}
                     >
                       <Controller
                         control={pinForm.control}
@@ -1287,7 +1178,7 @@ export default function AccountPage() {
                     ) : null}
 
                     <SubmitButton
-                      disabled={updatingPin || !pinValidation.success}
+                      disabled={updatingPin || !pinForm.formState.isValid}
                     >
                       {updatingPin ? "Mise a jour PIN..." : "Changer le PIN"}
                     </SubmitButton>
@@ -1347,14 +1238,7 @@ export default function AccountPage() {
                         <FormField
                           label="Date de naissance"
                           error={
-                            (recoveryValues.birthDate?.length ?? 0) > 0 ||
-                            recoveryForm.formState.submitCount > 0
-                              ? ((recoveryValidation.success
-                                  ? null
-                                  : recoveryValidation.error.issues.find(
-                                      (issue) => issue.path[0] === "birthDate",
-                                    )?.message) ?? null)
-                              : null
+                            recoveryForm.formState.errors.birthDate?.message
                           }
                         >
                           <Controller
@@ -1386,15 +1270,8 @@ export default function AccountPage() {
                             <FormField
                               label="Classe de votre enfant"
                               error={
-                                (recoveryValues.parentClassId?.length ?? 0) >
-                                  0 || recoveryForm.formState.submitCount > 0
-                                  ? ((recoveryValidation.success
-                                      ? null
-                                      : recoveryValidation.error.issues.find(
-                                          (issue) =>
-                                            issue.path[0] === "parentClassId",
-                                        )?.message) ?? null)
-                                  : null
+                                recoveryForm.formState.errors.parentClassId
+                                  ?.message
                               }
                             >
                               <Controller
@@ -1439,15 +1316,8 @@ export default function AccountPage() {
                             <FormField
                               label="Nom de votre enfant"
                               error={
-                                (recoveryValues.parentStudentId?.length ?? 0) >
-                                  0 || recoveryForm.formState.submitCount > 0
-                                  ? ((recoveryValidation.success
-                                      ? null
-                                      : recoveryValidation.error.issues.find(
-                                          (issue) =>
-                                            issue.path[0] === "parentStudentId",
-                                        )?.message) ?? null)
-                                  : null
+                                recoveryForm.formState.errors.parentStudentId
+                                  ?.message
                               }
                             >
                               <Controller
@@ -1494,15 +1364,13 @@ export default function AccountPage() {
                           <p className="text-xs text-text-secondary">
                             Choisissez exactement 3 questions
                           </p>
-                          {(recoveryForm.formState.submitCount > 0 ||
-                            (recoveryValues.selectedQuestions?.length ?? 0) >
-                              0) &&
-                          !recoveryValidation.success ? (
+                          {recoveryForm.formState.errors.selectedQuestions
+                            ?.message ? (
                             <p className="text-xs text-notification">
-                              {recoveryValidation.error.issues.find(
-                                (issue) =>
-                                  issue.path[0] === "selectedQuestions",
-                              )?.message ?? ""}
+                              {
+                                recoveryForm.formState.errors.selectedQuestions
+                                  .message
+                              }
                             </p>
                           ) : null}
                           {recoveryQuestions.map((question) => {
@@ -1543,16 +1411,14 @@ export default function AccountPage() {
                                       placeholder="Votre reponse"
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
-                                    {((recoveryValues.answers?.[question.key]
-                                      ?.length ?? 0) > 0 ||
-                                      recoveryForm.formState.submitCount > 0) &&
-                                    !recoveryValidation.success ? (
+                                    {recoveryForm.formState.errors.answers?.[
+                                      question.key
+                                    ]?.message ? (
                                       <span className="text-xs text-notification">
-                                        {recoveryValidation.error.issues.find(
-                                          (issue) =>
-                                            issue.path[0] === "answers" &&
-                                            issue.path[1] === question.key,
-                                        )?.message ?? ""}
+                                        {
+                                          recoveryForm.formState.errors
+                                            .answers?.[question.key]?.message
+                                        }
                                       </span>
                                     ) : null}
                                   </>
@@ -1577,7 +1443,7 @@ export default function AccountPage() {
                       disabled={
                         updatingRecovery ||
                         loadingRecovery ||
-                        !recoveryValidation.success
+                        !recoveryForm.formState.isValid
                       }
                     >
                       {updatingRecovery

@@ -32,30 +32,37 @@ describe("PlatformCredentialsCompletionClient UI", () => {
     fireEvent.input(screen.getByLabelText("Telephone"), {
       target: { value: "65099" },
     });
-    expect(
-      screen.getByText("Numero invalide (9 chiffres attendus)."),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Numero invalide (9 chiffres attendus)."),
+      ).toBeInTheDocument();
+    });
 
     fireEvent.input(screen.getByLabelText("Confirmer le telephone"), {
       target: { value: "650998888" },
     });
-    expect(
-      screen.getByText("La confirmation du telephone ne correspond pas."),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("La confirmation du telephone ne correspond pas."),
+      ).toBeInTheDocument();
+    });
     expect(submitButton).toBeDisabled();
 
     fireEvent.input(screen.getByLabelText("Nouveau mot de passe"), {
       target: { value: "abc" },
     });
-    expect(
-      screen.getByText(
-        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   it("submits completion data then redirects to dashboard", async () => {
-    vi.spyOn(globalThis, "fetch")
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ success: true }), {
           status: 201,
@@ -103,12 +110,28 @@ describe("PlatformCredentialsCompletionClient UI", () => {
     });
 
     const submitButton = screen.getByRole("button", { name: "Valider" });
-    expect(submitButton).toBeEnabled();
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
 
     fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith("/acceuil");
     });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/auth/platform-credentials/complete"),
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({
+          token: "platform-setup-token-very-long",
+          newPassword: "ValidPass123",
+          phone: "650999888",
+          newPin: "112233",
+        }),
+      }),
+    );
   });
 });

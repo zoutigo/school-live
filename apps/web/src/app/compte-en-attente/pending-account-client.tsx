@@ -29,6 +29,8 @@ type Props = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+const ACTIVATION_METHOD_ERROR_MESSAGE =
+  "Saisissez un code d activation ou votre PIN initial.";
 const activationFormSchema = z
   .object({
     email: z.string().trim().optional().default(""),
@@ -48,7 +50,7 @@ const activationFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["activationCode"],
-        message: "Saisissez un code d activation ou votre PIN initial.",
+        message: ACTIVATION_METHOD_ERROR_MESSAGE,
       });
     }
     if (value.email && !z.string().email().safeParse(value.email).success) {
@@ -106,21 +108,21 @@ export function PendingAccountClient({
   const email = form.watch("email");
   const phone = form.watch("phone");
   const schoolSlug = form.watch("schoolSlug");
+  const activationCode = form.watch("activationCode");
+  const initialPin = form.watch("initialPin");
 
   const canLoadContext = useMemo(
     () => (email ?? "").trim().length > 0 || (phone ?? "").trim().length > 0,
     [email, phone],
   );
-  const formValues = form.watch();
-  const submitValidation = activationFormSchema.safeParse({
-    email: formValues.email ?? "",
-    phone: formValues.phone ?? "",
-    schoolSlug: formValues.schoolSlug ?? "",
-    confirmedPhone: formValues.confirmedPhone ?? "",
-    newPin: formValues.newPin ?? "",
-    activationCode: formValues.activationCode ?? "",
-    initialPin: formValues.initialPin ?? "",
-  });
+  const { errors, isValid, touchedFields, submitCount } = form.formState;
+  const activationMethodError =
+    touchedFields.activationCode || touchedFields.initialPin || submitCount > 0
+      ? (errors.activationCode?.message ??
+        (!activationCode && !initialPin
+          ? ACTIVATION_METHOD_ERROR_MESSAGE
+          : null))
+      : null;
   useEffect(() => {
     if (!canLoadContext) {
       setLoadingContext(false);
@@ -280,13 +282,8 @@ export function PendingAccountClient({
               <FormField
                 label="Email"
                 error={
-                  (formValues.email?.length ?? 0) > 0 ||
-                  form.formState.submitCount > 0
-                    ? ((submitValidation.success
-                        ? null
-                        : submitValidation.error.issues.find(
-                            (issue) => issue.path[0] === "email",
-                          )?.message) ?? null)
+                  touchedFields.email || submitCount > 0
+                    ? (errors.email?.message ?? null)
                     : null
                 }
               >
@@ -300,6 +297,7 @@ export function PendingAccountClient({
                       onChange={(event) =>
                         form.setValue("email", event.target.value, {
                           shouldDirty: true,
+                          shouldTouch: true,
                           shouldValidate: true,
                         })
                       }
@@ -313,13 +311,8 @@ export function PendingAccountClient({
               <FormField
                 label="Telephone du compte"
                 error={
-                  (formValues.phone?.length ?? 0) > 0 ||
-                  form.formState.submitCount > 0
-                    ? ((submitValidation.success
-                        ? null
-                        : submitValidation.error.issues.find(
-                            (issue) => issue.path[0] === "phone",
-                          )?.message) ?? null)
+                  touchedFields.phone || submitCount > 0
+                    ? (errors.phone?.message ?? null)
                     : null
                 }
               >
@@ -337,6 +330,7 @@ export function PendingAccountClient({
                           normalizePhoneInput(event.target.value),
                           {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           },
                         )
@@ -352,13 +346,8 @@ export function PendingAccountClient({
               <FormField
                 label="Telephone confirme"
                 error={
-                  (formValues.confirmedPhone?.length ?? 0) > 0 ||
-                  form.formState.submitCount > 0
-                    ? ((submitValidation.success
-                        ? null
-                        : submitValidation.error.issues.find(
-                            (issue) => issue.path[0] === "confirmedPhone",
-                          )?.message) ?? null)
+                  touchedFields.confirmedPhone || submitCount > 0
+                    ? (errors.confirmedPhone?.message ?? null)
                     : null
                 }
               >
@@ -377,6 +366,7 @@ export function PendingAccountClient({
                           normalizePhoneInput(event.target.value),
                           {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           },
                         )
@@ -391,16 +381,7 @@ export function PendingAccountClient({
 
               <FormField
                 label="Code d activation (optionnel)"
-                error={
-                  (formValues.activationCode?.length ?? 0) > 0 ||
-                  form.formState.submitCount > 0
-                    ? ((submitValidation.success
-                        ? null
-                        : submitValidation.error.issues.find(
-                            (issue) => issue.path[0] === "activationCode",
-                          )?.message) ?? null)
-                    : null
-                }
+                error={activationMethodError}
               >
                 <Controller
                   control={form.control}
@@ -410,12 +391,14 @@ export function PendingAccountClient({
                       name={field.name}
                       ref={field.ref}
                       value={field.value}
-                      onChange={(event) =>
+                      onChange={(event) => {
                         form.setValue("activationCode", event.target.value, {
                           shouldDirty: true,
+                          shouldTouch: true,
                           shouldValidate: true,
-                        })
-                      }
+                        });
+                        void form.trigger();
+                      }}
                       onBlur={field.onBlur}
                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                       placeholder="Ex: A1B2C3D4"
@@ -426,16 +409,7 @@ export function PendingAccountClient({
 
               <FormField
                 label="PIN initial (optionnel)"
-                error={
-                  (formValues.initialPin?.length ?? 0) > 0 ||
-                  form.formState.submitCount > 0
-                    ? ((submitValidation.success
-                        ? null
-                        : submitValidation.error.issues.find(
-                            (issue) => issue.path[0] === "initialPin",
-                          )?.message) ?? null)
-                    : null
-                }
+                error={activationMethodError}
               >
                 <Controller
                   control={form.control}
@@ -445,16 +419,18 @@ export function PendingAccountClient({
                       aria-label="PIN initial (optionnel)"
                       name={field.name}
                       value={field.value}
-                      onChange={(event) =>
+                      onChange={(event) => {
                         form.setValue(
                           "initialPin",
                           event.target.value.replace(/\D/g, "").slice(0, 6),
                           {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           },
-                        )
-                      }
+                        );
+                        void form.trigger();
+                      }}
                       onBlur={field.onBlur}
                       placeholder="PIN temporaire fourni"
                     />
@@ -465,13 +441,8 @@ export function PendingAccountClient({
               <FormField
                 label="Nouveau PIN (6 chiffres)"
                 error={
-                  (formValues.newPin?.length ?? 0) > 0 ||
-                  form.formState.submitCount > 0
-                    ? ((submitValidation.success
-                        ? null
-                        : submitValidation.error.issues.find(
-                            (issue) => issue.path[0] === "newPin",
-                          )?.message) ?? null)
+                  touchedFields.newPin || submitCount > 0
+                    ? (errors.newPin?.message ?? null)
                     : null
                 }
               >
@@ -490,6 +461,7 @@ export function PendingAccountClient({
                           event.target.value.replace(/\D/g, "").slice(0, 6),
                           {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           },
                         )
@@ -501,10 +473,7 @@ export function PendingAccountClient({
                 />
               </FormField>
 
-              <Button
-                type="submit"
-                disabled={submitting || !submitValidation.success}
-              >
+              <Button type="submit" disabled={submitting || !isValid}>
                 {submitting ? "Activation..." : "Activer mon compte"}
               </Button>
             </form>

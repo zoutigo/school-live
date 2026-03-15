@@ -305,6 +305,56 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     await waitFor(() => expect(submitButton).toBeEnabled());
   });
 
+  it("blocks submission when coefficient is invalid then posts the evaluation once fixed", async () => {
+    const fetchMock = setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Ajouter une evaluation" }),
+    );
+
+    const titleInput = await screen.findByLabelText("Titre");
+    const coefficientInput = screen.getByLabelText("Coefficient");
+    const submitButton = screen.getByRole("button", {
+      name: "Creer l'evaluation",
+    });
+
+    fireEvent.input(titleInput, { target: { value: "Composition fractions" } });
+    fireEvent.input(coefficientInput, { target: { value: "0" } });
+
+    expect(
+      await screen.findByText("Le coefficient doit etre superieur a 0."),
+    ).toBeInTheDocument();
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(coefficientInput, { target: { value: "1.5" } });
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/classes/class-1/evaluations"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            subjectBranchId: "branch-1",
+            evaluationTypeId: "type-1",
+            title: "Composition fractions",
+            coefficient: 1.5,
+            maxScore: 20,
+            term: "TERM_1",
+            status: "DRAFT",
+            attachments: [],
+          }),
+        }),
+      );
+    });
+  });
+
   it("renders compact metadata in the left list cards", async () => {
     setupFetchMock();
 

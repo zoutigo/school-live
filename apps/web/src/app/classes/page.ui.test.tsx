@@ -451,7 +451,15 @@ describe("Classes page subject color UI", () => {
       "Enseignant referent de la classe",
     );
     fireEvent.change(referentSelect, { target: { value: "teacher-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Affecter referent" }));
+    const referentButton = screen.getByRole("button", {
+      name: "Affecter referent",
+    });
+
+    await waitFor(() => {
+      expect(referentButton).toBeEnabled();
+    });
+
+    fireEvent.click(referentButton);
 
     await waitFor(() => {
       const patchCall = fetchMock.mock.calls.find(
@@ -794,7 +802,16 @@ describe("Classes page subject color UI", () => {
         target: { value: "teacher-1" },
       },
     );
-    fireEvent.click(screen.getByRole("button", { name: "Affecter referent" }));
+
+    const referentButton = screen.getByRole("button", {
+      name: "Affecter referent",
+    });
+
+    await waitFor(() => {
+      expect(referentButton).toBeEnabled();
+    });
+
+    fireEvent.click(referentButton);
 
     await waitFor(() => {
       const patchCall = fetchMock.mock.calls.find(
@@ -891,11 +908,16 @@ describe("Classes page subject color UI", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Affectations" }),
     );
+    fireEvent.change(screen.getByLabelText("Classe"), {
+      target: { value: "class-1" },
+    });
 
     const studentButton = await screen.findByRole("button", {
       name: "Affecter eleve",
     });
-    expect(studentButton).toBeEnabled();
+    await waitFor(() => {
+      expect(studentButton).toBeEnabled();
+    });
     fireEvent.click(studentButton);
 
     await waitFor(() => {
@@ -905,6 +927,72 @@ describe("Classes page subject color UI", () => {
           init?.method === "POST",
       );
       expect(postCall).toBeDefined();
+    });
+  });
+
+  it("shows inline create-class validation and enables submit only when valid", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (url.includes("/admin/classrooms") && method === "GET")
+        return jsonResponse([]);
+      if (url.includes("/admin/school-years"))
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      if (url.includes("/admin/curriculums") && !url.includes("/subjects"))
+        return jsonResponse([{ id: "cur-1", name: "6EME - TRONC_COMMUN" }]);
+      if (url.includes("/admin/teachers")) return jsonResponse([]);
+      if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
+        return jsonResponse([]);
+      if (url.includes("/admin/students")) return jsonResponse([]);
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+
+    render(<ClassesPage />);
+
+    const submitButton = await screen.findByRole("button", { name: "Ajouter" });
+    expect(submitButton).toBeDisabled();
+
+    await waitFor(() => {
+      expect(
+        (screen.getByLabelText("Annee scolaire") as HTMLSelectElement).value,
+      ).toBe("sy-1");
+    });
+
+    fireEvent.change(screen.getByLabelText("Nom de classe"), {
+      target: { value: "6e A" },
+    });
+    fireEvent.change(screen.getByLabelText("Curriculum"), {
+      target: { value: "cur-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Curriculum"), {
+      target: { value: "" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le curriculum est obligatoire."),
+      ).toBeInTheDocument();
+      expect(submitButton).toBeDisabled();
+    });
+
+    fireEvent.change(screen.getByLabelText("Curriculum"), {
+      target: { value: "cur-1" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Le curriculum est obligatoire."),
+      ).not.toBeInTheDocument();
+      expect(submitButton).toBeEnabled();
     });
   });
 });

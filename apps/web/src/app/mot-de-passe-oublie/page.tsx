@@ -121,24 +121,7 @@ function ForgotPasswordPageContent() {
       confirmPassword: "",
     },
   });
-  const requestEmail = requestForm.watch("email");
-  const requestValidation = requestResetSchema.safeParse({
-    email: requestEmail ?? "",
-  });
-  const canSubmitRequest = requestValidation.success && !requesting;
   const newPassword = completeForm.watch("newPassword");
-  const verifyValues = verifyForm.watch();
-  const verifyValidation = verifySchema.safeParse({
-    token: verifyValues.token ?? "",
-    birthDate: verifyValues.birthDate ?? "",
-    answers: verifyValues.answers ?? {},
-  });
-  const completeValues = completeForm.watch();
-  const completeValidation = completeResetSchema.safeParse({
-    token: completeValues.token ?? "",
-    newPassword: completeValues.newPassword ?? "",
-    confirmPassword: completeValues.confirmPassword ?? "",
-  });
 
   useEffect(() => {
     verifyForm.reset({
@@ -388,14 +371,7 @@ function ForgotPasswordPageContent() {
             >
               <FormField
                 label="Email du compte"
-                error={
-                  (requestEmail?.length ?? 0) > 0 ||
-                  requestForm.formState.submitCount > 0
-                    ? ((requestValidation.success
-                        ? null
-                        : requestValidation.error.issues[0]?.message) ?? null)
-                    : null
-                }
+                error={requestForm.formState.errors.email?.message}
               >
                 <Controller
                   control={requestForm.control}
@@ -408,6 +384,7 @@ function ForgotPasswordPageContent() {
                       onChange={(event) =>
                         requestForm.setValue("email", event.target.value, {
                           shouldDirty: true,
+                          shouldTouch: true,
                           shouldValidate: true,
                         })
                       }
@@ -418,7 +395,9 @@ function ForgotPasswordPageContent() {
                 />
               </FormField>
 
-              <SubmitButton disabled={!canSubmitRequest}>
+              <SubmitButton
+                disabled={requesting || !requestForm.formState.isValid}
+              >
                 {requesting ? "Envoi en cours..." : "Envoyer le lien"}
               </SubmitButton>
 
@@ -445,16 +424,7 @@ function ForgotPasswordPageContent() {
 
               <FormField
                 label="Date de naissance"
-                error={
-                  verifyValues.birthDate?.length > 0 ||
-                  verifyForm.formState.submitCount > 0
-                    ? ((verifyValidation.success
-                        ? null
-                        : verifyValidation.error.issues.find(
-                            (issue) => issue.path[0] === "birthDate",
-                          )?.message) ?? null)
-                    : null
-                }
+                error={verifyForm.formState.errors.birthDate?.message}
               >
                 <Controller
                   control={verifyForm.control}
@@ -466,6 +436,7 @@ function ForgotPasswordPageContent() {
                       onChange={(event) =>
                         verifyForm.setValue("birthDate", event.target.value, {
                           shouldDirty: true,
+                          shouldTouch: true,
                           shouldValidate: true,
                         })
                       }
@@ -481,16 +452,8 @@ function ForgotPasswordPageContent() {
                     key={question.key}
                     label={question.label}
                     error={
-                      (verifyValues.answers?.[question.key]?.length ?? 0) > 0 ||
-                      verifyForm.formState.submitCount > 0
-                        ? ((verifyValidation.success
-                            ? null
-                            : verifyValidation.error.issues.find(
-                                (issue) =>
-                                  issue.path[0] === "answers" &&
-                                  issue.path[1] === question.key,
-                              )?.message) ?? null)
-                        : null
+                      verifyForm.formState.errors.answers?.[question.key]
+                        ?.message
                     }
                   >
                     <Controller
@@ -508,6 +471,7 @@ function ForgotPasswordPageContent() {
                               event.target.value,
                               {
                                 shouldDirty: true,
+                                shouldTouch: true,
                                 shouldValidate: true,
                               },
                             )
@@ -521,7 +485,9 @@ function ForgotPasswordPageContent() {
                 ))}
               </div>
 
-              <SubmitButton disabled={verifying || !verifyValidation.success}>
+              <SubmitButton
+                disabled={verifying || !verifyForm.formState.isValid}
+              >
                 {verifying ? "Verification..." : "Verifier mon identite"}
               </SubmitButton>
             </form>
@@ -532,16 +498,7 @@ function ForgotPasswordPageContent() {
             >
               <FormField
                 label="Nouveau mot de passe"
-                error={
-                  newPassword.length > 0 ||
-                  completeForm.formState.submitCount > 0
-                    ? ((completeValidation.success
-                        ? null
-                        : completeValidation.error.issues.find(
-                            (issue) => issue.path[0] === "newPassword",
-                          )?.message) ?? null)
-                    : null
-                }
+                error={completeForm.formState.errors.newPassword?.message}
               >
                 <Controller
                   control={completeForm.control}
@@ -557,6 +514,7 @@ function ForgotPasswordPageContent() {
                           event.target.value,
                           {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           },
                         )
@@ -571,16 +529,7 @@ function ForgotPasswordPageContent() {
 
               <FormField
                 label="Confirmation"
-                error={
-                  (completeValues.confirmPassword?.length ?? 0) > 0 ||
-                  completeForm.formState.submitCount > 0
-                    ? ((completeValidation.success
-                        ? null
-                        : completeValidation.error.issues.find(
-                            (issue) => issue.path[0] === "confirmPassword",
-                          )?.message) ?? null)
-                    : null
-                }
+                error={completeForm.formState.errors.confirmPassword?.message}
               >
                 <Controller
                   control={completeForm.control}
@@ -596,6 +545,7 @@ function ForgotPasswordPageContent() {
                           event.target.value,
                           {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           },
                         )
@@ -607,7 +557,7 @@ function ForgotPasswordPageContent() {
               </FormField>
 
               <SubmitButton
-                disabled={completing || !completeValidation.success}
+                disabled={completing || !completeForm.formState.isValid}
               >
                 {completing
                   ? "Reinitialisation..."

@@ -141,7 +141,18 @@ const createLifeEventSchema = z.object({
 });
 
 const createLifeEventFormSchema = createLifeEventSchema.extend({
-  durationMinutes: z.string().trim().optional(),
+  durationMinutes: z
+    .string()
+    .trim()
+    .refine(
+      (value) =>
+        value.length === 0 ||
+        (/^\d+$/.test(value) && Number.parseInt(value, 10) >= 0),
+      {
+        message: "La duree doit etre un entier positif.",
+      },
+    )
+    .optional(),
 });
 
 const linkParentSchema = z
@@ -278,12 +289,6 @@ export default function ElevesPage() {
   const [editingLifeEventId, setEditingLifeEventId] = useState<string | null>(
     null,
   );
-  const [editEventType, setEditEventType] = useState<LifeEventType>("ABSENCE");
-  const [editEventOccurredAt, setEditEventOccurredAt] = useState("");
-  const [editEventReason, setEditEventReason] = useState("");
-  const [editEventDurationMinutes, setEditEventDurationMinutes] = useState("");
-  const [editEventJustified, setEditEventJustified] = useState(false);
-  const [editEventComment, setEditEventComment] = useState("");
   const [updatingLifeEventId, setUpdatingLifeEventId] = useState<string | null>(
     null,
   );
@@ -308,17 +313,6 @@ export default function ElevesPage() {
     },
   });
   const linkParentValues = linkParentForm.watch();
-  const linkParentValidation = useMemo(
-    () =>
-      linkParentSchema.safeParse({
-        mode: linkParentValues.mode ?? "phone",
-        email: linkParentValues.email ?? "",
-        phone: linkParentValues.phone ?? "",
-        password: linkParentValues.password ?? "",
-        pin: linkParentValues.pin ?? "",
-      }),
-    [linkParentValues],
-  );
   const editStudentForm = useForm<
     z.input<typeof updateStudentSchema>,
     unknown,
@@ -332,14 +326,6 @@ export default function ElevesPage() {
     },
   });
   const editStudentValues = editStudentForm.watch();
-  const editStudentValidation = useMemo(
-    () =>
-      updateStudentSchema.safeParse({
-        firstName: editStudentValues.firstName ?? "",
-        lastName: editStudentValues.lastName ?? "",
-      }),
-    [editStudentValues],
-  );
   const createLifeEventForm = useForm<
     z.input<typeof createLifeEventFormSchema>,
     unknown,
@@ -357,22 +343,23 @@ export default function ElevesPage() {
     },
   });
   const createLifeEventValues = createLifeEventForm.watch();
-  const createLifeEventValidation = useMemo(
-    () =>
-      createLifeEventFormSchema.safeParse({
-        type: createLifeEventValues.type ?? "ABSENCE",
-        occurredAt: createLifeEventValues.occurredAt ?? "",
-        reason: createLifeEventValues.reason ?? "",
-        durationMinutes: createLifeEventValues.durationMinutes ?? "",
-        justified:
-          createLifeEventValues.type === "SANCTION" ||
-          createLifeEventValues.type === "PUNITION"
-            ? undefined
-            : (createLifeEventValues.justified ?? false),
-        comment: createLifeEventValues.comment ?? "",
-      }),
-    [createLifeEventValues],
-  );
+  const editLifeEventForm = useForm<
+    z.input<typeof createLifeEventFormSchema>,
+    unknown,
+    z.output<typeof createLifeEventFormSchema>
+  >({
+    resolver: zodResolver(createLifeEventFormSchema),
+    mode: "onChange",
+    defaultValues: {
+      type: "ABSENCE",
+      occurredAt: "",
+      reason: "",
+      durationMinutes: "",
+      justified: false,
+      comment: "",
+    },
+  });
+  const editLifeEventValues = editLifeEventForm.watch();
   const createStudentForm = useForm<
     z.input<typeof createStudentSchema>,
     unknown,
@@ -389,17 +376,32 @@ export default function ElevesPage() {
     },
   });
   const createStudentValues = createStudentForm.watch();
-  const createStudentValidation = useMemo(
-    () =>
-      createStudentSchema.safeParse({
-        firstName: createStudentValues.firstName ?? "",
-        lastName: createStudentValues.lastName ?? "",
-        classId: createStudentValues.classId ?? "",
-        email: createStudentValues.email ?? "",
-        password: createStudentValues.password ?? "",
-      }),
-    [createStudentValues],
-  );
+
+  useEffect(() => {
+    if (
+      createLifeEventValues.type === "SANCTION" ||
+      createLifeEventValues.type === "PUNITION"
+    ) {
+      createLifeEventForm.setValue("justified", false, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+    }
+  }, [createLifeEventForm, createLifeEventValues.type]);
+
+  useEffect(() => {
+    if (
+      editLifeEventValues.type === "SANCTION" ||
+      editLifeEventValues.type === "PUNITION"
+    ) {
+      editLifeEventForm.setValue("justified", false, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+    }
+  }, [editLifeEventForm, editLifeEventValues.type]);
 
   useEffect(() => {
     void bootstrap();
@@ -1042,21 +1044,6 @@ export default function ElevesPage() {
     const occurredAtIso = values.occurredAt
       ? new Date(values.occurredAt).toISOString()
       : "";
-    const parsed = createLifeEventSchema.safeParse({
-      type: values.type,
-      occurredAt: occurredAtIso,
-      reason: values.reason,
-      justified:
-        values.type === "SANCTION" || values.type === "PUNITION"
-          ? undefined
-          : values.justified,
-      comment: values.comment,
-    });
-
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const durationValue = (values.durationMinutes ?? "").trim();
     let durationMinutes: number | undefined;
@@ -1093,12 +1080,15 @@ export default function ElevesPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            type: parsed.data.type,
-            occurredAt: parsed.data.occurredAt,
-            reason: parsed.data.reason,
+            type: values.type,
+            occurredAt: occurredAtIso,
+            reason: values.reason,
             durationMinutes,
-            justified: parsed.data.justified,
-            comment: parsed.data.comment || undefined,
+            justified:
+              values.type === "SANCTION" || values.type === "PUNITION"
+                ? undefined
+                : values.justified,
+            comment: values.comment || undefined,
             classId: selectedStudent?.currentEnrollment?.class.id,
           }),
         },
@@ -1135,45 +1125,33 @@ export default function ElevesPage() {
 
   function startEditLifeEvent(event: LifeEventRow) {
     setEditingLifeEventId(event.id);
-    setEditEventType(event.type);
-    setEditEventOccurredAt(toDateTimeLocalInput(event.occurredAt));
-    setEditEventReason(event.reason);
-    setEditEventDurationMinutes(
-      typeof event.durationMinutes === "number"
-        ? String(event.durationMinutes)
-        : "",
-    );
-    setEditEventJustified(Boolean(event.justified));
-    setEditEventComment(event.comment ?? "");
+    editLifeEventForm.reset({
+      type: event.type,
+      occurredAt: toDateTimeLocalInput(event.occurredAt),
+      reason: event.reason,
+      durationMinutes:
+        typeof event.durationMinutes === "number"
+          ? String(event.durationMinutes)
+          : "",
+      justified: Boolean(event.justified),
+      comment: event.comment ?? "",
+    });
     setError(null);
     setSuccess(null);
   }
 
-  async function saveLifeEvent() {
+  async function saveLifeEvent(
+    values: z.output<typeof createLifeEventFormSchema>,
+  ) {
     if (!schoolSlug || !selectedStudentId || !editingLifeEventId) {
       return;
     }
 
-    const occurredAtIso = editEventOccurredAt
-      ? new Date(editEventOccurredAt).toISOString()
+    const occurredAtIso = values.occurredAt
+      ? new Date(values.occurredAt).toISOString()
       : "";
-    const parsed = createLifeEventSchema.safeParse({
-      type: editEventType,
-      occurredAt: occurredAtIso,
-      reason: editEventReason,
-      justified:
-        editEventType === "SANCTION" || editEventType === "PUNITION"
-          ? undefined
-          : editEventJustified,
-      comment: editEventComment,
-    });
 
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
-
-    const durationValue = editEventDurationMinutes.trim();
+    const durationValue = (values.durationMinutes ?? "").trim();
     let durationMinutes: number | undefined;
     if (durationValue.length > 0) {
       const parsedDurationMinutes = Number.parseInt(durationValue, 10);
@@ -1208,12 +1186,15 @@ export default function ElevesPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            type: parsed.data.type,
-            occurredAt: parsed.data.occurredAt,
-            reason: parsed.data.reason,
+            type: values.type,
+            occurredAt: occurredAtIso,
+            reason: values.reason,
             durationMinutes,
-            justified: parsed.data.justified,
-            comment: parsed.data.comment || undefined,
+            justified:
+              values.type === "SANCTION" || values.type === "PUNITION"
+                ? undefined
+                : values.justified,
+            comment: values.comment || undefined,
             classId: selectedStudent?.currentEnrollment?.class.id,
           }),
         },
@@ -1232,6 +1213,14 @@ export default function ElevesPage() {
       }
 
       setEditingLifeEventId(null);
+      editLifeEventForm.reset({
+        type: "ABSENCE",
+        occurredAt: "",
+        reason: "",
+        durationMinutes: "",
+        justified: false,
+        comment: "",
+      });
       setSuccess("Evenement vie scolaire modifie.");
       await loadStudentLifeEvents(schoolSlug, selectedStudentId);
     } catch {
@@ -1528,7 +1517,9 @@ export default function ElevesPage() {
                 </FormField>
                 <div className="self-end">
                   <SubmitButton
-                    disabled={submitting || !createStudentValidation.success}
+                    disabled={
+                      submitting || !createStudentForm.formState.isValid
+                    }
                   >
                     {submitting ? "Creation..." : "Ajouter"}
                   </SubmitButton>
@@ -1697,7 +1688,8 @@ export default function ElevesPage() {
                                   <Button
                                     type="button"
                                     disabled={
-                                      saving || !editStudentValidation.success
+                                      saving ||
+                                      !editStudentForm.formState.isValid
                                     }
                                     onClick={() => {
                                       void saveStudent(student.id);
@@ -1932,7 +1924,7 @@ export default function ElevesPage() {
                       <Button
                         type="button"
                         disabled={
-                          linkingParent || !linkParentValidation.success
+                          linkingParent || !linkParentForm.formState.isValid
                         }
                         onClick={() => {
                           void linkParentForm.handleSubmit(
@@ -2111,7 +2103,7 @@ export default function ElevesPage() {
                         type="button"
                         disabled={
                           submittingLifeEvent ||
-                          !createLifeEventValidation.success
+                          !createLifeEventForm.formState.isValid
                         }
                         onClick={() => {
                           void createLifeEventForm.handleSubmit(
@@ -2125,13 +2117,24 @@ export default function ElevesPage() {
 
                     {editingLifeEventId ? (
                       <div className="grid gap-3 rounded-card border border-border bg-surface p-3 md:grid-cols-2">
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">Type</span>
+                        <FormField
+                          label="Type edition evenement"
+                          error={
+                            editLifeEventForm.formState.errors.type?.message
+                          }
+                        >
                           <select
-                            value={editEventType}
+                            aria-label="Type edition evenement"
+                            value={editLifeEventValues.type ?? "ABSENCE"}
                             onChange={(event) =>
-                              setEditEventType(
+                              editLifeEventForm.setValue(
+                                "type",
                                 event.target.value as LifeEventType,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
                               )
                             }
                             className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -2141,66 +2144,121 @@ export default function ElevesPage() {
                             <option value="SANCTION">Sanction</option>
                             <option value="PUNITION">Punition</option>
                           </select>
-                        </label>
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            Date/heure
-                          </span>
+                        </FormField>
+                        <FormField
+                          label="Date/heure edition evenement"
+                          error={
+                            editLifeEventForm.formState.errors.occurredAt
+                              ?.message
+                          }
+                        >
                           <input
+                            aria-label="Date/heure edition evenement"
                             type="datetime-local"
-                            value={editEventOccurredAt}
+                            value={editLifeEventValues.occurredAt ?? ""}
                             onChange={(event) =>
-                              setEditEventOccurredAt(event.target.value)
+                              editLifeEventForm.setValue(
+                                "occurredAt",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
-                        </label>
-                        <label className="grid gap-1 text-sm md:col-span-2">
-                          <span className="text-text-secondary">Motif</span>
+                        </FormField>
+                        <FormField
+                          label="Motif edition evenement"
+                          className="md:col-span-2"
+                          error={
+                            editLifeEventForm.formState.errors.reason?.message
+                          }
+                        >
                           <input
-                            value={editEventReason}
+                            aria-label="Motif edition evenement"
+                            value={editLifeEventValues.reason ?? ""}
                             onChange={(event) =>
-                              setEditEventReason(event.target.value)
+                              editLifeEventForm.setValue(
+                                "reason",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
-                        </label>
-                        <label className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            Duree (min)
-                          </span>
+                        </FormField>
+                        <FormField
+                          label="Duree edition evenement (min)"
+                          error={
+                            editLifeEventForm.formState.errors.durationMinutes
+                              ?.message
+                          }
+                        >
                           <input
+                            aria-label="Duree edition evenement (min)"
                             type="number"
                             min={0}
-                            value={editEventDurationMinutes}
+                            value={editLifeEventValues.durationMinutes ?? ""}
                             onChange={(event) =>
-                              setEditEventDurationMinutes(event.target.value)
+                              editLifeEventForm.setValue(
+                                "durationMinutes",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
-                        </label>
-                        <label className="grid gap-1 text-sm md:col-span-2">
-                          <span className="text-text-secondary">
-                            Commentaire
-                          </span>
+                        </FormField>
+                        <FormField
+                          label="Commentaire edition evenement"
+                          className="md:col-span-2"
+                        >
                           <input
-                            value={editEventComment}
+                            aria-label="Commentaire edition evenement"
+                            value={editLifeEventValues.comment ?? ""}
                             onChange={(event) =>
-                              setEditEventComment(event.target.value)
+                              editLifeEventForm.setValue(
+                                "comment",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             className="rounded-card border border-border bg-background px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                           />
-                        </label>
+                        </FormField>
                         <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
                           <input
                             type="checkbox"
-                            checked={editEventJustified}
+                            checked={editLifeEventValues.justified ?? false}
                             onChange={(event) =>
-                              setEditEventJustified(event.target.checked)
+                              editLifeEventForm.setValue(
+                                "justified",
+                                event.target.checked,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
                             }
                             disabled={
-                              editEventType === "SANCTION" ||
-                              editEventType === "PUNITION"
+                              editLifeEventValues.type === "SANCTION" ||
+                              editLifeEventValues.type === "PUNITION"
                             }
                           />
                           Justifie
@@ -2209,11 +2267,14 @@ export default function ElevesPage() {
                           <Button
                             type="button"
                             disabled={
-                              updatingLifeEventId === editingLifeEventId
+                              updatingLifeEventId === editingLifeEventId ||
+                              !editLifeEventForm.formState.isValid
                             }
-                            onClick={() => {
-                              void saveLifeEvent();
-                            }}
+                            onClick={() =>
+                              void editLifeEventForm.handleSubmit(
+                                saveLifeEvent,
+                              )()
+                            }
                           >
                             {updatingLifeEventId === editingLifeEventId
                               ? "Enregistrement..."
@@ -2222,7 +2283,17 @@ export default function ElevesPage() {
                           <Button
                             type="button"
                             variant="secondary"
-                            onClick={() => setEditingLifeEventId(null)}
+                            onClick={() => {
+                              setEditingLifeEventId(null);
+                              editLifeEventForm.reset({
+                                type: "ABSENCE",
+                                occurredAt: "",
+                                reason: "",
+                                durationMinutes: "",
+                                justified: false,
+                                comment: "",
+                              });
+                            }}
                           >
                             Annuler
                           </Button>

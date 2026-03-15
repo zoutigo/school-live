@@ -207,77 +207,30 @@ function OnboardingContent() {
   const profileStepValues = profileStepForm.watch();
   const pinStepValues = pinStepForm.watch();
   const recoveryStepValues = recoveryStepForm.watch();
-  const step1PasswordValidation = useMemo(
-    () =>
-      step1Schema.safeParse({
-        email: passwordStepValues.email ?? "",
-        temporaryPassword: passwordStepValues.temporaryPassword ?? "",
-        newPassword: passwordStepValues.newPassword ?? "",
-        confirmPassword: passwordStepValues.confirmPassword ?? "",
-      }),
-    [passwordStepValues],
-  );
-  const step1TokenValidation = useMemo(
-    () =>
-      step1PhoneSchema.safeParse({
-        email: tokenStepValues.email ?? "",
-        setupToken: tokenStepValues.setupToken ?? "",
-      }),
-    [tokenStepValues],
-  );
-  const step2Validation = useMemo(
-    () =>
-      step2Schema.safeParse({
-        firstName: profileStepValues.firstName ?? "",
-        lastName: profileStepValues.lastName ?? "",
-        gender: profileStepValues.gender,
-        birthDate: profileStepValues.birthDate ?? "",
-      }),
-    [profileStepValues],
-  );
-  const pinValidation = useMemo(
-    () =>
-      step3PinSchema.safeParse({
-        newPin: pinStepValues.newPin ?? "",
-        confirmPin: pinStepValues.confirmPin ?? "",
-      }),
-    [pinStepValues],
-  );
-  const recoveryValidation = useMemo(
-    () =>
-      step4Schema.safeParse({
-        selectedQuestions: recoveryStepValues.selectedQuestions ?? [],
-        answers: recoveryStepValues.answers ?? {},
-        isParent,
-        parentClassId: recoveryStepValues.parentClassId || undefined,
-        parentStudentId: recoveryStepValues.parentStudentId || undefined,
-      }),
-    [recoveryStepValues, isParent],
-  );
   const canContinueCurrentStep = useMemo(() => {
     if (step === 1) {
       return isTokenFlow
-        ? step1TokenValidation.success
-        : step1PasswordValidation.success;
+        ? tokenStepForm.formState.isValid
+        : passwordStepForm.formState.isValid;
     }
     if (step === 2) {
-      return step2Validation.success;
+      return profileStepForm.formState.isValid;
     }
     if (step === 3 && isTokenFlow) {
-      return pinValidation.success;
+      return pinStepForm.formState.isValid;
     }
     if ((step === 3 && !isTokenFlow) || (step === 4 && isTokenFlow)) {
-      return recoveryValidation.success;
+      return recoveryStepForm.formState.isValid;
     }
     return true;
   }, [
     step,
     isTokenFlow,
-    step1TokenValidation.success,
-    step1PasswordValidation.success,
-    step2Validation.success,
-    pinValidation.success,
-    recoveryValidation.success,
+    tokenStepForm.formState.isValid,
+    passwordStepForm.formState.isValid,
+    profileStepForm.formState.isValid,
+    pinStepForm.formState.isValid,
+    recoveryStepForm.formState.isValid,
   ]);
 
   useEffect(() => {

@@ -291,15 +291,6 @@ export default function UsersPage() {
     null,
   );
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editPlatformRoles, setEditPlatformRoles] = useState<
-    PlatformCreatableRole[]
-  >([]);
-  const [editSchoolRoles, setEditSchoolRoles] = useState<SchoolCreatableRole[]>(
-    [],
-  );
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
@@ -352,28 +343,22 @@ export default function UsersPage() {
     },
   });
   const createValues = createUserForm.watch();
-  const createValidation = useMemo(
-    () =>
-      createUserSchema.safeParse({
-        firstName: createValues.firstName ?? "",
-        lastName: createValues.lastName ?? "",
-        email: createValues.email ?? "",
-        phone: createValues.phone?.trim()
-          ? createValues.phone.trim()
-          : undefined,
-        platformRoles: createValues.platformRoles ?? [],
-        schoolRoles: createValues.schoolRoles ?? [],
-        temporaryPassword: createValues.temporaryPassword ?? "",
-        schoolSlug:
-          (createValues.schoolRoles ?? []).length > 0
-            ? createValues.schoolSlug || undefined
-            : undefined,
-        avatarUrl: createValues.avatarUrl?.trim()
-          ? createValues.avatarUrl.trim()
-          : undefined,
-      }),
-    [createValues],
-  );
+  const editUserForm = useForm<
+    z.input<typeof updateUserSchema>,
+    unknown,
+    z.output<typeof updateUserSchema>
+  >({
+    resolver: zodResolver(updateUserSchema),
+    mode: "onChange",
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      phone: "",
+      platformRoles: [],
+      schoolRoles: [],
+    },
+  });
+  const editUserValues = editUserForm.watch();
 
   useEffect(() => {
     void bootstrap();
@@ -813,31 +798,22 @@ export default function UsersPage() {
     setEditError(null);
     setEditingUserId(user.id);
     setOpenActionsUserId(null);
-    setEditFirstName(user.firstName);
-    setEditLastName(user.lastName);
-    setEditPhone(user.phone ?? "");
-    setEditPlatformRoles(
-      user.platformRoles.filter(
+    editUserForm.reset({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone ?? "",
+      platformRoles: user.platformRoles.filter(
         (entry) => entry !== "SUPER_ADMIN",
       ) as PlatformCreatableRole[],
-    );
-    setEditSchoolRoles(user.schoolRoles as SchoolCreatableRole[]);
+      schoolRoles: user.schoolRoles as SchoolCreatableRole[],
+    });
   }
 
-  async function onSaveUser(userId: string) {
+  async function onSaveUser(
+    userId: string,
+    values: z.output<typeof updateUserSchema>,
+  ) {
     setEditError(null);
-    const parsed = updateUserSchema.safeParse({
-      firstName: editFirstName,
-      lastName: editLastName,
-      phone: editPhone.trim() ? editPhone.trim() : undefined,
-      platformRoles: editPlatformRoles,
-      schoolRoles: editSchoolRoles,
-    });
-
-    if (!parsed.success) {
-      setEditError(parsed.error.issues[0]?.message ?? "Formulaire invalide.");
-      return;
-    }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -855,7 +831,7 @@ export default function UsersPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(values),
       });
 
       if (!response.ok) {
@@ -1242,12 +1218,29 @@ export default function UsersPage() {
                                       Prenom
                                     </span>
                                     <input
-                                      value={editFirstName}
+                                      aria-label="Prenom edition"
+                                      value={editUserValues.firstName ?? ""}
                                       onChange={(event) =>
-                                        setEditFirstName(event.target.value)
+                                        editUserForm.setValue(
+                                          "firstName",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        )
                                       }
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
+                                    {editUserForm.formState.errors.firstName ? (
+                                      <span className="text-xs text-notification">
+                                        {
+                                          editUserForm.formState.errors
+                                            .firstName.message
+                                        }
+                                      </span>
+                                    ) : null}
                                   </label>
 
                                   <label className="grid gap-1 text-sm">
@@ -1255,12 +1248,29 @@ export default function UsersPage() {
                                       Nom
                                     </span>
                                     <input
-                                      value={editLastName}
+                                      aria-label="Nom edition"
+                                      value={editUserValues.lastName ?? ""}
                                       onChange={(event) =>
-                                        setEditLastName(event.target.value)
+                                        editUserForm.setValue(
+                                          "lastName",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        )
                                       }
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
+                                    {editUserForm.formState.errors.lastName ? (
+                                      <span className="text-xs text-notification">
+                                        {
+                                          editUserForm.formState.errors.lastName
+                                            .message
+                                        }
+                                      </span>
+                                    ) : null}
                                   </label>
 
                                   <div className="grid gap-1 text-sm">
@@ -1276,28 +1286,36 @@ export default function UsersPage() {
                                           >
                                             <input
                                               type="checkbox"
-                                              checked={editPlatformRoles.includes(
-                                                roleOption,
-                                              )}
+                                              checked={(
+                                                editUserValues.platformRoles ??
+                                                []
+                                              ).includes(roleOption)}
                                               disabled={
                                                 roleOption === "ADMIN" &&
                                                 currentRole !== "SUPER_ADMIN"
                                               }
                                               onChange={(event) => {
-                                                setEditPlatformRoles(
-                                                  (current) =>
-                                                    event.target.checked
-                                                      ? Array.from(
-                                                          new Set([
-                                                            ...current,
-                                                            roleOption,
-                                                          ]),
-                                                        )
-                                                      : current.filter(
-                                                          (value) =>
-                                                            value !==
-                                                            roleOption,
-                                                        ),
+                                                const currentRoles =
+                                                  editUserValues.platformRoles ??
+                                                  [];
+                                                editUserForm.setValue(
+                                                  "platformRoles",
+                                                  event.target.checked
+                                                    ? Array.from(
+                                                        new Set([
+                                                          ...currentRoles,
+                                                          roleOption,
+                                                        ]),
+                                                      )
+                                                    : currentRoles.filter(
+                                                        (value) =>
+                                                          value !== roleOption,
+                                                      ),
+                                                  {
+                                                    shouldDirty: true,
+                                                    shouldTouch: true,
+                                                    shouldValidate: true,
+                                                  },
                                                 );
                                               }}
                                             />
@@ -1320,22 +1338,31 @@ export default function UsersPage() {
                                         >
                                           <input
                                             type="checkbox"
-                                            checked={editSchoolRoles.includes(
-                                              roleOption,
-                                            )}
+                                            checked={(
+                                              editUserValues.schoolRoles ?? []
+                                            ).includes(roleOption)}
                                             onChange={(event) => {
-                                              setEditSchoolRoles((current) =>
+                                              const currentRoles =
+                                                editUserValues.schoolRoles ??
+                                                [];
+                                              editUserForm.setValue(
+                                                "schoolRoles",
                                                 event.target.checked
                                                   ? Array.from(
                                                       new Set([
-                                                        ...current,
+                                                        ...currentRoles,
                                                         roleOption,
                                                       ]),
                                                     )
-                                                  : current.filter(
+                                                  : currentRoles.filter(
                                                       (value) =>
                                                         value !== roleOption,
                                                     ),
+                                                {
+                                                  shouldDirty: true,
+                                                  shouldTouch: true,
+                                                  shouldValidate: true,
+                                                },
                                               );
                                             }}
                                           />
@@ -1350,17 +1377,32 @@ export default function UsersPage() {
                                       Telephone
                                     </span>
                                     <input
-                                      value={editPhone}
+                                      aria-label="Telephone edition"
+                                      value={editUserValues.phone ?? ""}
                                       onChange={(event) =>
-                                        setEditPhone(
+                                        editUserForm.setValue(
+                                          "phone",
                                           normalizeCmPhoneInput(
                                             event.target.value,
                                           ),
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
                                         )
                                       }
                                       placeholder="6XXXXXXXX"
                                       className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
                                     />
+                                    {editUserForm.formState.errors.phone ? (
+                                      <span className="text-xs text-notification">
+                                        {
+                                          editUserForm.formState.errors.phone
+                                            .message
+                                        }
+                                      </span>
+                                    ) : null}
                                   </label>
                                 </div>
                                 {editError ? (
@@ -1371,9 +1413,14 @@ export default function UsersPage() {
                                 <div className="mt-3 flex gap-2">
                                   <Button
                                     type="button"
-                                    disabled={savingEdit}
+                                    disabled={
+                                      savingEdit ||
+                                      !editUserForm.formState.isValid
+                                    }
                                     onClick={() => {
-                                      void onSaveUser(user.id);
+                                      void editUserForm.handleSubmit((values) =>
+                                        onSaveUser(user.id, values),
+                                      )();
                                     }}
                                   >
                                     {savingEdit
@@ -1386,6 +1433,7 @@ export default function UsersPage() {
                                     onClick={() => {
                                       setEditingUserId(null);
                                       setEditError(null);
+                                      editUserForm.reset();
                                     }}
                                   >
                                     Annuler
@@ -1914,6 +1962,7 @@ export default function UsersPage() {
                               shouldValidate: true,
                             });
                           }
+                          void createUserForm.trigger("schoolSlug");
                         }}
                       />
                       <span>{roleOption}</span>
@@ -1991,7 +2040,7 @@ export default function UsersPage() {
 
               <div className="md:col-span-2">
                 <SubmitButton
-                  disabled={submitting || !createValidation.success}
+                  disabled={submitting || !createUserForm.formState.isValid}
                 >
                   {submitting ? "Creation..." : "Creer le compte"}
                 </SubmitButton>

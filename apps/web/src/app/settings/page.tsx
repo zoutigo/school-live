@@ -1,16 +1,30 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { BackButton } from "../../components/ui/form-buttons";
+import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
+import { FormField } from "../../components/ui/form-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { extractAvailableRoles, type Role } from "../../lib/role-view";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+
+const staffFunctionSchema = z.object({
+  name: z.string().trim().min(1, "Le nom est obligatoire."),
+  description: z.string().trim().optional(),
+});
+
+const staffAssignmentSchema = z.object({
+  functionId: z.string().min(1, "Selectionnez une fonction."),
+  userId: z.string().min(1, "Selectionnez un personnel."),
+});
 
 type Tab = "navigation" | "staff" | "help";
 
@@ -114,10 +128,30 @@ export default function SettingsPage() {
   );
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [submittingStaff, setSubmittingStaff] = useState(false);
-  const [newFunctionName, setNewFunctionName] = useState("");
-  const [newFunctionDescription, setNewFunctionDescription] = useState("");
-  const [selectedFunctionId, setSelectedFunctionId] = useState("");
-  const [selectedCandidateId, setSelectedCandidateId] = useState("");
+  const staffFunctionForm = useForm<
+    z.input<typeof staffFunctionSchema>,
+    unknown,
+    z.output<typeof staffFunctionSchema>
+  >({
+    resolver: zodResolver(staffFunctionSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      description: "",
+    },
+  });
+  const staffAssignmentForm = useForm<
+    z.input<typeof staffAssignmentSchema>,
+    unknown,
+    z.output<typeof staffAssignmentSchema>
+  >({
+    resolver: zodResolver(staffAssignmentSchema),
+    mode: "onChange",
+    defaultValues: {
+      functionId: "",
+      userId: "",
+    },
+  });
 
   useEffect(() => {
     void bootstrap();
@@ -265,19 +299,39 @@ export default function SettingsPage() {
       setStaffFunctions(functionsPayload);
       setStaffAssignments(assignmentsPayload);
       setStaffCandidates(candidatesPayload);
-      if (!selectedFunctionId && functionsPayload.length > 0) {
-        setSelectedFunctionId(functionsPayload[0].id);
+
+      const currentFunctionId = staffAssignmentForm.getValues("functionId");
+      if (
+        functionsPayload.length > 0 &&
+        !functionsPayload.some((entry) => entry.id === currentFunctionId)
+      ) {
+        staffAssignmentForm.setValue("functionId", functionsPayload[0].id, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: true,
+        });
       }
-      if (!selectedCandidateId && candidatesPayload.length > 0) {
-        setSelectedCandidateId(candidatesPayload[0].userId);
+
+      const currentUserId = staffAssignmentForm.getValues("userId");
+      if (
+        candidatesPayload.length > 0 &&
+        !candidatesPayload.some((entry) => entry.userId === currentUserId)
+      ) {
+        staffAssignmentForm.setValue("userId", candidatesPayload[0].userId, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: true,
+        });
       }
     } finally {
       setLoadingStaff(false);
     }
   }
 
-  async function createStaffFunction() {
-    if (!schoolSlug || !canWriteStaff || !newFunctionName.trim()) {
+  async function createStaffFunction(
+    values: z.output<typeof staffFunctionSchema>,
+  ) {
+    if (!schoolSlug || !canWriteStaff) {
       return;
     }
 
@@ -300,8 +354,8 @@ export default function SettingsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            name: newFunctionName.trim(),
-            description: newFunctionDescription.trim() || undefined,
+            name: values.name,
+            description: values.description || undefined,
           }),
         },
       );
@@ -311,8 +365,10 @@ export default function SettingsPage() {
         return;
       }
 
-      setNewFunctionName("");
-      setNewFunctionDescription("");
+      staffFunctionForm.reset({
+        name: "",
+        description: "",
+      });
       await loadStaffData(schoolSlug);
       setSuccess("Fonction creee.");
     } finally {
@@ -320,13 +376,10 @@ export default function SettingsPage() {
     }
   }
 
-  async function createStaffAssignment() {
-    if (
-      !schoolSlug ||
-      !canWriteStaff ||
-      !selectedFunctionId ||
-      !selectedCandidateId
-    ) {
+  async function createStaffAssignment(
+    values: z.output<typeof staffAssignmentSchema>,
+  ) {
+    if (!schoolSlug || !canWriteStaff) {
       return;
     }
 
@@ -349,8 +402,8 @@ export default function SettingsPage() {
             "X-CSRF-Token": csrfToken,
           },
           body: JSON.stringify({
-            functionId: selectedFunctionId,
-            userId: selectedCandidateId,
+            functionId: values.functionId,
+            userId: values.userId,
           }),
         },
       );
@@ -361,6 +414,11 @@ export default function SettingsPage() {
       }
 
       await loadStaffData(schoolSlug);
+      staffAssignmentForm.setValue("userId", "", {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: true,
+      });
       setSuccess("Affectation enregistree.");
     } finally {
       setSubmittingStaff(false);
@@ -532,33 +590,69 @@ export default function SettingsPage() {
                     Fonctions du personnel
                   </h3>
                   {canWriteStaff ? (
-                    <div className="grid gap-2 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto]">
-                      <input
-                        value={newFunctionName}
-                        onChange={(event) =>
-                          setNewFunctionName(event.target.value)
-                        }
-                        placeholder="Ex: Vie scolaire"
-                        className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                      <input
-                        value={newFunctionDescription}
-                        onChange={(event) =>
-                          setNewFunctionDescription(event.target.value)
-                        }
-                        placeholder="Description (optionnelle)"
-                        className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                      <Button
-                        type="button"
-                        disabled={submittingStaff || !newFunctionName.trim()}
-                        onClick={() => {
-                          void createStaffFunction();
-                        }}
+                    <form
+                      className="grid gap-2 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto]"
+                      onSubmit={staffFunctionForm.handleSubmit(
+                        createStaffFunction,
+                      )}
+                      noValidate
+                    >
+                      <FormField
+                        label="Fonction"
+                        htmlFor="staff-function-name"
+                        error={staffFunctionForm.formState.errors.name?.message}
                       >
-                        Ajouter
-                      </Button>
-                    </div>
+                        <input
+                          id="staff-function-name"
+                          value={staffFunctionForm.watch("name")}
+                          onChange={(event) =>
+                            staffFunctionForm.setValue(
+                              "name",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
+                          }
+                          placeholder="Ex: Vie scolaire"
+                          className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </FormField>
+                      <FormField
+                        label="Description"
+                        htmlFor="staff-function-description"
+                      >
+                        <input
+                          id="staff-function-description"
+                          value={staffFunctionForm.watch("description") ?? ""}
+                          onChange={(event) =>
+                            staffFunctionForm.setValue(
+                              "description",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
+                          }
+                          placeholder="Description (optionnelle)"
+                          className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </FormField>
+                      <div className="flex items-end">
+                        <SubmitButton
+                          disabled={
+                            submittingStaff ||
+                            !staffFunctionForm.formState.isValid
+                          }
+                        >
+                          Ajouter
+                        </SubmitButton>
+                      </div>
+                    </form>
                   ) : null}
 
                   <div className="overflow-x-auto">
@@ -609,49 +703,87 @@ export default function SettingsPage() {
                     Affectations
                   </h3>
                   {canWriteStaff ? (
-                    <div className="grid gap-2 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto]">
-                      <select
-                        value={selectedFunctionId}
-                        onChange={(event) =>
-                          setSelectedFunctionId(event.target.value)
+                    <form
+                      className="grid gap-2 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto]"
+                      onSubmit={staffAssignmentForm.handleSubmit(
+                        createStaffAssignment,
+                      )}
+                      noValidate
+                    >
+                      <FormField
+                        label="Fonction"
+                        htmlFor="staff-assignment-function"
+                        error={
+                          staffAssignmentForm.formState.errors.functionId
+                            ?.message
                         }
-                        className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                       >
-                        <option value="">Choisir une fonction</option>
-                        {staffFunctions.map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.name}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={selectedCandidateId}
-                        onChange={(event) =>
-                          setSelectedCandidateId(event.target.value)
+                        <select
+                          id="staff-assignment-function"
+                          value={staffAssignmentForm.watch("functionId")}
+                          onChange={(event) =>
+                            staffAssignmentForm.setValue(
+                              "functionId",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
+                          }
+                          className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="">Choisir une fonction</option>
+                          {staffFunctions.map((entry) => (
+                            <option key={entry.id} value={entry.id}>
+                              {entry.name}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                      <FormField
+                        label="Personnel"
+                        htmlFor="staff-assignment-user"
+                        error={
+                          staffAssignmentForm.formState.errors.userId?.message
                         }
-                        className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                       >
-                        <option value="">Choisir un personnel</option>
-                        {staffCandidates.map((entry) => (
-                          <option key={entry.userId} value={entry.userId}>
-                            {entry.lastName} {entry.firstName} ({entry.role})
-                          </option>
-                        ))}
-                      </select>
-                      <Button
-                        type="button"
-                        disabled={
-                          submittingStaff ||
-                          !selectedFunctionId ||
-                          !selectedCandidateId
-                        }
-                        onClick={() => {
-                          void createStaffAssignment();
-                        }}
-                      >
-                        Affecter
-                      </Button>
-                    </div>
+                        <select
+                          id="staff-assignment-user"
+                          value={staffAssignmentForm.watch("userId")}
+                          onChange={(event) =>
+                            staffAssignmentForm.setValue(
+                              "userId",
+                              event.target.value,
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
+                          }
+                          className="h-10 rounded-card border border-border bg-background px-3 text-sm text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="">Choisir un personnel</option>
+                          {staffCandidates.map((entry) => (
+                            <option key={entry.userId} value={entry.userId}>
+                              {entry.lastName} {entry.firstName} ({entry.role})
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                      <div className="flex items-end">
+                        <SubmitButton
+                          disabled={
+                            submittingStaff ||
+                            !staffAssignmentForm.formState.isValid
+                          }
+                        >
+                          Affecter
+                        </SubmitButton>
+                      </div>
+                    </form>
                   ) : null}
 
                   <div className="overflow-x-auto">

@@ -157,7 +157,6 @@ export function PlatformCredentialsCompletionClient({
       confirmPin: "",
     },
   });
-  const values = form.watch();
 
   useEffect(() => {
     form.setValue("token", token ?? "", {
@@ -173,76 +172,6 @@ export function PlatformCredentialsCompletionClient({
       shouldValidate: true,
     });
   }, [form, requiresPassword, requiresPhonePin, token]);
-
-  const formValidation = useMemo(
-    () =>
-      setupSchema.safeParse({
-        token: token ?? "",
-        requiresPassword,
-        requiresPhonePin,
-        newPassword: values.newPassword ?? "",
-        confirmPassword: values.confirmPassword ?? "",
-        phone: values.phone ?? "",
-        confirmPhone: values.confirmPhone ?? "",
-        newPin: values.newPin ?? "",
-        confirmPin: values.confirmPin ?? "",
-      }),
-    [
-      requiresPassword,
-      requiresPhonePin,
-      token,
-      values.confirmPassword,
-      values.confirmPhone,
-      values.confirmPin,
-      values.newPassword,
-      values.newPin,
-      values.phone,
-    ],
-  );
-  const fieldErrors = useMemo(() => {
-    if (formValidation.success) {
-      return {} as Partial<
-        Record<
-          | "newPassword"
-          | "confirmPassword"
-          | "phone"
-          | "confirmPhone"
-          | "newPin"
-          | "confirmPin",
-          string
-        >
-      >;
-    }
-    return formValidation.error.issues.reduce(
-      (accumulator, issue) => {
-        const key = issue.path[0];
-        if (
-          (key === "newPassword" ||
-            key === "confirmPassword" ||
-            key === "phone" ||
-            key === "confirmPhone" ||
-            key === "newPin" ||
-            key === "confirmPin") &&
-          !accumulator[key]
-        ) {
-          accumulator[key] = issue.message;
-        }
-        return accumulator;
-      },
-      {} as Partial<
-        Record<
-          | "newPassword"
-          | "confirmPassword"
-          | "phone"
-          | "confirmPhone"
-          | "newPin"
-          | "confirmPin",
-          string
-        >
-      >,
-    );
-  }, [formValidation]);
-  const isFormValid = formValidation.success;
 
   async function redirectAfterCompletion() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -332,12 +261,7 @@ export function PlatformCredentialsCompletionClient({
               <>
                 <FormField
                   label="Nouveau mot de passe"
-                  error={
-                    (values.newPassword?.length ?? 0) > 0 ||
-                    form.formState.submitCount > 0
-                      ? (fieldErrors.newPassword ?? null)
-                      : null
-                  }
+                  error={form.formState.errors.newPassword?.message}
                 >
                   <Controller
                     control={form.control}
@@ -349,6 +273,7 @@ export function PlatformCredentialsCompletionClient({
                         onChange={(event) =>
                           form.setValue("newPassword", event.target.value, {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           })
                         }
@@ -359,12 +284,7 @@ export function PlatformCredentialsCompletionClient({
                 </FormField>
                 <FormField
                   label="Confirmer le mot de passe"
-                  error={
-                    (values.confirmPassword?.length ?? 0) > 0 ||
-                    form.formState.submitCount > 0
-                      ? (fieldErrors.confirmPassword ?? null)
-                      : null
-                  }
+                  error={form.formState.errors.confirmPassword?.message}
                 >
                   <Controller
                     control={form.control}
@@ -376,6 +296,7 @@ export function PlatformCredentialsCompletionClient({
                         onChange={(event) =>
                           form.setValue("confirmPassword", event.target.value, {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           })
                         }
@@ -391,12 +312,7 @@ export function PlatformCredentialsCompletionClient({
               <>
                 <FormField
                   label="Telephone"
-                  error={
-                    (values.phone?.length ?? 0) > 0 ||
-                    form.formState.submitCount > 0
-                      ? (fieldErrors.phone ?? null)
-                      : null
-                  }
+                  error={form.formState.errors.phone?.message}
                 >
                   <Controller
                     control={form.control}
@@ -413,6 +329,7 @@ export function PlatformCredentialsCompletionClient({
                             normalizePhoneInput(event.target.value),
                             {
                               shouldDirty: true,
+                              shouldTouch: true,
                               shouldValidate: true,
                             },
                           )
@@ -426,12 +343,7 @@ export function PlatformCredentialsCompletionClient({
                 </FormField>
                 <FormField
                   label="Confirmer le telephone"
-                  error={
-                    (values.confirmPhone?.length ?? 0) > 0 ||
-                    form.formState.submitCount > 0
-                      ? (fieldErrors.confirmPhone ?? null)
-                      : null
-                  }
+                  error={form.formState.errors.confirmPhone?.message}
                 >
                   <Controller
                     control={form.control}
@@ -448,6 +360,7 @@ export function PlatformCredentialsCompletionClient({
                             normalizePhoneInput(event.target.value),
                             {
                               shouldDirty: true,
+                              shouldTouch: true,
                               shouldValidate: true,
                             },
                           )
@@ -461,12 +374,7 @@ export function PlatformCredentialsCompletionClient({
                 </FormField>
                 <FormField
                   label="Nouveau PIN (6 chiffres)"
-                  error={
-                    (values.newPin?.length ?? 0) > 0 ||
-                    form.formState.submitCount > 0
-                      ? (fieldErrors.newPin ?? null)
-                      : null
-                  }
+                  error={form.formState.errors.newPin?.message}
                 >
                   <Controller
                     control={form.control}
@@ -481,6 +389,7 @@ export function PlatformCredentialsCompletionClient({
                             event.target.value.replace(/\D/g, "").slice(0, 6),
                             {
                               shouldDirty: true,
+                              shouldTouch: true,
                               shouldValidate: true,
                             },
                           )
@@ -493,12 +402,7 @@ export function PlatformCredentialsCompletionClient({
                 </FormField>
                 <FormField
                   label="Confirmer le PIN"
-                  error={
-                    (values.confirmPin?.length ?? 0) > 0 ||
-                    form.formState.submitCount > 0
-                      ? (fieldErrors.confirmPin ?? null)
-                      : null
-                  }
+                  error={form.formState.errors.confirmPin?.message}
                 >
                   <Controller
                     control={form.control}
@@ -513,6 +417,7 @@ export function PlatformCredentialsCompletionClient({
                             event.target.value.replace(/\D/g, "").slice(0, 6),
                             {
                               shouldDirty: true,
+                              shouldTouch: true,
                               shouldValidate: true,
                             },
                           )
@@ -530,7 +435,7 @@ export function PlatformCredentialsCompletionClient({
               <p className="text-sm text-notification">{error}</p>
             ) : null}
 
-            <SubmitButton disabled={saving || !isFormValid}>
+            <SubmitButton disabled={saving || !form.formState.isValid}>
               {saving ? "Validation..." : "Valider"}
             </SubmitButton>
           </form>

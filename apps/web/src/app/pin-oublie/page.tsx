@@ -111,21 +111,6 @@ function PinRecoveryPageContent() {
   });
   const email = requestForm.watch("email");
   const phone = requestForm.watch("phone");
-  const requestValidation = requestPinRecoverySchema.safeParse({
-    email: email ?? "",
-    phone: phone ?? "",
-  });
-  const verifyValues = verifyForm.watch();
-  const verifyValidation = verifySchema.safeParse({
-    birthDate: verifyValues.birthDate ?? "",
-    answers: verifyValues.answers ?? {},
-  });
-  const completeValues = completeForm.watch();
-  const completeValidation = completePinRecoverySchema.safeParse({
-    recoveryToken: completeValues.recoveryToken ?? "",
-    newPin: completeValues.newPin ?? "",
-    confirmPin: completeValues.confirmPin ?? "",
-  });
 
   useEffect(() => {
     verifyForm.reset({
@@ -311,18 +296,7 @@ function PinRecoveryPageContent() {
               >
                 <FormField
                   label="Email (optionnel)"
-                  error={
-                    (email?.length ?? 0) > 0 ||
-                    requestForm.formState.touchedFields.email ||
-                    requestForm.formState.touchedFields.phone ||
-                    requestForm.formState.submitCount > 0
-                      ? ((requestValidation.success
-                          ? null
-                          : requestValidation.error.issues.find(
-                              (issue) => issue.path[0] === "email",
-                            )?.message) ?? null)
-                      : null
-                  }
+                  error={requestForm.formState.errors.email?.message}
                 >
                   <Controller
                     control={requestForm.control}
@@ -331,13 +305,14 @@ function PinRecoveryPageContent() {
                       <EmailInput
                         name={field.name}
                         value={field.value}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           requestForm.setValue("email", event.target.value, {
                             shouldDirty: true,
                             shouldTouch: true,
                             shouldValidate: true,
-                          })
-                        }
+                          });
+                          void requestForm.trigger(["email", "phone"]);
+                        }}
                         onBlur={field.onBlur}
                         placeholder="prenom.nom@gmail.com"
                       />
@@ -347,20 +322,7 @@ function PinRecoveryPageContent() {
 
                 <FormField
                   label="Telephone (optionnel)"
-                  error={
-                    (phone?.length ?? 0) > 0 ||
-                    (email?.length ?? 0) > 0 ||
-                    requestForm.formState.isDirty ||
-                    requestForm.formState.touchedFields.email ||
-                    requestForm.formState.touchedFields.phone ||
-                    requestForm.formState.submitCount > 0
-                      ? ((requestValidation.success
-                          ? null
-                          : requestValidation.error.issues.find(
-                              (issue) => issue.path[0] === "phone",
-                            )?.message) ?? null)
-                      : null
-                  }
+                  error={requestForm.formState.errors.phone?.message}
                 >
                   <Controller
                     control={requestForm.control}
@@ -371,7 +333,7 @@ function PinRecoveryPageContent() {
                         ref={field.ref}
                         type="text"
                         value={field.value}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           requestForm.setValue(
                             "phone",
                             normalizePhoneInput(event.target.value),
@@ -380,8 +342,9 @@ function PinRecoveryPageContent() {
                               shouldTouch: true,
                               shouldValidate: true,
                             },
-                          )
-                        }
+                          );
+                          void requestForm.trigger(["email", "phone"]);
+                        }}
                         onBlur={field.onBlur}
                         placeholder="6XXXXXXXX"
                         className="rounded-card border border-border bg-surface px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-primary"
@@ -391,7 +354,7 @@ function PinRecoveryPageContent() {
                 </FormField>
 
                 <SubmitButton
-                  disabled={loadingOptions || !requestValidation.success}
+                  disabled={loadingOptions || !requestForm.formState.isValid}
                 >
                   {loadingOptions
                     ? "Chargement..."
@@ -414,16 +377,7 @@ function PinRecoveryPageContent() {
                 </p>
                 <FormField
                   label="Date de naissance"
-                  error={
-                    verifyValues.birthDate?.length > 0 ||
-                    verifyForm.formState.submitCount > 0
-                      ? ((verifyValidation.success
-                          ? null
-                          : verifyValidation.error.issues.find(
-                              (issue) => issue.path[0] === "birthDate",
-                            )?.message) ?? null)
-                      : null
-                  }
+                  error={verifyForm.formState.errors.birthDate?.message}
                 >
                   <Controller
                     control={verifyForm.control}
@@ -436,6 +390,7 @@ function PinRecoveryPageContent() {
                         onChange={(event) =>
                           verifyForm.setValue("birthDate", event.target.value, {
                             shouldDirty: true,
+                            shouldTouch: true,
                             shouldValidate: true,
                           })
                         }
@@ -449,16 +404,8 @@ function PinRecoveryPageContent() {
                     key={question.key}
                     label={question.label}
                     error={
-                      (verifyValues.answers?.[question.key]?.length ?? 0) > 0 ||
-                      verifyForm.formState.submitCount > 0
-                        ? ((verifyValidation.success
-                            ? null
-                            : verifyValidation.error.issues.find(
-                                (issue) =>
-                                  issue.path[0] === "answers" &&
-                                  issue.path[1] === question.key,
-                              )?.message) ?? null)
-                        : null
+                      verifyForm.formState.errors.answers?.[question.key]
+                        ?.message
                     }
                   >
                     <Controller
@@ -478,6 +425,7 @@ function PinRecoveryPageContent() {
                               event.target.value,
                               {
                                 shouldDirty: true,
+                                shouldTouch: true,
                                 shouldValidate: true,
                               },
                             )
@@ -489,7 +437,9 @@ function PinRecoveryPageContent() {
                     />
                   </FormField>
                 ))}
-                <SubmitButton disabled={verifying || !verifyValidation.success}>
+                <SubmitButton
+                  disabled={verifying || !verifyForm.formState.isValid}
+                >
                   {verifying ? "Verification..." : "Verifier mes reponses"}
                 </SubmitButton>
               </form>
@@ -503,16 +453,7 @@ function PinRecoveryPageContent() {
               >
                 <FormField
                   label="Nouveau PIN (6 chiffres)"
-                  error={
-                    (completeValues.newPin?.length ?? 0) > 0 ||
-                    completeForm.formState.submitCount > 0
-                      ? ((completeValidation.success
-                          ? null
-                          : completeValidation.error.issues.find(
-                              (issue) => issue.path[0] === "newPin",
-                            )?.message) ?? null)
-                      : null
-                  }
+                  error={completeForm.formState.errors.newPin?.message}
                 >
                   <Controller
                     control={completeForm.control}
@@ -528,6 +469,7 @@ function PinRecoveryPageContent() {
                             event.target.value.replace(/\D/g, "").slice(0, 6),
                             {
                               shouldDirty: true,
+                              shouldTouch: true,
                               shouldValidate: true,
                             },
                           )
@@ -540,16 +482,7 @@ function PinRecoveryPageContent() {
                 </FormField>
                 <FormField
                   label="Confirmer le PIN"
-                  error={
-                    (completeValues.confirmPin?.length ?? 0) > 0 ||
-                    completeForm.formState.submitCount > 0
-                      ? ((completeValidation.success
-                          ? null
-                          : completeValidation.error.issues.find(
-                              (issue) => issue.path[0] === "confirmPin",
-                            )?.message) ?? null)
-                      : null
-                  }
+                  error={completeForm.formState.errors.confirmPin?.message}
                 >
                   <Controller
                     control={completeForm.control}
@@ -565,6 +498,7 @@ function PinRecoveryPageContent() {
                             event.target.value.replace(/\D/g, "").slice(0, 6),
                             {
                               shouldDirty: true,
+                              shouldTouch: true,
                               shouldValidate: true,
                             },
                           )
@@ -576,7 +510,7 @@ function PinRecoveryPageContent() {
                   />
                 </FormField>
                 <SubmitButton
-                  disabled={completing || !completeValidation.success}
+                  disabled={completing || !completeForm.formState.isValid}
                 >
                   {completing
                     ? "Reinitialisation..."

@@ -96,6 +96,9 @@ describe("PinRecoveryPage UI", () => {
     const birthDateInput = screen.getByLabelText(
       "Date de naissance",
     ) as HTMLInputElement;
+    await waitFor(() => {
+      expect(birthDateInput.value).toBe("");
+    });
     fireEvent.input(birthDateInput, {
       target: { value: "1985-07-14" },
     });
@@ -131,16 +134,20 @@ describe("PinRecoveryPage UI", () => {
     fireEvent.change(newPinInput, {
       target: { value: "65432" },
     });
-    expect(
-      screen.getByText("Le PIN doit contenir exactement 6 chiffres."),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le PIN doit contenir exactement 6 chiffres."),
+      ).toBeInTheDocument();
+    });
 
     fireEvent.change(confirmPinInput, {
       target: { value: "123456" },
     });
-    expect(
-      screen.getByText("La confirmation ne correspond pas au PIN."),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("La confirmation ne correspond pas au PIN."),
+      ).toBeInTheDocument();
+    });
     expect(submitButton).toBeDisabled();
 
     fireEvent.change(newPinInput, {
@@ -245,6 +252,81 @@ describe("PinRecoveryPage UI", () => {
         expect.stringContaining("/auth/forgot-pin/options"),
         expect.objectContaining({ method: "POST" }),
       );
+    });
+  });
+
+  it("shows inline zod errors during recovery answers step before enabling submit", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          success: true,
+          schoolSlug: "college-vogt",
+          principalHint: "p***t@example.test",
+          questions: [
+            { key: "BIRTH_CITY", label: "Ville de naissance" },
+            { key: "FAVORITE_SPORT", label: "Sport prefere" },
+            { key: "FATHER_FIRST_NAME", label: "Prenom du pere" },
+          ],
+        }),
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(<PinRecoveryPage />);
+
+    fireEvent.change(screen.getByLabelText("Email (optionnel)"), {
+      target: { value: "parent@example.test" },
+    });
+
+    const requestButton = screen.getByRole("button", {
+      name: "Continuer vers les questions de recuperation",
+    });
+    await waitFor(() => {
+      expect(requestButton).toBeEnabled();
+    });
+    fireEvent.click(requestButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Compte detecte:/i)).toBeInTheDocument();
+    });
+
+    const verifyButton = screen.getByRole("button", {
+      name: "Verifier mes reponses",
+    });
+    expect(verifyButton).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Ville de naissance"), {
+      target: { value: "D" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Too small: expected string to have >=2 characters"),
+      ).toBeInTheDocument();
+      expect(verifyButton).toBeDisabled();
+    });
+
+    fireEvent.change(screen.getByLabelText("Date de naissance"), {
+      target: { value: "1985-07-14" },
+    });
+    fireEvent.change(screen.getByLabelText("Ville de naissance"), {
+      target: { value: "Douala" },
+    });
+    fireEvent.change(screen.getByLabelText("Sport prefere"), {
+      target: { value: "Football" },
+    });
+    fireEvent.change(screen.getByLabelText("Prenom du pere"), {
+      target: { value: "Andre" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Too small: expected string to have >=2 characters"),
+      ).not.toBeInTheDocument();
+      expect(verifyButton).toBeEnabled();
     });
   });
 });
