@@ -78,7 +78,6 @@ describe("ForgotPasswordPage UI", () => {
     );
 
     expect((emailInput as HTMLInputElement).value).toBe("");
-
   });
 
   it("loads recovery questions and transitions to password step after verification", async () => {
@@ -419,6 +418,5 @@ describe("ForgotPasswordPage UI", () => {
         "Mot de passe reinitialise",
       );
     });
-
   });
 });

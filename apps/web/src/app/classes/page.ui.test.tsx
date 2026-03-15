@@ -813,7 +813,7 @@ describe("Classes page subject color UI", () => {
       target: { value: "class-1" },
     });
     fireEvent.change(
-      screen.getByLabelText("Enseignant referent de la classe"),
+      await screen.findByLabelText("Enseignant referent de la classe"),
       {
         target: { value: "teacher-1" },
       },

@@ -174,7 +174,6 @@ describe("PinRecoveryPage UI", () => {
         "PIN reinitialise",
       );
     });
-
   });
 
   it("uses inline zod validation onChange for email/phone and enables submit only when valid", async () => {
