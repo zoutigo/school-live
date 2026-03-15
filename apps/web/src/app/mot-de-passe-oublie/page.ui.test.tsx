@@ -34,7 +34,7 @@ describe("ForgotPasswordPage UI", () => {
     ).toBeInTheDocument();
   });
 
-  it("disables submit for invalid email and redirects 5s after success", async () => {
+  it("disables submit for invalid email and shows a success toast after request", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(
         JSON.stringify({
@@ -48,7 +48,6 @@ describe("ForgotPasswordPage UI", () => {
         },
       ),
     );
-    const setTimeoutSpy = vi.spyOn(window, "setTimeout");
 
     render(<ForgotPasswordPage />);
 
@@ -70,23 +69,16 @@ describe("ForgotPasswordPage UI", () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "Si ce compte existe, un lien de reinitialisation a ete envoye.",
+      expect(screen.getByTestId("success-redirect-toast")).toHaveTextContent(
+        "Demande envoyee",
       );
     });
+    expect(screen.getByTestId("success-redirect-toast")).toHaveTextContent(
+      "5s",
+    );
 
     expect((emailInput as HTMLInputElement).value).toBe("");
 
-    await waitFor(() => {
-      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
-    });
-    const redirectTimerCall = setTimeoutSpy.mock.calls.find(
-      (entry) => entry[1] === 5000,
-    );
-    const callback = redirectTimerCall?.[0];
-    expect(typeof callback).toBe("function");
-    (callback as () => void)();
-    expect(replaceMock).toHaveBeenCalledWith("/");
   });
 
   it("loads recovery questions and transitions to password step after verification", async () => {
@@ -310,7 +302,7 @@ describe("ForgotPasswordPage UI", () => {
     });
   });
 
-  it("redirects to login after successful password reset completion", async () => {
+  it("shows a success toast after successful password reset completion", async () => {
     currentSearchParams = new URLSearchParams(
       "token=0123456789abcdefghijklmnop&schoolSlug=college-vogt",
     );
@@ -423,7 +415,10 @@ describe("ForgotPasswordPage UI", () => {
     fireEvent.click(completeButton);
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith("/schools/college-vogt/login");
+      expect(screen.getByTestId("success-redirect-toast")).toHaveTextContent(
+        "Mot de passe reinitialise",
+      );
     });
+
   });
 });

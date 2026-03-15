@@ -16,6 +16,7 @@ import {
 } from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PinInput } from "../../components/ui/pin-input";
+import { SuccessRedirectToast } from "../../components/ui/success-redirect-toast";
 import {
   buildVerifyPinRecoverySchema,
   completePinRecoverySchema,
@@ -65,6 +66,7 @@ function PinRecoveryPageContent() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
   const requestForm = useForm<
     z.input<typeof requestPinRecoverySchema>,
     unknown,
@@ -275,7 +277,20 @@ function PinRecoveryPageContent() {
         return;
       }
 
-      router.replace("/");
+      completeForm.reset({
+        recoveryToken: "",
+        newPin: "",
+        confirmPin: "",
+      });
+      setError(null);
+      setSuccess(null);
+      setOptions(null);
+      setRecoveryToken("");
+      verifyForm.reset({
+        birthDate: "",
+        answers: {},
+      });
+      setShowSuccessToast(true);
       return;
     } catch {
       setError("Erreur reseau.");
@@ -286,6 +301,15 @@ function PinRecoveryPageContent() {
 
   return (
     <RecoveryShell title="Recuperation de PIN">
+      <SuccessRedirectToast
+        open={showSuccessToast}
+        title="PIN reinitialise"
+        description="Votre nouveau PIN a bien ete enregistre. Vous allez etre redirige vers la connexion."
+        onComplete={() => {
+          setShowSuccessToast(false);
+          router.replace(loginHref);
+        }}
+      />
       <div className="mx-auto w-full max-w-2xl">
         <Card
           title="PIN perdu"
