@@ -12,6 +12,12 @@ import { FormField } from "../../../../../../../components/ui/form-field";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { PaginationControls } from "../../../../../../../components/ui/pagination-controls";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
+import {
+  getCreateEvaluationDefaults,
+  getEvaluationListMeta,
+  paginateEvaluations,
+  type CreateEvaluationFormValues,
+} from "./page-logic";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -114,56 +120,6 @@ const createEvaluationSchema = z.object({
   scheduledAt: z.string(),
   status: z.enum(["DRAFT", "PUBLISHED"]),
 });
-
-type CreateEvaluationFormValues = z.infer<typeof createEvaluationSchema>;
-
-export function getCreateEvaluationDefaults(
-  context?: TeacherContext | null,
-  overrides: Partial<CreateEvaluationFormValues> = {},
-): CreateEvaluationFormValues {
-  const firstSubject = context?.subjects[0];
-  const subjectId = overrides.subjectId ?? firstSubject?.id ?? "";
-  const selectedSubject =
-    context?.subjects.find((entry) => entry.id === subjectId) ?? firstSubject;
-
-  return {
-    subjectId,
-    subjectBranchId:
-      overrides.subjectBranchId ?? selectedSubject?.branches[0]?.id ?? "",
-    evaluationTypeId:
-      overrides.evaluationTypeId ?? context?.evaluationTypes[0]?.id ?? "",
-    title: overrides.title ?? "",
-    description: overrides.description ?? "",
-    coefficient: overrides.coefficient ?? 1,
-    maxScore: overrides.maxScore ?? 20,
-    term: overrides.term ?? "TERM_1",
-    scheduledAt: overrides.scheduledAt ?? "",
-    status: overrides.status ?? "DRAFT",
-  };
-}
-
-export function paginateEvaluations<T>(
-  items: T[],
-  page: number,
-  pageSize: number,
-): T[] {
-  const safePageSize = Math.max(1, pageSize);
-  const safePage = Math.max(1, page);
-  const startIndex = (safePage - 1) * safePageSize;
-  return items.slice(startIndex, startIndex + safePageSize);
-}
-
-export function getEvaluationListMeta(
-  evaluation: Pick<EvaluationRow, "scheduledAt" | "createdAt" | "_count">,
-  studentCount: number,
-) {
-  return {
-    scoreProgress: `${evaluation._count.scores}/${studentCount}`,
-    dateLabel: new Date(
-      evaluation.scheduledAt ?? evaluation.createdAt,
-    ).toLocaleDateString("fr-FR"),
-  };
-}
 
 export default function TeacherClassNotesPage() {
   const { schoolSlug, classId } = useParams<{

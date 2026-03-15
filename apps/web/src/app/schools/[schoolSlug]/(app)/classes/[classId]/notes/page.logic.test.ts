@@ -3,7 +3,7 @@ import {
   getCreateEvaluationDefaults,
   getEvaluationListMeta,
   paginateEvaluations,
-} from "./page";
+} from "./page-logic";
 
 describe("TeacherClassNotesPage evaluations list logic", () => {
   it("paginates evaluations with a stable page size", () => {

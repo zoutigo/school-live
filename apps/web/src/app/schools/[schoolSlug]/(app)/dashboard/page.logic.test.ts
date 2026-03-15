@@ -7,7 +7,7 @@ import {
   type ParentChild,
   type ParentDashboardSummaryResponse,
   type StudentLifeEventRow,
-} from "./page";
+} from "./page-logic";
 
 const child: ParentChild = {
   id: "student-1",
