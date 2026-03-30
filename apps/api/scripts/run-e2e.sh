@@ -46,4 +46,4 @@ echo "==> Applying prisma migrations on test database"
 NODE_ENV=test DATABASE_URL="${DATABASE_URL}" npx prisma migrate deploy --schema prisma/schema.prisma
 
 echo "==> Running e2e tests"
-NODE_ENV=test DATABASE_URL="${DATABASE_URL}" jest --config ./jest.e2e.config.cjs --runInBand "$@"
+NODE_ENV=test DATABASE_URL="${DATABASE_URL}" jest --config ./jest.e2e.config.cjs --runInBand --watchman=false "$@"

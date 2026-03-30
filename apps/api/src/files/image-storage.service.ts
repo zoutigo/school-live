@@ -2,6 +2,7 @@ import {
   BadRequestException,
   BadGatewayException,
   Injectable,
+  NotFoundException,
   PayloadTooLargeException,
 } from "@nestjs/common";
 import { createHmac, createHash, randomUUID } from "node:crypto";
@@ -17,6 +18,17 @@ type UploadedMediaFile = {
   buffer: Buffer;
   mimetype: string;
   size: number;
+};
+type AndroidBuildSlot = "latest" | "previous-1" | "previous-2";
+type AndroidBuildMetadata = {
+  versionName: string;
+  versionCode: number;
+  uploadedAt: string;
+  fileSize: number;
+  mimeType: string;
+  gitSha?: string;
+  buildId?: string;
+  downloadUrl: string;
 };
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -34,6 +46,11 @@ const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+]);
+const MAX_ANDROID_BUILD_BYTES = 250 * 1024 * 1024;
+const ANDROID_BUILD_MIME_TYPES = new Set([
+  "application/vnd.android.package-archive",
+  "application/octet-stream",
 ]);
 
 @Injectable()
@@ -149,6 +166,86 @@ export class ImageStorageService {
     }
 
     return { success: true };
+  }
+
+  async publishAndroidBuild(
+    file: UploadedMediaFile | undefined,
+    metadata: {
+      versionName: string;
+      versionCode: number;
+      gitSha?: string;
+      buildId?: string;
+    },
+  ) {
+    if (!file) {
+      throw new BadRequestException("Fichier APK manquant");
+    }
+
+    if (!ANDROID_BUILD_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException("Type de build Android non supporte");
+    }
+
+    if (file.size > MAX_ANDROID_BUILD_BYTES) {
+      throw new PayloadTooLargeException(
+        "Build Android trop lourd. Taille maximale: 250MB",
+      );
+    }
+
+    await this.ensureBucket();
+    await this.rotateAndroidBuilds();
+
+    const latestApkKey = this.mobileBuildObjectKey("latest", "apk");
+    const latestMetadata = this.createAndroidBuildMetadata(file, metadata);
+
+    await this.putObject(latestApkKey, file.buffer, file.mimetype);
+    await this.putJsonObject(
+      this.mobileBuildObjectKey("latest", "json"),
+      latestMetadata,
+    );
+
+    return latestMetadata;
+  }
+
+  async getAndroidBuildAsset(
+    slot: AndroidBuildSlot,
+    extension: "apk" | "json",
+  ) {
+    await this.ensureBucket();
+
+    const objectKey = this.mobileBuildObjectKey(slot, extension);
+    const response = await this.signedRequest({
+      method: "GET",
+      key: objectKey,
+    });
+
+    if (response.status === 404) {
+      throw new NotFoundException("Build Android introuvable");
+    }
+
+    if (!response.ok) {
+      throw new BadGatewayException("Unable to download media object");
+    }
+
+    const body = Buffer.from(await response.arrayBuffer());
+    const contentType =
+      response.headers.get("content-type") ??
+      (extension === "apk"
+        ? "application/vnd.android.package-archive"
+        : "application/json");
+
+    return {
+      body,
+      contentType,
+      fileName:
+        extension === "apk" ? `scolive-${slot}.apk` : `scolive-${slot}.json`,
+      downloadUrl: this.getAndroidBuildPublicPath(slot, extension),
+    };
+  }
+
+  getAndroidBuildPublicPath(slot: AndroidBuildSlot, extension: "apk" | "json") {
+    const webUrl = process.env.WEB_URL?.trim().replace(/\/$/, "");
+    const path = `/media/mobile-builds/android/${slot}.${extension}`;
+    return webUrl ? `${webUrl}${path}` : path;
   }
 
   private getSchoolVariant() {
@@ -309,6 +406,119 @@ export class ImageStorageService {
     }
   }
 
+  private async putJsonObject(objectKey: string, payload: object) {
+    await this.putObject(
+      objectKey,
+      Buffer.from(JSON.stringify(payload), "utf8"),
+      "application/json",
+    );
+  }
+
+  private async rotateAndroidBuilds() {
+    const latestApkKey = this.mobileBuildObjectKey("latest", "apk");
+    const latestJsonKey = this.mobileBuildObjectKey("latest", "json");
+    const previous1ApkKey = this.mobileBuildObjectKey("previous-1", "apk");
+    const previous1JsonKey = this.mobileBuildObjectKey("previous-1", "json");
+    const previous2ApkKey = this.mobileBuildObjectKey("previous-2", "apk");
+    const previous2JsonKey = this.mobileBuildObjectKey("previous-2", "json");
+
+    const hasPrevious1 = await this.objectExists(previous1ApkKey);
+    if (hasPrevious1) {
+      await this.copyObject(previous1ApkKey, previous2ApkKey);
+      if (await this.objectExists(previous1JsonKey)) {
+        await this.copyObject(previous1JsonKey, previous2JsonKey);
+      } else {
+        await this.deleteObject(previous2JsonKey);
+      }
+    } else {
+      await this.deleteObject(previous2ApkKey);
+      await this.deleteObject(previous2JsonKey);
+    }
+
+    const hasLatest = await this.objectExists(latestApkKey);
+    if (hasLatest) {
+      await this.copyObject(latestApkKey, previous1ApkKey);
+      if (await this.objectExists(latestJsonKey)) {
+        await this.copyObject(latestJsonKey, previous1JsonKey);
+      } else {
+        await this.deleteObject(previous1JsonKey);
+      }
+    } else {
+      await this.deleteObject(previous1ApkKey);
+      await this.deleteObject(previous1JsonKey);
+    }
+  }
+
+  private async objectExists(objectKey: string) {
+    const response = await this.signedRequest({
+      method: "HEAD",
+      key: objectKey,
+    });
+
+    if (response.status === 404) {
+      return false;
+    }
+
+    if (!response.ok) {
+      throw new BadGatewayException("Unable to access media object");
+    }
+
+    return true;
+  }
+
+  private async deleteObject(objectKey: string) {
+    const response = await this.signedRequest({
+      method: "DELETE",
+      key: objectKey,
+    });
+
+    if (!response.ok && response.status !== 404) {
+      throw new BadGatewayException("Unable to delete media object");
+    }
+  }
+
+  private async copyObject(sourceKey: string, targetKey: string) {
+    const response = await this.signedRequest({
+      method: "PUT",
+      key: targetKey,
+      extraHeaders: {
+        "x-amz-copy-source": `/${this.getS3Config().bucket}/${this.encodeKey(sourceKey)}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new BadGatewayException("Unable to copy media object");
+    }
+  }
+
+  private mobileBuildObjectKey(
+    slot: AndroidBuildSlot,
+    extension: "apk" | "json",
+  ) {
+    return `mobile-builds/android/${slot}.${extension}`;
+  }
+
+  private createAndroidBuildMetadata(
+    file: UploadedMediaFile,
+    metadata: {
+      versionName: string;
+      versionCode: number;
+      gitSha?: string;
+      buildId?: string;
+    },
+  ): AndroidBuildMetadata {
+    return {
+      versionName: metadata.versionName,
+      versionCode: metadata.versionCode,
+      uploadedAt: new Date().toISOString(),
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      gitSha: metadata.gitSha,
+      buildId: metadata.buildId,
+      downloadUrl: this.getAndroidBuildPublicPath("latest", "apk"),
+    };
+  }
+
   private objectKeyFromPublicUrl(url: string) {
     const config = this.getS3Config();
     const normalizedPublicBase = config.publicBaseUrl.replace(/\/$/, "");
@@ -352,12 +562,13 @@ export class ImageStorageService {
   }
 
   private async signedRequest(params: {
-    method: "HEAD" | "PUT" | "DELETE";
+    method: "GET" | "HEAD" | "PUT" | "DELETE";
     bucketOnly?: boolean;
     key?: string;
     query?: string;
     body?: Buffer;
     contentType?: string;
+    extraHeaders?: Record<string, string>;
   }) {
     const config = this.getS3Config();
     const endpointUrl = new URL(config.endpoint);
@@ -375,6 +586,7 @@ export class ImageStorageService {
       host,
       "x-amz-content-sha256": payloadHash,
       "x-amz-date": amzDate,
+      ...(params.extraHeaders ?? {}),
     };
 
     if (params.contentType) {
@@ -427,7 +639,9 @@ export class ImageStorageService {
         Authorization: authorization,
       },
       body:
-        params.method === "HEAD" || params.method === "DELETE"
+        params.method === "HEAD" ||
+        params.method === "DELETE" ||
+        params.method === "GET"
           ? undefined
           : new Uint8Array(bodyBuffer),
     });
