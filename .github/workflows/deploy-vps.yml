@@ -132,6 +132,7 @@ jobs:
             APP_DIR=~/apps/scolive
             ARCHIVE_PATH=~/apps/scolive-release.tar.gz
             ENV_BACKUP=/tmp/scolive.env.backup
+            MOBILE_BUILD_ENV_FILE="${APP_DIR}/docker/.env.mobile-build"
             mkdir -p "${APP_DIR}/docker"
             if [ -f "${APP_DIR}/docker/.env" ]; then
               cp "${APP_DIR}/docker/.env" "${ENV_BACKUP}"
@@ -147,11 +148,9 @@ jobs:
             fi
 
             if [ -n "${MOBILE_BUILD_UPLOAD_TOKEN:-}" ]; then
-              if grep -q '^MOBILE_BUILD_UPLOAD_TOKEN=' "${APP_DIR}/docker/.env"; then
-                sed -i "s|^MOBILE_BUILD_UPLOAD_TOKEN=.*|MOBILE_BUILD_UPLOAD_TOKEN=${MOBILE_BUILD_UPLOAD_TOKEN}|" "${APP_DIR}/docker/.env"
-              else
-                printf '\nMOBILE_BUILD_UPLOAD_TOKEN=%s\n' "${MOBILE_BUILD_UPLOAD_TOKEN}" >> "${APP_DIR}/docker/.env"
-              fi
+              printf 'MOBILE_BUILD_UPLOAD_TOKEN=%s\n' "${MOBILE_BUILD_UPLOAD_TOKEN}" > "${MOBILE_BUILD_ENV_FILE}"
+            else
+              : > "${MOBILE_BUILD_ENV_FILE}"
             fi
 
             echo "==> Ensure persistent data directories"
@@ -164,10 +163,10 @@ jobs:
             cd "${APP_DIR}"
 
             echo "==> Rebuild & restart containers"
-            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env up -d --build
+            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env --env-file docker/.env.mobile-build up -d --build
 
             echo "==> Run Prisma migrations in API container"
-            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env exec -T api sh -lc "npm run db:schema:gen && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma"
+            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env --env-file docker/.env.mobile-build exec -T api sh -lc "npm run db:schema:gen && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma"
 
             echo "==> Status"
-            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env ps
+            UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env --env-file docker/.env.mobile-build ps
