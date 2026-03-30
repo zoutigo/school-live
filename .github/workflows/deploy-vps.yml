@@ -162,25 +162,9 @@ jobs:
 
             echo "==> Ensure nginx upload limit for Android APK publication"
             NGINX_CONF=/home/ubuntu/infra/nginx/conf.d/scolive.lisaweb.fr.conf
-            python3 - <<'PY'
-            from pathlib import Path
-
-            path = Path("/home/ubuntu/infra/nginx/conf.d/scolive.lisaweb.fr.conf")
-            text = path.read_text()
-            directive = "  client_max_body_size 100m;\n"
-
-            if directive in text:
-                raise SystemExit(0)
-
-            marker = "  include /etc/nginx/conf.d/99-hardening-server.inc;\n"
-            first = text.find(marker)
-            second = text.find(marker, first + len(marker))
-            if second == -1:
-                raise SystemExit("Could not find HTTPS server marker in nginx config")
-
-            updated = text[: second + len(marker)] + directive + text[second + len(marker) :]
-            path.write_text(updated)
-            PY
+            if ! grep -q 'client_max_body_size 100m;' "${NGINX_CONF}"; then
+              sed -i '0,/include \/etc\/nginx\/conf.d\/99-hardening-server\.inc;/!b;//a\  client_max_body_size 100m;' "${NGINX_CONF}"
+            fi
             cd /home/ubuntu/infra/nginx
             docker compose exec -T nginx nginx -t
             docker compose exec -T nginx nginx -s reload
