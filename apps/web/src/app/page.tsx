@@ -61,7 +61,12 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-wrap gap-3">
               <Button>Telecharger sur App Store</Button>
-              <Button variant="secondary">Telecharger sur Google Play</Button>
+              <a
+                href="/api/mobile-builds/android/latest"
+                className="inline-flex items-center justify-center gap-2 rounded-card border border-warm-border bg-warm-surface px-4 py-2 text-sm font-heading font-semibold text-primary transition-all duration-200 hover:bg-warm-highlight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                Telecharger l&apos;APK Android
+              </a>
             </div>
           </Card>
         </section>

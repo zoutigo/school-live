@@ -115,6 +115,36 @@ MinIO (local):
 - Region par defaut: `af-south-1` (choix recommande pour un service cible Afrique/Cameroun).
 - Health microservice media: `GET http://localhost:3002/health`
 
+## Publication APK Android
+
+Le repo `scolive-mobile` publie l'APK Android release signe via l'endpoint :
+
+```bash
+POST /api/mobile-builds/android
+```
+
+Ce flux :
+
+- authentifie la CI mobile avec `MOBILE_BUILD_UPLOAD_TOKEN`
+- envoie l'APK au backend web
+- relaie le stockage vers le microservice `media`
+- conserve `latest`, `previous-1` et `previous-2`
+
+Variables backend a renseigner :
+
+```bash
+MEDIA_INTERNAL_TOKEN=change-me-media-token
+MOBILE_BUILD_UPLOAD_TOKEN=change-me-mobile-build-upload-token
+```
+
+Endpoints publics :
+
+- `GET /api/mobile-builds/android/latest`
+- `GET /api/mobile-builds/android/latest/meta`
+- `GET /media/mobile-builds/android/latest.apk`
+- `GET /media/mobile-builds/android/previous-1.apk`
+- `GET /media/mobile-builds/android/previous-2.apk`
+
 ### 7) Lancer le mobile
 
 ```bash

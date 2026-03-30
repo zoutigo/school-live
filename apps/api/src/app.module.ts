@@ -8,6 +8,7 @@ import { StudentGradesModule } from "./student-grades/student-grades.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { ManagementModule } from "./management/management.module.js";
 import { MessagingModule } from "./messaging/messaging.module.js";
+import { MobileBuildsModule } from "./mobile-builds/mobile-builds.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { SchoolsModule } from "./schools/schools.module.js";
 import { TimetableModule } from "./timetable/timetable.module.js";
@@ -29,6 +30,7 @@ import { TimetableModule } from "./timetable/timetable.module.js";
     HealthModule,
     ManagementModule,
     MessagingModule,
+    MobileBuildsModule,
     SchoolsModule,
     TimetableModule,
   ],
