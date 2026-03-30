@@ -162,8 +162,27 @@ jobs:
 
             echo "==> Ensure nginx upload limit for Android APK publication"
             NGINX_CONF=/home/ubuntu/infra/nginx/conf.d/scolive.lisaweb.fr.conf
-            if ! grep -q 'client_max_body_size 100m;' "${NGINX_CONF}"; then
-              sed -i '0,/include \/etc\/nginx\/conf.d\/99-hardening-server\.inc;/!b;//a\  client_max_body_size 100m;' "${NGINX_CONF}"
+            if ! awk '
+              /server \{/ { server_count++ }
+              server_count == 2 && /client_max_body_size 100m;/ { found=1 }
+              END { exit found ? 0 : 1 }
+            ' "${NGINX_CONF}"; then
+              tmp_file="$(mktemp)"
+              awk '
+                /server \{/ { server_count++ }
+                {
+                  print
+                  if (
+                    server_count == 2 &&
+                    !inserted &&
+                    $0 ~ /include \/etc\/nginx\/conf.d\/99-hardening-server\.inc;/
+                  ) {
+                    print "  client_max_body_size 100m;"
+                    inserted=1
+                  }
+                }
+              ' "${NGINX_CONF}" > "${tmp_file}"
+              mv "${tmp_file}" "${NGINX_CONF}"
             fi
             cd /home/ubuntu/infra/nginx
             docker compose exec -T nginx nginx -t
