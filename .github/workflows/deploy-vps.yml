@@ -162,7 +162,7 @@ jobs:
 
             echo "==> Ensure nginx upload limit for Android APK publication"
             NGINX_CONF=/home/ubuntu/infra/nginx/conf.d/scolive.lisaweb.fr.conf
-            python3 -c 'from pathlib import Path; import re; path = Path("'"${NGINX_CONF}"'"); text = path.read_text(); match = list(re.finditer(r"server \\{", text))[1]; end = text.find("}", match.start()); block = text[match.start():end]; needle = "  client_max_body_size 100m;\\n"; include = "  include /etc/nginx/conf.d/99-hardening-server.inc;\\n"; block = block if needle in block else block.replace(include, include + needle, 1); path.write_text(text[:match.start()] + block + text[end:])'
+            python3 -c 'from pathlib import Path; path = Path("'"${NGINX_CONF}"'"); text = path.read_text(); marker = "listen 443 ssl;"; include = "  include /etc/nginx/conf.d/99-hardening-server.inc;\\n"; needle = "  client_max_body_size 100m;\\n"; start = text.find(marker); end = text.find("\\n}", start); block = text[start:end]; block = block if start == -1 or needle in block else block.replace(include, include + needle, 1); path.write_text(text if start == -1 else text[:start] + block + text[end:])'
             cd /home/ubuntu/infra/nginx
             docker compose exec -T nginx nginx -t
             docker compose exec -T nginx nginx -s reload
