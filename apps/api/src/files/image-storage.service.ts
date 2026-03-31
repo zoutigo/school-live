@@ -13,7 +13,6 @@ import {
   HeadBucketCommand,
   HeadObjectCommand,
   NoSuchKey,
-  PutBucketPolicyCommand,
   PutObjectCommand,
   S3Client,
   S3ServiceException,
@@ -376,29 +375,6 @@ export class ImageStorageService {
       } else {
         throw new BadGatewayException("Unable to access media bucket");
       }
-    }
-
-    const policyPayload = JSON.stringify({
-      Version: "2012-10-17",
-      Statement: [
-        {
-          Effect: "Allow",
-          Principal: { AWS: ["*"] },
-          Action: ["s3:GetObject"],
-          Resource: [`arn:aws:s3:::${this.getS3Config().bucket}/*`],
-        },
-      ],
-    });
-
-    try {
-      await client.send(
-        new PutBucketPolicyCommand({
-          Bucket: bucket,
-          Policy: policyPayload,
-        }),
-      );
-    } catch {
-      throw new BadGatewayException("Unable to configure media bucket policy");
     }
 
     this.bucketReady = true;
