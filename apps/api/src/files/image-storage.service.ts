@@ -363,10 +363,13 @@ export class ImageStorageService {
     try {
       await client.send(new HeadBucketCommand({ Bucket: bucket }));
     } catch (error) {
-      if (
-        error instanceof S3ServiceException &&
-        error.$metadata.httpStatusCode === 404
-      ) {
+      const isMissingBucket =
+        (error instanceof S3ServiceException &&
+          error.$metadata.httpStatusCode === 404) ||
+        (error instanceof Error &&
+          (error.name === "NotFound" || error.name === "NoSuchBucket"));
+
+      if (isMissingBucket) {
         try {
           await client.send(new CreateBucketCommand({ Bucket: bucket }));
         } catch {
