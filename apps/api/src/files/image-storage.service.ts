@@ -240,9 +240,7 @@ export class ImageStorageService {
         body,
         contentType,
         fileName:
-          extension === "apk"
-            ? `scolive-${slot}.apk`
-            : `scolive-${slot}.json`,
+          extension === "apk" ? `scolive-${slot}.apk` : `scolive-${slot}.json`,
         downloadUrl: this.getAndroidBuildPublicPath(slot, extension),
       };
     } catch (error) {
