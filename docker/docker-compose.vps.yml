@@ -46,6 +46,7 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+      - ./.env.mobile-build
     environment:
       NODE_ENV: production
       API_PORT: 3001
@@ -75,6 +76,8 @@ services:
       NODE_ENV: production
       MEDIA_PORT: 3002
       MEDIA_S3_ENDPOINT: http://minio:9000
+      MEDIA_S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MEDIA_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
     depends_on:
       minio:
         condition: service_started

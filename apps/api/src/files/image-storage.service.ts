@@ -5,9 +5,21 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from "@nestjs/common";
-import { createHmac, createHash, randomUUID } from "node:crypto";
+import {
+  CopyObjectCommand,
+  CreateBucketCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadBucketCommand,
+  HeadObjectCommand,
+  NoSuchKey,
+  PutBucketPolicyCommand,
+  PutObjectCommand,
+  S3Client,
+  S3ServiceException,
+} from "@aws-sdk/client-s3";
+import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import { URL } from "node:url";
 
 export type UploadKind =
   | "school-logo"
@@ -56,6 +68,7 @@ const ANDROID_BUILD_MIME_TYPES = new Set([
 @Injectable()
 export class ImageStorageService {
   private bucketReady = false;
+  private client?: S3Client;
 
   async checkStorageHealth() {
     await this.ensureBucket();
@@ -156,14 +169,7 @@ export class ImageStorageService {
 
     await this.ensureBucket();
     const objectKey = this.objectKeyFromPublicUrl(url);
-    const response = await this.signedRequest({
-      method: "DELETE",
-      key: objectKey,
-    });
-
-    if (!response.ok && response.status !== 404) {
-      throw new BadGatewayException("Unable to delete media object");
-    }
+    await this.deleteObject(objectKey);
 
     return { success: true };
   }
@@ -213,33 +219,40 @@ export class ImageStorageService {
     await this.ensureBucket();
 
     const objectKey = this.mobileBuildObjectKey(slot, extension);
-    const response = await this.signedRequest({
-      method: "GET",
-      key: objectKey,
-    });
+    const client = this.getS3Client();
+    const { bucket } = this.getS3Config();
 
-    if (response.status === 404) {
-      throw new NotFoundException("Build Android introuvable");
-    }
+    try {
+      const response = await client.send(
+        new GetObjectCommand({
+          Bucket: bucket,
+          Key: objectKey,
+        }),
+      );
+      const body = Buffer.from(await response.Body!.transformToByteArray());
+      const contentType =
+        response.ContentType ??
+        (extension === "apk"
+          ? "application/vnd.android.package-archive"
+          : "application/json");
 
-    if (!response.ok) {
+      return {
+        body,
+        contentType,
+        fileName:
+          extension === "apk" ? `scolive-${slot}.apk` : `scolive-${slot}.json`,
+        downloadUrl: this.getAndroidBuildPublicPath(slot, extension),
+      };
+    } catch (error) {
+      if (
+        error instanceof NoSuchKey ||
+        (error instanceof S3ServiceException &&
+          error.$metadata.httpStatusCode === 404)
+      ) {
+        throw new NotFoundException("Build Android introuvable");
+      }
       throw new BadGatewayException("Unable to download media object");
     }
-
-    const body = Buffer.from(await response.arrayBuffer());
-    const contentType =
-      response.headers.get("content-type") ??
-      (extension === "apk"
-        ? "application/vnd.android.package-archive"
-        : "application/json");
-
-    return {
-      body,
-      contentType,
-      fileName:
-        extension === "apk" ? `scolive-${slot}.apk` : `scolive-${slot}.json`,
-      downloadUrl: this.getAndroidBuildPublicPath(slot, extension),
-    };
   }
 
   getAndroidBuildPublicPath(slot: AndroidBuildSlot, extension: "apk" | "json") {
@@ -310,7 +323,7 @@ export class ImageStorageService {
     const accessKey = process.env.MEDIA_S3_ACCESS_KEY?.trim();
     const secretKey = process.env.MEDIA_S3_SECRET_KEY?.trim();
     const bucket = process.env.MEDIA_S3_BUCKET?.trim();
-    const region = process.env.MEDIA_S3_REGION?.trim() || "af-south-1";
+    const region = process.env.MEDIA_S3_REGION?.trim() || "us-east-1";
 
     if (!endpoint || !accessKey || !secretKey || !bucket) {
       throw new BadGatewayException("MinIO/S3 configuration is incomplete");
@@ -345,21 +358,24 @@ export class ImageStorageService {
       return;
     }
 
-    const headBucket = await this.signedRequest({
-      method: "HEAD",
-      bucketOnly: true,
-    });
+    const client = this.getS3Client();
+    const { bucket } = this.getS3Config();
 
-    if (headBucket.status === 404) {
-      const createBucket = await this.signedRequest({
-        method: "PUT",
-        bucketOnly: true,
-      });
-      if (!createBucket.ok) {
-        throw new BadGatewayException("Unable to create media bucket");
+    try {
+      await client.send(new HeadBucketCommand({ Bucket: bucket }));
+    } catch (error) {
+      if (
+        error instanceof S3ServiceException &&
+        error.$metadata.httpStatusCode === 404
+      ) {
+        try {
+          await client.send(new CreateBucketCommand({ Bucket: bucket }));
+        } catch {
+          throw new BadGatewayException("Unable to create media bucket");
+        }
+      } else {
+        throw new BadGatewayException("Unable to access media bucket");
       }
-    } else if (!headBucket.ok) {
-      throw new BadGatewayException("Unable to access media bucket");
     }
 
     const policyPayload = JSON.stringify({
@@ -374,15 +390,14 @@ export class ImageStorageService {
       ],
     });
 
-    const putPolicy = await this.signedRequest({
-      method: "PUT",
-      bucketOnly: true,
-      query: "policy=",
-      body: Buffer.from(policyPayload, "utf8"),
-      contentType: "application/json",
-    });
-
-    if (!putPolicy.ok) {
+    try {
+      await client.send(
+        new PutBucketPolicyCommand({
+          Bucket: bucket,
+          Policy: policyPayload,
+        }),
+      );
+    } catch {
       throw new BadGatewayException("Unable to configure media bucket policy");
     }
 
@@ -394,14 +409,19 @@ export class ImageStorageService {
     body: Buffer,
     contentType: string,
   ) {
-    const response = await this.signedRequest({
-      method: "PUT",
-      key: objectKey,
-      body,
-      contentType,
-    });
+    const client = this.getS3Client();
+    const { bucket } = this.getS3Config();
 
-    if (!response.ok) {
+    try {
+      await client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: objectKey,
+          Body: body,
+          ContentType: contentType,
+        }),
+      );
+    } catch {
       throw new BadGatewayException("Unable to upload media object");
     }
   }
@@ -450,43 +470,63 @@ export class ImageStorageService {
   }
 
   private async objectExists(objectKey: string) {
-    const response = await this.signedRequest({
-      method: "HEAD",
-      key: objectKey,
-    });
+    const client = this.getS3Client();
+    const { bucket } = this.getS3Config();
 
-    if (response.status === 404) {
-      return false;
-    }
-
-    if (!response.ok) {
+    try {
+      await client.send(
+        new HeadObjectCommand({
+          Bucket: bucket,
+          Key: objectKey,
+        }),
+      );
+      return true;
+    } catch (error) {
+      if (
+        error instanceof S3ServiceException &&
+        error.$metadata.httpStatusCode === 404
+      ) {
+        return false;
+      }
       throw new BadGatewayException("Unable to access media object");
     }
-
-    return true;
   }
 
   private async deleteObject(objectKey: string) {
-    const response = await this.signedRequest({
-      method: "DELETE",
-      key: objectKey,
-    });
+    const client = this.getS3Client();
+    const { bucket } = this.getS3Config();
 
-    if (!response.ok && response.status !== 404) {
+    try {
+      await client.send(
+        new DeleteObjectCommand({
+          Bucket: bucket,
+          Key: objectKey,
+        }),
+      );
+    } catch (error) {
+      if (
+        error instanceof S3ServiceException &&
+        error.$metadata.httpStatusCode === 404
+      ) {
+        return;
+      }
       throw new BadGatewayException("Unable to delete media object");
     }
   }
 
   private async copyObject(sourceKey: string, targetKey: string) {
-    const response = await this.signedRequest({
-      method: "PUT",
-      key: targetKey,
-      extraHeaders: {
-        "x-amz-copy-source": `/${this.getS3Config().bucket}/${this.encodeKey(sourceKey)}`,
-      },
-    });
+    const client = this.getS3Client();
+    const { bucket } = this.getS3Config();
 
-    if (!response.ok) {
+    try {
+      await client.send(
+        new CopyObjectCommand({
+          Bucket: bucket,
+          Key: targetKey,
+          CopySource: `/${bucket}/${this.encodeKey(sourceKey)}`,
+        }),
+      );
+    } catch {
       throw new BadGatewayException("Unable to copy media object");
     }
   }
@@ -561,111 +601,22 @@ export class ImageStorageService {
     }
   }
 
-  private async signedRequest(params: {
-    method: "GET" | "HEAD" | "PUT" | "DELETE";
-    bucketOnly?: boolean;
-    key?: string;
-    query?: string;
-    body?: Buffer;
-    contentType?: string;
-    extraHeaders?: Record<string, string>;
-  }) {
-    const config = this.getS3Config();
-    const endpointUrl = new URL(config.endpoint);
-    const host = endpointUrl.host;
-    const bucketPath = `/${config.bucket}`;
-    const keyPath = params.key ? `/${this.encodeKey(params.key)}` : "";
-    const canonicalUri = `${bucketPath}${params.bucketOnly ? "" : keyPath}`;
-    const query = params.query ?? "";
-    const amzDate = this.nowAmzDate();
-    const dateStamp = amzDate.slice(0, 8);
-    const bodyBuffer = params.body ?? Buffer.alloc(0);
-    const payloadHash = this.sha256Hex(bodyBuffer);
-
-    const headers: Record<string, string> = {
-      host,
-      "x-amz-content-sha256": payloadHash,
-      "x-amz-date": amzDate,
-      ...(params.extraHeaders ?? {}),
-    };
-
-    if (params.contentType) {
-      headers["content-type"] = params.contentType;
+  private getS3Client() {
+    if (this.client) {
+      return this.client;
     }
 
-    const signedHeaders = Object.keys(headers).sort().join(";");
-    const canonicalHeaders = Object.keys(headers)
-      .sort()
-      .map((key) => `${key}:${headers[key]}\n`)
-      .join("");
-    const canonicalRequest = [
-      params.method,
-      canonicalUri,
-      query,
-      canonicalHeaders,
-      signedHeaders,
-      payloadHash,
-    ].join("\n");
-
-    const credentialScope = `${dateStamp}/${config.region}/s3/aws4_request`;
-    const stringToSign = [
-      "AWS4-HMAC-SHA256",
-      amzDate,
-      credentialScope,
-      this.sha256Hex(Buffer.from(canonicalRequest, "utf8")),
-    ].join("\n");
-
-    const signingKey = this.getSignatureKey(
-      config.secretKey,
-      dateStamp,
-      config.region,
-      "s3",
-    );
-    const signature = createHmac("sha256", signingKey)
-      .update(stringToSign)
-      .digest("hex");
-
-    const authorization = [
-      `AWS4-HMAC-SHA256 Credential=${config.accessKey}/${credentialScope}`,
-      `SignedHeaders=${signedHeaders}`,
-      `Signature=${signature}`,
-    ].join(", ");
-
-    const url = `${config.endpoint}${canonicalUri}${query ? `?${query}` : ""}`;
-    return fetch(url, {
-      method: params.method,
-      headers: {
-        ...headers,
-        Authorization: authorization,
+    const config = this.getS3Config();
+    this.client = new S3Client({
+      region: config.region,
+      endpoint: config.endpoint,
+      forcePathStyle: true,
+      credentials: {
+        accessKeyId: config.accessKey,
+        secretAccessKey: config.secretKey,
       },
-      body:
-        params.method === "HEAD" ||
-        params.method === "DELETE" ||
-        params.method === "GET"
-          ? undefined
-          : new Uint8Array(bodyBuffer),
     });
-  }
 
-  private sha256Hex(value: Buffer) {
-    return createHash("sha256").update(value).digest("hex");
-  }
-
-  private nowAmzDate() {
-    return new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
-  }
-
-  private getSignatureKey(
-    secretKey: string,
-    dateStamp: string,
-    regionName: string,
-    serviceName: string,
-  ) {
-    const kDate = createHmac("sha256", `AWS4${secretKey}`)
-      .update(dateStamp)
-      .digest();
-    const kRegion = createHmac("sha256", kDate).update(regionName).digest();
-    const kService = createHmac("sha256", kRegion).update(serviceName).digest();
-    return createHmac("sha256", kService).update("aws4_request").digest();
+    return this.client;
   }
 }
