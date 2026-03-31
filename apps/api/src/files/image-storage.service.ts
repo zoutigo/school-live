@@ -67,7 +67,6 @@ const ANDROID_BUILD_MIME_TYPES = new Set([
 @Injectable()
 export class ImageStorageService {
   private bucketReady = false;
-  private client?: S3Client;
 
   async checkStorageHealth() {
     await this.ensureBucket();
@@ -581,12 +580,8 @@ export class ImageStorageService {
   }
 
   private getS3Client() {
-    if (this.client) {
-      return this.client;
-    }
-
     const config = this.getS3Config();
-    this.client = new S3Client({
+    return new S3Client({
       region: config.region,
       endpoint: config.endpoint,
       forcePathStyle: true,
@@ -595,7 +590,5 @@ export class ImageStorageService {
         secretAccessKey: config.secretKey,
       },
     });
-
-    return this.client;
   }
 }
