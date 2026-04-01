@@ -64,8 +64,10 @@ export class PublicAuthController {
     );
     return {
       accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
       tokenType: authResponse.tokenType,
       expiresIn: authResponse.expiresIn,
+      refreshExpiresIn: authResponse.refreshExpiresIn,
       schoolSlug: authResponse.schoolSlug,
       csrfToken,
     };
@@ -90,8 +92,10 @@ export class PublicAuthController {
     );
     return {
       accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
       tokenType: authResponse.tokenType,
       expiresIn: authResponse.expiresIn,
+      refreshExpiresIn: authResponse.refreshExpiresIn,
       schoolSlug: authResponse.schoolSlug,
       csrfToken,
     };
@@ -114,8 +118,10 @@ export class PublicAuthController {
     );
     return {
       accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
       tokenType: authResponse.tokenType,
       expiresIn: authResponse.expiresIn,
+      refreshExpiresIn: authResponse.refreshExpiresIn,
       schoolSlug: authResponse.schoolSlug,
       csrfToken,
     };
@@ -133,10 +139,12 @@ export class PublicAuthController {
 
   @Post("refresh")
   async refresh(
+    @Body() body: { refreshToken?: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME] ?? null;
+    const refreshToken =
+      req.cookies?.[REFRESH_COOKIE_NAME] ?? body?.refreshToken ?? null;
     const authResponse = await this.authService.refreshSession(refreshToken);
     const csrfToken = setAuthCookies(
       res,
@@ -145,16 +153,23 @@ export class PublicAuthController {
     );
     return {
       accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
       tokenType: authResponse.tokenType,
       expiresIn: authResponse.expiresIn,
+      refreshExpiresIn: authResponse.refreshExpiresIn,
       schoolSlug: authResponse.schoolSlug,
       csrfToken,
     };
   }
 
   @Post("logout")
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies?.[REFRESH_COOKIE_NAME] ?? null;
+  async logout(
+    @Body() body: { refreshToken?: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken =
+      req.cookies?.[REFRESH_COOKIE_NAME] ?? body?.refreshToken ?? null;
     await this.authService.logout(refreshToken);
     clearAuthCookies(res, process.env.NODE_ENV === "production");
     return { success: true };
