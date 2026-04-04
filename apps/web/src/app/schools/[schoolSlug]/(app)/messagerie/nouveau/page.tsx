@@ -195,12 +195,14 @@ export default function SchoolNewMessagePage() {
     subject: string;
     body: string;
     recipientUserIds: string[];
+    attachments: File[];
   }) {
     await createSchoolMessage(schoolSlug, {
       subject: payload.subject,
       body: payload.body,
       recipientUserIds: payload.recipientUserIds,
       isDraft: false,
+      attachments: payload.attachments,
     });
     router.push(backUrl);
   }
@@ -209,12 +211,14 @@ export default function SchoolNewMessagePage() {
     subject: string;
     body: string;
     recipientUserIds: string[];
+    attachments: File[];
   }) {
     await createSchoolMessage(schoolSlug, {
       subject: payload.subject,
       body: payload.body,
       recipientUserIds: payload.recipientUserIds,
       isDraft: true,
+      attachments: [],
     });
   }
 

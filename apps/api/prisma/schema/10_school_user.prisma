@@ -38,6 +38,7 @@ model School {
   staffAssignments   SchoolStaffAssignment[]
   internalMessages   InternalMessage[]
   messageRecipients  InternalMessageRecipient[]
+  messageAttachments InternalMessageAttachment[]
   feedPosts          FeedPost[]
   feedComments       FeedComment[]
   feedLikes          FeedLike[]

@@ -93,11 +93,18 @@ describe("MessagingController", () => {
       body: "<p>Bonjour</p>",
       isDraft: false,
     };
-    await controller.create(user, "school-1", createPayload);
+    const attachment = {
+      originalname: "bulletin.pdf",
+      buffer: Buffer.from("pdf"),
+      mimetype: "application/pdf",
+      size: 512,
+    };
+    await controller.create(user, "school-1", createPayload, [attachment]);
     expect(messagingService.createMessage).toHaveBeenCalledWith(
       user,
       "school-1",
       createPayload,
+      [attachment],
     );
 
     const draftPayload = {
@@ -141,6 +148,32 @@ describe("MessagingController", () => {
       user,
       "school-1",
       "msg-1",
+    );
+  });
+
+  it("normalizes multipart string fields before delegating create", async () => {
+    await controller.create(
+      user,
+      "school-1",
+      {
+        subject: "Sujet",
+        body: "<p>Bonjour</p>",
+        recipientUserIds: '["u-2","u-3"]',
+        isDraft: "false",
+      },
+      [],
+    );
+
+    expect(messagingService.createMessage).toHaveBeenCalledWith(
+      user,
+      "school-1",
+      {
+        subject: "Sujet",
+        body: "<p>Bonjour</p>",
+        recipientUserIds: ["u-2", "u-3"],
+        isDraft: false,
+      },
+      [],
     );
   });
 });

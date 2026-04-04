@@ -15,6 +15,10 @@ describe("MessagingService", () => {
   const mailService = {
     sendInternalMessageNotification: jest.fn(),
   };
+  const mediaClientService = {
+    uploadImage: jest.fn(),
+    deleteImageByUrl: jest.fn(),
+  };
   const inlineMediaService = {
     syncEntityImages: jest.fn(),
     removeEntityImages: jest.fn(),
@@ -23,6 +27,7 @@ describe("MessagingService", () => {
   const service = new MessagingService(
     prisma as never,
     mailService as never,
+    mediaClientService as never,
     inlineMediaService as never,
   );
 
@@ -40,6 +45,8 @@ describe("MessagingService", () => {
     prisma.internalMessage.create.mockReset();
     prisma.internalMessage.findFirst.mockReset();
     mailService.sendInternalMessageNotification.mockReset();
+    mediaClientService.uploadImage.mockReset();
+    mediaClientService.deleteImageByUrl.mockReset();
     inlineMediaService.syncEntityImages.mockReset();
   });
 
@@ -120,6 +127,7 @@ describe("MessagingService", () => {
         lastName: "MBELE",
         email: "valery@example.com",
       },
+      attachments: [],
       recipients: [],
     });
 
@@ -142,6 +150,90 @@ describe("MessagingService", () => {
       expect.objectContaining({
         nextBodyHtml:
           '<p>Bonjour</p><a rel="noopener noreferrer" target="_blank">bad</a>',
+      }),
+    );
+  });
+
+  it("uploads and persists message attachments when sending", async () => {
+    prisma.internalMessage.create.mockResolvedValue({ id: "msg-1" });
+    prisma.internalMessage.findFirst.mockResolvedValue({
+      id: "msg-1",
+      schoolId: "school-1",
+      senderUserId: "user-1",
+      status: "SENT",
+      subject: "Sujet",
+      body: "<p>Bonjour</p>",
+      createdAt: new Date("2026-03-15T10:00:00.000Z"),
+      sentAt: new Date("2026-03-15T10:01:00.000Z"),
+      senderArchivedAt: null,
+      senderUser: {
+        id: "user-1",
+        firstName: "Valery",
+        lastName: "MBELE",
+        email: "valery@example.com",
+      },
+      attachments: [
+        {
+          id: "att-1",
+          fileName: "bulletin.pdf",
+          fileUrl: "https://cdn.example.com/bulletin.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 2048,
+        },
+      ],
+      recipients: [],
+    });
+    mediaClientService.uploadImage.mockResolvedValue({
+      url: "https://cdn.example.com/bulletin.pdf",
+      size: 2048,
+      mimeType: "application/pdf",
+      width: null,
+      height: null,
+    });
+
+    await service.createMessage(
+      baseUser,
+      "school-1",
+      {
+        recipientUserIds: [],
+        subject: " Sujet ",
+        body: "<p>Bonjour</p>",
+        isDraft: true,
+      },
+      [
+        {
+          originalname: "bulletin.pdf",
+          buffer: Buffer.from("pdf"),
+          mimetype: "application/pdf",
+          size: 2048,
+        },
+      ],
+    );
+
+    expect(mediaClientService.uploadImage).toHaveBeenCalledWith(
+      "messaging-attachment",
+      expect.objectContaining({
+        originalname: "bulletin.pdf",
+        mimetype: "application/pdf",
+      }),
+    );
+    expect(prisma.internalMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          attachments: {
+            createMany: {
+              data: [
+                {
+                  schoolId: "school-1",
+                  fileName: "bulletin.pdf",
+                  fileUrl: "https://cdn.example.com/bulletin.pdf",
+                  mimeType: "application/pdf",
+                  sizeBytes: 2048,
+                },
+              ],
+            },
+          },
+        }),
       }),
     );
   });

@@ -7,6 +7,7 @@ export type MessageAttachment = {
   fileName: string;
   sizeLabel: string;
   mimeType: string;
+  downloadUrl?: string;
 };
 
 export type MessagingMessage = {

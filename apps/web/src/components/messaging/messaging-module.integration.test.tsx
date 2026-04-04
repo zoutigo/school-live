@@ -183,6 +183,7 @@ function MessagingModuleHarness() {
     subject: string;
     body: string;
     recipientUserIds: string[];
+    attachments: File[];
   }) {
     const newMessage = createMessage({
       id: `sent-${messages.length + 1}`,
@@ -196,6 +197,12 @@ function MessagingModuleHarness() {
       bodyHtml: payload.body,
       body: [payload.body.replace(/<[^>]+>/g, " ").trim()],
       unread: false,
+      attachments: payload.attachments.map((attachment, index) => ({
+        id: `att-${index + 1}`,
+        fileName: attachment.name,
+        sizeLabel: `${Math.max(1, Math.round(attachment.size / 1024))} Ko`,
+        mimeType: attachment.type,
+      })),
     });
     setMessages((prev) => [newMessage, ...prev]);
     setFolder("sent");

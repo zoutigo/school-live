@@ -9,10 +9,11 @@ import {
   Post,
   Query,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
+import { FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
 import { Roles } from "../access/roles.decorator.js";
 import { RolesGuard } from "../access/roles.guard.js";
 import { SchoolScopeGuard } from "../access/school-scope.guard.js";
@@ -106,12 +107,31 @@ export class MessagingController {
   }
 
   @Post()
+  @UseInterceptors(
+    FilesInterceptor("attachments", 10, {
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+    }),
+  )
   create(
     @CurrentUser() user: AuthenticatedUser,
     @CurrentSchoolId() schoolId: string,
-    @Body() payload: CreateMessageDto,
+    @Body() payload: Record<string, unknown>,
+    @UploadedFiles()
+    attachments?: Array<{
+      originalname?: string;
+      buffer: Buffer;
+      mimetype: string;
+      size: number;
+    }>,
   ) {
-    return this.messagingService.createMessage(user, schoolId, payload);
+    return this.messagingService.createMessage(
+      user,
+      schoolId,
+      this.normalizeCreatePayload(payload),
+      attachments ?? [],
+    );
   }
 
   @Patch(":messageId/draft")
@@ -175,5 +195,92 @@ export class MessagingController {
     @Param("messageId") messageId: string,
   ) {
     return this.messagingService.deleteFromMailbox(user, schoolId, messageId);
+  }
+
+  private normalizeCreatePayload(payload: Record<string, unknown>) {
+    const subject = this.ensureStringField(payload.subject, "subject");
+    const body = this.ensureStringField(payload.body, "body");
+    const recipientUserIds = this.normalizeRecipientIds(
+      payload.recipientUserIds,
+    );
+    const isDraft = this.normalizeBoolean(payload.isDraft);
+
+    return {
+      subject,
+      body,
+      recipientUserIds,
+      ...(isDraft === undefined ? {} : { isDraft }),
+    } satisfies CreateMessageDto;
+  }
+
+  private ensureStringField(value: unknown, fieldName: string) {
+    if (typeof value !== "string") {
+      throw new BadRequestException(`Invalid ${fieldName}`);
+    }
+
+    return value;
+  }
+
+  private normalizeRecipientIds(value: unknown) {
+    if (value === undefined || value === null || value === "") {
+      return undefined;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((entry) => String(entry));
+    }
+
+    if (typeof value !== "string") {
+      throw new BadRequestException("Invalid recipientUserIds");
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+      return undefined;
+    }
+
+    if (normalized.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(normalized) as unknown;
+        if (Array.isArray(parsed)) {
+          return parsed.map((entry) => String(entry));
+        }
+      } catch {
+        throw new BadRequestException("Invalid recipientUserIds");
+      }
+    }
+
+    if (normalized.includes(",")) {
+      return normalized
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter((entry) => entry.length > 0);
+    }
+
+    return [normalized];
+  }
+
+  private normalizeBoolean(value: unknown) {
+    if (value === undefined || value === null || value === "") {
+      return undefined;
+    }
+
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (typeof value !== "string") {
+      throw new BadRequestException("Invalid isDraft");
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") {
+      return true;
+    }
+    if (normalized === "false" || normalized === "0") {
+      return false;
+    }
+
+    throw new BadRequestException("Invalid isDraft");
   }
 }

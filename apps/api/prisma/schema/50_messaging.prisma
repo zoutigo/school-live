@@ -12,6 +12,7 @@ model InternalMessage {
   school          School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   senderUser      User                  @relation("InternalMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade)
   recipients      InternalMessageRecipient[]
+  attachments     InternalMessageAttachment[]
 
   @@index([schoolId])
   @@index([senderUserId])
@@ -39,4 +40,21 @@ model InternalMessageRecipient {
   @@index([archivedAt])
   @@index([readAt])
   @@index([deletedAt])
+}
+
+model InternalMessageAttachment {
+  id         String          @id @default(cuid())
+  messageId   String
+  schoolId    String
+  fileName    String
+  fileUrl     String
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime       @default(now())
+  message      InternalMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  school       School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([schoolId])
+  @@index([createdAt])
 }
