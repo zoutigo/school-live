@@ -5,10 +5,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InlineMediaEntityType, type Prisma } from "@prisma/client";
+import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { MailService } from "../mail/mail.service.js";
+import { MediaClientService } from "../media-client/media-client.service.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { sanitizeRichTextHtml } from "../common/rich-text-sanitizer.js";
 import type { ArchiveMessageDto } from "./dto/archive-message.dto.js";
 import type { CreateMessageDto } from "./dto/create-message.dto.js";
@@ -17,12 +18,19 @@ import type { MarkMessageReadDto } from "./dto/mark-message-read.dto.js";
 import type { UpdateDraftMessageDto } from "./dto/update-draft-message.dto.js";
 
 type MessageFolder = "inbox" | "sent" | "drafts" | "archive";
+type UploadedAttachment = {
+  originalname?: string;
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+};
 
 @Injectable()
 export class MessagingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly mediaClientService: MediaClientService,
     private readonly inlineMediaService: InlineMediaService,
   ) {}
 
@@ -116,6 +124,16 @@ export class MessagingService {
                     email: true,
                   },
                 },
+                attachments: {
+                  orderBy: [{ createdAt: "asc" }],
+                  select: {
+                    id: true,
+                    fileName: true,
+                    fileUrl: true,
+                    mimeType: true,
+                    sizeBytes: true,
+                  },
+                },
                 _count: {
                   select: {
                     recipients: true,
@@ -173,6 +191,16 @@ export class MessagingService {
               recipients: true,
             },
           },
+          attachments: {
+            orderBy: [{ createdAt: "asc" }],
+            select: {
+              id: true,
+              fileName: true,
+              fileUrl: true,
+              mimeType: true,
+              sizeBytes: true,
+            },
+          },
         },
       }),
     ]);
@@ -189,6 +217,9 @@ export class MessagingService {
         unread: false,
         sender: null,
         recipientsCount: row._count.recipients,
+        attachments: row.attachments.map((attachment) =>
+          this.mapAttachment(attachment),
+        ),
       })),
       meta: {
         page,
@@ -247,6 +278,16 @@ export class MessagingService {
             email: true,
           },
         },
+        attachments: {
+          orderBy: [{ createdAt: "asc" }],
+          select: {
+            id: true,
+            fileName: true,
+            fileUrl: true,
+            mimeType: true,
+            sizeBytes: true,
+          },
+        },
         recipients: {
           orderBy: [{ createdAt: "asc" }],
           select: {
@@ -295,6 +336,9 @@ export class MessagingService {
       sentAt: message.sentAt,
       senderArchivedAt: message.senderArchivedAt,
       isSender,
+      attachments: message.attachments.map((attachment) =>
+        this.mapAttachment(attachment),
+      ),
       recipientState: recipientRow
         ? {
             readAt: recipientRow.readAt,
@@ -321,6 +365,7 @@ export class MessagingService {
     user: AuthenticatedUser,
     schoolId: string,
     payload: CreateMessageDto,
+    attachments: UploadedAttachment[] = [],
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const recipientIds = this.normalizeRecipientIds(payload.recipientUserIds);
@@ -335,29 +380,56 @@ export class MessagingService {
       await this.ensureRecipientsInSchool(effectiveSchoolId, recipientIds);
     }
 
-    const created = await this.prisma.internalMessage.create({
-      data: {
-        schoolId: effectiveSchoolId,
-        senderUserId: user.id,
-        status: isDraft ? "DRAFT" : "SENT",
-        subject: payload.subject.trim(),
-        body: sanitizedBody,
-        sentAt: isDraft ? null : new Date(),
-        recipients: recipientIds.length
-          ? {
-              createMany: {
-                data: recipientIds.map((recipientUserId) => ({
-                  schoolId: effectiveSchoolId,
-                  recipientUserId,
-                })),
-              },
-            }
-          : undefined,
-      },
-      select: {
-        id: true,
-      },
-    });
+    const uploadedAttachments = attachments.length
+      ? await this.uploadMessageAttachments(attachments)
+      : [];
+
+    let created: { id: string };
+    try {
+      created = await this.prisma.internalMessage.create({
+        data: {
+          schoolId: effectiveSchoolId,
+          senderUserId: user.id,
+          status: isDraft ? "DRAFT" : "SENT",
+          subject: payload.subject.trim(),
+          body: sanitizedBody,
+          sentAt: isDraft ? null : new Date(),
+          recipients: recipientIds.length
+            ? {
+                createMany: {
+                  data: recipientIds.map((recipientUserId) => ({
+                    schoolId: effectiveSchoolId,
+                    recipientUserId,
+                  })),
+                },
+              }
+            : undefined,
+          attachments: uploadedAttachments.length
+            ? {
+                createMany: {
+                  data: uploadedAttachments.map((attachment) => ({
+                    schoolId: effectiveSchoolId,
+                    fileName: attachment.fileName,
+                    fileUrl: attachment.fileUrl,
+                    mimeType: attachment.mimeType,
+                    sizeBytes: attachment.sizeBytes,
+                  })),
+                },
+              }
+            : undefined,
+        },
+        select: {
+          id: true,
+        },
+      });
+    } catch (error) {
+      await Promise.allSettled(
+        uploadedAttachments.map((attachment) =>
+          this.mediaClientService.deleteImageByUrl(attachment.fileUrl),
+        ),
+      );
+      throw error;
+    }
 
     await this.inlineMediaService.syncEntityImages({
       schoolId: effectiveSchoolId,
@@ -684,6 +756,13 @@ export class MessagingService {
         lastName: string;
         email: string;
       };
+      attachments: Array<{
+        id: string;
+        fileName: string;
+        fileUrl: string;
+        mimeType: string;
+        sizeBytes: number;
+      }>;
       _count: { recipients: number };
     };
   }) {
@@ -698,6 +777,9 @@ export class MessagingService {
       unread: !row.readAt,
       sender: row.message.senderUser,
       recipientsCount: row.message._count.recipients,
+      attachments: row.message.attachments.map((attachment) =>
+        this.mapAttachment(attachment),
+      ),
       mailboxEntryId: row.id,
     };
   }
@@ -740,6 +822,16 @@ export class MessagingService {
                   email: true,
                 },
               },
+              attachments: {
+                orderBy: [{ createdAt: "asc" }],
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileUrl: true,
+                  mimeType: true,
+                  sizeBytes: true,
+                },
+              },
               _count: {
                 select: {
                   recipients: true,
@@ -769,6 +861,16 @@ export class MessagingService {
               recipients: true,
             },
           },
+          attachments: {
+            orderBy: [{ createdAt: "asc" }],
+            select: {
+              id: true,
+              fileName: true,
+              fileUrl: true,
+              mimeType: true,
+              sizeBytes: true,
+            },
+          },
         },
       }),
     ]);
@@ -786,6 +888,9 @@ export class MessagingService {
         unread: false,
         sender: null,
         recipientsCount: row._count.recipients,
+        attachments: row.attachments.map((attachment) =>
+          this.mapAttachment(attachment),
+        ),
       })),
     ]
       .filter((entry) => {
@@ -930,6 +1035,47 @@ export class MessagingService {
       // The message is already persisted. Notification failures should not break business flow.
       // This no-op block intentionally swallows downstream mail failures.
     }
+  }
+
+  private async uploadMessageAttachments(attachments: UploadedAttachment[]) {
+    const uploads = await Promise.all(
+      attachments.map(async (attachment) => {
+        const uploaded = await this.mediaClientService.uploadImage(
+          "messaging-attachment",
+          attachment,
+        );
+
+        return {
+          fileName: this.normalizeAttachmentFileName(attachment.originalname),
+          fileUrl: uploaded.url,
+          mimeType: uploaded.mimeType,
+          sizeBytes: uploaded.size,
+        };
+      }),
+    );
+
+    return uploads;
+  }
+
+  private normalizeAttachmentFileName(fileName?: string) {
+    const normalized = fileName?.trim();
+    return normalized && normalized.length > 0 ? normalized : "piece-jointe";
+  }
+
+  private mapAttachment(attachment: {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+    mimeType: string;
+    sizeBytes: number;
+  }) {
+    return {
+      id: attachment.id,
+      fileName: attachment.fileName,
+      url: attachment.fileUrl,
+      mimeType: attachment.mimeType,
+      sizeBytes: attachment.sizeBytes,
+    };
   }
 
   private toPreview(body: string) {

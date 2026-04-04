@@ -63,11 +63,13 @@ type Props = {
     subject: string;
     body: string;
     recipientUserIds: string[];
+    attachments: File[];
   }) => Promise<void>;
   onSaveDraft?: (payload: {
     subject: string;
     body: string;
     recipientUserIds: string[];
+    attachments: File[];
   }) => Promise<void>;
   onUploadInlineImage?: (file: File) => Promise<string>;
 };
@@ -306,6 +308,7 @@ export function MessagingComposer({
         subject: subject.trim(),
         body: editorHtml,
         recipientUserIds,
+        attachments,
       });
       setInfo("Message envoye.");
     } catch {
@@ -338,6 +341,7 @@ export function MessagingComposer({
         subject: subject.trim() || "Brouillon sans objet",
         body: editorHtml,
         recipientUserIds,
+        attachments,
       });
       setLastSavedDraftSnapshot(currentDraftSnapshot);
       setInfo("Brouillon enregistre.");

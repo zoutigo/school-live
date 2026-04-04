@@ -24,6 +24,15 @@ export function MessagingAttachmentPreviewModal({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => {
+                if (attachment.downloadUrl) {
+                  window.open(
+                    attachment.downloadUrl,
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
+                }
+              }}
               className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-1.5 text-sm text-text-primary transition hover:bg-primary/10"
             >
               <Download className="h-4 w-4" />

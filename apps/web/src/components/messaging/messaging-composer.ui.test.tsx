@@ -78,6 +78,7 @@ describe("MessagingComposer", () => {
       recipientUserIds: ["u-anne"],
       subject: "Nouveau message test",
       body: expect.stringContaining("Contenu du message"),
+      attachments: [],
     });
     expect(screen.getByText("Message envoye.")).toBeInTheDocument();
   });
@@ -154,6 +155,12 @@ describe("MessagingComposer", () => {
     );
 
     await waitFor(() => expect(onSaveDraft).toHaveBeenCalledTimes(1));
+    expect(onSaveDraft).toHaveBeenCalledWith({
+      recipientUserIds: ["u-anne"],
+      subject: "Brouillon",
+      body: expect.stringContaining("Corps brouillon"),
+      attachments: [],
+    });
     expect(screen.getByText("Brouillon enregistre.")).toBeInTheDocument();
   });
 

@@ -11,6 +11,14 @@ type UserSummary = {
   email: string;
 };
 
+type AttachmentResponse = {
+  id: string;
+  fileName: string;
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+};
+
 type MessageListItemResponse = {
   id: string;
   folder: FolderKey;
@@ -19,6 +27,7 @@ type MessageListItemResponse = {
   createdAt: string;
   unread: boolean;
   sender: UserSummary | null;
+  attachments?: AttachmentResponse[];
 };
 
 type MessageDetailResponse = {
@@ -29,6 +38,7 @@ type MessageDetailResponse = {
   createdAt: string;
   sentAt: string | null;
   sender: UserSummary | null;
+  attachments?: AttachmentResponse[];
 };
 
 type ListMessagesResponse = {
@@ -46,6 +56,7 @@ type CreateMessagePayload = {
   body: string;
   recipientUserIds: string[];
   isDraft?: boolean;
+  attachments?: File[];
 };
 
 type ListMessagesParams = {
@@ -88,6 +99,28 @@ function splitBodyLines(body: string) {
   return plain.length > 0 ? plain : ["-"];
 }
 
+function toSizeLabel(sizeBytes: number) {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} o`;
+  }
+  if (sizeBytes < 1024 * 1024) {
+    return `${Math.round(sizeBytes / 102.4) / 10} Ko`;
+  }
+  return `${Math.round(sizeBytes / (1024 * 102.4)) / 10} Mo`;
+}
+
+function mapAttachmentToUi(item: AttachmentResponse) {
+  return {
+    id: item.id,
+    fileName: item.fileName,
+    sizeLabel: toSizeLabel(item.sizeBytes),
+    mimeType: item.mimeType,
+    downloadUrl: item.url.startsWith("http")
+      ? item.url
+      : `${API_ORIGIN}${item.url}`,
+  };
+}
+
 function mapListItemToUi(item: MessageListItemResponse): MessagingMessage {
   return {
     id: item.id,
@@ -99,7 +132,7 @@ function mapListItemToUi(item: MessageListItemResponse): MessagingMessage {
     createdAt: toDisplayDate(item.createdAt),
     unread: item.unread,
     body: [item.preview || "-"],
-    attachments: [],
+    attachments: (item.attachments ?? []).map(mapAttachmentToUi),
   };
 }
 
@@ -115,7 +148,7 @@ function mapDetailToUi(item: MessageDetailResponse): MessagingMessage {
     unread: false,
     body: splitBodyLines(item.body),
     bodyHtml: item.body,
-    attachments: [],
+    attachments: (item.attachments ?? []).map(mapAttachmentToUi),
   };
 }
 
@@ -198,10 +231,23 @@ export async function createSchoolMessage(
     method: "POST",
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
       "X-CSRF-Token": csrfToken,
     },
-    body: JSON.stringify(payload),
+    body: (() => {
+      const formData = new FormData();
+      formData.append("subject", payload.subject);
+      formData.append("body", payload.body);
+      for (const recipientUserId of payload.recipientUserIds) {
+        formData.append("recipientUserIds", recipientUserId);
+      }
+      if (payload.isDraft !== undefined) {
+        formData.append("isDraft", String(payload.isDraft));
+      }
+      for (const attachment of payload.attachments ?? []) {
+        formData.append("attachments", attachment);
+      }
+      return formData;
+    })(),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);

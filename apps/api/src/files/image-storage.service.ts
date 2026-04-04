@@ -24,7 +24,8 @@ export type UploadKind =
   | "school-logo"
   | "user-avatar"
   | "messaging-inline-image"
-  | "evaluation-attachment";
+  | "evaluation-attachment"
+  | "messaging-attachment";
 type UploadedMediaFile = {
   buffer: Buffer;
   mimetype: string;
@@ -85,8 +86,8 @@ export class ImageStorageService {
       throw new BadRequestException("Fichier image manquant");
     }
 
-    if (kind === "evaluation-attachment") {
-      return this.storeAttachment(file);
+    if (kind === "evaluation-attachment" || kind === "messaging-attachment") {
+      return this.storeAttachment(kind, file);
     }
 
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
@@ -130,7 +131,10 @@ export class ImageStorageService {
     };
   }
 
-  async storeAttachment(file?: UploadedMediaFile) {
+  async storeAttachment(
+    kind: "evaluation-attachment" | "messaging-attachment",
+    file?: UploadedMediaFile,
+  ) {
     if (!file) {
       throw new BadRequestException("Fichier piece jointe manquant");
     }
@@ -147,7 +151,10 @@ export class ImageStorageService {
 
     const extension = this.extensionFromMimeType(file.mimetype);
     const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
-    const objectKey = `evaluations/attachments/${fileName}`;
+    const objectKey =
+      kind === "messaging-attachment"
+        ? `messaging/attachments/${fileName}`
+        : `evaluations/attachments/${fileName}`;
     await this.ensureBucket();
     await this.putObject(objectKey, file.buffer, file.mimetype);
 
