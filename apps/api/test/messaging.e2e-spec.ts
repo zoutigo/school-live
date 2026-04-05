@@ -1,9 +1,10 @@
 import "reflect-metadata";
-import { ValidationPipe } from "@nestjs/common";
+import { BadGatewayException, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
 import { AppModule } from "../src/app.module.js";
+import { MediaClientService } from "../src/media-client/media-client.service.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 
 type JsonObject = Record<string, unknown>;
@@ -21,6 +22,7 @@ jest.setTimeout(30_000);
 describe("Messaging API e2e", () => {
   let app: Awaited<ReturnType<typeof NestFactory.create>>;
   let prisma: PrismaService;
+  let mediaClientService: MediaClientService;
   let baseUrl = "";
 
   const runId = randomSuffix();
@@ -61,6 +63,8 @@ describe("Messaging API e2e", () => {
   }
 
   beforeAll(async () => {
+    process.env.MEDIA_PUBLIC_BASE_URL = "https://cdn.example.test";
+
     app = await NestFactory.create(AppModule, { logger: false });
     app.setGlobalPrefix("api");
     app.use(cookieParser());
@@ -75,6 +79,7 @@ describe("Messaging API e2e", () => {
 
     baseUrl = await app.getUrl();
     prisma = app.get(PrismaService);
+    mediaClientService = app.get(MediaClientService);
 
     const passwordHash = await bcrypt.hash(password, 10);
 
@@ -150,6 +155,12 @@ describe("Messaging API e2e", () => {
     if (app) {
       await app.close();
     }
+
+    delete process.env.MEDIA_PUBLIC_BASE_URL;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("covers messaging HTTP lifecycle (create/list/read/archive/delete)", async () => {
@@ -310,5 +321,231 @@ describe("Messaging API e2e", () => {
 
     expect(senderDetails.response.status).toBe(200);
     expect(senderDetails.body?.id).toBe(createdMessageId);
+  });
+
+  it("uploads inline images through multipart endpoint and persists temp media metadata", async () => {
+    const uploadSpy = jest
+      .spyOn(mediaClientService, "uploadImage")
+      .mockResolvedValue({
+        url: `https://cdn.example.test/messaging-inline-${runId}.webp`,
+        size: 2048,
+        width: 1200,
+        height: 800,
+        mimeType: "image/webp",
+      });
+
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new Blob([Buffer.from("fake-image-binary")], { type: "image/png" }),
+      "inline.png",
+    );
+
+    const response = await api(
+      `/api/schools/${schoolSlug}/messages/uploads/inline-image`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${senderToken}`,
+        },
+        body: formData,
+      },
+    );
+
+    const body = (await response.json()) as JsonObject;
+
+    expect(response.status).toBe(201);
+    expect(uploadSpy).toHaveBeenCalledWith(
+      "messaging-inline-image",
+      expect.objectContaining({
+        mimetype: "image/png",
+      }),
+    );
+    expect(body).toMatchObject({
+      url: `https://cdn.example.test/messaging-inline-${runId}.webp`,
+      mimeType: "image/webp",
+    });
+
+    const tempAsset = await prisma.inlineMediaAsset.findUnique({
+      where: { url: `https://cdn.example.test/messaging-inline-${runId}.webp` },
+      select: {
+        schoolId: true,
+        uploadedByUserId: true,
+        scope: true,
+        status: true,
+      },
+    });
+
+    expect(tempAsset).toEqual({
+      schoolId,
+      uploadedByUserId: senderUserId,
+      scope: "MESSAGING",
+      status: "TEMP",
+    });
+  });
+
+  it("rejects inline image upload when file is missing", async () => {
+    const response = await api(
+      `/api/schools/${schoolSlug}/messages/uploads/inline-image`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${senderToken}`,
+        },
+        body: new FormData(),
+      },
+    );
+
+    const body = (await response.json()) as JsonObject;
+
+    expect(response.status).toBe(400);
+    expect(String(body.message)).toBe("Fichier image manquant");
+  });
+
+  it("surfaces media service failures for inline image uploads", async () => {
+    jest
+      .spyOn(mediaClientService, "uploadImage")
+      .mockRejectedValue(new BadGatewayException("Type upload non supporte"));
+
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new Blob([Buffer.from("bad-image")], { type: "image/png" }),
+      "inline.png",
+    );
+
+    const response = await api(
+      `/api/schools/${schoolSlug}/messages/uploads/inline-image`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${senderToken}`,
+        },
+        body: formData,
+      },
+    );
+
+    const body = (await response.json()) as JsonObject;
+
+    expect(response.status).toBe(502);
+    expect(String(body.message)).toBe("Type upload non supporte");
+  });
+
+  it("creates a message from multipart/form-data with attachment metadata", async () => {
+    const attachmentUrl = `https://cdn.example.test/messaging-attachment-${runId}.pdf`;
+    const uploadSpy = jest
+      .spyOn(mediaClientService, "uploadImage")
+      .mockResolvedValue({
+        url: attachmentUrl,
+        size: 4096,
+        width: null,
+        height: null,
+        mimeType: "application/pdf",
+      });
+
+    const formData = new FormData();
+    formData.append("subject", "E2E multipart attachment");
+    formData.append("body", "<p>Bonjour avec piece jointe</p>");
+    formData.append("recipientUserIds", recipientUserId);
+    formData.append(
+      "attachments",
+      new Blob([Buffer.from("fake-pdf")], { type: "application/pdf" }),
+      "bulletin.pdf",
+    );
+
+    const response = await api(`/api/schools/${schoolSlug}/messages`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${senderToken}`,
+      },
+      body: formData,
+    });
+
+    const body = (await response.json()) as JsonObject;
+
+    expect(response.status).toBe(201);
+    expect(uploadSpy).toHaveBeenCalledWith(
+      "messaging-attachment",
+      expect.objectContaining({
+        originalname: "bulletin.pdf",
+        mimetype: "application/pdf",
+      }),
+    );
+    expect(Array.isArray(body.attachments)).toBe(true);
+    expect(body.attachments).toEqual([
+      expect.objectContaining({
+        fileName: "bulletin.pdf",
+        url: attachmentUrl,
+        mimeType: "application/pdf",
+        sizeBytes: 4096,
+      }),
+    ]);
+
+    const persisted = await prisma.internalMessageAttachment.findFirst({
+      where: {
+        messageId: String(body.id),
+      },
+      select: {
+        fileName: true,
+        fileUrl: true,
+        mimeType: true,
+        sizeBytes: true,
+      },
+    });
+
+    expect(persisted).toEqual({
+      fileName: "bulletin.pdf",
+      fileUrl: attachmentUrl,
+      mimeType: "application/pdf",
+      sizeBytes: 4096,
+    });
+  });
+
+  it("returns multipart validation errors before persisting a message", async () => {
+    const formData = new FormData();
+    formData.append("subject", "Sans destinataire");
+    formData.append("body", "<p>Bonjour</p>");
+
+    const response = await api(`/api/schools/${schoolSlug}/messages`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${senderToken}`,
+      },
+      body: formData,
+    });
+
+    const body = (await response.json()) as JsonObject;
+
+    expect(response.status).toBe(400);
+    expect(String(body.message)).toBe("At least one recipient is required");
+  });
+
+  it("surfaces attachment upload failures from the media service", async () => {
+    jest
+      .spyOn(mediaClientService, "uploadImage")
+      .mockRejectedValue(new BadGatewayException("Type upload non supporte"));
+
+    const formData = new FormData();
+    formData.append("subject", "Multipart failure");
+    formData.append("body", "<p>Bonjour</p>");
+    formData.append("recipientUserIds", recipientUserId);
+    formData.append(
+      "attachments",
+      new Blob([Buffer.from("bad-pdf")], { type: "application/pdf" }),
+      "bulletin.pdf",
+    );
+
+    const response = await api(`/api/schools/${schoolSlug}/messages`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${senderToken}`,
+      },
+      body: formData,
+    });
+
+    const body = (await response.json()) as JsonObject;
+
+    expect(response.status).toBe(502);
+    expect(String(body.message)).toBe("Type upload non supporte");
   });
 });
