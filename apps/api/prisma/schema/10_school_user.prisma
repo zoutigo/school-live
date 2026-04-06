@@ -42,6 +42,7 @@ model School {
   feedPosts          FeedPost[]
   feedComments       FeedComment[]
   feedLikes          FeedLike[]
+  feedPollVotes      FeedPollVote[]
   activationCodes    ActivationCode[]
   authAuditLogs      AuthAuditLog[]
   timetableSlots     ClassTimetableSlot[]
@@ -98,6 +99,7 @@ model User {
   feedPosts          FeedPost[]                @relation("FeedPostAuthor")
   feedComments       FeedComment[]             @relation("FeedCommentAuthor")
   feedLikes          FeedLike[]                @relation("FeedLikeUser")
+  feedPollVotes      FeedPollVote[]            @relation("FeedPollVoteUser")
   referentOfClasses  Class[]                   @relation("ClassReferentTeacher")
   timetableSlotsAsTeacher ClassTimetableSlot[] @relation("ClassTimetableSlotTeacher")
   timetableSlotsCreated ClassTimetableSlot[]   @relation("ClassTimetableSlotCreatedBy")

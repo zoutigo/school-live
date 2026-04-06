@@ -235,6 +235,32 @@ export async function addFeedComment(
   };
 }
 
+export async function voteFeedPoll(
+  schoolSlug: string,
+  postId: string,
+  optionId: string,
+) {
+  const response = await fetch(
+    `${API_URL}/schools/${schoolSlug}/feed/${postId}/polls/${optionId}/vote`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        ...csrfHeaders(),
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("FEED_POLL_VOTE_FAILED");
+  }
+
+  return (await response.json()) as {
+    votedOptionId: string;
+    options: Array<{ id: string; label: string; votes: number }>;
+  };
+}
+
 export async function uploadFeedInlineImage(schoolSlug: string, file: File) {
   const formData = new FormData();
   formData.append("file", file);

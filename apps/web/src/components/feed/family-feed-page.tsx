@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -41,6 +42,7 @@ import {
   toggleFeedLike,
   updateFeedPost,
   uploadFeedInlineImage,
+  voteFeedPoll,
 } from "./feed-api";
 import { isFeedFormValid } from "./feed-validation";
 import type { FeedFilter, FeedPost } from "./types";
@@ -749,7 +751,30 @@ export function FamilyFeedPage({
     }
   }
 
-  function vote(postId: string, optionId: string) {
+  async function vote(postId: string, optionId: string) {
+    try {
+      const result = await voteFeedPoll(schoolSlug, postId, optionId);
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId || post.type !== "POLL" || !post.poll) {
+            return post;
+          }
+
+          return {
+            ...post,
+            poll: {
+              ...post.poll,
+              votedOptionId: result.votedOptionId,
+              options: result.options,
+            },
+          };
+        }),
+      );
+      return;
+    } catch {
+      setInfo("Vote local uniquement (API indisponible).");
+    }
+
     setPosts((prev) =>
       prev.map((post) => {
         if (post.id !== postId || post.type !== "POLL" || !post.poll) {
@@ -1292,12 +1317,6 @@ export function FamilyFeedPage({
                 </p>
               </div>
               <div className="inline-flex items-center gap-2">
-                <Badge
-                  variant="neutral"
-                  className="border-border text-text-secondary"
-                >
-                  {post.audience.label}
-                </Badge>
                 {promotedFeaturedIds.has(post.id) ? (
                   <Badge
                     variant="neutral"

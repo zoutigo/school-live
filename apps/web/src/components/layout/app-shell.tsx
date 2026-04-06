@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { AppHeader } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import {
   extractAvailableRoles,
   isPlatformRole,
@@ -39,9 +41,12 @@ type Props = {
 };
 
 export function AppShell({ schoolSlug, schoolName, children }: Props) {
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [headerHidden, setHeaderHidden] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const [schoolBranding, setSchoolBranding] = useState<{
     name: string;
     logoUrl?: string | null;
@@ -223,52 +228,95 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
   const userDisplayName =
     `${me?.firstName ?? ""} ${me?.lastName ?? ""}`.trim() || "Utilisateur";
 
+  async function onLogout() {
+    setLogoutLoading(true);
+    try {
+      const csrfToken = getCsrfTokenCookie();
+
+      await fetch(`${API_URL}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: csrfToken ? { "X-CSRF-Token": csrfToken } : undefined,
+      });
+    } finally {
+      setLogoutLoading(false);
+      setLogoutConfirmOpen(false);
+      setMobileOpen(false);
+      router.push("/");
+    }
+  }
+
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <AppHeader
-        schoolName={schoolContextName}
-        schoolLogoUrl={schoolContextLogoUrl}
-        isSchoolContext={Boolean(activeSchoolSlug)}
-        role={role}
-        userInitials={userInitials}
-        userDisplayName={userDisplayName}
-        onToggleMenu={() => setMobileOpen((prev) => !prev)}
-        hidden={headerHidden && !mobileOpen}
-      />
+    <>
+      <div className="flex h-screen flex-col bg-background">
+        <AppHeader
+          schoolName={schoolContextName}
+          schoolLogoUrl={schoolContextLogoUrl}
+          isSchoolContext={Boolean(activeSchoolSlug)}
+          role={role}
+          userInitials={userInitials}
+          userDisplayName={userDisplayName}
+          onToggleMenu={() => setMobileOpen((prev) => !prev)}
+          onLogoutClick={() => setLogoutConfirmOpen(true)}
+          hidden={headerHidden && !mobileOpen}
+        />
 
-      <div className="relative flex min-h-0 flex-1">
-        <div className="hidden md:block">
-          <AppSidebar schoolSlug={activeSchoolSlug} role={role} />
-        </div>
-
-        {mobileOpen ? (
-          <div
-            className="absolute inset-0 z-20 flex md:hidden"
-            role="dialog"
-            aria-modal="true"
-          >
-            <button
-              type="button"
-              aria-label="Fermer le menu"
-              className="h-full flex-1 bg-text-primary/20"
-              onClick={() => setMobileOpen(false)}
-            />
+        <div className="relative flex min-h-0 flex-1">
+          <div className="hidden md:block">
             <AppSidebar
               schoolSlug={activeSchoolSlug}
               role={role}
-              onNavigate={() => setMobileOpen(false)}
+              onLogoutClick={() => setLogoutConfirmOpen(true)}
             />
           </div>
-        ) : null}
 
-        <main
-          ref={mainRef}
-          data-testid="app-shell-main"
-          className="site-main-gutter site-scroll-frame min-w-0 flex-1 overflow-y-auto bg-background"
-        >
-          {children}
-        </main>
+          {mobileOpen ? (
+            <div
+              className="absolute inset-0 z-20 flex md:hidden"
+              role="dialog"
+              aria-modal="true"
+            >
+              <button
+                type="button"
+                aria-label="Fermer le menu"
+                className="h-full flex-1 bg-text-primary/20"
+                onClick={() => setMobileOpen(false)}
+              />
+              <AppSidebar
+                schoolSlug={activeSchoolSlug}
+                role={role}
+                onNavigate={() => setMobileOpen(false)}
+                onLogoutClick={() => setLogoutConfirmOpen(true)}
+              />
+            </div>
+          ) : null}
+
+          <main
+            ref={mainRef}
+            data-testid="app-shell-main"
+            className="site-main-gutter site-scroll-frame min-w-0 flex-1 overflow-y-auto bg-background"
+          >
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+
+      <ConfirmDialog
+        open={logoutConfirmOpen}
+        title="Confirmer la deconnexion"
+        message="Voulez-vous vraiment vous deconnecter ?"
+        confirmLabel="Se deconnecter"
+        cancelLabel="Annuler"
+        loading={logoutLoading}
+        onCancel={() => {
+          if (!logoutLoading) {
+            setLogoutConfirmOpen(false);
+          }
+        }}
+        onConfirm={() => {
+          void onLogout();
+        }}
+      />
+    </>
   );
 }
