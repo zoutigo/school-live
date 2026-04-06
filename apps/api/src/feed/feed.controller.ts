@@ -133,4 +133,14 @@ export class FeedController {
   ) {
     return this.feedService.addComment(user, schoolId, postId, payload);
   }
+
+  @Post(":postId/polls/:optionId/vote")
+  votePoll(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Param("postId") postId: string,
+    @Param("optionId") optionId: string,
+  ) {
+    return this.feedService.votePoll(user, schoolId, postId, optionId);
+  }
 }

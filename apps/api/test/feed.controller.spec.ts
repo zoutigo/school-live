@@ -9,6 +9,7 @@ describe("FeedController", () => {
     deletePost: jest.fn(),
     toggleLike: jest.fn(),
     addComment: jest.fn(),
+    votePoll: jest.fn(),
   };
 
   const mediaClientService = {
@@ -65,5 +66,31 @@ describe("FeedController", () => {
     await expect(
       controller.uploadInlineImage(user, "school-1", undefined),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("delegates likes and comments to service", async () => {
+    await controller.toggleLike(user, "school-1", "post-1");
+    expect(feedService.toggleLike).toHaveBeenCalledWith(
+      user,
+      "school-1",
+      "post-1",
+    );
+
+    const payload = { text: "Merci pour l'information" };
+    await controller.comment(user, "school-1", "post-1", payload);
+    expect(feedService.addComment).toHaveBeenCalledWith(
+      user,
+      "school-1",
+      "post-1",
+      payload,
+    );
+
+    await controller.votePoll(user, "school-1", "post-1", "option-1");
+    expect(feedService.votePoll).toHaveBeenCalledWith(
+      user,
+      "school-1",
+      "post-1",
+      "option-1",
+    );
   });
 });

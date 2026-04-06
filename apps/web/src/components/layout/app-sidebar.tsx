@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Home,
   LayoutDashboard,
+  LogOut,
   MessageSquare,
   School,
   Settings,
@@ -31,6 +32,7 @@ type SidebarProps = {
   schoolSlug?: string | null;
   role: Role;
   onNavigate?: () => void;
+  onLogoutClick?: () => void;
 };
 
 type NavItem = {
@@ -501,7 +503,12 @@ function buildTeacherClassItems(
   ];
 }
 
-export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
+export function AppSidebar({
+  schoolSlug,
+  role,
+  onNavigate,
+  onLogoutClick,
+}: SidebarProps) {
   const pathname = usePathname();
   const items = buildItems(role, schoolSlug);
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
@@ -722,7 +729,7 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
       : "bg-primary-dark/80 text-surface";
 
   return (
-    <aside className="group h-full w-[236px] shrink-0 bg-gradient-to-b from-sidebar-bg via-primary to-[#083a64] px-2 py-4 text-surface shadow-[10px_0_30px_rgba(8,38,66,0.12)] transition-all duration-300 md:w-[72px] md:hover:w-[236px] md:px-3">
+    <aside className="group flex h-full w-[236px] shrink-0 flex-col bg-gradient-to-b from-sidebar-bg via-primary to-[#083a64] px-2 py-4 text-surface shadow-[10px_0_30px_rgba(8,38,66,0.12)] transition-all duration-300 md:w-[72px] md:hover:w-[236px] md:px-3">
       {isFamilySpace ? (
         <div className="mb-4 rounded-[18px] border border-white/10 bg-white/10 px-3 py-2 text-center font-heading text-xs font-bold tracking-wide text-surface backdrop-blur">
           <div className="flex items-center justify-center md:justify-start">
@@ -733,7 +740,8 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
           </div>
         </div>
       ) : null}
-      {role === "TEACHER" ? (
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {role === "TEACHER" ? (
         <div className="grid gap-3">
           <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
             <button
@@ -892,7 +900,7 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
             </Link>
           ) : null}
         </div>
-      ) : role !== "PARENT" ? (
+        ) : role !== "PARENT" ? (
         <nav className="flex flex-col gap-1" aria-label="Navigation principale">
           {items.map((item) => {
             const active = item.matchPrefix
@@ -931,7 +939,7 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
             );
           })}
         </nav>
-      ) : (
+        ) : (
         <div className="grid gap-3">
           <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
             <button
@@ -1074,7 +1082,32 @@ export function AppSidebar({ schoolSlug, role, onNavigate }: SidebarProps) {
             );
           })}
         </div>
-      )}
+        )}
+      </div>
+
+      <div className="mt-4 border-t border-white/10 pt-4">
+        <button
+          type="button"
+          aria-label="Se deconnecter"
+          data-testid="sidebar-logout-button"
+          onClick={onLogoutClick}
+          className={`flex w-full items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+            false,
+          )}`}
+        >
+          <span
+            aria-hidden="true"
+            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+              false,
+            )}`}
+          >
+            <LogOut className="h-4 w-4" />
+          </span>
+          <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+            Se deconnecter
+          </span>
+        </button>
+      </div>
     </aside>
   );
 }

@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, Menu } from "lucide-react";
 import { Badge } from "../ui/badge";
-import { ConfirmDialog } from "../ui/confirm-dialog";
-import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import type { Role } from "../../lib/role-view";
 import { useAppShellUiStore } from "./app-shell-ui-store";
 
@@ -17,6 +15,7 @@ type Props = {
   userInitials: string;
   userDisplayName: string;
   onToggleMenu: () => void;
+  onLogoutClick: () => void;
   hidden?: boolean;
 };
 
@@ -70,10 +69,10 @@ export function AppHeader({
   userInitials,
   userDisplayName,
   onToggleMenu,
+  onLogoutClick,
   hidden = false,
 }: Props) {
   const router = useRouter();
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [menuHintActive, setMenuHintActive] = useState(false);
   const hasOpenedMobileMenu = useAppShellUiStore(
     (state) => state.hasOpenedMobileMenu,
@@ -81,9 +80,6 @@ export function AppHeader({
   const markMobileMenuOpened = useAppShellUiStore(
     (state) => state.markMobileMenuOpened,
   );
-  const API_URL =
-    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-
   useEffect(() => {
     if (hasOpenedMobileMenu) {
       return;
@@ -108,28 +104,15 @@ export function AppHeader({
     };
   }, [hasOpenedMobileMenu]);
 
-  async function onLogout() {
-    const csrfToken = getCsrfTokenCookie();
-
-    await fetch(`${API_URL}/auth/logout`, {
-      method: "POST",
-      credentials: "include",
-      headers: csrfToken ? { "X-CSRF-Token": csrfToken } : undefined,
-    });
-
-    router.push("/");
-  }
-
   return (
-    <>
-      <div
-        data-testid="app-header-shell"
-        data-state={hidden ? "hidden" : "visible"}
-        className={`overflow-hidden border-b border-border bg-surface transition-[height,border-color] duration-200 ${
-          hidden ? "h-0 border-transparent" : "h-16"
-        }`}
-      >
-        <header className="flex h-16 items-center justify-between bg-surface px-4">
+    <div
+      data-testid="app-header-shell"
+      data-state={hidden ? "hidden" : "visible"}
+      className={`overflow-hidden border-b border-border bg-surface transition-[height,border-color] duration-200 ${
+        hidden ? "h-0 border-transparent" : "h-16"
+      }`}
+    >
+      <header className="flex h-16 items-center justify-between bg-surface px-4">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-bold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]">
               SL
@@ -201,15 +184,15 @@ export function AppHeader({
               {userInitials}
             </button>
 
-            <button
-              aria-label="Se deconnecter"
-              title="Se deconnecter"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary transition-colors hover:bg-warm-highlight"
-              type="button"
-              onClick={() => setLogoutConfirmOpen(true)}
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+          <button
+            aria-label="Se deconnecter"
+            title="Se deconnecter"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary transition-colors hover:bg-warm-highlight"
+            type="button"
+            onClick={onLogoutClick}
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
           </div>
 
           <button
@@ -233,21 +216,7 @@ export function AppHeader({
           >
             <Menu className="h-[18px] w-[18px] stroke-[2.25]" />
           </button>
-        </header>
-      </div>
-
-      <ConfirmDialog
-        open={logoutConfirmOpen}
-        title="Confirmer la deconnexion"
-        message="Voulez-vous vraiment vous deconnecter ?"
-        confirmLabel="Se deconnecter"
-        cancelLabel="Annuler"
-        onCancel={() => setLogoutConfirmOpen(false)}
-        onConfirm={() => {
-          setLogoutConfirmOpen(false);
-          void onLogout();
-        }}
-      />
-    </>
+      </header>
+    </div>
   );
 }

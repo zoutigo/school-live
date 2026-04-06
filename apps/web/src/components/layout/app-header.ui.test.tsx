@@ -27,6 +27,7 @@ describe("AppHeader mobile menu attention", () => {
         userInitials="RN"
         userDisplayName="Robert Ntamack"
         onToggleMenu={onToggleMenu}
+        onLogoutClick={vi.fn()}
       />,
     );
 
@@ -62,6 +63,7 @@ describe("AppHeader mobile menu attention", () => {
         userInitials="RN"
         userDisplayName="Robert Ntamack"
         onToggleMenu={onToggleMenu}
+        onLogoutClick={vi.fn()}
       />,
     );
 
@@ -78,6 +80,7 @@ describe("AppHeader mobile menu attention", () => {
         userInitials="RN"
         userDisplayName="Robert Ntamack"
         onToggleMenu={onToggleMenu}
+        onLogoutClick={vi.fn()}
       />,
     );
 
@@ -102,6 +105,7 @@ describe("AppHeader mobile menu attention", () => {
         userInitials="RN"
         userDisplayName="Robert Ntamack"
         onToggleMenu={onToggleMenu}
+        onLogoutClick={vi.fn()}
       />,
     );
 
@@ -110,5 +114,25 @@ describe("AppHeader mobile menu attention", () => {
     expect(window.localStorage.getItem("app-shell-ui")).toContain(
       '"hasOpenedMobileMenu":true',
     );
+  });
+
+  it("delegates desktop logout to the shared shell handler", () => {
+    const onLogoutClick = vi.fn();
+
+    render(
+      <AppHeader
+        schoolName="college vogt"
+        isSchoolContext
+        role="PARENT"
+        userInitials="RN"
+        userDisplayName="Robert Ntamack"
+        onToggleMenu={vi.fn()}
+        onLogoutClick={onLogoutClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Se deconnecter" }));
+
+    expect(onLogoutClick).toHaveBeenCalledTimes(1);
   });
 });

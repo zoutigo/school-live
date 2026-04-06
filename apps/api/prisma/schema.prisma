@@ -238,6 +238,7 @@ model School {
   feedPosts          FeedPost[]
   feedComments       FeedComment[]
   feedLikes          FeedLike[]
+  feedPollVotes      FeedPollVote[]
   activationCodes    ActivationCode[]
   authAuditLogs      AuthAuditLog[]
   timetableSlots     ClassTimetableSlot[]
@@ -294,6 +295,7 @@ model User {
   feedPosts          FeedPost[]                @relation("FeedPostAuthor")
   feedComments       FeedComment[]             @relation("FeedCommentAuthor")
   feedLikes          FeedLike[]                @relation("FeedLikeUser")
+  feedPollVotes      FeedPollVote[]            @relation("FeedPollVoteUser")
   referentOfClasses  Class[]                   @relation("ClassReferentTeacher")
   timetableSlotsAsTeacher ClassTimetableSlot[] @relation("ClassTimetableSlotTeacher")
   timetableSlotsCreated ClassTimetableSlot[]   @relation("ClassTimetableSlotCreatedBy")
@@ -1234,6 +1236,7 @@ model FeedPost {
   attachments      FeedPostAttachment[]
   comments         FeedComment[]
   likes            FeedLike[]
+  pollVotes        FeedPollVote[]
 
   @@index([schoolId, createdAt])
   @@index([authorUserId])
@@ -1286,6 +1289,23 @@ model FeedLike {
   @@index([userId])
 }
 
+model FeedPollVote {
+  id        String    @id @default(cuid())
+  postId    String
+  schoolId  String
+  userId    String
+  optionId  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  post      FeedPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user      User      @relation("FeedPollVoteUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([schoolId])
+  @@index([userId])
+}
+
 
 model InlineMediaAsset {
   id               String                @id @default(cuid())
@@ -1307,5 +1327,3 @@ model InlineMediaAsset {
 
 
 // Reserved for future shared indexes, comments and data notes.
-
-

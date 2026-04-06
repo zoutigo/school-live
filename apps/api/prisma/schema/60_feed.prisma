@@ -21,6 +21,7 @@ model FeedPost {
   attachments      FeedPostAttachment[]
   comments         FeedComment[]
   likes            FeedLike[]
+  pollVotes        FeedPollVote[]
 
   @@index([schoolId, createdAt])
   @@index([authorUserId])
@@ -67,6 +68,23 @@ model FeedLike {
   post      FeedPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
   school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user      User      @relation("FeedLikeUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([schoolId])
+  @@index([userId])
+}
+
+model FeedPollVote {
+  id        String    @id @default(cuid())
+  postId    String
+  schoolId  String
+  userId    String
+  optionId  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  post      FeedPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user      User      @relation("FeedPollVoteUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
   @@index([schoolId])

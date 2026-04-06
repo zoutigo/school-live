@@ -160,6 +160,10 @@ export class FeedService {
             where: { userId: user.id },
             select: { id: true },
           },
+          pollVotes: {
+            where: { userId: user.id },
+            select: { optionId: true },
+          },
           _count: {
             select: {
               likes: true,
@@ -444,6 +448,91 @@ export class FeedService {
       },
       commentsCount,
     };
+  }
+
+  async votePoll(
+    user: AuthenticatedUser,
+    schoolId: string,
+    postId: string,
+    optionId: string,
+  ) {
+    const context = await this.resolveViewerContext(user, schoolId);
+    await this.ensurePostVisibleForContext(postId, context);
+
+    return this.prisma.$transaction(async (tx) => {
+      const post = await tx.feedPost.findFirst({
+        where: {
+          id: postId,
+          schoolId: context.schoolId,
+        },
+        select: {
+          id: true,
+          type: true,
+          pollQuestion: true,
+          pollOptionsJson: true,
+        },
+      });
+
+      if (!post) {
+        throw new NotFoundException("Publication introuvable");
+      }
+
+      if (post.type !== FeedPostType.POLL || !post.pollQuestion) {
+        throw new BadRequestException("Cette publication n'est pas un sondage");
+      }
+
+      const existingVote = await tx.feedPollVote.findUnique({
+        where: {
+          postId_userId: {
+            postId,
+            userId: user.id,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (existingVote) {
+        throw new BadRequestException("Vote deja enregistre");
+      }
+
+      const options = this.parsePollOptions(post.pollOptionsJson);
+      if (options.length < 2) {
+        throw new BadRequestException("Sondage invalide");
+      }
+
+      if (!options.some((option) => option.id === optionId)) {
+        throw new BadRequestException("Option de vote introuvable");
+      }
+
+      const nextOptions = options.map((option) =>
+        option.id === optionId
+          ? { ...option, votes: option.votes + 1 }
+          : option,
+      );
+
+      await tx.feedPost.update({
+        where: { id: postId },
+        data: {
+          pollOptionsJson: nextOptions,
+        },
+      });
+
+      await tx.feedPollVote.create({
+        data: {
+          postId,
+          schoolId: context.schoolId,
+          userId: user.id,
+          optionId,
+        },
+      });
+
+      return {
+        votedOptionId: optionId,
+        options: nextOptions,
+      };
+    });
   }
 
   private async ensurePostVisibleForContext(
@@ -929,6 +1018,10 @@ export class FeedService {
           where: { userId: viewerUserId },
           select: { id: true },
         },
+        pollVotes: {
+          where: { userId: viewerUserId },
+          select: { optionId: true },
+        },
         _count: {
           select: {
             likes: true,
@@ -1087,6 +1180,7 @@ export class FeedService {
         };
       }>;
       likes: Array<{ id: string }>;
+      pollVotes: Array<{ optionId: string }>;
       _count: {
         likes: number;
         comments: number;
@@ -1157,7 +1251,7 @@ export class FeedService {
           ? {
               question: post.pollQuestion,
               options: parsedPollOptions,
-              votedOptionId: null,
+              votedOptionId: post.pollVotes[0]?.optionId ?? null,
             }
           : undefined,
     };

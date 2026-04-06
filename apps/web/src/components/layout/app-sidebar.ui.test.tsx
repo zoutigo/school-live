@@ -55,6 +55,22 @@ describe("AppSidebar teacher class links", () => {
       "/schools/college-vogt/classes/class-1/emploi-du-temps",
     );
   });
+
+  it("renders a logout action and delegates to the shell handler", () => {
+    const onLogoutClick = vi.fn();
+
+    render(
+      <AppSidebar
+        role="TEACHER"
+        schoolSlug="college-vogt"
+        onLogoutClick={onLogoutClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("sidebar-logout-button"));
+
+    expect(onLogoutClick).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("AppSidebar parent child links", () => {
@@ -167,5 +183,42 @@ describe("AppSidebar parent child links", () => {
     expect(
       screen.queryByRole("navigation", { name: "Menu MBELE Paul" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the logout action available at the bottom of the mobile family menu", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/me")) {
+        return new Response(
+          JSON.stringify({
+            linkedStudents: [],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const onLogoutClick = vi.fn();
+
+    render(
+      <AppSidebar
+        role="PARENT"
+        schoolSlug="college-vogt"
+        onLogoutClick={onLogoutClick}
+      />,
+    );
+
+    fireEvent.click(await screen.findByTestId("sidebar-logout-button"));
+
+    expect(onLogoutClick).toHaveBeenCalledTimes(1);
   });
 });

@@ -4,22 +4,36 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
 
+const pushMock = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("./app-sidebar", () => ({
-  AppSidebar: () => <nav aria-label="Sidebar">Sidebar</nav>,
+  AppSidebar: ({
+    onLogoutClick,
+  }: {
+    onLogoutClick?: () => void;
+  }) => (
+    <nav aria-label="Sidebar">
+      <button type="button" onClick={onLogoutClick}>
+        Sidebar logout
+      </button>
+    </nav>
+  ),
 }));
 
 describe("AppShell header scroll behavior", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    pushMock.mockReset();
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
@@ -51,6 +65,10 @@ describe("AppShell header scroll behavior", () => {
             headers: { "Content-Type": "application/json" },
           },
         );
+      }
+
+      if (url.endsWith("/api/auth/logout")) {
+        return new Response(null, { status: 204 });
       }
 
       return new Response(JSON.stringify({ message: "Not found" }), {
@@ -95,5 +113,66 @@ describe("AppShell header scroll behavior", () => {
     await waitFor(() =>
       expect(header).toHaveAttribute("data-state", "visible"),
     );
+  });
+
+  it("confirms logout from the desktop header before redirecting to the home page", async () => {
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="college vogt">
+        <div>Content</div>
+      </AppShell>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Se deconnecter" }));
+
+    const confirmDialog = screen.getByRole("dialog", {
+      name: "Confirmer la deconnexion",
+    });
+
+    expect(confirmDialog).toBeInTheDocument();
+
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: "Se deconnecter" }),
+    );
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/");
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:3001/api/auth/logout",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+      }),
+    );
+  });
+
+  it("confirms logout from the mobile sidebar before redirecting to the home page", async () => {
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="college vogt">
+        <div>Content</div>
+      </AppShell>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ouvrir le menu" }));
+
+    const mobileMenu = screen.getByRole("dialog");
+    fireEvent.click(
+      within(mobileMenu).getByRole("button", { name: "Sidebar logout" }),
+    );
+
+    const confirmDialog = screen.getByRole("dialog", {
+      name: "Confirmer la deconnexion",
+    });
+
+    expect(confirmDialog).toBeInTheDocument();
+
+    fireEvent.click(
+      within(confirmDialog).getByRole("button", { name: "Se deconnecter" }),
+    );
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/");
+    });
   });
 });
