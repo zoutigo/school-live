@@ -742,346 +742,351 @@ export function AppSidebar({
       ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {role === "TEACHER" ? (
-        <div className="grid gap-3">
-          <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
-            <button
-              type="button"
-              onClick={() => setOpenTeacherSection("classes")}
-              className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-                openTeacherSection === "classes",
-              )}`}
-            >
-              <span
-                aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+          <div className="grid gap-3">
+            <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setOpenTeacherSection("classes")}
+                className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
                   openTeacherSection === "classes",
                 )}`}
               >
-                <School className="h-4 w-4" />
-              </span>
-              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                Menu enseignant
-              </span>
-            </button>
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                    openTeacherSection === "classes",
+                  )}`}
+                >
+                  <School className="h-4 w-4" />
+                </span>
+                <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                  Menu enseignant
+                </span>
+              </button>
 
-            {openTeacherSection === "classes" ? (
-              <nav
-                className="mt-2 grid gap-1"
-                aria-label="Menu general enseignant"
-              >
-                {teacherGeneralItems.map((item) => {
-                  const active = item.matchPrefix
-                    ? pathname.startsWith(item.matchPrefix)
-                    : pathname === item.href;
-                  const Icon = item.icon;
+              {openTeacherSection === "classes" ? (
+                <nav
+                  className="mt-2 grid gap-1"
+                  aria-label="Menu general enseignant"
+                >
+                  {teacherGeneralItems.map((item) => {
+                    const active = item.matchPrefix
+                      ? pathname.startsWith(item.matchPrefix)
+                      : pathname === item.href;
+                    const Icon = item.icon;
 
-                  return (
-                    <Link
-                      key={`teacher-general-${item.label}-${item.href}`}
-                      href={item.href}
-                      onClick={onNavigate}
-                      className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
-                        active,
-                      )}`}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                    return (
+                      <Link
+                        key={`teacher-general-${item.label}-${item.href}`}
+                        href={item.href}
+                        onClick={onNavigate}
+                        className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
                           active,
                         )}`}
                       >
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                        {item.label}
-                      </span>
-                      {typeof resolveUnread(item) === "number" ? (
-                        <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                          <Badge variant="notification">
-                            {resolveUnread(item)}
-                          </Badge>
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            ) : null}
-          </div>
-
-          {teacherClassesWithItems.map((entry) => {
-            const sectionKey = `class-${entry.classId}`;
-            const isOpen = openTeacherSection === sectionKey;
-
-            return (
-              <div
-                key={entry.classId}
-                className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur"
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenTeacherSection(sectionKey)}
-                  className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-                    isOpen,
-                  )}`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
-                      isOpen,
-                    )}`}
-                  >
-                    <School className="h-4 w-4" />
-                  </span>
-                  <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                    {entry.className}
-                  </span>
-                </button>
-
-                {isOpen ? (
-                  <nav
-                    className="mt-2 grid gap-1"
-                    aria-label={`Menu classe ${entry.className}`}
-                  >
-                    {entry.items.map((item) => {
-                      const active = item.matchPrefix
-                        ? pathname.startsWith(item.matchPrefix)
-                        : pathname === item.href;
-                      const Icon = item.icon;
-
-                      return (
-                        <Link
-                          key={`${entry.classId}-${item.label}-${item.href}`}
-                          href={item.href}
-                          onClick={onNavigate}
-                          className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
+                        <span
+                          aria-hidden="true"
+                          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
                             active,
                           )}`}
                         >
-                          <span
-                            aria-hidden="true"
-                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
-                              active,
-                            )}`}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                          {item.label}
+                        </span>
+                        {typeof resolveUnread(item) === "number" ? (
+                          <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                            <Badge variant="notification">
+                              {resolveUnread(item)}
+                            </Badge>
                           </span>
-                          <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                            {item.label}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </nav>
-                ) : null}
-              </div>
-            );
-          })}
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              ) : null}
+            </div>
 
-          {teacherSettingsItem ? (
-            <Link
-              href={teacherSettingsItem.href}
-              onClick={onNavigate}
-              className={`flex items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-                pathname.startsWith(teacherSettingsItem.matchPrefix ?? ""),
-              )}`}
-            >
-              <span
-                aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
-                  pathname.startsWith(teacherSettingsItem.matchPrefix ?? ""),
-                )}`}
-              >
-                <Settings className="h-4 w-4" />
-              </span>
-              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                {teacherSettingsItem.label}
-              </span>
-            </Link>
-          ) : null}
-        </div>
-        ) : role !== "PARENT" ? (
-        <nav className="flex flex-col gap-1" aria-label="Navigation principale">
-          {items.map((item) => {
-            const active = item.matchPrefix
-              ? pathname.startsWith(item.matchPrefix)
-              : pathname === item.href;
-            const Icon = item.icon;
+            {teacherClassesWithItems.map((entry) => {
+              const sectionKey = `class-${entry.classId}`;
+              const isOpen = openTeacherSection === sectionKey;
 
-            return (
-              <Link
-                key={`${item.label}-${item.href}`}
-                href={item.href}
-                onClick={onNavigate}
-                className={`flex items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-                  active,
-                )}`}
-              >
-                <span className="flex min-w-0 items-center">
-                  <span
-                    aria-hidden="true"
-                    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
-                      active,
+              return (
+                <div
+                  key={entry.classId}
+                  className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenTeacherSection(sectionKey)}
+                    className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                      isOpen,
                     )}`}
                   >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                    {item.label}
-                  </span>
-                </span>
-                {typeof resolveUnread(item) === "number" ? (
-                  <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                    <Badge variant="notification">{resolveUnread(item)}</Badge>
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
-        ) : (
-        <div className="grid gap-3">
-          <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
-            <button
-              type="button"
-              onClick={() => setOpenParentSection("general")}
-              className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-                openParentSection === "general",
-              )}`}
-            >
-              <span
-                aria-hidden="true"
-                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
-                  openParentSection === "general",
-                )}`}
-              >
-                <Home className="h-4 w-4" />
-              </span>
-              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                MON ESPACE FAMILLE
-              </span>
-            </button>
-
-            {openParentSection === "general" ? (
-              <nav className="mt-2 grid gap-1" aria-label="Menu parent">
-                {items.map((item) => {
-                  const active = item.matchPrefix
-                    ? pathname.startsWith(item.matchPrefix)
-                    : pathname === item.href;
-                  const Icon = item.icon;
-
-                  return (
-                    <Link
-                      key={`general-${item.label}-${item.href}`}
-                      href={item.href}
-                      onClick={onNavigate}
-                      className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
-                        active,
-                      )}`}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
-                          active,
-                        )}`}
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                        {item.label}
-                      </span>
-                      {typeof resolveUnread(item) === "number" ? (
-                        <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                          <Badge variant="notification">
-                            {resolveUnread(item)}
-                          </Badge>
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            ) : null}
-          </div>
-
-          {parentChildrenWithItems.map((child) => {
-            const sectionKey = `child-${child.id}`;
-            const isOpen = openParentSection === sectionKey;
-
-            return (
-              <div
-                key={child.id}
-                className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur"
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenParentSection(sectionKey)}
-                  className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-                    isOpen,
-                  )}`}
-                >
-                  {child.avatarUrl ? (
-                    <img
-                      src={child.avatarUrl}
-                      alt={`${child.firstName} ${child.lastName}`}
-                      className="h-8 w-8 rounded-full border border-border object-cover"
-                    />
-                  ) : (
                     <span
                       aria-hidden="true"
                       className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
                         isOpen,
                       )}`}
                     >
-                      <UserRound className="h-4 w-4" />
+                      <School className="h-4 w-4" />
                     </span>
-                  )}
+                    <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                      {entry.className}
+                    </span>
+                  </button>
 
-                  <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                    {child.lastName} {child.firstName}
-                  </span>
-                </button>
+                  {isOpen ? (
+                    <nav
+                      className="mt-2 grid gap-1"
+                      aria-label={`Menu classe ${entry.className}`}
+                    >
+                      {entry.items.map((item) => {
+                        const active = item.matchPrefix
+                          ? pathname.startsWith(item.matchPrefix)
+                          : pathname === item.href;
+                        const Icon = item.icon;
 
-                {isOpen ? (
-                  <nav
-                    className="mt-2 grid gap-1"
-                    aria-label={`Menu ${child.lastName} ${child.firstName}`}
-                  >
-                    {child.items.map((item) => {
-                      const active = item.matchPrefix
-                        ? pathname.startsWith(item.matchPrefix)
-                        : pathname === item.href;
-                      const Icon = item.icon;
-
-                      return (
-                        <Link
-                          key={`${child.id}-${item.label}-${item.href}`}
-                          href={item.href}
-                          onClick={onNavigate}
-                          className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
-                            active,
-                          )}`}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                        return (
+                          <Link
+                            key={`${entry.classId}-${item.label}-${item.href}`}
+                            href={item.href}
+                            onClick={onNavigate}
+                            className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
                               active,
                             )}`}
                           >
-                            <Icon className="h-3.5 w-3.5" />
+                            <span
+                              aria-hidden="true"
+                              className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                                active,
+                              )}`}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                              {item.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            {teacherSettingsItem ? (
+              <Link
+                href={teacherSettingsItem.href}
+                onClick={onNavigate}
+                className={`flex items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                  pathname.startsWith(teacherSettingsItem.matchPrefix ?? ""),
+                )}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                    pathname.startsWith(teacherSettingsItem.matchPrefix ?? ""),
+                  )}`}
+                >
+                  <Settings className="h-4 w-4" />
+                </span>
+                <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                  {teacherSettingsItem.label}
+                </span>
+              </Link>
+            ) : null}
+          </div>
+        ) : role !== "PARENT" ? (
+          <nav
+            className="flex flex-col gap-1"
+            aria-label="Navigation principale"
+          >
+            {items.map((item) => {
+              const active = item.matchPrefix
+                ? pathname.startsWith(item.matchPrefix)
+                : pathname === item.href;
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={`${item.label}-${item.href}`}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={`flex items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                    active,
+                  )}`}
+                >
+                  <span className="flex min-w-0 items-center">
+                    <span
+                      aria-hidden="true"
+                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                        active,
+                      )}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                      {item.label}
+                    </span>
+                  </span>
+                  {typeof resolveUnread(item) === "number" ? (
+                    <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                      <Badge variant="notification">
+                        {resolveUnread(item)}
+                      </Badge>
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </nav>
+        ) : (
+          <div className="grid gap-3">
+            <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setOpenParentSection("general")}
+                className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                  openParentSection === "general",
+                )}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                    openParentSection === "general",
+                  )}`}
+                >
+                  <Home className="h-4 w-4" />
+                </span>
+                <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                  MON ESPACE FAMILLE
+                </span>
+              </button>
+
+              {openParentSection === "general" ? (
+                <nav className="mt-2 grid gap-1" aria-label="Menu parent">
+                  {items.map((item) => {
+                    const active = item.matchPrefix
+                      ? pathname.startsWith(item.matchPrefix)
+                      : pathname === item.href;
+                    const Icon = item.icon;
+
+                    return (
+                      <Link
+                        key={`general-${item.label}-${item.href}`}
+                        href={item.href}
+                        onClick={onNavigate}
+                        className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
+                          active,
+                        )}`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                            active,
+                          )}`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                          {item.label}
+                        </span>
+                        {typeof resolveUnread(item) === "number" ? (
+                          <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                            <Badge variant="notification">
+                              {resolveUnread(item)}
+                            </Badge>
                           </span>
-                          <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                            {item.label}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </nav>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              ) : null}
+            </div>
+
+            {parentChildrenWithItems.map((child) => {
+              const sectionKey = `child-${child.id}`;
+              const isOpen = openParentSection === sectionKey;
+
+              return (
+                <div
+                  key={child.id}
+                  className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenParentSection(sectionKey)}
+                    className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                      isOpen,
+                    )}`}
+                  >
+                    {child.avatarUrl ? (
+                      <img
+                        src={child.avatarUrl}
+                        alt={`${child.firstName} ${child.lastName}`}
+                        className="h-8 w-8 rounded-full border border-border object-cover"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                          isOpen,
+                        )}`}
+                      >
+                        <UserRound className="h-4 w-4" />
+                      </span>
+                    )}
+
+                    <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                      {child.lastName} {child.firstName}
+                    </span>
+                  </button>
+
+                  {isOpen ? (
+                    <nav
+                      className="mt-2 grid gap-1"
+                      aria-label={`Menu ${child.lastName} ${child.firstName}`}
+                    >
+                      {child.items.map((item) => {
+                        const active = item.matchPrefix
+                          ? pathname.startsWith(item.matchPrefix)
+                          : pathname === item.href;
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={`${child.id}-${item.label}-${item.href}`}
+                            href={item.href}
+                            onClick={onNavigate}
+                            className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
+                              active,
+                            )}`}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                                active,
+                              )}`}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                              {item.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 

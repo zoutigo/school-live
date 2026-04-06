@@ -59,7 +59,9 @@ describe("FamilyFeedPage", () => {
     );
 
     const postCard = getPostCard("Semaine culturelle - programme final");
-    expect(within(postCard).queryByText("Toute l'ecole")).not.toBeInTheDocument();
+    expect(
+      within(postCard).queryByText("Toute l'ecole"),
+    ).not.toBeInTheDocument();
   });
 
   it("allows voting once on a poll", () => {
@@ -184,7 +186,9 @@ describe("FamilyFeedPage", () => {
         target: { value: "Merci pour cette mise a jour" },
       },
     );
-    fireEvent.click(within(postCard).getByRole("button", { name: "Commenter" }));
+    fireEvent.click(
+      within(postCard).getByRole("button", { name: "Commenter" }),
+    );
 
     await waitFor(() => {
       expect(
@@ -227,7 +231,9 @@ describe("FamilyFeedPage", () => {
         target: { value: "Merci pour cette mise a jour" },
       },
     );
-    fireEvent.click(within(postCard).getByRole("button", { name: "Commenter" }));
+    fireEvent.click(
+      within(postCard).getByRole("button", { name: "Commenter" }),
+    );
 
     await waitFor(() => {
       expect(
@@ -241,7 +247,9 @@ describe("FamilyFeedPage", () => {
       <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Realiser un sondage" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Realiser un sondage" }),
+    );
     fireEvent.change(screen.getByPlaceholderText("Titre du sondage"), {
       target: { value: "Sondage transport" },
     });
@@ -361,10 +369,14 @@ describe("FamilyFeedPage", () => {
     });
     postCard = getPostCard("Post modifie");
     expect(within(postCard).getByText("new-edit.pdf")).toBeInTheDocument();
-    expect(within(postCard).queryByText("legacy-edit.pdf")).not.toBeInTheDocument();
+    expect(
+      within(postCard).queryByText("legacy-edit.pdf"),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(
-      within(postCard).getByRole("button", { name: "Supprimer la publication" }),
+      within(postCard).getByRole("button", {
+        name: "Supprimer la publication",
+      }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Supprimer" }));
 

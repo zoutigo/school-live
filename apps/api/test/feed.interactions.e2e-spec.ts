@@ -138,29 +138,32 @@ describe("Feed interactions e2e", () => {
   });
 
   it("creates a poll post with attachments and exposes it in the list", async () => {
-    const { response, body } = await apiJson(`/api/schools/${schoolSlug}/feed`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${teacherToken}`,
+    const { response, body } = await apiJson(
+      `/api/schools/${schoolSlug}/feed`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${teacherToken}`,
+        },
+        body: JSON.stringify({
+          type: "POLL",
+          title: "Choix de la sortie",
+          bodyHtml: "<p>Merci de voter avant jeudi.</p>",
+          audienceScope: "SCHOOL_ALL",
+          audienceLabel: "Toute l'ecole",
+          pollQuestion: "Quel créneau retenez-vous ?",
+          pollOptions: ["Mercredi matin", "Vendredi apres-midi"],
+          attachments: [
+            {
+              fileName: "programme.pdf",
+              fileUrl: "https://cdn.example.test/programme.pdf",
+              sizeLabel: "120 Ko",
+            },
+          ],
+        }),
       },
-      body: JSON.stringify({
-        type: "POLL",
-        title: "Choix de la sortie",
-        bodyHtml: "<p>Merci de voter avant jeudi.</p>",
-        audienceScope: "SCHOOL_ALL",
-        audienceLabel: "Toute l'ecole",
-        pollQuestion: "Quel créneau retenez-vous ?",
-        pollOptions: ["Mercredi matin", "Vendredi apres-midi"],
-        attachments: [
-          {
-            fileName: "programme.pdf",
-            fileUrl: "https://cdn.example.test/programme.pdf",
-            sizeLabel: "120 Ko",
-          },
-        ],
-      }),
-    });
+    );
 
     expect(response.status).toBe(201);
     expect(body?.type).toBe("POLL");

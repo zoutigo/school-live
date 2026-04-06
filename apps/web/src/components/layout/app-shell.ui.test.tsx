@@ -17,11 +17,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./app-sidebar", () => ({
-  AppSidebar: ({
-    onLogoutClick,
-  }: {
-    onLogoutClick?: () => void;
-  }) => (
+  AppSidebar: ({ onLogoutClick }: { onLogoutClick?: () => void }) => (
     <nav aria-label="Sidebar">
       <button type="button" onClick={onLogoutClick}>
         Sidebar logout

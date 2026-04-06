@@ -113,76 +113,76 @@ export function AppHeader({
       }`}
     >
       <header className="flex h-16 items-center justify-between bg-surface px-4">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-bold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]">
-              SL
-            </span>
-            <div className="hidden md:block">
-              <p className="font-heading text-sm font-semibold text-text-primary">
-                scolive
-              </p>
-              <p className="text-xs text-text-secondary">
-                {getPortalLabel(role)}
-              </p>
-            </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-bold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]">
+            SL
+          </span>
+          <div className="hidden md:block">
+            <p className="font-heading text-sm font-semibold text-text-primary">
+              scolive
+            </p>
+            <p className="text-xs text-text-secondary">
+              {getPortalLabel(role)}
+            </p>
           </div>
+        </div>
 
-          <p className="flex-1 text-center font-heading text-base font-semibold text-text-primary md:hidden">
-            Scolive
-          </p>
+        <p className="flex-1 text-center font-heading text-base font-semibold text-text-primary md:hidden">
+          Scolive
+        </p>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 md:flex">
-            {isSchoolContext ? (
-              <>
-                {schoolLogoUrl ? (
-                  <img
-                    src={schoolLogoUrl}
-                    alt={`Logo ${schoolName}`}
-                    className="h-9 w-9 rounded-full border border-warm-border bg-warm-surface object-cover shadow-sm"
-                  />
-                ) : (
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-warm-border bg-warm-surface text-xs font-semibold text-text-secondary">
-                    {schoolName.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-                <h1 className="font-heading text-base font-semibold text-text-primary">
-                  {schoolName}
-                </h1>
-              </>
-            ) : (
+        <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 md:flex">
+          {isSchoolContext ? (
+            <>
+              {schoolLogoUrl ? (
+                <img
+                  src={schoolLogoUrl}
+                  alt={`Logo ${schoolName}`}
+                  className="h-9 w-9 rounded-full border border-warm-border bg-warm-surface object-cover shadow-sm"
+                />
+              ) : (
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-warm-border bg-warm-surface text-xs font-semibold text-text-secondary">
+                  {schoolName.slice(0, 2).toUpperCase()}
+                </span>
+              )}
               <h1 className="font-heading text-base font-semibold text-text-primary">
-                Dashboard d'administration de la plateforme
+                {schoolName}
               </h1>
-            )}
+            </>
+          ) : (
+            <h1 className="font-heading text-base font-semibold text-text-primary">
+              Dashboard d'administration de la plateforme
+            </h1>
+          )}
+        </div>
+
+        <div className="hidden items-center gap-3 md:flex">
+          <div className="hidden text-right sm:block md:block">
+            <p className="text-sm font-semibold text-text-primary">
+              {userDisplayName}
+            </p>
+            <p className="text-xs text-text-secondary">{roleLabel(role)}</p>
           </div>
 
-          <div className="hidden items-center gap-3 md:flex">
-            <div className="hidden text-right sm:block md:block">
-              <p className="text-sm font-semibold text-text-primary">
-                {userDisplayName}
-              </p>
-              <p className="text-xs text-text-secondary">{roleLabel(role)}</p>
-            </div>
+          <button
+            aria-label="Notifications"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary shadow-sm transition-colors hover:bg-warm-highlight"
+            type="button"
+          >
+            🔔
+            <span className="absolute -right-1 -top-1">
+              <Badge variant="notification">2</Badge>
+            </span>
+          </button>
 
-            <button
-              aria-label="Notifications"
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary shadow-sm transition-colors hover:bg-warm-highlight"
-              type="button"
-            >
-              🔔
-              <span className="absolute -right-1 -top-1">
-                <Badge variant="notification">2</Badge>
-              </span>
-            </button>
-
-            <button
-              aria-label="Compte utilisateur"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-semibold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]"
-              type="button"
-              onClick={() => router.push("/account")}
-            >
-              {userInitials}
-            </button>
+          <button
+            aria-label="Compte utilisateur"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-semibold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]"
+            type="button"
+            onClick={() => router.push("/account")}
+          >
+            {userInitials}
+          </button>
 
           <button
             aria-label="Se deconnecter"
@@ -193,29 +193,29 @@ export function AppHeader({
           >
             <LogOut className="h-4 w-4" />
           </button>
-          </div>
+        </div>
 
-          <button
-            aria-label="Ouvrir le menu"
-            data-attention={
-              hasOpenedMobileMenu
-                ? "dismissed"
-                : menuHintActive
-                  ? "active"
-                  : "idle"
-            }
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary md:hidden ${
-              menuHintActive ? "menu-attention-active" : ""
-            }`}
-            onClick={() => {
-              markMobileMenuOpened();
-              setMenuHintActive(false);
-              onToggleMenu();
-            }}
-            type="button"
-          >
-            <Menu className="h-[18px] w-[18px] stroke-[2.25]" />
-          </button>
+        <button
+          aria-label="Ouvrir le menu"
+          data-attention={
+            hasOpenedMobileMenu
+              ? "dismissed"
+              : menuHintActive
+                ? "active"
+                : "idle"
+          }
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary md:hidden ${
+            menuHintActive ? "menu-attention-active" : ""
+          }`}
+          onClick={() => {
+            markMobileMenuOpened();
+            setMenuHintActive(false);
+            onToggleMenu();
+          }}
+          type="button"
+        >
+          <Menu className="h-[18px] w-[18px] stroke-[2.25]" />
+        </button>
       </header>
     </div>
   );

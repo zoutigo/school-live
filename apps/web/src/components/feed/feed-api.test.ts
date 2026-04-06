@@ -70,7 +70,9 @@ describe("feed-api", () => {
       }),
     });
 
-    const result = await listFeedPosts("college-vogt", { viewScope: "GENERAL" });
+    const result = await listFeedPosts("college-vogt", {
+      viewScope: "GENERAL",
+    });
 
     expect(result.items[0]).toMatchObject({
       schoolSlug: "college-vogt",
@@ -165,8 +167,8 @@ describe("feed-api", () => {
 
     const file = new File(["svg"], "feed.svg", { type: "image/svg+xml" });
 
-    await expect(
-      uploadFeedInlineImage("college-vogt", file),
-    ).rejects.toThrow("Format non supporte");
+    await expect(uploadFeedInlineImage("college-vogt", file)).rejects.toThrow(
+      "Format non supporte",
+    );
   });
 });
