@@ -7,6 +7,67 @@ const AUTH_VERBOSE =
 
 const providers: NextAuthOptions["providers"] = [];
 
+function normalizeOrigin(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return null;
+  }
+}
+
+export function buildAllowedRedirectOrigins(baseUrl: string) {
+  const origins = new Set<string>();
+
+  const baseOrigin = normalizeOrigin(baseUrl);
+  if (baseOrigin) {
+    origins.add(baseOrigin);
+  }
+
+  const authUrl = normalizeOrigin(process.env.AUTH_URL);
+  if (authUrl) {
+    origins.add(authUrl);
+  }
+
+  const nextAuthUrl = normalizeOrigin(process.env.NEXTAUTH_URL);
+  if (nextAuthUrl) {
+    origins.add(nextAuthUrl);
+  }
+
+  const webUrl = normalizeOrigin(process.env.WEB_URL);
+  if (webUrl) {
+    origins.add(webUrl);
+  }
+
+  origins.add("http://10.0.2.2:3000");
+  origins.add("http://127.0.0.1:3000");
+  origins.add("http://localhost:3000");
+
+  return origins;
+}
+
+export function resolveAllowedRedirect(url: string, baseUrl: string) {
+  if (url.startsWith("/")) {
+    return `${baseUrl}${url}`;
+  }
+
+  try {
+    const parsed = new URL(url);
+    const allowedOrigins = buildAllowedRedirectOrigins(baseUrl);
+    if (allowedOrigins.has(parsed.origin)) {
+      return url;
+    }
+  } catch {
+    return baseUrl;
+  }
+
+  return baseUrl;
+}
+
 if (
   process.env.AUTH_GOOGLE_CLIENT_ID &&
   process.env.AUTH_GOOGLE_CLIENT_SECRET
@@ -15,6 +76,9 @@ if (
     Google({
       clientId: process.env.AUTH_GOOGLE_CLIENT_ID,
       clientSecret: process.env.AUTH_GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: { prompt: "select_account" },
+      },
     }),
   );
 }
@@ -50,6 +114,9 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      return resolveAllowedRedirect(url, baseUrl);
+    },
     async jwt({ token, account }) {
       if (account) {
         token.provider = account.provider?.toUpperCase();
