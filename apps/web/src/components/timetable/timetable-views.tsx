@@ -263,45 +263,6 @@ export function TimetableViews({
     return map;
   }, [slots, weekDays]);
 
-  const monthCalendarCells = useMemo(() => {
-    const firstDay = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth(),
-      1,
-    );
-    const firstWeekday = toWeekdayMondayFirst(firstDay);
-    const leadingEmpty = firstWeekday - 1;
-    const daysInMonth = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth() + 1,
-      0,
-    ).getDate();
-    const cells: Array<{ date: Date | null; slots: TimetableDisplaySlot[] }> =
-      [];
-
-    for (let i = 0; i < leadingEmpty; i += 1) {
-      cells.push({ date: null, slots: [] });
-    }
-
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const date = new Date(
-        cursorDate.getFullYear(),
-        cursorDate.getMonth(),
-        day,
-      );
-      const daySlotsForMonth = slots
-        .filter((slot) => slot.occurrenceDate === toIsoDateString(date))
-        .sort((a, b) => a.startMinute - b.startMinute);
-      cells.push({ date, slots: daySlotsForMonth });
-    }
-
-    while (cells.length % 7 !== 0) {
-      cells.push({ date: null, slots: [] });
-    }
-
-    return cells;
-  }, [cursorDate, slots]);
-
   const activeRange = useMemo(() => {
     if (viewMode === "day") {
       const day = stripTime(cursorDate);
@@ -316,44 +277,110 @@ export function TimetableViews({
     return { from, to };
   }, [cursorDate, viewMode]);
 
-  const shouldHideCompactWeekend = useMemo(() => {
-    if (!isCompactViewport) {
-      return false;
-    }
-
+  const { showSaturday, showSunday } = useMemo(() => {
     const from = stripTime(activeRange.from);
     const to = stripTime(activeRange.to);
-    let saturdayCount = 0;
-    let sundayCount = 0;
+    let hasSaturday = false;
+    let hasSunday = false;
 
-    slots.forEach((slot) => {
-      if ((slot.status ?? "PLANNED") !== "PLANNED") {
-        return;
-      }
+    for (const slot of slots) {
+      if ((slot.status ?? "PLANNED") !== "PLANNED") continue;
       const occurrenceDate = parseOccurrenceDate(slot.occurrenceDate);
-      if (!occurrenceDate) {
-        return;
-      }
-      if (occurrenceDate < from || occurrenceDate > to) {
-        return;
-      }
+      if (!occurrenceDate) continue;
+      if (occurrenceDate < from || occurrenceDate > to) continue;
       const weekday = toWeekdayMondayFirst(occurrenceDate);
-      if (weekday === 6) {
-        saturdayCount += 1;
-      } else if (weekday === 7) {
-        sundayCount += 1;
-      }
-    });
+      if (weekday === 6) hasSaturday = true;
+      if (weekday === 7) hasSunday = true;
+      if (hasSaturday && hasSunday) break;
+    }
 
-    return saturdayCount === 0 && sundayCount === 0;
-  }, [activeRange.from, activeRange.to, isCompactViewport, slots]);
+    return { showSaturday: hasSaturday, showSunday: hasSunday };
+  }, [activeRange.from, activeRange.to, slots]);
+
+  const visibleWeekdayOptions = useMemo(
+    () =>
+      WEEKDAY_OPTIONS.filter(
+        (entry) =>
+          entry.value <= 5 ||
+          (entry.value === 6 && showSaturday) ||
+          (entry.value === 7 && showSunday),
+      ),
+    [showSaturday, showSunday],
+  );
+
+  const monthColumns = visibleWeekdayOptions.length;
+
+  const monthCalendarCells = useMemo(() => {
+    const daysInMonth = new Date(
+      cursorDate.getFullYear(),
+      cursorDate.getMonth() + 1,
+      0,
+    ).getDate();
+
+    const visibleWeekdays = visibleWeekdayOptions.map((entry) => entry.value);
+
+    // Find first visible day
+    let firstVisibleDay: Date | null = null;
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = new Date(
+        cursorDate.getFullYear(),
+        cursorDate.getMonth(),
+        day,
+      );
+      if (visibleWeekdays.includes(toWeekdayMondayFirst(date))) {
+        firstVisibleDay = date;
+        break;
+      }
+    }
+    if (!firstVisibleDay) {
+      firstVisibleDay = new Date(
+        cursorDate.getFullYear(),
+        cursorDate.getMonth(),
+        1,
+      );
+    }
+
+    const colIndexOfFirst = visibleWeekdays.indexOf(
+      toWeekdayMondayFirst(firstVisibleDay),
+    );
+    const leadingEmpty = Math.max(0, colIndexOfFirst);
+
+    const cells: Array<{ date: Date | null; slots: TimetableDisplaySlot[] }> =
+      [];
+
+    for (let i = 0; i < leadingEmpty; i += 1) {
+      cells.push({ date: null, slots: [] });
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = new Date(
+        cursorDate.getFullYear(),
+        cursorDate.getMonth(),
+        day,
+      );
+      if (!visibleWeekdays.includes(toWeekdayMondayFirst(date))) continue;
+      const daySlotsForMonth = slots
+        .filter((slot) => slot.occurrenceDate === toIsoDateString(date))
+        .sort((a, b) => a.startMinute - b.startMinute);
+      cells.push({ date, slots: daySlotsForMonth });
+    }
+
+    while (cells.length % monthColumns !== 0) {
+      cells.push({ date: null, slots: [] });
+    }
+
+    return cells;
+  }, [cursorDate, slots, visibleWeekdayOptions, monthColumns]);
 
   const compactVisibleWeekDays = useMemo(
     () =>
-      shouldHideCompactWeekend
-        ? weekDays.filter((entry) => entry.weekday <= 5)
-        : weekDays,
-    [shouldHideCompactWeekend, weekDays],
+      weekDays.filter(
+        (entry) =>
+          entry.weekday <= 5 ||
+          (entry.weekday === 6 && showSaturday) ||
+          (entry.weekday === 7 && showSunday),
+      ),
+    [showSaturday, showSunday, weekDays],
   );
 
   const weekSlotsByWeekday = useMemo(() => {
@@ -387,79 +414,16 @@ export function TimetableViews({
     return hours;
   }, [compactTimelineStartMinute, compactTimelineEndMinute]);
 
-  const compactMonthWeekdayOptions = useMemo(
+  const compactMonthCalendarCells = useMemo(
     () =>
-      shouldHideCompactWeekend
-        ? WEEKDAY_OPTIONS.filter((entry) => entry.value <= 5)
-        : WEEKDAY_OPTIONS,
-    [shouldHideCompactWeekend],
-  );
-
-  const compactMonthCalendarCells = useMemo(() => {
-    if (!shouldHideCompactWeekend) {
-      return monthCalendarCells.map((entry) => ({
+      monthCalendarCells.map((entry) => ({
         date: entry.date,
         slotsCount: entry.slots.filter(
           (slot) => (slot.status ?? "PLANNED") === "PLANNED",
         ).length,
-      }));
-    }
-
-    const firstDayOfMonth = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth(),
-      1,
-    );
-    const daysInMonth = new Date(
-      cursorDate.getFullYear(),
-      cursorDate.getMonth() + 1,
-      0,
-    ).getDate();
-    const firstBusinessDay = (() => {
-      for (let day = 1; day <= daysInMonth; day += 1) {
-        const date = new Date(
-          cursorDate.getFullYear(),
-          cursorDate.getMonth(),
-          day,
-        );
-        if (toWeekdayMondayFirst(date) <= 5) {
-          return date;
-        }
-      }
-      return firstDayOfMonth;
-    })();
-    const leadingEmpty = Math.max(
-      0,
-      toWeekdayMondayFirst(firstBusinessDay) - 1,
-    );
-
-    const cells: Array<{ date: Date | null; slotsCount: number }> = [];
-    for (let i = 0; i < leadingEmpty; i += 1) {
-      cells.push({ date: null, slotsCount: 0 });
-    }
-
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      const date = new Date(
-        cursorDate.getFullYear(),
-        cursorDate.getMonth(),
-        day,
-      );
-      if (toWeekdayMondayFirst(date) > 5) {
-        continue;
-      }
-      const slotsCount = slots.filter(
-        (slot) =>
-          (slot.status ?? "PLANNED") === "PLANNED" &&
-          slot.occurrenceDate === toIsoDateString(date),
-      ).length;
-      cells.push({ date, slotsCount });
-    }
-
-    while (cells.length % 5 !== 0) {
-      cells.push({ date: null, slotsCount: 0 });
-    }
-    return cells;
-  }, [cursorDate, monthCalendarCells, shouldHideCompactWeekend, slots]);
+      })),
+    [monthCalendarCells],
+  );
 
   const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(null);
   const [selectedCompactMonthDate, setSelectedCompactMonthDate] =
@@ -609,8 +573,12 @@ export function TimetableViews({
   function moveCursorForMode(mode: TimetableViewMode, direction: -1 | 1) {
     if (mode === "day") {
       let next = addDays(cursorDate, direction);
-      if (shouldHideCompactWeekend && isCompactViewport) {
-        while ([6, 7].includes(toWeekdayMondayFirst(next))) {
+      const hiddenWeekdays = [
+        ...(!showSaturday ? [6] : []),
+        ...(!showSunday ? [7] : []),
+      ];
+      if (hiddenWeekdays.length > 0) {
+        while (hiddenWeekdays.includes(toWeekdayMondayFirst(next))) {
           next = addDays(next, direction);
         }
       }
@@ -670,9 +638,16 @@ export function TimetableViews({
             <button
               type="button"
               onClick={() => {
-                if (viewMode === "day" && shouldHideCompactWeekend) {
+                if (viewMode === "day") {
+                  const hiddenWeekdays = [
+                    ...(!showSaturday ? [6] : []),
+                    ...(!showSunday ? [7] : []),
+                  ];
                   let next = today;
-                  while ([6, 7].includes(toWeekdayMondayFirst(next))) {
+                  while (
+                    hiddenWeekdays.length > 0 &&
+                    hiddenWeekdays.includes(toWeekdayMondayFirst(next))
+                  ) {
                     next = addDays(next, 1);
                   }
                   onCursorDateChange(next);
@@ -1153,8 +1128,13 @@ export function TimetableViews({
         isCompactViewport ? (
           <section className="grid gap-3">
             <article className="rounded-card border border-border bg-surface p-3 shadow-[0_8px_20px_-18px_rgba(10,98,191,0.6)]">
-              <div className="mb-2 grid grid-cols-7 gap-1">
-                {compactMonthWeekdayOptions.map((entry) => (
+              <div
+                className="mb-2 grid gap-1"
+                style={{
+                  gridTemplateColumns: `repeat(${monthColumns}, minmax(0, 1fr))`,
+                }}
+              >
+                {visibleWeekdayOptions.map((entry) => (
                   <p
                     key={`compact-head-${entry.value}`}
                     className="text-center text-[10px] font-semibold uppercase tracking-wide text-[#5A7093]"
@@ -1167,7 +1147,7 @@ export function TimetableViews({
               <div
                 className="grid gap-1"
                 style={{
-                  gridTemplateColumns: `repeat(${compactMonthWeekdayOptions.length}, minmax(0, 1fr))`,
+                  gridTemplateColumns: `repeat(${monthColumns}, minmax(0, 1fr))`,
                 }}
               >
                 {compactMonthCalendarCells.map((entry, index) => {
@@ -1296,8 +1276,13 @@ export function TimetableViews({
           </section>
         ) : (
           <section className="grid gap-3">
-            <div className="grid grid-cols-7 rounded-card border border-border bg-white">
-              {WEEKDAY_OPTIONS.map((entry) => (
+            <div
+              className="grid rounded-card border border-border bg-white"
+              style={{
+                gridTemplateColumns: `repeat(${monthColumns}, minmax(0, 1fr))`,
+              }}
+            >
+              {visibleWeekdayOptions.map((entry) => (
                 <div
                   key={`month-head-${entry.value}`}
                   className="border-b border-r border-border px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-[#4C6284] last:border-r-0"
