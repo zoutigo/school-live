@@ -1,11 +1,20 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   TimetableViews,
   type TimetableDisplaySlot,
   type TimetableViewMode,
 } from "./timetable-views";
+
+beforeAll(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-03-10T12:00:00Z"));
+});
+
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 function buildSlot(
   overrides: Partial<TimetableDisplaySlot> = {},
@@ -32,13 +41,16 @@ function Harness({
   slots = [buildSlot()],
   onSlotClick,
   initialCursorDate = new Date("2026-03-10T09:00:00"),
+  initialViewMode = "day" as TimetableViewMode,
 }: {
   compact?: boolean;
   slots?: TimetableDisplaySlot[];
   onSlotClick?: (slot: TimetableDisplaySlot) => void;
   initialCursorDate?: Date;
+  initialViewMode?: TimetableViewMode;
 }) {
-  const [viewMode, setViewMode] = React.useState<TimetableViewMode>("day");
+  const [viewMode, setViewMode] =
+    React.useState<TimetableViewMode>(initialViewMode);
   const [cursorDate, setCursorDate] = React.useState(initialCursorDate);
 
   return (
@@ -179,5 +191,36 @@ describe("TimetableViews", () => {
     fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
     expect(screen.queryByText(/Physique/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Technologie/i)).toBeInTheDocument();
+  });
+
+  it("affiche la colonne Sam dans la grille mensuelle desktop si des cours ont lieu le samedi", () => {
+    const saturdaySlots = [
+      buildSlot({ id: "slot-tue", occurrenceDate: "2026-03-10", weekday: 2 }),
+      buildSlot({
+        id: "slot-sat",
+        occurrenceDate: "2026-03-14",
+        weekday: 6,
+        subjectName: "Sport",
+      }),
+    ];
+    render(<Harness slots={saturdaySlots} initialViewMode="month" />);
+
+    // Desktop month header shows 3-letter abbreviations: Sam should appear, Dim should not
+    expect(screen.getByText("Sam")).toBeInTheDocument();
+    expect(screen.queryByText("Dim")).not.toBeInTheDocument();
+  });
+
+  it("masque Sam et Dim dans la grille mensuelle desktop si aucun cours le week-end", () => {
+    const weekdaySlots = [
+      buildSlot({ id: "slot-mon", occurrenceDate: "2026-03-09", weekday: 1 }),
+      buildSlot({ id: "slot-fri", occurrenceDate: "2026-03-13", weekday: 5 }),
+    ];
+    render(<Harness slots={weekdaySlots} initialViewMode="month" />);
+
+    expect(screen.queryByText("Sam")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dim")).not.toBeInTheDocument();
+    // Weekday columns still visible
+    expect(screen.getByText("Lun")).toBeInTheDocument();
+    expect(screen.getByText("Ven")).toBeInTheDocument();
   });
 });

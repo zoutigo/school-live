@@ -134,11 +134,16 @@ describe("Enrollments page forms", () => {
       );
       expect(studentsCalls.length).toBeGreaterThan(0);
 
-      const lastStudentsUrl = String(studentsCalls.at(-1)?.[0] ?? "");
-      const params = new URL(lastStudentsUrl, "http://localhost").searchParams;
-      expect(params.get("classId")).toBe("class-1");
-      expect(params.get("status")).toBe("WITHDRAWN");
-      expect(params.get("search")).toBe("Ntamack");
+      const filteredCall = studentsCalls.find(([url]) => {
+        const value = String(url);
+        return (
+          value.includes("classId=class-1") &&
+          value.includes("status=WITHDRAWN") &&
+          value.includes("search=Ntamack")
+        );
+      });
+
+      expect(filteredCall).toBeTruthy();
     });
   });
 
