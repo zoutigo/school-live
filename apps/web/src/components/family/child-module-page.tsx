@@ -13,6 +13,7 @@ type ParentChild = {
   id: string;
   firstName: string;
   lastName: string;
+  classId?: string | null;
   className?: string | null;
 };
 
@@ -97,6 +98,7 @@ export function ChildModulePage({
           lastName: string;
           currentEnrollment?: {
             class?: {
+              id?: string;
               name?: string;
             } | null;
           } | null;
@@ -113,20 +115,25 @@ export function ChildModulePage({
           id: entry.id,
           firstName: entry.firstName,
           lastName: entry.lastName,
+          classId: entry.currentEnrollment?.class?.id ?? null,
           className: entry.currentEnrollment?.class?.name ?? null,
         }),
       );
 
       const enrichedList = await Promise.all(
         list.map(async (entry) => {
-          if (entry.className) {
+          if (entry.classId && entry.className) {
             return entry;
           }
 
-          const className = await loadChildClassName(schoolSlug, entry.id);
+          const classContext = await loadChildClassContext(
+            schoolSlug,
+            entry.id,
+          );
           return {
             ...entry,
-            className,
+            classId: classContext.classId,
+            className: classContext.className,
           };
         }),
       );
@@ -148,29 +155,32 @@ export function ChildModulePage({
     }
   }
 
-  async function loadChildClassName(
+  async function loadChildClassContext(
     currentSchoolSlug: string,
     currentChildId: string,
-  ): Promise<string | null> {
+  ): Promise<{ classId: string | null; className: string | null }> {
     try {
       const response = await fetch(
-        `${API_URL}/schools/${currentSchoolSlug}/students/${currentChildId}/life-events?scope=current&limit=1`,
+        `${API_URL}/schools/${currentSchoolSlug}/timetable/me?childId=${currentChildId}`,
         {
           credentials: "include",
         },
       );
 
       if (!response.ok) {
-        return null;
+        return { classId: null, className: null };
       }
 
-      const payload = (await response.json()) as Array<{
-        class?: { name?: string | null } | null;
-      }>;
+      const payload = (await response.json()) as {
+        class?: { id?: string | null; name?: string | null } | null;
+      };
 
-      return payload[0]?.class?.name?.trim() || null;
+      return {
+        classId: payload.class?.id?.trim() || null,
+        className: payload.class?.name?.trim() || null,
+      };
     } catch {
-      return null;
+      return { classId: null, className: null };
     }
   }
 

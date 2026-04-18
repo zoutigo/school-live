@@ -59,6 +59,7 @@ type Props = {
   currentLevelId?: string;
   headingTitle?: string;
   hideSectionLabel?: boolean;
+  useDemoSeed?: boolean;
 };
 
 type ComposerMode = "POST" | "POLL";
@@ -149,12 +150,13 @@ export function FamilyFeedPage({
   currentLevelId,
   headingTitle,
   hideSectionLabel = false,
+  useDemoSeed = true,
 }: Props) {
   const editorRef = useRef<RichTextEditorRef | null>(null);
   const editEditorRef = useRef<RichTextEditorRef | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>(() =>
-    buildDemoFeed(schoolSlug),
+    useDemoSeed ? buildDemoFeed(schoolSlug) : [],
   );
   const [filter, setFilter] = useState<FeedFilter>("all");
   const [search, setSearch] = useState("");

@@ -691,6 +691,40 @@ export function AppSidebar({
   );
 
   useEffect(() => {
+    if (role !== "PARENT") {
+      return;
+    }
+
+    const activeChild = parentChildrenWithItems.find((child) =>
+      child.items.some((item) => {
+        if (!item.matchPrefix) {
+          return pathname === item.href;
+        }
+
+        if (item.matchPrefix.includes("?")) {
+          return pathname === item.matchPrefix;
+        }
+
+        return pathname.startsWith(item.matchPrefix);
+      }),
+    );
+
+    if (activeChild) {
+      setOpenParentSection(`child-${activeChild.id}`);
+      return;
+    }
+
+    if (
+      openParentSection !== "general" &&
+      !parentChildrenWithItems.some(
+        (child) => openParentSection === `child-${child.id}`,
+      )
+    ) {
+      setOpenParentSection("general");
+    }
+  }, [role, pathname, parentChildrenWithItems, openParentSection]);
+
+  useEffect(() => {
     if (role !== "TEACHER") {
       return;
     }

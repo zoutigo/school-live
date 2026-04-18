@@ -17,6 +17,7 @@
     "prisma:studio": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; prisma studio --schema prisma/schema.prisma'",
     "seed:academic:backfill": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-academic-backfill.mjs'",
     "seed:feed:dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-feed-dev.mjs'",
+    "seed:feed:class:dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-feed-class-dev.mjs'",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest --config ./jest.config.cjs",
