@@ -34,6 +34,11 @@ function getPostCard(title: string) {
   return article;
 }
 
+function getArticleIndex(title: string) {
+  const card = getPostCard(title);
+  return screen.getAllByRole("article").indexOf(card);
+}
+
 describe("FamilyFeedPage", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -51,6 +56,49 @@ describe("FamilyFeedPage", () => {
     expect(
       screen.getByLabelText("Publication mise en avant"),
     ).toBeInTheDocument();
+  });
+
+  it("places featured posts before regular posts on the default feed", () => {
+    render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    expect(
+      getArticleIndex("Semaine culturelle - programme final"),
+    ).toBeLessThan(getArticleIndex("Sondage sortie pedagogique"));
+    expect(
+      getArticleIndex("Organisation covoiturage de fin de semaine"),
+    ).toBeLessThan(getArticleIndex("Sondage sortie pedagogique"));
+  });
+
+  it("does not bootstrap demo posts when useDemoSeed is disabled", async () => {
+    document.cookie = "school_live_csrf_token=csrf-token";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [],
+        meta: { page: 1, totalPages: 1, total: 0, limit: 12 },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <FamilyFeedPage
+        schoolSlug="college-vogt"
+        childFullName="Lisa MBELE"
+        viewScope="CLASS"
+        currentClassId="class-6ec"
+        useDemoSeed={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    expect(
+      screen.queryByText("Semaine culturelle - programme final"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("article")).not.toBeInTheDocument();
   });
 
   it("does not render the audience badge on feed cards", () => {
@@ -407,6 +455,27 @@ describe("FamilyFeedPage", () => {
     expect(
       screen.queryByText("Semaine culturelle - programme final"),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps featured posts ordered first even in the my posts filter", async () => {
+    const { container } = render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Publier une info" }));
+    fireEvent.change(screen.getByPlaceholderText("Titre de la publication"), {
+      target: { value: "Post personnel" },
+    });
+    setEditorText(container, "Contenu perso");
+    fireEvent.click(screen.getByRole("button", { name: "Publier" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Post personnel")[0]).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Mes posts" }));
+
+    expect(getArticleIndex("Post personnel")).toBe(0);
   });
 
   it("keeps the feed header usable on smartphone", () => {

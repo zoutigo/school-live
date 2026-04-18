@@ -2,8 +2,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./app-sidebar";
 
+let mockPathname = "/schools/college-vogt/dashboard";
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/schools/college-vogt/dashboard",
+  usePathname: () => mockPathname,
 }));
 
 vi.mock("../messaging/messaging-api", () => ({
@@ -13,6 +15,7 @@ vi.mock("../messaging/messaging-api", () => ({
 describe("AppSidebar teacher class links", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockPathname = "/schools/college-vogt/dashboard";
   });
 
   it("shows an emploi du temps link per class section for teacher", async () => {
@@ -76,6 +79,7 @@ describe("AppSidebar teacher class links", () => {
 describe("AppSidebar parent child links", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockPathname = "/schools/college-vogt/dashboard";
   });
 
   it("shows an emploi du temps link in child menu for parent", async () => {
@@ -183,6 +187,60 @@ describe("AppSidebar parent child links", () => {
     expect(
       screen.queryByRole("navigation", { name: "Menu MBELE Paul" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("ouvre directement la navigation de l'enfant actif quand l'URL est dans son contexte", async () => {
+    mockPathname = "/schools/college-vogt/children/child-1/vie-scolaire";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/me")) {
+        return new Response(
+          JSON.stringify({
+            linkedStudents: [
+              {
+                id: "child-1",
+                firstName: "Lisa",
+                lastName: "MBELE",
+                currentEnrollment: {
+                  class: {
+                    name: "6e C",
+                  },
+                },
+              },
+              {
+                id: "child-2",
+                firstName: "Paul",
+                lastName: "MBELE",
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    expect(
+      await screen.findByRole("navigation", { name: "Menu MBELE Lisa" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: "Menu parent" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Vie scolaire" })).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/children/child-1/vie-scolaire",
+    );
   });
 
   it("keeps the logout action available at the bottom of the mobile family menu", async () => {

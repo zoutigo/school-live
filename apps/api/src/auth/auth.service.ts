@@ -2707,6 +2707,11 @@ export class AuthService {
         firstName: string;
         lastName: string;
         avatarUrl?: string | null;
+        currentEnrollment?: {
+          class?: {
+            name?: string | null;
+          } | null;
+        } | null;
       }>;
     }
   > {
@@ -2742,6 +2747,21 @@ export class AuthService {
                 user: {
                   select: {
                     avatarUrl: true,
+                  },
+                },
+                enrollments: {
+                  where: {
+                    schoolId,
+                    status: "ACTIVE",
+                  },
+                  orderBy: [{ updatedAt: "desc" }],
+                  take: 1,
+                  select: {
+                    class: {
+                      select: {
+                        name: true,
+                      },
+                    },
                   },
                 },
               },
@@ -2791,6 +2811,13 @@ export class AuthService {
         firstName: link.student.firstName,
         lastName: link.student.lastName,
         avatarUrl: link.student.user?.avatarUrl ?? null,
+        currentEnrollment: link.student.enrollments[0]
+          ? {
+              class: {
+                name: link.student.enrollments[0].class.name,
+              },
+            }
+          : null,
       })),
     };
   }
