@@ -3,9 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./app-sidebar";
 
 let mockPathname = "/schools/college-vogt/dashboard";
+const mockPush = vi.fn();
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname,
+  useRouter: () => ({
+    push: mockPush,
+  }),
 }));
 
 vi.mock("../messaging/messaging-api", () => ({
@@ -15,6 +19,7 @@ vi.mock("../messaging/messaging-api", () => ({
 describe("AppSidebar teacher class links", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockPush.mockReset();
     mockPathname = "/schools/college-vogt/dashboard";
   });
 
@@ -79,6 +84,7 @@ describe("AppSidebar teacher class links", () => {
 describe("AppSidebar parent child links", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockPush.mockReset();
     mockPathname = "/schools/college-vogt/dashboard";
   });
 
@@ -241,6 +247,45 @@ describe("AppSidebar parent child links", () => {
       "href",
       "/schools/college-vogt/children/child-1/vie-scolaire",
     );
+  });
+
+  it("revient au dashboard parent quand on clique sur MON ESPACE FAMILLE depuis le contexte enfant", async () => {
+    mockPathname = "/schools/college-vogt/children/child-1/vie-scolaire";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/me")) {
+        return new Response(
+          JSON.stringify({
+            linkedStudents: [
+              {
+                id: "child-1",
+                firstName: "Lisa",
+                lastName: "MBELE",
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    await screen.findByRole("navigation", { name: "Menu MBELE Lisa" });
+
+    fireEvent.click(screen.getByRole("button", { name: "MON ESPACE FAMILLE" }));
+
+    expect(mockPush).toHaveBeenCalledWith("/schools/college-vogt/dashboard");
   });
 
   it("keeps the logout action available at the bottom of the mobile family menu", async () => {

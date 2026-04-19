@@ -388,10 +388,20 @@ describe("Enrollments page forms", () => {
     fireEvent.change(schoolYearSelect, {
       target: { value: "sy-2" },
     });
+
+    await waitFor(() => {
+      const option = Array.from(classSelect.options).find(
+        (entry) => entry.value === "class-2",
+      );
+      expect(option).toBeTruthy();
+    });
+
     fireEvent.change(classSelect, {
       target: { value: "class-2" },
     });
-    expect(classSelect.value).toBe("class-2");
+    await waitFor(() => {
+      expect(classSelect.value).toBe("class-2");
+    });
 
     fireEvent.change(schoolYearSelect, {
       target: { value: "sy-1" },
