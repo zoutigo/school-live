@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
@@ -510,6 +510,7 @@ export function AppSidebar({
   onLogoutClick,
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const items = buildItems(role, schoolSlug);
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
   const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
@@ -762,6 +763,21 @@ export function AppSidebar({
       ? "bg-warm-highlight text-primary"
       : "bg-primary-dark/80 text-surface";
 
+  const parentHomeHref = schoolSlug
+    ? `/schools/${schoolSlug}/dashboard`
+    : "/acceuil";
+
+  function handleParentSpaceClick() {
+    setOpenParentSection("general");
+
+    if (role !== "PARENT" || pathname.startsWith(parentHomeHref)) {
+      return;
+    }
+
+    router.push(parentHomeHref);
+    onNavigate?.();
+  }
+
   return (
     <aside className="group flex h-full w-[236px] shrink-0 flex-col bg-gradient-to-b from-sidebar-bg via-primary to-[#083a64] px-2 py-4 text-surface shadow-[10px_0_30px_rgba(8,38,66,0.12)] transition-all duration-300 md:w-[72px] md:hover:w-[236px] md:px-3">
       {isFamilySpace ? (
@@ -983,7 +999,7 @@ export function AppSidebar({
             <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
               <button
                 type="button"
-                onClick={() => setOpenParentSection("general")}
+                onClick={handleParentSpaceClick}
                 className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
                   openParentSection === "general",
                 )}`}
