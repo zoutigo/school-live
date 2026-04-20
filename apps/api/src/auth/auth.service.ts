@@ -442,6 +442,32 @@ export class AuthService {
         throw new UnauthorizedException("Invalid credentials");
       }
       user = credential.user;
+    } else if (credential?.pinHash) {
+      // Credential already exists (admin-created or migrated) with a pinHash but
+      // verifiedAt not yet set. This covers users with activationStatus ACTIVE
+      // (e.g. parents created with phone+email, platform users with phone) who
+      // never went through the PENDING activation flow. Compare directly against
+      // the stored pinHash and mark as verified on first successful login.
+      const validPin = await bcrypt.compare(pin, credential.pinHash);
+      if (!validPin) {
+        await this.recordAuthFailure("PHONE_LOGIN", rateLimitKeyHash);
+        await this.auditAuth({
+          event: "LOGIN_PHONE",
+          status: "FAILURE",
+          principal: normalizedPhone,
+          userId: credential.user.id,
+          schoolId: credential.user.memberships[0]?.schoolId ?? null,
+          reasonCode: "INVALID_CREDENTIALS",
+          context,
+          details: { schoolSlug: schoolSlug ?? null },
+        });
+        throw new UnauthorizedException("Invalid credentials");
+      }
+      await this.prisma.userPhoneCredential.update({
+        where: { id: credential.id },
+        data: { verifiedAt: new Date() },
+      });
+      user = credential.user;
     } else {
       user = await this.activatePendingPhoneUserOnFirstLogin({
         normalizedPhone,

@@ -1,4 +1,5 @@
 import { UnauthorizedException } from "@nestjs/common";
+import bcrypt from "bcryptjs";
 import { AuthService } from "../src/auth/auth.service";
 
 describe("AuthService.getMe", () => {
@@ -129,7 +130,7 @@ describe("AuthService.getMe", () => {
     ]);
   });
 
-  it("rejette si l'utilisateur n'a aucun accès sur l'école", async () => {
+  it("rejette si l'utilisateur n'a aucun accès sur l'école (getMe)", async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: "parent-1",
       activeRole: "PARENT",
@@ -149,5 +150,163 @@ describe("AuthService.getMe", () => {
     await expect(service.getMe("parent-1", "school-1")).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// AuthService.loginWithPhonePin — path B (ACTIVE user, pinHash
+// exists but verifiedAt is null)
+// ─────────────────────────────────────────────────────────────
+describe("AuthService.loginWithPhonePin — path B (ACTIVE user, verifiedAt null)", () => {
+  const prisma = {
+    userPhoneCredential: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+    authRateLimit: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+      delete: jest.fn(),
+    },
+    authAuditLog: {
+      create: jest.fn(),
+    },
+  };
+
+  const jwtService = { signAsync: jest.fn(), verifyAsync: jest.fn() };
+  const configService = { get: jest.fn() };
+  const mailService = {
+    sendPasswordResetEmail: jest.fn(),
+    sendPasswordResetSms: jest.fn(),
+  };
+
+  let service: AuthService;
+
+  // A minimal user shape that satisfies the post-credential checks
+  const fakeUser = {
+    id: "user-active-1",
+    email: "parent@ecole.cm",
+    activeRole: "PARENT",
+    profileCompleted: true,
+    activationStatus: "ACTIVE",
+    platformRoles: [],
+    memberships: [
+      {
+        schoolId: "school-1",
+        school: { slug: "ecole-pilote" },
+      },
+    ],
+    phoneCredential: { verifiedAt: null },
+  };
+
+  beforeEach(() => {
+    service = new AuthService(
+      prisma as never,
+      jwtService as never,
+      configService as never,
+      mailService as never,
+    );
+
+    // Stub private helpers that are not under test here
+    (
+      service as never as { assertNotRateLimited: jest.Mock }
+    ).assertNotRateLimited = jest.fn().mockResolvedValue(undefined);
+    (service as never as { recordAuthFailure: jest.Mock }).recordAuthFailure =
+      jest.fn().mockResolvedValue(undefined);
+    (service as never as { auditAuth: jest.Mock }).auditAuth = jest
+      .fn()
+      .mockResolvedValue(undefined);
+    (service as never as { clearAuthFailures: jest.Mock }).clearAuthFailures =
+      jest.fn().mockResolvedValue(undefined);
+    (service as never as { issueAuthSession: jest.Mock }).issueAuthSession =
+      jest.fn().mockReturnValue({ accessToken: "tok", user: fakeUser });
+    (
+      service as never as { assertPlatformCredentialsReady: jest.Mock }
+    ).assertPlatformCredentialsReady = jest.fn();
+    (
+      service as never as { activatePendingPhoneUserOnFirstLogin: jest.Mock }
+    ).activatePendingPhoneUserOnFirstLogin = jest.fn();
+
+    jest.clearAllMocks();
+
+    // Re-apply stubs cleared by clearAllMocks
+    (
+      service as never as { assertNotRateLimited: jest.Mock }
+    ).assertNotRateLimited = jest.fn().mockResolvedValue(undefined);
+    (service as never as { recordAuthFailure: jest.Mock }).recordAuthFailure =
+      jest.fn().mockResolvedValue(undefined);
+    (service as never as { auditAuth: jest.Mock }).auditAuth = jest
+      .fn()
+      .mockResolvedValue(undefined);
+    (service as never as { clearAuthFailures: jest.Mock }).clearAuthFailures =
+      jest.fn().mockResolvedValue(undefined);
+    (service as never as { issueAuthSession: jest.Mock }).issueAuthSession =
+      jest.fn().mockReturnValue({ accessToken: "tok", user: fakeUser });
+    (
+      service as never as { assertPlatformCredentialsReady: jest.Mock }
+    ).assertPlatformCredentialsReady = jest.fn();
+    (
+      service as never as { activatePendingPhoneUserOnFirstLogin: jest.Mock }
+    ).activatePendingPhoneUserOnFirstLogin = jest.fn();
+  });
+
+  async function makeCredential(pinPlain: string) {
+    const pinHash = await bcrypt.hash(pinPlain, 10);
+    return {
+      id: "cred-1",
+      phoneE164: "+237612345678",
+      pinHash,
+      verifiedAt: null,
+      user: fakeUser,
+    };
+  }
+
+  it("accepte le PIN correct et marque verifiedAt (path B)", async () => {
+    const credential = await makeCredential("123456");
+    prisma.userPhoneCredential.findUnique.mockResolvedValue(credential);
+    prisma.userPhoneCredential.update.mockResolvedValue({
+      ...credential,
+      verifiedAt: new Date(),
+    });
+
+    await service.loginWithPhonePin("+237612345678", "123456");
+
+    expect(prisma.userPhoneCredential.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "cred-1" },
+        data: expect.objectContaining({ verifiedAt: expect.any(Date) }),
+      }),
+    );
+    expect(
+      (service as never as { activatePendingPhoneUserOnFirstLogin: jest.Mock })
+        .activatePendingPhoneUserOnFirstLogin,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("rejette un PIN incorrect avec UnauthorizedException (path B)", async () => {
+    const credential = await makeCredential("123456");
+    prisma.userPhoneCredential.findUnique.mockResolvedValue(credential);
+
+    await expect(
+      service.loginWithPhonePin("+237612345678", "000000"),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(prisma.userPhoneCredential.update).not.toHaveBeenCalled();
+  });
+
+  it("n'appelle pas activatePendingPhoneUserOnFirstLogin pour un user ACTIVE avec pinHash", async () => {
+    const credential = await makeCredential("654321");
+    prisma.userPhoneCredential.findUnique.mockResolvedValue(credential);
+    prisma.userPhoneCredential.update.mockResolvedValue({
+      ...credential,
+      verifiedAt: new Date(),
+    });
+
+    await service.loginWithPhonePin("+237612345678", "654321");
+
+    expect(
+      (service as never as { activatePendingPhoneUserOnFirstLogin: jest.Mock })
+        .activatePendingPhoneUserOnFirstLogin,
+    ).not.toHaveBeenCalled();
   });
 });
