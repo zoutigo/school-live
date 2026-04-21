@@ -99,6 +99,18 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    if (!user.passwordHash) {
+      await this.recordAuthFailure("PASSWORD_LOGIN", rateLimitKeyHash);
+      await this.auditAuth({
+        event: "LOGIN_PASSWORD",
+        status: "FAILURE",
+        principal: normalizedEmail,
+        reasonCode: "INVALID_CREDENTIALS",
+        context,
+      });
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
     const validPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!validPassword) {
@@ -252,6 +264,21 @@ export class AuthService {
         event: "LOGIN_PASSWORD",
         status: "FAILURE",
         principal: normalizedEmail,
+        schoolId: school.id,
+        reasonCode: "INVALID_CREDENTIALS",
+        context,
+        details: { schoolSlug },
+      });
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (!user.passwordHash) {
+      await this.recordAuthFailure("PASSWORD_LOGIN", rateLimitKeyHash);
+      await this.auditAuth({
+        event: "LOGIN_PASSWORD",
+        status: "FAILURE",
+        principal: normalizedEmail,
+        userId: user.id,
         schoolId: school.id,
         reasonCode: "INVALID_CREDENTIALS",
         context,
@@ -551,7 +578,7 @@ export class AuthService {
       });
       throw new ForbiddenException({
         code: "PROFILE_SETUP_REQUIRED",
-        email: user.email.endsWith("@noemail.scolive.local")
+        email: user.email?.endsWith("@noemail.scolive.local")
           ? null
           : user.email,
         schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
@@ -623,6 +650,10 @@ export class AuthService {
     }
 
     if (user.phoneCredential?.verifiedAt) {
+      return null;
+    }
+
+    if (!user.passwordHash) {
       return null;
     }
 
@@ -1022,10 +1053,9 @@ export class AuthService {
       );
     }
 
-    const validPassword = await bcrypt.compare(
-      temporaryPassword,
-      user.passwordHash,
-    );
+    const validPassword = user.passwordHash
+      ? await bcrypt.compare(temporaryPassword, user.passwordHash)
+      : false;
 
     if (!validPassword) {
       throw new UnauthorizedException("Invalid credentials");
@@ -1096,10 +1126,9 @@ export class AuthService {
         );
       }
 
-      const validTemporaryPassword = await bcrypt.compare(
-        input.temporaryPassword,
-        user.passwordHash,
-      );
+      const validTemporaryPassword = user.passwordHash
+        ? await bcrypt.compare(input.temporaryPassword, user.passwordHash)
+        : false;
 
       if (!validTemporaryPassword) {
         throw new UnauthorizedException("Invalid credentials");
@@ -1371,6 +1400,19 @@ export class AuthService {
       throw new UnauthorizedException("User not found");
     }
 
+    if (!user.passwordHash) {
+      await this.auditAuth({
+        event: "CHANGE_PASSWORD",
+        status: "FAILURE",
+        userId,
+        reasonCode: "NO_PASSWORD_SET",
+        context,
+      });
+      throw new ForbiddenException(
+        "Ce compte n'a pas encore de mot de passe. Utilisez l'ajout de mot de passe.",
+      );
+    }
+
     const validCurrentPassword = await bcrypt.compare(
       currentPassword,
       user.passwordHash,
@@ -1521,6 +1563,218 @@ export class AuthService {
     return { success: true };
   }
 
+  async requestAddEmail(userId: string, email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+    if (user.email) {
+      throw new ForbiddenException(
+        "Cet utilisateur a deja un email configure. Contactez l'administration pour le modifier.",
+      );
+    }
+
+    const existing = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (existing) {
+      throw new ForbiddenException("Cette adresse email est deja utilisee.");
+    }
+
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.emailVerificationToken.deleteMany({ where: { userId } });
+    await this.prisma.emailVerificationToken.create({
+      data: { userId, email: normalizedEmail, tokenHash, expiresAt },
+    });
+
+    const webUrl =
+      this.configService.get<string>("WEB_URL") ?? "http://localhost:3000";
+    const verificationUrl = `${webUrl}/auth/verify-email?token=${rawToken}`;
+    await this.mailService.sendEmailVerification({
+      to: normalizedEmail,
+      firstName: user.firstName,
+      verificationUrl,
+    });
+
+    await this.auditAuth({ event: "ADD_EMAIL", status: "SUCCESS", userId });
+    return {
+      success: true,
+      message: "Un lien de verification a ete envoye a cette adresse email.",
+    };
+  }
+
+  async verifyEmailToken(rawToken: string) {
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const token = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      include: { user: { select: { id: true, email: true } } },
+    });
+
+    if (!token || token.usedAt || token.expiresAt < new Date()) {
+      throw new ForbiddenException(
+        "Lien de verification invalide ou expire. Veuillez faire une nouvelle demande.",
+      );
+    }
+
+    if (token.user.email) {
+      throw new ForbiddenException(
+        "Un email est deja configure sur ce compte.",
+      );
+    }
+
+    const already = await this.prisma.user.findUnique({
+      where: { email: token.email },
+    });
+    if (already) {
+      throw new ForbiddenException(
+        "Cette adresse email est deja utilisee par un autre compte.",
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: token.userId },
+        data: { email: token.email },
+      });
+      await tx.emailVerificationToken.update({
+        where: { id: token.id },
+        data: { usedAt: new Date() },
+      });
+    });
+
+    await this.auditAuth({
+      event: "VERIFY_EMAIL",
+      status: "SUCCESS",
+      userId: token.userId,
+    });
+    return { success: true };
+  }
+
+  async createPassword(
+    userId: string,
+    newPassword: string,
+    context?: AuthRequestContext,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, passwordHash: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+    if (user.passwordHash) {
+      await this.auditAuth({
+        event: "CREATE_PASSWORD",
+        status: "FAILURE",
+        userId,
+        reasonCode: "PASSWORD_ALREADY_SET",
+        context,
+      });
+      throw new ForbiddenException(
+        "Ce compte a deja un mot de passe. Utilisez la modification de mot de passe.",
+      );
+    }
+    if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(newPassword)) {
+      await this.auditAuth({
+        event: "CREATE_PASSWORD",
+        status: "FAILURE",
+        userId,
+        reasonCode: "INVALID_PASSWORD_POLICY",
+        context,
+      });
+      throw new ForbiddenException(
+        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: false },
+    });
+
+    await this.auditAuth({
+      event: "CREATE_PASSWORD",
+      status: "SUCCESS",
+      userId,
+      context,
+    });
+    return { success: true };
+  }
+
+  async addPhoneCredential(
+    userId: string,
+    phone: string,
+    pin: string,
+    context?: AuthRequestContext,
+  ) {
+    if (!AuthService.PHONE_PIN_REGEX.test(pin)) {
+      throw new ForbiddenException(
+        "Le PIN doit contenir exactement 6 chiffres.",
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, phoneCredential: { select: { id: true } } },
+    });
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+    if (user.phoneCredential) {
+      await this.auditAuth({
+        event: "ADD_PHONE_CREDENTIAL",
+        status: "FAILURE",
+        userId,
+        reasonCode: "PHONE_CREDENTIAL_ALREADY_SET",
+        context,
+      });
+      throw new ForbiddenException(
+        "Ce compte a deja un PIN configure. Utilisez la modification de PIN.",
+      );
+    }
+
+    const normalizedPhone = this.normalizePhone(phone);
+
+    const existingCredential = await this.prisma.userPhoneCredential.findUnique(
+      { where: { phoneE164: normalizedPhone } },
+    );
+    if (existingCredential) {
+      throw new ForbiddenException(
+        "Ce numero de telephone est deja utilise par un autre compte.",
+      );
+    }
+
+    const pinHash = await bcrypt.hash(pin, 10);
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { phone: normalizedPhone, phoneConfirmedAt: now },
+      });
+      await tx.userPhoneCredential.create({
+        data: { userId, phoneE164: normalizedPhone, pinHash, verifiedAt: now },
+      });
+    });
+
+    await this.auditAuth({
+      event: "ADD_PHONE_CREDENTIAL",
+      status: "SUCCESS",
+      userId,
+      context,
+    });
+    return { success: true };
+  }
+
   async completePlatformCredentialsSetup(input: {
     token: string;
     newPassword?: string;
@@ -1574,10 +1828,9 @@ export class AuthService {
           "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
         );
       }
-      const isSamePassword = await bcrypt.compare(
-        input.newPassword,
-        user.passwordHash,
-      );
+      const isSamePassword = user.passwordHash
+        ? await bcrypt.compare(input.newPassword, user.passwordHash)
+        : false;
       if (isSamePassword) {
         throw new ForbiddenException(
           "Le nouveau mot de passe doit etre different du mot de passe actuel",
@@ -1898,7 +2151,7 @@ export class AuthService {
 
     try {
       await this.mailService.sendPasswordResetEmail({
-        to: user.email,
+        to: user.email!,
         firstName: user.firstName,
         resetUrl,
         expiresInMinutes,
@@ -2011,10 +2264,9 @@ export class AuthService {
       );
     }
 
-    const samePassword = await bcrypt.compare(
-      newPassword,
-      resetToken.user.passwordHash,
-    );
+    const samePassword = resetToken.user.passwordHash
+      ? await bcrypt.compare(newPassword, resetToken.user.passwordHash)
+      : false;
     if (samePassword) {
       throw new ForbiddenException(
         "Le nouveau mot de passe doit etre different du mot de passe actuel",
@@ -2398,10 +2650,9 @@ export class AuthService {
       }
       matchedActivationCodeId = code.id;
     } else if (input.initialPin) {
-      const validInitialPin = await bcrypt.compare(
-        input.initialPin,
-        user.passwordHash,
-      );
+      const validInitialPin = user.passwordHash
+        ? await bcrypt.compare(input.initialPin, user.passwordHash)
+        : false;
       if (!validInitialPin) {
         await this.recordAuthFailure("ACTIVATION", rateLimitKeyHash);
         await this.auditAuth({
@@ -2623,10 +2874,9 @@ export class AuthService {
       throw new UnauthorizedException("Invalid account");
     }
 
-    const validPassword = await bcrypt.compare(
-      input.password,
-      user.passwordHash,
-    );
+    const validPassword = user.passwordHash
+      ? await bcrypt.compare(input.password, user.passwordHash)
+      : false;
     if (!validPassword) {
       throw new UnauthorizedException("Invalid credentials");
     }
@@ -2976,6 +3226,8 @@ export class AuthService {
       role: PlatformRole | SchoolRole | null;
       activeRole: PlatformRole | SchoolRole | null;
       gender?: "M" | "F" | "OTHER" | null;
+      hasPassword: boolean;
+      hasPhoneCredential: boolean;
     }
   > {
     const user = await this.prisma.user.findUnique({
@@ -2991,6 +3243,7 @@ export class AuthService {
         firstName: true,
         lastName: true,
         gender: true,
+        passwordHash: true,
         platformRoles: {
           select: { role: true },
         },
@@ -3001,6 +3254,9 @@ export class AuthService {
             },
           },
           orderBy: { createdAt: "asc" },
+        },
+        phoneCredential: {
+          select: { id: true },
         },
       },
     });
@@ -3037,6 +3293,8 @@ export class AuthService {
       lastName: user.lastName,
       gender: user.gender,
       schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      hasPassword: !!user.passwordHash,
+      hasPhoneCredential: !!user.phoneCredential,
     };
   }
 
@@ -3305,7 +3563,8 @@ export class AuthService {
     );
   }
 
-  private maskEmail(email: string) {
+  private maskEmail(email: string | null): string {
+    if (!email) return "";
     const [localPart, domain] = email.split("@");
     if (!localPart || !domain) {
       return email;
@@ -3393,7 +3652,7 @@ export class AuthService {
   private assertPlatformCredentialsReady(
     user: {
       id: string;
-      email: string;
+      email: string | null;
       phone: string | null;
       mustChangePassword: boolean;
       platformRoles: Array<{ role: PlatformRole }>;

@@ -2216,7 +2216,7 @@ export class TimetableService {
         id: string;
         firstName: string;
         lastName: string;
-        email: string;
+        email: string | null;
       };
     }>;
     oneOffSlots: Array<{
@@ -2231,7 +2231,7 @@ export class TimetableService {
         id: string;
         firstName: string;
         lastName: string;
-        email: string;
+        email: string | null;
       };
     }>;
     slotExceptions: Array<{
@@ -2256,7 +2256,7 @@ export class TimetableService {
           id: string;
           firstName: string;
           lastName: string;
-          email: string;
+          email: string | null;
         };
       };
       subject: { id: string; name: string } | null;
@@ -2264,7 +2264,7 @@ export class TimetableService {
         id: string;
         firstName: string;
         lastName: string;
-        email: string;
+        email: string | null;
       } | null;
     }>;
   }): ResolvedTimetableOccurrence[] {

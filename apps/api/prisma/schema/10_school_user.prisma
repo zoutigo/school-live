@@ -56,11 +56,11 @@ model School {
 
 model User {
   id                 String                   @id @default(cuid())
-  email              String                   @unique
+  email              String?                  @unique
   phone              String?
   phoneConfirmedAt   DateTime?
   avatarUrl          String?
-  passwordHash       String
+  passwordHash       String?
   mustChangePassword Boolean                  @default(false)
   profileCompleted   Boolean                  @default(true)
   activationStatus   AccountActivationStatus  @default(ACTIVE)
@@ -89,6 +89,7 @@ model User {
   recoveryAnswers    UserRecoveryAnswer[]
   authIdentities     UserAuthIdentity[]
   phoneCredential    UserPhoneCredential?
+  emailVerificationTokens EmailVerificationToken[]
   activationCodes    ActivationCode[]         @relation("ActivationCodeUser")
   createdActivationCodes ActivationCode[]     @relation("ActivationCodeIssuer")
   authAuditLogs      AuthAuditLog[]
@@ -276,4 +277,18 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@index([usedAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }

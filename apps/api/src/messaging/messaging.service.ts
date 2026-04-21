@@ -754,7 +754,7 @@ export class MessagingService {
         id: string;
         firstName: string;
         lastName: string;
-        email: string;
+        email: string | null;
       };
       attachments: Array<{
         id: string;
@@ -1019,7 +1019,7 @@ export class MessagingService {
       .filter((entry) => Boolean(entry.recipientUser.email))
       .map((entry) =>
         this.mailService.sendInternalMessageNotification({
-          to: entry.recipientUser.email,
+          to: entry.recipientUser.email!,
           recipientFirstName: entry.recipientUser.firstName,
           schoolName: message.school.name,
           schoolSlug: message.school.slug,

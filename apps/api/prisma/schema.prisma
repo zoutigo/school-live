@@ -71,6 +71,10 @@ enum AuthAuditEvent {
   ACTIVATION_COMPLETE
   CHANGE_PASSWORD
   CHANGE_PIN
+  CREATE_PASSWORD
+  ADD_EMAIL
+  VERIFY_EMAIL
+  ADD_PHONE_CREDENTIAL
 }
 
 enum AuthAuditStatus {
@@ -252,11 +256,11 @@ model School {
 
 model User {
   id                 String                   @id @default(cuid())
-  email              String                   @unique
+  email              String?                  @unique
   phone              String?
   phoneConfirmedAt   DateTime?
   avatarUrl          String?
-  passwordHash       String
+  passwordHash       String?
   mustChangePassword Boolean                  @default(false)
   profileCompleted   Boolean                  @default(true)
   activationStatus   AccountActivationStatus  @default(ACTIVE)
@@ -304,6 +308,21 @@ model User {
   timetableSlotExceptionsAsTeacher ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionTeacher")
   timetableSlotExceptionsCreated ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionCreatedBy")
   calendarEventsCreated SchoolCalendarEvent[]  @relation("SchoolCalendarEventCreatedBy")
+  emailVerificationTokens EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model UserAuthIdentity {

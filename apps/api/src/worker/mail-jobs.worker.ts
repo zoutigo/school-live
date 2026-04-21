@@ -13,11 +13,13 @@ import {
 } from "../infrastructure/email/email.port.js";
 import { buildRedisConnection } from "../infrastructure/messaging/redis-connection.js";
 import {
+  MAIL_JOB_SEND_EMAIL_VERIFICATION,
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
+  type EmailVerificationMailPayload,
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
   type StudentLifeEventNotificationPayload,
@@ -59,6 +61,12 @@ export class MailJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION) {
           await this.emailPort.sendInternalMessageNotification(
             job.data as InternalMessageNotificationPayload,
+          );
+          return;
+        }
+        if (job.name === MAIL_JOB_SEND_EMAIL_VERIFICATION) {
+          await this.emailPort.sendEmailVerification(
+            job.data as EmailVerificationMailPayload,
           );
           return;
         }
