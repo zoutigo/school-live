@@ -45,6 +45,40 @@ const changePasswordSchema = z
     path: ["confirmNewPassword"],
   });
 
+const createPasswordSchema = z
+  .object({
+    newPassword: z
+      .string()
+      .regex(
+        PASSWORD_COMPLEXITY_REGEX,
+        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+      ),
+    confirmNewPassword: z.string(),
+  })
+  .refine((value) => value.newPassword === value.confirmNewPassword, {
+    message: "La confirmation du nouveau mot de passe ne correspond pas.",
+    path: ["confirmNewPassword"],
+  });
+
+const addEmailSchema = z.object({
+  email: z.string().email("Adresse email invalide."),
+});
+
+const addPhoneCredentialSchema = z
+  .object({
+    phone: z
+      .string()
+      .regex(/^\d{9}$/, "Numero invalide (9 chiffres attendus)."),
+    pin: z
+      .string()
+      .regex(/^\d{6}$/, "Le PIN doit contenir exactement 6 chiffres."),
+    confirmPin: z.string(),
+  })
+  .refine((v) => v.pin === v.confirmPin, {
+    message: "Les PINs ne correspondent pas.",
+    path: ["confirmPin"],
+  });
+
 const changePinSchema = z
   .object({
     currentPin: z
@@ -153,6 +187,8 @@ type MeResponse = {
   phone?: string | null;
   role: Role;
   schoolSlug: string | null;
+  hasPassword: boolean;
+  hasPhoneCredential: boolean;
 };
 
 type RecoveryOption = {
@@ -205,6 +241,19 @@ export default function AccountPage() {
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinSuccess, setPinSuccess] = useState<string | null>(null);
   const [updatingPin, setUpdatingPin] = useState(false);
+  const [addEmailError, setAddEmailError] = useState<string | null>(null);
+  const [addEmailSuccess, setAddEmailSuccess] = useState<string | null>(null);
+  const [addingEmail, setAddingEmail] = useState(false);
+  const [createPasswordError, setCreatePasswordError] = useState<string | null>(
+    null,
+  );
+  const [createPasswordSuccess, setCreatePasswordSuccess] = useState<
+    string | null
+  >(null);
+  const [creatingPassword, setCreatingPassword] = useState(false);
+  const [addPhoneError, setAddPhoneError] = useState<string | null>(null);
+  const [addPhoneSuccess, setAddPhoneSuccess] = useState<string | null>(null);
+  const [addingPhone, setAddingPhone] = useState(false);
   const [loadingRecovery, setLoadingRecovery] = useState(false);
   const [recoveryReady, setRecoveryReady] = useState(false);
   const [recoveryQuestions, setRecoveryQuestions] = useState<RecoveryOption[]>(
@@ -221,7 +270,7 @@ export default function AccountPage() {
   const [recoverySuccess, setRecoverySuccess] = useState<string | null>(null);
   const [updatingRecovery, setUpdatingRecovery] = useState(false);
   const [openSecuritySection, setOpenSecuritySection] = useState<
-    "password" | "pin" | "recovery" | null
+    "password" | "create-password" | "pin" | "add-phone" | "recovery" | null
   >(null);
   const personalForm = useForm<
     z.input<typeof personalProfileSchema>,
@@ -249,6 +298,33 @@ export default function AccountPage() {
       newPassword: "",
       confirmNewPassword: "",
     },
+  });
+  const createPasswordForm = useForm<
+    z.input<typeof createPasswordSchema>,
+    unknown,
+    z.output<typeof createPasswordSchema>
+  >({
+    resolver: zodResolver(createPasswordSchema),
+    mode: "onChange",
+    defaultValues: { newPassword: "", confirmNewPassword: "" },
+  });
+  const addEmailForm = useForm<
+    z.input<typeof addEmailSchema>,
+    unknown,
+    z.output<typeof addEmailSchema>
+  >({
+    resolver: zodResolver(addEmailSchema),
+    mode: "onChange",
+    defaultValues: { email: "" },
+  });
+  const addPhoneForm = useForm<
+    z.input<typeof addPhoneCredentialSchema>,
+    unknown,
+    z.output<typeof addPhoneCredentialSchema>
+  >({
+    resolver: zodResolver(addPhoneCredentialSchema),
+    mode: "onChange",
+    defaultValues: { phone: "", pin: "", confirmPin: "" },
   });
   const pinForm = useForm<
     z.input<typeof changePinSchema>,
@@ -405,6 +481,136 @@ export default function AccountPage() {
       setPersonalError("Erreur reseau.");
     } finally {
       setUpdatingPersonal(false);
+    }
+  }
+
+  async function onAddEmail(values: z.output<typeof addEmailSchema>) {
+    setAddEmailError(null);
+    setAddEmailSuccess(null);
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setAddEmailError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+    setAddingEmail(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/add-email`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ email: values.email }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message = Array.isArray(payload?.message)
+          ? payload.message.join(", ")
+          : (payload?.message ?? "Impossible d'ajouter l'email.");
+        setAddEmailError(String(message));
+        return;
+      }
+      setAddEmailSuccess(
+        "Un lien de verification a ete envoye. Verifiez votre boite mail.",
+      );
+      addEmailForm.reset();
+    } catch {
+      setAddEmailError("Erreur reseau.");
+    } finally {
+      setAddingEmail(false);
+    }
+  }
+
+  async function onCreatePassword(
+    values: z.output<typeof createPasswordSchema>,
+  ) {
+    setCreatePasswordError(null);
+    setCreatePasswordSuccess(null);
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setCreatePasswordError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+    setCreatingPassword(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/create-password`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ newPassword: values.newPassword }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message = Array.isArray(payload?.message)
+          ? payload.message.join(", ")
+          : (payload?.message ?? "Impossible de creer le mot de passe.");
+        setCreatePasswordError(String(message));
+        return;
+      }
+      setCreatePasswordSuccess("Mot de passe cree avec succes.");
+      createPasswordForm.reset();
+      setOpenSecuritySection(null);
+      setMe((current) =>
+        current ? { ...current, hasPassword: true } : current,
+      );
+    } catch {
+      setCreatePasswordError("Erreur reseau.");
+    } finally {
+      setCreatingPassword(false);
+    }
+  }
+
+  async function onAddPhone(values: z.output<typeof addPhoneCredentialSchema>) {
+    setAddPhoneError(null);
+    setAddPhoneSuccess(null);
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setAddPhoneError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+    setAddingPhone(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/add-phone-credential`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ phone: values.phone, pin: values.pin }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message = Array.isArray(payload?.message)
+          ? payload.message.join(", ")
+          : (payload?.message ?? "Impossible d'ajouter le telephone.");
+        setAddPhoneError(String(message));
+        return;
+      }
+      setAddPhoneSuccess("Telephone et PIN configures avec succes.");
+      addPhoneForm.reset();
+      setOpenSecuritySection(null);
+      setMe((current) =>
+        current ? { ...current, hasPhoneCredential: true } : current,
+      );
+      await loadMe();
+    } catch {
+      setAddPhoneError("Erreur reseau.");
+    } finally {
+      setAddingPhone(false);
     }
   }
 
@@ -892,7 +1098,74 @@ export default function AccountPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <InfoBlock label="Prenom" value={me?.firstName ?? "-"} />
                   <InfoBlock label="Nom" value={me?.lastName ?? "-"} />
-                  <InfoBlock label="Email" value={me?.email ?? "-"} />
+                  {me?.email ? (
+                    <InfoBlock label="Email" value={me.email} />
+                  ) : (
+                    <div className="rounded-card border border-border bg-background px-4 py-3">
+                      <p className="text-xs uppercase tracking-wide text-text-secondary">
+                        Email
+                      </p>
+                      <p className="mt-1 text-sm text-text-secondary italic">
+                        Non renseigne
+                      </p>
+                      <form
+                        className="mt-2 grid gap-2"
+                        onSubmit={addEmailForm.handleSubmit(onAddEmail)}
+                        noValidate
+                      >
+                        <Controller
+                          control={addEmailForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormTextInput
+                              name={field.name}
+                              ref={field.ref}
+                              type="email"
+                              value={field.value}
+                              onChange={(event) =>
+                                addEmailForm.setValue(
+                                  "email",
+                                  event.target.value,
+                                  {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  },
+                                )
+                              }
+                              onBlur={field.onBlur}
+                              placeholder="votre@email.com"
+                              invalid={Boolean(
+                                addEmailForm.formState.errors.email,
+                              )}
+                            />
+                          )}
+                        />
+                        {addEmailForm.formState.errors.email ? (
+                          <p className="text-xs text-notification">
+                            {addEmailForm.formState.errors.email.message}
+                          </p>
+                        ) : null}
+                        {addEmailError ? (
+                          <p className="text-xs text-notification">
+                            {addEmailError}
+                          </p>
+                        ) : null}
+                        {addEmailSuccess ? (
+                          <p className="text-xs text-primary">
+                            {addEmailSuccess}
+                          </p>
+                        ) : null}
+                        <SubmitButton
+                          disabled={
+                            addingEmail || !addEmailForm.formState.isValid
+                          }
+                        >
+                          {addingEmail ? "Envoi..." : "Ajouter l'email"}
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  )}
                   <InfoBlock
                     label="Telephone"
                     value={toLocalPhoneDisplay(me?.phone) || "-"}
@@ -923,34 +1196,168 @@ export default function AccountPage() {
                 <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                   <p className="text-sm font-semibold text-text-primary">
                     Mot de passe
+                    {me && !me.hasPassword ? (
+                      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                        Non configure
+                      </span>
+                    ) : null}
                   </p>
                   <Button
                     type="button"
                     variant="secondary"
                     className="hidden lg:inline-flex"
-                    onClick={() =>
+                    onClick={() => {
+                      const target =
+                        me && !me.hasPassword ? "create-password" : "password";
                       setOpenSecuritySection((current) =>
-                        current === "password" ? null : "password",
-                      )
-                    }
+                        current === target ? null : target,
+                      );
+                    }}
                   >
-                    {openSecuritySection === "password" ? "Fermer" : "Modifier"}
+                    {openSecuritySection === "password" ||
+                    openSecuritySection === "create-password"
+                      ? "Fermer"
+                      : me && !me.hasPassword
+                        ? "Creer"
+                        : "Modifier"}
                   </Button>
                   <ActionIconButton
-                    icon={openSecuritySection === "password" ? X : Pencil}
+                    icon={
+                      openSecuritySection === "password" ||
+                      openSecuritySection === "create-password"
+                        ? X
+                        : Pencil
+                    }
                     label={
-                      openSecuritySection === "password"
+                      openSecuritySection === "password" ||
+                      openSecuritySection === "create-password"
                         ? "Fermer la section mot de passe"
-                        : "Modifier le mot de passe"
+                        : me && !me.hasPassword
+                          ? "Creer un mot de passe"
+                          : "Modifier le mot de passe"
                     }
                     className="lg:hidden"
-                    onClick={() =>
+                    onClick={() => {
+                      const target =
+                        me && !me.hasPassword ? "create-password" : "password";
                       setOpenSecuritySection((current) =>
-                        current === "password" ? null : "password",
-                      )
-                    }
+                        current === target ? null : target,
+                      );
+                    }}
                   />
                 </div>
+
+                {openSecuritySection === "create-password" ? (
+                  <form
+                    className="grid gap-3 p-4"
+                    onSubmit={createPasswordForm.handleSubmit(onCreatePassword)}
+                    noValidate
+                  >
+                    <p className="text-xs text-text-secondary">
+                      Votre compte n&apos;a pas encore de mot de passe.
+                      Definissez-en un pour pouvoir vous connecter avec votre
+                      email.
+                    </p>
+                    <FormField
+                      label="Nouveau mot de passe"
+                      error={
+                        createPasswordForm.formState.errors.newPassword?.message
+                      }
+                    >
+                      <Controller
+                        control={createPasswordForm.control}
+                        name="newPassword"
+                        render={({ field }) => (
+                          <PasswordInput
+                            aria-label="Nouveau mot de passe"
+                            name={field.name}
+                            value={field.value}
+                            aria-invalid={
+                              createPasswordForm.formState.errors.newPassword
+                                ? "true"
+                                : "false"
+                            }
+                            onChange={(event) =>
+                              createPasswordForm.setValue(
+                                "newPassword",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                          />
+                        )}
+                      />
+                    </FormField>
+                    <PasswordRequirementsHint
+                      password={createPasswordForm.watch("newPassword") ?? ""}
+                    />
+                    <FormField
+                      label="Confirmer le mot de passe"
+                      error={
+                        createPasswordForm.formState.errors.confirmNewPassword
+                          ?.message
+                      }
+                    >
+                      <Controller
+                        control={createPasswordForm.control}
+                        name="confirmNewPassword"
+                        render={({ field }) => (
+                          <PasswordInput
+                            aria-label="Confirmer le mot de passe"
+                            name={field.name}
+                            value={field.value}
+                            aria-invalid={
+                              createPasswordForm.formState.errors
+                                .confirmNewPassword
+                                ? "true"
+                                : "false"
+                            }
+                            onChange={(event) =>
+                              createPasswordForm.setValue(
+                                "confirmNewPassword",
+                                event.target.value,
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                          />
+                        )}
+                      />
+                    </FormField>
+                    {createPasswordError ? (
+                      <p className="text-sm text-notification">
+                        {createPasswordError}
+                      </p>
+                    ) : null}
+                    {createPasswordSuccess ? (
+                      <p className="text-sm text-primary">
+                        {createPasswordSuccess}
+                      </p>
+                    ) : null}
+                    <FormSubmitHint
+                      visible={!createPasswordForm.formState.isValid}
+                    />
+                    <SubmitButton
+                      disabled={
+                        creatingPassword ||
+                        !createPasswordForm.formState.isValid
+                      }
+                    >
+                      {creatingPassword
+                        ? "Creation..."
+                        : "Creer le mot de passe"}
+                    </SubmitButton>
+                  </form>
+                ) : null}
 
                 {openSecuritySection === "password" ? (
                   <form
@@ -1095,34 +1502,188 @@ export default function AccountPage() {
                 <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                   <p className="text-sm font-semibold text-text-primary">
                     PIN de connexion
+                    {me && !me.hasPhoneCredential ? (
+                      <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
+                        Non configure
+                      </span>
+                    ) : null}
                   </p>
                   <Button
                     type="button"
                     variant="secondary"
                     className="hidden lg:inline-flex"
-                    onClick={() =>
+                    onClick={() => {
+                      const target =
+                        me && !me.hasPhoneCredential ? "add-phone" : "pin";
                       setOpenSecuritySection((current) =>
-                        current === "pin" ? null : "pin",
-                      )
-                    }
+                        current === target ? null : target,
+                      );
+                    }}
                   >
-                    {openSecuritySection === "pin" ? "Fermer" : "Modifier"}
+                    {openSecuritySection === "pin" ||
+                    openSecuritySection === "add-phone"
+                      ? "Fermer"
+                      : me && !me.hasPhoneCredential
+                        ? "Configurer"
+                        : "Modifier"}
                   </Button>
                   <ActionIconButton
-                    icon={openSecuritySection === "pin" ? X : Pencil}
+                    icon={
+                      openSecuritySection === "pin" ||
+                      openSecuritySection === "add-phone"
+                        ? X
+                        : Pencil
+                    }
                     label={
-                      openSecuritySection === "pin"
+                      openSecuritySection === "pin" ||
+                      openSecuritySection === "add-phone"
                         ? "Fermer la section PIN"
-                        : "Modifier le PIN"
+                        : me && !me.hasPhoneCredential
+                          ? "Configurer telephone et PIN"
+                          : "Modifier le PIN"
                     }
                     className="lg:hidden"
-                    onClick={() =>
+                    onClick={() => {
+                      const target =
+                        me && !me.hasPhoneCredential ? "add-phone" : "pin";
                       setOpenSecuritySection((current) =>
-                        current === "pin" ? null : "pin",
-                      )
-                    }
+                        current === target ? null : target,
+                      );
+                    }}
                   />
                 </div>
+
+                {openSecuritySection === "add-phone" ? (
+                  <form
+                    className="grid gap-3 p-4"
+                    onSubmit={addPhoneForm.handleSubmit(onAddPhone)}
+                    noValidate
+                  >
+                    <p className="text-xs text-text-secondary">
+                      Ajoutez un numero de telephone et un code PIN pour vous
+                      connecter depuis le mobile.
+                    </p>
+                    <FormField
+                      label="Telephone (9 chiffres)"
+                      error={addPhoneForm.formState.errors.phone?.message}
+                    >
+                      <Controller
+                        control={addPhoneForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormTextInput
+                            name={field.name}
+                            ref={field.ref}
+                            type="text"
+                            value={field.value}
+                            onChange={(event) =>
+                              addPhoneForm.setValue(
+                                "phone",
+                                normalizePhoneInput(event.target.value),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            placeholder="6XXXXXXXX"
+                            invalid={Boolean(
+                              addPhoneForm.formState.errors.phone,
+                            )}
+                          />
+                        )}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Code PIN (6 chiffres)"
+                      error={addPhoneForm.formState.errors.pin?.message}
+                    >
+                      <Controller
+                        control={addPhoneForm.control}
+                        name="pin"
+                        render={({ field }) => (
+                          <PinInput
+                            aria-label="Code PIN (6 chiffres)"
+                            name={field.name}
+                            value={field.value}
+                            aria-invalid={
+                              addPhoneForm.formState.errors.pin
+                                ? "true"
+                                : "false"
+                            }
+                            onChange={(event) =>
+                              addPhoneForm.setValue(
+                                "pin",
+                                event.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            placeholder="123456"
+                          />
+                        )}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Confirmer le PIN"
+                      error={addPhoneForm.formState.errors.confirmPin?.message}
+                    >
+                      <Controller
+                        control={addPhoneForm.control}
+                        name="confirmPin"
+                        render={({ field }) => (
+                          <PinInput
+                            aria-label="Confirmer le PIN"
+                            name={field.name}
+                            value={field.value}
+                            aria-invalid={
+                              addPhoneForm.formState.errors.confirmPin
+                                ? "true"
+                                : "false"
+                            }
+                            onChange={(event) =>
+                              addPhoneForm.setValue(
+                                "confirmPin",
+                                event.target.value
+                                  .replace(/\D/g, "")
+                                  .slice(0, 6),
+                                {
+                                  shouldDirty: true,
+                                  shouldTouch: true,
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                            onBlur={field.onBlur}
+                            placeholder="123456"
+                          />
+                        )}
+                      />
+                    </FormField>
+                    {addPhoneError ? (
+                      <p className="text-sm text-notification">
+                        {addPhoneError}
+                      </p>
+                    ) : null}
+                    {addPhoneSuccess ? (
+                      <p className="text-sm text-primary">{addPhoneSuccess}</p>
+                    ) : null}
+                    <FormSubmitHint visible={!addPhoneForm.formState.isValid} />
+                    <SubmitButton
+                      disabled={addingPhone || !addPhoneForm.formState.isValid}
+                    >
+                      {addingPhone ? "Configuration..." : "Configurer"}
+                    </SubmitButton>
+                  </form>
+                ) : null}
 
                 {openSecuritySection === "pin" ? (
                   <form

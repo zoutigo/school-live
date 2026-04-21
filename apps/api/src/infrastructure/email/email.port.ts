@@ -1,4 +1,5 @@
 import type {
+  EmailVerificationMailPayload,
   InternalMessageNotificationPayload,
   PasswordResetMailPayload,
   StudentLifeEventNotificationPayload,
@@ -15,6 +16,7 @@ export type EmailPort = {
     payload: StudentLifeEventNotificationPayload,
   ): Promise<void>;
   sendPasswordResetEmail(payload: PasswordResetMailPayload): Promise<void>;
+  sendEmailVerification(payload: EmailVerificationMailPayload): Promise<void>;
   sendInternalMessageNotification(
     payload: InternalMessageNotificationPayload,
   ): Promise<void>;

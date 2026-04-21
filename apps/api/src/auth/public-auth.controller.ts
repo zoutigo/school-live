@@ -16,8 +16,11 @@ import {
 } from "./auth-cookies.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "./auth.types.js";
+import { AddEmailDto } from "./dto/add-email.dto.js";
+import { AddPhoneCredentialDto } from "./dto/add-phone-credential.dto.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
 import { ChangePinDto } from "./dto/change-pin.dto.js";
+import { CreatePasswordDto } from "./dto/create-password.dto.js";
 import { ActivationCompleteDto } from "./dto/activation-complete.dto.js";
 import { ActivationStartDto } from "./dto/activation-start.dto.js";
 import { ForgotPasswordCompleteDto } from "./dto/forgot-password-complete.dto.js";
@@ -181,6 +184,49 @@ export class PublicAuthController {
       payload.email,
       payload.temporaryPassword,
       payload.newPassword,
+    );
+  }
+
+  @Post("add-email")
+  @UseGuards(JwtAuthGuard)
+  addEmail(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: AddEmailDto,
+  ) {
+    return this.authService.requestAddEmail(user.id, payload.email);
+  }
+
+  @Get("verify-email")
+  verifyEmail(@Query("token") token: string) {
+    return this.authService.verifyEmailToken(token ?? "");
+  }
+
+  @Post("create-password")
+  @UseGuards(JwtAuthGuard)
+  createPassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+    @Body() payload: CreatePasswordDto,
+  ) {
+    return this.authService.createPassword(
+      user.id,
+      payload.newPassword,
+      this.getRequestContext(req),
+    );
+  }
+
+  @Post("add-phone-credential")
+  @UseGuards(JwtAuthGuard)
+  addPhoneCredential(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+    @Body() payload: AddPhoneCredentialDto,
+  ) {
+    return this.authService.addPhoneCredential(
+      user.id,
+      payload.phone,
+      payload.pin,
+      this.getRequestContext(req),
     );
   }
 

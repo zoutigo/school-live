@@ -549,7 +549,7 @@ export class ManagementService {
     }
 
     await this.mailService.sendTemporaryPasswordEmail({
-      to: user.email,
+      to: user.email!,
       firstName: user.firstName,
       temporaryPassword: parsed.temporaryPassword,
       schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
@@ -964,7 +964,7 @@ export class ManagementService {
     );
 
     await this.mailService.sendTemporaryPasswordEmail({
-      to: schoolAdmin.email,
+      to: schoolAdmin.email!,
       firstName: schoolAdmin.firstName,
       temporaryPassword: generatedTemporaryPassword,
       schoolSlug: school.slug,
@@ -3201,7 +3201,7 @@ export class ManagementService {
         userId: string;
         firstName: string;
         lastName: string;
-        email: string;
+        email: string | null;
         classes: Set<string>;
         subjects: Set<string>;
       }
@@ -5571,7 +5571,7 @@ export class ManagementService {
       id: string;
       firstName: string;
       lastName: string;
-      email: string;
+      email: string | null;
     };
   }) {
     return {
@@ -5608,7 +5608,7 @@ export class ManagementService {
     id: string;
     firstName: string;
     lastName: string;
-    email: string;
+    email: string | null;
     phone: string | null;
     avatarUrl?: string | null;
     mustChangePassword?: boolean;

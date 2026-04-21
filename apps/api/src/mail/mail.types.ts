@@ -1,6 +1,7 @@
 export const MAIL_QUEUE_NAME = "mail";
 export const MAIL_JOB_SEND_TEMPORARY_PASSWORD = "send-temporary-password-email";
 export const MAIL_JOB_SEND_PASSWORD_RESET = "send-password-reset-email";
+export const MAIL_JOB_SEND_EMAIL_VERIFICATION = "send-email-verification";
 export const MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION =
   "send-student-life-event-notification";
 export const MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION =
@@ -34,6 +35,12 @@ export type PasswordResetMailPayload = {
   resetUrl: string;
   expiresInMinutes: number;
   schoolSlug: string | null;
+};
+
+export type EmailVerificationMailPayload = {
+  to: string;
+  firstName: string;
+  verificationUrl: string;
 };
 
 export type InternalMessageNotificationPayload = {

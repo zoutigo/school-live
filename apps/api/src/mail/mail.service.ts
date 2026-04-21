@@ -8,11 +8,13 @@ import {
   type QueuePort,
 } from "../infrastructure/messaging/queue.port.js";
 import {
+  MAIL_JOB_SEND_EMAIL_VERIFICATION,
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
+  type EmailVerificationMailPayload,
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
   type StudentLifeEventNotificationPayload,
@@ -59,6 +61,22 @@ export class MailService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.emailPort.sendStudentLifeEventNotification(payload);
+    }
+  }
+
+  async sendEmailVerification(payload: EmailVerificationMailPayload) {
+    try {
+      await this.queue.add(
+        MAIL_QUEUE_NAME,
+        MAIL_JOB_SEND_EMAIL_VERIFICATION,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous email sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.emailPort.sendEmailVerification(payload);
     }
   }
 
