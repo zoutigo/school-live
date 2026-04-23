@@ -12,6 +12,7 @@ import { MobileBuildsModule } from "./mobile-builds/mobile-builds.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { SchoolsModule } from "./schools/schools.module.js";
 import { TimetableModule } from "./timetable/timetable.module.js";
+import { TicketsModule } from "./tickets/tickets.module.js";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { TimetableModule } from "./timetable/timetable.module.js";
     MobileBuildsModule,
     SchoolsModule,
     TimetableModule,
+    TicketsModule,
   ],
   controllers: [AppController],
 })

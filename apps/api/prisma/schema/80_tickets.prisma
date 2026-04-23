@@ -1,0 +1,72 @@
+model Ticket {
+  id          String           @id @default(cuid())
+  type        TicketType
+  status      TicketStatus     @default(OPEN)
+  title       String
+  description String
+
+  platform    String?
+  appVersion  String?
+  screenPath  String?
+
+  authorId    String
+  author      User             @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  schoolId    String?
+  school      School?          @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  responses   TicketResponse[]
+  attachments TicketAttachment[]
+  votes       TicketVote[]
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  resolvedAt  DateTime?
+
+  @@index([authorId])
+  @@index([schoolId])
+  @@index([status])
+  @@index([type])
+  @@index([status, type, createdAt])
+}
+
+model TicketResponse {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation("TicketResponseAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body       String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ticketId, createdAt])
+  @@index([authorId])
+}
+
+model TicketAttachment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileUrl   String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model TicketVote {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("TicketVoter", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([ticketId, userId])
+  @@index([ticketId])
+  @@index([userId])
+}

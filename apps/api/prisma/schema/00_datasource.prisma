@@ -196,3 +196,16 @@ enum TermReportStatus {
   DRAFT
   PUBLISHED
 }
+
+enum TicketType {
+  BUG
+  FEATURE_REQUEST
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ANSWERED
+  RESOLVED
+  CLOSED
+}

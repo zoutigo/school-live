@@ -197,6 +197,19 @@ enum TermReportStatus {
   PUBLISHED
 }
 
+enum TicketType {
+  BUG
+  FEATURE_REQUEST
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ANSWERED
+  RESOLVED
+  CLOSED
+}
+
 
 model School {
   id                 String                @id @default(cuid())
@@ -250,6 +263,7 @@ model School {
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
+  tickets            Ticket[]
 
   @@index([activeSchoolYearId])
 }
@@ -289,6 +303,7 @@ model User {
   recoveryAnswers    UserRecoveryAnswer[]
   authIdentities     UserAuthIdentity[]
   phoneCredential    UserPhoneCredential?
+  emailVerificationTokens EmailVerificationToken[]
   activationCodes    ActivationCode[]         @relation("ActivationCodeUser")
   createdActivationCodes ActivationCode[]     @relation("ActivationCodeIssuer")
   authAuditLogs      AuthAuditLog[]
@@ -308,21 +323,9 @@ model User {
   timetableSlotExceptionsAsTeacher ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionTeacher")
   timetableSlotExceptionsCreated ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionCreatedBy")
   calendarEventsCreated SchoolCalendarEvent[]  @relation("SchoolCalendarEventCreatedBy")
-  emailVerificationTokens EmailVerificationToken[]
-}
-
-model EmailVerificationToken {
-  id        String    @id @default(cuid())
-  userId    String
-  email     String
-  tokenHash String    @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
+  tickets               Ticket[]               @relation("TicketAuthor")
+  ticketResponses       TicketResponse[]        @relation("TicketResponseAuthor")
+  ticketVotes           TicketVote[]            @relation("TicketVoter")
 }
 
 model UserAuthIdentity {
@@ -491,6 +494,20 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@index([usedAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 
@@ -1342,6 +1359,80 @@ model InlineMediaAsset {
   @@index([status, expiresAt])
   @@index([entityType, entityId])
   @@index([schoolId, scope, status])
+}
+
+
+model Ticket {
+  id          String           @id @default(cuid())
+  type        TicketType
+  status      TicketStatus     @default(OPEN)
+  title       String
+  description String
+
+  platform    String?
+  appVersion  String?
+  screenPath  String?
+
+  authorId    String
+  author      User             @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  schoolId    String?
+  school      School?          @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  responses   TicketResponse[]
+  attachments TicketAttachment[]
+  votes       TicketVote[]
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  resolvedAt  DateTime?
+
+  @@index([authorId])
+  @@index([schoolId])
+  @@index([status])
+  @@index([type])
+  @@index([status, type, createdAt])
+}
+
+model TicketResponse {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation("TicketResponseAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body       String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ticketId, createdAt])
+  @@index([authorId])
+}
+
+model TicketAttachment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileUrl   String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model TicketVote {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("TicketVoter", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([ticketId, userId])
+  @@index([ticketId])
+  @@index([userId])
 }
 
 

@@ -50,6 +50,7 @@ model School {
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
+  tickets            Ticket[]
 
   @@index([activeSchoolYearId])
 }
@@ -109,6 +110,9 @@ model User {
   timetableSlotExceptionsAsTeacher ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionTeacher")
   timetableSlotExceptionsCreated ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionCreatedBy")
   calendarEventsCreated SchoolCalendarEvent[]  @relation("SchoolCalendarEventCreatedBy")
+  tickets               Ticket[]               @relation("TicketAuthor")
+  ticketResponses       TicketResponse[]        @relation("TicketResponseAuthor")
+  ticketVotes           TicketVote[]            @relation("TicketVoter")
 }
 
 model UserAuthIdentity {

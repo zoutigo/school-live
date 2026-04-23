@@ -25,7 +25,8 @@ export type UploadKind =
   | "user-avatar"
   | "messaging-inline-image"
   | "evaluation-attachment"
-  | "messaging-attachment";
+  | "messaging-attachment"
+  | "ticket-attachment";
 type UploadedMediaFile = {
   buffer: Buffer;
   mimetype: string;
