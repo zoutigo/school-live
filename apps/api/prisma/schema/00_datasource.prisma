@@ -209,3 +209,22 @@ enum TicketStatus {
   RESOLVED
   CLOSED
 }
+
+enum HelpGuideAudience {
+  PARENT
+  TEACHER
+  STUDENT
+  SCHOOL_ADMIN
+  STAFF
+}
+
+enum HelpPublicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum HelpChapterContentType {
+  RICH_TEXT
+  VIDEO
+}

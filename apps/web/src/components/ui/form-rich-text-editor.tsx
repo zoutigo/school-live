@@ -14,6 +14,9 @@ type FormRichTextEditorProps = {
   editorTestId?: string;
   minHeightClassName?: string;
   allowInlineImages?: boolean;
+  allowInlineVideos?: boolean;
+  onUploadInlineImage?: (file: File) => Promise<string>;
+  onUploadInlineVideo?: (file: File) => Promise<string>;
 };
 
 export function FormRichTextEditor({
@@ -27,6 +30,9 @@ export function FormRichTextEditor({
   editorTestId,
   minHeightClassName,
   allowInlineImages = true,
+  allowInlineVideos = false,
+  onUploadInlineImage,
+  onUploadInlineVideo,
 }: FormRichTextEditorProps) {
   return (
     <FormField
@@ -49,6 +55,9 @@ export function FormRichTextEditor({
           hint={hint ?? undefined}
           minHeightClassName={minHeightClassName}
           allowInlineImages={allowInlineImages}
+          allowInlineVideos={allowInlineVideos}
+          onUploadInlineImage={onUploadInlineImage}
+          onUploadInlineVideo={onUploadInlineVideo}
           onHtmlChange={onChange}
         />
       </div>

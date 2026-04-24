@@ -4,6 +4,7 @@ import { AppController } from "./app.controller.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { EvaluationsModule } from "./evaluations/evaluations.module.js";
 import { FeedModule } from "./feed/feed.module.js";
+import { HelpGuidesModule } from "./help-guides/help-guides.module.js";
 import { StudentGradesModule } from "./student-grades/student-grades.module.js";
 import { HealthModule } from "./health/health.module.js";
 import { ManagementModule } from "./management/management.module.js";
@@ -27,6 +28,7 @@ import { TicketsModule } from "./tickets/tickets.module.js";
     AuthModule,
     EvaluationsModule,
     FeedModule,
+    HelpGuidesModule,
     StudentGradesModule,
     HealthModule,
     ManagementModule,

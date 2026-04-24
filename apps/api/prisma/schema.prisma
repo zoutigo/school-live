@@ -210,6 +210,25 @@ enum TicketStatus {
   CLOSED
 }
 
+enum HelpGuideAudience {
+  PARENT
+  TEACHER
+  STUDENT
+  SCHOOL_ADMIN
+  STAFF
+}
+
+enum HelpPublicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum HelpChapterContentType {
+  RICH_TEXT
+  VIDEO
+}
+
 
 model School {
   id                 String                @id @default(cuid())
@@ -264,6 +283,7 @@ model School {
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
   tickets            Ticket[]
+  helpGuides         HelpGuide[]
 
   @@index([activeSchoolYearId])
 }
@@ -326,6 +346,10 @@ model User {
   tickets               Ticket[]               @relation("TicketAuthor")
   ticketResponses       TicketResponse[]        @relation("TicketResponseAuthor")
   ticketVotes           TicketVote[]            @relation("TicketVoter")
+  helpGuidesCreated     HelpGuide[]             @relation("HelpGuideCreatedBy")
+  helpGuidesUpdated     HelpGuide[]             @relation("HelpGuideUpdatedBy")
+  helpChaptersCreated   HelpChapter[]           @relation("HelpChapterCreatedBy")
+  helpChaptersUpdated   HelpChapter[]           @relation("HelpChapterUpdatedBy")
 }
 
 model UserAuthIdentity {
@@ -1433,6 +1457,60 @@ model TicketVote {
   @@unique([ticketId, userId])
   @@index([ticketId])
   @@index([userId])
+}
+
+
+model HelpGuide {
+  id          String                @id @default(cuid())
+  schoolId    String?
+  school      School?               @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  audience    HelpGuideAudience
+  title       String
+  slug        String
+  status      HelpPublicationStatus @default(DRAFT)
+  description String?
+  createdById String
+  createdBy   User                  @relation("HelpGuideCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String
+  updatedBy   User                  @relation("HelpGuideUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  chapters    HelpChapter[]
+
+  @@unique([schoolId, audience, slug])
+  @@index([schoolId, audience, status])
+  @@index([audience, status])
+}
+
+model HelpChapter {
+  id           String                  @id @default(cuid())
+  guideId       String
+  guide         HelpGuide               @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  parentId      String?
+  parent        HelpChapter?            @relation("HelpChapterTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children      HelpChapter[]           @relation("HelpChapterTree")
+  orderIndex    Int                     @default(0)
+  title         String
+  slug          String
+  summary       String?
+  contentType   HelpChapterContentType  @default(RICH_TEXT)
+  contentHtml   String?
+  contentJson   Json?
+  videoUrl      String?
+  contentText   String                  @default("")
+  status        HelpPublicationStatus   @default(DRAFT)
+  createdById   String
+  createdBy     User                    @relation("HelpChapterCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById   String
+  updatedBy     User                    @relation("HelpChapterUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@unique([guideId, slug])
+  @@index([guideId, parentId, orderIndex])
+  @@index([guideId, status])
+  @@index([contentType])
 }
 
 

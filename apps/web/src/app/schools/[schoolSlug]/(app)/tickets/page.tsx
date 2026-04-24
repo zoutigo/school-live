@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Bug } from "lucide-react";
+import {
+  AssistanceModuleTabs,
+  type AssistanceModuleTabKey,
+} from "../../../../../components/tickets/assistance-module-tabs";
+import { AssistancePlaceholderPanels } from "../../../../../components/tickets/assistance-placeholder-panels";
 import { TicketsTabPanel } from "../../../../../components/tickets/tickets-tab-panel";
 import { TicketsList } from "../../../../../components/tickets/tickets-list";
 import { TicketsDetail } from "../../../../../components/tickets/tickets-detail";
@@ -23,6 +28,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 type MePayload = {
   role?: string;
+  activeRole?: string | null;
   schoolName?: string;
   id?: string;
   platformRoles?: string[];
@@ -39,6 +45,9 @@ export default function SchoolTicketsPage() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [isPlatformStaff, setIsPlatformStaff] = useState(false);
   const [isPlatformAny, setIsPlatformAny] = useState(false);
+  const [isPlatformRoleActive, setIsPlatformRoleActive] = useState(false);
+  const [activeModuleTab, setActiveModuleTab] =
+    useState<AssistanceModuleTabKey>("bug");
 
   const [activeFolder, setActiveFolder] = useState<TicketFolderKey>("open");
   const [tickets, setTickets] = useState<TicketListItem[]>([]);
@@ -71,12 +80,16 @@ export default function SchoolTicketsPage() {
       setCurrentUserId(me.id ?? "");
       setSchoolName(me.schoolName ?? null);
       const platformRoles = me.platformRoles ?? [];
+      const activeRole = me.activeRole ?? null;
       setIsPlatformStaff(
         platformRoles.some((r) =>
           ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(r),
         ),
       );
       setIsPlatformAny(platformRoles.length > 0);
+      setIsPlatformRoleActive(
+        !!activeRole && platformRoles.some((role) => role === activeRole),
+      );
     } catch {
       router.replace(`/schools/${schoolSlug}/login`);
     } finally {
@@ -115,8 +128,8 @@ export default function SchoolTicketsPage() {
   }, [loadProfile]);
 
   useEffect(() => {
-    if (!loading) void loadTickets();
-  }, [loading, loadTickets, activeFolder]);
+    if (!loading && activeModuleTab === "bug") void loadTickets();
+  }, [loading, loadTickets, activeFolder, activeModuleTab]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -134,6 +147,7 @@ export default function SchoolTicketsPage() {
   }
 
   function handleCompose() {
+    setActiveModuleTab("bug");
     setSelectedId(null);
     setComposing(true);
   }
@@ -177,7 +191,7 @@ export default function SchoolTicketsPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 bg-background p-4 lg:p-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 bg-background px-2 py-3 min-[360px]:px-3 sm:py-4 md:px-6 md:py-5">
       {/* En-tête */}
       <div className="flex items-center justify-between">
         <div>
@@ -186,16 +200,29 @@ export default function SchoolTicketsPage() {
             <p className="text-xs text-text-secondary">{schoolName}</p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={handleCompose}
-          className="inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition hover:bg-primary-dark"
-          data-testid="new-ticket-btn"
-        >
-          <Bug className="h-4 w-4" />
-          Nouveau ticket
-        </button>
+        {activeModuleTab === "bug" ? (
+          <button
+            type="button"
+            onClick={handleCompose}
+            className="inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition hover:bg-primary-dark"
+            data-testid="new-ticket-btn"
+          >
+            <Bug className="h-4 w-4" />
+            Nouveau ticket
+          </button>
+        ) : null}
       </div>
+
+      <AssistanceModuleTabs
+        activeTab={activeModuleTab}
+        onSelectTab={(tab) => {
+          setActiveModuleTab(tab);
+          if (tab !== "bug") {
+            setComposing(false);
+            setSelectedId(null);
+          }
+        }}
+      />
 
       {successMsg && (
         <div className="rounded-[14px] border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
@@ -208,63 +235,67 @@ export default function SchoolTicketsPage() {
         </div>
       )}
 
-      {/* Layout 3 colonnes inspiré messagerie */}
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[220px_300px_minmax(0,1fr)]">
-        {/* Onglets */}
-        <TicketsTabPanel
-          activeFolder={activeFolder}
-          onSelectFolder={(f) => {
-            setActiveFolder(f);
-            setSelectedId(null);
-            setComposing(false);
-          }}
-          counts={folderCounts}
-          onCompose={handleCompose}
-          showCompose
-        />
-
-        {/* Liste */}
-        <div className="flex min-h-0 flex-col rounded-[20px] border border-warm-border bg-surface p-2 shadow-card">
-          <TicketsList
-            tickets={tickets}
-            selectedId={selectedId}
-            onSelect={handleSelectTicket}
-            isLoading={ticketsLoading}
+      {activeModuleTab === "bug" ? (
+        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[220px_300px_minmax(0,1fr)]">
+          <TicketsTabPanel
+            activeFolder={activeFolder}
+            onSelectFolder={(f) => {
+              setActiveFolder(f);
+              setSelectedId(null);
+              setComposing(false);
+            }}
+            counts={folderCounts}
+            onCompose={handleCompose}
+            showCompose
           />
-        </div>
 
-        {/* Détail / Compose */}
-        <div className="min-h-0">
-          {composing ? (
-            <TicketsCompose
-              schoolSlug={schoolSlug}
-              onSuccess={handleComposeSuccess}
-              onError={(msg) => setError(msg)}
-              onCancel={() => setComposing(false)}
+          <div className="flex min-h-0 flex-col rounded-[20px] border border-warm-border bg-surface p-2 shadow-card">
+            <TicketsList
+              tickets={tickets}
+              selectedId={selectedId}
+              onSelect={handleSelectTicket}
+              isLoading={ticketsLoading}
             />
-          ) : selectedTicket ? (
-            <TicketsDetail
-              ticket={selectedTicket}
-              currentUserId={currentUserId}
-              isPlatformStaff={isPlatformStaff}
-              isPlatformAny={isPlatformAny}
-              onTicketUpdated={handleRefreshTicket}
-              onTicketDeleted={handleDeletedTicket}
-              onError={(msg) => setError(msg)}
-            />
-          ) : (
-            <div
-              className="flex h-full flex-col items-center justify-center gap-2 rounded-[20px] border border-warm-border bg-surface p-5 text-center text-sm text-text-secondary shadow-card"
-              data-testid="no-selection"
-            >
-              <Bug className="h-8 w-8 opacity-25" />
-              <p className="font-medium">
-                Sélectionnez un ticket ou créez-en un nouveau
-              </p>
-            </div>
-          )}
+          </div>
+
+          <div className="min-h-0">
+            {composing ? (
+              <TicketsCompose
+                schoolSlug={schoolSlug}
+                onSuccess={handleComposeSuccess}
+                onError={(msg) => setError(msg)}
+                onCancel={() => setComposing(false)}
+              />
+            ) : selectedTicket ? (
+              <TicketsDetail
+                ticket={selectedTicket}
+                currentUserId={currentUserId}
+                isPlatformStaff={isPlatformStaff}
+                isPlatformAny={isPlatformAny}
+                onTicketUpdated={handleRefreshTicket}
+                onTicketDeleted={handleDeletedTicket}
+                onError={(msg) => setError(msg)}
+              />
+            ) : (
+              <div
+                className="flex h-full flex-col items-center justify-center gap-2 rounded-[20px] border border-warm-border bg-surface p-5 text-center text-sm text-text-secondary shadow-card"
+                data-testid="no-selection"
+              >
+                <Bug className="h-8 w-8 opacity-25" />
+                <p className="font-medium">
+                  Sélectionnez un ticket ou créez-en un nouveau
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <AssistancePlaceholderPanels
+          tab={activeModuleTab}
+          schoolName={schoolName}
+          canManageGuides={isPlatformRoleActive}
+        />
+      )}
     </div>
   );
 }

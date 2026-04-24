@@ -51,6 +51,7 @@ model School {
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
   tickets            Ticket[]
+  helpGuides         HelpGuide[]
 
   @@index([activeSchoolYearId])
 }
@@ -113,6 +114,10 @@ model User {
   tickets               Ticket[]               @relation("TicketAuthor")
   ticketResponses       TicketResponse[]        @relation("TicketResponseAuthor")
   ticketVotes           TicketVote[]            @relation("TicketVoter")
+  helpGuidesCreated     HelpGuide[]             @relation("HelpGuideCreatedBy")
+  helpGuidesUpdated     HelpGuide[]             @relation("HelpGuideUpdatedBy")
+  helpChaptersCreated   HelpChapter[]           @relation("HelpChapterCreatedBy")
+  helpChaptersUpdated   HelpChapter[]           @relation("HelpChapterUpdatedBy")
 }
 
 model UserAuthIdentity {
