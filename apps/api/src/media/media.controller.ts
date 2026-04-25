@@ -21,7 +21,7 @@ export class MediaController {
   @UseInterceptors(
     FileInterceptor("file", {
       limits: {
-        fileSize: 10 * 1024 * 1024,
+        fileSize: 80 * 1024 * 1024,
       },
     }),
   )
@@ -39,6 +39,7 @@ export class MediaController {
       kind !== "school-logo" &&
       kind !== "user-avatar" &&
       kind !== "messaging-inline-image" &&
+      kind !== "guide-inline-video" &&
       kind !== "evaluation-attachment" &&
       kind !== "messaging-attachment"
     ) {

@@ -24,8 +24,10 @@ export type UploadKind =
   | "school-logo"
   | "user-avatar"
   | "messaging-inline-image"
+  | "guide-inline-video"
   | "evaluation-attachment"
-  | "messaging-attachment";
+  | "messaging-attachment"
+  | "ticket-attachment";
 type UploadedMediaFile = {
   buffer: Buffer;
   mimetype: string;
@@ -60,6 +62,12 @@ const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ]);
 const MAX_ANDROID_BUILD_BYTES = 250 * 1024 * 1024;
+const MAX_INLINE_VIDEO_BYTES = 80 * 1024 * 1024;
+const ALLOWED_INLINE_VIDEO_MIME_TYPES = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
 const ANDROID_BUILD_MIME_TYPES = new Set([
   "application/vnd.android.package-archive",
   "application/octet-stream",
@@ -88,6 +96,10 @@ export class ImageStorageService {
 
     if (kind === "evaluation-attachment" || kind === "messaging-attachment") {
       return this.storeAttachment(kind, file);
+    }
+
+    if (kind === "guide-inline-video") {
+      return this.storeInlineVideo(file);
     }
 
     if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
@@ -155,6 +167,36 @@ export class ImageStorageService {
       kind === "messaging-attachment"
         ? `messaging/attachments/${fileName}`
         : `evaluations/attachments/${fileName}`;
+    await this.ensureBucket();
+    await this.putObject(objectKey, file.buffer, file.mimetype);
+
+    return {
+      url: this.toPublicUrl(objectKey),
+      size: file.size,
+      width: null,
+      height: null,
+      mimeType: file.mimetype,
+    };
+  }
+
+  async storeInlineVideo(file?: UploadedMediaFile) {
+    if (!file) {
+      throw new BadRequestException("Fichier video manquant");
+    }
+
+    if (!ALLOWED_INLINE_VIDEO_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException("Type de video non supporte");
+    }
+
+    if (file.size > MAX_INLINE_VIDEO_BYTES) {
+      throw new PayloadTooLargeException(
+        "Video trop lourde. Taille maximale: 80MB",
+      );
+    }
+
+    const extension = this.extensionFromMimeType(file.mimetype);
+    const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
+    const objectKey = `help-guides/inline-videos/${fileName}`;
     await this.ensureBucket();
     await this.putObject(objectKey, file.buffer, file.mimetype);
 
@@ -581,6 +623,12 @@ export class ImageStorageService {
         return "ppt";
       case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
         return "pptx";
+      case "video/mp4":
+        return "mp4";
+      case "video/webm":
+        return "webm";
+      case "video/quicktime":
+        return "mov";
       default:
         return "bin";
     }

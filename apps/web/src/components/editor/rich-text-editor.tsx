@@ -11,6 +11,7 @@ import {
   Eraser,
   Highlighter,
   ImagePlus,
+  Video,
   IndentDecrease,
   IndentIncrease,
   Italic,
@@ -36,9 +37,11 @@ type Props = {
   minHeightClassName?: string;
   hint?: string;
   allowInlineImages?: boolean;
+  allowInlineVideos?: boolean;
   onTextChange?: (text: string) => void;
   onHtmlChange?: (html: string) => void;
   onUploadInlineImage?: (file: File) => Promise<string>;
+  onUploadInlineVideo?: (file: File) => Promise<string>;
 };
 
 export type RichTextEditorRef = {
@@ -55,14 +58,17 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       minHeightClassName = "min-h-[220px]",
       hint = "Astuce: utilisez les styles de titre et les listes pour une lecture plus claire.",
       allowInlineImages = true,
+      allowInlineVideos = false,
       onTextChange,
       onHtmlChange,
       onUploadInlineImage,
+      onUploadInlineVideo,
     },
     ref,
   ) {
     const editorRef = useRef<HTMLDivElement | null>(null);
     const inlineImageInputRef = useRef<HTMLInputElement | null>(null);
+    const inlineVideoInputRef = useRef<HTMLInputElement | null>(null);
     const textColorInputRef = useRef<HTMLInputElement | null>(null);
     const bgColorInputRef = useRef<HTMLInputElement | null>(null);
     const onTextChangeRef = useRef(onTextChange);
@@ -139,6 +145,31 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       }
     }
 
+    async function handleInlineVideoFile(file: File) {
+      if (!file.type.startsWith("video/")) {
+        setError("Le fichier selectionne n'est pas une video.");
+        return;
+      }
+
+      if (file.size > 80 * 1024 * 1024) {
+        setError("Video trop lourde (max 80 Mo).");
+        return;
+      }
+
+      if (!onUploadInlineVideo) {
+        setError("Upload video indisponible.");
+        return;
+      }
+
+      setError(null);
+      try {
+        const videoUrl = await onUploadInlineVideo(file);
+        insertVideo(videoUrl, file.name);
+      } catch (error) {
+        setError(resolveUploadErrorMessage(error));
+      }
+    }
+
     function insertImage(src: string, alt: string) {
       const editor = editorRef.current;
       if (!editor) {
@@ -166,6 +197,41 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
 
       range.insertNode(img);
       range.setStartAfter(img);
+      range.collapse(true);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+
+      syncEditorState();
+    }
+
+    function insertVideo(src: string, title: string) {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+      editor.focus();
+
+      const selection = window.getSelection();
+      const range =
+        selection && selection.rangeCount > 0
+          ? selection.getRangeAt(0)
+          : document.createRange();
+
+      if (!selection || selection.rangeCount === 0) {
+        range.selectNodeContents(editor);
+        range.collapse(false);
+      }
+
+      const video = document.createElement("video");
+      video.src = src;
+      video.controls = true;
+      video.style.maxWidth = "100%";
+      video.style.borderRadius = "8px";
+      video.style.margin = "8px 0";
+      video.setAttribute("title", title);
+
+      range.insertNode(video);
+      range.setStartAfter(video);
       range.collapse(true);
       selection?.removeAllRanges();
       selection?.addRange(range);
@@ -229,6 +295,28 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
                   const file = event.target.files?.[0];
                   if (file) {
                     await handleInlineImageFile(file);
+                  }
+                  input.value = "";
+                }}
+              />
+            </>
+          ) : null}
+          {allowInlineVideos ? (
+            <>
+              <ToolbarBtn
+                onClick={() => inlineVideoInputRef.current?.click()}
+                icon={Video}
+              />
+              <input
+                ref={inlineVideoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={async (event: ChangeEvent<HTMLInputElement>) => {
+                  const input = event.currentTarget;
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    await handleInlineVideoFile(file);
                   }
                   input.value = "";
                 }}

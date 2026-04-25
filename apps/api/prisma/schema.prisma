@@ -197,6 +197,38 @@ enum TermReportStatus {
   PUBLISHED
 }
 
+enum TicketType {
+  BUG
+  FEATURE_REQUEST
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ANSWERED
+  RESOLVED
+  CLOSED
+}
+
+enum HelpGuideAudience {
+  PARENT
+  TEACHER
+  STUDENT
+  SCHOOL_ADMIN
+  STAFF
+}
+
+enum HelpPublicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum HelpChapterContentType {
+  RICH_TEXT
+  VIDEO
+}
+
 
 model School {
   id                 String                @id @default(cuid())
@@ -250,6 +282,9 @@ model School {
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
+  tickets            Ticket[]
+  helpGuides         HelpGuide[]
+  helpFaqs           HelpFaq[]
 
   @@index([activeSchoolYearId])
 }
@@ -289,6 +324,7 @@ model User {
   recoveryAnswers    UserRecoveryAnswer[]
   authIdentities     UserAuthIdentity[]
   phoneCredential    UserPhoneCredential?
+  emailVerificationTokens EmailVerificationToken[]
   activationCodes    ActivationCode[]         @relation("ActivationCodeUser")
   createdActivationCodes ActivationCode[]     @relation("ActivationCodeIssuer")
   authAuditLogs      AuthAuditLog[]
@@ -308,21 +344,19 @@ model User {
   timetableSlotExceptionsAsTeacher ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionTeacher")
   timetableSlotExceptionsCreated ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionCreatedBy")
   calendarEventsCreated SchoolCalendarEvent[]  @relation("SchoolCalendarEventCreatedBy")
-  emailVerificationTokens EmailVerificationToken[]
-}
-
-model EmailVerificationToken {
-  id        String    @id @default(cuid())
-  userId    String
-  email     String
-  tokenHash String    @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
+  tickets               Ticket[]               @relation("TicketAuthor")
+  ticketResponses       TicketResponse[]        @relation("TicketResponseAuthor")
+  ticketVotes           TicketVote[]            @relation("TicketVoter")
+  helpGuidesCreated     HelpGuide[]             @relation("HelpGuideCreatedBy")
+  helpGuidesUpdated     HelpGuide[]             @relation("HelpGuideUpdatedBy")
+  helpChaptersCreated   HelpChapter[]           @relation("HelpChapterCreatedBy")
+  helpChaptersUpdated   HelpChapter[]           @relation("HelpChapterUpdatedBy")
+  helpFaqsCreated       HelpFaq[]               @relation("HelpFaqCreatedBy")
+  helpFaqsUpdated       HelpFaq[]               @relation("HelpFaqUpdatedBy")
+  helpFaqThemesCreated  HelpFaqTheme[]          @relation("HelpFaqThemeCreatedBy")
+  helpFaqThemesUpdated  HelpFaqTheme[]          @relation("HelpFaqThemeUpdatedBy")
+  helpFaqItemsCreated   HelpFaqItem[]           @relation("HelpFaqItemCreatedBy")
+  helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
 }
 
 model UserAuthIdentity {
@@ -491,6 +525,20 @@ model PasswordResetToken {
   @@index([userId])
   @@index([expiresAt])
   @@index([usedAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 
@@ -1342,6 +1390,202 @@ model InlineMediaAsset {
   @@index([status, expiresAt])
   @@index([entityType, entityId])
   @@index([schoolId, scope, status])
+}
+
+
+model Ticket {
+  id          String           @id @default(cuid())
+  type        TicketType
+  status      TicketStatus     @default(OPEN)
+  title       String
+  description String
+
+  platform    String?
+  appVersion  String?
+  screenPath  String?
+
+  authorId    String
+  author      User             @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  schoolId    String?
+  school      School?          @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  responses   TicketResponse[]
+  attachments TicketAttachment[]
+  votes       TicketVote[]
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  resolvedAt  DateTime?
+
+  @@index([authorId])
+  @@index([schoolId])
+  @@index([status])
+  @@index([type])
+  @@index([status, type, createdAt])
+}
+
+model TicketResponse {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation("TicketResponseAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body       String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ticketId, createdAt])
+  @@index([authorId])
+}
+
+model TicketAttachment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileUrl   String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model TicketVote {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("TicketVoter", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([ticketId, userId])
+  @@index([ticketId])
+  @@index([userId])
+}
+
+
+model HelpGuide {
+  id          String                @id @default(cuid())
+  schoolId    String?
+  school      School?               @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  audience    HelpGuideAudience
+  title       String
+  slug        String
+  status      HelpPublicationStatus @default(DRAFT)
+  description String?
+  createdById String
+  createdBy   User                  @relation("HelpGuideCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String
+  updatedBy   User                  @relation("HelpGuideUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  chapters    HelpChapter[]
+
+  @@unique([schoolId, audience, slug])
+  @@index([schoolId, audience, status])
+  @@index([audience, status])
+}
+
+model HelpChapter {
+  id           String                  @id @default(cuid())
+  guideId       String
+  guide         HelpGuide               @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  parentId      String?
+  parent        HelpChapter?            @relation("HelpChapterTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children      HelpChapter[]           @relation("HelpChapterTree")
+  orderIndex    Int                     @default(0)
+  title         String
+  slug          String
+  summary       String?
+  contentType   HelpChapterContentType  @default(RICH_TEXT)
+  contentHtml   String?
+  contentJson   Json?
+  videoUrl      String?
+  contentText   String                  @default("")
+  status        HelpPublicationStatus   @default(DRAFT)
+  createdById   String
+  createdBy     User                    @relation("HelpChapterCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById   String
+  updatedBy     User                    @relation("HelpChapterUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@unique([guideId, slug])
+  @@index([guideId, parentId, orderIndex])
+  @@index([guideId, status])
+  @@index([contentType])
+}
+
+
+model HelpFaq {
+  id          String                @id @default(cuid())
+  schoolId    String?
+  school      School?               @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  audience    HelpGuideAudience
+  title       String
+  slug        String
+  status      HelpPublicationStatus @default(DRAFT)
+  description String?
+  createdById String
+  createdBy   User                  @relation("HelpFaqCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String
+  updatedBy   User                  @relation("HelpFaqUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  themes      HelpFaqTheme[]
+
+  @@unique([schoolId, audience, slug])
+  @@index([schoolId, audience, status])
+  @@index([audience, status])
+}
+
+model HelpFaqTheme {
+  id          String                @id @default(cuid())
+  faqId        String
+  faq          HelpFaq               @relation(fields: [faqId], references: [id], onDelete: Cascade)
+  orderIndex   Int                   @default(0)
+  title        String
+  slug         String
+  description  String?
+  status       HelpPublicationStatus @default(DRAFT)
+  createdById  String
+  createdBy    User                  @relation("HelpFaqThemeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById  String
+  updatedBy    User                  @relation("HelpFaqThemeUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  items        HelpFaqItem[]
+
+  @@unique([faqId, slug])
+  @@index([faqId, orderIndex])
+  @@index([faqId, status])
+}
+
+model HelpFaqItem {
+  id          String                @id @default(cuid())
+  themeId      String
+  theme        HelpFaqTheme          @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  orderIndex   Int                   @default(0)
+  question     String
+  answerHtml   String
+  answerJson   Json?
+  answerText   String                @default("")
+  status       HelpPublicationStatus @default(DRAFT)
+  createdById  String
+  createdBy    User                  @relation("HelpFaqItemCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById  String
+  updatedBy    User                  @relation("HelpFaqItemUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@index([themeId, orderIndex])
+  @@index([themeId, status])
 }
 
 

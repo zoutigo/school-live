@@ -50,6 +50,9 @@ model School {
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
+  tickets            Ticket[]
+  helpGuides         HelpGuide[]
+  helpFaqs           HelpFaq[]
 
   @@index([activeSchoolYearId])
 }
@@ -109,6 +112,19 @@ model User {
   timetableSlotExceptionsAsTeacher ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionTeacher")
   timetableSlotExceptionsCreated ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionCreatedBy")
   calendarEventsCreated SchoolCalendarEvent[]  @relation("SchoolCalendarEventCreatedBy")
+  tickets               Ticket[]               @relation("TicketAuthor")
+  ticketResponses       TicketResponse[]        @relation("TicketResponseAuthor")
+  ticketVotes           TicketVote[]            @relation("TicketVoter")
+  helpGuidesCreated     HelpGuide[]             @relation("HelpGuideCreatedBy")
+  helpGuidesUpdated     HelpGuide[]             @relation("HelpGuideUpdatedBy")
+  helpChaptersCreated   HelpChapter[]           @relation("HelpChapterCreatedBy")
+  helpChaptersUpdated   HelpChapter[]           @relation("HelpChapterUpdatedBy")
+  helpFaqsCreated       HelpFaq[]               @relation("HelpFaqCreatedBy")
+  helpFaqsUpdated       HelpFaq[]               @relation("HelpFaqUpdatedBy")
+  helpFaqThemesCreated  HelpFaqTheme[]          @relation("HelpFaqThemeCreatedBy")
+  helpFaqThemesUpdated  HelpFaqTheme[]          @relation("HelpFaqThemeUpdatedBy")
+  helpFaqItemsCreated   HelpFaqItem[]           @relation("HelpFaqItemCreatedBy")
+  helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
 }
 
 model UserAuthIdentity {
