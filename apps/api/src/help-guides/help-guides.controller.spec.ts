@@ -19,19 +19,32 @@ function makeUser(
 }
 
 const makeServiceMock = () => ({
-  getCurrentGuide: jest
+  getCurrentGuide: jest.fn().mockResolvedValue({
+    permissions: { canManageGlobal: false, canManageSchool: false },
+    schoolScope: null,
+    sources: [],
+    defaultSourceKey: null,
+    resolvedAudience: "PARENT",
+  }),
+  getCurrentPlan: jest.fn().mockResolvedValue({ sources: [] }),
+  getCurrentChapter: jest
     .fn()
-    .mockResolvedValue({ guide: null, canManage: false }),
-  getCurrentPlan: jest.fn().mockResolvedValue({ guide: null, items: [] }),
-  getCurrentChapter: jest.fn().mockResolvedValue({ chapter: null }),
-  searchCurrent: jest.fn().mockResolvedValue({ guide: null, items: [] }),
-  listGuidesAdmin: jest.fn().mockResolvedValue({ items: [] }),
-  createGuide: jest.fn().mockResolvedValue({ id: "g1" }),
-  updateGuide: jest.fn().mockResolvedValue({ id: "g1" }),
-  deleteGuide: jest.fn().mockResolvedValue({ deleted: true }),
-  createChapter: jest.fn().mockResolvedValue({ id: "c1" }),
-  updateChapter: jest.fn().mockResolvedValue({ id: "c1" }),
-  deleteChapter: jest.fn().mockResolvedValue({ deleted: true }),
+    .mockResolvedValue({ source: null, chapter: null }),
+  searchCurrent: jest.fn().mockResolvedValue({ sources: [], items: [] }),
+  listGlobalGuidesAdmin: jest.fn().mockResolvedValue({ items: [] }),
+  listSchoolGuidesAdmin: jest.fn().mockResolvedValue({ items: [] }),
+  createGlobalGuide: jest.fn().mockResolvedValue({ id: "g1" }),
+  createSchoolGuide: jest.fn().mockResolvedValue({ id: "g1" }),
+  updateGlobalGuide: jest.fn().mockResolvedValue({ id: "g1" }),
+  updateSchoolGuide: jest.fn().mockResolvedValue({ id: "g1" }),
+  deleteGlobalGuide: jest.fn().mockResolvedValue({ deleted: true }),
+  deleteSchoolGuide: jest.fn().mockResolvedValue({ deleted: true }),
+  createGlobalChapter: jest.fn().mockResolvedValue({ id: "c1" }),
+  createSchoolChapter: jest.fn().mockResolvedValue({ id: "c1" }),
+  updateGlobalChapter: jest.fn().mockResolvedValue({ id: "c1" }),
+  updateSchoolChapter: jest.fn().mockResolvedValue({ id: "c1" }),
+  deleteGlobalChapter: jest.fn().mockResolvedValue({ deleted: true }),
+  deleteSchoolChapter: jest.fn().mockResolvedValue({ deleted: true }),
   assertCanManage: jest.fn(),
 });
 
@@ -79,7 +92,7 @@ describe("HelpGuidesController", () => {
     expect(service.searchCurrent).toHaveBeenCalledWith(user, query);
   });
 
-  it("délègue createChapter", async () => {
+  it("délègue createGlobalChapter", async () => {
     const admin = makeUser({ platformRoles: ["SUPER_ADMIN"], memberships: [] });
     const dto = {
       title: "Créer un message",
@@ -87,9 +100,13 @@ describe("HelpGuidesController", () => {
       contentHtml: "<p>test</p>",
     };
 
-    await controller.createChapter(admin, "guide-1", dto);
+    await controller.createGlobalChapter(admin, "guide-1", dto);
 
-    expect(service.createChapter).toHaveBeenCalledWith(admin, "guide-1", dto);
+    expect(service.createGlobalChapter).toHaveBeenCalledWith(
+      admin,
+      "guide-1",
+      dto,
+    );
   });
 
   it("uploade une image inline via media", async () => {

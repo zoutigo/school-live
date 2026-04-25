@@ -15,17 +15,17 @@ function randomSuffix() {
 
 jest.setTimeout(30_000);
 
-describe("Help guides API e2e", () => {
+describe("Help faqs API e2e", () => {
   let app: Awaited<ReturnType<typeof NestFactory.create>>;
   let prisma: PrismaService;
   let jwtService: JwtService;
   let baseUrl = "";
 
   const runId = randomSuffix();
-  const schoolSlug = `e2e-help-school-${runId}`;
-  const parentEmail = `e2e-help-parent-${runId}@example.test`;
-  const adminEmail = `e2e-help-admin-${runId}@example.test`;
-  const hybridEmail = `e2e-help-hybrid-${runId}@example.test`;
+  const schoolSlug = `e2e-faq-school-${runId}`;
+  const parentEmail = `e2e-faq-parent-${runId}@example.test`;
+  const adminEmail = `e2e-faq-admin-${runId}@example.test`;
+  const hybridEmail = `e2e-faq-hybrid-${runId}@example.test`;
   const password = "StrongPass1";
 
   let schoolId = "";
@@ -68,7 +68,7 @@ describe("Help guides API e2e", () => {
     const school = await prisma.school.create({
       data: {
         slug: schoolSlug,
-        name: `E2E Help School ${runId}`,
+        name: `E2E FAQ School ${runId}`,
       },
       select: { id: true },
     });
@@ -146,12 +146,12 @@ describe("Help guides API e2e", () => {
     adminToken = jwtService.sign({ sub: adminUserId });
     hybridToken = jwtService.sign({ sub: hybridUserId });
 
-    const globalGuide = await prisma.helpGuide.create({
+    const globalFaq = await prisma.helpFaq.create({
       data: {
         schoolId: null,
         audience: "PARENT",
-        title: "Guide parent Scolive",
-        slug: `guide-parent-scolive-${runId}`,
+        title: "FAQ parent Scolive",
+        slug: `faq-parent-global-${runId}`,
         status: "PUBLISHED",
         createdById: adminUserId,
         updatedById: adminUserId,
@@ -159,12 +159,12 @@ describe("Help guides API e2e", () => {
       select: { id: true },
     });
 
-    const schoolGuide = await prisma.helpGuide.create({
+    const faq = await prisma.helpFaq.create({
       data: {
         schoolId,
         audience: "PARENT",
-        title: "Guide parent College",
-        slug: `guide-parent-${runId}`,
+        title: "FAQ parent College Vogt",
+        slug: `faq-parent-school-${runId}`,
         status: "PUBLISHED",
         createdById: adminUserId,
         updatedById: adminUserId,
@@ -172,40 +172,47 @@ describe("Help guides API e2e", () => {
       select: { id: true },
     });
 
-    await prisma.helpChapter.createMany({
+    await prisma.helpFaqTheme.create({
+      data: {
+        faqId: globalFaq.id,
+        title: "Notes",
+        slug: `notes-${runId}`,
+        status: "PUBLISHED",
+        createdById: adminUserId,
+        updatedById: adminUserId,
+      },
+    });
+
+    const theme = await prisma.helpFaqTheme.create({
+      data: {
+        faqId: faq.id,
+        title: "Connexion",
+        slug: `connexion-${runId}`,
+        status: "PUBLISHED",
+        createdById: adminUserId,
+        updatedById: adminUserId,
+      },
+      select: { id: true },
+    });
+
+    await prisma.helpFaqItem.createMany({
       data: [
         {
-          guideId: globalGuide.id,
+          themeId: theme.id,
           orderIndex: 1,
-          title: "Messagerie Scolive",
-          slug: `messagerie-scolive-${runId}`,
-          contentType: "RICH_TEXT",
-          contentHtml: "<p>Guide global messagerie</p>",
-          contentText: "Guide global messagerie",
+          question: "Comment me connecter ?",
+          answerHtml: "<p>Utilisez vos identifiants parent.</p>",
+          answerText: "Utilisez vos identifiants parent.",
           status: "PUBLISHED",
           createdById: adminUserId,
           updatedById: adminUserId,
         },
         {
-          guideId: schoolGuide.id,
-          orderIndex: 1,
-          title: "Messagerie",
-          slug: `messagerie-${runId}`,
-          contentType: "RICH_TEXT",
-          contentHtml: "<p>Guide messagerie</p>",
-          contentText: "Guide messagerie",
-          status: "PUBLISHED",
-          createdById: adminUserId,
-          updatedById: adminUserId,
-        },
-        {
-          guideId: schoolGuide.id,
+          themeId: theme.id,
           orderIndex: 2,
-          title: "Tutoriel vidéo",
-          slug: `video-${runId}`,
-          contentType: "VIDEO",
-          videoUrl: "https://example.test/video.mp4",
-          contentText: "",
+          question: "J'ai oublié mon mot de passe",
+          answerHtml: "<p>Utilisez le parcours mot de passe oublié.</p>",
+          answerText: "Utilisez le parcours mot de passe oublié.",
           status: "PUBLISHED",
           createdById: adminUserId,
           updatedById: adminUserId,
@@ -216,12 +223,17 @@ describe("Help guides API e2e", () => {
 
   afterAll(async () => {
     if (prisma) {
-      await prisma.helpChapter.deleteMany({
+      await prisma.helpFaqItem.deleteMany({
         where: {
           createdById: { in: [parentUserId, adminUserId, hybridUserId] },
         },
       });
-      await prisma.helpGuide.deleteMany({
+      await prisma.helpFaqTheme.deleteMany({
+        where: {
+          createdById: { in: [parentUserId, adminUserId, hybridUserId] },
+        },
+      });
+      await prisma.helpFaq.deleteMany({
         where: {
           createdById: { in: [parentUserId, adminUserId, hybridUserId] },
         },
@@ -237,38 +249,35 @@ describe("Help guides API e2e", () => {
     }
   });
 
-  it("retourne un guide et son plan pour un parent", async () => {
-    const current = await apiJson("/api/help-guides/current", {
+  it("retourne une faq et ses thèmes pour un parent", async () => {
+    const current = await apiJson("/api/help-faqs/current", {
       headers: { authorization: `Bearer ${parentToken}` },
     });
 
     expect(current.response.status).toBe(200);
     expect(Array.isArray(current.body?.sources)).toBe(true);
-    expect((current.body?.sources as unknown[]).length).toBe(2);
+    expect((current.body?.sources as unknown[]).length).toBeGreaterThanOrEqual(
+      2,
+    );
     expect(current.body?.resolvedAudience).toBe("PARENT");
     expect(current.body?.permissions).toEqual({
       canManageGlobal: false,
       canManageSchool: false,
     });
-    expect(
-      new Set(
-        (current.body?.sources as Array<{ scopeType: string }>).map(
-          (source) => source.scopeType,
-        ),
-      ),
-    ).toEqual(new Set(["GLOBAL", "SCHOOL"]));
 
-    const plan = await apiJson("/api/help-guides/current/plan", {
+    const themes = await apiJson("/api/help-faqs/current/themes", {
       headers: { authorization: `Bearer ${parentToken}` },
     });
 
-    expect(plan.response.status).toBe(200);
-    expect(Array.isArray(plan.body?.sources)).toBe(true);
-    expect((plan.body?.sources as unknown[]).length).toBe(2);
+    expect(themes.response.status).toBe(200);
+    expect(Array.isArray(themes.body?.sources)).toBe(true);
+    expect((themes.body?.sources as unknown[]).length).toBeGreaterThanOrEqual(
+      2,
+    );
   });
 
-  it("autorise un super admin à lister les guides admin", async () => {
-    const result = await apiJson("/api/help-guides/admin/global/guides", {
+  it("autorise un super admin à lister les faqs admin", async () => {
+    const result = await apiJson("/api/help-faqs/admin/global/faqs", {
       headers: { authorization: `Bearer ${adminToken}` },
     });
 
@@ -278,7 +287,7 @@ describe("Help guides API e2e", () => {
   });
 
   it("interdit à un non-platform d'accéder aux endpoints admin", async () => {
-    const result = await apiJson("/api/help-guides/admin/global/guides", {
+    const result = await apiJson("/api/help-faqs/admin/global/faqs", {
       headers: { authorization: `Bearer ${parentToken}` },
     });
 
@@ -286,7 +295,7 @@ describe("Help guides API e2e", () => {
   });
 
   it("désactive la gestion quand le role actif est scolaire", async () => {
-    const current = await apiJson("/api/help-guides/current", {
+    const current = await apiJson("/api/help-faqs/current", {
       headers: { authorization: `Bearer ${hybridToken}` },
     });
 
@@ -296,7 +305,7 @@ describe("Help guides API e2e", () => {
       canManageSchool: false,
     });
 
-    const admin = await apiJson("/api/help-guides/admin/global/guides", {
+    const admin = await apiJson("/api/help-faqs/admin/global/faqs", {
       headers: { authorization: `Bearer ${hybridToken}` },
     });
     expect(admin.response.status).toBe(403);

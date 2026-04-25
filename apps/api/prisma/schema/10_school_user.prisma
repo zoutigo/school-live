@@ -52,6 +52,7 @@ model School {
   calendarEvents     SchoolCalendarEvent[]
   tickets            Ticket[]
   helpGuides         HelpGuide[]
+  helpFaqs           HelpFaq[]
 
   @@index([activeSchoolYearId])
 }
@@ -118,6 +119,12 @@ model User {
   helpGuidesUpdated     HelpGuide[]             @relation("HelpGuideUpdatedBy")
   helpChaptersCreated   HelpChapter[]           @relation("HelpChapterCreatedBy")
   helpChaptersUpdated   HelpChapter[]           @relation("HelpChapterUpdatedBy")
+  helpFaqsCreated       HelpFaq[]               @relation("HelpFaqCreatedBy")
+  helpFaqsUpdated       HelpFaq[]               @relation("HelpFaqUpdatedBy")
+  helpFaqThemesCreated  HelpFaqTheme[]          @relation("HelpFaqThemeCreatedBy")
+  helpFaqThemesUpdated  HelpFaqTheme[]          @relation("HelpFaqThemeUpdatedBy")
+  helpFaqItemsCreated   HelpFaqItem[]           @relation("HelpFaqItemCreatedBy")
+  helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
 }
 
 model UserAuthIdentity {

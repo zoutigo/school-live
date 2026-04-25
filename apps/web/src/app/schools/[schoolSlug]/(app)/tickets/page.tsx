@@ -45,7 +45,6 @@ export default function SchoolTicketsPage() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [isPlatformStaff, setIsPlatformStaff] = useState(false);
   const [isPlatformAny, setIsPlatformAny] = useState(false);
-  const [isPlatformRoleActive, setIsPlatformRoleActive] = useState(false);
   const [activeModuleTab, setActiveModuleTab] =
     useState<AssistanceModuleTabKey>("bug");
 
@@ -80,16 +79,12 @@ export default function SchoolTicketsPage() {
       setCurrentUserId(me.id ?? "");
       setSchoolName(me.schoolName ?? null);
       const platformRoles = me.platformRoles ?? [];
-      const activeRole = me.activeRole ?? null;
       setIsPlatformStaff(
         platformRoles.some((r) =>
           ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(r),
         ),
       );
       setIsPlatformAny(platformRoles.length > 0);
-      setIsPlatformRoleActive(
-        !!activeRole && platformRoles.some((role) => role === activeRole),
-      );
     } catch {
       router.replace(`/schools/${schoolSlug}/login`);
     } finally {
@@ -293,7 +288,6 @@ export default function SchoolTicketsPage() {
         <AssistancePlaceholderPanels
           tab={activeModuleTab}
           schoolName={schoolName}
-          canManageGuides={isPlatformRoleActive}
         />
       )}
     </div>

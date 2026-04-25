@@ -36,7 +36,6 @@ export default function AdminTicketsPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [isPlatformStaff, setIsPlatformStaff] = useState(false);
-  const [isPlatformRoleActive, setIsPlatformRoleActive] = useState(false);
   const [activeModuleTab, setActiveModuleTab] =
     useState<AssistanceModuleTabKey>("bug");
 
@@ -73,9 +72,6 @@ export default function AdminTicketsPage() {
       setCurrentUserId(me.id ?? "");
       setIsPlatformStaff(
         roles.some((r) => ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(r)),
-      );
-      setIsPlatformRoleActive(
-        !!me.activeRole && roles.some((role) => role === me.activeRole),
       );
     } catch {
       router.replace("/");
@@ -268,10 +264,7 @@ export default function AdminTicketsPage() {
           </div>
         </div>
       ) : (
-        <AssistancePlaceholderPanels
-          tab={activeModuleTab}
-          canManageGuides={isPlatformRoleActive}
-        />
+        <AssistancePlaceholderPanels tab={activeModuleTab} />
       )}
     </div>
   );

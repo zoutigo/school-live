@@ -856,6 +856,348 @@ const GUIDE_DEFINITIONS = [
   },
 ];
 
+const SCHOOL_GUIDE_DEFINITIONS = [
+  {
+    schoolName: "College Vogt",
+    audience: "PARENT",
+    title: "Guide Parent College Vogt",
+    slug: "guide-parent-college-vogt",
+    description:
+      "Comprendre les procédures internes du College Vogt: restauration, accès, réunions et suivi local.",
+    chapters: [
+      {
+        title: "Cantine et restauration",
+        slug: "cantine-restauration-vogt-parent",
+        summary:
+          "Réserver, signaler un régime et suivre les changements de service.",
+        subchapters: [
+          {
+            title: "Consulter les modalités de cantine",
+            slug: "modalites-cantine-vogt-parent",
+            summary: "Identifier les horaires, tarifs et conditions d'accès.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Le College Vogt communique les modalités de restauration par période.",
+              steps: [
+                "Ouvrir Assistance puis le guide de votre école.",
+                "Vérifier les créneaux de service et les classes concernées.",
+                "Consulter les informations tarifaires et les cas particuliers.",
+              ],
+            }),
+          },
+          {
+            title: "Déclarer un régime alimentaire",
+            slug: "regime-alimentaire-vogt-parent",
+            summary:
+              "Transmettre les besoins alimentaires spécifiques de l'enfant.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Les restrictions alimentaires doivent être remontées avec justificatif si nécessaire.",
+              steps: [
+                "Préparer le document ou certificat utile.",
+                "Envoyer l'information à la vie scolaire ou au service concerné.",
+                "Vérifier la prise en compte avant la reprise des repas.",
+              ],
+            }),
+          },
+          {
+            title: "Suivre les jours sans cantine",
+            slug: "jours-sans-cantine-vogt-parent",
+            summary: "Anticiper les jours où un repas externe doit être prévu.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Certaines journées particulières modifient le fonctionnement habituel.",
+              steps: [
+                "Consulter les annonces publiées par l'école.",
+                "Prévoir un repas alternatif si besoin.",
+                "Informer l'élève de l'organisation du jour concerné.",
+              ],
+            }),
+          },
+        ],
+      },
+      {
+        title: "Accès et sorties",
+        slug: "acces-sorties-vogt-parent",
+        summary:
+          "Suivre les règles d'entrée, de sortie et de récupération des élèves.",
+        subchapters: [
+          {
+            title: "Horaires d'accès au portail",
+            slug: "horaires-portail-vogt-parent",
+            summary: "Vérifier les plages d'entrée et de sortie par niveau.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Les horaires d'accès peuvent différer selon les cycles et événements.",
+              steps: [
+                "Consulter les horaires communiqués pour votre niveau.",
+                "Respecter les créneaux recommandés pour éviter les retards.",
+                "Prévoir une marge en période de forte affluence.",
+              ],
+            }),
+          },
+          {
+            title: "Autoriser une sortie exceptionnelle",
+            slug: "sortie-exceptionnelle-vogt-parent",
+            summary: "Formaliser une demande de sortie anticipée.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Toute sortie anticipée doit être signalée et validée selon la procédure interne.",
+              steps: [
+                "Informer l'école via la messagerie ou le canal indiqué.",
+                "Préciser l'heure, le motif et l'identité de l'accompagnant.",
+                "Attendre la confirmation avant de vous présenter au portail.",
+              ],
+            }),
+          },
+          {
+            title: "Gestion des retards au portail",
+            slug: "retards-portail-vogt-parent",
+            summary:
+              "Réagir correctement lorsqu'un élève arrive après le début des cours.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Les retards répétés nécessitent souvent une justification formalisée.",
+              steps: [
+                "Signaler le retard dès que possible.",
+                "Présenter le justificatif si demandé.",
+                "Suivre l'historique des retards dans la vie scolaire.",
+              ],
+            }),
+          },
+        ],
+      },
+      {
+        title: "Réunions et communication locale",
+        slug: "reunions-communication-vogt-parent",
+        summary:
+          "Préparer les réunions parents et suivre les annonces propres à l'établissement.",
+        subchapters: [
+          {
+            title: "Consulter les dates de réunion",
+            slug: "dates-reunion-vogt-parent",
+            summary:
+              "Identifier les réunions importantes par classe ou niveau.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Le calendrier des réunions est communiqué selon les périodes pédagogiques.",
+              steps: [
+                "Consulter les annonces école.",
+                "Noter les dates utiles dans votre agenda.",
+                "Préparer vos questions avant la rencontre.",
+              ],
+            }),
+          },
+          {
+            title: "Préparer un échange avec la direction",
+            slug: "echange-direction-vogt-parent",
+            summary: "Arriver avec une demande claire et documentée.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Une demande structurée facilite le traitement par la direction.",
+              steps: [
+                "Résumer les faits et la période concernée.",
+                "Joindre les pièces ou références utiles.",
+                "Proposer un objectif clair pour l'entretien.",
+              ],
+            }),
+          },
+          {
+            title: "Suivre les annonces de l'établissement",
+            slug: "annonces-etablissement-vogt-parent",
+            summary: "Rester informé des changements d'organisation locaux.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Les annonces école complètent les informations purement plateforme.",
+              steps: [
+                "Consulter régulièrement le fil et l'assistance école.",
+                "Vérifier les changements de planning ou d'accès.",
+                "Relayer les informations importantes à votre enfant.",
+              ],
+            }),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    schoolName: "College Vogt",
+    audience: "TEACHER",
+    title: "Guide Enseignant College Vogt",
+    slug: "guide-enseignant-college-vogt",
+    description:
+      "Procédures internes du College Vogt pour la discipline, les réunions et l'organisation pédagogique locale.",
+    chapters: [
+      {
+        title: "Vie scolaire locale",
+        slug: "vie-scolaire-locale-vogt-teacher",
+        summary: "Coordonner les signalements et actions avec la vie scolaire.",
+        subchapters: [
+          {
+            title: "Déclarer un incident de classe",
+            slug: "incident-classe-vogt-teacher",
+            summary:
+              "Formaliser un incident avec les bons éléments de contexte.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Le College Vogt attend des signalements précis et exploitables.",
+              steps: [
+                "Documenter le fait, l'heure et les élèves concernés.",
+                "Qualifier le niveau de gravité.",
+                "Transmettre au service compétent selon la procédure interne.",
+              ],
+            }),
+          },
+          {
+            title: "Coordonner avec le surveillant référent",
+            slug: "surveillant-referent-vogt-teacher",
+            summary: "Fluidifier la prise en charge d'un élève signalé.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "La coordination rapide réduit les incompréhensions et les doublons.",
+              steps: [
+                "Identifier le référent de la zone ou du niveau.",
+                "Partager les faits utiles de manière concise.",
+                "Convenir d'une action et d'un suivi.",
+              ],
+            }),
+          },
+          {
+            title: "Préparer un compte rendu disciplinaire",
+            slug: "compte-rendu-disciplinaire-vogt-teacher",
+            summary: "Rédiger un retour exploitable par la hiérarchie.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Un bon compte rendu doit rester factuel, daté et actionnable.",
+              steps: [
+                "Structurer le récit des faits.",
+                "Éviter les formulations ambiguës.",
+                "Conclure par les suites proposées.",
+              ],
+            }),
+          },
+        ],
+      },
+      {
+        title: "Réunions pédagogiques",
+        slug: "reunions-pedagogiques-vogt-teacher",
+        summary: "Préparer les échanges d'équipe et consolider les décisions.",
+        subchapters: [
+          {
+            title: "Préparer le conseil de classe local",
+            slug: "conseil-classe-vogt-teacher",
+            summary: "Arriver avec les informations utiles et partagées.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Le conseil de classe demande une préparation homogène entre enseignants.",
+              steps: [
+                "Vérifier les notes et appréciations saisies.",
+                "Signaler les cas sensibles à l'avance.",
+                "Préparer des recommandations concrètes.",
+              ],
+            }),
+          },
+          {
+            title: "Synthétiser les décisions prises",
+            slug: "synthese-decisions-vogt-teacher",
+            summary: "Diffuser une synthèse claire après réunion.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro: "Une synthèse claire facilite l'exécution des décisions.",
+              steps: [
+                "Lister les décisions par thème ou par classe.",
+                "Attribuer les responsabilités.",
+                "Rappeler les échéances convenues.",
+              ],
+            }),
+          },
+          {
+            title: "Planifier les suivis d'équipe",
+            slug: "suivis-equipe-vogt-teacher",
+            summary: "Ne pas laisser les actions décidées sans propriétaire.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Le suivi post-réunion fait partie intégrante de l'efficacité collective.",
+              steps: [
+                "Programmer les points de contrôle.",
+                "Mettre à jour les avancements.",
+                "Alerter tôt en cas de blocage.",
+              ],
+            }),
+          },
+        ],
+      },
+      {
+        title: "Organisation interne",
+        slug: "organisation-interne-vogt-teacher",
+        summary:
+          "S'aligner sur les pratiques locales de communication et de planning.",
+        subchapters: [
+          {
+            title: "Utiliser les circuits de communication interne",
+            slug: "circuits-communication-vogt-teacher",
+            summary:
+              "Savoir quand utiliser la messagerie, les annonces ou l'escalade directe.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro: "Chaque type d'information a son canal recommandé.",
+              steps: [
+                "Identifier si l'information est urgente, pédagogique ou administrative.",
+                "Choisir le bon canal de diffusion.",
+                "Conserver une trace si nécessaire.",
+              ],
+            }),
+          },
+          {
+            title: "Gérer un changement de salle",
+            slug: "changement-salle-vogt-teacher",
+            summary: "Informer rapidement les parties concernées.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Les changements de salle doivent être communiqués tôt pour éviter les pertes de temps.",
+              steps: [
+                "Vérifier la disponibilité de la salle.",
+                "Informer les élèves et les collègues concernés.",
+                "Mettre à jour le planning si le circuit le prévoit.",
+              ],
+            }),
+          },
+          {
+            title: "Préparer une évaluation commune",
+            slug: "evaluation-commune-vogt-teacher",
+            summary: "Coordonner les contenus et dates au niveau local.",
+            contentType: "RICH_TEXT",
+            contentHtml: richHtml({
+              intro:
+                "Les évaluations communes demandent un alignement entre enseignants du niveau.",
+              steps: [
+                "Valider le périmètre avec l'équipe.",
+                "Fixer une date compatible avec le planning local.",
+                "Partager les critères d'évaluation retenus.",
+              ],
+            }),
+          },
+        ],
+      },
+    ],
+  },
+];
+
 async function upsertGuide({ definition, actorId }) {
   const existing = await prisma.helpGuide.findFirst({
     where: {
@@ -881,6 +1223,48 @@ async function upsertGuide({ definition, actorId }) {
   return prisma.helpGuide.create({
     data: {
       schoolId: null,
+      audience: definition.audience,
+      title: definition.title,
+      slug: definition.slug,
+      description: definition.description,
+      status: "PUBLISHED",
+      createdById: actorId,
+      updatedById: actorId,
+    },
+  });
+}
+
+async function upsertSchoolGuide({ definition, actorId }) {
+  const school = await prisma.school.findFirst({
+    where: { name: definition.schoolName },
+    select: { id: true },
+  });
+  if (!school) return null;
+
+  const existing = await prisma.helpGuide.findFirst({
+    where: {
+      schoolId: school.id,
+      audience: definition.audience,
+      slug: definition.slug,
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return prisma.helpGuide.update({
+      where: { id: existing.id },
+      data: {
+        title: definition.title,
+        description: definition.description,
+        status: "PUBLISHED",
+        updatedById: actorId,
+      },
+    });
+  }
+
+  return prisma.helpGuide.create({
+    data: {
+      schoolId: school.id,
       audience: definition.audience,
       title: definition.title,
       slug: definition.slug,
@@ -998,6 +1382,60 @@ async function main() {
               "Accéder au module concerné depuis le menu principal.",
               "Appliquer le flux recommandé et vérifier le résultat.",
               "Utiliser Assistance en cas de blocage technique ou fonctionnel.",
+            ],
+          }),
+        },
+      });
+      chaptersCount += 1;
+
+      for (
+        let subIndex = 0;
+        subIndex < chapter.subchapters.length;
+        subIndex += 1
+      ) {
+        const sub = chapter.subchapters[subIndex];
+        await upsertChapter({
+          guideId: guide.id,
+          actorId: actor.id,
+          payload: {
+            parentId: chapterRecord.id,
+            orderIndex: (index + 1) * 100 + (subIndex + 1) * 10,
+            title: sub.title,
+            slug: sub.slug || slugify(sub.title),
+            summary: sub.summary,
+            contentType: sub.contentType,
+            contentHtml: sub.contentHtml,
+            videoUrl: sub.videoUrl,
+          },
+        });
+        subchaptersCount += 1;
+      }
+    }
+  }
+
+  for (const definition of SCHOOL_GUIDE_DEFINITIONS) {
+    const guide = await upsertSchoolGuide({ definition, actorId: actor.id });
+    if (!guide) continue;
+    guidesCount += 1;
+
+    for (let index = 0; index < definition.chapters.length; index += 1) {
+      const chapter = definition.chapters[index];
+      const chapterRecord = await upsertChapter({
+        guideId: guide.id,
+        actorId: actor.id,
+        payload: {
+          parentId: null,
+          orderIndex: (index + 1) * 100,
+          title: chapter.title,
+          slug: chapter.slug || slugify(chapter.title),
+          summary: chapter.summary,
+          contentType: "RICH_TEXT",
+          contentHtml: richHtml({
+            intro: chapter.summary,
+            steps: [
+              "Ouvrir le guide de votre école depuis Assistance.",
+              "Vérifier la procédure locale associée au sujet.",
+              "Appliquer le circuit interne recommandé par l'établissement.",
             ],
           }),
         },

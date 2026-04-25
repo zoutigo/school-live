@@ -1,51 +1,20 @@
-import { CircleHelp, MessageCircle, Sparkles } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import type { AssistanceModuleTabKey } from "./assistance-module-tabs";
+import { AssistanceFaqPanel } from "./assistance-faq-panel";
 import { AssistanceGuidePanel } from "./assistance-guide-panel";
 
 type Props = {
   tab: Exclude<AssistanceModuleTabKey, "bug">;
   schoolName?: string | null;
-  canManageGuides?: boolean;
 };
 
-export function AssistancePlaceholderPanels({
-  tab,
-  schoolName,
-  canManageGuides = true,
-}: Props) {
+export function AssistancePlaceholderPanels({ tab, schoolName }: Props) {
   if (tab === "guide") {
-    return <AssistanceGuidePanel canManageOverride={canManageGuides} />;
+    return <AssistanceGuidePanel />;
   }
 
   if (tab === "faq") {
-    return (
-      <section
-        className="rounded-[20px] border border-warm-border bg-surface p-4 shadow-card sm:p-5"
-        data-testid="assistance-faq-panel"
-      >
-        <div className="mb-4 flex items-center gap-2 text-primary">
-          <CircleHelp className="h-5 w-5" />
-          <h2 className="text-base font-bold text-text-primary">FAQ</h2>
-        </div>
-        <div className="space-y-2">
-          {[
-            "Comment me connecter à mon école ?",
-            "Pourquoi je ne vois pas mes notifications ?",
-            "Comment signaler un problème fonctionnel ?",
-            "Comment suivre la réponse du support ?",
-          ].map((question) => (
-            <button
-              key={question}
-              type="button"
-              className="flex w-full items-center justify-between rounded-[12px] border border-warm-border bg-warm-surface px-3 py-2 text-left text-sm text-text-primary"
-            >
-              <span>{question}</span>
-              <Sparkles className="h-4 w-4 text-text-secondary" />
-            </button>
-          ))}
-        </div>
-      </section>
-    );
+    return <AssistanceFaqPanel />;
   }
 
   return (

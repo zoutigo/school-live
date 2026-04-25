@@ -59,8 +59,22 @@ describe("HelpGuidesService", () => {
   it("résout un guide publié pour un parent", async () => {
     prisma.helpGuide.findMany.mockResolvedValue([
       {
+        id: "guide-global",
+        schoolId: null,
+        school: null,
+        audience: "PARENT",
+        title: "Guide parent Scolive",
+        slug: "guide-parent-scolive",
+        description: null,
+        status: "PUBLISHED",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        _count: { chapters: 3 },
+      },
+      {
         id: "guide-parent",
         schoolId: "school-1",
+        school: { name: "College Vogt" },
         audience: "PARENT",
         title: "Guide parent",
         slug: "guide-parent",
@@ -74,9 +88,14 @@ describe("HelpGuidesService", () => {
 
     const result = await service.getCurrentGuide(makeUser(), {});
 
-    expect(result.guide?.id).toBe("guide-parent");
+    expect(result.sources).toHaveLength(2);
+    expect(result.sources[0]?.scopeType).toBe("GLOBAL");
+    expect(result.sources[1]?.scopeType).toBe("SCHOOL");
     expect(result.resolvedAudience).toBe("PARENT");
-    expect(result.canManage).toBe(false);
+    expect(result.permissions).toEqual({
+      canManageGlobal: false,
+      canManageSchool: false,
+    });
   });
 
   it("calcule les breadcrumbs dans la recherche", async () => {
@@ -84,6 +103,7 @@ describe("HelpGuidesService", () => {
       {
         id: "guide-parent",
         schoolId: "school-1",
+        school: { name: "College Vogt" },
         audience: "PARENT",
         title: "Guide parent",
         slug: "guide-parent",
@@ -127,13 +147,17 @@ describe("HelpGuidesService", () => {
       "Messagerie",
       "Créer un message",
     ]);
+    expect(result.items[0]?.scopeLabel).toBe("College Vogt");
   });
 
-  it("bloque la création d'un chapitre vidéo sans url", async () => {
-    prisma.helpGuide.findUnique.mockResolvedValue({ id: "guide-1" });
+  it("bloque la création d'un chapitre vidéo sans url en global", async () => {
+    prisma.helpGuide.findUnique.mockResolvedValue({
+      id: "guide-1",
+      schoolId: null,
+    });
 
     await expect(
-      service.createChapter(
+      service.createGlobalChapter(
         makeUser({ platformRoles: ["SUPER_ADMIN"] }),
         "guide-1",
         {
@@ -146,7 +170,7 @@ describe("HelpGuidesService", () => {
 
   it("refuse la liste admin aux non platform admins", async () => {
     await expect(
-      service.listGuidesAdmin(makeUser(), {}),
+      service.listGlobalGuidesAdmin(makeUser(), {}),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

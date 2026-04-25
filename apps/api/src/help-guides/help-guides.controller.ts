@@ -68,63 +68,122 @@ export class HelpGuidesController {
     return this.helpGuidesService.getCurrentChapter(user, chapterId, query);
   }
 
-  @Get("admin/guides")
-  listGuidesAdmin(
+  @Get("admin/global/guides")
+  listGlobalGuidesAdmin(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ListHelpGuidesAdminDto,
   ) {
-    return this.helpGuidesService.listGuidesAdmin(user, query);
+    return this.helpGuidesService.listGlobalGuidesAdmin(user, query);
   }
 
-  @Post("admin/guides")
-  createGuide(
+  @Get("admin/school/guides")
+  listSchoolGuidesAdmin(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListHelpGuidesAdminDto,
+  ) {
+    return this.helpGuidesService.listSchoolGuidesAdmin(user, query);
+  }
+
+  @Post("admin/global/guides")
+  createGlobalGuide(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateHelpGuideDto,
   ) {
-    return this.helpGuidesService.createGuide(user, dto);
+    return this.helpGuidesService.createGlobalGuide(user, dto);
   }
 
-  @Patch("admin/guides/:guideId")
-  updateGuide(
+  @Post("admin/school/guides")
+  createSchoolGuide(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateHelpGuideDto,
+  ) {
+    return this.helpGuidesService.createSchoolGuide(user, dto);
+  }
+
+  @Patch("admin/global/guides/:guideId")
+  updateGlobalGuide(
     @CurrentUser() user: AuthenticatedUser,
     @Param("guideId") guideId: string,
     @Body() dto: UpdateHelpGuideDto,
   ) {
-    return this.helpGuidesService.updateGuide(user, guideId, dto);
+    return this.helpGuidesService.updateGlobalGuide(user, guideId, dto);
   }
 
-  @Delete("admin/guides/:guideId")
-  deleteGuide(
+  @Patch("admin/school/guides/:guideId")
+  updateSchoolGuide(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("guideId") guideId: string,
+    @Body() dto: UpdateHelpGuideDto,
+  ) {
+    return this.helpGuidesService.updateSchoolGuide(user, guideId, dto);
+  }
+
+  @Delete("admin/global/guides/:guideId")
+  deleteGlobalGuide(
     @CurrentUser() user: AuthenticatedUser,
     @Param("guideId") guideId: string,
   ) {
-    return this.helpGuidesService.deleteGuide(user, guideId);
+    return this.helpGuidesService.deleteGlobalGuide(user, guideId);
   }
 
-  @Post("admin/guides/:guideId/chapters")
-  createChapter(
+  @Delete("admin/school/guides/:guideId")
+  deleteSchoolGuide(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("guideId") guideId: string,
+  ) {
+    return this.helpGuidesService.deleteSchoolGuide(user, guideId);
+  }
+
+  @Post("admin/global/guides/:guideId/chapters")
+  createGlobalChapter(
     @CurrentUser() user: AuthenticatedUser,
     @Param("guideId") guideId: string,
     @Body() dto: CreateHelpChapterDto,
   ) {
-    return this.helpGuidesService.createChapter(user, guideId, dto);
+    return this.helpGuidesService.createGlobalChapter(user, guideId, dto);
   }
 
-  @Patch("admin/chapters/:chapterId")
-  updateChapter(
+  @Post("admin/school/guides/:guideId/chapters")
+  createSchoolChapter(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("guideId") guideId: string,
+    @Body() dto: CreateHelpChapterDto,
+  ) {
+    return this.helpGuidesService.createSchoolChapter(user, guideId, dto);
+  }
+
+  @Patch("admin/global/chapters/:chapterId")
+  updateGlobalChapter(
     @CurrentUser() user: AuthenticatedUser,
     @Param("chapterId") chapterId: string,
     @Body() dto: UpdateHelpChapterDto,
   ) {
-    return this.helpGuidesService.updateChapter(user, chapterId, dto);
+    return this.helpGuidesService.updateGlobalChapter(user, chapterId, dto);
   }
 
-  @Delete("admin/chapters/:chapterId")
-  deleteChapter(
+  @Patch("admin/school/chapters/:chapterId")
+  updateSchoolChapter(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("chapterId") chapterId: string,
+    @Body() dto: UpdateHelpChapterDto,
+  ) {
+    return this.helpGuidesService.updateSchoolChapter(user, chapterId, dto);
+  }
+
+  @Delete("admin/global/chapters/:chapterId")
+  deleteGlobalChapter(
     @CurrentUser() user: AuthenticatedUser,
     @Param("chapterId") chapterId: string,
   ) {
-    return this.helpGuidesService.deleteChapter(user, chapterId);
+    return this.helpGuidesService.deleteGlobalChapter(user, chapterId);
+  }
+
+  @Delete("admin/school/chapters/:chapterId")
+  deleteSchoolChapter(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("chapterId") chapterId: string,
+  ) {
+    return this.helpGuidesService.deleteSchoolChapter(user, chapterId);
   }
 
   @Post("admin/uploads/inline-image")

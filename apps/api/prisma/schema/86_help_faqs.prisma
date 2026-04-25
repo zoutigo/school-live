@@ -1,0 +1,66 @@
+model HelpFaq {
+  id          String                @id @default(cuid())
+  schoolId    String?
+  school      School?               @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  audience    HelpGuideAudience
+  title       String
+  slug        String
+  status      HelpPublicationStatus @default(DRAFT)
+  description String?
+  createdById String
+  createdBy   User                  @relation("HelpFaqCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String
+  updatedBy   User                  @relation("HelpFaqUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  themes      HelpFaqTheme[]
+
+  @@unique([schoolId, audience, slug])
+  @@index([schoolId, audience, status])
+  @@index([audience, status])
+}
+
+model HelpFaqTheme {
+  id          String                @id @default(cuid())
+  faqId        String
+  faq          HelpFaq               @relation(fields: [faqId], references: [id], onDelete: Cascade)
+  orderIndex   Int                   @default(0)
+  title        String
+  slug         String
+  description  String?
+  status       HelpPublicationStatus @default(DRAFT)
+  createdById  String
+  createdBy    User                  @relation("HelpFaqThemeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById  String
+  updatedBy    User                  @relation("HelpFaqThemeUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  items        HelpFaqItem[]
+
+  @@unique([faqId, slug])
+  @@index([faqId, orderIndex])
+  @@index([faqId, status])
+}
+
+model HelpFaqItem {
+  id          String                @id @default(cuid())
+  themeId      String
+  theme        HelpFaqTheme          @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  orderIndex   Int                   @default(0)
+  question     String
+  answerHtml   String
+  answerJson   Json?
+  answerText   String                @default("")
+  status       HelpPublicationStatus @default(DRAFT)
+  createdById  String
+  createdBy    User                  @relation("HelpFaqItemCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById  String
+  updatedBy    User                  @relation("HelpFaqItemUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@index([themeId, orderIndex])
+  @@index([themeId, status])
+}

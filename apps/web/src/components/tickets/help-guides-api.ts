@@ -16,6 +16,7 @@ export type HelpContentType = "RICH_TEXT" | "VIDEO";
 export type HelpGuideItem = {
   id: string;
   schoolId: string | null;
+  schoolName: string | null;
   audience: HelpGuideAudience;
   title: string;
   slug: string;
@@ -38,6 +39,21 @@ export type HelpPlanNode = {
   children: HelpPlanNode[];
 };
 
+export type HelpGuideScopeType = "GLOBAL" | "SCHOOL";
+
+export type HelpGuideSource = {
+  key: string;
+  scopeType: HelpGuideScopeType;
+  scopeLabel: string;
+  schoolId: string | null;
+  schoolName: string | null;
+  guide: HelpGuideItem;
+};
+
+export type HelpGuideSourceWithPlan = HelpGuideSource & {
+  items: HelpPlanNode[];
+};
+
 export type HelpChapterItem = {
   id: string;
   guideId: string;
@@ -58,8 +74,16 @@ export type HelpChapterItem = {
 };
 
 export type CurrentGuideResponse = {
-  canManage: boolean;
-  guide: HelpGuideItem | null;
+  permissions: {
+    canManageGlobal: boolean;
+    canManageSchool: boolean;
+  };
+  schoolScope: {
+    schoolId: string;
+    schoolName: string;
+  } | null;
+  sources: HelpGuideSource[];
+  defaultSourceKey: string | null;
   resolvedAudience: HelpGuideAudience;
 };
 
@@ -124,7 +148,7 @@ export const helpGuidesApi = {
     const query = new URLSearchParams();
     if (params?.guideId) query.set("guideId", params.guideId);
     if (params?.audience) query.set("audience", params.audience);
-    return getJson<{ guide: HelpGuideItem | null; items: HelpPlanNode[] }>(
+    return getJson<{ sources: HelpGuideSourceWithPlan[] }>(
       `/help-guides/current/plan${query.toString() ? `?${query.toString()}` : ""}`,
     );
   },
@@ -137,7 +161,7 @@ export const helpGuidesApi = {
     if (params?.guideId) query.set("guideId", params.guideId);
     if (params?.audience) query.set("audience", params.audience);
 
-    return getJson<{ guide: HelpGuideItem | null; chapter: HelpChapterItem }>(
+    return getJson<{ source?: HelpGuideSource; chapter: HelpChapterItem }>(
       `/help-guides/current/chapters/${chapterId}${query.toString() ? `?${query.toString()}` : ""}`,
     );
   },
@@ -151,12 +175,22 @@ export const helpGuidesApi = {
     if (params?.guideId) query.set("guideId", params.guideId);
     if (params?.audience) query.set("audience", params.audience);
 
-    return getJson<{ guide: HelpGuideItem | null; items: HelpChapterItem[] }>(
-      `/help-guides/current/search?${query.toString()}`,
-    );
+    return getJson<{
+      sources: HelpGuideSource[];
+      items: Array<
+        HelpChapterItem & {
+          guideId: string;
+          sourceKey: string;
+          scopeType: HelpGuideScopeType;
+          scopeLabel: string;
+          schoolId: string | null;
+          schoolName: string | null;
+        }
+      >;
+    }>(`/help-guides/current/search?${query.toString()}`);
   },
 
-  listAdmin(params?: {
+  listGlobalAdmin(params?: {
     audience?: HelpGuideAudience;
     status?: HelpPublicationStatus;
   }) {
@@ -164,45 +198,95 @@ export const helpGuidesApi = {
     if (params?.audience) query.set("audience", params.audience);
     if (params?.status) query.set("status", params.status);
     return getJson<{ items: HelpGuideItem[] }>(
-      `/help-guides/admin/guides${query.toString() ? `?${query.toString()}` : ""}`,
+      `/help-guides/admin/global/guides${query.toString() ? `?${query.toString()}` : ""}`,
     );
   },
 
-  createGuide(payload: {
+  listSchoolAdmin(params?: {
+    audience?: HelpGuideAudience;
+    status?: HelpPublicationStatus;
+  }) {
+    const query = new URLSearchParams();
+    if (params?.audience) query.set("audience", params.audience);
+    if (params?.status) query.set("status", params.status);
+    return getJson<{ items: HelpGuideItem[] }>(
+      `/help-guides/admin/school/guides${query.toString() ? `?${query.toString()}` : ""}`,
+    );
+  },
+
+  createGlobalGuide(payload: {
     title: string;
     audience: HelpGuideAudience;
     status?: HelpPublicationStatus;
     description?: string;
-    schoolId?: string;
   }) {
-    return mutate<HelpGuideItem>("/help-guides/admin/guides", "POST", payload);
+    return mutate<HelpGuideItem>(
+      "/help-guides/admin/global/guides",
+      "POST",
+      payload,
+    );
   },
 
-  updateGuide(
+  createSchoolGuide(payload: {
+    title: string;
+    audience: HelpGuideAudience;
+    status?: HelpPublicationStatus;
+    description?: string;
+  }) {
+    return mutate<HelpGuideItem>(
+      "/help-guides/admin/school/guides",
+      "POST",
+      payload,
+    );
+  },
+
+  updateGlobalGuide(
     guideId: string,
     payload: Partial<{
       title: string;
       audience: HelpGuideAudience;
       status: HelpPublicationStatus;
       description: string;
-      schoolId: string | null;
     }>,
   ) {
     return mutate<HelpGuideItem>(
-      `/help-guides/admin/guides/${guideId}`,
+      `/help-guides/admin/global/guides/${guideId}`,
       "PATCH",
       payload,
     );
   },
 
-  deleteGuide(guideId: string) {
+  updateSchoolGuide(
+    guideId: string,
+    payload: Partial<{
+      title: string;
+      audience: HelpGuideAudience;
+      status: HelpPublicationStatus;
+      description: string;
+    }>,
+  ) {
+    return mutate<HelpGuideItem>(
+      `/help-guides/admin/school/guides/${guideId}`,
+      "PATCH",
+      payload,
+    );
+  },
+
+  deleteGlobalGuide(guideId: string) {
     return mutate<{ deleted: boolean }>(
-      `/help-guides/admin/guides/${guideId}`,
+      `/help-guides/admin/global/guides/${guideId}`,
       "DELETE",
     );
   },
 
-  createChapter(
+  deleteSchoolGuide(guideId: string) {
+    return mutate<{ deleted: boolean }>(
+      `/help-guides/admin/school/guides/${guideId}`,
+      "DELETE",
+    );
+  },
+
+  createGlobalChapter(
     guideId: string,
     payload: {
       title: string;
@@ -217,13 +301,34 @@ export const helpGuidesApi = {
     },
   ) {
     return mutate<HelpChapterItem>(
-      `/help-guides/admin/guides/${guideId}/chapters`,
+      `/help-guides/admin/global/guides/${guideId}/chapters`,
       "POST",
       payload,
     );
   },
 
-  updateChapter(
+  createSchoolChapter(
+    guideId: string,
+    payload: {
+      title: string;
+      parentId?: string;
+      orderIndex?: number;
+      summary?: string;
+      contentType: HelpContentType;
+      contentHtml?: string;
+      contentJson?: Record<string, unknown>;
+      videoUrl?: string;
+      status?: HelpPublicationStatus;
+    },
+  ) {
+    return mutate<HelpChapterItem>(
+      `/help-guides/admin/school/guides/${guideId}/chapters`,
+      "POST",
+      payload,
+    );
+  },
+
+  updateGlobalChapter(
     chapterId: string,
     payload: Partial<{
       title: string;
@@ -238,15 +343,43 @@ export const helpGuidesApi = {
     }>,
   ) {
     return mutate<HelpChapterItem>(
-      `/help-guides/admin/chapters/${chapterId}`,
+      `/help-guides/admin/global/chapters/${chapterId}`,
       "PATCH",
       payload,
     );
   },
 
-  deleteChapter(chapterId: string) {
+  updateSchoolChapter(
+    chapterId: string,
+    payload: Partial<{
+      title: string;
+      parentId: string | null;
+      orderIndex: number;
+      summary: string;
+      contentType: HelpContentType;
+      contentHtml: string;
+      contentJson: Record<string, unknown>;
+      videoUrl: string;
+      status: HelpPublicationStatus;
+    }>,
+  ) {
+    return mutate<HelpChapterItem>(
+      `/help-guides/admin/school/chapters/${chapterId}`,
+      "PATCH",
+      payload,
+    );
+  },
+
+  deleteGlobalChapter(chapterId: string) {
     return mutate<{ deleted: boolean }>(
-      `/help-guides/admin/chapters/${chapterId}`,
+      `/help-guides/admin/global/chapters/${chapterId}`,
+      "DELETE",
+    );
+  },
+
+  deleteSchoolChapter(chapterId: string) {
+    return mutate<{ deleted: boolean }>(
+      `/help-guides/admin/school/chapters/${chapterId}`,
       "DELETE",
     );
   },

@@ -21,6 +21,8 @@ import {
   type HelpChapterItem,
   type HelpGuideAudience,
   type HelpGuideItem,
+  type HelpGuideScopeType,
+  type HelpGuideSourceWithPlan,
   type HelpPlanNode,
   type HelpPublicationStatus,
   helpGuidesApi,
@@ -45,7 +47,6 @@ const guideFormSchema = z.object({
   audience: z.enum(["PARENT", "TEACHER", "STUDENT", "SCHOOL_ADMIN", "STAFF"]),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
   description: z.string().max(300, "300 caractères max").optional(),
-  schoolId: z.string().optional(),
 });
 
 const chapterFormSchema = z
@@ -85,6 +86,15 @@ const chapterFormSchema = z
 
 type GuideFormValues = z.infer<typeof guideFormSchema>;
 type ChapterFormValues = z.infer<typeof chapterFormSchema>;
+type ViewFilter = "all" | "GLOBAL" | "SCHOOL";
+type SearchItem = HelpChapterItem & {
+  guideId: string;
+  sourceKey: string;
+  scopeType: HelpGuideScopeType;
+  scopeLabel: string;
+  schoolId: string | null;
+  schoolName: string | null;
+};
 
 function flattenPlan(nodes: HelpPlanNode[]): HelpPlanNode[] {
   const result: HelpPlanNode[] = [];
@@ -107,16 +117,24 @@ type AssistanceGuidePanelProps = {
 export function AssistanceGuidePanel({
   canManageOverride = true,
 }: AssistanceGuidePanelProps) {
-  const [canManage, setCanManage] = useState(false);
-  const [guide, setGuide] = useState<HelpGuideItem | null>(null);
-  const [plan, setPlan] = useState<HelpPlanNode[]>([]);
+  const [permissions, setPermissions] = useState({
+    canManageGlobal: false,
+    canManageSchool: false,
+  });
+  const [schoolScope, setSchoolScope] = useState<{
+    schoolId: string;
+    schoolName: string;
+  } | null>(null);
+  const [sources, setSources] = useState<HelpGuideSourceWithPlan[]>([]);
   const [currentChapter, setCurrentChapter] = useState<HelpChapterItem | null>(
     null,
   );
   const [adminGuides, setAdminGuides] = useState<HelpGuideItem[]>([]);
   const [activeGuideId, setActiveGuideId] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<ViewFilter>("all");
+  const [activeSourceKey, setActiveSourceKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [searchResults, setSearchResults] = useState<HelpChapterItem[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchItem[]>([]);
   const [expandedChapterIds, setExpandedChapterIds] = useState<string[]>([]);
   const [isCompactLayout, setIsCompactLayout] = useState(false);
   const [compactView, setCompactView] = useState<"plan" | "content">("plan");
@@ -134,7 +152,6 @@ export function AssistanceGuidePanel({
       audience: "PARENT",
       status: "DRAFT",
       description: "",
-      schoolId: "",
     },
   });
 
@@ -153,6 +170,22 @@ export function AssistanceGuidePanel({
     },
   });
 
+  const visibleSources = useMemo(
+    () =>
+      sources.filter((source) =>
+        selectedFilter === "all" ? true : source.scopeType === selectedFilter,
+      ),
+    [selectedFilter, sources],
+  );
+  const activeSource = useMemo(
+    () =>
+      visibleSources.find((source) => source.key === activeSourceKey) ??
+      visibleSources[0] ??
+      null,
+    [activeSourceKey, visibleSources],
+  );
+  const guide = activeSource?.guide ?? null;
+  const plan = activeSource?.items ?? [];
   const flattenedPlan = useMemo(() => flattenPlan(plan), [plan]);
 
   useEffect(() => {
@@ -185,10 +218,11 @@ export function AssistanceGuidePanel({
     );
   }
 
-  const loadAdminGuides = useCallback(async () => {
-    const result = await helpGuidesApi.listAdmin();
-    setAdminGuides(result.items);
-  }, []);
+  const adminMode = permissions.canManageGlobal
+    ? "GLOBAL"
+    : permissions.canManageSchool
+      ? "SCHOOL"
+      : null;
 
   const loadGuideData = useCallback(
     async (guideId?: string | null) => {
@@ -198,28 +232,36 @@ export function AssistanceGuidePanel({
         const current = await helpGuidesApi.getCurrent({
           ...(guideId ? { guideId } : {}),
         });
-        const effectiveCanManage = current.canManage && canManageOverride;
-        setCanManage(effectiveCanManage);
-        setGuide(current.guide);
-
-        const effectiveGuideId = guideId ?? current.guide?.id ?? null;
-        if (effectiveGuideId) {
-          setActiveGuideId(effectiveGuideId);
-        }
+        const nextPermissions = {
+          canManageGlobal:
+            current.permissions.canManageGlobal && canManageOverride,
+          canManageSchool:
+            current.permissions.canManageSchool && canManageOverride,
+        };
+        setPermissions(nextPermissions);
+        setSchoolScope(current.schoolScope);
+        const effectiveGuideId = guideId ?? null;
+        setActiveGuideId(effectiveGuideId);
+        setActiveSourceKey(current.defaultSourceKey);
 
         const planResponse = await helpGuidesApi.getPlan({
-          ...(effectiveGuideId ? { guideId: effectiveGuideId } : {}),
+          ...(guideId ? { guideId } : {}),
         });
-        setPlan(planResponse.items);
+        setSources(planResponse.sources);
         setExpandedChapterIds([]);
         setCompactView("plan");
 
-        const firstChapterId = flattenPlan(planResponse.items)[0]?.id;
+        const firstSource = planResponse.sources[0] ?? null;
+        const firstChapterId = firstSource
+          ? flattenPlan(firstSource.items)[0]?.id
+          : undefined;
         if (firstChapterId) {
           const chapterResponse = await helpGuidesApi.getChapter(
             firstChapterId,
             {
-              ...(effectiveGuideId ? { guideId: effectiveGuideId } : {}),
+              ...(firstSource?.guide.id
+                ? { guideId: firstSource.guide.id }
+                : {}),
             },
           );
           setCurrentChapter(chapterResponse.chapter);
@@ -227,8 +269,12 @@ export function AssistanceGuidePanel({
           setCurrentChapter(null);
         }
 
-        if (effectiveCanManage) {
-          await loadAdminGuides();
+        if (nextPermissions.canManageGlobal) {
+          const result = await helpGuidesApi.listGlobalAdmin();
+          setAdminGuides(result.items);
+        } else if (nextPermissions.canManageSchool) {
+          const result = await helpGuidesApi.listSchoolAdmin();
+          setAdminGuides(result.items);
         } else {
           setAdminGuides([]);
         }
@@ -242,7 +288,7 @@ export function AssistanceGuidePanel({
         setLoading(false);
       }
     },
-    [canManageOverride, loadAdminGuides],
+    [canManageOverride],
   );
 
   useEffect(() => {
@@ -250,12 +296,17 @@ export function AssistanceGuidePanel({
   }, [loadGuideData]);
 
   const openChapter = useCallback(
-    async (chapterId: string) => {
+    async (chapterId: string, guideId?: string) => {
       try {
         const result = await helpGuidesApi.getChapter(chapterId, {
-          ...(activeGuideId ? { guideId: activeGuideId } : {}),
+          ...((guideId ?? activeGuideId)
+            ? { guideId: guideId ?? activeGuideId ?? undefined }
+            : {}),
         });
         setCurrentChapter(result.chapter);
+        if (result.source?.key) {
+          setActiveSourceKey(result.source.key);
+        }
         setEditingChapter(false);
         if (isCompactLayout) {
           setCompactView("content");
@@ -293,9 +344,7 @@ export function AssistanceGuidePanel({
     }
 
     try {
-      const result = await helpGuidesApi.search(search.trim(), {
-        ...(activeGuideId ? { guideId: activeGuideId } : {}),
-      });
+      const result = await helpGuidesApi.search(search.trim());
       setSearchResults(result.items);
       setCompactView("plan");
     } catch (searchError) {
@@ -311,14 +360,21 @@ export function AssistanceGuidePanel({
     setSavingGuide(true);
     setError(null);
     try {
-      const created = await helpGuidesApi.createGuide({
-        title: values.title,
-        audience: values.audience,
-        status: values.status,
-        description: values.description?.trim() || undefined,
-        schoolId: values.schoolId?.trim() || undefined,
-      });
-      guideForm.reset({ ...values, title: "", description: "", schoolId: "" });
+      const created =
+        adminMode === "SCHOOL"
+          ? await helpGuidesApi.createSchoolGuide({
+              title: values.title,
+              audience: values.audience,
+              status: values.status,
+              description: values.description?.trim() || undefined,
+            })
+          : await helpGuidesApi.createGlobalGuide({
+              title: values.title,
+              audience: values.audience,
+              status: values.status,
+              description: values.description?.trim() || undefined,
+            });
+      guideForm.reset({ ...values, title: "", description: "" });
       setActiveGuideId(created.id);
       await loadGuideData(created.id);
     } catch (saveError) {
@@ -365,15 +421,21 @@ export function AssistanceGuidePanel({
 
       let savedChapter: HelpChapterItem;
       if (editingChapter && currentChapter) {
-        savedChapter = await helpGuidesApi.updateChapter(
-          currentChapter.id,
-          payload,
-        );
+        savedChapter =
+          adminMode === "SCHOOL"
+            ? await helpGuidesApi.updateSchoolChapter(
+                currentChapter.id,
+                payload,
+              )
+            : await helpGuidesApi.updateGlobalChapter(
+                currentChapter.id,
+                payload,
+              );
       } else {
-        savedChapter = await helpGuidesApi.createChapter(
-          activeGuideId,
-          payload,
-        );
+        savedChapter =
+          adminMode === "SCHOOL"
+            ? await helpGuidesApi.createSchoolChapter(activeGuideId, payload)
+            : await helpGuidesApi.createGlobalChapter(activeGuideId, payload);
       }
 
       await loadGuideData(activeGuideId);
@@ -395,7 +457,11 @@ export function AssistanceGuidePanel({
     if (!window.confirm("Supprimer ce chapitre ?")) return;
 
     try {
-      await helpGuidesApi.deleteChapter(currentChapter.id);
+      if (adminMode === "SCHOOL") {
+        await helpGuidesApi.deleteSchoolChapter(currentChapter.id);
+      } else {
+        await helpGuidesApi.deleteGlobalChapter(currentChapter.id);
+      }
       await loadGuideData(activeGuideId);
     } catch (deleteError) {
       setError(
@@ -411,7 +477,11 @@ export function AssistanceGuidePanel({
     if (!window.confirm("Supprimer ce guide et tous ses chapitres ?")) return;
 
     try {
-      await helpGuidesApi.deleteGuide(activeGuideId);
+      if (adminMode === "SCHOOL") {
+        await helpGuidesApi.deleteSchoolGuide(activeGuideId);
+      } else {
+        await helpGuidesApi.deleteGlobalGuide(activeGuideId);
+      }
       setActiveGuideId(null);
       await loadGuideData();
     } catch (deleteError) {
@@ -441,7 +511,7 @@ export function AssistanceGuidePanel({
               {guide?.title ?? "Guide utilisateur"}
             </h2>
           </div>
-          {canManage ? (
+          {adminMode ? (
             <div className="flex items-center gap-2">
               <FormSelect
                 value={activeGuideId ?? ""}
@@ -482,6 +552,26 @@ export function AssistanceGuidePanel({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
+            {[
+              { key: "all", label: "Tous" },
+              { key: "GLOBAL", label: "Scolive" },
+              { key: "SCHOOL", label: "École" },
+            ].map((entry) => (
+              <button
+                key={entry.key}
+                type="button"
+                onClick={() => setSelectedFilter(entry.key as ViewFilter)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  selectedFilter === entry.key
+                    ? "bg-primary text-white"
+                    : "border border-warm-border bg-warm-surface text-text-secondary"
+                }`}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
           <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-[12px] border border-warm-border bg-warm-surface px-3 py-2">
             <Search className="h-4 w-4 text-text-secondary" />
             <input
@@ -512,6 +602,44 @@ export function AssistanceGuidePanel({
             {error}
           </p>
         ) : null}
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {visibleSources.map((source) => (
+            <button
+              key={source.key}
+              type="button"
+              onClick={() => {
+                setActiveSourceKey(source.key);
+                setActiveGuideId(source.guide.id);
+                setSearchResults([]);
+                setExpandedChapterIds([]);
+              }}
+              className={`rounded-[18px] border px-4 py-3 text-left transition ${
+                activeSource?.key === source.key
+                  ? "border-primary bg-primary/8"
+                  : "border-warm-border bg-warm-surface hover:bg-background"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                    {source.scopeType === "GLOBAL"
+                      ? "Guide Scolive"
+                      : "Guide école"}
+                  </p>
+                  <p className="text-sm font-bold text-text-primary">
+                    {source.guide.title}
+                  </p>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    {source.scopeLabel} · {source.guide.chapterCount}{" "}
+                    chapitre(s)
+                  </p>
+                </div>
+                <BookOpen className="h-4 w-4 text-primary" />
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -525,9 +653,11 @@ export function AssistanceGuidePanel({
               {searchResults.length > 0
                 ? searchResults.map((result) => (
                     <button
-                      key={result.id}
+                      key={`${result.guideId}:${result.id}`}
                       type="button"
-                      onClick={() => void openChapter(result.id)}
+                      onClick={() =>
+                        void openChapter(result.id, result.guideId)
+                      }
                       className={`flex w-full items-center rounded-[10px] px-2 py-2 text-left text-sm transition ${
                         currentChapter?.id === result.id
                           ? "bg-primary/10 text-primary"
@@ -537,54 +667,80 @@ export function AssistanceGuidePanel({
                       <span className="line-clamp-2">
                         {result.breadcrumb?.join(" > ") ?? result.title}
                       </span>
+                      <span className="ml-auto pl-3 text-[11px] text-text-secondary">
+                        {result.scopeLabel}
+                      </span>
                     </button>
                   ))
-                : plan.map((node) => {
-                    const hasChildren = node.children.length > 0;
-                    const isExpanded = expandedChapterIds.includes(node.id);
-                    return (
-                      <div key={node.id} className="space-y-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (hasChildren) {
-                              toggleChapter(node.id);
-                              return;
-                            }
-                            void openChapter(node.id);
-                          }}
-                          className="flex w-full items-center justify-between rounded-[10px] px-2 py-2 text-left text-sm text-text-primary transition hover:bg-warm-highlight/70"
-                        >
-                          <span className="line-clamp-2 font-medium">
-                            {node.title}
-                          </span>
-                          {hasChildren ? (
-                            <span className="text-xs text-text-secondary">
-                              {isExpanded ? "Masquer" : "Voir"}
-                            </span>
-                          ) : null}
-                        </button>
-
-                        {isExpanded &&
-                          node.children.map((child) => (
-                            <button
-                              key={child.id}
-                              type="button"
-                              onClick={() => void openChapter(child.id)}
-                              className={`flex w-full items-center rounded-[10px] px-2 py-2 pl-6 text-left text-sm transition ${
-                                currentChapter?.id === child.id
-                                  ? "bg-primary/10 text-primary"
-                                  : "text-text-secondary hover:bg-warm-highlight/70 hover:text-text-primary"
-                              }`}
-                            >
-                              <span className="line-clamp-2">
-                                {child.title}
-                              </span>
-                            </button>
-                          ))}
+                : visibleSources.map((source) => (
+                    <div key={source.key} className="space-y-2">
+                      <div className="rounded-[12px] bg-warm-surface px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                          {source.scopeType === "GLOBAL"
+                            ? "Scolive"
+                            : source.scopeLabel}
+                        </p>
+                        <p className="text-sm font-semibold text-text-primary">
+                          {source.guide.title}
+                        </p>
                       </div>
-                    );
-                  })}
+                      {source.items.map((node) => {
+                        const hasChildren = node.children.length > 0;
+                        const isExpanded = expandedChapterIds.includes(node.id);
+                        return (
+                          <div
+                            key={`${source.key}:${node.id}`}
+                            className="space-y-1"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (hasChildren) {
+                                  toggleChapter(node.id);
+                                  return;
+                                }
+                                setActiveSourceKey(source.key);
+                                setActiveGuideId(source.guide.id);
+                                void openChapter(node.id, source.guide.id);
+                              }}
+                              className="flex w-full items-center justify-between rounded-[10px] px-2 py-2 text-left text-sm text-text-primary transition hover:bg-warm-highlight/70"
+                            >
+                              <span className="line-clamp-2 font-medium">
+                                {node.title}
+                              </span>
+                              {hasChildren ? (
+                                <span className="text-xs text-text-secondary">
+                                  {isExpanded ? "Masquer" : "Voir"}
+                                </span>
+                              ) : null}
+                            </button>
+
+                            {isExpanded &&
+                              node.children.map((child) => (
+                                <button
+                                  key={`${source.key}:${child.id}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveSourceKey(source.key);
+                                    setActiveGuideId(source.guide.id);
+                                    void openChapter(child.id, source.guide.id);
+                                  }}
+                                  className={`flex w-full items-center rounded-[10px] px-2 py-2 pl-6 text-left text-sm transition ${
+                                    currentChapter?.id === child.id
+                                      ? "bg-primary/10 text-primary"
+                                      : "text-text-secondary hover:bg-warm-highlight/70 hover:text-text-primary"
+                                  }`}
+                                >
+                                  <span className="line-clamp-2">
+                                    {child.title}
+                                  </span>
+                                </button>
+                              ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
             </div>
           </aside>
         )}
@@ -605,9 +761,14 @@ export function AssistanceGuidePanel({
               {currentChapter ? (
                 <>
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="text-lg font-bold text-text-primary">
-                      {currentChapter.title}
-                    </h3>
+                    <div>
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                        {activeSource?.scopeLabel ?? "Guide"}
+                      </p>
+                      <h3 className="text-lg font-bold text-text-primary">
+                        {currentChapter.title}
+                      </h3>
+                    </div>
                     <span
                       className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
                         currentChapter.status === "PUBLISHED"
@@ -658,7 +819,7 @@ export function AssistanceGuidePanel({
               )}
             </article>
 
-            {canManage ? (
+            {adminMode ? (
               <div
                 className="grid gap-3 xl:grid-cols-2"
                 data-testid="assistance-guide-admin-forms"
@@ -669,11 +830,22 @@ export function AssistanceGuidePanel({
                   )}
                   className="rounded-[20px] border border-warm-border bg-surface p-4 shadow-card"
                 >
-                  <div className="mb-3 flex items-center gap-2">
-                    <CircleHelp className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-bold text-text-primary">
-                      Créer un guide
-                    </p>
+                  <div className="mb-3 flex items-center justify-between gap-2 rounded-[16px] border border-warm-border bg-warm-surface px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <CircleHelp className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="text-sm font-bold text-text-primary">
+                          {adminMode === "SCHOOL"
+                            ? `Guide de ${schoolScope?.schoolName ?? "l'école"}`
+                            : "Guide Scolive"}
+                        </p>
+                        <p className="text-xs text-text-secondary">
+                          {adminMode === "SCHOOL"
+                            ? "Administration école"
+                            : "Administration plateforme"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -712,13 +884,6 @@ export function AssistanceGuidePanel({
                       <FormTextarea
                         {...guideForm.register("description")}
                         rows={2}
-                      />
-                    </FormField>
-
-                    <FormField label="School ID (optionnel)">
-                      <FormTextInput
-                        {...guideForm.register("schoolId")}
-                        placeholder="guide global si vide"
                       />
                     </FormField>
 
