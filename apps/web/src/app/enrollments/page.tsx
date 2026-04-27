@@ -261,7 +261,8 @@ export default function EnrollmentsPage() {
       setClassrooms(classroomsPayload);
       setStudents(studentsPayload);
 
-      if (!currentFilters.schoolYearId && schoolYearsPayload.length > 0) {
+      const latestFilters = filtersForm.getValues();
+      if (!latestFilters.schoolYearId && schoolYearsPayload.length > 0) {
         const active = schoolYearsPayload.find((entry) => entry.isActive);
         filtersForm.setValue("schoolYearId", active?.id ?? "", {
           shouldDirty: false,
