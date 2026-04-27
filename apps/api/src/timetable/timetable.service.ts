@@ -404,10 +404,11 @@ export class TimetableService {
       classId,
       effectiveSchoolId,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      payload.teacherUserId,
     );
 
     const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
@@ -435,6 +436,7 @@ export class TimetableService {
       endMinute: payload.endMinute,
       teacherUserId: payload.teacherUserId,
       room: payload.room ?? null,
+      ignoreRecurringSlotId: payload.sourceSlotId ?? undefined,
     });
 
     await this.ensureAutoSubjectStyleExists({
@@ -742,6 +744,7 @@ export class TimetableService {
         startMinute: true,
         endMinute: true,
         room: true,
+        sourceSlotId: true,
       },
     });
     if (!existing) {
@@ -752,10 +755,11 @@ export class TimetableService {
       existing.classId,
       effectiveSchoolId,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      existing.teacherUserId,
     );
 
     const nextOccurrenceDate = payload.occurrenceDate
@@ -792,6 +796,7 @@ export class TimetableService {
       teacherUserId: nextTeacherUserId,
       room: nextRoom ?? null,
       exceptOneOffSlotId: existing.id,
+      ignoreRecurringSlotId: existing.sourceSlotId ?? undefined,
     });
 
     return this.prisma.classTimetableOneOffSlot.update({
@@ -1117,7 +1122,7 @@ export class TimetableService {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const existing = await this.prisma.classTimetableOneOffSlot.findFirst({
       where: { id: oneOffSlotId, schoolId: effectiveSchoolId },
-      select: { id: true, classId: true },
+      select: { id: true, classId: true, teacherUserId: true },
     });
     if (!existing) {
       throw new NotFoundException("One-off slot not found");
@@ -1127,10 +1132,11 @@ export class TimetableService {
       existing.classId,
       effectiveSchoolId,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      existing.teacherUserId,
     );
 
     await this.prisma.classTimetableOneOffSlot.delete({
@@ -2226,6 +2232,7 @@ export class TimetableService {
       endMinute: number;
       room: string | null;
       status: "PLANNED" | "CANCELLED";
+      sourceSlotId: string | null;
       subject: { id: string; name: string };
       teacherUser: {
         id: string;
@@ -2293,6 +2300,17 @@ export class TimetableService {
       );
     });
 
+    // Recurring occurrences suppressed by a one-off slot that replaces them.
+    // Key: "slotId-YYYY-MM-DD"
+    const suppressedByOneOff = new Set<string>();
+    input.oneOffSlots.forEach((slot) => {
+      if (slot.sourceSlotId) {
+        suppressedByOneOff.add(
+          `${slot.sourceSlotId}-${this.dateToYmd(slot.occurrenceDate)}`,
+        );
+      }
+    });
+
     const occurrences: ResolvedTimetableOccurrence[] = [];
     for (
       let cursor = new Date(from);
@@ -2313,6 +2331,9 @@ export class TimetableService {
             }),
         )
         .forEach((slot) => {
+          if (suppressedByOneOff.has(`${slot.id}-${dateYmd}`)) {
+            return;
+          }
           const exception = exceptionMap.get(`${slot.id}-${dateYmd}`);
           if (exception?.type === "CANCEL") {
             occurrences.push({
@@ -2698,6 +2719,54 @@ export class TimetableService {
         "Only class referent teacher can manage timetable for this class",
       );
     }
+  }
+
+  /**
+   * Guard pour les créneaux isolés (one-off slots).
+   * Un enseignant peut gérer un créneau isolé s'il en est l'enseignant désigné.
+   * Le referent de la classe et les admins peuvent toujours agir.
+   */
+  private async assertCanManageOneOffSlot(
+    user: AuthenticatedUser,
+    schoolId: string,
+    classEntity: ClassContext,
+    teacherUserId: string,
+  ) {
+    if (
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      this.hasPlatformRole(user, "ADMIN")
+    ) {
+      return;
+    }
+
+    if (
+      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(user, schoolId, "SUPERVISOR")
+    ) {
+      return;
+    }
+
+    if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
+      throw new ForbiddenException("Insufficient role");
+    }
+
+    // Referent teacher of the class can always manage one-off slots
+    if (
+      classEntity.referentTeacherUserId &&
+      classEntity.referentTeacherUserId === user.id
+    ) {
+      return;
+    }
+
+    // The teacher designated on the slot can manage it
+    if (user.id === teacherUserId) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      "Teacher can only manage one-off slots they are assigned to",
+    );
   }
 
   private async assertCanReadCalendarEvents(

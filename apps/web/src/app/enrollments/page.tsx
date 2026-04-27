@@ -212,18 +212,19 @@ export default function EnrollmentsPage() {
     setSelectedEnrollmentIds([]);
     setStatusDraftByEnrollmentId({});
     try {
+      const currentFilters = filtersForm.getValues();
       const params = new URLSearchParams();
-      if (filterValues.schoolYearId) {
-        params.set("schoolYearId", filterValues.schoolYearId);
+      if (currentFilters.schoolYearId) {
+        params.set("schoolYearId", currentFilters.schoolYearId);
       }
-      if (filterValues.classId) {
-        params.set("classId", filterValues.classId);
+      if (currentFilters.classId) {
+        params.set("classId", currentFilters.classId);
       }
-      if (filterValues.status) {
-        params.set("status", filterValues.status);
+      if (currentFilters.status) {
+        params.set("status", currentFilters.status);
       }
-      if ((filterValues.search ?? "").trim()) {
-        params.set("search", (filterValues.search ?? "").trim());
+      if ((currentFilters.search ?? "").trim()) {
+        params.set("search", (currentFilters.search ?? "").trim());
       }
 
       const [schoolYearsResponse, classroomsResponse, studentsResponse] =
@@ -260,7 +261,7 @@ export default function EnrollmentsPage() {
       setClassrooms(classroomsPayload);
       setStudents(studentsPayload);
 
-      if (!filterValues.schoolYearId && schoolYearsPayload.length > 0) {
+      if (!currentFilters.schoolYearId && schoolYearsPayload.length > 0) {
         const active = schoolYearsPayload.find((entry) => entry.isActive);
         filtersForm.setValue("schoolYearId", active?.id ?? "", {
           shouldDirty: false,
