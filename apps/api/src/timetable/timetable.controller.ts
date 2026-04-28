@@ -54,6 +54,16 @@ export class TimetableController {
     return this.timetableService.myTimetable(user, schoolId, query);
   }
 
+  @Get("classes")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "SUPER_ADMIN")
+  listAdminClasses(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Query("schoolYearId") schoolYearId?: string,
+  ) {
+    return this.timetableService.listAdminClasses(user, schoolId, schoolYearId);
+  }
+
   @Get("classes/:classId/context")
   @Roles(
     "SCHOOL_ADMIN",

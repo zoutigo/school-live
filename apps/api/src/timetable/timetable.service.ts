@@ -74,6 +74,45 @@ const MIN_COLOR_DISTANCE_MANUAL = 50;
 export class TimetableService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listAdminClasses(
+    user: AuthenticatedUser,
+    schoolId: string,
+    schoolYearId?: string,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const school = await this.prisma.school.findUnique({
+      where: { id: effectiveSchoolId },
+      select: { activeSchoolYearId: true },
+    });
+    const selectedSchoolYearId =
+      schoolYearId ?? school?.activeSchoolYearId ?? undefined;
+
+    const classes = await this.prisma.class.findMany({
+      where: {
+        schoolId: effectiveSchoolId,
+        ...(selectedSchoolYearId ? { schoolYearId: selectedSchoolYearId } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        schoolYearId: true,
+        schoolYear: { select: { id: true, label: true } },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return {
+      classes: classes.map((c) => ({
+        classId: c.id,
+        className: c.name,
+        schoolYearId: c.schoolYearId,
+        schoolYearLabel: c.schoolYear?.label ?? "",
+        studentCount: 0,
+        subjects: [],
+      })),
+    };
+  }
+
   async classContext(
     user: AuthenticatedUser,
     schoolId: string,
