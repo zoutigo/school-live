@@ -11,6 +11,7 @@ import { HealthModule } from "./health/health.module.js";
 import { ManagementModule } from "./management/management.module.js";
 import { MessagingModule } from "./messaging/messaging.module.js";
 import { MobileBuildsModule } from "./mobile-builds/mobile-builds.module.js";
+import { NotificationsModule } from "./notifications/notifications.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 import { SchoolsModule } from "./schools/schools.module.js";
 import { TimetableModule } from "./timetable/timetable.module.js";
@@ -36,6 +37,7 @@ import { TicketsModule } from "./tickets/tickets.module.js";
     ManagementModule,
     MessagingModule,
     MobileBuildsModule,
+    NotificationsModule,
     SchoolsModule,
     TimetableModule,
     TicketsModule,

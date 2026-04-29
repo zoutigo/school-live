@@ -3,6 +3,7 @@ import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
+  MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
 } from "../src/mail/mail.types";
@@ -62,6 +63,7 @@ describe("MailJobsWorker", () => {
     sendStudentLifeEventNotification: jest.fn(),
     sendPasswordResetEmail: jest.fn(),
     sendInternalMessageNotification: jest.fn(),
+    sendTimetableChangeNotification: jest.fn(),
   };
 
   const config = {} as ConfigService;
@@ -75,6 +77,7 @@ describe("MailJobsWorker", () => {
     emailPort.sendStudentLifeEventNotification.mockReset();
     emailPort.sendPasswordResetEmail.mockReset();
     emailPort.sendInternalMessageNotification.mockReset();
+    emailPort.sendTimetableChangeNotification.mockReset();
   });
 
   it("creates a worker on init and routes jobs to email port", async () => {
@@ -115,6 +118,14 @@ describe("MailJobsWorker", () => {
     });
     expect(emailPort.sendPasswordResetEmail).toHaveBeenCalledWith({
       to: "parent@example.test",
+    });
+
+    await instances[0]?.processor({
+      name: MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
+      data: { to: "family@example.test" },
+    });
+    expect(emailPort.sendTimetableChangeNotification).toHaveBeenCalledWith({
+      to: "family@example.test",
     });
   });
 

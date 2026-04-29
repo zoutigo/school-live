@@ -4,6 +4,7 @@ import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
+  MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
 } from "../src/mail/mail.types";
@@ -18,6 +19,7 @@ describe("MailService", () => {
     sendStudentLifeEventNotification: jest.fn(),
     sendPasswordResetEmail: jest.fn(),
     sendInternalMessageNotification: jest.fn(),
+    sendTimetableChangeNotification: jest.fn(),
   };
 
   const service = new MailService(queue as never, emailPort as never);
@@ -28,6 +30,7 @@ describe("MailService", () => {
     emailPort.sendStudentLifeEventNotification.mockReset();
     emailPort.sendPasswordResetEmail.mockReset();
     emailPort.sendInternalMessageNotification.mockReset();
+    emailPort.sendTimetableChangeNotification.mockReset();
   });
 
   it("queues temporary password emails", async () => {
@@ -127,5 +130,27 @@ describe("MailService", () => {
       payload,
     );
     expect(emailPort.sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+
+  it("queues timetable change emails", async () => {
+    const payload = {
+      to: "parent@example.test",
+      recipientFirstName: "Parent",
+      schoolName: "Scolive",
+      schoolSlug: "college-vogt",
+      className: "6e C",
+      title: "Seance annulee",
+      summary: "Le cours a ete annule.",
+      details: ["Le cours a ete annule."],
+    };
+
+    await service.sendTimetableChangeNotification(payload);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      MAIL_QUEUE_NAME,
+      MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
+      payload,
+    );
+    expect(emailPort.sendTimetableChangeNotification).not.toHaveBeenCalled();
   });
 });

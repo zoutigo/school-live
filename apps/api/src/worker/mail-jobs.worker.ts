@@ -17,12 +17,14 @@ import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
+  MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
   type EmailVerificationMailPayload,
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
   type StudentLifeEventNotificationPayload,
+  type TimetableChangeMailPayload,
   type TemporaryPasswordMailPayload,
 } from "../mail/mail.types.js";
 
@@ -67,6 +69,12 @@ export class MailJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === MAIL_JOB_SEND_EMAIL_VERIFICATION) {
           await this.emailPort.sendEmailVerification(
             job.data as EmailVerificationMailPayload,
+          );
+          return;
+        }
+        if (job.name === MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION) {
+          await this.emailPort.sendTimetableChangeNotification(
+            job.data as TimetableChangeMailPayload,
           );
           return;
         }

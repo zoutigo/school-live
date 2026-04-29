@@ -2978,6 +2978,8 @@ export class AuthService {
       role: PlatformRole | SchoolRole | null;
       activeRole: PlatformRole | SchoolRole | null;
       gender?: "M" | "F" | "OTHER" | null;
+      schoolName: string | null;
+      referentClass: { name: string } | null;
       linkedStudents?: Array<{
         id: string;
         firstName: string;
@@ -3010,7 +3012,13 @@ export class AuthService {
           select: {
             schoolId: true,
             role: true,
+            school: { select: { name: true } },
           },
+        },
+        referentOfClasses: {
+          where: { schoolId },
+          select: { name: true },
+          take: 1,
         },
         parentLinks: {
           where: { schoolId },
@@ -3082,6 +3090,8 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       gender: user.gender,
+      schoolName: user.memberships[0]?.school?.name ?? null,
+      referentClass: user.referentOfClasses?.[0] ?? null,
       linkedStudents: user.parentLinks.map((link) => ({
         id: link.student.id,
         firstName: link.student.firstName,

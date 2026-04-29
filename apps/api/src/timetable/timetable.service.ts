@@ -7,6 +7,11 @@ import {
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser, SchoolRole } from "../auth/auth.types.js";
+import { TimetableChangeNotificationsService } from "../notifications/timetable-change-notifications.service.js";
+import type {
+  TimetableChangeEventPayload,
+  TimetableChangeSnapshot,
+} from "../notifications/timetable-change.types.js";
 import type { CreateClassTimetableOneOffSlotDto } from "./dto/create-class-timetable-one-off-slot.dto.js";
 import type { CreateClassTimetableSlotDto } from "./dto/create-class-timetable-slot.dto.js";
 import type { CreateClassTimetableSlotExceptionDto } from "./dto/create-class-timetable-slot-exception.dto.js";
@@ -69,10 +74,55 @@ const SUBJECT_COLOR_PALETTE = [
 
 const MIN_COLOR_DISTANCE_AUTO = 80;
 const MIN_COLOR_DISTANCE_MANUAL = 50;
+const NOOP_TIMETABLE_CHANGE_NOTIFICATIONS = {
+  enqueue: async () => undefined,
+} as unknown as TimetableChangeNotificationsService;
 
 @Injectable()
 export class TimetableService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly timetableChangeNotificationsService: TimetableChangeNotificationsService = NOOP_TIMETABLE_CHANGE_NOTIFICATIONS,
+  ) {}
+
+  async listAdminClasses(
+    user: AuthenticatedUser,
+    schoolId: string,
+    schoolYearId?: string,
+  ) {
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const school = await this.prisma.school.findUnique({
+      where: { id: effectiveSchoolId },
+      select: { activeSchoolYearId: true },
+    });
+    const selectedSchoolYearId =
+      schoolYearId ?? school?.activeSchoolYearId ?? undefined;
+
+    const classes = await this.prisma.class.findMany({
+      where: {
+        schoolId: effectiveSchoolId,
+        ...(selectedSchoolYearId ? { schoolYearId: selectedSchoolYearId } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        schoolYearId: true,
+        schoolYear: { select: { id: true, label: true } },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return {
+      classes: classes.map((c) => ({
+        classId: c.id,
+        className: c.name,
+        schoolYearId: c.schoolYearId,
+        schoolYearLabel: c.schoolYear?.label ?? "",
+        studentCount: 0,
+        subjects: [],
+      })),
+    };
+  }
 
   async classContext(
     user: AuthenticatedUser,
@@ -404,10 +454,11 @@ export class TimetableService {
       classId,
       effectiveSchoolId,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      payload.teacherUserId,
     );
 
     const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
@@ -435,6 +486,7 @@ export class TimetableService {
       endMinute: payload.endMinute,
       teacherUserId: payload.teacherUserId,
       room: payload.room ?? null,
+      ignoreRecurringSlotId: payload.sourceSlotId ?? undefined,
     });
 
     await this.ensureAutoSubjectStyleExists({
@@ -444,7 +496,7 @@ export class TimetableService {
       subjectId: payload.subjectId,
     });
 
-    return this.prisma.classTimetableOneOffSlot.create({
+    const created = await this.prisma.classTimetableOneOffSlot.create({
       data: {
         schoolId: effectiveSchoolId,
         schoolYearId,
@@ -466,6 +518,32 @@ export class TimetableService {
         },
       },
     });
+
+    await this.emitTimetableChange({
+      schoolId: effectiveSchoolId,
+      classId: classEntity.id,
+      className: classEntity.name,
+      actorUserId: user.id,
+      actorFullName: this.userFullName(user.firstName, user.lastName),
+      kind: "ONE_OFF_CREATED",
+      after: this.buildSnapshot({
+        date: this.dateToYmd(created.occurrenceDate),
+        startMinute: created.startMinute,
+        endMinute: created.endMinute,
+        subjectId: created.subject.id,
+        subjectName: created.subject.name,
+        teacherUserId: created.teacherUser.id,
+        teacherName: this.userFullName(
+          created.teacherUser.firstName,
+          created.teacherUser.lastName,
+        ),
+        room: created.room,
+        status: created.status,
+        sourceKind: "ONE_OFF",
+      }),
+    });
+
+    return created;
   }
 
   async updateSlot(
@@ -731,17 +809,11 @@ export class TimetableService {
 
     const existing = await this.prisma.classTimetableOneOffSlot.findFirst({
       where: { id: oneOffSlotId, schoolId: effectiveSchoolId },
-      select: {
-        id: true,
-        schoolId: true,
-        schoolYearId: true,
-        classId: true,
-        occurrenceDate: true,
-        subjectId: true,
-        teacherUserId: true,
-        startMinute: true,
-        endMinute: true,
-        room: true,
+      include: {
+        subject: { select: { id: true, name: true } },
+        teacherUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
       },
     });
     if (!existing) {
@@ -752,11 +824,28 @@ export class TimetableService {
       existing.classId,
       effectiveSchoolId,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      existing.teacherUserId,
     );
+
+    const beforeSnapshot = this.buildSnapshot({
+      date: this.dateToYmd(existing.occurrenceDate),
+      startMinute: existing.startMinute,
+      endMinute: existing.endMinute,
+      subjectId: existing.subject.id,
+      subjectName: existing.subject.name,
+      teacherUserId: existing.teacherUser.id,
+      teacherName: this.userFullName(
+        existing.teacherUser.firstName,
+        existing.teacherUser.lastName,
+      ),
+      room: existing.room,
+      status: existing.status,
+      sourceKind: "ONE_OFF",
+    });
 
     const nextOccurrenceDate = payload.occurrenceDate
       ? this.toDateOnly(payload.occurrenceDate)
@@ -792,9 +881,10 @@ export class TimetableService {
       teacherUserId: nextTeacherUserId,
       room: nextRoom ?? null,
       exceptOneOffSlotId: existing.id,
+      ignoreRecurringSlotId: existing.sourceSlotId ?? undefined,
     });
 
-    return this.prisma.classTimetableOneOffSlot.update({
+    const updated = await this.prisma.classTimetableOneOffSlot.update({
       where: { id: existing.id },
       data: {
         occurrenceDate: nextOccurrenceDate,
@@ -812,6 +902,33 @@ export class TimetableService {
         },
       },
     });
+
+    await this.emitTimetableChange({
+      schoolId: effectiveSchoolId,
+      classId: classEntity.id,
+      className: classEntity.name,
+      actorUserId: user.id,
+      actorFullName: this.userFullName(user.firstName, user.lastName),
+      kind: "ONE_OFF_UPDATED",
+      before: beforeSnapshot,
+      after: this.buildSnapshot({
+        date: this.dateToYmd(updated.occurrenceDate),
+        startMinute: updated.startMinute,
+        endMinute: updated.endMinute,
+        subjectId: updated.subject.id,
+        subjectName: updated.subject.name,
+        teacherUserId: updated.teacherUser.id,
+        teacherName: this.userFullName(
+          updated.teacherUser.firstName,
+          updated.teacherUser.lastName,
+        ),
+        room: updated.room,
+        status: updated.status,
+        sourceKind: "ONE_OFF",
+      }),
+    });
+
+    return updated;
   }
 
   async setClassSubjectStyle(
@@ -887,15 +1004,11 @@ export class TimetableService {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const slot = await this.prisma.classTimetableSlot.findFirst({
       where: { id: slotId, schoolId: effectiveSchoolId },
-      select: {
-        id: true,
-        schoolId: true,
-        schoolYearId: true,
-        classId: true,
-        subjectId: true,
-        teacherUserId: true,
-        startMinute: true,
-        endMinute: true,
+      include: {
+        subject: { select: { id: true, name: true } },
+        teacherUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
       },
     });
     if (!slot) {
@@ -948,7 +1061,7 @@ export class TimetableService {
       });
     }
 
-    return this.prisma.classTimetableSlotException.upsert({
+    const created = await this.prisma.classTimetableSlotException.upsert({
       where: {
         slotId_occurrenceDate: {
           slotId: slot.id,
@@ -980,9 +1093,78 @@ export class TimetableService {
         createdByUserId: user.id,
       },
       include: {
-        slot: true,
+        slot: {
+          include: {
+            subject: { select: { id: true, name: true } },
+            teacherUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        subject: { select: { id: true, name: true } },
+        teacherUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
       },
     });
+
+    const regularSnapshot = this.buildSnapshot({
+      date: this.dateToYmd(created.occurrenceDate),
+      startMinute: created.slot.startMinute,
+      endMinute: created.slot.endMinute,
+      subjectId: created.slot.subject.id,
+      subjectName: created.slot.subject.name,
+      teacherUserId: created.slot.teacherUser.id,
+      teacherName: this.userFullName(
+        created.slot.teacherUser.firstName,
+        created.slot.teacherUser.lastName,
+      ),
+      room: created.slot.room,
+      status: "PLANNED",
+      sourceKind: "OCCURRENCE",
+    });
+
+    await this.emitTimetableChange({
+      schoolId: effectiveSchoolId,
+      classId: classEntity.id,
+      className: classEntity.name,
+      actorUserId: user.id,
+      actorFullName: this.userFullName(user.firstName, user.lastName),
+      kind:
+        created.type === "CANCEL"
+          ? "OCCURRENCE_CANCELLED"
+          : "OCCURRENCE_OVERRIDDEN",
+      before: regularSnapshot,
+      after:
+        created.type === "OVERRIDE"
+          ? this.buildSnapshot({
+              date: this.dateToYmd(created.occurrenceDate),
+              startMinute: created.startMinute ?? created.slot.startMinute,
+              endMinute: created.endMinute ?? created.slot.endMinute,
+              subjectId: created.subject?.id ?? created.slot.subject.id,
+              subjectName: created.subject?.name ?? created.slot.subject.name,
+              teacherUserId:
+                created.teacherUser?.id ?? created.slot.teacherUser.id,
+              teacherName: this.userFullName(
+                created.teacherUser?.firstName ??
+                  created.slot.teacherUser.firstName,
+                created.teacherUser?.lastName ??
+                  created.slot.teacherUser.lastName,
+              ),
+              room: created.room ?? created.slot.room,
+              status: "PLANNED",
+              sourceKind: "OCCURRENCE",
+            })
+          : undefined,
+      reason: created.reason,
+    });
+
+    return created;
   }
 
   async updateSlotException(
@@ -996,15 +1178,21 @@ export class TimetableService {
       where: { id: exceptionId, schoolId: effectiveSchoolId },
       include: {
         slot: {
-          select: {
-            id: true,
-            schoolYearId: true,
-            classId: true,
-            subjectId: true,
-            teacherUserId: true,
-            startMinute: true,
-            endMinute: true,
+          include: {
+            subject: { select: { id: true, name: true } },
+            teacherUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
           },
+        },
+        subject: { select: { id: true, name: true } },
+        teacherUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
         },
       },
     });
@@ -1020,6 +1208,22 @@ export class TimetableService {
       effectiveSchoolId,
       classEntity,
     );
+
+    const beforeSnapshot = this.buildSnapshot({
+      date: this.dateToYmd(existing.occurrenceDate),
+      startMinute: existing.startMinute ?? existing.slot.startMinute,
+      endMinute: existing.endMinute ?? existing.slot.endMinute,
+      subjectId: existing.subject?.id ?? existing.slot.subject.id,
+      subjectName: existing.subject?.name ?? existing.slot.subject.name,
+      teacherUserId: existing.teacherUser?.id ?? existing.slot.teacherUser.id,
+      teacherName: this.userFullName(
+        existing.teacherUser?.firstName ?? existing.slot.teacherUser.firstName,
+        existing.teacherUser?.lastName ?? existing.slot.teacherUser.lastName,
+      ),
+      room: existing.room ?? existing.slot.room,
+      status: existing.type === "CANCEL" ? "CANCELLED" : "PLANNED",
+      sourceKind: "OCCURRENCE",
+    });
 
     const nextType = payload.type ?? existing.type;
     const nextOccurrenceDate = payload.occurrenceDate
@@ -1066,7 +1270,7 @@ export class TimetableService {
       });
     }
 
-    return this.prisma.classTimetableSlotException.update({
+    const updated = await this.prisma.classTimetableSlotException.update({
       where: { id: existing.id },
       data: {
         occurrenceDate: nextOccurrenceDate,
@@ -1081,7 +1285,54 @@ export class TimetableService {
             ? existing.reason
             : payload.reason?.trim() || null,
       },
+      include: {
+        slot: {
+          include: {
+            subject: { select: { id: true, name: true } },
+            teacherUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        subject: { select: { id: true, name: true } },
+        teacherUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
     });
+
+    await this.emitTimetableChange({
+      schoolId: effectiveSchoolId,
+      classId: classEntity.id,
+      className: classEntity.name,
+      actorUserId: user.id,
+      actorFullName: this.userFullName(user.firstName, user.lastName),
+      kind: "OCCURRENCE_OVERRIDE_UPDATED",
+      before: beforeSnapshot,
+      after: this.buildSnapshot({
+        date: this.dateToYmd(updated.occurrenceDate),
+        startMinute: updated.startMinute ?? updated.slot.startMinute,
+        endMinute: updated.endMinute ?? updated.slot.endMinute,
+        subjectId: updated.subject?.id ?? updated.slot.subject.id,
+        subjectName: updated.subject?.name ?? updated.slot.subject.name,
+        teacherUserId: updated.teacherUser?.id ?? updated.slot.teacherUser.id,
+        teacherName: this.userFullName(
+          updated.teacherUser?.firstName ?? updated.slot.teacherUser.firstName,
+          updated.teacherUser?.lastName ?? updated.slot.teacherUser.lastName,
+        ),
+        room: updated.room ?? updated.slot.room,
+        status: updated.type === "CANCEL" ? "CANCELLED" : "PLANNED",
+        sourceKind: "OCCURRENCE",
+      }),
+      reason: updated.reason,
+    });
+
+    return updated;
   }
 
   async deleteSlot(user: AuthenticatedUser, schoolId: string, slotId: string) {
@@ -1117,7 +1368,12 @@ export class TimetableService {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const existing = await this.prisma.classTimetableOneOffSlot.findFirst({
       where: { id: oneOffSlotId, schoolId: effectiveSchoolId },
-      select: { id: true, classId: true },
+      include: {
+        subject: { select: { id: true, name: true } },
+        teacherUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
     });
     if (!existing) {
       throw new NotFoundException("One-off slot not found");
@@ -1127,15 +1383,43 @@ export class TimetableService {
       existing.classId,
       effectiveSchoolId,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      existing.teacherUserId,
     );
+
+    const beforeSnapshot = this.buildSnapshot({
+      date: this.dateToYmd(existing.occurrenceDate),
+      startMinute: existing.startMinute,
+      endMinute: existing.endMinute,
+      subjectId: existing.subject.id,
+      subjectName: existing.subject.name,
+      teacherUserId: existing.teacherUser.id,
+      teacherName: this.userFullName(
+        existing.teacherUser.firstName,
+        existing.teacherUser.lastName,
+      ),
+      room: existing.room,
+      status: existing.status,
+      sourceKind: "ONE_OFF",
+    });
 
     await this.prisma.classTimetableOneOffSlot.delete({
       where: { id: existing.id },
     });
+
+    await this.emitTimetableChange({
+      schoolId: effectiveSchoolId,
+      classId: classEntity.id,
+      className: classEntity.name,
+      actorUserId: user.id,
+      actorFullName: this.userFullName(user.firstName, user.lastName),
+      kind: "ONE_OFF_DELETED",
+      before: beforeSnapshot,
+    });
+
     return { id: existing.id, deleted: true };
   }
 
@@ -1147,7 +1431,25 @@ export class TimetableService {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const existing = await this.prisma.classTimetableSlotException.findFirst({
       where: { id: exceptionId, schoolId: effectiveSchoolId },
-      select: { id: true, classId: true },
+      include: {
+        slot: {
+          include: {
+            subject: { select: { id: true, name: true } },
+            teacherUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+        subject: { select: { id: true, name: true } },
+        teacherUser: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
     });
     if (!existing) {
       throw new NotFoundException("Slot exception not found");
@@ -1162,9 +1464,53 @@ export class TimetableService {
       classEntity,
     );
 
+    const beforeSnapshot = this.buildSnapshot({
+      date: this.dateToYmd(existing.occurrenceDate),
+      startMinute: existing.startMinute ?? existing.slot.startMinute,
+      endMinute: existing.endMinute ?? existing.slot.endMinute,
+      subjectId: existing.subject?.id ?? existing.slot.subject.id,
+      subjectName: existing.subject?.name ?? existing.slot.subject.name,
+      teacherUserId: existing.teacherUser?.id ?? existing.slot.teacherUser.id,
+      teacherName: this.userFullName(
+        existing.teacherUser?.firstName ?? existing.slot.teacherUser.firstName,
+        existing.teacherUser?.lastName ?? existing.slot.teacherUser.lastName,
+      ),
+      room: existing.room ?? existing.slot.room,
+      status: existing.type === "CANCEL" ? "CANCELLED" : "PLANNED",
+      sourceKind: "OCCURRENCE",
+    });
+    const restoredSnapshot = this.buildSnapshot({
+      date: this.dateToYmd(existing.occurrenceDate),
+      startMinute: existing.slot.startMinute,
+      endMinute: existing.slot.endMinute,
+      subjectId: existing.slot.subject.id,
+      subjectName: existing.slot.subject.name,
+      teacherUserId: existing.slot.teacherUser.id,
+      teacherName: this.userFullName(
+        existing.slot.teacherUser.firstName,
+        existing.slot.teacherUser.lastName,
+      ),
+      room: existing.slot.room,
+      status: "PLANNED",
+      sourceKind: "OCCURRENCE",
+    });
+
     await this.prisma.classTimetableSlotException.delete({
       where: { id: existing.id },
     });
+
+    await this.emitTimetableChange({
+      schoolId: effectiveSchoolId,
+      classId: classEntity.id,
+      className: classEntity.name,
+      actorUserId: user.id,
+      actorFullName: this.userFullName(user.firstName, user.lastName),
+      kind: "OCCURRENCE_OVERRIDE_DELETED",
+      before: beforeSnapshot,
+      after: restoredSnapshot,
+      reason: existing.reason,
+    });
+
     return { id: existing.id, deleted: true };
   }
 
@@ -2226,6 +2572,7 @@ export class TimetableService {
       endMinute: number;
       room: string | null;
       status: "PLANNED" | "CANCELLED";
+      sourceSlotId: string | null;
       subject: { id: string; name: string };
       teacherUser: {
         id: string;
@@ -2293,6 +2640,17 @@ export class TimetableService {
       );
     });
 
+    // Recurring occurrences suppressed by a one-off slot that replaces them.
+    // Key: "slotId-YYYY-MM-DD"
+    const suppressedByOneOff = new Set<string>();
+    input.oneOffSlots.forEach((slot) => {
+      if (slot.sourceSlotId) {
+        suppressedByOneOff.add(
+          `${slot.sourceSlotId}-${this.dateToYmd(slot.occurrenceDate)}`,
+        );
+      }
+    });
+
     const occurrences: ResolvedTimetableOccurrence[] = [];
     for (
       let cursor = new Date(from);
@@ -2313,6 +2671,9 @@ export class TimetableService {
             }),
         )
         .forEach((slot) => {
+          if (suppressedByOneOff.has(`${slot.id}-${dateYmd}`)) {
+            return;
+          }
           const exception = exceptionMap.get(`${slot.id}-${dateYmd}`);
           if (exception?.type === "CANCEL") {
             occurrences.push({
@@ -2700,6 +3061,54 @@ export class TimetableService {
     }
   }
 
+  /**
+   * Guard pour les créneaux isolés (one-off slots).
+   * Un enseignant peut gérer un créneau isolé s'il en est l'enseignant désigné.
+   * Le referent de la classe et les admins peuvent toujours agir.
+   */
+  private async assertCanManageOneOffSlot(
+    user: AuthenticatedUser,
+    schoolId: string,
+    classEntity: ClassContext,
+    teacherUserId: string,
+  ) {
+    if (
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      this.hasPlatformRole(user, "ADMIN")
+    ) {
+      return;
+    }
+
+    if (
+      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(user, schoolId, "SUPERVISOR")
+    ) {
+      return;
+    }
+
+    if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
+      throw new ForbiddenException("Insufficient role");
+    }
+
+    // Referent teacher of the class can always manage one-off slots
+    if (
+      classEntity.referentTeacherUserId &&
+      classEntity.referentTeacherUserId === user.id
+    ) {
+      return;
+    }
+
+    // The teacher designated on the slot can manage it
+    if (user.id === teacherUserId) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      "Teacher can only manage one-off slots they are assigned to",
+    );
+  }
+
   private async assertCanReadCalendarEvents(
     user: AuthenticatedUser,
     schoolId: string,
@@ -2806,5 +3215,19 @@ export class TimetableService {
       return "PARENT";
     }
     return null;
+  }
+
+  private async emitTimetableChange(event: TimetableChangeEventPayload) {
+    await this.timetableChangeNotificationsService.enqueue(event);
+  }
+
+  private buildSnapshot(
+    input: TimetableChangeSnapshot,
+  ): TimetableChangeSnapshot {
+    return input;
+  }
+
+  private userFullName(firstName: string, lastName: string) {
+    return `${lastName} ${firstName}`.trim();
   }
 }

@@ -6,6 +6,8 @@ export const MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION =
   "send-student-life-event-notification";
 export const MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION =
   "send-internal-message-notification";
+export const MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION =
+  "send-timetable-change-notification";
 
 export type TemporaryPasswordMailPayload = {
   to: string;
@@ -51,4 +53,15 @@ export type InternalMessageNotificationPayload = {
   senderFullName: string;
   subject: string;
   preview: string;
+};
+
+export type TimetableChangeMailPayload = {
+  to: string;
+  recipientFirstName: string;
+  schoolName: string;
+  schoolSlug: string | null;
+  className: string;
+  title: string;
+  summary: string;
+  details: string[];
 };

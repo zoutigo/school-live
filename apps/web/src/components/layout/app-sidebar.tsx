@@ -767,6 +767,9 @@ export function AppSidebar({
   const parentHomeHref = schoolSlug
     ? `/schools/${schoolSlug}/dashboard`
     : "/acceuil";
+  const teacherHomeHref = schoolSlug
+    ? `/schools/${schoolSlug}/dashboard`
+    : "/acceuil";
 
   function handleParentSpaceClick() {
     setOpenParentSection("general");
@@ -776,6 +779,17 @@ export function AppSidebar({
     }
 
     router.push(parentHomeHref);
+    onNavigate?.();
+  }
+
+  function handleTeacherMenuClick() {
+    setOpenTeacherSection("classes");
+
+    if (role !== "TEACHER" || pathname.startsWith(teacherHomeHref)) {
+      return;
+    }
+
+    router.push(teacherHomeHref);
     onNavigate?.();
   }
 
@@ -797,7 +811,7 @@ export function AppSidebar({
             <div className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur">
               <button
                 type="button"
-                onClick={() => setOpenTeacherSection("classes")}
+                onClick={handleTeacherMenuClick}
                 className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
                   openTeacherSection === "classes",
                 )}`}

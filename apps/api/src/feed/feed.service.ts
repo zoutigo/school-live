@@ -244,6 +244,43 @@ export class FeedService {
     return this.mapPost(post, user.id, context);
   }
 
+  async createSystemClassPost(input: {
+    schoolId: string;
+    authorUserId: string;
+    classId: string;
+    className: string;
+    title: string;
+    bodyHtml: string;
+  }) {
+    const sanitizedBodyHtml = sanitizeRichTextHtml(input.bodyHtml);
+
+    const created = await this.prisma.feedPost.create({
+      data: {
+        schoolId: input.schoolId,
+        authorUserId: input.authorUserId,
+        type: FeedPostType.POST,
+        title: input.title.trim(),
+        bodyHtml: sanitizedBodyHtml,
+        audienceScope: FeedAudienceScope.CLASS,
+        audienceLabel: input.className.trim(),
+        audienceClassId: input.classId,
+      },
+      select: { id: true },
+    });
+
+    await this.inlineMediaService.syncEntityImages({
+      schoolId: input.schoolId,
+      uploadedByUserId: input.authorUserId,
+      scope: "FEED",
+      entityType: InlineMediaEntityType.FEED_POST,
+      entityId: created.id,
+      nextBodyHtml: sanitizedBodyHtml,
+      deleteRemovedPhysically: false,
+    });
+
+    return created;
+  }
+
   async updatePost(
     user: AuthenticatedUser,
     schoolId: string,

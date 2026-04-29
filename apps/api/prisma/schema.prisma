@@ -285,6 +285,7 @@ model School {
   tickets            Ticket[]
   helpGuides         HelpGuide[]
   helpFaqs           HelpFaq[]
+  mobilePushTokens   MobilePushToken[]
 
   @@index([activeSchoolYearId])
 }
@@ -357,6 +358,7 @@ model User {
   helpFaqThemesUpdated  HelpFaqTheme[]          @relation("HelpFaqThemeUpdatedBy")
   helpFaqItemsCreated   HelpFaqItem[]           @relation("HelpFaqItemCreatedBy")
   helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
+  mobilePushTokens      MobilePushToken[]
 }
 
 model UserAuthIdentity {
@@ -1590,5 +1592,39 @@ model HelpFaqItem {
 
 
 // Reserved for future shared indexes, comments and data notes.
+
+
+enum MobilePushProvider {
+  EXPO
+}
+
+enum MobilePushPlatform {
+  ANDROID
+  IOS
+  UNKNOWN
+}
+
+model MobilePushToken {
+  id          String             @id @default(cuid())
+  userId      String
+  schoolId    String?
+  provider    MobilePushProvider @default(EXPO)
+  platform    MobilePushPlatform @default(UNKNOWN)
+  token       String             @unique
+  deviceId    String?            @db.VarChar(191)
+  deviceName  String?            @db.VarChar(191)
+  appVersion  String?            @db.VarChar(64)
+  projectId   String?            @db.VarChar(191)
+  isActive    Boolean            @default(true)
+  lastSeenAt  DateTime           @default(now())
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school      School?            @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([userId, isActive])
+}
 
 
