@@ -80,13 +80,38 @@ const ONE_OFF_PAYLOAD_BASE = {
   status: "PLANNED" as const,
 };
 
+function makeOneOffEntity(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "oof-new",
+    schoolId: "school-1",
+    schoolYearId: "sy-1",
+    classId: "class-1",
+    occurrenceDate: new Date("2026-04-27T00:00:00.000Z"),
+    subjectId: "sub-anglais",
+    teacherUserId: "albert",
+    startMinute: 520,
+    endMinute: 600,
+    room: "B45",
+    status: "PLANNED",
+    sourceSlotId: null,
+    subject: { id: "sub-anglais", name: "Anglais" },
+    teacherUser: {
+      id: "albert",
+      firstName: "Albert",
+      lastName: "Mvondo",
+      email: null,
+    },
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
 
   // Stubs de base
   (service as any).getEffectiveSchoolId = (_u: unknown, s: string) => s;
   (service as any).assertMinuteRange = jest.fn();
-  (service as any).toDateOnly = (s: string) => new Date(s);
+  (service as any).toDateOnly = (s: string) => new Date(`${s}T00:00:00.000Z`);
   (service as any).dateToYmd = (d: Date) => d.toISOString().slice(0, 10);
   (service as any).weekdayMondayFirst = () => 1; // lundi
 
@@ -127,7 +152,19 @@ beforeEach(() => {
   prisma.classTimetableSlot.findMany.mockResolvedValue([]); // recurringRows
   prisma.classTimetableOneOffSlot.findMany.mockResolvedValue([]); // oneOffRows + create
 
-  prisma.classTimetableOneOffSlot.create.mockResolvedValue({ id: "oof-new" });
+  prisma.classTimetableOneOffSlot.create.mockImplementation(
+    async ({ data }: { data: Record<string, unknown> }) =>
+      makeOneOffEntity({
+        occurrenceDate: data.occurrenceDate,
+        subjectId: data.subjectId,
+        teacherUserId: data.teacherUserId,
+        startMinute: data.startMinute,
+        endMinute: data.endMinute,
+        room: data.room,
+        status: data.status,
+        sourceSlotId: data.sourceSlotId ?? null,
+      }),
+  );
 });
 
 // ─── Régression principale ────────────────────────────────────────────────────

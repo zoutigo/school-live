@@ -75,6 +75,9 @@ const EXISTING_ONE_OFF = {
   endMinute: 600, // 10:00
   room: "B45",
   sourceSlotId: "slot-anglais",
+  status: "PLANNED" as const,
+  subject: RECURRING_SLOT.subject,
+  teacherUser: RECURRING_SLOT.teacherUser,
 };
 
 beforeEach(() => {
@@ -82,7 +85,7 @@ beforeEach(() => {
 
   (service as any).getEffectiveSchoolId = (_u: unknown, s: string) => s;
   (service as any).assertMinuteRange = jest.fn();
-  (service as any).toDateOnly = (s: string) => new Date(s);
+  (service as any).toDateOnly = (s: string) => new Date(`${s}T00:00:00.000Z`);
   (service as any).dateToYmd = (d: Date) => d.toISOString().slice(0, 10);
   (service as any).weekdayMondayFirst = () => 1;
 

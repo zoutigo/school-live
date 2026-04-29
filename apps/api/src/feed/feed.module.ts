@@ -10,5 +10,6 @@ import { FeedService } from "./feed.service.js";
   imports: [AccessModule, SchoolsModule, MediaClientModule],
   controllers: [FeedController],
   providers: [FeedService, InlineMediaService],
+  exports: [FeedService],
 })
 export class FeedModule {}

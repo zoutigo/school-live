@@ -67,13 +67,38 @@ const prisma = {
 
 const service = new TimetableService(prisma as never);
 
+function makeOneOffEntity(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "oof-1",
+    schoolId: "school-1",
+    schoolYearId: "sy-1",
+    classId: "class-1",
+    occurrenceDate: new Date("2026-04-14T00:00:00.000Z"),
+    subjectId: "sub-1",
+    teacherUserId: "teacher-albert",
+    startMinute: 480,
+    endMinute: 570,
+    room: "B45",
+    status: "PLANNED",
+    sourceSlotId: "slot-1",
+    subject: { id: "sub-1", name: "Maths" },
+    teacherUser: {
+      id: "teacher-albert",
+      firstName: "Albert",
+      lastName: "Teacher",
+      email: "albert@example.test",
+    },
+    ...overrides,
+  };
+}
+
 // Stub all helper methods so tests focus on permission logic
 beforeEach(() => {
   jest.clearAllMocks();
   (service as any).getEffectiveSchoolId = (_user: unknown, schoolId: string) =>
     schoolId;
   (service as any).assertMinuteRange = jest.fn();
-  (service as any).toDateOnly = (s: string) => s;
+  (service as any).toDateOnly = (s: string) => new Date(`${s}T00:00:00.000Z`);
   (service as any).ensureClassInSchool = jest
     .fn()
     .mockResolvedValue(makeClassEntity("referent-1"));
@@ -93,8 +118,31 @@ beforeEach(() => {
   (service as any).ensureAutoSubjectStyleExists = jest
     .fn()
     .mockResolvedValue(undefined);
-  prisma.classTimetableOneOffSlot.create.mockResolvedValue({ id: "oof-1" });
-  prisma.classTimetableOneOffSlot.update.mockResolvedValue({ id: "oof-1" });
+  prisma.classTimetableOneOffSlot.create.mockImplementation(
+    async ({ data }: { data: Record<string, unknown> }) =>
+      makeOneOffEntity({
+        occurrenceDate: data.occurrenceDate,
+        subjectId: data.subjectId,
+        teacherUserId: data.teacherUserId,
+        startMinute: data.startMinute,
+        endMinute: data.endMinute,
+        room: data.room,
+        status: data.status,
+        sourceSlotId: data.sourceSlotId,
+      }),
+  );
+  prisma.classTimetableOneOffSlot.update.mockImplementation(
+    async ({ data }: { data: Record<string, unknown> }) =>
+      makeOneOffEntity({
+        occurrenceDate: data.occurrenceDate,
+        subjectId: data.subjectId ?? "sub-1",
+        teacherUserId: data.teacherUserId ?? "teacher-albert",
+        startMinute: data.startMinute ?? 480,
+        endMinute: data.endMinute ?? 570,
+        room: data.room ?? "B45",
+        status: data.status ?? "PLANNED",
+      }),
+  );
   prisma.classTimetableOneOffSlot.delete.mockResolvedValue({ id: "oof-1" });
 });
 
@@ -190,18 +238,9 @@ describe("createOneOffSlot — permissions", () => {
 
 describe("updateOneOffSlot — permissions", () => {
   beforeEach(() => {
-    prisma.classTimetableOneOffSlot.findFirst.mockResolvedValue({
-      id: "oof-1",
-      schoolId: "school-1",
-      schoolYearId: "sy-1",
-      classId: "class-1",
-      occurrenceDate: "2026-04-14",
-      subjectId: "sub-1",
-      teacherUserId: "teacher-albert",
-      startMinute: 480,
-      endMinute: 570,
-      room: "B45",
-    });
+    prisma.classTimetableOneOffSlot.findFirst.mockResolvedValue(
+      makeOneOffEntity(),
+    );
   });
 
   it("autorise le SCHOOL_ADMIN", async () => {
@@ -237,11 +276,9 @@ describe("updateOneOffSlot — permissions", () => {
 
 describe("deleteOneOffSlot — permissions", () => {
   beforeEach(() => {
-    prisma.classTimetableOneOffSlot.findFirst.mockResolvedValue({
-      id: "oof-1",
-      classId: "class-1",
-      teacherUserId: "teacher-albert",
-    });
+    prisma.classTimetableOneOffSlot.findFirst.mockResolvedValue(
+      makeOneOffEntity(),
+    );
   });
 
   it("autorise le SCHOOL_ADMIN", async () => {

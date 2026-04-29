@@ -79,6 +79,46 @@ describe("AppSidebar teacher class links", () => {
 
     expect(onLogoutClick).toHaveBeenCalledTimes(1);
   });
+
+  it("returns to the teacher dashboard when clicking Menu enseignant from a class context", async () => {
+    mockPathname = "/schools/college-vogt/classes/class-1/fil";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return new Response(
+          JSON.stringify({
+            assignments: [
+              {
+                classId: "class-1",
+                className: "6eC",
+                schoolYearId: "sy-1",
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="TEACHER" schoolSlug="college-vogt" />);
+
+    const menuButton = await screen.findByRole("button", {
+      name: "Menu enseignant",
+    });
+    fireEvent.click(menuButton);
+
+    expect(mockPush).toHaveBeenCalledWith("/schools/college-vogt/dashboard");
+  });
 });
 
 describe("AppSidebar parent child links", () => {
