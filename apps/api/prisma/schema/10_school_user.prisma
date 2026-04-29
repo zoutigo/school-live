@@ -53,6 +53,7 @@ model School {
   tickets            Ticket[]
   helpGuides         HelpGuide[]
   helpFaqs           HelpFaq[]
+  mobilePushTokens   MobilePushToken[]
 
   @@index([activeSchoolYearId])
 }
@@ -125,6 +126,7 @@ model User {
   helpFaqThemesUpdated  HelpFaqTheme[]          @relation("HelpFaqThemeUpdatedBy")
   helpFaqItemsCreated   HelpFaqItem[]           @relation("HelpFaqItemCreatedBy")
   helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
+  mobilePushTokens      MobilePushToken[]
 }
 
 model UserAuthIdentity {
