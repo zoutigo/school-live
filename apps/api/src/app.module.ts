@@ -8,6 +8,7 @@ import { HelpFaqsModule } from "./help-faqs/help-faqs.module.js";
 import { HelpGuidesModule } from "./help-guides/help-guides.module.js";
 import { StudentGradesModule } from "./student-grades/student-grades.module.js";
 import { HealthModule } from "./health/health.module.js";
+import { HomeworkModule } from "./homework/homework.module.js";
 import { ManagementModule } from "./management/management.module.js";
 import { MessagingModule } from "./messaging/messaging.module.js";
 import { MobileBuildsModule } from "./mobile-builds/mobile-builds.module.js";
@@ -32,6 +33,7 @@ import { TicketsModule } from "./tickets/tickets.module.js";
     FeedModule,
     HelpFaqsModule,
     HelpGuidesModule,
+    HomeworkModule,
     StudentGradesModule,
     HealthModule,
     ManagementModule,

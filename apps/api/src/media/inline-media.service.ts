@@ -222,7 +222,10 @@ export class InlineMediaService {
     if (mediaBase) {
       return url.startsWith(`${mediaBase}/`);
     }
-    return url.includes("/messaging/inline-images/");
+    return (
+      url.includes("/messaging/inline-images/") ||
+      url.includes("/homework/inline-images/")
+    );
   }
 
   private defaultTempExpiry() {

@@ -18,6 +18,7 @@
     "seed:academic:backfill": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-academic-backfill.mjs'",
     "seed:feed:dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-feed-dev.mjs'",
     "seed:feed:class:dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-feed-class-dev.mjs'",
+    "seed:homework:6eb6ec": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-homework-6eb-6ec.mjs'",
     "seed:help:guides": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-help-guides.mjs'",
     "seed:help:faqs": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-help-faqs.mjs'",
     "lint": "eslint \"src/**/*.ts\"",

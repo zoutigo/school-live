@@ -2987,6 +2987,7 @@ export class AuthService {
         avatarUrl?: string | null;
         currentEnrollment?: {
           class?: {
+            id?: string | null;
             name?: string | null;
           } | null;
         } | null;
@@ -3043,6 +3044,7 @@ export class AuthService {
                   select: {
                     class: {
                       select: {
+                        id: true,
                         name: true,
                       },
                     },
@@ -3100,6 +3102,7 @@ export class AuthService {
         currentEnrollment: link.student.enrollments[0]
           ? {
               class: {
+                id: link.student.enrollments[0].class.id,
                 name: link.student.enrollments[0].class.name,
               },
             }
