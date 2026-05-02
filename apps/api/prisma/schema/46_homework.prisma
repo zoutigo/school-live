@@ -1,0 +1,80 @@
+model Homework {
+  id           String               @id @default(cuid())
+  schoolId     String
+  schoolYearId String
+  classId      String
+  subjectId    String
+  authorUserId String
+  title        String
+  contentHtml  String?
+  expectedAt   DateTime
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear   SchoolYear           @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  class        Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject      Subject              @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  authorUser   User                 @relation("HomeworkAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  attachments  HomeworkAttachment[]
+  comments     HomeworkComment[]
+  completions  HomeworkCompletion[]
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([classId, expectedAt])
+  @@index([subjectId, expectedAt])
+  @@index([authorUserId])
+}
+
+model HomeworkAttachment {
+  id         String   @id @default(cuid())
+  schoolId   String
+  homeworkId String
+  fileName   String
+  fileUrl    String?
+  sizeLabel  String?
+  mimeType   String?
+  createdAt  DateTime @default(now())
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([homeworkId])
+}
+
+model HomeworkComment {
+  id           String   @id @default(cuid())
+  schoolId     String
+  homeworkId   String
+  authorUserId String
+  studentId    String?
+  body         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  homework     Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  authorUser   User     @relation("HomeworkCommentAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  student      Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId])
+  @@index([homeworkId, createdAt])
+  @@index([authorUserId])
+  @@index([studentId])
+}
+
+model HomeworkCompletion {
+  id         String   @id @default(cuid())
+  schoolId   String
+  homeworkId String
+  studentId  String
+  doneAt     DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([homeworkId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
+}

@@ -160,6 +160,7 @@ enum FeedAudienceScope {
 enum InlineMediaScope {
   FEED
   MESSAGING
+  HOMEWORK
 }
 
 enum InlineMediaStatus {
@@ -170,6 +171,7 @@ enum InlineMediaStatus {
 enum InlineMediaEntityType {
   FEED_POST
   INTERNAL_MESSAGE
+  HOMEWORK
 }
 
 enum EvaluationStatus {

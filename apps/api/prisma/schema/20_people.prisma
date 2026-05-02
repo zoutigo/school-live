@@ -12,6 +12,8 @@ model Student {
   studentGrades StudentGrade[]
   evaluationScores StudentEvaluationScore[]
   termReports   StudentTermReport[]
+  homeworkCompletions HomeworkCompletion[]
+  homeworkComments HomeworkComment[]
   enrollments Enrollment[]
   lifeEvents  StudentLifeEvent[]
 
