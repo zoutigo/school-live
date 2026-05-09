@@ -23,6 +23,10 @@ model School {
   studentGrades      StudentGrade[]
   evaluationTypes    EvaluationType[]
   evaluations        Evaluation[]
+  homeworks          Homework[]
+  homeworkAttachments HomeworkAttachment[]
+  homeworkComments   HomeworkComment[]
+  homeworkCompletions HomeworkCompletion[]
   evaluationAttachments EvaluationAttachment[]
   evaluationAuditLogs EvaluationAuditLog[]
   studentTermReports StudentTermReport[]
@@ -84,6 +88,8 @@ model User {
   parentLinks        ParentStudent[]          @relation("ParentLinks")
   studentGradesGiven StudentGrade[]           @relation("StudentGradeTeacher")
   evaluationsAuthored Evaluation[]            @relation("EvaluationAuthor")
+  homeworksAuthored   Homework[]              @relation("HomeworkAuthor")
+  homeworkCommentsAuthored HomeworkComment[]  @relation("HomeworkCommentAuthor")
   evaluationAuditLogs EvaluationAuditLog[]    @relation("EvaluationAuditActor")
   studentTermReportsAuthored StudentTermReport[] @relation("StudentTermReportUpdatedBy")
   studentTermReportEntriesAuthored StudentTermReportEntry[] @relation("StudentTermReportEntryUpdatedBy")

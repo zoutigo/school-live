@@ -160,6 +160,7 @@ enum FeedAudienceScope {
 enum InlineMediaScope {
   FEED
   MESSAGING
+  HOMEWORK
 }
 
 enum InlineMediaStatus {
@@ -170,6 +171,7 @@ enum InlineMediaStatus {
 enum InlineMediaEntityType {
   FEED_POST
   INTERNAL_MESSAGE
+  HOMEWORK
 }
 
 enum EvaluationStatus {
@@ -255,6 +257,10 @@ model School {
   studentGrades      StudentGrade[]
   evaluationTypes    EvaluationType[]
   evaluations        Evaluation[]
+  homeworks          Homework[]
+  homeworkAttachments HomeworkAttachment[]
+  homeworkComments   HomeworkComment[]
+  homeworkCompletions HomeworkCompletion[]
   evaluationAttachments EvaluationAttachment[]
   evaluationAuditLogs EvaluationAuditLog[]
   studentTermReports StudentTermReport[]
@@ -316,6 +322,8 @@ model User {
   parentLinks        ParentStudent[]          @relation("ParentLinks")
   studentGradesGiven StudentGrade[]           @relation("StudentGradeTeacher")
   evaluationsAuthored Evaluation[]            @relation("EvaluationAuthor")
+  homeworksAuthored   Homework[]              @relation("HomeworkAuthor")
+  homeworkCommentsAuthored HomeworkComment[]  @relation("HomeworkCommentAuthor")
   evaluationAuditLogs EvaluationAuditLog[]    @relation("EvaluationAuditActor")
   studentTermReportsAuthored StudentTermReport[] @relation("StudentTermReportUpdatedBy")
   studentTermReportEntriesAuthored StudentTermReportEntry[] @relation("StudentTermReportEntryUpdatedBy")
@@ -558,6 +566,8 @@ model Student {
   studentGrades StudentGrade[]
   evaluationScores StudentEvaluationScore[]
   termReports   StudentTermReport[]
+  homeworkCompletions HomeworkCompletion[]
+  homeworkComments HomeworkComment[]
   enrollments Enrollment[]
   lifeEvents  StudentLifeEvent[]
 
@@ -655,6 +665,7 @@ model SchoolYear {
   teachingAssignments TeacherClassSubject[]
   studentGrades       StudentGrade[]
   evaluations         Evaluation[]
+  homeworks           Homework[]
   termReports         StudentTermReport[]
   lifeEvents          StudentLifeEvent[]
   timetableSlots      ClassTimetableSlot[]
@@ -761,6 +772,7 @@ model Class {
   assignments     TeacherClassSubject[]
   studentGrades   StudentGrade[]
   evaluations     Evaluation[]
+  homeworks       Homework[]
   termReports     StudentTermReport[]
   subjectOverrides ClassSubjectOverride[]
   lifeEvents      StudentLifeEvent[]
@@ -792,6 +804,7 @@ model Subject {
   studentGrades StudentGrade[]
   branches     SubjectBranch[]
   evaluations  Evaluation[]
+  homeworks    Homework[]
   termReportEntries StudentTermReportEntry[]
   curriculumSubjects CurriculumSubject[]
   classOverrides ClassSubjectOverride[]
@@ -1217,6 +1230,88 @@ model StudentTermReportEntry {
   @@index([reportId])
   @@index([subjectId])
   @@index([updatedByUserId])
+}
+
+
+model Homework {
+  id           String               @id @default(cuid())
+  schoolId     String
+  schoolYearId String
+  classId      String
+  subjectId    String
+  authorUserId String
+  title        String
+  contentHtml  String?
+  expectedAt   DateTime
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear   SchoolYear           @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  class        Class                @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject      Subject              @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  authorUser   User                 @relation("HomeworkAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  attachments  HomeworkAttachment[]
+  comments     HomeworkComment[]
+  completions  HomeworkCompletion[]
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([classId, expectedAt])
+  @@index([subjectId, expectedAt])
+  @@index([authorUserId])
+}
+
+model HomeworkAttachment {
+  id         String   @id @default(cuid())
+  schoolId   String
+  homeworkId String
+  fileName   String
+  fileUrl    String?
+  sizeLabel  String?
+  mimeType   String?
+  createdAt  DateTime @default(now())
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([homeworkId])
+}
+
+model HomeworkComment {
+  id           String   @id @default(cuid())
+  schoolId     String
+  homeworkId   String
+  authorUserId String
+  studentId    String?
+  body         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  homework     Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  authorUser   User     @relation("HomeworkCommentAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  student      Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId])
+  @@index([homeworkId, createdAt])
+  @@index([authorUserId])
+  @@index([studentId])
+}
+
+model HomeworkCompletion {
+  id         String   @id @default(cuid())
+  schoolId   String
+  homeworkId String
+  studentId  String
+  doneAt     DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([homeworkId, studentId])
+  @@index([schoolId])
+  @@index([studentId])
 }
 
 

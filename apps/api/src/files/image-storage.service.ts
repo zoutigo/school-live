@@ -24,8 +24,10 @@ export type UploadKind =
   | "school-logo"
   | "user-avatar"
   | "messaging-inline-image"
+  | "homework-inline-image"
   | "guide-inline-video"
   | "evaluation-attachment"
+  | "homework-attachment"
   | "messaging-attachment"
   | "ticket-attachment";
 type UploadedMediaFile = {
@@ -98,6 +100,10 @@ export class ImageStorageService {
       return this.storeAttachment(kind, file);
     }
 
+    if (kind === "homework-attachment") {
+      return this.storeAttachment(kind, file);
+    }
+
     if (kind === "guide-inline-video") {
       return this.storeInlineVideo(file);
     }
@@ -126,7 +132,9 @@ export class ImageStorageService {
         ? this.getSchoolVariant()
         : kind === "user-avatar"
           ? this.getAvatarVariant()
-          : this.getMessagingInlineVariant();
+          : kind === "homework-inline-image"
+            ? this.getHomeworkInlineVariant()
+            : this.getMessagingInlineVariant();
     const outputBuffer = await variant.transform(image);
     const outputMetadata = await sharp(outputBuffer).metadata();
     const fileName = `${Date.now()}-${randomUUID()}.webp`;
@@ -144,7 +152,10 @@ export class ImageStorageService {
   }
 
   async storeAttachment(
-    kind: "evaluation-attachment" | "messaging-attachment",
+    kind:
+      | "evaluation-attachment"
+      | "messaging-attachment"
+      | "homework-attachment",
     file?: UploadedMediaFile,
   ) {
     if (!file) {
@@ -166,7 +177,9 @@ export class ImageStorageService {
     const objectKey =
       kind === "messaging-attachment"
         ? `messaging/attachments/${fileName}`
-        : `evaluations/attachments/${fileName}`;
+        : kind === "homework-attachment"
+          ? `homework/attachments/${fileName}`
+          : `evaluations/attachments/${fileName}`;
     await this.ensureBucket();
     await this.putObject(objectKey, file.buffer, file.mimetype);
 
@@ -349,6 +362,25 @@ export class ImageStorageService {
   private getMessagingInlineVariant() {
     return {
       subfolder: "messaging/inline-images",
+      transform: (image: sharp.Sharp) =>
+        image
+          .resize({
+            width: 1920,
+            height: 1920,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .webp({
+            quality: 82,
+            effort: 4,
+          })
+          .toBuffer(),
+    };
+  }
+
+  private getHomeworkInlineVariant() {
+    return {
+      subfolder: "homework/inline-images",
       transform: (image: sharp.Sharp) =>
         image
           .resize({

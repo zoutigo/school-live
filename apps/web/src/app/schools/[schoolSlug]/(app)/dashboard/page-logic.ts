@@ -328,3 +328,228 @@ export function buildAccountSummary(
 }
 
 export const STUDENT_NOTES_FALLBACK = STUDENT_NOTES_DEMO_DATA;
+
+// ─── Teacher dashboard ────────────────────────────────────────────────────────
+
+export type TeacherContextPayload = {
+  schoolYears: Array<{ id: string; label: string; isActive: boolean }>;
+  selectedSchoolYearId: string | null;
+  assignments: Array<{
+    classId: string;
+    subjectId: string;
+    className: string;
+    subjectName: string;
+    schoolYearId: string;
+  }>;
+  students: Array<{ studentId: string; classId: string }>;
+};
+
+export type TeacherClass = {
+  classId: string;
+  className: string;
+  studentCount: number;
+  subjectIds: string[];
+  openHomeworkCount: number;
+  pendingEvalCount: number;
+};
+
+export type TeacherTimetableSlot = {
+  id: string;
+  startMinute: number;
+  endMinute: number;
+  subjectName: string;
+  className: string;
+  room: string | null;
+};
+
+export type TeacherUnreadMessage = {
+  id: string;
+  subject: string;
+  senderName: string | null;
+};
+
+export type TeacherPendingEval = {
+  id: string;
+  title: string;
+  classId: string;
+  className: string;
+  gradedCount: number;
+  studentCount: number;
+};
+
+export type TeacherOpenHomework = {
+  id: string;
+  title: string;
+  classId: string;
+  className: string;
+  expectedAt: string;
+  doneStudents: number;
+  totalStudents: number;
+};
+
+export type RichTeacherDashboard = {
+  classes: TeacherClass[];
+  unreadCount: number;
+  unreadMessages: TeacherUnreadMessage[];
+  todaySlots: TeacherTimetableSlot[];
+  pendingEvals: TeacherPendingEval[];
+  openHomework: TeacherOpenHomework[];
+};
+
+type OccurrenceInput = {
+  id: string;
+  occurrenceDate: string;
+  startMinute: number;
+  endMinute: number;
+  room: string | null;
+  status?: string | null;
+  subject: { id: string; name: string };
+};
+
+type EvalInput = {
+  id: string;
+  title: string;
+  _count: { scores: number };
+};
+
+type HomeworkInput = {
+  id: string;
+  title: string;
+  expectedAt: string;
+  summary?: { doneStudents?: number } | null;
+};
+
+export function minuteToTimeLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+export function formatShortDate(isoDate: string): string {
+  const d = new Date(isoDate.slice(0, 10) + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "short",
+  }).format(d);
+}
+
+export function buildTeacherDashboard(
+  context: TeacherContextPayload,
+  timetableMap: Map<string, OccurrenceInput[]>,
+  unreadMessages: TeacherUnreadMessage[],
+  unreadCount: number,
+  evaluationsByClassId: Map<string, EvalInput[]>,
+  homeworkByClassId: Map<string, HomeworkInput[]>,
+  today: string,
+): RichTeacherDashboard {
+  const classMap = new Map<
+    string,
+    {
+      classId: string;
+      className: string;
+      subjectIds: Set<string>;
+      studentIds: Set<string>;
+    }
+  >();
+
+  for (const assignment of context.assignments ?? []) {
+    const entry = classMap.get(assignment.classId) ?? {
+      classId: assignment.classId,
+      className: assignment.className,
+      subjectIds: new Set<string>(),
+      studentIds: new Set<string>(),
+    };
+    entry.subjectIds.add(assignment.subjectId);
+    classMap.set(assignment.classId, entry);
+  }
+
+  for (const student of context.students ?? []) {
+    const entry = classMap.get(student.classId);
+    if (entry) entry.studentIds.add(student.studentId);
+  }
+
+  const todaySlots: TeacherTimetableSlot[] = [];
+  for (const [classId, occurrences] of timetableMap.entries()) {
+    const classEntry = classMap.get(classId);
+    if (!classEntry) continue;
+    for (const occ of occurrences) {
+      if (
+        occ.occurrenceDate === today &&
+        (occ.status ?? "PLANNED") === "PLANNED" &&
+        classEntry.subjectIds.has(occ.subject.id)
+      ) {
+        todaySlots.push({
+          id: occ.id,
+          startMinute: occ.startMinute,
+          endMinute: occ.endMinute,
+          subjectName: occ.subject.name,
+          className: classEntry.className,
+          room: occ.room,
+        });
+      }
+    }
+  }
+  todaySlots.sort((a, b) => a.startMinute - b.startMinute);
+
+  const pendingEvals: TeacherPendingEval[] = [];
+  for (const [classId, evals] of evaluationsByClassId.entries()) {
+    const classEntry = classMap.get(classId);
+    if (!classEntry) continue;
+    const studentCount = classEntry.studentIds.size;
+    for (const ev of evals) {
+      if (studentCount > 0 && ev._count.scores < studentCount) {
+        pendingEvals.push({
+          id: ev.id,
+          title: ev.title,
+          classId,
+          className: classEntry.className,
+          gradedCount: ev._count.scores,
+          studentCount,
+        });
+      }
+    }
+  }
+
+  const openHomework: TeacherOpenHomework[] = [];
+  for (const [classId, hwList] of homeworkByClassId.entries()) {
+    const classEntry = classMap.get(classId);
+    if (!classEntry) continue;
+    for (const hw of hwList) {
+      if (hw.expectedAt.slice(0, 10) >= today) {
+        openHomework.push({
+          id: hw.id,
+          title: hw.title,
+          classId,
+          className: classEntry.className,
+          expectedAt: hw.expectedAt,
+          doneStudents: hw.summary?.doneStudents ?? 0,
+          totalStudents: classEntry.studentIds.size,
+        });
+      }
+    }
+  }
+  openHomework.sort((a, b) => a.expectedAt.localeCompare(b.expectedAt));
+
+  const classes: TeacherClass[] = Array.from(classMap.values())
+    .sort((a, b) => a.className.localeCompare(b.className))
+    .map((entry) => ({
+      classId: entry.classId,
+      className: entry.className,
+      studentCount: entry.studentIds.size,
+      subjectIds: Array.from(entry.subjectIds),
+      openHomeworkCount: openHomework.filter((h) => h.classId === entry.classId)
+        .length,
+      pendingEvalCount: pendingEvals.filter((e) => e.classId === entry.classId)
+        .length,
+    }));
+
+  return {
+    classes,
+    unreadCount,
+    unreadMessages: unreadMessages.slice(0, 2),
+    todaySlots,
+    pendingEvals: pendingEvals.slice(0, 2),
+    openHomework: openHomework.slice(0, 2),
+  };
+}

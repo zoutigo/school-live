@@ -544,11 +544,11 @@ describe("DashboardPage role dashboards", () => {
     setViewportWidth(1280);
   });
 
-  it("renders concise teacher hero and cards", async () => {
+  it("renders rich teacher dashboard with hero, classes grid, and all section cards", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
-      if (url.includes("/schools/college-vogt/me")) {
+      if (url.split("?")[0]?.endsWith("/schools/college-vogt/me")) {
         return createJsonResponse({
           firstName: "Laure",
           lastName: "Fotsing",
@@ -558,16 +558,199 @@ describe("DashboardPage role dashboards", () => {
 
       if (url.includes("/schools/college-vogt/student-grades/context")) {
         return createJsonResponse({
+          schoolYears: [{ id: "sy-1", label: "2025-2026", isActive: true }],
+          selectedSchoolYearId: "sy-1",
           assignments: [
-            { classId: "6e-a", className: "6e A" },
-            { classId: "6e-a", className: "6e A" },
-            { classId: "5e-b", className: "5e B" },
+            {
+              classId: "6e-a",
+              subjectId: "math-1",
+              className: "6e A",
+              subjectName: "Mathematiques",
+              schoolYearId: "sy-1",
+            },
+            {
+              classId: "5e-b",
+              subjectId: "math-1",
+              className: "5e B",
+              subjectName: "Mathematiques",
+              schoolYearId: "sy-1",
+            },
+          ],
+          students: [
+            { studentId: "s1", classId: "6e-a" },
+            { studentId: "s2", classId: "6e-a" },
+            { studentId: "s3", classId: "5e-b" },
           ],
         });
       }
 
+      if (
+        url.includes("/schools/college-vogt/messages") &&
+        url.includes("folder=inbox")
+      ) {
+        return createJsonResponse({
+          items: [
+            {
+              id: "msg-1",
+              subject: "Question sur le devoir",
+              unread: true,
+              sender: { firstName: "Paul", lastName: "Mvondo" },
+            },
+            {
+              id: "msg-2",
+              subject: "Reunion parents",
+              unread: false,
+              sender: null,
+            },
+          ],
+          meta: { page: 1, limit: 10, total: 2, totalPages: 1 },
+        });
+      }
+
       if (url.includes("/schools/college-vogt/messages/unread-count")) {
-        return createJsonResponse({ unread: 3 });
+        return createJsonResponse({ unread: 1 });
+      }
+
+      if (url.includes("/timetable/classes/6e-a")) {
+        const d = new Date();
+        const localToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return createJsonResponse({
+          occurrences: [
+            {
+              id: "slot-1",
+              occurrenceDate: localToday,
+              startMinute: 480,
+              endMinute: 570,
+              room: "B12",
+              status: "PLANNED",
+              subject: { id: "math-1", name: "Mathematiques" },
+              teacherUser: { id: "teacher-1" },
+            },
+          ],
+        });
+      }
+
+      if (url.includes("/timetable/classes/5e-b")) {
+        return createJsonResponse({ occurrences: [] });
+      }
+
+      if (url.includes("/classes/6e-a/evaluations")) {
+        return createJsonResponse([
+          { id: "eval-1", title: "Controle Algebre", _count: { scores: 1 } },
+        ]);
+      }
+
+      if (url.includes("/classes/5e-b/evaluations")) {
+        return createJsonResponse([]);
+      }
+
+      if (url.includes("/classes/6e-a/homework")) {
+        return createJsonResponse([
+          {
+            id: "hw-1",
+            title: "Exercices chapitre 3",
+            expectedAt: new Date(Date.now() + 86400000).toISOString(),
+            summary: { doneStudents: 1 },
+          },
+        ]);
+      }
+
+      if (url.includes("/classes/5e-b/homework")) {
+        return createJsonResponse([]);
+      }
+
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<DashboardPage />);
+
+    // Wait for all data to be fully loaded in one pass: this avoids
+    // asserting between the first setState (me) and the second (richTeacher).
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Bienvenue, Laure Fotsing" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Accueil enseignant")).toBeInTheDocument();
+
+      // Classes grid — appears only when richTeacher.classes is populated
+      expect(screen.getByTestId("teacher-class-card-6e-a")).toBeInTheDocument();
+      expect(screen.getByTestId("teacher-class-card-5e-b")).toBeInTheDocument();
+
+      // Section card containers
+      expect(
+        screen.getByTestId("section-teacher-messages"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("section-teacher-timetable"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("section-teacher-evals")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("section-teacher-homework"),
+      ).toBeInTheDocument();
+
+      // Message content
+      expect(screen.getByText("Question sur le devoir")).toBeInTheDocument();
+      expect(screen.getByText("Paul Mvondo")).toBeInTheDocument();
+
+      // Timetable slot
+      expect(screen.getByTestId("teacher-slot-slot-1")).toBeInTheDocument();
+      expect(screen.getAllByText("Mathematiques").length).toBeGreaterThan(0);
+
+      // Evaluations
+      expect(screen.getByTestId("teacher-eval-eval-1")).toBeInTheDocument();
+      expect(screen.getByText("Controle Algebre")).toBeInTheDocument();
+
+      // Homework
+      expect(screen.getByTestId("teacher-hw-hw-1")).toBeInTheDocument();
+      expect(screen.getByText("Exercices chapitre 3")).toBeInTheDocument();
+    });
+
+    const messagingLinks = screen
+      .getAllByRole("link")
+      .filter(
+        (l) => l.getAttribute("href") === "/schools/college-vogt/messagerie",
+      );
+    expect(messagingLinks.length).toBeGreaterThanOrEqual(1);
+
+    const notesLinks = screen
+      .getAllByRole("link")
+      .filter(
+        (l) =>
+          l.getAttribute("href") === "/schools/college-vogt/student-grades",
+      );
+    expect(notesLinks.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders teacher empty states when no data is available", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.split("?")[0]?.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({
+          firstName: "Laure",
+          lastName: "Fotsing",
+          role: "TEACHER",
+        });
+      }
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return createJsonResponse({
+          schoolYears: [],
+          selectedSchoolYearId: null,
+          assignments: [],
+          students: [],
+        });
+      }
+
+      if (
+        url.includes("/schools/college-vogt/messages") &&
+        url.includes("folder=inbox")
+      ) {
+        return createJsonResponse({ items: [], meta: {} });
+      }
+
+      if (url.includes("/schools/college-vogt/messages/unread-count")) {
+        return createJsonResponse({ unread: 0 });
       }
 
       return createJsonResponse({ message: "Not found" }, 404);
@@ -576,25 +759,63 @@ describe("DashboardPage role dashboards", () => {
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { name: "Bienvenue, Laure Fotsing" }),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("teacher-dashboard")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Accueil enseignant")).toBeInTheDocument();
-    expect(screen.getByText("Mes classes")).toBeInTheDocument();
-    expect(screen.getByText("Suivi pedagogique")).toBeInTheDocument();
-    expect(screen.getByText("Echanges")).toBeInTheDocument();
-    expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Aucun message non lu")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Ouvrir mes classes/i }),
-    ).toHaveAttribute("href", "/schools/college-vogt/mes-classes");
+      screen.getByText("Aucun cours planifie aujourd'hui"),
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Ouvrir le cahier de notes/i }),
-    ).toHaveAttribute("href", "/schools/college-vogt/student-grades");
-    expect(
-      screen.getByRole("link", { name: /Ouvrir la messagerie/i }),
-    ).toHaveAttribute("href", "/schools/college-vogt/messagerie");
+      screen.getByText("Toutes les notes sont a jour"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Aucun devoir en cours")).toBeInTheDocument();
+  });
+
+  it("keeps teacher dashboard constrained at 320px", async () => {
+    setViewportWidth(320);
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.split("?")[0]?.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({
+          firstName: "Laure",
+          lastName: "Fotsing",
+          role: "TEACHER",
+        });
+      }
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return createJsonResponse({
+          schoolYears: [],
+          selectedSchoolYearId: null,
+          assignments: [],
+          students: [],
+        });
+      }
+
+      if (
+        url.includes("/schools/college-vogt/messages") &&
+        url.includes("folder=inbox")
+      ) {
+        return createJsonResponse({ items: [], meta: {} });
+      }
+
+      if (url.includes("/schools/college-vogt/messages/unread-count")) {
+        return createJsonResponse({ unread: 0 });
+      }
+
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("dashboard-root")).toBeInTheDocument();
+    });
+
+    assertNoHorizontalOverflowAt320(screen.getByTestId("dashboard-root"));
   });
 
   it("renders school operations hero and cards for school admin", async () => {
