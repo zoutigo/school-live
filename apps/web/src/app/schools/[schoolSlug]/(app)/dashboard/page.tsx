@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
-  Building2,
+  Calendar,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
@@ -26,6 +26,9 @@ import {
   buildAccountSummary,
   buildDisciplineSummary,
   buildNotesSummary,
+  buildTeacherDashboard,
+  formatShortDate,
+  minuteToTimeLabel,
   type ParentAccountItem,
   STUDENT_NOTES_FALLBACK,
   type ChildDisciplineSummary,
@@ -33,7 +36,9 @@ import {
   type ParentAccountSummary,
   type ParentChild,
   type ParentDashboardSummaryResponse,
+  type RichTeacherDashboard,
   type StudentLifeEventRow,
+  type TeacherContextPayload,
 } from "./page-logic";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -57,10 +62,36 @@ type MeResponse = {
   linkedStudents?: ParentChild[];
 };
 
-type TeacherDashboardSummary = {
-  classesCount: number;
-  classNames: string[];
-  unreadMessages: number;
+// Raw API shapes used only inside this file
+type TimetableOccurrenceRaw = {
+  id: string;
+  occurrenceDate: string;
+  startMinute: number;
+  endMinute: number;
+  room: string | null;
+  status?: string | null;
+  subject: { id: string; name: string };
+  teacherUser: { id: string };
+};
+
+type EvaluationRaw = {
+  id: string;
+  title: string;
+  _count: { scores: number };
+};
+
+type HomeworkRaw = {
+  id: string;
+  title: string;
+  expectedAt: string;
+  summary?: { doneStudents?: number } | null;
+};
+
+type InboxMessageRaw = {
+  id: string;
+  subject: string;
+  unread: boolean;
+  sender: { firstName: string; lastName: string } | null;
 };
 
 type SchoolDashboardSummary = {
@@ -508,29 +539,6 @@ function AccountItemRow({
   );
 }
 
-function DashboardActionLink({
-  href,
-  label,
-  hint,
-}: {
-  href: string;
-  label: string;
-  hint: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center justify-between gap-3 rounded-[16px] border border-white/80 bg-white/82 px-3 py-3 text-sm text-slate-700 ring-1 ring-orange-100/60 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 min-[360px]:rounded-[18px] min-[360px]:px-3.5 min-[360px]:py-3.5"
-    >
-      <div className="min-w-0">
-        <p className="font-semibold text-slate-900">{label}</p>
-        <p className="mt-0.5 text-xs text-slate-500">{hint}</p>
-      </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-orange-700" />
-    </Link>
-  );
-}
-
 function QuickMetricRow({ link }: { link: DashboardQuickLink }) {
   return (
     <Link
@@ -615,133 +623,470 @@ function ParentAccountCard({
   );
 }
 
-function TeacherClassesCard({
-  summary,
-  loading,
-  schoolSlug,
-}: {
-  summary: TeacherDashboardSummary;
-  loading: boolean;
-  schoolSlug: string;
-}) {
-  return (
-    <FamilyCardShell
-      title="Mes classes"
-      eyebrow="Pilotage"
-      icon={Building2}
-      accent="from-[#ffe2b8] via-[#fff2dc] to-white"
-    >
-      {loading ? (
-        <div className="h-36 animate-pulse rounded-[18px] bg-white/80" />
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-[18px] border border-white/80 bg-white/85 p-3 ring-1 ring-orange-100/60">
-            <p className="text-xs uppercase tracking-[0.15em] text-slate-500">
-              Classes actives
-            </p>
-            <p className="mt-2 font-heading text-3xl font-semibold text-slate-950">
-              {formatCount(summary.classesCount)}
-            </p>
-            <p className="mt-2 text-sm text-slate-600">
-              {summary.classNames.length > 0
-                ? summary.classNames.join(" • ")
-                : "Aucune classe affectee pour le moment."}
-            </p>
-          </div>
-          <DashboardActionLink
-            href={`/schools/${schoolSlug}/mes-classes`}
-            label="Ouvrir mes classes"
-            hint="Acceder aux classes suivies et a leurs modules."
-          />
-        </div>
-      )}
-    </FamilyCardShell>
-  );
-}
+// ─── Rich teacher dashboard components ───────────────────────────────────────
 
-function TeacherPedagogyCard({
-  summary,
+const TEACHER_CLASS_PALETTE = [
+  "#08467D",
+  "#247C72",
+  "#6B5EA8",
+  "#C84B11",
+  "#2E7D32",
+  "#7B5C00",
+] as const;
+
+function TeacherClassesGrid({
+  classes,
   loading,
   schoolSlug,
 }: {
-  summary: TeacherDashboardSummary;
+  classes: RichTeacherDashboard["classes"];
   loading: boolean;
   schoolSlug: string;
 }) {
+  if (loading && classes.length === 0) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-[76px] min-w-[110px] flex-1 animate-pulse rounded-2xl bg-slate-200"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (classes.length === 0) {
+    return (
+      <div className="rounded-[18px] border border-orange-100 bg-white/80 px-4 py-5 text-sm text-slate-500">
+        Aucune classe affectee pour le moment.
+      </div>
+    );
+  }
+
   return (
-    <FamilyCardShell
-      title="Suivi pedagogique"
-      eyebrow="Evaluations"
-      icon={BookOpen}
-      accent="from-[#ffd9cf] via-[#fff2e8] to-white"
-    >
-      {loading ? (
-        <div className="h-36 animate-pulse rounded-[18px] bg-white/80" />
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-[18px] border border-white/80 bg-white/85 p-3 ring-1 ring-orange-100/60">
-            <p className="text-xs uppercase tracking-[0.15em] text-slate-500">
-              Saisie disponible
-            </p>
-            <p className="mt-2 font-heading text-3xl font-semibold text-slate-950">
-              {formatCount(summary.classesCount)}
-            </p>
-            <p className="mt-2 text-sm text-slate-600">
-              Acces direct au cahier de notes et aux evaluations de vos classes.
-            </p>
-          </div>
-          <DashboardActionLink
+    <div className="flex flex-wrap gap-2" data-testid="teacher-classes-grid">
+      {classes.map((cls, idx) => {
+        const bg =
+          TEACHER_CLASS_PALETTE[idx % TEACHER_CLASS_PALETTE.length] ??
+          "#08467D";
+        return (
+          <Link
+            key={cls.classId}
             href={`/schools/${schoolSlug}/student-grades`}
-            label="Ouvrir le cahier de notes"
-            hint="Saisir, verifier et publier les notes."
-          />
-        </div>
-      )}
-    </FamilyCardShell>
+            className="relative min-w-[110px] flex-1 overflow-hidden rounded-2xl px-3 py-3 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+            style={{ backgroundColor: bg }}
+            data-testid={`teacher-class-card-${cls.classId}`}
+          >
+            <div
+              className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-white/10"
+              aria-hidden
+            />
+            <div className="relative">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-sm font-extrabold text-white">
+                  {cls.className}
+                </p>
+                <span className="shrink-0 rounded-lg bg-white/20 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  {cls.studentCount}
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] font-medium text-white/80">
+                {cls.openHomeworkCount} devs &middot; {cls.pendingEvalCount}{" "}
+                evals
+              </p>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 
-function TeacherCommunicationCard({
-  summary,
+function TeacherSectionCard({
+  title,
+  icon: Icon,
+  iconColor,
+  count,
+  linkLabel,
+  linkHref,
+  subtitle,
+  children,
+  testId,
+}: {
+  title: string;
+  icon: LucideIcon;
+  iconColor: string;
+  count?: number;
+  linkLabel?: string;
+  linkHref?: string;
+  subtitle?: string;
+  children: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <article
+      className="overflow-hidden rounded-[18px] border border-orange-100 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] min-[360px]:rounded-[22px]"
+      data-testid={testId}
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+            style={{ backgroundColor: `${iconColor}1A` }}
+          >
+            <Icon className="h-4 w-4" style={{ color: iconColor }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-slate-900">{title}</p>
+            {subtitle ? (
+              <p className="text-[11px] text-slate-400">{subtitle}</p>
+            ) : null}
+          </div>
+          {typeof count === "number" && count > 0 ? (
+            <span
+              className="shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-bold text-white"
+              style={{ backgroundColor: iconColor }}
+            >
+              {count}
+            </span>
+          ) : null}
+        </div>
+        {linkHref && linkLabel ? (
+          <Link
+            href={linkHref}
+            className="flex shrink-0 items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
+            style={{ color: iconColor }}
+          >
+            {linkLabel}
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        ) : null}
+      </div>
+      <div>{children}</div>
+    </article>
+  );
+}
+
+function TeacherDataRow({
+  left,
+  children,
+  right,
+  href,
+  testId,
+}: {
+  left: ReactNode;
+  children: ReactNode;
+  right?: ReactNode;
+  href?: string;
+  testId?: string;
+}) {
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="flex items-center gap-3 border-t border-slate-100 px-4 py-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-400"
+        data-testid={testId}
+      >
+        {left}
+        <div className="min-w-0 flex-1">{children}</div>
+        {right ?? null}
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+      </Link>
+    );
+  }
+  return (
+    <div
+      className="flex items-center gap-3 border-t border-slate-100 px-4 py-3"
+      data-testid={testId}
+    >
+      {left}
+      <div className="min-w-0 flex-1">{children}</div>
+      {right ?? null}
+    </div>
+  );
+}
+
+function TeacherEmptyRow({
+  icon: Icon,
+  text,
+}: {
+  icon: LucideIcon;
+  text: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 border-t border-slate-100 px-4 py-4">
+      <Icon className="h-4 w-4 shrink-0 text-slate-300" />
+      <p className="text-sm text-slate-400">{text}</p>
+    </div>
+  );
+}
+
+function TeacherSectionSkeleton() {
+  return (
+    <div className="space-y-1 px-4 py-3">
+      {Array.from({ length: 2 }).map((_, i) => (
+        <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100" />
+      ))}
+    </div>
+  );
+}
+
+function TeacherMessagesSection({
+  dashboard,
   loading,
   schoolSlug,
 }: {
-  summary: TeacherDashboardSummary;
+  dashboard: RichTeacherDashboard | null;
   loading: boolean;
   schoolSlug: string;
 }) {
+  const accent = "#6B5EA8";
   return (
-    <FamilyCardShell
-      title="Echanges"
-      eyebrow="Communication"
+    <TeacherSectionCard
+      title="Messages non lus"
       icon={MessageSquare}
-      accent="from-[#d6f2fb] via-[#edf9ff] to-white"
+      iconColor={accent}
+      count={dashboard?.unreadCount}
+      linkLabel="Messagerie"
+      linkHref={`/schools/${schoolSlug}/messagerie`}
+      testId="section-teacher-messages"
     >
-      {loading ? (
-        <div className="h-36 animate-pulse rounded-[18px] bg-white/80" />
+      {loading && !dashboard ? (
+        <TeacherSectionSkeleton />
+      ) : !dashboard || dashboard.unreadCount === 0 ? (
+        <TeacherEmptyRow icon={CheckCircle2} text="Aucun message non lu" />
       ) : (
-        <div className="space-y-3">
-          <div className="rounded-[18px] border border-white/80 bg-slate-900 px-3 py-3 text-white">
-            <p className="text-xs uppercase tracking-[0.15em] text-slate-300">
-              Messages non lus
-            </p>
-            <p className="mt-2 font-heading text-3xl font-semibold">
-              {formatCount(summary.unreadMessages)}
-            </p>
-            <p className="mt-2 text-sm text-slate-300">
-              {summary.unreadMessages > 0
-                ? "Des parents ou collegues attendent une lecture."
-                : "Boite de reception a jour."}
-            </p>
-          </div>
-          <DashboardActionLink
+        dashboard.unreadMessages.map((msg) => (
+          <TeacherDataRow
+            key={msg.id}
+            left={
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                style={{ backgroundColor: `${accent}1A` }}
+              >
+                <MessageSquare className="h-4 w-4" style={{ color: accent }} />
+              </div>
+            }
             href={`/schools/${schoolSlug}/messagerie`}
-            label="Ouvrir la messagerie"
-            hint="Reprendre les echanges et les suivis de classe."
-          />
-        </div>
+            testId={`teacher-msg-${msg.id}`}
+          >
+            <p className="truncate text-sm font-semibold text-slate-900">
+              {msg.subject}
+            </p>
+            {msg.senderName ? (
+              <p className="truncate text-[11px] text-slate-400">
+                {msg.senderName}
+              </p>
+            ) : null}
+          </TeacherDataRow>
+        ))
       )}
-    </FamilyCardShell>
+    </TeacherSectionCard>
+  );
+}
+
+function TeacherTimetableSection({
+  dashboard,
+  loading,
+  schoolSlug,
+  todayLabel,
+}: {
+  dashboard: RichTeacherDashboard | null;
+  loading: boolean;
+  schoolSlug: string;
+  todayLabel: string;
+}) {
+  const accent = "#247C72";
+  return (
+    <TeacherSectionCard
+      title="Emploi du temps"
+      icon={Calendar}
+      iconColor={accent}
+      linkLabel="Agenda"
+      linkHref={`/schools/${schoolSlug}/emploi-du-temps`}
+      subtitle={todayLabel}
+      testId="section-teacher-timetable"
+    >
+      {loading && !dashboard ? (
+        <TeacherSectionSkeleton />
+      ) : !dashboard || dashboard.todaySlots.length === 0 ? (
+        <TeacherEmptyRow
+          icon={Calendar}
+          text="Aucun cours planifie aujourd'hui"
+        />
+      ) : (
+        dashboard.todaySlots.map((slot) => (
+          <TeacherDataRow
+            key={slot.id}
+            left={
+              <div
+                className="flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1.5"
+                style={{
+                  backgroundColor: `${accent}10`,
+                  borderColor: `${accent}30`,
+                }}
+              >
+                <span
+                  className="text-[11px] font-bold"
+                  style={{ color: accent }}
+                >
+                  {minuteToTimeLabel(slot.startMinute)}
+                </span>
+                <span className="text-[9px] text-slate-400">&#8594;</span>
+                <span
+                  className="text-[11px] font-bold"
+                  style={{ color: accent }}
+                >
+                  {minuteToTimeLabel(slot.endMinute)}
+                </span>
+              </div>
+            }
+            href={`/schools/${schoolSlug}/emploi-du-temps`}
+            testId={`teacher-slot-${slot.id}`}
+          >
+            <p className="truncate text-sm font-semibold text-slate-900">
+              {slot.subjectName}
+            </p>
+            <p className="truncate text-[11px] text-slate-400">
+              {slot.className}
+              {slot.room ? ` · ${slot.room}` : ""}
+            </p>
+          </TeacherDataRow>
+        ))
+      )}
+    </TeacherSectionCard>
+  );
+}
+
+function TeacherEvalsSection({
+  dashboard,
+  loading,
+  schoolSlug,
+}: {
+  dashboard: RichTeacherDashboard | null;
+  loading: boolean;
+  schoolSlug: string;
+}) {
+  const accent = "#C84B11";
+  return (
+    <TeacherSectionCard
+      title="Evaluations a saisir"
+      icon={ClipboardCheck}
+      iconColor={accent}
+      count={dashboard?.pendingEvals.length}
+      linkLabel="Cahier de notes"
+      linkHref={`/schools/${schoolSlug}/student-grades`}
+      testId="section-teacher-evals"
+    >
+      {loading && !dashboard ? (
+        <TeacherSectionSkeleton />
+      ) : !dashboard || dashboard.pendingEvals.length === 0 ? (
+        <TeacherEmptyRow
+          icon={CheckCircle2}
+          text="Toutes les notes sont a jour"
+        />
+      ) : (
+        dashboard.pendingEvals.map((ev) => (
+          <TeacherDataRow
+            key={ev.id}
+            left={
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                style={{ backgroundColor: `${accent}1A` }}
+              >
+                <ClipboardCheck className="h-4 w-4" style={{ color: accent }} />
+              </div>
+            }
+            right={
+              <span
+                className="shrink-0 rounded-lg border bg-white px-2 py-1 text-[11px] font-bold"
+                style={{
+                  color: accent,
+                  borderColor: `${accent}40`,
+                }}
+              >
+                {ev.gradedCount}/{ev.studentCount}
+              </span>
+            }
+            href={`/schools/${schoolSlug}/student-grades`}
+            testId={`teacher-eval-${ev.id}`}
+          >
+            <p className="truncate text-sm font-semibold text-slate-900">
+              {ev.title}
+            </p>
+            <p className="truncate text-[11px] text-slate-400">
+              {ev.className}
+            </p>
+          </TeacherDataRow>
+        ))
+      )}
+    </TeacherSectionCard>
+  );
+}
+
+function TeacherHomeworkSection({
+  dashboard,
+  loading,
+  schoolSlug,
+}: {
+  dashboard: RichTeacherDashboard | null;
+  loading: boolean;
+  schoolSlug: string;
+}) {
+  const accent = "#2E7D32";
+  return (
+    <TeacherSectionCard
+      title="Devoirs en cours"
+      icon={BookOpen}
+      iconColor={accent}
+      count={dashboard?.openHomework.length}
+      linkLabel="Voir tout"
+      linkHref={`/schools/${schoolSlug}/student-grades`}
+      testId="section-teacher-homework"
+    >
+      {loading && !dashboard ? (
+        <TeacherSectionSkeleton />
+      ) : !dashboard || dashboard.openHomework.length === 0 ? (
+        <TeacherEmptyRow icon={CheckCircle2} text="Aucun devoir en cours" />
+      ) : (
+        dashboard.openHomework.map((hw) => (
+          <TeacherDataRow
+            key={hw.id}
+            left={
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                style={{ backgroundColor: `${accent}1A` }}
+              >
+                <BookOpen className="h-4 w-4" style={{ color: accent }} />
+              </div>
+            }
+            right={
+              <div className="flex shrink-0 flex-col items-end gap-0.5">
+                <span
+                  className="rounded-lg border bg-white px-2 py-1 text-[11px] font-bold"
+                  style={{ color: accent, borderColor: `${accent}40` }}
+                >
+                  {hw.doneStudents}/{hw.totalStudents}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {formatShortDate(hw.expectedAt)}
+                </span>
+              </div>
+            }
+            href={`/schools/${schoolSlug}/student-grades`}
+            testId={`teacher-hw-${hw.id}`}
+          >
+            <p className="truncate text-sm font-semibold text-slate-900">
+              {hw.title}
+            </p>
+            <p className="truncate text-[11px] text-slate-400">
+              {hw.className}
+            </p>
+          </TeacherDataRow>
+        ))
+      )}
+    </TeacherSectionCard>
   );
 }
 
@@ -802,12 +1147,8 @@ export default function DashboardPage() {
     items: [],
   });
   const [teacherCardsLoading, setTeacherCardsLoading] = useState(false);
-  const [teacherSummary, setTeacherSummary] = useState<TeacherDashboardSummary>(
-    {
-      classesCount: 0,
-      classNames: [],
-      unreadMessages: 0,
-    },
+  const [richTeacher, setRichTeacher] = useState<RichTeacherDashboard | null>(
+    null,
   );
   const [schoolCardsLoading, setSchoolCardsLoading] = useState(false);
   const [schoolSummary, setSchoolSummary] = useState<SchoolDashboardSummary>({
@@ -969,43 +1310,146 @@ export default function DashboardPage() {
   async function loadTeacherDashboardData() {
     setTeacherCardsLoading(true);
 
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
     try {
-      const [contextPayload, unreadMessages] = await Promise.all([
+      const [contextPayload, inboxPayload] = await Promise.all([
         fetch(`${API_URL}/schools/${schoolSlug}/student-grades/context`, {
           credentials: "include",
-        }).then(async (response) => {
-          if (!response.ok) {
-            throw new Error("TEACHER_CONTEXT_FAILED");
-          }
-          return (await response.json()) as {
-            assignments?: Array<{
-              classId: string;
-              className: string;
-            }>;
-          };
+        }).then(async (r) => {
+          if (!r.ok) throw new Error("TEACHER_CONTEXT_FAILED");
+          return (await r.json()) as TeacherContextPayload;
         }),
-        getSchoolMessagesUnreadCount(schoolSlug).catch(() => 0),
+        fetch(
+          `${API_URL}/schools/${schoolSlug}/messages?folder=inbox&limit=10`,
+          { credentials: "include" },
+        )
+          .then(async (r) =>
+            r.ok
+              ? ((await r.json()) as { items: InboxMessageRaw[] })
+              : { items: [] as InboxMessageRaw[] },
+          )
+          .catch(() => ({ items: [] as InboxMessageRaw[] })),
       ]);
 
-      const classes = Array.from(
-        new Map(
-          (contextPayload.assignments ?? []).map((entry) => [
-            entry.classId,
-            entry.className,
-          ]),
-        ).values(),
-      ).sort((left, right) => left.localeCompare(right));
+      // Unique classes
+      const classMap = new Map<
+        string,
+        { classId: string; className: string; subjectIds: string[] }
+      >();
+      for (const a of contextPayload.assignments ?? []) {
+        const entry = classMap.get(a.classId) ?? {
+          classId: a.classId,
+          className: a.className,
+          subjectIds: [],
+        };
+        if (!entry.subjectIds.includes(a.subjectId)) {
+          entry.subjectIds.push(a.subjectId);
+        }
+        classMap.set(a.classId, entry);
+      }
+      const classEntries = Array.from(classMap.values());
 
-      setTeacherSummary({
-        classesCount: classes.length,
-        classNames: classes.slice(0, 3),
-        unreadMessages,
-      });
+      // Per-class parallel fetches
+      const [timetableResults, evalResults, hwResults, unreadCount] =
+        await Promise.all([
+          Promise.all(
+            classEntries.map(async (cls) => {
+              try {
+                const r = await fetch(
+                  `${API_URL}/schools/${schoolSlug}/timetable/classes/${cls.classId}?fromDate=${todayStr}&toDate=${todayStr}`,
+                  { credentials: "include" },
+                );
+                if (!r.ok) return { classId: cls.classId, occurrences: [] };
+                const payload = (await r.json()) as {
+                  occurrences?: TimetableOccurrenceRaw[];
+                };
+                return {
+                  classId: cls.classId,
+                  occurrences: payload.occurrences ?? [],
+                };
+              } catch {
+                return { classId: cls.classId, occurrences: [] };
+              }
+            }),
+          ),
+          Promise.all(
+            classEntries.map(async (cls) => {
+              try {
+                const r = await fetch(
+                  `${API_URL}/schools/${schoolSlug}/classes/${cls.classId}/evaluations`,
+                  { credentials: "include" },
+                );
+                if (!r.ok) return { classId: cls.classId, evals: [] };
+                return {
+                  classId: cls.classId,
+                  evals: (await r.json()) as EvaluationRaw[],
+                };
+              } catch {
+                return { classId: cls.classId, evals: [] };
+              }
+            }),
+          ),
+          Promise.all(
+            classEntries.map(async (cls) => {
+              try {
+                const r = await fetch(
+                  `${API_URL}/schools/${schoolSlug}/classes/${cls.classId}/homework`,
+                  { credentials: "include" },
+                );
+                if (!r.ok) return { classId: cls.classId, homework: [] };
+                return {
+                  classId: cls.classId,
+                  homework: (await r.json()) as HomeworkRaw[],
+                };
+              } catch {
+                return { classId: cls.classId, homework: [] };
+              }
+            }),
+          ),
+          getSchoolMessagesUnreadCount(schoolSlug).catch(() => 0),
+        ]);
+
+      const timetableMap = new Map(
+        timetableResults.map((r) => [r.classId, r.occurrences]),
+      );
+      const evaluationsByClassId = new Map(
+        evalResults.map((r) => [r.classId, r.evals]),
+      );
+      const homeworkByClassId = new Map(
+        hwResults.map((r) => [r.classId, r.homework]),
+      );
+
+      const unreadMessages = (inboxPayload.items ?? [])
+        .filter((m) => m.unread)
+        .map((m) => ({
+          id: m.id,
+          subject: m.subject,
+          senderName: m.sender
+            ? `${m.sender.firstName} ${m.sender.lastName}`.trim()
+            : null,
+        }));
+
+      setRichTeacher(
+        buildTeacherDashboard(
+          contextPayload,
+          timetableMap,
+          unreadMessages,
+          unreadCount,
+          evaluationsByClassId,
+          homeworkByClassId,
+          todayStr,
+        ),
+      );
     } catch {
-      setTeacherSummary({
-        classesCount: 0,
-        classNames: [],
-        unreadMessages: 0,
+      setRichTeacher({
+        classes: [],
+        unreadCount: 0,
+        unreadMessages: [],
+        todaySlots: [],
+        pendingEvals: [],
+        openHomework: [],
       });
     } finally {
       setTeacherCardsLoading(false);
@@ -1134,6 +1578,12 @@ export default function DashboardPage() {
     },
   ];
 
+  const todayLabel = new Intl.DateTimeFormat("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+
   return (
     <div
       data-testid="dashboard-root"
@@ -1176,22 +1626,42 @@ export default function DashboardPage() {
       ) : null}
 
       {me?.role === "TEACHER" ? (
-        <div className="grid gap-3 min-[360px]:gap-4 xl:grid-cols-3">
-          <TeacherClassesCard
-            summary={teacherSummary}
+        <div
+          className="space-y-4 min-[360px]:space-y-5"
+          data-testid="teacher-dashboard"
+        >
+          <TeacherClassesGrid
+            classes={richTeacher?.classes ?? []}
             loading={teacherCardsLoading}
             schoolSlug={schoolSlug}
           />
-          <TeacherPedagogyCard
-            summary={teacherSummary}
-            loading={teacherCardsLoading}
-            schoolSlug={schoolSlug}
-          />
-          <TeacherCommunicationCard
-            summary={teacherSummary}
-            loading={teacherCardsLoading}
-            schoolSlug={schoolSlug}
-          />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="space-y-4">
+              <TeacherMessagesSection
+                dashboard={richTeacher}
+                loading={teacherCardsLoading}
+                schoolSlug={schoolSlug}
+              />
+              <TeacherTimetableSection
+                dashboard={richTeacher}
+                loading={teacherCardsLoading}
+                schoolSlug={schoolSlug}
+                todayLabel={todayLabel}
+              />
+            </div>
+            <div className="space-y-4">
+              <TeacherEvalsSection
+                dashboard={richTeacher}
+                loading={teacherCardsLoading}
+                schoolSlug={schoolSlug}
+              />
+              <TeacherHomeworkSection
+                dashboard={richTeacher}
+                loading={teacherCardsLoading}
+                schoolSlug={schoolSlug}
+              />
+            </div>
+          </div>
         </div>
       ) : null}
 
