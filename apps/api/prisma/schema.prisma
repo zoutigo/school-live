@@ -59,6 +59,7 @@ enum AuthProvider {
 
 enum AuthRateLimitPurpose {
   PASSWORD_LOGIN
+  USERNAME_LOGIN
   PHONE_LOGIN
   SSO_LOGIN
   ACTIVATION
@@ -299,6 +300,7 @@ model School {
 model User {
   id                 String                   @id @default(cuid())
   email              String?                  @unique
+  username           String?                  @unique
   phone              String?
   phoneConfirmedAt   DateTime?
   avatarUrl          String?

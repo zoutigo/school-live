@@ -216,3 +216,352 @@ describe("LandingLoginForm UI", () => {
     });
   });
 });
+
+// ── Méthode "Identifiant + Mot de passe" ──────────────────────────────────────
+
+function switchToUsernameMethod() {
+  fireEvent.click(
+    screen.getByRole("button", { name: "Se connecter autrement" }),
+  );
+  fireEvent.click(screen.getByText("Identifiant + Mot de passe"));
+}
+
+describe("LandingLoginForm UI — méthode Identifiant (username)", () => {
+  beforeEach(() => {
+    pushMock.mockReset();
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it("la section username n'est pas rendue par défaut (méthode phone active)", () => {
+    render(<LandingLoginForm />);
+
+    expect(
+      screen.queryByRole("button", { name: "Se connecter (identifiant)" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("charge la méthode username depuis localStorage et affiche la section username", () => {
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    expect(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Identifiant")).toBeInTheDocument();
+  });
+
+  it("le dropdown 'Se connecter autrement' affiche 'Identifiant + Mot de passe'", () => {
+    render(<LandingLoginForm />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Se connecter autrement" }),
+    );
+
+    expect(screen.getByText("Identifiant + Mot de passe")).toBeInTheDocument();
+  });
+
+  it("cliquer sur 'Identifiant + Mot de passe' affiche la section username", () => {
+    render(<LandingLoginForm />);
+
+    switchToUsernameMethod();
+
+    expect(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Identifiant")).toBeInTheDocument();
+  });
+
+  it("aucune erreur inline au premier rendu de la section username", () => {
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    expect(
+      screen.queryByText("Identifiant invalide (3 caracteres minimum)."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Mot de passe requis.")).not.toBeInTheDocument();
+  });
+
+  it("erreur inline si identifiant fait moins de 3 caractères", () => {
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "ab" },
+    });
+
+    expect(
+      screen.getByText("Identifiant invalide (3 caracteres minimum)."),
+    ).toBeInTheDocument();
+  });
+
+  it("erreur inline si le mot de passe est vide après saisie de l'identifiant", () => {
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "JeanDUPONT" },
+    });
+    fireEvent.submit(
+      screen
+        .getByRole("button", { name: "Se connecter (identifiant)" })
+        .closest("form") as HTMLFormElement,
+    );
+
+    expect(screen.getByText("Mot de passe requis.")).toBeInTheDocument();
+  });
+
+  it("le bouton submit est désactivé tant que le formulaire est invalide", () => {
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    expect(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    ).toBeDisabled();
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "JeanDUPONT" },
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    ).toBeDisabled();
+  });
+
+  it("le bouton submit est activé quand identifiant et mot de passe sont valides", async () => {
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "JeanDUPONT" },
+    });
+    fireEvent.input(screen.getByLabelText("Mot de passe (identifiant)"), {
+      target: { value: "somepassword" },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+      ).toBeEnabled(),
+    );
+  });
+
+  it("submit appelle POST /auth/login/username avec identifiant et mot de passe", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ schoolSlug: null }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ role: "STUDENT", schoolSlug: "college-vogt" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "JeanDUPONT" },
+    });
+    fireEvent.input(screen.getByLabelText("Mot de passe (identifiant)"), {
+      target: { value: "Password123!" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    );
+
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining("/auth/login/username"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            username: "JeanDUPONT",
+            password: "Password123!",
+          }),
+        }),
+      );
+    });
+  });
+
+  it("succès : redirige vers /schools/{slug}/dashboard", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ schoolSlug: "college-vogt" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ role: "STUDENT", schoolSlug: "college-vogt" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "JeanDUPONT" },
+    });
+    fireEvent.input(screen.getByLabelText("Mot de passe (identifiant)"), {
+      target: { value: "Password123!" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    );
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith("/schools/college-vogt/dashboard");
+    });
+  });
+
+  it("PASSWORD_CHANGE_REQUIRED : redirige vers /first-password?username=...&schoolSlug=...", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          code: "PASSWORD_CHANGE_REQUIRED",
+          username: "JeanDUPONT",
+          schoolSlug: "college-vogt",
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "JeanDUPONT" },
+    });
+    fireEvent.input(screen.getByLabelText("Mot de passe (identifiant)"), {
+      target: { value: "OldPass123!" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    );
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith(
+        expect.stringContaining("/first-password?"),
+      );
+      expect(pushMock).toHaveBeenCalledWith(
+        expect.stringContaining("username=JeanDUPONT"),
+      );
+    });
+  });
+
+  it("erreur API : affiche 'Identifiant ou mot de passe invalide'", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "JeanDUPONT" },
+    });
+    fireEvent.input(screen.getByLabelText("Mot de passe (identifiant)"), {
+      target: { value: "WrongPass!" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Identifiant ou mot de passe invalide"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("le lien 'Mot de passe oublie ?' de la section username pointe vers /identifiant-oublie", () => {
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    // Il y a deux liens "Mot de passe oublie ?" (email + username) — on vérifie que l'un d'eux pointe vers /identifiant-oublie
+    const forgotLinks = screen.getAllByRole("link", {
+      name: "Mot de passe oublie ?",
+    });
+    const usernameLink = forgotLinks.find((l) =>
+      l.getAttribute("href")?.includes("identifiant-oublie"),
+    );
+    expect(usernameLink).toBeDefined();
+    expect(usernameLink).toHaveAttribute("href", "/identifiant-oublie");
+  });
+
+  it("changer de méthode efface l'erreur affichée", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    localStorage.setItem("preferred_auth_method", "username");
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Identifiant"), {
+      target: { value: "JeanDUPONT" },
+    });
+    fireEvent.input(screen.getByLabelText("Mot de passe (identifiant)"), {
+      target: { value: "WrongPass!" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Se connecter (identifiant)" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Identifiant ou mot de passe invalide"),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Se connecter autrement" }),
+    );
+    // "Telephone + PIN" apparaît aussi comme heading de section — on cible le bouton du dropdown
+    const phoneBtns = screen.getAllByText("Telephone + PIN");
+    const dropdownBtn = phoneBtns.find((el) => el.tagName === "BUTTON");
+    fireEvent.click(dropdownBtn!);
+
+    expect(
+      screen.queryByText("Identifiant ou mot de passe invalide"),
+    ).not.toBeInTheDocument();
+  });
+});

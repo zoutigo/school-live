@@ -51,6 +51,27 @@ export const step1Schema = z
     message: "La confirmation ne correspond pas au nouveau mot de passe.",
   });
 
+export const step1UsernameSchema = z
+  .object({
+    username: z.string().trim().min(3, "Identifiant invalide."),
+    temporaryPassword: z
+      .string()
+      .trim()
+      .min(1, "Le mot de passe provisoire est obligatoire."),
+    newPassword: z
+      .string()
+      .min(8, "Le mot de passe doit faire au moins 8 caracteres.")
+      .regex(
+        PASSWORD_COMPLEXITY_REGEX,
+        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+      ),
+    confirmPassword: z.string().min(1, "Confirmez le mot de passe."),
+  })
+  .refine((value) => value.newPassword === value.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "La confirmation ne correspond pas au nouveau mot de passe.",
+  });
+
 export const step1PhoneSchema = z.object({
   email: z
     .string()

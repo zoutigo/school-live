@@ -45,6 +45,10 @@ export class OnboardingCompleteDto {
 
   @IsOptional()
   @IsString()
+  username?: string;
+
+  @IsOptional()
+  @IsString()
   setupToken?: string;
 
   @IsOptional()
