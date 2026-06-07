@@ -1724,3 +1724,4 @@ model MobilePushToken {
   @@index([userId, isActive])
 }
 
+

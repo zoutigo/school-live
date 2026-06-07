@@ -59,6 +59,7 @@ enum AuthProvider {
 
 enum AuthRateLimitPurpose {
   PASSWORD_LOGIN
+  USERNAME_LOGIN
   PHONE_LOGIN
   SSO_LOGIN
   ACTIVATION
