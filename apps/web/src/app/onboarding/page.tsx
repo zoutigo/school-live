@@ -34,6 +34,7 @@ import {
   buildRecoveryRows,
   step1PhoneSchema,
   step1Schema,
+  step1UsernameSchema,
   step2Schema,
   step3PinSchema,
   step4Schema,
@@ -65,18 +66,21 @@ function OnboardingContent() {
   const onboardingSessionRef = useRef("");
 
   const emailFromQuery = params.get("email") ?? "";
+  const usernameFromQuery = params.get("username") ?? "";
   const phoneFromQuery = params.get("phone") ?? "";
   const schoolSlugFromQuery = params.get("schoolSlug") ?? "";
   const tokenFromQuery = params.get("token") ?? "";
   const onboardingSessionKey = [
     tokenFromQuery,
     emailFromQuery,
+    usernameFromQuery,
     phoneFromQuery,
     schoolSlugFromQuery,
   ].join("|");
 
   const {
     email,
+    username,
     schoolSlug,
     temporaryPassword,
     newPassword,
@@ -96,6 +100,9 @@ function OnboardingContent() {
     reset,
   } = useOnboardingStore();
 
+  const isUsernameFlow = username.length > 0;
+  const isTokenFlow = setupToken.length > 0;
+
   async function loadOptions() {
     setLoadingOptions(true);
     setError(null);
@@ -103,6 +110,8 @@ function OnboardingContent() {
       const query = new URLSearchParams();
       if (setupToken) {
         query.set("setupToken", setupToken);
+      } else if (username) {
+        query.set("username", username);
       } else {
         query.set("email", email);
       }
@@ -131,7 +140,6 @@ function OnboardingContent() {
     () => (options?.schoolRoles ?? []).includes("PARENT"),
     [options?.schoolRoles],
   );
-  const isTokenFlow = setupToken.length > 0;
   const totalSteps = isTokenFlow ? 4 : 3;
   const loginHref = useMemo(
     () => (schoolSlug ? `/schools/${schoolSlug}/login` : "/"),
@@ -161,6 +169,20 @@ function OnboardingContent() {
     defaultValues: {
       email,
       setupToken,
+    },
+  });
+  const usernameStepForm = useForm<
+    z.input<typeof step1UsernameSchema>,
+    unknown,
+    z.output<typeof step1UsernameSchema>
+  >({
+    resolver: zodResolver(step1UsernameSchema),
+    mode: "onChange",
+    defaultValues: {
+      username,
+      temporaryPassword,
+      newPassword,
+      confirmPassword,
     },
   });
   const profileStepForm = useForm<
@@ -206,14 +228,15 @@ function OnboardingContent() {
   });
   const passwordStepValues = passwordStepForm.watch();
   const tokenStepValues = tokenStepForm.watch();
+  const usernameStepValues = usernameStepForm.watch();
   const profileStepValues = profileStepForm.watch();
   const pinStepValues = pinStepForm.watch();
   const recoveryStepValues = recoveryStepForm.watch();
   const canContinueCurrentStep = useMemo(() => {
     if (step === 1) {
-      return isTokenFlow
-        ? tokenStepForm.formState.isValid
-        : passwordStepForm.formState.isValid;
+      if (isTokenFlow) return tokenStepForm.formState.isValid;
+      if (isUsernameFlow) return usernameStepForm.formState.isValid;
+      return passwordStepForm.formState.isValid;
     }
     if (step === 2) {
       return profileStepForm.formState.isValid;
@@ -228,7 +251,9 @@ function OnboardingContent() {
   }, [
     step,
     isTokenFlow,
+    isUsernameFlow,
     tokenStepForm.formState.isValid,
+    usernameStepForm.formState.isValid,
     passwordStepForm.formState.isValid,
     profileStepForm.formState.isValid,
     pinStepForm.formState.isValid,
@@ -250,6 +275,9 @@ function OnboardingContent() {
     if (emailFromQuery) {
       setField("email", emailFromQuery);
     }
+    if (usernameFromQuery) {
+      setField("username", usernameFromQuery);
+    }
     if (schoolSlugFromQuery) {
       setField("schoolSlug", schoolSlugFromQuery);
     }
@@ -262,6 +290,12 @@ function OnboardingContent() {
     tokenStepForm.reset({
       email: emailFromQuery,
       setupToken: tokenFromQuery,
+    });
+    usernameStepForm.reset({
+      username: usernameFromQuery,
+      temporaryPassword: "",
+      newPassword: "",
+      confirmPassword: "",
     });
     profileStepForm.reset({
       firstName: "",
@@ -282,8 +316,10 @@ function OnboardingContent() {
     });
   }, [
     emailFromQuery,
+    usernameFromQuery,
     onboardingSessionKey,
     passwordStepForm,
+    usernameStepForm,
     pinStepForm,
     profileStepForm,
     recoveryStepForm,
@@ -295,7 +331,7 @@ function OnboardingContent() {
   ]);
 
   useEffect(() => {
-    if (!email && !setupToken) {
+    if (!email && !setupToken && !username) {
       return;
     }
 
@@ -304,7 +340,7 @@ function OnboardingContent() {
     }, 150);
 
     return () => clearTimeout(timeout);
-  }, [email, setupToken]);
+  }, [email, setupToken, username]);
 
   useEffect(() => {
     setField("email", passwordStepValues.email ?? "");
@@ -405,6 +441,12 @@ function OnboardingContent() {
       email: "",
       setupToken: "",
     });
+    usernameStepForm.reset({
+      username: "",
+      temporaryPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
     profileStepForm.reset({
       firstName: "",
       lastName: "",
@@ -424,6 +466,7 @@ function OnboardingContent() {
     });
   }, [
     passwordStepForm,
+    usernameStepForm,
     pinStepForm,
     profileStepForm,
     recoveryStepForm,
@@ -441,7 +484,9 @@ function OnboardingContent() {
       step === 1
         ? isTokenFlow
           ? await tokenStepForm.trigger()
-          : await passwordStepForm.trigger()
+          : isUsernameFlow
+            ? await usernameStepForm.trigger()
+            : await passwordStepForm.trigger()
         : step === 2
           ? await profileStepForm.trigger()
           : step === 3 && isTokenFlow
@@ -465,16 +510,19 @@ function OnboardingContent() {
   async function onSubmit() {
     setError(null);
 
-    const isPasswordStepValid = isTokenFlow
-      ? true
-      : await passwordStepForm.trigger();
+    const isPasswordStepValid =
+      isTokenFlow || isUsernameFlow ? true : await passwordStepForm.trigger();
     const isTokenStepValid = isTokenFlow ? await tokenStepForm.trigger() : true;
+    const isUsernameStepValid = isUsernameFlow
+      ? await usernameStepForm.trigger()
+      : true;
     const isProfileStepValid = await profileStepForm.trigger();
     const isPinStepValid = isTokenFlow ? await pinStepForm.trigger() : true;
     const isRecoveryStepValid = await recoveryStepForm.trigger();
     if (
       !isPasswordStepValid ||
       !isTokenStepValid ||
+      !isUsernameStepValid ||
       !isProfileStepValid ||
       !isPinStepValid ||
       !isRecoveryStepValid
@@ -488,6 +536,34 @@ function OnboardingContent() {
     );
     setSubmitting(true);
     try {
+      // Username flow: first change password, then complete profile
+      if (isUsernameFlow) {
+        const pwResponse = await fetch(
+          `${API_URL}/auth/first-password-change/username`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: usernameStepValues.username ?? "",
+              temporaryPassword: usernameStepValues.temporaryPassword ?? "",
+              newPassword: usernameStepValues.newPassword ?? "",
+            }),
+          },
+        );
+        if (!pwResponse.ok) {
+          const payload = (await pwResponse.json().catch(() => null)) as {
+            message?: string | string[];
+          } | null;
+          const message =
+            payload?.message && Array.isArray(payload.message)
+              ? payload.message.join(", ")
+              : (payload?.message ?? "Changement de mot de passe impossible.");
+          setError(String(message));
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const response = await fetch(`${API_URL}/auth/onboarding/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -498,11 +574,16 @@ function OnboardingContent() {
                 email: (tokenStepValues.email ?? "").trim() || undefined,
                 newPin: pinStepValues.newPin ?? "",
               }
-            : {
-                email: passwordStepValues.email ?? "",
-                temporaryPassword: passwordStepValues.temporaryPassword ?? "",
-                newPassword: passwordStepValues.newPassword ?? "",
-              }),
+            : isUsernameFlow
+              ? {
+                  username: usernameStepValues.username ?? "",
+                  newPassword: usernameStepValues.newPassword ?? "",
+                }
+              : {
+                  email: passwordStepValues.email ?? "",
+                  temporaryPassword: passwordStepValues.temporaryPassword ?? "",
+                  newPassword: passwordStepValues.newPassword ?? "",
+                }),
           firstName: profileStepValues.firstName ?? "",
           lastName: profileStepValues.lastName ?? "",
           gender: profileStepValues.gender ?? "",
@@ -620,7 +701,8 @@ function OnboardingContent() {
             <div className="grid gap-1 text-sm">
               <span className="text-text-secondary">Compte concerne</span>
               <div className="rounded-card border border-border bg-background px-3 py-2 text-text-primary">
-                {passwordStepValues.email ||
+                {usernameStepValues.username ||
+                  passwordStepValues.email ||
                   tokenStepValues.email ||
                   phoneFromQuery ||
                   "Compte en attente"}
@@ -651,6 +733,80 @@ function OnboardingContent() {
                       Vous pouvez continuer sans email et le renseigner plus
                       tard dans votre compte.
                     </p>
+                  </>
+                ) : isUsernameFlow ? (
+                  <>
+                    <div className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-secondary">
+                      Identifiant:{" "}
+                      <span className="font-semibold">
+                        {usernameStepValues.username}
+                      </span>
+                    </div>
+                    <FormField
+                      label="Mot de passe provisoire"
+                      error={
+                        usernameStepForm.formState.errors.temporaryPassword
+                          ?.message
+                      }
+                    >
+                      <PasswordInput
+                        value={usernameStepValues.temporaryPassword ?? ""}
+                        onChange={(event) => {
+                          usernameStepForm.setValue(
+                            "temporaryPassword",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Nouveau mot de passe"
+                      error={
+                        usernameStepForm.formState.errors.newPassword?.message
+                      }
+                    >
+                      <PasswordInput
+                        value={usernameStepValues.newPassword ?? ""}
+                        onChange={(event) => {
+                          usernameStepForm.setValue(
+                            "newPassword",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
+                      />
+                    </FormField>
+                    <FormField
+                      label="Confirmation"
+                      error={
+                        usernameStepForm.formState.errors.confirmPassword
+                          ?.message
+                      }
+                    >
+                      <PasswordInput
+                        value={usernameStepValues.confirmPassword ?? ""}
+                        onChange={(event) => {
+                          usernameStepForm.setValue(
+                            "confirmPassword",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
+                      />
+                    </FormField>
                   </>
                 ) : (
                   <>

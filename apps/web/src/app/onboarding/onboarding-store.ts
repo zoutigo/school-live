@@ -13,6 +13,7 @@ export type QuestionKey =
 
 type OnboardingState = {
   email: string;
+  username: string;
   schoolSlug: string;
   temporaryPassword: string;
   newPassword: string;
@@ -38,6 +39,7 @@ type OnboardingState = {
 
 const initialState = {
   email: "",
+  username: "",
   schoolSlug: "",
   temporaryPassword: "",
   newPassword: "",

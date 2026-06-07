@@ -4,6 +4,7 @@ import {
   HttpStatus,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -196,6 +197,133 @@ export class AuthService {
       principal: normalizedEmail,
       userId: user.id,
       schoolId: user.memberships[0]?.schoolId ?? null,
+      context,
+    });
+
+    return this.issueAuthSession(
+      user,
+      user.memberships[0]?.school?.slug ?? null,
+    );
+  }
+
+  async loginWithUsername(
+    username: string,
+    password: string,
+    context?: AuthRequestContext,
+  ): Promise<AuthResponse> {
+    const normalizedUsername = username.trim().toLowerCase();
+    const rateLimitKeyHash = this.hashRateLimitKey(normalizedUsername);
+    await this.assertNotRateLimited("USERNAME_LOGIN", rateLimitKeyHash);
+
+    const user = await this.prisma.user.findUnique({
+      where: { username: normalizedUsername },
+      include: {
+        platformRoles: { select: { role: true } },
+        phoneCredential: {
+          select: {
+            verifiedAt: true,
+          },
+        },
+        memberships: {
+          include: {
+            school: {
+              select: { id: true, slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!user) {
+      await this.recordAuthFailure("USERNAME_LOGIN", rateLimitKeyHash);
+      await this.auditAuth({
+        event: "LOGIN_PASSWORD",
+        status: "FAILURE",
+        principal: normalizedUsername,
+        reasonCode: "INVALID_CREDENTIALS",
+        context,
+      });
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (!user.passwordHash) {
+      await this.recordAuthFailure("USERNAME_LOGIN", rateLimitKeyHash);
+      await this.auditAuth({
+        event: "LOGIN_PASSWORD",
+        status: "FAILURE",
+        principal: normalizedUsername,
+        userId: user.id,
+        schoolId: user.memberships[0]?.school?.id ?? null,
+        reasonCode: "INVALID_CREDENTIALS",
+        context,
+      });
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    const validPassword = await bcrypt.compare(password, user.passwordHash);
+
+    if (!validPassword) {
+      await this.recordAuthFailure("USERNAME_LOGIN", rateLimitKeyHash);
+      await this.auditAuth({
+        event: "LOGIN_PASSWORD",
+        status: "FAILURE",
+        principal: normalizedUsername,
+        userId: user.id,
+        schoolId: user.memberships[0]?.school?.id ?? null,
+        reasonCode: "INVALID_CREDENTIALS",
+        context,
+      });
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (user.mustChangePassword) {
+      await this.auditAuth({
+        event: "LOGIN_PASSWORD",
+        status: "FAILURE",
+        principal: normalizedUsername,
+        userId: user.id,
+        schoolId: user.memberships[0]?.school?.id ?? null,
+        reasonCode: "PASSWORD_CHANGE_REQUIRED",
+        context,
+      });
+      throw new ForbiddenException({
+        code: "PASSWORD_CHANGE_REQUIRED",
+        username: user.username,
+        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      });
+    }
+
+    if (
+      user.memberships.length > 0 &&
+      user.activationStatus !== "ACTIVE" &&
+      !user.platformRoles.some(
+        (assignment) => assignment.role === "SUPER_ADMIN",
+      )
+    ) {
+      await this.auditAuth({
+        event: "LOGIN_PASSWORD",
+        status: "FAILURE",
+        principal: normalizedUsername,
+        userId: user.id,
+        schoolId: user.memberships[0]?.school?.id ?? null,
+        reasonCode: "ACCOUNT_VALIDATION_REQUIRED",
+        context,
+      });
+      throw new ForbiddenException({
+        code: "ACCOUNT_VALIDATION_REQUIRED",
+        username: user.username,
+        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      });
+    }
+
+    await this.clearAuthFailures("USERNAME_LOGIN", rateLimitKeyHash);
+    await this.auditAuth({
+      event: "LOGIN_PASSWORD",
+      status: "SUCCESS",
+      principal: normalizedUsername,
+      userId: user.id,
+      schoolId: user.memberships[0]?.school?.id ?? null,
       context,
     });
 
@@ -1090,8 +1218,76 @@ export class AuthService {
     };
   }
 
+  async firstPasswordChangeByUsername(
+    username: string,
+    temporaryPassword: string,
+    newPassword: string,
+  ) {
+    const normalizedUsername = username.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { username: normalizedUsername },
+      include: {
+        memberships: {
+          include: {
+            school: {
+              select: { slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (!user.mustChangePassword) {
+      throw new ForbiddenException(
+        "Password change is not required for this account",
+      );
+    }
+
+    const validPassword = user.passwordHash
+      ? await bcrypt.compare(temporaryPassword, user.passwordHash)
+      : false;
+
+    if (!validPassword) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(newPassword)) {
+      throw new ForbiddenException(
+        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          mustChangePassword: false,
+        },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    return {
+      success: true,
+      username: user.username,
+      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      profileSetupRequired: true,
+    };
+  }
+
   async completeOnboarding(input: {
     email?: string;
+    username?: string;
     setupToken?: string;
     temporaryPassword?: string;
     newPassword?: string;
@@ -1106,6 +1302,7 @@ export class AuthService {
   }) {
     const user = await this.resolveUserForOnboarding(input);
     const isTokenFlow = Boolean(input.setupToken?.trim());
+    const isUsernameFlow = !isTokenFlow && Boolean(input.username?.trim());
     const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
     const shouldUpdateEmail =
       isTokenFlow &&
@@ -1116,30 +1313,34 @@ export class AuthService {
     let passwordHash: string | null = null;
     let nextPinHash: string | null = null;
     if (!isTokenFlow) {
-      if (!input.temporaryPassword || !input.newPassword) {
+      if (isUsernameFlow) {
+        if (!user.profileCompleted) {
+          throw new ForbiddenException("Le profil doit etre complete.");
+        }
+      } else if (!input.temporaryPassword || !input.newPassword) {
         throw new ForbiddenException("Informations d activation manquantes");
-      }
+      } else {
+        if (!user.mustChangePassword) {
+          throw new ForbiddenException(
+            "Password change is not required for this account",
+          );
+        }
 
-      if (!user.mustChangePassword) {
-        throw new ForbiddenException(
-          "Password change is not required for this account",
-        );
-      }
+        const validTemporaryPassword = user.passwordHash
+          ? await bcrypt.compare(input.temporaryPassword, user.passwordHash)
+          : false;
 
-      const validTemporaryPassword = user.passwordHash
-        ? await bcrypt.compare(input.temporaryPassword, user.passwordHash)
-        : false;
+        if (!validTemporaryPassword) {
+          throw new UnauthorizedException("Invalid credentials");
+        }
 
-      if (!validTemporaryPassword) {
-        throw new UnauthorizedException("Invalid credentials");
+        if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(input.newPassword)) {
+          throw new ForbiddenException(
+            "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+          );
+        }
+        passwordHash = await bcrypt.hash(input.newPassword, 10);
       }
-
-      if (!AuthService.PASSWORD_COMPLEXITY_REGEX.test(input.newPassword)) {
-        throw new ForbiddenException(
-          "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-        );
-      }
-      passwordHash = await bcrypt.hash(input.newPassword, 10);
     } else {
       if (!input.newPin) {
         throw new ForbiddenException("Informations de PIN manquantes");
@@ -1289,6 +1490,15 @@ export class AuthService {
       });
     });
 
+    if (schoolMembership?.schoolId && schoolRoles.includes("STUDENT")) {
+      await this.sendStudentParentInternalMessage({
+        schoolId: schoolMembership.schoolId,
+        userId: user.id,
+        subject: "Premiere connexion eleve",
+        body: `${input.firstName.trim()} ${input.lastName.trim()} a active son compte et s'est connecte pour la premiere fois.`,
+      });
+    }
+
     return {
       success: true,
       schoolSlug,
@@ -1297,6 +1507,7 @@ export class AuthService {
 
   private async resolveUserForOnboarding(input: {
     email?: string;
+    username?: string;
     setupToken?: string;
   }) {
     if (input.setupToken?.trim()) {
@@ -1338,6 +1549,41 @@ export class AuthService {
           (membership) => membership.school.slug === payload.schoolSlug,
         )
       ) {
+        throw new UnauthorizedException("Invalid account");
+      }
+
+      return user;
+    }
+
+    if (input.username?.trim()) {
+      const normalizedUsername = input.username.trim().toLowerCase();
+      const user = await this.prisma.user.findUnique({
+        where: { username: normalizedUsername },
+        include: {
+          phoneCredential: {
+            select: {
+              id: true,
+              pinHash: true,
+              verifiedAt: true,
+            },
+          },
+          memberships: {
+            include: {
+              school: {
+                select: {
+                  id: true,
+                  slug: true,
+                  name: true,
+                  activeSchoolYearId: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
+
+      if (!user) {
         throw new UnauthorizedException("Invalid account");
       }
 
@@ -2296,6 +2542,225 @@ export class AuthService {
     return { success: true };
   }
 
+  async startUsernameRecovery(username: string) {
+    const normalizedUsername = username.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { username: normalizedUsername },
+      include: {
+        memberships: {
+          include: {
+            school: {
+              select: { slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        recoveryAnswers: {
+          select: {
+            questionKey: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException("Aucun compte trouvé pour cet identifiant.");
+    }
+
+    if (!user.recoveryBirthDate || user.recoveryAnswers.length < 3) {
+      return { questions: [], noQuestions: true };
+    }
+
+    const questions = this.getRecoveryQuestions();
+    return {
+      questions: user.recoveryAnswers.map((answer) => ({
+        key: answer.questionKey,
+        label:
+          questions.find((entry) => entry.key === answer.questionKey)?.label ??
+          answer.questionKey,
+      })),
+      noQuestions: false,
+      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+    };
+  }
+
+  async verifyUsernameRecovery(input: {
+    username: string;
+    birthDate: string;
+    answers: Array<{ questionKey: RecoveryQuestionKey; answer: string }>;
+  }) {
+    const normalizedUsername = input.username.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { username: normalizedUsername },
+      include: {
+        memberships: {
+          include: {
+            school: {
+              select: { slug: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+        recoveryAnswers: {
+          select: {
+            questionKey: true,
+            answerHash: true,
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!user || !user.recoveryBirthDate || user.recoveryAnswers.length < 3) {
+      throw new ForbiddenException("Informations de recuperation invalides");
+    }
+
+    const providedBirthDate = new Date(input.birthDate);
+    if (Number.isNaN(providedBirthDate.getTime())) {
+      throw new ForbiddenException("Informations de recuperation invalides");
+    }
+
+    if (!this.sameUtcDay(user.recoveryBirthDate, providedBirthDate)) {
+      throw new ForbiddenException("Informations de recuperation invalides");
+    }
+
+    const uniqueQuestions = new Set(
+      input.answers.map((answer) => answer.questionKey),
+    );
+    if (input.answers.length !== 3 || uniqueQuestions.size !== 3) {
+      throw new ForbiddenException("Informations de recuperation invalides");
+    }
+
+    const expectedMap = new Map(
+      user.recoveryAnswers.map((answer) => [
+        answer.questionKey,
+        answer.answerHash,
+      ]),
+    );
+
+    for (const answer of input.answers) {
+      const expectedHash = expectedMap.get(answer.questionKey);
+      if (!expectedHash) {
+        throw new ForbiddenException("Informations de recuperation invalides");
+      }
+
+      const validAnswer = await bcrypt.compare(
+        answer.answer.trim().toLowerCase(),
+        expectedHash,
+      );
+      if (!validAnswer) {
+        throw new ForbiddenException("Informations de recuperation invalides");
+      }
+    }
+
+    const resetToken = randomBytes(48).toString("hex");
+    const tokenHash = this.hashPasswordResetToken(resetToken);
+    const now = new Date();
+    const expiresAt = new Date(
+      now.getTime() + this.getPasswordResetTtlMinutes() * 60 * 1000,
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.updateMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: {
+          usedAt: now,
+        },
+      });
+
+      await tx.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+          verifiedAt: now,
+        },
+      });
+    });
+
+    return {
+      success: true,
+      recoveryToken: resetToken,
+      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+    };
+  }
+
+  async completeUsernameRecovery(recoveryToken: string, newPassword: string) {
+    return this.completePasswordReset(recoveryToken, newPassword);
+  }
+
+  private async sendStudentParentInternalMessage(input: {
+    schoolId: string;
+    userId: string;
+    subject: string;
+    body: string;
+  }) {
+    try {
+      const students = await this.prisma.student.findMany({
+        where: {
+          schoolId: input.schoolId,
+          userId: input.userId,
+        },
+        select: { id: true },
+      });
+
+      if (students.length === 0) {
+        return;
+      }
+
+      const parentLinks = await this.prisma.parentStudent.findMany({
+        where: {
+          schoolId: input.schoolId,
+          studentId: { in: students.map((student) => student.id) },
+        },
+        select: { parentUserId: true },
+      });
+
+      if (parentLinks.length === 0) {
+        return;
+      }
+
+      const senderMembership = await this.prisma.schoolMembership.findFirst({
+        where: { schoolId: input.schoolId, role: "SCHOOL_ADMIN" },
+        select: { userId: true },
+      });
+
+      if (!senderMembership) {
+        return;
+      }
+
+      const message = await this.prisma.internalMessage.create({
+        data: {
+          schoolId: input.schoolId,
+          senderUserId: senderMembership.userId,
+          subject: input.subject,
+          body: input.body,
+          status: "SENT",
+          sentAt: new Date(),
+        },
+      });
+
+      await this.prisma.internalMessageRecipient.createMany({
+        data: parentLinks.map((link) => ({
+          messageId: message.id,
+          schoolId: input.schoolId,
+          recipientUserId: link.parentUserId,
+        })),
+        skipDuplicates: true,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Unable to send student parent notification for user ${input.userId}`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+
   async getPinRecoveryOptions(input: { email?: string; phone?: string }) {
     const user = await this.resolveUserForPinRecovery(input);
     const questions = this.getRecoveryQuestions();
@@ -2482,7 +2947,11 @@ export class AuthService {
     };
   }
 
-  async getProfileSetupOptions(input: { email?: string; setupToken?: string }) {
+  async getProfileSetupOptions(input: {
+    email?: string;
+    username?: string;
+    setupToken?: string;
+  }) {
     const user = await this.resolveUserForOnboarding(input);
 
     const schoolMembership = user.memberships[0];

@@ -126,6 +126,11 @@ describe("Enrollments page forms", () => {
       target: { value: "Ntamack" },
     });
 
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Filtrer" }),
+      ).not.toBeDisabled(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Filtrer" }));
 
     await waitFor(() => {

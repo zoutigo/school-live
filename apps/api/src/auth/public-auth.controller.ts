@@ -31,13 +31,18 @@ import { ForgotPinCompleteDto } from "./dto/forgot-pin-complete.dto.js";
 import { ForgotPinOptionsDto } from "./dto/forgot-pin-options.dto.js";
 import { ForgotPinVerifyDto } from "./dto/forgot-pin-verify.dto.js";
 import { FirstPasswordChangeDto } from "./dto/first-password-change.dto.js";
+import { FirstPasswordChangeUsernameDto } from "./dto/first-password-change-username.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { LoginPhoneDto } from "./dto/login-phone.dto.js";
+import { LoginUsernameDto } from "./dto/login-username.dto.js";
 import { OnboardingCompleteDto } from "./dto/onboarding-complete.dto.js";
 import { OnboardingOptionsDto } from "./dto/onboarding-options.dto.js";
 import { PlatformCredentialsCompleteDto } from "./dto/platform-credentials-complete.dto.js";
 import { ProfileSetupDto } from "./dto/profile-setup.dto.js";
 import { ProfileSetupOptionsDto } from "./dto/profile-setup-options.dto.js";
+import { RecoverUsernameResetDto } from "./dto/recover-username-reset.dto.js";
+import { RecoverUsernameStartDto } from "./dto/recover-username-start.dto.js";
+import { RecoverUsernameVerifyDto } from "./dto/recover-username-verify.dto.js";
 import { SsoLoginDto } from "./dto/sso-login.dto.js";
 import { SsoProfileCompleteDto } from "./dto/sso-profile-complete.dto.js";
 import { SsoProfileOptionsDto } from "./dto/sso-profile-options.dto.js";
@@ -86,6 +91,33 @@ export class PublicAuthController {
       payload.phone,
       payload.pin,
       payload.schoolSlug,
+      this.getRequestContext(req),
+    );
+    const csrfToken = setAuthCookies(
+      res,
+      authResponse,
+      process.env.NODE_ENV === "production",
+    );
+    return {
+      accessToken: authResponse.accessToken,
+      refreshToken: authResponse.refreshToken,
+      tokenType: authResponse.tokenType,
+      expiresIn: authResponse.expiresIn,
+      refreshExpiresIn: authResponse.refreshExpiresIn,
+      schoolSlug: authResponse.schoolSlug,
+      csrfToken,
+    };
+  }
+
+  @Post("login/username")
+  async loginUsername(
+    @Body() payload: LoginUsernameDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const authResponse = await this.authService.loginWithUsername(
+      payload.username,
+      payload.password,
       this.getRequestContext(req),
     );
     const csrfToken = setAuthCookies(
@@ -182,6 +214,17 @@ export class PublicAuthController {
   firstPasswordChange(@Body() payload: FirstPasswordChangeDto) {
     return this.authService.firstPasswordChange(
       payload.email,
+      payload.temporaryPassword,
+      payload.newPassword,
+    );
+  }
+
+  @Post("first-password-change/username")
+  firstPasswordChangeByUsername(
+    @Body() payload: FirstPasswordChangeUsernameDto,
+  ) {
+    return this.authService.firstPasswordChangeByUsername(
+      payload.username,
       payload.temporaryPassword,
       payload.newPassword,
     );
@@ -298,6 +341,28 @@ export class PublicAuthController {
   forgotPasswordComplete(@Body() payload: ForgotPasswordCompleteDto) {
     return this.authService.completePasswordReset(
       payload.token,
+      payload.newPassword,
+    );
+  }
+
+  @Post("recover/username/start")
+  recoverUsernameStart(@Body() payload: RecoverUsernameStartDto) {
+    return this.authService.startUsernameRecovery(payload.username);
+  }
+
+  @Post("recover/username/verify")
+  recoverUsernameVerify(@Body() payload: RecoverUsernameVerifyDto) {
+    return this.authService.verifyUsernameRecovery({
+      username: payload.username,
+      birthDate: payload.birthDate,
+      answers: payload.answers,
+    });
+  }
+
+  @Post("recover/username/reset")
+  recoverUsernameReset(@Body() payload: RecoverUsernameResetDto) {
+    return this.authService.completeUsernameRecovery(
+      payload.recoveryToken,
       payload.newPassword,
     );
   }

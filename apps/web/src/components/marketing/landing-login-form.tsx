@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -54,12 +54,50 @@ type MeResponse = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+
+const PREFERRED_METHOD_KEY = "preferred_auth_method";
+type AuthMethod = "phone" | "email" | "username" | "sso";
+
+const ALL_METHODS: Array<{ key: AuthMethod; label: string }> = [
+  { key: "phone", label: "Telephone + PIN" },
+  { key: "email", label: "Email + Mot de passe" },
+  { key: "username", label: "Identifiant + Mot de passe" },
+  { key: "sso", label: "Google / Apple" },
+];
+
+function loadPreferredMethod(): AuthMethod {
+  if (typeof localStorage === "undefined") return "phone";
+  const stored = localStorage.getItem(PREFERRED_METHOD_KEY);
+  if (
+    stored === "phone" ||
+    stored === "email" ||
+    stored === "username" ||
+    stored === "sso"
+  ) {
+    return stored;
+  }
+  return "phone";
+}
+
+function savePreferredMethod(method: AuthMethod) {
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(PREFERRED_METHOD_KEY, method);
+  }
+}
+
 const phonePinSchema = z.object({
   phone: z.string().regex(/^\d{9}$/, "Numero invalide (9 chiffres attendus)."),
   pin: z.string().regex(/^\d{6}$/, "PIN invalide (6 chiffres attendus)."),
 });
 const credentialsSchema = z.object({
   email: z.string().trim().email("Adresse email invalide."),
+  password: z.string().min(1, "Mot de passe requis."),
+});
+const usernameLoginSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(3, "Identifiant invalide (3 caracteres minimum)."),
   password: z.string().min(1, "Mot de passe requis."),
 });
 
@@ -92,7 +130,8 @@ function parseApiError(payload: ApiErrorPayload) {
 function getZodFieldError(
   result:
     | ReturnType<typeof phonePinSchema.safeParse>
-    | ReturnType<typeof credentialsSchema.safeParse>,
+    | ReturnType<typeof credentialsSchema.safeParse>
+    | ReturnType<typeof usernameLoginSchema.safeParse>,
   field: string,
 ) {
   if (result.success) {
@@ -107,6 +146,40 @@ export function LandingLoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingPhone, setLoadingPhone] = useState(false);
+  const [loadingUsername, setLoadingUsername] = useState(false);
+  const [activeMethod, setActiveMethod] = useState<AuthMethod>("phone");
+  const [showMethodDropdown, setShowMethodDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
+      setActiveMethod(loadPreferredMethod());
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showMethodDropdown) return;
+    function onClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowMethodDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [showMethodDropdown]);
+
+  function switchMethod(method: AuthMethod) {
+    setActiveMethod(method);
+    savePreferredMethod(method);
+    setShowMethodDropdown(false);
+    setError(null);
+  }
+
   const phoneForm = useForm<z.infer<typeof phonePinSchema>>({
     resolver: zodResolver(phonePinSchema),
     mode: "onChange",
@@ -120,6 +193,14 @@ export function LandingLoginForm() {
     mode: "onChange",
     defaultValues: {
       email: "",
+      password: "",
+    },
+  });
+  const usernameForm = useForm<z.infer<typeof usernameLoginSchema>>({
+    resolver: zodResolver(usernameLoginSchema),
+    mode: "onChange",
+    defaultValues: {
+      username: "",
       password: "",
     },
   });
@@ -142,6 +223,16 @@ export function LandingLoginForm() {
     email.length > 0 ||
     password.length > 0 ||
     credentialsForm.formState.submitCount > 0;
+  const usernameValue = usernameForm.watch("username");
+  const usernamePassword = usernameForm.watch("password");
+  const usernameValidation = usernameLoginSchema.safeParse({
+    username: usernameValue ?? "",
+    password: usernamePassword ?? "",
+  });
+  const showUsernameErrors =
+    usernameValue.length > 0 ||
+    (usernamePassword?.length ?? 0) > 0 ||
+    usernameForm.formState.submitCount > 0;
 
   async function redirectAfterLogin() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -347,6 +438,56 @@ export function LandingLoginForm() {
     }
   }
 
+  async function onUsernameSubmit(values: z.infer<typeof usernameLoginSchema>) {
+    setError(null);
+    setLoadingUsername(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/login/username`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: values.username,
+          password: values.password,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          const payload = (await response.json()) as ApiErrorPayload;
+          const parsed = parseApiError(payload);
+
+          if (parsed.code === "PASSWORD_CHANGE_REQUIRED") {
+            const params = new URLSearchParams({
+              username: values.username,
+            });
+            if (parsed.schoolSlug) {
+              params.set("schoolSlug", parsed.schoolSlug);
+            }
+            router.push(`/first-password?${params.toString()}`);
+            return;
+          }
+        }
+        throw new Error("Identifiant ou mot de passe invalide");
+      }
+
+      savePreferredMethod("username");
+      await redirectAfterLogin();
+    } catch (submissionError) {
+      setError(
+        submissionError instanceof Error
+          ? submissionError.message
+          : "Erreur de connexion",
+      );
+    } finally {
+      setLoadingUsername(false);
+    }
+  }
+
+  const otherMethods = ALL_METHODS.filter((m) => m.key !== activeMethod);
+  const activeMethodLabel =
+    ALL_METHODS.find((m) => m.key === activeMethod)?.label ?? "";
+
   return (
     <div className="grid gap-4">
       {error ? (
@@ -354,6 +495,37 @@ export function LandingLoginForm() {
           {error}
         </div>
       ) : null}
+
+      {/* Method switcher */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-text-primary">
+          {activeMethodLabel}
+        </span>
+        <div className="relative" ref={dropdownRef}>
+          <button
+            type="button"
+            aria-label="Se connecter autrement"
+            className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            onClick={() => setShowMethodDropdown((v) => !v)}
+          >
+            Se connecter autrement
+          </button>
+          {showMethodDropdown ? (
+            <div className="absolute right-0 z-10 mt-1 min-w-[220px] rounded-card border border-border bg-surface py-1 shadow-card">
+              {otherMethods.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  className="w-full px-4 py-2 text-left text-sm text-text-primary hover:bg-warm-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={() => switchMethod(m.key)}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-4">
         <section className="min-w-[260px] flex-1 rounded-card border border-border bg-surface p-4">
@@ -547,6 +719,106 @@ export function LandingLoginForm() {
             </Link>
           </form>
         </section>
+
+        {activeMethod === "username" ? (
+          <section className="min-w-[260px] flex-1 rounded-card border border-border bg-surface p-4">
+            <h3 className="font-heading text-base font-semibold">
+              Identifiant + Mot de passe
+            </h3>
+            <p className="mb-3 text-xs text-text-secondary">
+              Connexion par identifiant
+            </p>
+            <form
+              className="grid gap-3"
+              onSubmit={usernameForm.handleSubmit(onUsernameSubmit)}
+              noValidate
+            >
+              <FormField
+                label="Identifiant"
+                error={
+                  showUsernameErrors
+                    ? getZodFieldError(usernameValidation, "username")
+                    : null
+                }
+              >
+                <Controller
+                  control={usernameForm.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormTextInput
+                      name={field.name}
+                      ref={field.ref}
+                      invalid={
+                        showUsernameErrors
+                          ? !!getZodFieldError(usernameValidation, "username")
+                          : false
+                      }
+                      value={field.value}
+                      onChange={(event) =>
+                        usernameForm.setValue("username", event.target.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      onBlur={field.onBlur}
+                      placeholder="PrenomNOM"
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField
+                label="Mot de passe"
+                error={
+                  showUsernameErrors
+                    ? getZodFieldError(usernameValidation, "password")
+                    : null
+                }
+              >
+                <Controller
+                  control={usernameForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <PasswordInput
+                      aria-label="Mot de passe (identifiant)"
+                      name={field.name}
+                      aria-invalid={
+                        showUsernameErrors
+                          ? getZodFieldError(usernameValidation, "password")
+                            ? "true"
+                            : "false"
+                          : "false"
+                      }
+                      value={field.value}
+                      onChange={(event) =>
+                        usernameForm.setValue("password", event.target.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      onBlur={field.onBlur}
+                    />
+                  )}
+                />
+              </FormField>
+              <FormSubmitHint visible={!usernameValidation.success} />
+              <Button
+                type="submit"
+                disabled={loadingUsername || !usernameValidation.success}
+              >
+                {loadingUsername
+                  ? "Connexion..."
+                  : "Se connecter (identifiant)"}
+              </Button>
+              <Link
+                href="/identifiant-oublie"
+                className="justify-self-start text-xs font-medium text-primary hover:underline"
+              >
+                Mot de passe oublie ?
+              </Link>
+            </form>
+          </section>
+        ) : null}
 
         <section className="min-w-[260px] flex-1 rounded-card border border-border bg-surface p-4">
           <h3 className="font-heading text-base font-semibold">

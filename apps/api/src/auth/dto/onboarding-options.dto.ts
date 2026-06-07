@@ -7,5 +7,9 @@ export class OnboardingOptionsDto {
 
   @IsOptional()
   @IsString()
+  username?: string;
+
+  @IsOptional()
+  @IsString()
   setupToken?: string;
 }
