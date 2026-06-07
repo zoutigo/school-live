@@ -34,6 +34,10 @@ export class MobileBuildsService {
     return this.mediaClientService.publishAndroidBuild(file, {
       versionName: payload.versionName,
       versionCode: Number(payload.versionCode),
+      minimumVersionCode:
+        payload.minimumVersionCode !== undefined
+          ? Number(payload.minimumVersionCode)
+          : undefined,
       gitSha: payload.gitSha,
       buildId: payload.buildId,
     });

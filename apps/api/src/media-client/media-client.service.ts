@@ -107,6 +107,7 @@ export class MediaClientService {
     metadata: {
       versionName: string;
       versionCode: number;
+      minimumVersionCode?: number;
       gitSha?: string;
       buildId?: string;
     },
@@ -129,6 +130,12 @@ export class MediaClientService {
     );
     formData.append("versionName", metadata.versionName);
     formData.append("versionCode", String(metadata.versionCode));
+    if (metadata.minimumVersionCode !== undefined) {
+      formData.append(
+        "minimumVersionCode",
+        String(metadata.minimumVersionCode),
+      );
+    }
     if (metadata.gitSha) {
       formData.append("gitSha", metadata.gitSha);
     }
@@ -165,6 +172,7 @@ export class MediaClientService {
     return (await response.json()) as {
       versionName: string;
       versionCode: number;
+      minimumVersionCode?: number;
       uploadedAt: string;
       fileSize: number;
       mimeType: string;

@@ -42,6 +42,10 @@ export class MobileBuildsMediaController {
     return this.imageStorageService.publishAndroidBuild(file, {
       versionName: payload.versionName,
       versionCode: Number(payload.versionCode),
+      minimumVersionCode:
+        payload.minimumVersionCode !== undefined
+          ? Number(payload.minimumVersionCode)
+          : undefined,
       gitSha: payload.gitSha,
       buildId: payload.buildId,
     });

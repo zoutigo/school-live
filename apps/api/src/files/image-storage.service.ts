@@ -39,6 +39,7 @@ type AndroidBuildSlot = "latest" | "previous-1" | "previous-2";
 type AndroidBuildMetadata = {
   versionName: string;
   versionCode: number;
+  minimumVersionCode?: number;
   uploadedAt: string;
   fileSize: number;
   mimeType: string;
@@ -239,6 +240,7 @@ export class ImageStorageService {
     metadata: {
       versionName: string;
       versionCode: number;
+      minimumVersionCode?: number;
       gitSha?: string;
       buildId?: string;
     },
@@ -602,6 +604,7 @@ export class ImageStorageService {
     metadata: {
       versionName: string;
       versionCode: number;
+      minimumVersionCode?: number;
       gitSha?: string;
       buildId?: string;
     },
@@ -609,6 +612,9 @@ export class ImageStorageService {
     return {
       versionName: metadata.versionName,
       versionCode: metadata.versionCode,
+      ...(metadata.minimumVersionCode !== undefined && {
+        minimumVersionCode: metadata.minimumVersionCode,
+      }),
       uploadedAt: new Date().toISOString(),
       fileSize: file.size,
       mimeType: file.mimetype,

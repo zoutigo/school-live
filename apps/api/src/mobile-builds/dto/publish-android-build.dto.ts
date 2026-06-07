@@ -10,6 +10,11 @@ export class PublishAndroidBuildDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d+$/)
+  minimumVersionCode?: string;
+
+  @IsOptional()
+  @IsString()
   gitSha?: string;
 
   @IsOptional()
