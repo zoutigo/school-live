@@ -532,13 +532,23 @@ export class SchoolUsersService {
       );
     }
 
-    // Delete all existing memberships for this user in this school and recreate
-    await this.prisma.$transaction([
-      this.prisma.schoolMembership.deleteMany({ where: { schoolId, userId } }),
-      this.prisma.schoolMembership.createMany({
+    const becomesTeacher = dto.roles.includes("TEACHER");
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.schoolMembership.deleteMany({ where: { schoolId, userId } });
+      await tx.schoolMembership.createMany({
         data: dto.roles.map((role) => ({ schoolId, userId, role })),
-      }),
-    ]);
+      });
+      if (becomesTeacher) {
+        await tx.teacher.upsert({
+          where: { schoolId_userId: { schoolId, userId } },
+          create: { schoolId, userId },
+          update: {},
+        });
+      } else {
+        await tx.teacher.deleteMany({ where: { schoolId, userId } });
+      }
+    });
 
     const updated = await this.prisma.schoolMembership.findMany({
       where: { schoolId, userId },

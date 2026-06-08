@@ -50,6 +50,10 @@ const makePrismaMock = () => ({
     deleteMany: jest.fn(),
     createMany: jest.fn(),
   },
+  teacher: {
+    upsert: jest.fn(),
+    deleteMany: jest.fn(),
+  },
   $transaction: jest.fn(),
 });
 
@@ -530,12 +534,20 @@ describe("SchoolUsersService", () => {
   // ── updateMemberRoles — unitaires ────────────────────────────────────────────
 
   describe("updateMemberRoles", () => {
+    function setupTransaction() {
+      // callback-style transaction : appelle le callback avec prisma comme tx
+      prisma.$transaction.mockImplementation(
+        async (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+      );
+    }
+
     it("remplace tous les rôles et retourne les nouveaux rôles", async () => {
       prisma.schoolMembership.findFirst.mockResolvedValue({
         schoolId: SCHOOL_ID,
         userId: USER_ID,
       });
-      prisma.$transaction.mockResolvedValue([undefined, undefined]);
+      setupTransaction();
+      prisma.teacher.upsert.mockResolvedValue({});
       prisma.schoolMembership.findMany.mockResolvedValue([
         { role: "TEACHER" },
         { role: "PARENT" },
@@ -553,7 +565,8 @@ describe("SchoolUsersService", () => {
         schoolId: SCHOOL_ID,
         userId: USER_ID,
       });
-      prisma.$transaction.mockResolvedValue([undefined, undefined]);
+      setupTransaction();
+      prisma.teacher.deleteMany.mockResolvedValue({ count: 0 });
       prisma.schoolMembership.findMany.mockResolvedValue([
         { role: "SCHOOL_ADMIN" },
       ]);
@@ -590,7 +603,8 @@ describe("SchoolUsersService", () => {
         schoolId: SCHOOL_ID,
         userId: USER_ID,
       });
-      prisma.$transaction.mockResolvedValue([undefined, undefined]);
+      setupTransaction();
+      prisma.teacher.upsert.mockResolvedValue({});
       prisma.schoolMembership.findMany.mockResolvedValue([
         { role: "TEACHER" },
         { role: "PARENT" },
@@ -607,6 +621,87 @@ describe("SchoolUsersService", () => {
           { schoolId: SCHOOL_ID, userId: USER_ID, role: "PARENT" },
           { schoolId: SCHOOL_ID, userId: USER_ID, role: "STUDENT" },
         ],
+      });
+    });
+
+    // ── Sync table Teacher ───────────────────────────────────────────────────
+
+    it("upsert Teacher quand le rôle TEACHER est dans les nouveaux rôles", async () => {
+      prisma.schoolMembership.findFirst.mockResolvedValue({
+        schoolId: SCHOOL_ID,
+        userId: USER_ID,
+      });
+      setupTransaction();
+      prisma.teacher.upsert.mockResolvedValue({});
+      prisma.schoolMembership.findMany.mockResolvedValue([{ role: "TEACHER" }]);
+
+      await service.updateMemberRoles(SCHOOL_ID, USER_ID, {
+        roles: ["TEACHER"],
+      });
+
+      expect(prisma.teacher.upsert).toHaveBeenCalledWith({
+        where: {
+          schoolId_userId: { schoolId: SCHOOL_ID, userId: USER_ID },
+        },
+        create: { schoolId: SCHOOL_ID, userId: USER_ID },
+        update: {},
+      });
+      expect(prisma.teacher.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it("supprime le profil Teacher quand TEACHER est retiré des rôles", async () => {
+      prisma.schoolMembership.findFirst.mockResolvedValue({
+        schoolId: SCHOOL_ID,
+        userId: USER_ID,
+      });
+      setupTransaction();
+      prisma.teacher.deleteMany.mockResolvedValue({ count: 1 });
+      prisma.schoolMembership.findMany.mockResolvedValue([
+        { role: "SCHOOL_ADMIN" },
+      ]);
+
+      await service.updateMemberRoles(SCHOOL_ID, USER_ID, {
+        roles: ["SCHOOL_ADMIN"],
+      });
+
+      expect(prisma.teacher.deleteMany).toHaveBeenCalledWith({
+        where: { schoolId: SCHOOL_ID, userId: USER_ID },
+      });
+      expect(prisma.teacher.upsert).not.toHaveBeenCalled();
+    });
+
+    it("ne crée pas de doublon si l'utilisateur est déjà enseignant", async () => {
+      prisma.schoolMembership.findFirst.mockResolvedValue({
+        schoolId: SCHOOL_ID,
+        userId: USER_ID,
+      });
+      setupTransaction();
+      prisma.teacher.upsert.mockResolvedValue({});
+      prisma.schoolMembership.findMany.mockResolvedValue([{ role: "TEACHER" }]);
+
+      await service.updateMemberRoles(SCHOOL_ID, USER_ID, {
+        roles: ["TEACHER"],
+      });
+
+      // upsert doit être appelé exactement une fois (pas deux fois)
+      expect(prisma.teacher.upsert).toHaveBeenCalledTimes(1);
+    });
+
+    it("deleteMany Teacher est appelé même si le profil n'existait pas (idempotent)", async () => {
+      prisma.schoolMembership.findFirst.mockResolvedValue({
+        schoolId: SCHOOL_ID,
+        userId: USER_ID,
+      });
+      setupTransaction();
+      prisma.teacher.deleteMany.mockResolvedValue({ count: 0 }); // rien à supprimer
+      prisma.schoolMembership.findMany.mockResolvedValue([{ role: "PARENT" }]);
+
+      await service.updateMemberRoles(SCHOOL_ID, USER_ID, {
+        roles: ["PARENT"],
+      });
+
+      expect(prisma.teacher.deleteMany).toHaveBeenCalledWith({
+        where: { schoolId: SCHOOL_ID, userId: USER_ID },
       });
     });
   });
