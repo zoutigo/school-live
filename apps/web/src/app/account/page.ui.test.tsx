@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AccountPage from "./page";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 const replaceMock = vi.fn();
 const pushMock = vi.fn();
@@ -27,6 +29,8 @@ describe("AccountPage recovery settings UI", () => {
     getCsrfTokenCookieMock.mockReset();
     getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
     vi.restoreAllMocks();
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("loads recovery options when opening security tab", async () => {
@@ -508,5 +512,243 @@ describe("AccountPage recovery settings UI", () => {
       target: { value: "222222" },
     });
     await waitFor(() => expect(submitButton).toBeEnabled());
+  });
+
+  it("shows the password section translated in English", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SUPER_ADMIN",
+              schoolSlug: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Securite" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit password" }));
+
+    const submitButton = screen.getByRole("button", {
+      name: "Change password",
+    });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(screen.getByLabelText("New password"), {
+      target: { value: "abc" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "The password must be at least 8 characters long with uppercase, lowercase and numbers.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.input(screen.getByLabelText("Old password"), {
+      target: { value: "CurrentPass123" },
+    });
+    fireEvent.input(screen.getByLabelText("New password"), {
+      target: { value: "ValidPass123" },
+    });
+    fireEvent.input(screen.getByLabelText("Confirm new password"), {
+      target: { value: "ValidPass124" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText("The confirmation does not match the new password."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows the PIN section translated in English", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SUPER_ADMIN",
+              schoolSlug: null,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Securite" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit PIN" }));
+
+    const submitButton = screen.getByRole("button", { name: "Change PIN" });
+    expect(submitButton).toBeDisabled();
+
+    fireEvent.input(screen.getByLabelText("New PIN (6 digits)"), {
+      target: { value: "12345" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText("The new PIN must contain 6 digits."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.input(screen.getByLabelText("Current PIN"), {
+      target: { value: "111111" },
+    });
+    fireEvent.input(screen.getByLabelText("New PIN (6 digits)"), {
+      target: { value: "222222" },
+    });
+    fireEvent.input(screen.getByLabelText("Confirm PIN"), {
+      target: { value: "333333" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText("The confirmation does not match the new PIN."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("synchronise la langue de l'appareil avec la langue du compte au chargement", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SUPER_ADMIN",
+              schoolSlug: null,
+              preferredLocale: "EN",
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+        );
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(useLocaleStore.getState().locale).toBe("en");
+    });
+  });
+
+  it("affiche la section Langue du compte et permet de la mettre a jour", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        if (url.endsWith("/me/language")) {
+          expect(init?.method).toBe("PUT");
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                firstName: "Zoutigo",
+                lastName: "Admin",
+                email: "zoutigo@gmail.com",
+                role: "SUPER_ADMIN",
+                schoolSlug: null,
+                preferredLocale: "EN",
+              }),
+              {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              },
+            ),
+          );
+        }
+
+        if (url.endsWith("/me")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                firstName: "Zoutigo",
+                lastName: "Admin",
+                email: "zoutigo@gmail.com",
+                role: "SUPER_ADMIN",
+                schoolSlug: null,
+                preferredLocale: "FR",
+              }),
+              {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              },
+            ),
+          );
+        }
+
+        return Promise.resolve(new Response(null, { status: 404 }));
+      });
+
+    render(<AccountPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("account-language-section"),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("account-language-fr")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByTestId("account-language-en")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    fireEvent.click(screen.getByTestId("account-language-en"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("account-language-en")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+    expect(
+      screen.getByText("La langue de votre compte a ete enregistree."),
+    ).toBeInTheDocument();
+    expect(useLocaleStore.getState().locale).toBe("en");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/me/language"),
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({
+          "X-CSRF-Token": "csrf-token-test",
+        }),
+        body: JSON.stringify({ preferredLocale: "EN" }),
+      }),
+    );
   });
 });

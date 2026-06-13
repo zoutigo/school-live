@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlatformCredentialsCompletionClient } from "./platform-credentials-completion-client";
+import { useLocaleStore } from "../../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../../i18n/translations";
 
 const replaceMock = vi.fn();
 
@@ -12,6 +14,7 @@ describe("PlatformCredentialsCompletionClient UI", () => {
   beforeEach(() => {
     replaceMock.mockReset();
     vi.restoreAllMocks();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("shows inline zod errors only after interaction and keeps submit disabled until valid", async () => {
@@ -133,5 +136,26 @@ describe("PlatformCredentialsCompletionClient UI", () => {
         }),
       }),
     );
+  });
+
+  it("traduit le contenu de la page en anglais quand la langue EN est active", () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    render(
+      <PlatformCredentialsCompletionClient
+        token="platform-setup-token-very-long"
+        email="platform@example.test"
+        missing="PASSWORD,PHONE_PIN"
+      />,
+    );
+
+    expect(screen.getByText("Complete your credentials")).toBeInTheDocument();
+    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirm password")).toBeInTheDocument();
+    expect(screen.getByLabelText("Phone")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirm phone")).toBeInTheDocument();
+    expect(screen.getByLabelText("New PIN (6 digits)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirm PIN")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
   });
 });

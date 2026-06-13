@@ -7,45 +7,53 @@ export type RecoveryQuestion = {
 
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
-export const step1Schema = z.object({
-  username: z
-    .string()
-    .trim()
-    .min(3, "Identifiant invalide (3 caracteres minimum)."),
-});
-
-export function buildStep2Schema(questions: RecoveryQuestion[]) {
-  return z
-    .object({
-      birthDate: z.string().min(1, "La date de naissance est obligatoire."),
-      answers: z.record(z.string(), z.string().trim().min(2)),
-    })
-    .superRefine((value, ctx) => {
-      for (const question of questions) {
-        const answer = value.answers[question.key] ?? "";
-        if (answer.trim().length < 2) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["answers", question.key],
-            message: `Reponse obligatoire: ${question.label}`,
-          });
-        }
-      }
-    });
-}
-
-export const step3Schema = z
-  .object({
-    newPassword: z
+export function createUsernameRecoverySchemas(t: (key: string) => string) {
+  const step1Schema = z.object({
+    username: z
       .string()
-      .min(8, "Le mot de passe doit faire au moins 8 caracteres.")
-      .regex(
-        PASSWORD_COMPLEXITY_REGEX,
-        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-      ),
-    confirmPassword: z.string().min(1, "Confirmez le mot de passe."),
-  })
-  .refine((value) => value.newPassword === value.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "La confirmation ne correspond pas au nouveau mot de passe.",
+      .trim()
+      .min(3, t("recovery.username.errors.usernameInvalid")),
   });
+
+  function buildStep2Schema(questions: RecoveryQuestion[]) {
+    return z
+      .object({
+        birthDate: z
+          .string()
+          .min(1, t("recovery.password.errors.birthDateRequired")),
+        answers: z.record(z.string(), z.string().trim().min(2)),
+      })
+      .superRefine((value, ctx) => {
+        for (const question of questions) {
+          const answer = value.answers[question.key] ?? "";
+          if (answer.trim().length < 2) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["answers", question.key],
+              message: `${t("recovery.password.errors.answerRequiredPrefix")}: ${question.label}`,
+            });
+          }
+        }
+      });
+  }
+
+  const step3Schema = z
+    .object({
+      newPassword: z
+        .string()
+        .min(8, t("recovery.password.errors.passwordMinLength"))
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          t("recovery.password.errors.passwordComplexity"),
+        ),
+      confirmPassword: z
+        .string()
+        .min(1, t("recovery.password.errors.confirmPasswordRequired")),
+    })
+    .refine((value) => value.newPassword === value.confirmPassword, {
+      path: ["confirmPassword"],
+      message: t("recovery.password.errors.passwordConfirmMismatch"),
+    });
+
+  return { step1Schema, buildStep2Schema, step3Schema };
+}

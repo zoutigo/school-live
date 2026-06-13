@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PinRecoveryPage from "./page";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 let currentSearchParams = new URLSearchParams();
 const replaceMock = vi.fn();
@@ -15,6 +17,7 @@ describe("PinRecoveryPage UI", () => {
     currentSearchParams = new URLSearchParams("schoolSlug=college-vogt");
     replaceMock.mockReset();
     vi.restoreAllMocks();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("renders recovery shell layout", () => {
@@ -330,5 +333,20 @@ describe("PinRecoveryPage UI", () => {
       ).not.toBeInTheDocument();
       expect(verifyButton).toBeEnabled();
     });
+  });
+
+  it("traduit le contenu de la page en anglais quand la langue EN est active", () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    render(<PinRecoveryPage />);
+
+    expect(screen.getByText("PIN recovery")).toBeInTheDocument();
+    expect(screen.getByText("Lost PIN")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email (optional)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Phone (optional)")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continue to recovery questions" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Back to sign in")).toBeInTheDocument();
   });
 });

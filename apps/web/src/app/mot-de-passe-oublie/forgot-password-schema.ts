@@ -55,3 +55,59 @@ export const completeResetSchema = z
     path: ["confirmPassword"],
     message: "La confirmation ne correspond pas au nouveau mot de passe.",
   });
+
+export function createForgotPasswordSchemas(t: (key: string) => string) {
+  const requestResetSchema = z.object({
+    email: z.string().trim().email(t("recovery.password.errors.invalidEmail")),
+  });
+
+  function buildVerifyResetSchema(questions: RecoveryQuestion[]) {
+    return z
+      .object({
+        token: z
+          .string()
+          .trim()
+          .min(16, t("recovery.password.errors.invalidLink")),
+        birthDate: z
+          .string()
+          .min(1, t("recovery.password.errors.birthDateRequired")),
+        answers: z.record(z.string(), z.string().trim().min(2)),
+      })
+      .superRefine((value, ctx) => {
+        for (const question of questions) {
+          const answer = value.answers[question.key] ?? "";
+          if (answer.trim().length < 2) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["answers", question.key],
+              message: `${t("recovery.password.errors.answerRequiredPrefix")}: ${question.label}`,
+            });
+          }
+        }
+      });
+  }
+
+  const completeResetSchema = z
+    .object({
+      token: z
+        .string()
+        .trim()
+        .min(16, t("recovery.password.errors.invalidLink")),
+      newPassword: z
+        .string()
+        .min(8, t("recovery.password.errors.passwordMinLength"))
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          t("recovery.password.errors.passwordComplexity"),
+        ),
+      confirmPassword: z
+        .string()
+        .min(1, t("recovery.password.errors.confirmPasswordRequired")),
+    })
+    .refine((value) => value.newPassword === value.confirmPassword, {
+      path: ["confirmPassword"],
+      message: t("recovery.password.errors.passwordConfirmMismatch"),
+    });
+
+  return { requestResetSchema, buildVerifyResetSchema, completeResetSchema };
+}

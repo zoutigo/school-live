@@ -3,6 +3,7 @@ import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "./auth.types.js";
 import { SetActiveRoleDto } from "./dto/set-active-role.dto.js";
 import { UpdatePersonalProfileDto } from "./dto/update-personal-profile.dto.js";
+import { UpdatePreferredLocaleDto } from "./dto/update-preferred-locale.dto.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
 import { AuthService } from "./auth.service.js";
 
@@ -32,5 +33,17 @@ export class GlobalMeController {
     @Body() payload: UpdatePersonalProfileDto,
   ) {
     return this.authService.updatePersonalProfile(user.id, payload);
+  }
+
+  @Put("me/language")
+  @UseGuards(JwtAuthGuard)
+  updateLanguage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: UpdatePreferredLocaleDto,
+  ) {
+    return this.authService.updatePreferredLocale(
+      user.id,
+      payload.preferredLocale,
+    );
   }
 }

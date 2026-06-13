@@ -15,6 +15,9 @@ import {
 } from "../../../components/ui/form-controls";
 import { FormField } from "../../../components/ui/form-field";
 import { PinInput } from "../../../components/ui/pin-input";
+import { RecoveryShell } from "../../../components/layout/recovery-shell";
+import { useTranslation } from "../../../i18n/useTranslation";
+import type { ReactNode } from "react";
 
 type Role =
   | "SUPER_ADMIN"
@@ -50,15 +53,28 @@ type Props = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-const ssoCompletionSchema = z.object({
-  firstName: z.string().trim().min(1, "Prenom requis."),
-  lastName: z.string().trim().min(1, "Nom requis."),
-  gender: z.enum(["M", "F", "OTHER"]),
-  phone: z.string().regex(/^\d{9}$/, "Numero invalide (9 chiffres attendus)."),
-  newPin: z
-    .string()
-    .regex(/^\d{6}$/, "Le PIN doit contenir exactement 6 chiffres."),
-});
+
+function createSsoCompletionSchema(t: (key: string) => string) {
+  return z.object({
+    firstName: z
+      .string()
+      .trim()
+      .min(1, t("ssoProfile.errors.firstNameRequired")),
+    lastName: z.string().trim().min(1, t("ssoProfile.errors.lastNameRequired")),
+    gender: z.enum(["M", "F", "OTHER"]),
+    phone: z.string().regex(/^\d{9}$/, t("recovery.pin.errors.invalidPhone")),
+    newPin: z.string().regex(/^\d{6}$/, t("recovery.pin.errors.pinFormat")),
+  });
+}
+
+export function SsoProfileShell({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <RecoveryShell title={t("ssoProfile.shell.title")}>
+      {children}
+    </RecoveryShell>
+  );
+}
 
 function normalizePhoneInput(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -81,6 +97,11 @@ function toLocalPhoneDisplay(value: string | null | undefined) {
 
 export function SsoProfileCompletionClient({ schoolSlug }: Props) {
   const router = useRouter();
+  const { locale, t } = useTranslation();
+  const ssoCompletionSchema = useMemo(
+    () => createSsoCompletionSchema(t),
+    [locale],
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,7 +214,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
         return;
       }
 
-      throw new Error("Connexion SSO impossible apres completion du profil.");
+      throw new Error(t("ssoProfile.errors.ssoLoginFailed"));
     }
 
     await signOut({ redirect: false });
@@ -202,7 +223,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
       credentials: "include",
     });
     if (!meResponse.ok) {
-      throw new Error("Session invalide apres connexion SSO");
+      throw new Error(t("ssoProfile.errors.sessionInvalidAfterLogin"));
     }
 
     const me = (await meResponse.json()) as MeResponse;
@@ -217,7 +238,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
     }
 
     if (!me.schoolSlug) {
-      throw new Error("Aucune ecole associee a ce compte");
+      throw new Error(t("ssoProfile.errors.noSchoolLinked"));
     }
 
     router.replace(`/schools/${me.schoolSlug}/dashboard`);
@@ -238,7 +259,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           | undefined;
 
         if (!user?.email || !user.provider || !user.providerAccountId) {
-          throw new Error("Session SSO incomplete");
+          throw new Error(t("ssoProfile.errors.incompleteSession"));
         }
 
         const normalizedProvider = user.provider as "GOOGLE" | "APPLE";
@@ -263,9 +284,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
         );
 
         if (!optionsResponse.ok) {
-          throw new Error(
-            "Impossible de charger les informations de profil SSO",
-          );
+          throw new Error(t("ssoProfile.errors.loadProfileFailed"));
         }
 
         const options = (await optionsResponse.json()) as SsoOptionsResponse;
@@ -291,7 +310,11 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
         }
       } catch (cause) {
         if (!cancelled) {
-          setError(cause instanceof Error ? cause.message : "Erreur");
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : t("ssoProfile.errors.generic"),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -311,7 +334,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
     setError(null);
 
     if (!provider || !providerAccountId || !email) {
-      setError("Session SSO invalide.");
+      setError(t("ssoProfile.errors.invalidSession"));
       return;
     }
 
@@ -340,13 +363,15 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Completion du profil impossible.");
+            : (payload?.message ?? t("ssoProfile.errors.completionFailed"));
         throw new Error(String(message));
       }
 
       await finalizeAppSession({ provider, providerAccountId, email });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Erreur");
+      setError(
+        cause instanceof Error ? cause.message : t("ssoProfile.errors.generic"),
+      );
     } finally {
       setSaving(false);
     }
@@ -354,12 +379,12 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
   return (
     <Card
-      title="Completer votre profil"
-      subtitle="Certaines informations sont requises avant la premiere connexion"
+      title={t("ssoProfile.cardTitle")}
+      subtitle={t("ssoProfile.cardSubtitle")}
       className="mx-auto max-w-2xl"
     >
       {loading ? (
-        <p className="text-sm text-text-secondary">Chargement...</p>
+        <p className="text-sm text-text-secondary">{t("common.loading")}</p>
       ) : (
         <form
           className="grid gap-3"
@@ -367,11 +392,11 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           noValidate
         >
           <div className="rounded-card border border-border bg-background px-3 py-2 text-xs text-text-secondary">
-            Finalisez votre profil SSO pour securiser l acces a votre compte.
+            {t("ssoProfile.infoBox")}
           </div>
 
           <FormField
-            label="Prenom"
+            label={t("ssoProfile.fields.firstName")}
             error={form.formState.errors.firstName?.message}
           >
             <Controller
@@ -391,7 +416,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           </FormField>
 
           <FormField
-            label="Nom"
+            label={t("ssoProfile.fields.lastName")}
             error={form.formState.errors.lastName?.message}
           >
             <Controller
@@ -411,7 +436,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           </FormField>
 
           <FormField
-            label="Genre"
+            label={t("ssoProfile.fields.gender")}
             error={form.formState.errors.gender?.message}
           >
             <Controller
@@ -428,16 +453,16 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
                   }
                   onBlur={field.onBlur}
                 >
-                  <option value="M">Masculin</option>
-                  <option value="F">Feminin</option>
-                  <option value="OTHER">Autre</option>
+                  <option value="M">{t("ssoProfile.gender.male")}</option>
+                  <option value="F">{t("ssoProfile.gender.female")}</option>
+                  <option value="OTHER">{t("ssoProfile.gender.other")}</option>
                 </FormSelect>
               )}
             />
           </FormField>
 
           <FormField
-            label="Telephone"
+            label={t("ssoProfile.fields.phone")}
             error={form.formState.errors.phone?.message}
           >
             <Controller
@@ -460,7 +485,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           </FormField>
 
           <FormField
-            label="PIN (6 chiffres)"
+            label={t("ssoProfile.fields.pin")}
             error={form.formState.errors.newPin?.message}
           >
             <Controller
@@ -484,7 +509,7 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
 
           {missingFields.length > 0 ? (
             <p className="text-xs text-text-secondary">
-              Champs manquants detectes: {missingFields.join(", ")}
+              {t("ssoProfile.missingFieldsPrefix")}: {missingFields.join(", ")}
             </p>
           ) : null}
 
@@ -492,7 +517,9 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
           <FormSubmitHint visible={!form.formState.isValid} />
 
           <Button type="submit" disabled={saving || !form.formState.isValid}>
-            {saving ? "Enregistrement..." : "Finaliser mon profil"}
+            {saving
+              ? t("ssoProfile.submit.saving")
+              : t("ssoProfile.submit.submit")}
           </Button>
         </form>
       )}

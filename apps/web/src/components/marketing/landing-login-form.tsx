@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -13,6 +13,8 @@ import { FormField } from "../ui/form-field";
 import { PasswordInput } from "../ui/password-input";
 import { PinInput } from "../ui/pin-input";
 import { SsoButtons } from "../auth/sso-buttons";
+import { SUPPORTED_LOCALES } from "../../i18n/translations";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type LoginResponse = {
   schoolSlug: string | null;
@@ -58,13 +60,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const PREFERRED_METHOD_KEY = "preferred_auth_method";
 type AuthMethod = "phone" | "email" | "username" | "sso";
 
-const ALL_METHODS: Array<{ key: AuthMethod; label: string }> = [
-  { key: "phone", label: "Telephone + PIN" },
-  { key: "email", label: "Email + Mot de passe" },
-  { key: "username", label: "Identifiant + Mot de passe" },
-  { key: "sso", label: "Google / Apple" },
-];
-
 function loadPreferredMethod(): AuthMethod {
   if (typeof localStorage === "undefined") return "phone";
   const stored = localStorage.getItem(PREFERRED_METHOD_KEY);
@@ -85,21 +80,25 @@ function savePreferredMethod(method: AuthMethod) {
   }
 }
 
-const phonePinSchema = z.object({
-  phone: z.string().regex(/^\d{9}$/, "Numero invalide (9 chiffres attendus)."),
-  pin: z.string().regex(/^\d{6}$/, "PIN invalide (6 chiffres attendus)."),
-});
-const credentialsSchema = z.object({
-  email: z.string().trim().email("Adresse email invalide."),
-  password: z.string().min(1, "Mot de passe requis."),
-});
-const usernameLoginSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .min(3, "Identifiant invalide (3 caracteres minimum)."),
-  password: z.string().min(1, "Mot de passe requis."),
-});
+type PhonePinValues = { phone: string; pin: string };
+type CredentialsValues = { email: string; password: string };
+type UsernameLoginValues = { username: string; password: string };
+
+function createSchemas(t: (key: string) => string) {
+  const phonePinSchema = z.object({
+    phone: z.string().regex(/^\d{9}$/, t("login.errors.invalidPhone")),
+    pin: z.string().regex(/^\d{6}$/, t("login.errors.invalidPin")),
+  });
+  const credentialsSchema = z.object({
+    email: z.string().trim().email(t("login.errors.invalidEmail")),
+    password: z.string().min(1, t("login.errors.passwordRequired")),
+  });
+  const usernameLoginSchema = z.object({
+    username: z.string().trim().min(3, t("login.errors.invalidUsername")),
+    password: z.string().min(1, t("login.errors.passwordRequired")),
+  });
+  return { phonePinSchema, credentialsSchema, usernameLoginSchema };
+}
 
 function normalizePhoneInput(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -128,21 +127,32 @@ function parseApiError(payload: ApiErrorPayload) {
 }
 
 function getZodFieldError(
-  result:
-    | ReturnType<typeof phonePinSchema.safeParse>
-    | ReturnType<typeof credentialsSchema.safeParse>
-    | ReturnType<typeof usernameLoginSchema.safeParse>,
+  result: z.ZodSafeParseResult<unknown>,
   field: string,
 ) {
   if (result.success) {
     return null;
   }
-  const issue = result.error.issues.find((entry) => entry.path[0] === field);
+  const issue = result.error.issues.find(
+    (entry: { path: PropertyKey[] }) => entry.path[0] === field,
+  );
   return issue?.message ?? null;
 }
 
 export function LandingLoginForm() {
   const router = useRouter();
+  const { locale, setLocale, t } = useTranslation();
+  const { phonePinSchema, credentialsSchema, usernameLoginSchema } = useMemo(
+    () => createSchemas(t),
+    [locale],
+  );
+
+  const ALL_METHODS: Array<{ key: AuthMethod; label: string }> = [
+    { key: "phone", label: t("login.method.phone") },
+    { key: "email", label: t("login.method.email") },
+    { key: "username", label: t("login.method.username") },
+    { key: "sso", label: t("login.method.sso") },
+  ];
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingPhone, setLoadingPhone] = useState(false);
@@ -180,7 +190,7 @@ export function LandingLoginForm() {
     setError(null);
   }
 
-  const phoneForm = useForm<z.infer<typeof phonePinSchema>>({
+  const phoneForm = useForm<PhonePinValues>({
     resolver: zodResolver(phonePinSchema),
     mode: "onChange",
     defaultValues: {
@@ -188,7 +198,7 @@ export function LandingLoginForm() {
       pin: "",
     },
   });
-  const credentialsForm = useForm<z.infer<typeof credentialsSchema>>({
+  const credentialsForm = useForm<CredentialsValues>({
     resolver: zodResolver(credentialsSchema),
     mode: "onChange",
     defaultValues: {
@@ -196,7 +206,7 @@ export function LandingLoginForm() {
       password: "",
     },
   });
-  const usernameForm = useForm<z.infer<typeof usernameLoginSchema>>({
+  const usernameForm = useForm<UsernameLoginValues>({
     resolver: zodResolver(usernameLoginSchema),
     mode: "onChange",
     defaultValues: {
@@ -240,7 +250,7 @@ export function LandingLoginForm() {
     });
 
     if (!meResponse.ok) {
-      throw new Error("Session invalide apres connexion");
+      throw new Error(t("login.errors.invalidSession"));
     }
 
     const me = (await meResponse.json()) as MeResponse;
@@ -256,7 +266,7 @@ export function LandingLoginForm() {
     }
 
     if (!me.schoolSlug) {
-      throw new Error("Aucune ecole associee a ce compte");
+      throw new Error(t("login.errors.noSchool"));
     }
 
     router.push(`/schools/${me.schoolSlug}/dashboard`);
@@ -280,7 +290,7 @@ export function LandingLoginForm() {
     router.push(`/compte-en-attente?${query.toString()}`);
   }
 
-  async function onSubmit(values: z.infer<typeof credentialsSchema>) {
+  async function onSubmit(values: CredentialsValues) {
     setError(null);
     setLoading(true);
 
@@ -341,7 +351,7 @@ export function LandingLoginForm() {
           }
         }
 
-        throw new Error("Email ou mot de passe invalide");
+        throw new Error(t("login.errors.invalidEmailPassword"));
       }
 
       (await response.json()) as LoginResponse;
@@ -350,14 +360,14 @@ export function LandingLoginForm() {
       setError(
         submissionError instanceof Error
           ? submissionError.message
-          : "Erreur de connexion",
+          : t("login.errors.connectionError"),
       );
     } finally {
       setLoading(false);
     }
   }
 
-  async function onPhoneSubmit(values: z.infer<typeof phonePinSchema>) {
+  async function onPhoneSubmit(values: PhonePinValues) {
     setError(null);
     setLoadingPhone(true);
 
@@ -423,7 +433,7 @@ export function LandingLoginForm() {
           }
         }
 
-        throw new Error("Telephone ou PIN invalide");
+        throw new Error(t("login.errors.invalidPhonePin"));
       }
 
       await redirectAfterLogin();
@@ -431,14 +441,14 @@ export function LandingLoginForm() {
       setError(
         submissionError instanceof Error
           ? submissionError.message
-          : "Erreur de connexion",
+          : t("login.errors.connectionError"),
       );
     } finally {
       setLoadingPhone(false);
     }
   }
 
-  async function onUsernameSubmit(values: z.infer<typeof usernameLoginSchema>) {
+  async function onUsernameSubmit(values: UsernameLoginValues) {
     setError(null);
     setLoadingUsername(true);
     try {
@@ -468,7 +478,7 @@ export function LandingLoginForm() {
             return;
           }
         }
-        throw new Error("Identifiant ou mot de passe invalide");
+        throw new Error(t("login.errors.invalidUsernamePassword"));
       }
 
       savePreferredMethod("username");
@@ -477,7 +487,7 @@ export function LandingLoginForm() {
       setError(
         submissionError instanceof Error
           ? submissionError.message
-          : "Erreur de connexion",
+          : t("login.errors.connectionError"),
       );
     } finally {
       setLoadingUsername(false);
@@ -496,6 +506,34 @@ export function LandingLoginForm() {
         </div>
       ) : null}
 
+      {/* Language switcher (device setting) */}
+      <div
+        className="flex items-center justify-end gap-2"
+        role="group"
+        aria-label={t("login.languageSwitcher.ariaLabel")}
+        data-testid="login-language-switcher"
+      >
+        {SUPPORTED_LOCALES.map((option) => {
+          const selected = locale === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setLocale(option)}
+              aria-pressed={selected}
+              data-testid={`login-language-${option}`}
+              className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                selected
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-surface text-text-secondary"
+              }`}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Method switcher */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-text-primary">
@@ -504,11 +542,11 @@ export function LandingLoginForm() {
         <div className="relative" ref={dropdownRef}>
           <button
             type="button"
-            aria-label="Se connecter autrement"
+            aria-label={t("login.switchMethod")}
             className="text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             onClick={() => setShowMethodDropdown((v) => !v)}
           >
-            Se connecter autrement
+            {t("login.switchMethod")}
           </button>
           {showMethodDropdown ? (
             <div className="absolute right-0 z-10 mt-1 min-w-[220px] rounded-card border border-border bg-surface py-1 shadow-card">
@@ -530,16 +568,18 @@ export function LandingLoginForm() {
       <div className="flex flex-wrap gap-4">
         <section className="min-w-[260px] flex-1 rounded-card border border-border bg-surface p-4">
           <h3 className="font-heading text-base font-semibold">
-            Telephone + PIN
+            {t("login.method.phone")}
           </h3>
-          <p className="mb-3 text-xs text-text-secondary">Connexion rapide</p>
+          <p className="mb-3 text-xs text-text-secondary">
+            {t("login.phone.subtitle")}
+          </p>
           <form
             className="grid gap-3"
             onSubmit={phoneForm.handleSubmit(onPhoneSubmit)}
             noValidate
           >
             <FormField
-              label="Telephone"
+              label={t("login.phone.fieldPhone")}
               error={
                 showPhoneErrors
                   ? getZodFieldError(phoneValidation, "phone")
@@ -574,7 +614,7 @@ export function LandingLoginForm() {
             </FormField>
 
             <FormField
-              label="PIN"
+              label={t("login.phone.fieldPin")}
               error={
                 showPhoneErrors
                   ? getZodFieldError(phoneValidation, "pin")
@@ -586,7 +626,7 @@ export function LandingLoginForm() {
                 name="pin"
                 render={({ field }) => (
                   <PinInput
-                    aria-label="PIN"
+                    aria-label={t("login.phone.fieldPin")}
                     name={field.name}
                     aria-invalid={
                       showPhoneErrors
@@ -614,23 +654,25 @@ export function LandingLoginForm() {
               type="submit"
               disabled={loadingPhone || !phoneValidation.success}
             >
-              {loadingPhone ? "Connexion PIN..." : "Connexion telephone + PIN"}
+              {loadingPhone
+                ? t("login.phone.submitLoading")
+                : t("login.phone.submit")}
             </Button>
             <Link
               href={`/pin-oublie${phone ? `?phone=${encodeURIComponent(phone)}` : ""}`}
               className="justify-self-start text-xs font-medium text-primary hover:underline"
             >
-              PIN perdu ?
+              {t("login.phone.forgotPin")}
             </Link>
           </form>
         </section>
 
         <section className="min-w-[260px] flex-1 rounded-card border border-border bg-surface p-4">
           <h3 className="font-heading text-base font-semibold">
-            Email + Mot de passe
+            {t("login.method.email")}
           </h3>
           <p className="mb-3 text-xs text-text-secondary">
-            Connexion classique
+            {t("login.email.subtitle")}
           </p>
           <form
             className="grid gap-3"
@@ -638,7 +680,7 @@ export function LandingLoginForm() {
             noValidate
           >
             <FormField
-              label="Email"
+              label={t("login.email.fieldEmail")}
               error={
                 showCredentialErrors
                   ? getZodFieldError(credentialsValidation, "email")
@@ -671,7 +713,7 @@ export function LandingLoginForm() {
             </FormField>
 
             <FormField
-              label="Mot de passe"
+              label={t("login.common.password")}
               error={
                 showCredentialErrors
                   ? getZodFieldError(credentialsValidation, "password")
@@ -683,7 +725,7 @@ export function LandingLoginForm() {
                 name="password"
                 render={({ field }) => (
                   <PasswordInput
-                    aria-label="Mot de passe"
+                    aria-label={t("login.common.password")}
                     name={field.name}
                     aria-invalid={
                       showCredentialErrors
@@ -709,13 +751,15 @@ export function LandingLoginForm() {
               type="submit"
               disabled={loading || !credentialsValidation.success}
             >
-              {loading ? "Connexion..." : "Se connecter"}
+              {loading
+                ? t("login.email.submitLoading")
+                : t("login.email.submit")}
             </Button>
             <Link
               href={`/mot-de-passe-oublie${email ? `?email=${encodeURIComponent(email)}` : ""}`}
               className="justify-self-start text-xs font-medium text-primary hover:underline"
             >
-              Mot de passe oublie ?
+              {t("login.common.forgotPassword")}
             </Link>
           </form>
         </section>
@@ -723,10 +767,10 @@ export function LandingLoginForm() {
         {activeMethod === "username" ? (
           <section className="min-w-[260px] flex-1 rounded-card border border-border bg-surface p-4">
             <h3 className="font-heading text-base font-semibold">
-              Identifiant + Mot de passe
+              {t("login.method.username")}
             </h3>
             <p className="mb-3 text-xs text-text-secondary">
-              Connexion par identifiant
+              {t("login.username.subtitle")}
             </p>
             <form
               className="grid gap-3"
@@ -734,7 +778,7 @@ export function LandingLoginForm() {
               noValidate
             >
               <FormField
-                label="Identifiant"
+                label={t("login.username.fieldUsername")}
                 error={
                   showUsernameErrors
                     ? getZodFieldError(usernameValidation, "username")
@@ -768,7 +812,7 @@ export function LandingLoginForm() {
               </FormField>
 
               <FormField
-                label="Mot de passe"
+                label={t("login.common.password")}
                 error={
                   showUsernameErrors
                     ? getZodFieldError(usernameValidation, "password")
@@ -780,7 +824,7 @@ export function LandingLoginForm() {
                   name="password"
                   render={({ field }) => (
                     <PasswordInput
-                      aria-label="Mot de passe (identifiant)"
+                      aria-label={t("login.username.passwordAriaLabel")}
                       name={field.name}
                       aria-invalid={
                         showUsernameErrors
@@ -807,14 +851,14 @@ export function LandingLoginForm() {
                 disabled={loadingUsername || !usernameValidation.success}
               >
                 {loadingUsername
-                  ? "Connexion..."
-                  : "Se connecter (identifiant)"}
+                  ? t("login.username.submitLoading")
+                  : t("login.username.submit")}
               </Button>
               <Link
                 href="/identifiant-oublie"
                 className="justify-self-start text-xs font-medium text-primary hover:underline"
               >
-                Mot de passe oublie ?
+                {t("login.common.forgotPassword")}
               </Link>
             </form>
           </section>
@@ -822,9 +866,11 @@ export function LandingLoginForm() {
 
         <section className="min-w-[260px] flex-1 rounded-card border border-border bg-surface p-4">
           <h3 className="font-heading text-base font-semibold">
-            Google / Apple
+            {t("login.method.sso")}
           </h3>
-          <p className="mb-3 text-xs text-text-secondary">SSO ecole</p>
+          <p className="mb-3 text-xs text-text-secondary">
+            {t("login.sso.subtitle")}
+          </p>
           <SsoButtons />
         </section>
       </div>

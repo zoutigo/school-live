@@ -200,3 +200,195 @@ export function buildRecoveryRows(
     answer: answers[questionKey] ?? "",
   }));
 }
+
+export function createOnboardingSchemas(t: (key: string) => string) {
+  const step1Schema = z
+    .object({
+      email: z
+        .string()
+        .trim()
+        .email(t("onboarding.errors.invalidLinkMissingEmail")),
+      temporaryPassword: z
+        .string()
+        .trim()
+        .min(8, t("onboarding.errors.temporaryPasswordRequired")),
+      newPassword: z
+        .string()
+        .min(8, t("onboarding.errors.passwordMinLength"))
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          t("onboarding.errors.passwordComplexity"),
+        ),
+      confirmPassword: z
+        .string()
+        .min(1, t("onboarding.errors.confirmPasswordRequired")),
+    })
+    .refine((value) => value.newPassword === value.confirmPassword, {
+      path: ["confirmPassword"],
+      message: t("onboarding.errors.passwordConfirmMismatch"),
+    });
+
+  const step1UsernameSchema = z
+    .object({
+      username: z
+        .string()
+        .trim()
+        .min(3, t("onboarding.errors.invalidUsername")),
+      temporaryPassword: z
+        .string()
+        .trim()
+        .min(1, t("onboarding.errors.temporaryPasswordRequired")),
+      newPassword: z
+        .string()
+        .min(8, t("onboarding.errors.passwordMinLength"))
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          t("onboarding.errors.passwordComplexity"),
+        ),
+      confirmPassword: z
+        .string()
+        .min(1, t("onboarding.errors.confirmPasswordRequired")),
+    })
+    .refine((value) => value.newPassword === value.confirmPassword, {
+      path: ["confirmPassword"],
+      message: t("onboarding.errors.passwordConfirmMismatch"),
+    });
+
+  const step1PhoneSchema = z.object({
+    email: z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          value.length === 0 ||
+          z.string().email(t("onboarding.errors.invalidEmail")).safeParse(value)
+            .success,
+        t("onboarding.errors.invalidEmail"),
+      ),
+    setupToken: z
+      .string()
+      .trim()
+      .min(1, t("onboarding.errors.missingSetupToken")),
+  });
+
+  const step2Schema = z.object({
+    firstName: z
+      .string()
+      .trim()
+      .min(1, t("onboarding.errors.firstNameRequired")),
+    lastName: z.string().trim().min(1, t("onboarding.errors.lastNameRequired")),
+    gender: z.enum(["M", "F", "OTHER"], {
+      message: t("onboarding.errors.genderRequired"),
+    }),
+    birthDate: z
+      .string()
+      .min(1, t("onboarding.errors.birthDateRequired"))
+      .refine((value) => isValidIsoDate(value), {
+        message: t("onboarding.errors.invalidDateFormat"),
+      })
+      .refine((value) => {
+        if (!isValidIsoDate(value)) {
+          return false;
+        }
+        const [yearText, monthText, dayText] = value.split("-");
+        const date = new Date(
+          Date.UTC(Number(yearText), Number(monthText) - 1, Number(dayText)),
+        );
+        const today = new Date();
+        const endOfTodayUtc = new Date(
+          Date.UTC(
+            today.getUTCFullYear(),
+            today.getUTCMonth(),
+            today.getUTCDate(),
+            23,
+            59,
+            59,
+            999,
+          ),
+        );
+        return date <= endOfTodayUtc;
+      }, t("onboarding.errors.birthDateInFuture")),
+  });
+
+  const step3PinSchema = z
+    .object({
+      newPin: z
+        .string()
+        .trim()
+        .regex(PHONE_PIN_REGEX, t("onboarding.errors.newPinDigits")),
+      confirmPin: z
+        .string()
+        .trim()
+        .min(1, t("onboarding.errors.confirmPinRequired")),
+    })
+    .superRefine((value, ctx) => {
+      if (value.newPin !== value.confirmPin) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["confirmPin"],
+          message: t("onboarding.errors.pinConfirmMismatch"),
+        });
+      }
+    });
+
+  const step4Schema = z
+    .object({
+      selectedQuestions: z
+        .array(
+          z.enum([
+            "MOTHER_MAIDEN_NAME",
+            "FATHER_FIRST_NAME",
+            "FAVORITE_SPORT",
+            "FAVORITE_TEACHER",
+            "BIRTH_CITY",
+            "CHILDHOOD_NICKNAME",
+            "FAVORITE_BOOK",
+          ]),
+        )
+        .length(3, t("onboarding.errors.chooseThreeQuestions"))
+        .refine((rows) => new Set(rows).size === 3, {
+          message: t("onboarding.errors.questionsMustDiffer"),
+        }),
+      answers: z.record(z.string(), z.string().trim().min(2)),
+      isParent: z.boolean(),
+      parentClassId: z.string().optional(),
+      parentStudentId: z.string().optional(),
+    })
+    .superRefine((value, ctx) => {
+      for (const questionKey of value.selectedQuestions) {
+        const answer = value.answers[questionKey];
+        if (!answer || answer.trim().length < 2) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["answers", questionKey],
+            message: t("onboarding.errors.answerMinLength"),
+          });
+        }
+      }
+
+      if (value.isParent && !value.parentClassId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["parentClassId"],
+          message: t("onboarding.errors.parentClassRequired"),
+        });
+      }
+
+      if (value.isParent && !value.parentStudentId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["parentStudentId"],
+          message: t("onboarding.errors.parentStudentRequired"),
+        });
+      }
+    });
+
+  return {
+    step1Schema,
+    step1UsernameSchema,
+    step1PhoneSchema,
+    step2Schema,
+    step3PinSchema,
+    step4Schema,
+  };
+}

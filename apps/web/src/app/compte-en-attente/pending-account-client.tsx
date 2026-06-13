@@ -15,6 +15,7 @@ import {
 import { FormField } from "../../components/ui/form-field";
 import { PinInput } from "../../components/ui/pin-input";
 import { Button } from "../../components/ui/button";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type ActivationStartResponse = {
   success: boolean;
@@ -33,45 +34,46 @@ type Props = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-const ACTIVATION_METHOD_ERROR_MESSAGE =
-  "Saisissez un code d activation ou votre PIN initial.";
-const activationFormSchema = z
-  .object({
-    email: z.string().trim().optional().default(""),
-    phone: z.string().trim().optional().default(""),
-    schoolSlug: z.string().trim().optional().default(""),
-    confirmedPhone: z
-      .string()
-      .regex(/^\d{9}$/, "Numero invalide (9 chiffres attendus)."),
-    newPin: z
-      .string()
-      .regex(/^\d{6}$/, "Le nouveau PIN doit contenir exactement 6 chiffres."),
-    activationCode: z.string().trim().optional().default(""),
-    initialPin: z.string().trim().optional().default(""),
-  })
-  .superRefine((value, ctx) => {
-    if (!value.activationCode && !value.initialPin) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["activationCode"],
-        message: ACTIVATION_METHOD_ERROR_MESSAGE,
-      });
-    }
-    if (value.email && !z.string().email().safeParse(value.email).success) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["email"],
-        message: "Adresse email invalide.",
-      });
-    }
-    if (value.phone && !/^\d{9}$/.test(value.phone)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["phone"],
-        message: "Numero invalide (9 chiffres attendus).",
-      });
-    }
-  });
+
+function createActivationFormSchema(t: (key: string) => string) {
+  return z
+    .object({
+      email: z.string().trim().optional().default(""),
+      phone: z.string().trim().optional().default(""),
+      schoolSlug: z.string().trim().optional().default(""),
+      confirmedPhone: z
+        .string()
+        .regex(/^\d{9}$/, t("recovery.pin.errors.invalidPhone")),
+      newPin: z
+        .string()
+        .regex(/^\d{6}$/, t("pendingAccount.errors.newPinFormat")),
+      activationCode: z.string().trim().optional().default(""),
+      initialPin: z.string().trim().optional().default(""),
+    })
+    .superRefine((value, ctx) => {
+      if (!value.activationCode && !value.initialPin) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["activationCode"],
+          message: t("pendingAccount.errors.activationMethodRequired"),
+        });
+      }
+      if (value.email && !z.string().email().safeParse(value.email).success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["email"],
+          message: t("recovery.password.errors.invalidEmail"),
+        });
+      }
+      if (value.phone && !/^\d{9}$/.test(value.phone)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["phone"],
+          message: t("recovery.pin.errors.invalidPhone"),
+        });
+      }
+    });
+}
 
 function normalizePhoneInput(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -87,6 +89,11 @@ export function PendingAccountClient({
   initialSchoolSlug,
 }: Props) {
   const router = useRouter();
+  const { locale, t } = useTranslation();
+  const activationFormSchema = useMemo(
+    () => createActivationFormSchema(t),
+    [locale],
+  );
   const [context, setContext] = useState<ActivationStartResponse | null>(null);
   const [loadingContext, setLoadingContext] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -124,7 +131,7 @@ export function PendingAccountClient({
     touchedFields.activationCode || touchedFields.initialPin || submitCount > 0
       ? (errors.activationCode?.message ??
         (!activationCode && !initialPin
-          ? ACTIVATION_METHOD_ERROR_MESSAGE
+          ? t("pendingAccount.errors.activationMethodRequired")
           : null))
       : null;
   useEffect(() => {
@@ -150,7 +157,7 @@ export function PendingAccountClient({
         });
 
         if (!response.ok) {
-          throw new Error("Impossible de charger les options d activation");
+          throw new Error(t("pendingAccount.errors.loadOptionsFailed"));
         }
 
         const payload = (await response.json()) as ActivationStartResponse;
@@ -167,7 +174,7 @@ export function PendingAccountClient({
           setError(
             cause instanceof Error
               ? cause.message
-              : "Erreur lors du chargement",
+              : t("pendingAccount.errors.loadError"),
           );
         }
       } finally {
@@ -210,13 +217,12 @@ export function PendingAccountClient({
       } | null;
 
       if (!response.ok) {
-        const fallbackMessage =
-          "Activation impossible. Verifiez vos informations.";
+        const fallbackMessage = t("pendingAccount.errors.activationFailed");
         setError(payload?.message ?? fallbackMessage);
         return;
       }
 
-      setSuccess("Compte active avec succes.");
+      setSuccess(t("pendingAccount.success.activated"));
       const targetSchoolSlug = payload?.schoolSlug ?? (schoolSlug || null);
       const target = targetSchoolSlug
         ? `/schools/${targetSchoolSlug}/login`
@@ -225,7 +231,7 @@ export function PendingAccountClient({
         router.replace(target);
       }, 1200);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("recovery.password.errors.networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -238,31 +244,36 @@ export function PendingAccountClient({
 
       <div className="relative mx-auto grid w-full max-w-5xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <Card
-          title="Compte en attente"
-          subtitle="Finalisez l'activation pour acceder aux donnees de votre ecole"
+          title={t("pendingAccount.cardLeft.title")}
+          subtitle={t("pendingAccount.cardLeft.subtitle")}
         >
           <p className="text-sm text-text-secondary">
-            Votre compte a bien ete cree, mais il doit etre valide avant de
-            pouvoir consulter vos donnees scolaires.
+            {t("pendingAccount.cardLeft.description")}
           </p>
 
           <div className="mt-4 grid gap-2 rounded-card border border-border bg-background p-3 text-sm">
             <p>
-              <span className="text-text-secondary">Compte:</span>{" "}
+              <span className="text-text-secondary">
+                {t("pendingAccount.info.account")}
+              </span>{" "}
               <span className="font-semibold">
                 {context?.maskedEmail ?? (email || "-")}
               </span>
             </p>
             <p>
-              <span className="text-text-secondary">Ecole:</span>{" "}
+              <span className="text-text-secondary">
+                {t("pendingAccount.info.school")}
+              </span>{" "}
               <span className="font-semibold">
                 {schoolSlug || context?.schoolSlug || "-"}
               </span>
             </p>
             <p>
-              <span className="text-text-secondary">Methodes:</span>{" "}
+              <span className="text-text-secondary">
+                {t("pendingAccount.info.methods")}
+              </span>{" "}
               <span className="font-semibold">
-                Code activation ou PIN initial
+                {t("pendingAccount.info.methodsValue")}
               </span>
             </p>
           </div>
@@ -271,20 +282,20 @@ export function PendingAccountClient({
             href={schoolSlug ? `/schools/${schoolSlug}/login` : "/"}
             className="mt-4"
           >
-            Retour a la connexion
+            {t("recovery.password.backToLogin")}
           </BackLinkButton>
         </Card>
 
         <Card
-          title="Activer le compte"
-          subtitle="Telephone confirme + nouveau PIN"
+          title={t("pendingAccount.cardRight.title")}
+          subtitle={t("pendingAccount.cardRight.subtitle")}
         >
           {loadingContext ? (
-            <p className="text-sm text-text-secondary">Chargement...</p>
+            <p className="text-sm text-text-secondary">{t("common.loading")}</p>
           ) : (
             <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
               <FormField
-                label="Email"
+                label={t("pendingAccount.fields.email")}
                 error={
                   touchedFields.email || submitCount > 0
                     ? (errors.email?.message ?? null)
@@ -306,14 +317,14 @@ export function PendingAccountClient({
                         })
                       }
                       onBlur={field.onBlur}
-                      placeholder="prenom.nom@gmail.com"
+                      placeholder={t("pendingAccount.placeholders.email")}
                     />
                   )}
                 />
               </FormField>
 
               <FormField
-                label="Telephone du compte"
+                label={t("pendingAccount.fields.accountPhone")}
                 error={
                   touchedFields.phone || submitCount > 0
                     ? (errors.phone?.message ?? null)
@@ -344,14 +355,14 @@ export function PendingAccountClient({
                         )
                       }
                       onBlur={field.onBlur}
-                      placeholder="6XXXXXXXX"
+                      placeholder={t("pendingAccount.placeholders.phone")}
                     />
                   )}
                 />
               </FormField>
 
               <FormField
-                label="Telephone confirme"
+                label={t("pendingAccount.fields.confirmedPhone")}
                 error={
                   touchedFields.confirmedPhone || submitCount > 0
                     ? (errors.confirmedPhone?.message ?? null)
@@ -383,14 +394,14 @@ export function PendingAccountClient({
                         )
                       }
                       onBlur={field.onBlur}
-                      placeholder="6XXXXXXXX"
+                      placeholder={t("pendingAccount.placeholders.phone")}
                     />
                   )}
                 />
               </FormField>
 
               <FormField
-                label="Code d activation (optionnel)"
+                label={t("pendingAccount.fields.activationCode")}
                 error={activationMethodError}
               >
                 <Controller
@@ -411,14 +422,16 @@ export function PendingAccountClient({
                         void form.trigger();
                       }}
                       onBlur={field.onBlur}
-                      placeholder="Ex: A1B2C3D4"
+                      placeholder={t(
+                        "pendingAccount.placeholders.activationCode",
+                      )}
                     />
                   )}
                 />
               </FormField>
 
               <FormField
-                label="PIN initial (optionnel)"
+                label={t("pendingAccount.fields.initialPin")}
                 error={activationMethodError}
               >
                 <Controller
@@ -426,7 +439,7 @@ export function PendingAccountClient({
                   name="initialPin"
                   render={({ field }) => (
                     <PinInput
-                      aria-label="PIN initial (optionnel)"
+                      aria-label={t("pendingAccount.fields.initialPin")}
                       name={field.name}
                       value={field.value}
                       onChange={(event) => {
@@ -442,14 +455,14 @@ export function PendingAccountClient({
                         void form.trigger();
                       }}
                       onBlur={field.onBlur}
-                      placeholder="PIN temporaire fourni"
+                      placeholder={t("pendingAccount.placeholders.initialPin")}
                     />
                   )}
                 />
               </FormField>
 
               <FormField
-                label="Nouveau PIN (6 chiffres)"
+                label={t("pendingAccount.fields.newPin")}
                 error={
                   touchedFields.newPin || submitCount > 0
                     ? (errors.newPin?.message ?? null)
@@ -461,7 +474,7 @@ export function PendingAccountClient({
                   name="newPin"
                   render={({ field }) => (
                     <PinInput
-                      aria-label="Nouveau PIN (6 chiffres)"
+                      aria-label={t("pendingAccount.fields.newPin")}
                       name={field.name}
                       required
                       value={field.value}
@@ -477,7 +490,7 @@ export function PendingAccountClient({
                         )
                       }
                       onBlur={field.onBlur}
-                      placeholder="123456"
+                      placeholder={t("pendingAccount.placeholders.newPin")}
                     />
                   )}
                 />
@@ -486,7 +499,9 @@ export function PendingAccountClient({
               <FormSubmitHint visible={!isValid} />
 
               <Button type="submit" disabled={submitting || !isValid}>
-                {submitting ? "Activation..." : "Activer mon compte"}
+                {submitting
+                  ? t("pendingAccount.submit.activating")
+                  : t("pendingAccount.submit.activate")}
               </Button>
             </form>
           )}

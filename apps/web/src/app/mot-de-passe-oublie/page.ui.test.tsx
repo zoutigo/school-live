@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ForgotPasswordPage from "./page";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 const replaceMock = vi.fn();
 const pushMock = vi.fn();
@@ -17,6 +19,7 @@ describe("ForgotPasswordPage UI", () => {
     pushMock.mockReset();
     currentSearchParams = new URLSearchParams();
     vi.restoreAllMocks();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("renders the request step when there is no token", () => {
@@ -418,5 +421,19 @@ describe("ForgotPasswordPage UI", () => {
         "Mot de passe reinitialise",
       );
     });
+  });
+
+  it("traduit le contenu de la page en anglais quand la langue EN est active", () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    render(<ForgotPasswordPage />);
+
+    expect(screen.getByText("Password recovery")).toBeInTheDocument();
+    expect(screen.getByText("Step 1/3: request a link")).toBeInTheDocument();
+    expect(screen.getByLabelText("Account email")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Send link" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Back to sign in")).toBeInTheDocument();
   });
 });

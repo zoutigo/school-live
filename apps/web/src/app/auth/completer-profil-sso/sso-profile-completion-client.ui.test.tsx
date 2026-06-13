@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SsoProfileCompletionClient } from "./sso-profile-completion-client";
+import { useLocaleStore } from "../../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../../i18n/translations";
 
 const replaceMock = vi.fn();
 const getSessionMock = vi.fn();
@@ -23,6 +25,7 @@ describe("SsoProfileCompletionClient UI", () => {
     getSessionMock.mockReset();
     signOutMock.mockReset();
     vi.restoreAllMocks();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   async function waitForProfileFormReady() {
@@ -253,5 +256,54 @@ describe("SsoProfileCompletionClient UI", () => {
       ).not.toBeInTheDocument();
       expect(submitButton).toBeEnabled();
     });
+  });
+
+  it("traduit le contenu de la page en anglais quand la langue EN est active", async () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    getSessionMock.mockResolvedValue({
+      user: {
+        email: "sso.user@example.test",
+        provider: "GOOGLE",
+        providerAccountId: "google-123",
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/auth/sso/profile/options")) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            firstName: "",
+            lastName: "",
+            gender: null,
+            phone: null,
+            schoolSlug: "college-vogt",
+            missingFields: ["firstName", "lastName", "gender", "phone"],
+            needsProfileCompletion: true,
+          }),
+          {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      return new Response("not-found", { status: 404 });
+    });
+
+    render(<SsoProfileCompletionClient schoolSlug="college-vogt" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Complete your profile")).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("First name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Last name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Phone")).toBeInTheDocument();
+    expect(screen.getByLabelText("PIN (6 digits)")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Complete my profile" }),
+    ).toBeInTheDocument();
   });
 });

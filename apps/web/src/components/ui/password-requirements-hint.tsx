@@ -1,3 +1,5 @@
+import { useTranslation } from "../../i18n/useTranslation";
+
 type PasswordRequirementsHintProps = {
   password: string;
   className?: string;
@@ -16,14 +18,20 @@ export function PasswordRequirementsHint({
   password,
   className = "",
 }: PasswordRequirementsHintProps) {
-  const checks = getPasswordChecks(password);
+  const { t } = useTranslation();
+  const checks = [
+    { label: t("common.passwordHint.minLength"), ok: password.length >= 8 },
+    { label: t("common.passwordHint.uppercase"), ok: /[A-Z]/.test(password) },
+    { label: t("common.passwordHint.lowercase"), ok: /[a-z]/.test(password) },
+    { label: t("common.passwordHint.digit"), ok: /\d/.test(password) },
+  ];
 
   return (
     <div
       className={`rounded-[18px] border border-warm-border bg-warm-surface p-3 shadow-[0_10px_22px_rgba(77,56,32,0.06)] ${className}`.trim()}
     >
       <p className="text-xs text-text-secondary">
-        8 caracteres minimum, dont au moins 1 Maj, 1 Min, 1 Chiffre
+        {t("common.passwordHint.title")}
       </p>
       <ul className="mt-2 grid gap-1 text-xs">
         {checks.map((rule) => (

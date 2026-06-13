@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import OnboardingPage from "./page";
 import { useOnboardingStore } from "./onboarding-store";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 const pushMock = vi.fn();
 let searchParamsMock = new URLSearchParams(
@@ -20,6 +22,7 @@ describe("OnboardingPage phone PIN step", () => {
     vi.restoreAllMocks();
     pushMock.mockReset();
     useOnboardingStore.getState().reset();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
     searchParamsMock = new URLSearchParams(
       "token=setup-token&phone=610101034&schoolSlug=college-vogt",
     );
@@ -399,5 +402,46 @@ describe("OnboardingPage phone PIN step", () => {
     expect(screen.queryByDisplayValue("minfoumou")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("roger")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("yaounde")).not.toBeInTheDocument();
+  });
+
+  it("traduit le contenu de la page en anglais quand la langue EN est active", async () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/auth/onboarding/options")) {
+        return new Response(
+          JSON.stringify({
+            schoolSlug: "college-vogt",
+            schoolRoles: ["TEACHER"],
+            questions: [],
+            classes: [],
+            students: [],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<OnboardingPage />);
+
+    expect(screen.getByText("Account activation")).toBeInTheDocument();
+    expect(screen.getByText("Secure onboarding")).toBeInTheDocument();
+    expect(
+      screen.getByText("Activate your account in one sequence"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Complete activation")).toBeInTheDocument();
+    expect(await screen.findByText("Step 1 / 4")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email (optional)")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continue" }),
+    ).toBeInTheDocument();
   });
 });

@@ -14,6 +14,7 @@ import { FormField } from "../../../components/ui/form-field";
 import { SubmitButton } from "../../../components/ui/form-buttons";
 import { PasswordInput } from "../../../components/ui/password-input";
 import { PinInput } from "../../../components/ui/pin-input";
+import { useTranslation } from "../../../i18n/useTranslation";
 
 type Role =
   | "SUPER_ADMIN"
@@ -44,74 +45,75 @@ type Props = {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
-const setupSchema = z
-  .object({
-    token: z.string().min(16, "Session invalide."),
-    requiresPassword: z.boolean(),
-    requiresPhonePin: z.boolean(),
-    newPassword: z.string().optional(),
-    confirmPassword: z.string().optional(),
-    phone: z.string().optional(),
-    confirmPhone: z.string().optional(),
-    newPin: z.string().optional(),
-    confirmPin: z.string().optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (value.requiresPassword) {
-      if (
-        !value.newPassword ||
-        !PASSWORD_COMPLEXITY_REGEX.test(value.newPassword)
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["newPassword"],
-          message:
-            "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-        });
+function createSetupSchema(t: (key: string) => string) {
+  return z
+    .object({
+      token: z.string().min(16, t("platformCredentials.errors.invalidSession")),
+      requiresPassword: z.boolean(),
+      requiresPhonePin: z.boolean(),
+      newPassword: z.string().optional(),
+      confirmPassword: z.string().optional(),
+      phone: z.string().optional(),
+      confirmPhone: z.string().optional(),
+      newPin: z.string().optional(),
+      confirmPin: z.string().optional(),
+    })
+    .superRefine((value, ctx) => {
+      if (value.requiresPassword) {
+        if (
+          !value.newPassword ||
+          !PASSWORD_COMPLEXITY_REGEX.test(value.newPassword)
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["newPassword"],
+            message: t("recovery.password.errors.passwordComplexity"),
+          });
+        }
+        if (
+          !value.confirmPassword ||
+          value.confirmPassword !== value.newPassword
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["confirmPassword"],
+            message: t("platformCredentials.errors.confirmPasswordMismatch"),
+          });
+        }
       }
-      if (
-        !value.confirmPassword ||
-        value.confirmPassword !== value.newPassword
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["confirmPassword"],
-          message: "La confirmation du mot de passe ne correspond pas.",
-        });
-      }
-    }
 
-    if (value.requiresPhonePin) {
-      if (!value.phone || !/^\d{9}$/.test(value.phone)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["phone"],
-          message: "Numero invalide (9 chiffres attendus).",
-        });
+      if (value.requiresPhonePin) {
+        if (!value.phone || !/^\d{9}$/.test(value.phone)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["phone"],
+            message: t("recovery.pin.errors.invalidPhone"),
+          });
+        }
+        if (!value.confirmPhone || value.confirmPhone !== value.phone) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["confirmPhone"],
+            message: t("platformCredentials.errors.confirmPhoneMismatch"),
+          });
+        }
+        if (!value.newPin || !/^\d{6}$/.test(value.newPin)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["newPin"],
+            message: t("recovery.pin.errors.pinFormat"),
+          });
+        }
+        if (!value.confirmPin || value.confirmPin !== value.newPin) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["confirmPin"],
+            message: t("platformCredentials.errors.confirmPinMismatch"),
+          });
+        }
       }
-      if (!value.confirmPhone || value.confirmPhone !== value.phone) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["confirmPhone"],
-          message: "La confirmation du telephone ne correspond pas.",
-        });
-      }
-      if (!value.newPin || !/^\d{6}$/.test(value.newPin)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["newPin"],
-          message: "Le PIN doit contenir exactement 6 chiffres.",
-        });
-      }
-      if (!value.confirmPin || value.confirmPin !== value.newPin) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["confirmPin"],
-          message: "La confirmation du PIN ne correspond pas.",
-        });
-      }
-    }
-  });
+    });
+}
 
 function normalizePhoneInput(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -129,6 +131,8 @@ export function PlatformCredentialsCompletionClient({
   missing,
 }: Props) {
   const router = useRouter();
+  const { locale, t } = useTranslation();
+  const setupSchema = useMemo(() => createSetupSchema(t), [locale]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -232,14 +236,15 @@ export function PlatformCredentialsCompletionClient({
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Configuration impossible.");
+            : (payload?.message ??
+              t("platformCredentials.errors.configFailed"));
         setError(String(message));
         return;
       }
 
       await redirectAfterCompletion();
     } catch {
-      setError("Erreur reseau.");
+      setError(t("recovery.password.errors.networkError"));
     } finally {
       setSaving(false);
     }
@@ -249,8 +254,8 @@ export function PlatformCredentialsCompletionClient({
     <div className="min-h-screen bg-background px-4 py-8 text-text-primary sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-xl">
         <Card
-          title="Completer vos identifiants"
-          subtitle="Pour securiser votre acces, renseignez les informations manquantes."
+          title={t("platformCredentials.cardTitle")}
+          subtitle={t("platformCredentials.cardSubtitle")}
         >
           <form
             className="grid gap-3"
@@ -258,13 +263,15 @@ export function PlatformCredentialsCompletionClient({
             noValidate
           >
             {email ? (
-              <p className="text-xs text-text-secondary">Compte: {email}</p>
+              <p className="text-xs text-text-secondary">
+                {t("platformCredentials.accountLabel")} {email}
+              </p>
             ) : null}
 
             {requiresPassword ? (
               <>
                 <FormField
-                  label="Nouveau mot de passe"
+                  label={t("platformCredentials.fields.newPassword")}
                   error={form.formState.errors.newPassword?.message}
                 >
                   <Controller
@@ -287,7 +294,7 @@ export function PlatformCredentialsCompletionClient({
                   />
                 </FormField>
                 <FormField
-                  label="Confirmer le mot de passe"
+                  label={t("platformCredentials.fields.confirmPassword")}
                   error={form.formState.errors.confirmPassword?.message}
                 >
                   <Controller
@@ -315,7 +322,7 @@ export function PlatformCredentialsCompletionClient({
             {requiresPhonePin ? (
               <>
                 <FormField
-                  label="Telephone"
+                  label={t("platformCredentials.fields.phone")}
                   error={form.formState.errors.phone?.message}
                 >
                   <Controller
@@ -345,7 +352,7 @@ export function PlatformCredentialsCompletionClient({
                   />
                 </FormField>
                 <FormField
-                  label="Confirmer le telephone"
+                  label={t("platformCredentials.fields.confirmPhone")}
                   error={form.formState.errors.confirmPhone?.message}
                 >
                   <Controller
@@ -375,7 +382,7 @@ export function PlatformCredentialsCompletionClient({
                   />
                 </FormField>
                 <FormField
-                  label="Nouveau PIN (6 chiffres)"
+                  label={t("platformCredentials.fields.newPin")}
                   error={form.formState.errors.newPin?.message}
                 >
                   <Controller
@@ -403,7 +410,7 @@ export function PlatformCredentialsCompletionClient({
                   />
                 </FormField>
                 <FormField
-                  label="Confirmer le PIN"
+                  label={t("platformCredentials.fields.confirmPin")}
                   error={form.formState.errors.confirmPin?.message}
                 >
                   <Controller
@@ -440,7 +447,9 @@ export function PlatformCredentialsCompletionClient({
             <FormSubmitHint visible={!form.formState.isValid} />
 
             <SubmitButton disabled={saving || !form.formState.isValid}>
-              {saving ? "Validation..." : "Valider"}
+              {saving
+                ? t("platformCredentials.submit.validating")
+                : t("platformCredentials.submit.validate")}
             </SubmitButton>
           </form>
         </Card>

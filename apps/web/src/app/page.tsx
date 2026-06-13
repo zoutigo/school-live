@@ -1,28 +1,32 @@
+"use client";
+
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { LandingLoginForm } from "../components/marketing/landing-login-form";
-
-const features = [
-  {
-    title: "Suivi des notes",
-    description: "Consultez resultats, moyennes et progression en temps reel.",
-  },
-  {
-    title: "Messagerie centralisee",
-    description:
-      "Echanges familles, eleves et equipe pedagogique en un seul endroit.",
-  },
-  {
-    title: "Paiements simplifies",
-    description: "Reglez cantine, sorties et frais scolaires en ligne.",
-  },
-  {
-    title: "Vie scolaire",
-    description: "Absences, emploi du temps, documents et informations utiles.",
-  },
-];
+import { useTranslation } from "../i18n/useTranslation";
 
 export default function LandingPage() {
+  const { t } = useTranslation();
+
+  const features = [
+    {
+      title: t("landing.features.notes.title"),
+      description: t("landing.features.notes.description"),
+    },
+    {
+      title: t("landing.features.messaging.title"),
+      description: t("landing.features.messaging.description"),
+    },
+    {
+      title: t("landing.features.payments.title"),
+      description: t("landing.features.payments.description"),
+    },
+    {
+      title: t("landing.features.schoolLife.title"),
+      description: t("landing.features.schoolLife.description"),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background text-text-primary">
       <header className="border-b border-border bg-surface">
@@ -39,10 +43,10 @@ export default function LandingPage() {
       <main>
         <section className="site-inline-gutter mx-auto w-full max-w-6xl pb-6 pt-12">
           <h1 className="font-heading text-3xl font-bold leading-tight text-text-primary md:text-4xl">
-            Acces Scolive
+            {t("landing.hero.title")}
           </h1>
           <p className="mt-2 text-sm text-text-secondary md:text-base">
-            Connectez-vous avec la methode fournie par votre ecole.
+            {t("landing.hero.subtitle")}
           </p>
         </section>
 
@@ -52,20 +56,19 @@ export default function LandingPage() {
 
         <section className="site-inline-gutter mx-auto w-full max-w-6xl pb-16">
           <Card
-            title="Application mobile Scolive"
-            subtitle="Disponible sur iOS et Android"
+            title={t("landing.mobileApp.title")}
+            subtitle={t("landing.mobileApp.subtitle")}
           >
             <p className="mb-4 text-sm text-text-secondary">
-              Restez connecte a la vie scolaire de votre etablissement depuis
-              votre mobile.
+              {t("landing.mobileApp.description")}
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button>Telecharger sur App Store</Button>
+              <Button>{t("landing.mobileApp.appStore")}</Button>
               <a
                 href="/api/mobile-builds/android/latest"
                 className="inline-flex items-center justify-center gap-2 rounded-card border border-warm-border bg-warm-surface px-4 py-2 text-sm font-heading font-semibold text-primary transition-all duration-200 hover:bg-warm-highlight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                Telecharger l&apos;APK Android
+                {t("landing.mobileApp.androidApk")}
               </a>
             </div>
           </Card>
@@ -73,17 +76,16 @@ export default function LandingPage() {
 
         <section className="site-inline-gutter mx-auto w-full max-w-6xl pb-16">
           <Card
-            title="Une plateforme pensee pour les ecoles"
-            subtitle="Un environnement scolaire moderne et connecte"
+            title={t("landing.platform.title")}
+            subtitle={t("landing.platform.subtitle")}
           >
             <img
               src="/images/camer-school1.png"
-              alt="Eleves africains dans une ecole moderne"
+              alt={t("landing.platform.imageAlt")}
               className="h-[380px] w-full rounded-card border border-border object-cover object-center"
             />
             <p className="mt-4 text-sm text-text-secondary">
-              Scolive valorise la reussite des apprenants avec des outils
-              numeriques clairs, accessibles et adaptes au quotidien scolaire.
+              {t("landing.platform.description")}
             </p>
           </Card>
         </section>
@@ -96,7 +98,7 @@ export default function LandingPage() {
               subtitle={feature.description}
             >
               <p className="text-sm text-text-secondary">
-                Scolive centralise vos interactions ecole-famille.
+                {t("landing.features.cardFooter")}
               </p>
             </Card>
           ))}

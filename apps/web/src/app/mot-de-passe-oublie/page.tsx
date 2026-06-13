@@ -19,10 +19,9 @@ import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import { SuccessRedirectToast } from "../../components/ui/success-redirect-toast";
+import { useTranslation } from "../../i18n/useTranslation";
 import {
-  buildVerifyResetSchema,
-  completeResetSchema,
-  requestResetSchema,
+  createForgotPasswordSchemas,
   type RecoveryQuestion,
 } from "./forgot-password-schema";
 import type { z } from "zod";
@@ -45,6 +44,8 @@ type ResetOptionsResponse = {
 function ForgotPasswordPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { locale, t } = useTranslation();
+  const schemas = useMemo(() => createForgotPasswordSchemas(t), [locale]);
 
   const [activeToken, setActiveToken] = useState(() => {
     return searchParams.get("token") ?? "";
@@ -70,11 +71,11 @@ function ForgotPasswordPageContent() {
     description: string;
   } | null>(null);
   const requestForm = useForm<
-    z.input<typeof requestResetSchema>,
+    z.input<typeof schemas.requestResetSchema>,
     unknown,
-    z.output<typeof requestResetSchema>
+    z.output<typeof schemas.requestResetSchema>
   >({
-    resolver: zodResolver(requestResetSchema),
+    resolver: zodResolver(schemas.requestResetSchema),
     mode: "onChange",
     defaultValues: {
       email: searchParams.get("email") ?? "",
@@ -93,8 +94,8 @@ function ForgotPasswordPageContent() {
   }, [requestForm, searchParams]);
 
   const verifySchema = useMemo(
-    () => buildVerifyResetSchema(options?.questions ?? []),
-    [options?.questions],
+    () => schemas.buildVerifyResetSchema(options?.questions ?? []),
+    [options?.questions, schemas],
   );
   const verifyForm = useForm<{
     token: string;
@@ -110,11 +111,11 @@ function ForgotPasswordPageContent() {
     },
   });
   const completeForm = useForm<
-    z.input<typeof completeResetSchema>,
+    z.input<typeof schemas.completeResetSchema>,
     unknown,
-    z.output<typeof completeResetSchema>
+    z.output<typeof schemas.completeResetSchema>
   >({
-    resolver: zodResolver(completeResetSchema),
+    resolver: zodResolver(schemas.completeResetSchema),
     mode: "onChange",
     defaultValues: {
       token: activeToken,
@@ -155,51 +156,57 @@ function ForgotPasswordPageContent() {
     return schoolSlug ? `/schools/${schoolSlug}/login` : "/";
   }, [options?.schoolSlug, schoolSlugFromQuery]);
 
-  const loadResetOptions = useCallback(async (token: string) => {
-    setLoadingOptions(true);
-    setError(null);
-    setSuccess(null);
+  const loadResetOptions = useCallback(
+    async (token: string) => {
+      setLoadingOptions(true);
+      setError(null);
+      setSuccess(null);
 
-    try {
-      const response = await fetch(`${API_URL}/auth/forgot-password/options`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
+      try {
+        const response = await fetch(
+          `${API_URL}/auth/forgot-password/options`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          },
+        );
 
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          message?: string | string[];
-        } | null;
-        const message =
-          payload?.message && Array.isArray(payload.message)
-            ? payload.message.join(", ")
-            : (payload?.message ??
-              "Lien de reinitialisation invalide ou expire.");
-        setError(String(message));
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            message?: string | string[];
+          } | null;
+          const message =
+            payload?.message && Array.isArray(payload.message)
+              ? payload.message.join(", ")
+              : (payload?.message ??
+                t("recovery.password.errors.invalidOrExpiredLink"));
+          setError(String(message));
+          setOptions(null);
+          return;
+        }
+
+        const payload = (await response.json()) as ResetOptionsResponse;
+        setOptions(payload);
+        verifyForm.reset({
+          token,
+          birthDate: "",
+          answers: Object.fromEntries(
+            payload.questions.map((question) => [question.key, ""]),
+          ),
+        });
+        setVerified(false);
+        setRequestSent(false);
+        setRequestMessage(null);
+      } catch {
+        setError(t("recovery.password.errors.networkError"));
         setOptions(null);
-        return;
+      } finally {
+        setLoadingOptions(false);
       }
-
-      const payload = (await response.json()) as ResetOptionsResponse;
-      setOptions(payload);
-      verifyForm.reset({
-        token,
-        birthDate: "",
-        answers: Object.fromEntries(
-          payload.questions.map((question) => [question.key, ""]),
-        ),
-      });
-      setVerified(false);
-      setRequestSent(false);
-      setRequestMessage(null);
-    } catch {
-      setError("Erreur reseau.");
-      setOptions(null);
-    } finally {
-      setLoadingOptions(false);
-    }
-  }, []);
+    },
+    [locale],
+  );
 
   useEffect(() => {
     if (!activeToken) {
@@ -208,7 +215,9 @@ function ForgotPasswordPageContent() {
     void loadResetOptions(activeToken);
   }, [activeToken, loadResetOptions]);
 
-  async function onRequestReset(values: z.infer<typeof requestResetSchema>) {
+  async function onRequestReset(
+    values: z.infer<typeof schemas.requestResetSchema>,
+  ) {
     setError(null);
     setSuccess(null);
 
@@ -225,14 +234,13 @@ function ForgotPasswordPageContent() {
         .catch(() => null)) as RequestResetResponse | null;
 
       if (!response.ok) {
-        setError("Demande impossible. Veuillez reessayer.");
+        setError(t("recovery.password.errors.requestFailed"));
         return;
       }
 
       setRequestSent(true);
       setRequestMessage(
-        payload?.message ??
-          "Si ce compte existe, un lien de reinitialisation a ete envoye.",
+        payload?.message ?? t("recovery.password.success.requestSentDefault"),
       );
       requestForm.reset({ email: "" });
       setError(null);
@@ -260,12 +268,11 @@ function ForgotPasswordPageContent() {
       }
 
       setRedirectToast({
-        title: "Demande envoyee",
-        description:
-          "Si ce compte existe, la demande de reinitialisation a bien ete prise en compte. Vous allez etre redirige vers la connexion.",
+        title: t("recovery.password.toast.requestSent.title"),
+        description: t("recovery.password.toast.requestSent.description"),
       });
     } catch {
-      setError("Erreur reseau.");
+      setError(t("recovery.password.errors.networkError"));
     } finally {
       setRequesting(false);
     }
@@ -304,23 +311,23 @@ function ForgotPasswordPageContent() {
           errorPayload?.message && Array.isArray(errorPayload.message)
             ? errorPayload.message.join(", ")
             : (errorPayload?.message ??
-              "Informations de recuperation invalides.");
+              t("recovery.password.errors.invalidRecoveryInfo"));
         setError(String(message));
         return;
       }
 
       setVerified(true);
-      setSuccess(
-        "Verification validee. Definissez votre nouveau mot de passe.",
-      );
+      setSuccess(t("recovery.password.success.verified"));
     } catch {
-      setError("Erreur reseau.");
+      setError(t("recovery.password.errors.networkError"));
     } finally {
       setVerifying(false);
     }
   }
 
-  async function onCompleteReset(values: z.infer<typeof completeResetSchema>) {
+  async function onCompleteReset(
+    values: z.infer<typeof schemas.completeResetSchema>,
+  ) {
     setError(null);
     setSuccess(null);
 
@@ -342,7 +349,7 @@ function ForgotPasswordPageContent() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Reinitialisation impossible.");
+            : (payload?.message ?? t("recovery.password.errors.resetFailed"));
         setError(String(message));
         return;
       }
@@ -357,20 +364,19 @@ function ForgotPasswordPageContent() {
       setActiveToken("");
       setSuccess(null);
       setRedirectToast({
-        title: "Mot de passe reinitialise",
-        description:
-          "Votre nouveau mot de passe a bien ete enregistre. Vous allez etre redirige vers la connexion.",
+        title: t("recovery.password.toast.passwordReset.title"),
+        description: t("recovery.password.toast.passwordReset.description"),
       });
       return;
     } catch {
-      setError("Erreur reseau.");
+      setError(t("recovery.password.errors.networkError"));
     } finally {
       setCompleting(false);
     }
   }
 
   return (
-    <RecoveryShell title="Recuperation de mot de passe">
+    <RecoveryShell title={t("recovery.password.shell.title")}>
       <SuccessRedirectToast
         open={redirectToast !== null}
         title={redirectToast?.title ?? ""}
@@ -382,13 +388,13 @@ function ForgotPasswordPageContent() {
       />
       <div className="mx-auto w-full max-w-2xl">
         <Card
-          title="Mot de passe oublie"
+          title={t("recovery.password.cardTitle")}
           subtitle={
             options
               ? verified
-                ? "Etape 3/3: nouveau mot de passe"
-                : "Etape 2/3: verification"
-              : "Etape 1/3: demande de lien"
+                ? t("recovery.password.step3")
+                : t("recovery.password.step2")
+              : t("recovery.password.step1")
           }
           className="lg:mt-2"
         >
@@ -398,7 +404,7 @@ function ForgotPasswordPageContent() {
               onSubmit={requestForm.handleSubmit(onRequestReset)}
             >
               <FormField
-                label="Email du compte"
+                label={t("recovery.password.fields.email")}
                 error={requestForm.formState.errors.email?.message}
               >
                 <Controller
@@ -428,7 +434,9 @@ function ForgotPasswordPageContent() {
               <SubmitButton
                 disabled={requesting || !requestForm.formState.isValid}
               >
-                {requesting ? "Envoi en cours..." : "Envoyer le lien"}
+                {requesting
+                  ? t("recovery.password.submit.sending")
+                  : t("recovery.password.submit.send")}
               </SubmitButton>
 
               {requestSent && requestMessage ? (
@@ -441,19 +449,21 @@ function ForgotPasswordPageContent() {
               ) : null}
             </form>
           ) : loadingOptions ? (
-            <p className="text-sm text-text-secondary">Chargement du lien...</p>
+            <p className="text-sm text-text-secondary">
+              {t("recovery.password.loadingLink")}
+            </p>
           ) : options && !verified ? (
             <form
               className="grid gap-3"
               onSubmit={verifyForm.handleSubmit(onVerifyIdentity)}
             >
               <div className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-secondary">
-                Compte detecte:{" "}
+                {t("recovery.password.accountDetected")}{" "}
                 <span className="font-semibold">{options.emailHint}</span>
               </div>
 
               <FormField
-                label="Date de naissance"
+                label={t("recovery.password.fields.birthDate")}
                 error={verifyForm.formState.errors.birthDate?.message}
               >
                 <Controller
@@ -524,7 +534,9 @@ function ForgotPasswordPageContent() {
               <SubmitButton
                 disabled={verifying || !verifyForm.formState.isValid}
               >
-                {verifying ? "Verification..." : "Verifier mon identite"}
+                {verifying
+                  ? t("recovery.password.submit.verifying")
+                  : t("recovery.password.submit.verify")}
               </SubmitButton>
             </form>
           ) : options && verified ? (
@@ -533,7 +545,7 @@ function ForgotPasswordPageContent() {
               onSubmit={completeForm.handleSubmit(onCompleteReset)}
             >
               <FormField
-                label="Nouveau mot de passe"
+                label={t("recovery.password.fields.newPassword")}
                 error={completeForm.formState.errors.newPassword?.message}
               >
                 <Controller
@@ -541,7 +553,7 @@ function ForgotPasswordPageContent() {
                   name="newPassword"
                   render={({ field }) => (
                     <PasswordInput
-                      aria-label="Nouveau mot de passe"
+                      aria-label={t("recovery.password.fields.newPassword")}
                       name={field.name}
                       aria-invalid={
                         completeForm.formState.errors.newPassword
@@ -569,7 +581,7 @@ function ForgotPasswordPageContent() {
               <PasswordRequirementsHint password={newPassword} />
 
               <FormField
-                label="Confirmation"
+                label={t("recovery.password.fields.confirmation")}
                 error={completeForm.formState.errors.confirmPassword?.message}
               >
                 <Controller
@@ -577,7 +589,7 @@ function ForgotPasswordPageContent() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <PasswordInput
-                      aria-label="Confirmation"
+                      aria-label={t("recovery.password.fields.confirmation")}
                       name={field.name}
                       value={field.value}
                       onChange={(event) =>
@@ -602,15 +614,14 @@ function ForgotPasswordPageContent() {
                 disabled={completing || !completeForm.formState.isValid}
               >
                 {completing
-                  ? "Reinitialisation..."
-                  : "Reinitialiser mon mot de passe"}
+                  ? t("recovery.password.submit.resetting")
+                  : t("recovery.password.submit.reset")}
               </SubmitButton>
             </form>
           ) : (
             <div className="grid gap-3">
               <p className="text-sm text-text-secondary">
-                Ce lien n&apos;est plus valide. Demandez un nouveau lien de
-                reinitialisation.
+                {t("recovery.password.linkInvalid")}
               </p>
               <Button
                 type="button"
@@ -631,7 +642,7 @@ function ForgotPasswordPageContent() {
                   });
                 }}
               >
-                Nouvelle demande
+                {t("recovery.password.newRequest")}
               </Button>
             </div>
           )}
@@ -644,8 +655,27 @@ function ForgotPasswordPageContent() {
           ) : null}
 
           <BackLinkButton href={loginHref} className="mt-4">
-            Retour a la connexion
+            {t("recovery.password.backToLogin")}
           </BackLinkButton>
+        </Card>
+      </div>
+    </RecoveryShell>
+  );
+}
+
+function ForgotPasswordFallback() {
+  const { t } = useTranslation();
+  return (
+    <RecoveryShell title={t("recovery.password.shell.title")}>
+      <div className="mx-auto w-full max-w-2xl">
+        <Card
+          title={t("recovery.password.cardTitle")}
+          subtitle={t("recovery.password.loading")}
+          className="lg:mt-2"
+        >
+          <p className="text-sm text-text-secondary">
+            {t("recovery.password.loading")}
+          </p>
         </Card>
       </div>
     </RecoveryShell>
@@ -654,21 +684,7 @@ function ForgotPasswordPageContent() {
 
 export default function ForgotPasswordPage() {
   return (
-    <Suspense
-      fallback={
-        <RecoveryShell title="Recuperation de mot de passe">
-          <div className="mx-auto w-full max-w-2xl">
-            <Card
-              title="Mot de passe oublie"
-              subtitle="Chargement..."
-              className="lg:mt-2"
-            >
-              <p className="text-sm text-text-secondary">Chargement...</p>
-            </Card>
-          </div>
-        </RecoveryShell>
-      }
-    >
+    <Suspense fallback={<ForgotPasswordFallback />}>
       <ForgotPasswordPageContent />
     </Suspense>
   );

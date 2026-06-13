@@ -3708,6 +3708,7 @@ export class AuthService {
       role: PlatformRole | SchoolRole | null;
       activeRole: PlatformRole | SchoolRole | null;
       gender?: "M" | "F" | "OTHER" | null;
+      preferredLocale: "FR" | "EN";
       hasPassword: boolean;
       hasPhoneCredential: boolean;
     }
@@ -3725,6 +3726,7 @@ export class AuthService {
         firstName: true,
         lastName: true,
         gender: true,
+        preferredLocale: true,
         passwordHash: true,
         platformRoles: {
           select: { role: true },
@@ -3774,10 +3776,20 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       gender: user.gender,
+      preferredLocale: user.preferredLocale,
       schoolSlug: user.memberships[0]?.school?.slug ?? null,
       hasPassword: !!user.passwordHash,
       hasPhoneCredential: !!user.phoneCredential,
     };
+  }
+
+  async updatePreferredLocale(userId: string, preferredLocale: "FR" | "EN") {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { preferredLocale },
+    });
+
+    return this.getGlobalMe(userId);
   }
 
   private termLabel(term: "TERM_1" | "TERM_2" | "TERM_3") {
