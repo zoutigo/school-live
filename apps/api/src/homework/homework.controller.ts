@@ -28,6 +28,10 @@ import { ListHomeworkDto } from "./dto/list-homework.dto.js";
 import { SetHomeworkCompletionDto } from "./dto/set-homework-completion.dto.js";
 import { UpdateHomeworkDto } from "./dto/update-homework.dto.js";
 import { HomeworkService } from "./homework.service.js";
+import {
+  homeworkLocaleFromUser,
+  translateHomeworkError,
+} from "./homework.translations.js";
 
 @Controller()
 @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
@@ -242,7 +246,12 @@ export class HomeworkController {
     @UploadedFile() file?: { buffer: Buffer; mimetype: string; size: number },
   ) {
     if (!file) {
-      throw new BadRequestException("Fichier image manquant");
+      throw new BadRequestException(
+        translateHomeworkError(
+          homeworkLocaleFromUser(user),
+          "homework.errors.missingImageFile",
+        ),
+      );
     }
     const uploaded = await this.mediaClientService.uploadImage(
       "homework-inline-image",

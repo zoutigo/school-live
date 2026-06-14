@@ -1,5 +1,6 @@
 import { BadRequestException } from "@nestjs/common";
 import { HomeworkController } from "../src/homework/homework.controller";
+import { translateHomeworkError } from "../src/homework/homework.translations";
 
 describe("HomeworkController", () => {
   const homeworkService = {
@@ -83,5 +84,24 @@ describe("HomeworkController", () => {
       controller.uploadInlineImage({ id: "teacher-1" } as never, "school-1"),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(mediaClientService.uploadImage).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing inline image uploads with a French message by default", async () => {
+    await expect(
+      controller.uploadInlineImage({ id: "teacher-1" } as never, "school-1"),
+    ).rejects.toMatchObject({
+      message: translateHomeworkError("fr", "homework.errors.missingImageFile"),
+    });
+  });
+
+  it("rejects missing inline image uploads with an English message for preferredLocale=EN", async () => {
+    await expect(
+      controller.uploadInlineImage(
+        { id: "teacher-1", preferredLocale: "EN" } as never,
+        "school-1",
+      ),
+    ).rejects.toMatchObject({
+      message: translateHomeworkError("en", "homework.errors.missingImageFile"),
+    });
   });
 });

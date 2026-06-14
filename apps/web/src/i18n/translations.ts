@@ -762,6 +762,68 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.mail.author": "Saisi par",
     "discipline.mail.openPortal": "Ouvrir le portail",
     "discipline.mail.consultPortal": "Consulter le portail",
+
+    "homework.page.title": "Devoirs",
+    "homework.page.defaultClassName": "Classe",
+    "homework.page.subtitle": "Suivi des devoirs et etat de rendu",
+    "homework.page.classNotAccessible":
+      "Classe non accessible avec vos affectations.",
+
+    "homework.tabs.list": "Liste",
+    "homework.tabs.view": "Voir",
+    "homework.tabs.help": "Aide",
+
+    "homework.status.todo": "A faire",
+    "homework.status.late": "En retard",
+    "homework.status.done": "Valide",
+
+    "homework.table.title": "Titre",
+    "homework.table.subject": "Matiere",
+    "homework.table.dueDate": "Echeance",
+    "homework.table.status": "Statut",
+
+    "homework.common.loading": "Chargement...",
+    "homework.errors.loadFailed":
+      "Impossible de charger les devoirs de classe.",
+    "homework.errors.networkError": "Erreur reseau.",
+
+    "homework.help.summary":
+      "ce module centralise les devoirs annonces a la classe et leur statut de suivi.",
+    "homework.help.list.name": "Lister",
+    "homework.help.list.purpose": "suivre les devoirs en cours.",
+    "homework.help.list.howTo": "consulter l'onglet Liste.",
+    "homework.help.list.moduleImpact":
+      "permet de gerer la charge eleve par eleve.",
+    "homework.help.list.crossModuleImpact":
+      "en lien avec Notes pour evaluer les rendus.",
+    "homework.help.view.name": "Voir",
+    "homework.help.view.purpose": "obtenir une synthese rapide de la classe.",
+    "homework.help.view.howTo": "ouvrir l'onglet Voir.",
+    "homework.help.view.moduleImpact": "priorisation des relances.",
+    "homework.help.view.crossModuleImpact":
+      "ameliore le suivi parent via les espaces enfant.",
+
+    "homework.summary.class": "Classe",
+    "homework.summary.total": "Devoirs",
+    "homework.summary.todo": "A faire",
+    "homework.summary.late": "En retard",
+
+    "homework.sidebar.devoirs": "Devoirs",
+    "homework.sidebar.cahierDeTexte": "Cahier de texte",
+
+    "homework.dashboard.title": "Devoirs en cours",
+    "homework.dashboard.noHomework": "Aucun devoir en cours",
+    "homework.dashboard.viewAll": "Voir tout",
+
+    "homework.cahierDeTexte.title": "Cahier de texte",
+    "homework.cahierDeTexte.subtitle": "Travail a faire",
+    "homework.cahierDeTexte.summary":
+      "Consultez les devoirs et consignes de travail de votre enfant.",
+    "homework.cahierDeTexte.bullet1": "Devoirs du jour et travaux a rendre.",
+    "homework.cahierDeTexte.bullet2":
+      "Consignes partagees par les enseignants.",
+    "homework.cahierDeTexte.bullet3":
+      "Preparation de la semaine avec votre enfant.",
   },
   en: {
     "common.save": "Save",
@@ -1481,5 +1543,65 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.mail.author": "Recorded by",
     "discipline.mail.openPortal": "Open the portal",
     "discipline.mail.consultPortal": "View the portal",
+
+    "homework.page.title": "Homework",
+    "homework.page.defaultClassName": "Class",
+    "homework.page.subtitle": "Homework tracking and submission status",
+    "homework.page.classNotAccessible":
+      "Class not accessible with your assignments.",
+
+    "homework.tabs.list": "List",
+    "homework.tabs.view": "View",
+    "homework.tabs.help": "Help",
+
+    "homework.status.todo": "To do",
+    "homework.status.late": "Late",
+    "homework.status.done": "Done",
+
+    "homework.table.title": "Title",
+    "homework.table.subject": "Subject",
+    "homework.table.dueDate": "Due date",
+    "homework.table.status": "Status",
+
+    "homework.common.loading": "Loading...",
+    "homework.errors.loadFailed": "Unable to load class homework.",
+    "homework.errors.networkError": "Network error.",
+
+    "homework.help.summary":
+      "this module centralizes homework assigned to the class and its tracking status.",
+    "homework.help.list.name": "List",
+    "homework.help.list.purpose": "track ongoing homework.",
+    "homework.help.list.howTo": "open the List tab.",
+    "homework.help.list.moduleImpact":
+      "helps manage student workload individually.",
+    "homework.help.list.crossModuleImpact":
+      "linked with Grades to assess submissions.",
+    "homework.help.view.name": "View",
+    "homework.help.view.purpose": "get a quick overview of the class.",
+    "homework.help.view.howTo": "open the View tab.",
+    "homework.help.view.moduleImpact": "prioritize follow-ups.",
+    "homework.help.view.crossModuleImpact":
+      "improves parent tracking via child spaces.",
+
+    "homework.summary.class": "Class",
+    "homework.summary.total": "Homework",
+    "homework.summary.todo": "To do",
+    "homework.summary.late": "Late",
+
+    "homework.sidebar.devoirs": "Homework",
+    "homework.sidebar.cahierDeTexte": "Homework notebook",
+
+    "homework.dashboard.title": "Ongoing homework",
+    "homework.dashboard.noHomework": "No homework in progress",
+    "homework.dashboard.viewAll": "View all",
+
+    "homework.cahierDeTexte.title": "Homework notebook",
+    "homework.cahierDeTexte.subtitle": "Work to do",
+    "homework.cahierDeTexte.summary":
+      "View your child's homework and instructions.",
+    "homework.cahierDeTexte.bullet1":
+      "Today's homework and assignments to submit.",
+    "homework.cahierDeTexte.bullet2": "Instructions shared by teachers.",
+    "homework.cahierDeTexte.bullet3": "Plan the week ahead with your child.",
   },
 };

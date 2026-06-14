@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useLocaleStore } from "./locale-store";
-import { DEFAULT_LOCALE } from "./translations";
+import { DEFAULT_LOCALE, translations } from "./translations";
 import { translate, useTranslation } from "./useTranslation";
 
 describe("translate", () => {
@@ -19,6 +19,25 @@ describe("translate", () => {
 
   it("falls back to the raw key when the key does not exist in any locale", () => {
     expect(translate("en", "does.not.exist")).toBe("does.not.exist");
+  });
+});
+
+describe("homework.* translations", () => {
+  it("has matching fr/en keys with distinct, non-empty values", () => {
+    const frKeys = Object.keys(translations.fr).filter((key) =>
+      key.startsWith("homework."),
+    );
+    const enKeys = Object.keys(translations.en).filter((key) =>
+      key.startsWith("homework."),
+    );
+
+    expect(frKeys.length).toBeGreaterThan(0);
+    expect(new Set(enKeys)).toEqual(new Set(frKeys));
+
+    for (const key of frKeys) {
+      expect(translations.fr[key]).not.toBe("");
+      expect(translations.en[key]).not.toBe("");
+    }
   });
 });
 

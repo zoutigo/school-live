@@ -1035,26 +1035,31 @@ function TeacherHomeworkSection({
   dashboard,
   loading,
   schoolSlug,
+  t,
 }: {
   dashboard: RichTeacherDashboard | null;
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   const accent = "#2E7D32";
   return (
     <TeacherSectionCard
-      title="Devoirs en cours"
+      title={t("homework.dashboard.title")}
       icon={BookOpen}
       iconColor={accent}
       count={dashboard?.openHomework.length}
-      linkLabel="Voir tout"
+      linkLabel={t("homework.dashboard.viewAll")}
       linkHref={`/schools/${schoolSlug}/student-grades`}
       testId="section-teacher-homework"
     >
       {loading && !dashboard ? (
         <TeacherSectionSkeleton />
       ) : !dashboard || dashboard.openHomework.length === 0 ? (
-        <TeacherEmptyRow icon={CheckCircle2} text="Aucun devoir en cours" />
+        <TeacherEmptyRow
+          icon={CheckCircle2}
+          text={t("homework.dashboard.noHomework")}
+        />
       ) : (
         dashboard.openHomework.map((hw) => (
           <TeacherDataRow
@@ -1667,6 +1672,7 @@ export default function DashboardPage() {
                 dashboard={richTeacher}
                 loading={teacherCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
             </div>
           </div>

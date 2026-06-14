@@ -502,7 +502,7 @@ function buildTeacherClassItems(
       matchPrefix: `${base}/emploi-du-temps`,
     },
     {
-      label: "Devoirs",
+      label: t("homework.sidebar.devoirs"),
       href: `${base}/devoirs`,
       icon: FileText,
       matchPrefix: `${base}/devoirs`,

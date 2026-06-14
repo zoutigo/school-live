@@ -27,6 +27,11 @@ import type {
 import type { ListHomeworkDto } from "./dto/list-homework.dto.js";
 import type { SetHomeworkCompletionDto } from "./dto/set-homework-completion.dto.js";
 import type { UpdateHomeworkDto } from "./dto/update-homework.dto.js";
+import {
+  homeworkLocaleFromUser,
+  translateHomeworkError,
+  type HomeworkLocale,
+} from "./homework.translations.js";
 
 type ClassEntity = {
   id: string;
@@ -194,6 +199,7 @@ export class HomeworkService {
       schoolId,
       classId,
       homeworkId,
+      homeworkLocaleFromUser(user),
     );
     const subjectColors = await this.loadSubjectColorMap(
       schoolId,
@@ -269,7 +275,12 @@ export class HomeworkService {
       deleteRemovedPhysically: true,
     });
 
-    return this.loadMappedHomeworkRow(created.id, user.id, null);
+    return this.loadMappedHomeworkRow(
+      created.id,
+      user.id,
+      null,
+      homeworkLocaleFromUser(user),
+    );
   }
 
   async updateHomework(
@@ -279,10 +290,12 @@ export class HomeworkService {
     homeworkId: string,
     payload: UpdateHomeworkDto,
   ) {
+    const locale = homeworkLocaleFromUser(user);
     const existing = await this.findHomeworkOrThrow(
       schoolId,
       classId,
       homeworkId,
+      locale,
     );
     await this.assertCanManageHomework(user, schoolId, classId, existing);
 
@@ -313,6 +326,7 @@ export class HomeworkService {
 
     await this.cleanupMediaUrls(
       existingAttachmentUrls.filter((url) => !nextAttachmentUrls.includes(url)),
+      locale,
     );
 
     const nextContentHtml =
@@ -359,6 +373,7 @@ export class HomeworkService {
       homeworkId,
       user.id,
       null,
+      locale,
       existing.schoolYearId,
       classId,
     );
@@ -370,10 +385,12 @@ export class HomeworkService {
     classId: string,
     homeworkId: string,
   ) {
+    const locale = homeworkLocaleFromUser(user);
     const existing = await this.findHomeworkOrThrow(
       schoolId,
       classId,
       homeworkId,
+      locale,
     );
     await this.assertCanManageHomework(user, schoolId, classId, existing);
 
@@ -381,6 +398,7 @@ export class HomeworkService {
       existing.attachments
         .map((attachment) => attachment.fileUrl)
         .filter((url): url is string => Boolean(url)),
+      locale,
     );
     await this.inlineMediaService.removeEntityImages({
       entityType: InlineMediaEntityType.HOMEWORK,
@@ -410,10 +428,20 @@ export class HomeworkService {
     );
     const body = payload.body.trim();
     if (!body) {
-      throw new BadRequestException("Comment body is required");
+      throw new BadRequestException(
+        translateHomeworkError(
+          homeworkLocaleFromUser(user),
+          "homework.errors.commentBodyRequired",
+        ),
+      );
     }
 
-    await this.findHomeworkOrThrow(schoolId, classId, homeworkId);
+    await this.findHomeworkOrThrow(
+      schoolId,
+      classId,
+      homeworkId,
+      homeworkLocaleFromUser(user),
+    );
     await this.prisma.homeworkComment.create({
       data: {
         schoolId,
@@ -447,10 +475,20 @@ export class HomeworkService {
       payload.studentId,
     );
     if (!access.viewerStudent) {
-      throw new ForbiddenException("Homework completion not accessible");
+      throw new ForbiddenException(
+        translateHomeworkError(
+          homeworkLocaleFromUser(user),
+          "homework.errors.completionNotAccessible",
+        ),
+      );
     }
 
-    await this.findHomeworkOrThrow(schoolId, classId, homeworkId);
+    await this.findHomeworkOrThrow(
+      schoolId,
+      classId,
+      homeworkId,
+      homeworkLocaleFromUser(user),
+    );
     if (payload.done) {
       await this.prisma.homeworkCompletion.upsert({
         where: {
@@ -491,10 +529,11 @@ export class HomeworkService {
     homeworkId: string,
     viewerUserId: string,
     viewerStudentId: string | null,
+    locale: HomeworkLocale,
     schoolYearId?: string,
     classId?: string,
   ) {
-    const homework = await this.findHomeworkOrThrowById(homeworkId);
+    const homework = await this.findHomeworkOrThrowById(homeworkId, locale);
     const effectiveClassId = classId ?? homework.classId;
     const effectiveSchoolYearId = schoolYearId ?? homework.schoolYearId;
     const subjectColors = await this.loadSubjectColorMap(
@@ -521,15 +560,21 @@ export class HomeworkService {
     schoolId: string,
     classId: string,
     homeworkId: string,
+    locale: HomeworkLocale,
   ) {
-    const homework = await this.findHomeworkOrThrowById(homeworkId);
+    const homework = await this.findHomeworkOrThrowById(homeworkId, locale);
     if (homework.schoolId !== schoolId || homework.classId !== classId) {
-      throw new NotFoundException("Homework not found");
+      throw new NotFoundException(
+        translateHomeworkError(locale, "homework.errors.notFound"),
+      );
     }
     return homework;
   }
 
-  private async findHomeworkOrThrowById(homeworkId: string) {
+  private async findHomeworkOrThrowById(
+    homeworkId: string,
+    locale: HomeworkLocale,
+  ) {
     const homework = await this.prisma.homework.findFirst({
       where: { id: homeworkId },
       include: {
@@ -573,7 +618,9 @@ export class HomeworkService {
       },
     });
     if (!homework) {
-      throw new NotFoundException("Homework not found");
+      throw new NotFoundException(
+        translateHomeworkError(locale, "homework.errors.notFound"),
+      );
     }
     return homework;
   }
@@ -584,7 +631,8 @@ export class HomeworkService {
     classId: string,
     studentId?: string,
   ): Promise<ViewerAccess> {
-    const classEntity = await this.ensureClassExists(schoolId, classId);
+    const locale = homeworkLocaleFromUser(user);
+    const classEntity = await this.ensureClassExists(schoolId, classId, locale);
 
     // A user can hold multiple school roles (e.g. teacher AND parent).
     // When they explicitly chose "PARENT" or "STUDENT" as their active role,
@@ -619,7 +667,9 @@ export class HomeworkService {
         select: { id: true },
       });
       if (!assignment) {
-        throw new ForbiddenException("Class not accessible");
+        throw new ForbiddenException(
+          translateHomeworkError(locale, "homework.errors.classNotAccessible"),
+        );
       }
       return {
         classEntity,
@@ -645,7 +695,9 @@ export class HomeworkService {
         select: { id: true, firstName: true, lastName: true },
       });
       if (!viewerStudent) {
-        throw new ForbiddenException("Class not accessible");
+        throw new ForbiddenException(
+          translateHomeworkError(locale, "homework.errors.classNotAccessible"),
+        );
       }
       return {
         classEntity,
@@ -678,11 +730,16 @@ export class HomeworkService {
         },
       });
       if (linkedStudents.length === 0) {
-        throw new ForbiddenException("Class not accessible");
+        throw new ForbiddenException(
+          translateHomeworkError(locale, "homework.errors.classNotAccessible"),
+        );
       }
       if (!studentId && linkedStudents.length > 1) {
         throw new BadRequestException(
-          "studentId is required for parent access",
+          translateHomeworkError(
+            locale,
+            "homework.errors.studentIdRequiredForParent",
+          ),
         );
       }
       return {
@@ -692,7 +749,9 @@ export class HomeworkService {
       };
     }
 
-    throw new ForbiddenException("Homework not accessible");
+    throw new ForbiddenException(
+      translateHomeworkError(locale, "homework.errors.notAccessible"),
+    );
   }
 
   private async ensureClassManageAccess(
@@ -707,18 +766,29 @@ export class HomeworkService {
         ...HOMEWORK_MANAGER_ROLES,
       ])
     ) {
-      throw new ForbiddenException("Homework management not accessible");
+      throw new ForbiddenException(
+        translateHomeworkError(
+          homeworkLocaleFromUser(user),
+          "homework.errors.managementNotAccessible",
+        ),
+      );
     }
     return access.classEntity;
   }
 
-  private async ensureClassExists(schoolId: string, classId: string) {
+  private async ensureClassExists(
+    schoolId: string,
+    classId: string,
+    locale: HomeworkLocale,
+  ) {
     const classEntity = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
       select: { id: true, name: true, schoolYearId: true },
     });
     if (!classEntity) {
-      throw new NotFoundException("Class not found");
+      throw new NotFoundException(
+        translateHomeworkError(locale, "homework.errors.classNotFound"),
+      );
     }
     return classEntity;
   }
@@ -735,7 +805,12 @@ export class HomeworkService {
       select: { id: true },
     });
     if (!subject) {
-      throw new NotFoundException("Subject not found");
+      throw new NotFoundException(
+        translateHomeworkError(
+          homeworkLocaleFromUser(user),
+          "homework.errors.subjectNotFound",
+        ),
+      );
     }
     if (
       this.hasAnySchoolRole(user, schoolId, HOMEWORK_MANAGER_ROLES) ||
@@ -754,7 +829,12 @@ export class HomeworkService {
       select: { id: true },
     });
     if (!assignment) {
-      throw new ForbiddenException("Subject not accessible for this class");
+      throw new ForbiddenException(
+        translateHomeworkError(
+          homeworkLocaleFromUser(user),
+          "homework.errors.subjectNotAccessible",
+        ),
+      );
     }
   }
 
@@ -772,7 +852,12 @@ export class HomeworkService {
       return;
     }
     if (homework.authorUserId !== user.id) {
-      throw new ForbiddenException("Only the author can manage this homework");
+      throw new ForbiddenException(
+        translateHomeworkError(
+          homeworkLocaleFromUser(user),
+          "homework.errors.onlyAuthorCanManage",
+        ),
+      );
     }
   }
 
@@ -984,7 +1069,7 @@ export class HomeworkService {
     return `${firstName} ${lastName}`.trim();
   }
 
-  private async cleanupMediaUrls(urls: string[]) {
+  private async cleanupMediaUrls(urls: string[], locale: HomeworkLocale) {
     for (const url of urls) {
       try {
         await this.mediaClientService.deleteImageByUrl(url);
@@ -993,7 +1078,11 @@ export class HomeworkService {
           error instanceof Error && error.message.trim()
             ? error.message
             : "media cleanup failed";
-        throw new BadGatewayException(`Echec suppression media: ${message}`);
+        throw new BadGatewayException(
+          translateHomeworkError(locale, "homework.errors.mediaCleanupFailed", {
+            message,
+          }),
+        );
       }
     }
   }

@@ -213,7 +213,9 @@ export function ChildModulePage({
               >
                 {item.key === "vie-scolaire"
                   ? t("discipline.sidebar.vieScolaire")
-                  : item.label}
+                  : item.key === "cahier-de-texte"
+                    ? t("homework.sidebar.cahierDeTexte")
+                    : item.label}
               </Link>
             ))}
           </div>
