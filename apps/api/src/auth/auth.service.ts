@@ -2445,25 +2445,37 @@ export class AuthService {
     const resetToken = await this.getValidPasswordResetToken(input.token);
 
     if (!resetToken.user.recoveryBirthDate) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const providedBirthDate = new Date(input.birthDate);
     if (Number.isNaN(providedBirthDate.getTime())) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     if (
       !this.sameUtcDay(resetToken.user.recoveryBirthDate, providedBirthDate)
     ) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const uniqueQuestions = new Set(
       input.answers.map((answer) => answer.questionKey),
     );
     if (input.answers.length !== 3 || uniqueQuestions.size !== 3) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const expectedMap = new Map(
@@ -2476,7 +2488,10 @@ export class AuthService {
     for (const answer of input.answers) {
       const expectedHash = expectedMap.get(answer.questionKey);
       if (!expectedHash) {
-        throw new ForbiddenException("Informations de recuperation invalides");
+        throw new ForbiddenException({
+          code: "RECOVERY_INVALID",
+          message: "Informations de recuperation invalides",
+        });
       }
 
       const validAnswer = await bcrypt.compare(
@@ -2484,7 +2499,10 @@ export class AuthService {
         expectedHash,
       );
       if (!validAnswer) {
-        throw new ForbiddenException("Informations de recuperation invalides");
+        throw new ForbiddenException({
+          code: "RECOVERY_INVALID",
+          message: "Informations de recuperation invalides",
+        });
       }
     }
 
@@ -2514,9 +2532,11 @@ export class AuthService {
       ? await bcrypt.compare(newPassword, resetToken.user.passwordHash)
       : false;
     if (samePassword) {
-      throw new ForbiddenException(
-        "Le nouveau mot de passe doit etre different du mot de passe actuel",
-      );
+      throw new ForbiddenException({
+        code: "SAME_PASSWORD",
+        message:
+          "Le nouveau mot de passe doit etre different du mot de passe actuel",
+      });
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
@@ -2565,7 +2585,10 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException("Aucun compte trouvé pour cet identifiant.");
+      throw new NotFoundException({
+        code: "USER_NOT_FOUND",
+        message: "Aucun compte trouvé pour cet identifiant.",
+      });
     }
 
     if (!user.recoveryBirthDate || user.recoveryAnswers.length < 3) {
@@ -2613,23 +2636,35 @@ export class AuthService {
     });
 
     if (!user || !user.recoveryBirthDate || user.recoveryAnswers.length < 3) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const providedBirthDate = new Date(input.birthDate);
     if (Number.isNaN(providedBirthDate.getTime())) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     if (!this.sameUtcDay(user.recoveryBirthDate, providedBirthDate)) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const uniqueQuestions = new Set(
       input.answers.map((answer) => answer.questionKey),
     );
     if (input.answers.length !== 3 || uniqueQuestions.size !== 3) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const expectedMap = new Map(
@@ -2642,7 +2677,10 @@ export class AuthService {
     for (const answer of input.answers) {
       const expectedHash = expectedMap.get(answer.questionKey);
       if (!expectedHash) {
-        throw new ForbiddenException("Informations de recuperation invalides");
+        throw new ForbiddenException({
+          code: "RECOVERY_INVALID",
+          message: "Informations de recuperation invalides",
+        });
       }
 
       const validAnswer = await bcrypt.compare(
@@ -2650,7 +2688,10 @@ export class AuthService {
         expectedHash,
       );
       if (!validAnswer) {
-        throw new ForbiddenException("Informations de recuperation invalides");
+        throw new ForbiddenException({
+          code: "RECOVERY_INVALID",
+          message: "Informations de recuperation invalides",
+        });
       }
     }
 
@@ -2791,23 +2832,35 @@ export class AuthService {
     const user = await this.resolveUserForPinRecovery(input);
 
     if (!user.recoveryBirthDate) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const providedBirthDate = new Date(input.birthDate);
     if (Number.isNaN(providedBirthDate.getTime())) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     if (!this.sameUtcDay(user.recoveryBirthDate, providedBirthDate)) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const uniqueQuestions = new Set(
       input.answers.map((answer) => answer.questionKey),
     );
     if (input.answers.length !== 3 || uniqueQuestions.size !== 3) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     const expectedMap = new Map(
@@ -2820,7 +2873,10 @@ export class AuthService {
     for (const answer of input.answers) {
       const expectedHash = expectedMap.get(answer.questionKey);
       if (!expectedHash) {
-        throw new ForbiddenException("Informations de recuperation invalides");
+        throw new ForbiddenException({
+          code: "RECOVERY_INVALID",
+          message: "Informations de recuperation invalides",
+        });
       }
 
       const validAnswer = await bcrypt.compare(
@@ -2828,7 +2884,10 @@ export class AuthService {
         expectedHash,
       );
       if (!validAnswer) {
-        throw new ForbiddenException("Informations de recuperation invalides");
+        throw new ForbiddenException({
+          code: "RECOVERY_INVALID",
+          message: "Informations de recuperation invalides",
+        });
       }
     }
 
@@ -2895,9 +2954,10 @@ export class AuthService {
         user.phoneCredential.pinHash,
       );
       if (samePin) {
-        throw new ForbiddenException(
-          "Le nouveau PIN doit etre different de l'actuel.",
-        );
+        throw new ForbiddenException({
+          code: "SAME_PIN",
+          message: "Le nouveau PIN doit etre different de l'actuel.",
+        });
       }
     }
 
@@ -4014,8 +4074,6 @@ export class AuthService {
     const resetToken = await this.prisma.passwordResetToken.findFirst({
       where: {
         tokenHash,
-        usedAt: null,
-        expiresAt: { gt: now },
       },
       include: {
         user: {
@@ -4040,10 +4098,18 @@ export class AuthService {
       },
     });
 
-    if (!resetToken) {
-      throw new UnauthorizedException(
-        "Lien de reinitialisation invalide ou expire",
-      );
+    if (!resetToken || resetToken.usedAt) {
+      throw new UnauthorizedException({
+        code: "TOKEN_INVALID",
+        message: "Lien de reinitialisation invalide ou expire",
+      });
+    }
+
+    if (resetToken.expiresAt <= now) {
+      throw new UnauthorizedException({
+        code: "TOKEN_EXPIRED",
+        message: "Lien de reinitialisation invalide ou expire",
+      });
     }
 
     return resetToken;
@@ -4363,9 +4429,10 @@ export class AuthService {
       }
       return payload.sub;
     } catch {
-      throw new ForbiddenException(
-        "Session de recuperation PIN invalide ou expiree",
-      );
+      throw new ForbiddenException({
+        code: "RECOVERY_SESSION_EXPIRED",
+        message: "Session de recuperation PIN invalide ou expiree",
+      });
     }
   }
 
@@ -4423,7 +4490,10 @@ export class AuthService {
         )?.user ?? null);
 
     if (!user || !user.recoveryBirthDate || user.recoveryAnswers.length < 3) {
-      throw new ForbiddenException("Informations de recuperation invalides");
+      throw new ForbiddenException({
+        code: "RECOVERY_INVALID",
+        message: "Informations de recuperation invalides",
+      });
     }
 
     return user;

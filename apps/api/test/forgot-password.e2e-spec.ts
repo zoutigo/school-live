@@ -200,6 +200,7 @@ describe("Forgot password API e2e", () => {
     });
 
     expect(invalid.response.status).toBe(401);
+    expect(invalid.body?.code).toBe("TOKEN_INVALID");
 
     const expiredRaw = `expired-${runId}`;
     const pepper =
@@ -224,6 +225,7 @@ describe("Forgot password API e2e", () => {
     });
 
     expect(expired.response.status).toBe(401);
+    expect(expired.body?.code).toBe("TOKEN_EXPIRED");
   });
 
   it("rejects verify step when recovery data is incorrect", async () => {
@@ -244,6 +246,7 @@ describe("Forgot password API e2e", () => {
     });
 
     expect(wrongBirthDate.response.status).toBe(403);
+    expect(wrongBirthDate.body?.code).toBe("RECOVERY_INVALID");
 
     const wrongAnswer = await apiJson("/api/auth/forgot-password/verify", {
       method: "POST",
@@ -260,6 +263,7 @@ describe("Forgot password API e2e", () => {
     });
 
     expect(wrongAnswer.response.status).toBe(403);
+    expect(wrongAnswer.body?.code).toBe("RECOVERY_INVALID");
   });
 
   it("enforces verification before final reset", async () => {
@@ -335,6 +339,38 @@ describe("Forgot password API e2e", () => {
     });
 
     expect(reused.response.status).toBe(401);
+    expect(reused.body?.code).toBe("TOKEN_INVALID");
+  });
+
+  it("rejects reset when the new password matches the current one", async () => {
+    const token = await requestResetToken();
+
+    const verify = await apiJson("/api/auth/forgot-password/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token,
+        birthDate,
+        answers: [
+          { questionKey: "BIRTH_CITY", answer: "douala" },
+          { questionKey: "FAVORITE_SPORT", answer: "football" },
+          { questionKey: "FATHER_FIRST_NAME", answer: "andre" },
+        ],
+      }),
+    });
+
+    expect(verify.response.status).toBe(201);
+
+    // The previous test already reset the password to `nextPassword`,
+    // which is therefore the current password at this point.
+    const samePassword = await apiJson("/api/auth/forgot-password/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, newPassword: nextPassword }),
+    });
+
+    expect(samePassword.response.status).toBe(403);
+    expect(samePassword.body?.code).toBe("SAME_PASSWORD");
   });
 
   it("rejects weak new passwords", async () => {
