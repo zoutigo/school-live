@@ -23,6 +23,10 @@ import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page"
 import { getSchoolMessagesUnreadCount } from "../../../../../components/messaging/messaging-api";
 import type { StudentNotesTermSnapshot } from "../../../../../components/student-notes/student-notes.types";
 import {
+  useTranslation,
+  type TranslateFn,
+} from "../../../../../i18n/useTranslation";
+import {
   buildAccountSummary,
   buildDisciplineSummary,
   buildNotesSummary,
@@ -315,15 +319,17 @@ function ParentDisciplineCard({
   summaries,
   loading,
   schoolSlug,
+  t,
 }: {
   summaries: ChildDisciplineSummary[];
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   return (
     <FamilyCardShell
-      title="Vie scolaire"
-      eyebrow="Discipline"
+      title={t("discipline.dashboard.cardTitle")}
+      eyebrow={t("discipline.dashboard.cardEyebrow")}
       icon={ShieldAlert}
       accent="from-[#ffe2b8] via-[#fff2dc] to-white"
     >
@@ -342,7 +348,7 @@ function ParentDisciplineCard({
           </div>
         ) : summaries.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-orange-200 bg-white/70 px-3 py-4 text-sm text-slate-600 min-[360px]:rounded-[18px] min-[360px]:py-5 md:rounded-[22px] md:px-4 md:py-6">
-            Aucun enfant associe ou aucune donnee de vie scolaire disponible.
+            {t("discipline.dashboard.empty")}
           </div>
         ) : (
           <div className="space-y-3">
@@ -369,7 +375,7 @@ function ParentDisciplineCard({
                 <div className="mt-3 grid grid-cols-3 gap-1 text-center min-[360px]:gap-1.5 md:mt-4 md:gap-2">
                   <div className="rounded-lg bg-[#fff8f1] px-1.5 py-2 min-[360px]:rounded-xl min-[360px]:px-2 min-[360px]:py-2.5 md:rounded-2xl md:px-3 md:py-3">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 sm:text-xs">
-                      Absences
+                      {t("discipline.dashboard.stats.absences")}
                     </p>
                     <p className="mt-2 font-heading text-xl font-semibold text-slate-950 sm:text-2xl">
                       {summary.absences}
@@ -377,7 +383,7 @@ function ParentDisciplineCard({
                   </div>
                   <div className="rounded-lg bg-[#fff8f1] px-1.5 py-2 min-[360px]:rounded-xl min-[360px]:px-2 min-[360px]:py-2.5 md:rounded-2xl md:px-3 md:py-3">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 sm:text-xs">
-                      Retards
+                      {t("discipline.dashboard.stats.retards")}
                     </p>
                     <p className="mt-2 font-heading text-xl font-semibold text-slate-950 sm:text-2xl">
                       {summary.retards}
@@ -385,7 +391,7 @@ function ParentDisciplineCard({
                   </div>
                   <div className="rounded-lg bg-[#fff8f1] px-1.5 py-2 min-[360px]:rounded-xl min-[360px]:px-2 min-[360px]:py-2.5 md:rounded-2xl md:px-3 md:py-3">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 sm:text-xs">
-                      Incidents
+                      {t("discipline.dashboard.stats.incidents")}
                     </p>
                     <p className="mt-2 font-heading text-xl font-semibold text-slate-950 sm:text-2xl">
                       {summary.incidents}
@@ -393,7 +399,7 @@ function ParentDisciplineCard({
                   </div>
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-orange-700 sm:text-sm">
-                  Ouvrir le detail discipline
+                  {t("discipline.dashboard.openDetail")}
                   <ChevronRight className="h-4 w-4" />
                 </div>
               </Link>
@@ -1133,6 +1139,7 @@ function SchoolOperationsCard({
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -1265,7 +1272,7 @@ export default function DashboardPage() {
 
       setDisciplineSummaries(
         lifeEventsGroups.map(({ child, events }) =>
-          buildDisciplineSummary(child, events),
+          buildDisciplineSummary(child, events, t),
         ),
       );
       setNotesSummaries(
@@ -1599,6 +1606,7 @@ export default function DashboardPage() {
                 summaries={disciplineSummaries}
                 loading={parentCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
               <ParentEvaluationsCard
                 summaries={notesSummaries}

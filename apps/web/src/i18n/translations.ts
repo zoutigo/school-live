@@ -530,6 +530,238 @@ export const translations: Record<Locale, Record<string, string>> = {
     "account.pin.success.configured":
       "Telephone et PIN configures avec succes.",
     "account.pin.success.updated": "PIN mis a jour avec succes.",
+
+    "discipline.types.absence": "Absence",
+    "discipline.types.retard": "Retard",
+    "discipline.types.sanction": "Sanction",
+    "discipline.types.punition": "Punition",
+
+    "discipline.common.yes": "Oui",
+    "discipline.common.no": "Non",
+    "discipline.common.loading": "Chargement...",
+    "discipline.common.cancel": "Annuler",
+    "discipline.common.delete": "Supprimer",
+    "discipline.common.networkError": "Erreur reseau.",
+    "discipline.common.csrfInvalid": "Session CSRF invalide. Reconnectez-vous.",
+
+    "discipline.list.columns.type": "Type",
+    "discipline.list.columns.date": "Date",
+    "discipline.list.columns.reason": "Motif",
+    "discipline.list.columns.duration": "Duree",
+    "discipline.list.columns.justified": "Justifie",
+    "discipline.list.columns.author": "Auteur",
+    "discipline.list.columns.actions": "Actions",
+    "discipline.list.editAria": "Modifier l'evenement",
+    "discipline.list.deleteAria": "Supprimer l'evenement",
+    "discipline.list.durationPrefix": "Duree :",
+    "discipline.list.justifiedPrefix": "Justifie :",
+    "discipline.list.authorPrefix": "Auteur :",
+
+    "discipline.page.defaultClassName": "Classe",
+    "discipline.page.subtitle": "Absences, retards, sanctions et punitions",
+    "discipline.page.tabs.entry": "Saisie",
+    "discipline.page.tabs.history": "Historique",
+    "discipline.page.tabs.help": "Aide",
+    "discipline.page.classNotAccessible":
+      "Classe non accessible avec vos affectations.",
+    "discipline.page.studentLabel": "Eleve",
+
+    "discipline.help.summary":
+      "ce module permet a l'enseignant de declarer des absences, retards, sanctions et punitions sur ses classes affectees.",
+    "discipline.help.record.name": "Saisir",
+    "discipline.help.record.purpose":
+      "enregistrer rapidement un evenement de vie scolaire.",
+    "discipline.help.record.howTo":
+      "selectionner l'eleve puis renseigner type, date et motif.",
+    "discipline.help.record.moduleImpact":
+      "l'evenement est visible au parent sur Vie scolaire (annee en cours).",
+    "discipline.help.record.crossModuleImpact":
+      "alimente ensuite la page Cursus pour l'historique global.",
+    "discipline.help.verify.name": "Verifier",
+    "discipline.help.verify.purpose":
+      "consulter le journal discipline de l'eleve.",
+    "discipline.help.verify.howTo":
+      "ouvrir Historique pour voir les evenements existants.",
+    "discipline.help.verify.moduleImpact": "evite les doublons de saisie.",
+    "discipline.help.verify.crossModuleImpact":
+      "facilite la coordination avec SCHOOL_MANAGER/SUPERVISOR.",
+
+    "discipline.errors.loadClass": "Impossible de charger la classe.",
+    "discipline.errors.loadHistory":
+      "Impossible de charger l'historique discipline.",
+    "discipline.errors.createFailed": "Creation impossible.",
+    "discipline.errors.editFailed": "Modification impossible.",
+    "discipline.errors.deleteFailed": "Suppression impossible.",
+    "discipline.success.eventCreated": "Evenement discipline enregistre.",
+    "discipline.success.eventUpdated": "Evenement modifie.",
+    "discipline.success.eventDeleted": "Evenement supprime.",
+
+    "discipline.validation.dateRequired": "La date est obligatoire.",
+    "discipline.validation.reasonRequired": "Le motif est obligatoire.",
+    "discipline.validation.durationPositive":
+      "La duree doit etre un entier positif.",
+
+    "discipline.form.type": "Type d'evenement",
+    "discipline.form.typeEditAria": "Type d'evenement edition",
+    "discipline.form.dateTime": "Date et heure",
+    "discipline.form.dateTimeEditAria": "Date et heure edition",
+    "discipline.form.reason": "Motif",
+    "discipline.form.reasonEditAria": "Motif edition",
+    "discipline.form.reasonPlaceholder":
+      "Ex: travail non rendu, absence non justifiee",
+    "discipline.form.duration": "Duree (minutes, optionnel)",
+    "discipline.form.durationEditAria": "Duree edition (minutes, optionnel)",
+    "discipline.form.comment": "Commentaire (optionnel)",
+    "discipline.form.commentEditAria": "Commentaire edition (optionnel)",
+    "discipline.form.justified": "Justifie (absence / retard)",
+    "discipline.form.saving": "Enregistrement...",
+    "discipline.form.submitCreate": "Enregistrer l'evenement",
+    "discipline.form.submitUpdate": "Enregistrer les modifications",
+    "discipline.form.submitReport": "Signaler",
+    "discipline.form.cancel": "Annuler",
+
+    "discipline.eleves.sectionTitle":
+      "Vie scolaire : absences, retards, sanctions et punitions",
+
+    "discipline.empty.studentEvents": "Aucun evenement pour cet eleve.",
+    "discipline.empty.eleves": "Aucun evenement de vie scolaire.",
+
+    "discipline.delete.title": "Supprimer cet evenement ?",
+    "discipline.delete.message":
+      'Cette action est irreversible. L\'evenement "{label}" sera supprime definitivement.',
+    "discipline.delete.confirm": "Supprimer",
+
+    "discipline.vieScolaire.title": "Vie scolaire",
+    "discipline.vieScolaire.subtitleDefault": "Suivi eleve",
+    "discipline.vieScolaire.eventsWarning":
+      "Les evenements vie scolaire sont temporairement indisponibles. Affichage des donnees de demonstration.",
+    "discipline.vieScolaire.error": "Impossible de charger la vie scolaire.",
+    "discipline.vieScolaire.tabs.synthese": "Synthese",
+    "discipline.vieScolaire.tabs.absencesRetards": "Absences / retards",
+    "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punitions",
+    "discipline.vieScolaire.kpi.absences": "Absences",
+    "discipline.vieScolaire.kpi.retards": "Retards",
+    "discipline.vieScolaire.kpi.sanctions": "Sanctions",
+    "discipline.vieScolaire.kpi.punitions": "Punitions",
+    "discipline.vieScolaire.synthese.lastAbsence": "Derniere absence",
+    "discipline.vieScolaire.synthese.lastRetard": "Dernier retard",
+    "discipline.vieScolaire.synthese.lastSanction": "Derniere sanction",
+    "discipline.vieScolaire.synthese.lastPunition": "Derniere punition",
+    "discipline.vieScolaire.synthese.noData": "Aucune donnee",
+    "discipline.vieScolaire.absences.columns.event": "Absence / retard",
+    "discipline.vieScolaire.absences.columns.type": "Type",
+    "discipline.vieScolaire.absences.columns.duration": "Duree",
+    "discipline.vieScolaire.absences.columns.justified": "Justifie ?",
+    "discipline.vieScolaire.absences.columns.reason": "Motif",
+    "discipline.vieScolaire.absences.columns.comment": "Commentaire",
+    "discipline.vieScolaire.absences.empty":
+      "Aucun evenement sur l'annee active.",
+    "discipline.vieScolaire.absences.durationPrefix": "Duree:",
+    "discipline.vieScolaire.absences.justifiedPrefix": "Justifie:",
+    "discipline.vieScolaire.absences.reasonPrefix": "Motif:",
+    "discipline.vieScolaire.absences.commentPrefix": "Commentaire:",
+    "discipline.vieScolaire.sanctions.columns.type": "Type",
+    "discipline.vieScolaire.sanctions.columns.incident": "Incident",
+    "discipline.vieScolaire.sanctions.columns.date": "Date",
+    "discipline.vieScolaire.sanctions.columns.reason": "Motif",
+    "discipline.vieScolaire.sanctions.columns.by": "Par",
+    "discipline.vieScolaire.sanctions.columns.comment": "Commentaire",
+    "discipline.vieScolaire.sanctions.columns.executionDate":
+      "Date de deroulement",
+    "discipline.vieScolaire.sanctions.empty":
+      "Aucune sanction/punition sur l'annee active.",
+    "discipline.vieScolaire.sanctions.datePrefix": "Date:",
+    "discipline.vieScolaire.sanctions.reasonPrefix": "Motif:",
+    "discipline.vieScolaire.sanctions.byPrefix": "Par:",
+    "discipline.vieScolaire.sanctions.commentPrefix": "Commentaire:",
+    "discipline.vieScolaire.sanctions.executionDatePrefix":
+      "Date de deroulement:",
+    "discipline.vieScolaire.equipePedagogique": "Equipe pedagogique",
+
+    "discipline.accueil.summaryHint.none": "Aucun point de vigilance",
+    "discipline.accueil.summaryHint.unjustified":
+      "{count} absence(s) non justifiee(s)",
+    "discipline.accueil.summaryHint.sanctions":
+      "{count} sanction(s) ou punition(s)",
+    "discipline.accueil.panel.action": "Voir la synthese",
+    "discipline.accueil.panel.noRecentEvent":
+      "Aucun evenement vie scolaire recent.",
+    "discipline.accueil.metrics.unjustifiedAbsences": "Absences non justifiees",
+    "discipline.accueil.metrics.sanctionsPunitions": "Sanctions / punitions",
+    "discipline.accueil.quickAccess.hint": "Absences, retards, sanctions",
+
+    "discipline.sidebar.vieScolaire": "Vie scolaire",
+    "discipline.sidebar.discipline": "Discipline",
+
+    "discipline.cursus.title": "Cursus",
+    "discipline.cursus.subtitleDefault": "Historique eleve",
+    "discipline.cursus.error": "Impossible de charger le cursus.",
+    "discipline.cursus.tabs.synthese": "Synthese",
+    "discipline.cursus.tabs.vieScolaire": "Vie scolaire",
+    "discipline.cursus.tabs.help": "Aide",
+    "discipline.cursus.filters.year": "Annee",
+    "discipline.cursus.filters.class": "Classe",
+    "discipline.cursus.filters.type": "Type",
+    "discipline.cursus.filters.allFeminine": "Toutes",
+    "discipline.cursus.filters.allMasculine": "Tous",
+    "discipline.cursus.filters.reset": "Reinitialiser",
+    "discipline.cursus.filters.exportPdf": "Exporter PDF",
+    "discipline.cursus.notDefined.year": "Annee non definie",
+    "discipline.cursus.notDefined.class": "Classe non definie",
+    "discipline.cursus.synthese.yearsClasses": "Annees / classes",
+    "discipline.cursus.empty":
+      "Aucun evenement vie scolaire sur le cursus pour le moment.",
+    "discipline.cursus.help.moduleName": "Cursus",
+    "discipline.cursus.help.summary":
+      "ce module recapitulera le parcours eleve annee par annee et classe par classe.",
+    "discipline.cursus.help.actionName": "Consulter",
+    "discipline.cursus.help.actionPurpose":
+      "analyser l'historique global de l'eleve.",
+    "discipline.cursus.help.actionHowTo":
+      "ouvrir l'onglet Vie scolaire pour un recap par annee/classe.",
+    "discipline.cursus.help.actionModuleImpact":
+      "vue chronologique des evenements du parcours.",
+    "discipline.cursus.help.actionCrossModuleImpact":
+      "complete la page Vie scolaire courante qui ne montre que l'annee active.",
+
+    "discipline.dashboard.cardTitle": "Vie scolaire",
+    "discipline.dashboard.cardEyebrow": "Discipline",
+    "discipline.dashboard.empty":
+      "Aucun enfant associe ou aucune donnee de vie scolaire disponible.",
+    "discipline.dashboard.stats.absences": "Absences",
+    "discipline.dashboard.stats.retards": "Retards",
+    "discipline.dashboard.stats.incidents": "Incidents",
+    "discipline.dashboard.openDetail": "Ouvrir le detail discipline",
+    "discipline.dashboard.status.calm": "Situation sereine",
+    "discipline.dashboard.status.watch": "A surveiller",
+    "discipline.dashboard.status.alert": "Priorite parent",
+    "discipline.dashboard.detail.none":
+      "Aucun signal disciplinaire notable sur la periode.",
+    "discipline.dashboard.detail.unjustifiedAbsences":
+      "{count} absence(s) a justifier.",
+    "discipline.dashboard.detail.incidentsRecorded":
+      "{count} incident(s) recense(s) sur la periode.",
+    "discipline.dashboard.detail.absencesRecorded":
+      "{count} absence(s) enregistree(s).",
+    "discipline.dashboard.detail.retardsThisTerm":
+      "{count} retard(s) ce trimestre.",
+
+    "discipline.mail.subjectCreated":
+      "Scolive - Evenement vie scolaire enregistre",
+    "discipline.mail.subjectUpdated":
+      "Scolive - Evenement vie scolaire mis a jour",
+    "discipline.mail.actionCreated": "enregistre",
+    "discipline.mail.actionUpdated": "mis a jour",
+    "discipline.mail.greeting": "Bonjour {firstName},",
+    "discipline.mail.intro":
+      "Un evenement de vie scolaire a ete {action} pour {studentFullName}.",
+    "discipline.mail.type": "Type",
+    "discipline.mail.reason": "Motif",
+    "discipline.mail.date": "Date",
+    "discipline.mail.class": "Classe",
+    "discipline.mail.author": "Saisi par",
+    "discipline.mail.openPortal": "Ouvrir le portail",
+    "discipline.mail.consultPortal": "Consulter le portail",
   },
   en: {
     "common.save": "Save",
@@ -1026,5 +1258,228 @@ export const translations: Record<Locale, Record<string, string>> = {
     "account.pin.errors.changeFailed": "Unable to change the PIN.",
     "account.pin.success.configured": "Phone and PIN configured successfully.",
     "account.pin.success.updated": "PIN updated successfully.",
+
+    "discipline.types.absence": "Absence",
+    "discipline.types.retard": "Late arrival",
+    "discipline.types.sanction": "Sanction",
+    "discipline.types.punition": "Punishment",
+
+    "discipline.common.yes": "Yes",
+    "discipline.common.no": "No",
+    "discipline.common.loading": "Loading...",
+    "discipline.common.cancel": "Cancel",
+    "discipline.common.delete": "Delete",
+    "discipline.common.networkError": "Network error.",
+    "discipline.common.csrfInvalid":
+      "Invalid CSRF session. Please log in again.",
+
+    "discipline.list.columns.type": "Type",
+    "discipline.list.columns.date": "Date",
+    "discipline.list.columns.reason": "Reason",
+    "discipline.list.columns.duration": "Duration",
+    "discipline.list.columns.justified": "Justified",
+    "discipline.list.columns.author": "Author",
+    "discipline.list.columns.actions": "Actions",
+    "discipline.list.editAria": "Edit this event",
+    "discipline.list.deleteAria": "Delete this event",
+    "discipline.list.durationPrefix": "Duration:",
+    "discipline.list.justifiedPrefix": "Justified:",
+    "discipline.list.authorPrefix": "Author:",
+
+    "discipline.page.defaultClassName": "Class",
+    "discipline.page.subtitle": "Absences, lateness, sanctions and punishments",
+    "discipline.page.tabs.entry": "Entry",
+    "discipline.page.tabs.history": "History",
+    "discipline.page.tabs.help": "Help",
+    "discipline.page.classNotAccessible":
+      "Class not accessible with your assignments.",
+    "discipline.page.studentLabel": "Student",
+
+    "discipline.help.summary":
+      "this module lets the teacher record absences, lateness, sanctions and punishments for their assigned classes.",
+    "discipline.help.record.name": "Record",
+    "discipline.help.record.purpose": "quickly record a school life event.",
+    "discipline.help.record.howTo":
+      "select the student then fill in the type, date and reason.",
+    "discipline.help.record.moduleImpact":
+      "the event is visible to the parent in School life (current year).",
+    "discipline.help.record.crossModuleImpact":
+      "it then feeds the Cursus page for the overall history.",
+    "discipline.help.verify.name": "Check",
+    "discipline.help.verify.purpose": "review the student's discipline log.",
+    "discipline.help.verify.howTo": "open History to see existing events.",
+    "discipline.help.verify.moduleImpact": "avoids duplicate entries.",
+    "discipline.help.verify.crossModuleImpact":
+      "facilitates coordination with SCHOOL_MANAGER/SUPERVISOR.",
+
+    "discipline.errors.loadClass": "Unable to load the class.",
+    "discipline.errors.loadHistory": "Unable to load the discipline history.",
+    "discipline.errors.createFailed": "Unable to create.",
+    "discipline.errors.editFailed": "Unable to update.",
+    "discipline.errors.deleteFailed": "Unable to delete.",
+    "discipline.success.eventCreated": "Discipline event recorded.",
+    "discipline.success.eventUpdated": "Event updated.",
+    "discipline.success.eventDeleted": "Event deleted.",
+
+    "discipline.validation.dateRequired": "Date is required.",
+    "discipline.validation.reasonRequired": "Reason is required.",
+    "discipline.validation.durationPositive":
+      "Duration must be a positive integer.",
+
+    "discipline.form.type": "Event type",
+    "discipline.form.typeEditAria": "Event type edit",
+    "discipline.form.dateTime": "Date and time",
+    "discipline.form.dateTimeEditAria": "Date and time edit",
+    "discipline.form.reason": "Reason",
+    "discipline.form.reasonEditAria": "Reason edit",
+    "discipline.form.reasonPlaceholder":
+      "E.g.: unfinished homework, unjustified absence",
+    "discipline.form.duration": "Duration (minutes, optional)",
+    "discipline.form.durationEditAria": "Duration edit (minutes, optional)",
+    "discipline.form.comment": "Comment (optional)",
+    "discipline.form.commentEditAria": "Comment edit (optional)",
+    "discipline.form.justified": "Justified (absence / lateness)",
+    "discipline.form.saving": "Saving...",
+    "discipline.form.submitCreate": "Save event",
+    "discipline.form.submitUpdate": "Save changes",
+    "discipline.form.submitReport": "Report",
+    "discipline.form.cancel": "Cancel",
+
+    "discipline.eleves.sectionTitle":
+      "School life: absences, lateness, sanctions and punishments",
+
+    "discipline.empty.studentEvents": "No events for this student.",
+    "discipline.empty.eleves": "No school life events.",
+
+    "discipline.delete.title": "Delete this event?",
+    "discipline.delete.message":
+      'This action cannot be undone. The event "{label}" will be permanently deleted.',
+    "discipline.delete.confirm": "Delete",
+
+    "discipline.vieScolaire.title": "School life",
+    "discipline.vieScolaire.subtitleDefault": "Student tracking",
+    "discipline.vieScolaire.eventsWarning":
+      "School life events are temporarily unavailable. Showing demo data.",
+    "discipline.vieScolaire.error": "Unable to load school life data.",
+    "discipline.vieScolaire.tabs.synthese": "Summary",
+    "discipline.vieScolaire.tabs.absencesRetards": "Absences / lateness",
+    "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punishments",
+    "discipline.vieScolaire.kpi.absences": "Absences",
+    "discipline.vieScolaire.kpi.retards": "Lateness",
+    "discipline.vieScolaire.kpi.sanctions": "Sanctions",
+    "discipline.vieScolaire.kpi.punitions": "Punishments",
+    "discipline.vieScolaire.synthese.lastAbsence": "Last absence",
+    "discipline.vieScolaire.synthese.lastRetard": "Last lateness",
+    "discipline.vieScolaire.synthese.lastSanction": "Last sanction",
+    "discipline.vieScolaire.synthese.lastPunition": "Last punishment",
+    "discipline.vieScolaire.synthese.noData": "No data",
+    "discipline.vieScolaire.absences.columns.event": "Absence / lateness",
+    "discipline.vieScolaire.absences.columns.type": "Type",
+    "discipline.vieScolaire.absences.columns.duration": "Duration",
+    "discipline.vieScolaire.absences.columns.justified": "Justified?",
+    "discipline.vieScolaire.absences.columns.reason": "Reason",
+    "discipline.vieScolaire.absences.columns.comment": "Comment",
+    "discipline.vieScolaire.absences.empty":
+      "No events for the active school year.",
+    "discipline.vieScolaire.absences.durationPrefix": "Duration:",
+    "discipline.vieScolaire.absences.justifiedPrefix": "Justified:",
+    "discipline.vieScolaire.absences.reasonPrefix": "Reason:",
+    "discipline.vieScolaire.absences.commentPrefix": "Comment:",
+    "discipline.vieScolaire.sanctions.columns.type": "Type",
+    "discipline.vieScolaire.sanctions.columns.incident": "Incident",
+    "discipline.vieScolaire.sanctions.columns.date": "Date",
+    "discipline.vieScolaire.sanctions.columns.reason": "Reason",
+    "discipline.vieScolaire.sanctions.columns.by": "By",
+    "discipline.vieScolaire.sanctions.columns.comment": "Comment",
+    "discipline.vieScolaire.sanctions.columns.executionDate": "Execution date",
+    "discipline.vieScolaire.sanctions.empty":
+      "No sanctions/punishments for the active school year.",
+    "discipline.vieScolaire.sanctions.datePrefix": "Date:",
+    "discipline.vieScolaire.sanctions.reasonPrefix": "Reason:",
+    "discipline.vieScolaire.sanctions.byPrefix": "By:",
+    "discipline.vieScolaire.sanctions.commentPrefix": "Comment:",
+    "discipline.vieScolaire.sanctions.executionDatePrefix": "Execution date:",
+    "discipline.vieScolaire.equipePedagogique": "Teaching staff",
+
+    "discipline.accueil.summaryHint.none": "Nothing to flag",
+    "discipline.accueil.summaryHint.unjustified":
+      "{count} unjustified absence(s)",
+    "discipline.accueil.summaryHint.sanctions":
+      "{count} sanction(s) or punishment(s)",
+    "discipline.accueil.panel.action": "View summary",
+    "discipline.accueil.panel.noRecentEvent": "No recent school life event.",
+    "discipline.accueil.metrics.unjustifiedAbsences": "Unjustified absences",
+    "discipline.accueil.metrics.sanctionsPunitions": "Sanctions / punishments",
+    "discipline.accueil.quickAccess.hint": "Absences, lateness, sanctions",
+
+    "discipline.sidebar.vieScolaire": "School life",
+    "discipline.sidebar.discipline": "Discipline",
+
+    "discipline.cursus.title": "Cursus",
+    "discipline.cursus.subtitleDefault": "Student history",
+    "discipline.cursus.error": "Unable to load the cursus.",
+    "discipline.cursus.tabs.synthese": "Summary",
+    "discipline.cursus.tabs.vieScolaire": "School life",
+    "discipline.cursus.tabs.help": "Help",
+    "discipline.cursus.filters.year": "Year",
+    "discipline.cursus.filters.class": "Class",
+    "discipline.cursus.filters.type": "Type",
+    "discipline.cursus.filters.allFeminine": "All",
+    "discipline.cursus.filters.allMasculine": "All",
+    "discipline.cursus.filters.reset": "Reset",
+    "discipline.cursus.filters.exportPdf": "Export PDF",
+    "discipline.cursus.notDefined.year": "Year not set",
+    "discipline.cursus.notDefined.class": "Class not set",
+    "discipline.cursus.synthese.yearsClasses": "Years / classes",
+    "discipline.cursus.empty": "No school life event on the cursus yet.",
+    "discipline.cursus.help.moduleName": "Cursus",
+    "discipline.cursus.help.summary":
+      "this module will summarize the student's path year by year and class by class.",
+    "discipline.cursus.help.actionName": "View",
+    "discipline.cursus.help.actionPurpose":
+      "analyze the student's overall history.",
+    "discipline.cursus.help.actionHowTo":
+      "open the School life tab for a recap by year/class.",
+    "discipline.cursus.help.actionModuleImpact":
+      "chronological view of the path's events.",
+    "discipline.cursus.help.actionCrossModuleImpact":
+      "complements the current School life page which only shows the active year.",
+
+    "discipline.dashboard.cardTitle": "School life",
+    "discipline.dashboard.cardEyebrow": "Discipline",
+    "discipline.dashboard.empty":
+      "No child linked or no school life data available.",
+    "discipline.dashboard.stats.absences": "Absences",
+    "discipline.dashboard.stats.retards": "Lateness",
+    "discipline.dashboard.stats.incidents": "Incidents",
+    "discipline.dashboard.openDetail": "Open discipline details",
+    "discipline.dashboard.status.calm": "Calm situation",
+    "discipline.dashboard.status.watch": "To watch",
+    "discipline.dashboard.status.alert": "Parent priority",
+    "discipline.dashboard.detail.none":
+      "No notable disciplinary signal for the period.",
+    "discipline.dashboard.detail.unjustifiedAbsences":
+      "{count} unjustified absence(s) to clear.",
+    "discipline.dashboard.detail.incidentsRecorded":
+      "{count} incident(s) recorded for the period.",
+    "discipline.dashboard.detail.absencesRecorded":
+      "{count} absence(s) recorded.",
+    "discipline.dashboard.detail.retardsThisTerm":
+      "{count} late arrival(s) this term.",
+
+    "discipline.mail.subjectCreated": "Scolive - School life event recorded",
+    "discipline.mail.subjectUpdated": "Scolive - School life event updated",
+    "discipline.mail.actionCreated": "recorded",
+    "discipline.mail.actionUpdated": "updated",
+    "discipline.mail.greeting": "Hello {firstName},",
+    "discipline.mail.intro":
+      "A school life event has been {action} for {studentFullName}.",
+    "discipline.mail.type": "Type",
+    "discipline.mail.reason": "Reason",
+    "discipline.mail.date": "Date",
+    "discipline.mail.class": "Class",
+    "discipline.mail.author": "Recorded by",
+    "discipline.mail.openPortal": "Open the portal",
+    "discipline.mail.consultPortal": "View the portal",
   },
 };

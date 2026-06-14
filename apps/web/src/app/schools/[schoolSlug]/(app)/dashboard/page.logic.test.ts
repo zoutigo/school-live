@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STUDENT_NOTES_DEMO_DATA } from "../../../../../components/student-notes/student-notes-demo-data";
+import { translate } from "../../../../../i18n/useTranslation";
 import {
   buildAccountSummary,
   buildDisciplineSummary,
@@ -12,6 +13,9 @@ import {
   type StudentLifeEventRow,
   type TeacherContextPayload,
 } from "./page-logic";
+
+const tFr = (key: string) => translate("fr", key);
+const tEn = (key: string) => translate("en", key);
 
 const child: ParentChild = {
   id: "student-1",
@@ -42,13 +46,43 @@ describe("parent dashboard card logic", () => {
       },
     ];
 
-    const summary = buildDisciplineSummary(child, lifeEvents);
+    const summary = buildDisciplineSummary(child, lifeEvents, tFr);
 
     expect(summary.childName).toBe("Remi Ntamack");
     expect(summary.absences).toBe(1);
     expect(summary.retards).toBe(1);
     expect(summary.statusTone).toBe("alert");
     expect(summary.statusLabel).toBe("Priorite parent");
+    expect(summary.detail).toBe("1 absence(s) a justifier.");
+  });
+
+  it("builds a discipline summary translated to English", () => {
+    const lifeEvents: StudentLifeEventRow[] = [
+      {
+        id: "evt-1",
+        type: "ABSENCE",
+        occurredAt: "2026-03-01T08:00:00.000Z",
+        durationMinutes: 120,
+        justified: false,
+        reason: "Absence",
+        comment: null,
+      },
+    ];
+
+    const summary = buildDisciplineSummary(child, lifeEvents, tEn);
+
+    expect(summary.statusLabel).toBe("Parent priority");
+    expect(summary.detail).toBe("1 unjustified absence(s) to clear.");
+  });
+
+  it("builds a calm discipline summary when there is nothing to report", () => {
+    const summary = buildDisciplineSummary(child, [], tFr);
+
+    expect(summary.statusTone).toBe("calm");
+    expect(summary.statusLabel).toBe("Situation sereine");
+    expect(summary.detail).toBe(
+      "Aucun signal disciplinaire notable sur la periode.",
+    );
   });
 
   it("builds a compact notes summary from the latest numeric evaluations only", () => {

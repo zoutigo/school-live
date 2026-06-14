@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AlertTriangle, Clock3, ShieldAlert } from "lucide-react";
 import { Card } from "../../../../../../../components/ui/card";
+import { lifeEventTypeLabel } from "../../../../../../../components/life-events/life-events-list";
+import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -119,6 +121,7 @@ const SANCTIONS_FALLBACK: SanctionRow[] = [
 ];
 
 export default function ChildVieScolairePage() {
+  const { locale, t } = useTranslation();
   const router = useRouter();
   const params = useParams<{ schoolSlug: string; childId: string }>();
   const schoolSlug = params.schoolSlug;
@@ -184,12 +187,10 @@ export default function ChildVieScolairePage() {
         await loadLifeEvents(currentSchoolSlug, currentChildId);
       } catch {
         setLifeEvents([]);
-        setEventsWarning(
-          "Les evenements vie scolaire sont temporairement indisponibles. Affichage des donnees de demonstration.",
-        );
+        setEventsWarning(t("discipline.vieScolaire.eventsWarning"));
       }
     } catch {
-      setError("Impossible de charger la vie scolaire.");
+      setError(t("discipline.vieScolaire.error"));
     } finally {
       setLoading(false);
     }
@@ -225,7 +226,9 @@ export default function ChildVieScolairePage() {
       .map<AbsenceRow>((entry) => ({
         id: entry.id,
         type: entry.type === "RETARD" ? "RETARD" : "ABSENCE",
-        period: new Date(entry.occurredAt).toLocaleString("fr-FR"),
+        period: new Date(entry.occurredAt).toLocaleString(
+          locale === "en" ? "en-GB" : "fr-FR",
+        ),
         duration:
           entry.durationMinutes !== null ? `${entry.durationMinutes} min` : "-",
         justified: Boolean(entry.justified),
@@ -237,17 +240,19 @@ export default function ChildVieScolairePage() {
       return fromApi;
     }
     return eventsWarning ? ABSENCES_FALLBACK : [];
-  }, [eventsWarning, lifeEvents]);
+  }, [eventsWarning, lifeEvents, locale]);
   const sanctions = useMemo(() => {
     const fromApi = lifeEvents
       .filter((entry) => entry.type === "SANCTION" || entry.type === "PUNITION")
       .map<SanctionRow>((entry) => ({
         id: entry.id,
         type: entry.type === "PUNITION" ? "PUNITION" : "SANCTION",
-        label: entry.type === "PUNITION" ? "Punition" : "Sanction",
-        date: new Date(entry.occurredAt).toLocaleDateString("fr-FR"),
+        label: lifeEventTypeLabel(t, entry.type),
+        date: new Date(entry.occurredAt).toLocaleDateString(
+          locale === "en" ? "en-GB" : "fr-FR",
+        ),
         reason: entry.reason,
-        by: "Equipe pedagogique",
+        by: t("discipline.vieScolaire.equipePedagogique"),
         comment: entry.comment ?? "",
         followUpDate: "",
       }));
@@ -256,7 +261,7 @@ export default function ChildVieScolairePage() {
       return fromApi;
     }
     return eventsWarning ? SANCTIONS_FALLBACK : [];
-  }, [eventsWarning, lifeEvents]);
+  }, [eventsWarning, lifeEvents, locale, t]);
   const retardsCount = useMemo(
     () => lifeEvents.filter((entry) => entry.type === "RETARD").length || 1,
     [lifeEvents],
@@ -273,28 +278,28 @@ export default function ChildVieScolairePage() {
   const kpis = [
     {
       key: "absences",
-      label: "Absences",
+      label: t("discipline.vieScolaire.kpi.absences"),
       value: absences.length,
       icon: Clock3,
       tone: "from-[#3DA5F5] to-[#207FD5]",
     },
     {
       key: "retards",
-      label: "Retards",
+      label: t("discipline.vieScolaire.kpi.retards"),
       value: retardsCount,
       icon: AlertTriangle,
       tone: "from-[#FF8A3D] to-[#FF5C2D]",
     },
     {
       key: "sanctions",
-      label: "Sanctions",
+      label: t("discipline.vieScolaire.kpi.sanctions"),
       value: sanctionsCount,
       icon: ShieldAlert,
       tone: "from-[#FF3E3E] to-[#C80000]",
     },
     {
       key: "punitions",
-      label: "Punitions",
+      label: t("discipline.vieScolaire.kpi.punitions"),
       value: punitionsCount,
       icon: ShieldAlert,
       tone: "from-[#D946EF] to-[#A21CAF]",
@@ -304,15 +309,17 @@ export default function ChildVieScolairePage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Vie scolaire"
+        title={t("discipline.vieScolaire.title")}
         subtitle={
           currentChild
             ? `${currentChild.firstName} ${currentChild.lastName}`
-            : "Suivi eleve"
+            : t("discipline.vieScolaire.subtitleDefault")
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("discipline.common.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : (
@@ -330,7 +337,7 @@ export default function ChildVieScolairePage() {
                     : "text-text-secondary"
                 }`}
               >
-                Synthese
+                {t("discipline.vieScolaire.tabs.synthese")}
               </button>
               <button
                 type="button"
@@ -341,7 +348,7 @@ export default function ChildVieScolairePage() {
                     : "text-text-secondary"
                 }`}
               >
-                Absences / retards
+                {t("discipline.vieScolaire.tabs.absencesRetards")}
               </button>
               <button
                 type="button"
@@ -352,7 +359,7 @@ export default function ChildVieScolairePage() {
                     : "text-text-secondary"
                 }`}
               >
-                Sanctions / punitions
+                {t("discipline.vieScolaire.tabs.sanctionsPunitions")}
               </button>
             </div>
 
@@ -387,36 +394,38 @@ export default function ChildVieScolairePage() {
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-card border border-border bg-background p-4">
                     <p className="text-sm font-semibold text-text-primary">
-                      Derniere absence
+                      {t("discipline.vieScolaire.synthese.lastAbsence")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
-                      {absences[0]?.period ?? "Aucune donnee"}
+                      {absences[0]?.period ??
+                        t("discipline.vieScolaire.synthese.noData")}
                     </p>
                   </div>
                   <div className="rounded-card border border-border bg-background p-4">
                     <p className="text-sm font-semibold text-text-primary">
-                      Dernier retard
+                      {t("discipline.vieScolaire.synthese.lastRetard")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
-                      Lundi 10 nov. 2025, 09:40
+                      {absences.find((entry) => entry.type === "RETARD")
+                        ?.period ?? t("discipline.vieScolaire.synthese.noData")}
                     </p>
                   </div>
                   <div className="rounded-card border border-border bg-background p-4">
                     <p className="text-sm font-semibold text-text-primary">
-                      Derniere sanction
+                      {t("discipline.vieScolaire.synthese.lastSanction")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {sanctions.find((entry) => entry.type === "SANCTION")
-                        ?.reason ?? "Aucune donnee"}
+                        ?.reason ?? t("discipline.vieScolaire.synthese.noData")}
                     </p>
                   </div>
                   <div className="rounded-card border border-border bg-background p-4">
                     <p className="text-sm font-semibold text-text-primary">
-                      Derniere punition
+                      {t("discipline.vieScolaire.synthese.lastPunition")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {sanctions.find((entry) => entry.type === "PUNITION")
-                        ?.reason ?? "Aucune donnee"}
+                        ?.reason ?? t("discipline.vieScolaire.synthese.noData")}
                     </p>
                   </div>
                 </div>
@@ -428,13 +437,27 @@ export default function ChildVieScolairePage() {
                     <thead>
                       <tr className="bg-primary text-left text-white">
                         <th className="px-3 py-2 font-medium">
-                          Absence / retard
+                          {t("discipline.vieScolaire.absences.columns.event")}
                         </th>
-                        <th className="px-3 py-2 font-medium">Type</th>
-                        <th className="px-3 py-2 font-medium">Duree</th>
-                        <th className="px-3 py-2 font-medium">Justifie ?</th>
-                        <th className="px-3 py-2 font-medium">Motif</th>
-                        <th className="px-3 py-2 font-medium">Commentaire</th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("discipline.vieScolaire.absences.columns.type")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t(
+                            "discipline.vieScolaire.absences.columns.duration",
+                          )}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t(
+                            "discipline.vieScolaire.absences.columns.justified",
+                          )}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("discipline.vieScolaire.absences.columns.reason")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("discipline.vieScolaire.absences.columns.comment")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -444,7 +467,7 @@ export default function ChildVieScolairePage() {
                             className="px-3 py-4 text-sm text-text-secondary"
                             colSpan={6}
                           >
-                            Aucun evenement sur l'annee active.
+                            {t("discipline.vieScolaire.absences.empty")}
                           </td>
                         </tr>
                       ) : (
@@ -461,14 +484,16 @@ export default function ChildVieScolairePage() {
                                     : "bg-[#EAF3FF] text-[#1E5FAF]"
                                 }`}
                               >
-                                {row.type === "RETARD" ? "Retard" : "Absence"}
+                                {lifeEventTypeLabel(t, row.type)}
                               </span>
                             </td>
                             <td className="px-3 py-2 text-text-primary">
                               {row.duration}
                             </td>
                             <td className="px-3 py-2 text-text-primary">
-                              {row.justified ? "Oui" : "Non"}
+                              {row.justified
+                                ? t("discipline.common.yes")
+                                : t("discipline.common.no")}
                             </td>
                             <td className="px-3 py-2 text-text-primary">
                               {row.reason}
@@ -486,7 +511,7 @@ export default function ChildVieScolairePage() {
                 <div className="grid gap-3 lg:hidden">
                   {absences.length === 0 ? (
                     <p className="text-sm text-text-secondary">
-                      Aucun evenement sur l'annee active.
+                      {t("discipline.vieScolaire.absences.empty")}
                     </p>
                   ) : (
                     absences.map((row) => (
@@ -505,20 +530,26 @@ export default function ChildVieScolairePage() {
                                 : "bg-[#EAF3FF] text-[#1E5FAF]"
                             }`}
                           >
-                            {row.type === "RETARD" ? "Retard" : "Absence"}
+                            {lifeEventTypeLabel(t, row.type)}
                           </span>
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Duree: {row.duration}
+                          {t("discipline.vieScolaire.absences.durationPrefix")}{" "}
+                          {row.duration}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Justifie: {row.justified ? "Oui" : "Non"}
+                          {t("discipline.vieScolaire.absences.justifiedPrefix")}{" "}
+                          {row.justified
+                            ? t("discipline.common.yes")
+                            : t("discipline.common.no")}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Motif: {row.reason}
+                          {t("discipline.vieScolaire.absences.reasonPrefix")}{" "}
+                          {row.reason}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Commentaire: {row.comment || "-"}
+                          {t("discipline.vieScolaire.absences.commentPrefix")}{" "}
+                          {row.comment || "-"}
                         </p>
                       </div>
                     ))
@@ -531,14 +562,32 @@ export default function ChildVieScolairePage() {
                   <table className="min-w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-primary text-left text-white">
-                        <th className="px-3 py-2 font-medium">Type</th>
-                        <th className="px-3 py-2 font-medium">Incident</th>
-                        <th className="px-3 py-2 font-medium">Date</th>
-                        <th className="px-3 py-2 font-medium">Motif</th>
-                        <th className="px-3 py-2 font-medium">Par</th>
-                        <th className="px-3 py-2 font-medium">Commentaire</th>
                         <th className="px-3 py-2 font-medium">
-                          Date de deroulement
+                          {t("discipline.vieScolaire.sanctions.columns.type")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t(
+                            "discipline.vieScolaire.sanctions.columns.incident",
+                          )}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("discipline.vieScolaire.sanctions.columns.date")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("discipline.vieScolaire.sanctions.columns.reason")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("discipline.vieScolaire.sanctions.columns.by")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t(
+                            "discipline.vieScolaire.sanctions.columns.comment",
+                          )}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t(
+                            "discipline.vieScolaire.sanctions.columns.executionDate",
+                          )}
                         </th>
                       </tr>
                     </thead>
@@ -549,7 +598,7 @@ export default function ChildVieScolairePage() {
                             className="px-3 py-4 text-sm text-text-secondary"
                             colSpan={7}
                           >
-                            Aucune sanction/punition sur l'annee active.
+                            {t("discipline.vieScolaire.sanctions.empty")}
                           </td>
                         </tr>
                       ) : (
@@ -563,9 +612,7 @@ export default function ChildVieScolairePage() {
                                     : "bg-rose-100 text-rose-700"
                                 }`}
                               >
-                                {row.type === "PUNITION"
-                                  ? "Punition"
-                                  : "Sanction"}
+                                {lifeEventTypeLabel(t, row.type)}
                               </span>
                             </td>
                             <td className="px-3 py-2 text-text-primary">
@@ -596,7 +643,7 @@ export default function ChildVieScolairePage() {
                 <div className="grid gap-3 lg:hidden">
                   {sanctions.length === 0 ? (
                     <p className="text-sm text-text-secondary">
-                      Aucune sanction/punition sur l'annee active.
+                      {t("discipline.vieScolaire.sanctions.empty")}
                     </p>
                   ) : (
                     sanctions.map((row) => (
@@ -612,24 +659,31 @@ export default function ChildVieScolairePage() {
                                 : "bg-rose-100 text-rose-700"
                             }`}
                           >
-                            {row.type === "PUNITION" ? "Punition" : "Sanction"}
+                            {lifeEventTypeLabel(t, row.type)}
                           </span>
                           {row.label}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Date: {row.date}
+                          {t("discipline.vieScolaire.sanctions.datePrefix")}{" "}
+                          {row.date}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Motif: {row.reason}
+                          {t("discipline.vieScolaire.sanctions.reasonPrefix")}{" "}
+                          {row.reason}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Par: {row.by}
+                          {t("discipline.vieScolaire.sanctions.byPrefix")}{" "}
+                          {row.by}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Commentaire: {row.comment || "-"}
+                          {t("discipline.vieScolaire.sanctions.commentPrefix")}{" "}
+                          {row.comment || "-"}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          Date de deroulement: {row.followUpDate || "-"}
+                          {t(
+                            "discipline.vieScolaire.sanctions.executionDatePrefix",
+                          )}{" "}
+                          {row.followUpDate || "-"}
                         </p>
                       </div>
                     ))

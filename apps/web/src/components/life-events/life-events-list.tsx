@@ -1,5 +1,6 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { ActionIconButton } from "../ui/action-icon-button";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
 export type LifeEventType = "ABSENCE" | "RETARD" | "SANCTION" | "PUNITION";
 
@@ -30,17 +31,17 @@ type Props = {
   formatDate?: (value: string) => string;
 };
 
-export function lifeEventTypeLabel(type: LifeEventType) {
+export function lifeEventTypeLabel(t: TranslateFn, type: LifeEventType) {
   if (type === "ABSENCE") {
-    return "Absence";
+    return t("discipline.types.absence");
   }
   if (type === "RETARD") {
-    return "Retard";
+    return t("discipline.types.retard");
   }
   if (type === "SANCTION") {
-    return "Sanction";
+    return t("discipline.types.sanction");
   }
-  return "Punition";
+  return t("discipline.types.punition");
 }
 
 function lifeEventTypePill(type: LifeEventType) {
@@ -64,9 +65,12 @@ export function LifeEventsList({
   deletingEventId = null,
   formatDate,
 }: Props) {
+  const { locale, t } = useTranslation();
   const showActions = Boolean(onEdit || onDelete);
   const dateFormatter =
-    formatDate ?? ((value: string) => new Date(value).toLocaleString("fr-FR"));
+    formatDate ??
+    ((value: string) =>
+      new Date(value).toLocaleString(locale === "en" ? "en-GB" : "fr-FR"));
 
   return (
     <>
@@ -74,14 +78,28 @@ export function LifeEventsList({
         <table className="min-w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border text-left text-text-secondary">
-              <th className="px-3 py-2 font-medium">Type</th>
-              <th className="px-3 py-2 font-medium">Date</th>
-              <th className="px-3 py-2 font-medium">Motif</th>
-              <th className="px-3 py-2 font-medium">Duree</th>
-              <th className="px-3 py-2 font-medium">Justifie</th>
-              <th className="px-3 py-2 font-medium">Auteur</th>
+              <th className="px-3 py-2 font-medium">
+                {t("discipline.list.columns.type")}
+              </th>
+              <th className="px-3 py-2 font-medium">
+                {t("discipline.list.columns.date")}
+              </th>
+              <th className="px-3 py-2 font-medium">
+                {t("discipline.list.columns.reason")}
+              </th>
+              <th className="px-3 py-2 font-medium">
+                {t("discipline.list.columns.duration")}
+              </th>
+              <th className="px-3 py-2 font-medium">
+                {t("discipline.list.columns.justified")}
+              </th>
+              <th className="px-3 py-2 font-medium">
+                {t("discipline.list.columns.author")}
+              </th>
               {showActions ? (
-                <th className="px-3 py-2 font-medium">Actions</th>
+                <th className="px-3 py-2 font-medium">
+                  {t("discipline.list.columns.actions")}
+                </th>
               ) : null}
             </tr>
           </thead>
@@ -104,7 +122,7 @@ export function LifeEventsList({
                         row.type,
                       )}`}
                     >
-                      {lifeEventTypeLabel(row.type)}
+                      {lifeEventTypeLabel(t, row.type)}
                     </span>
                   </td>
                   <td className="px-3 py-2">{dateFormatter(row.occurredAt)}</td>
@@ -118,8 +136,8 @@ export function LifeEventsList({
                     {row.justified === null
                       ? "-"
                       : row.justified
-                        ? "Oui"
-                        : "Non"}
+                        ? t("discipline.common.yes")
+                        : t("discipline.common.no")}
                   </td>
                   <td className="px-3 py-2">
                     {row.authorUser.lastName} {row.authorUser.firstName}
@@ -130,7 +148,7 @@ export function LifeEventsList({
                         {onEdit ? (
                           <ActionIconButton
                             icon={Pencil}
-                            label="Modifier l'evenement"
+                            label={t("discipline.list.editAria")}
                             variant="primary"
                             onClick={() => onEdit(row)}
                           />
@@ -138,7 +156,7 @@ export function LifeEventsList({
                         {onDelete ? (
                           <ActionIconButton
                             icon={Trash2}
-                            label="Supprimer l'evenement"
+                            label={t("discipline.list.deleteAria")}
                             variant="destructive"
                             disabled={deletingEventId === row.id}
                             onClick={() => onDelete(row)}
@@ -169,7 +187,7 @@ export function LifeEventsList({
                     row.type,
                   )}`}
                 >
-                  {lifeEventTypeLabel(row.type)}
+                  {lifeEventTypeLabel(t, row.type)}
                 </span>
                 <span className="text-xs text-text-secondary">
                   {dateFormatter(row.occurredAt)}
@@ -179,24 +197,29 @@ export function LifeEventsList({
                 {row.reason}
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Duree:{" "}
+                {t("discipline.list.durationPrefix")}{" "}
                 {typeof row.durationMinutes === "number"
                   ? `${row.durationMinutes} min`
                   : "-"}
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Justifie:{" "}
-                {row.justified === null ? "-" : row.justified ? "Oui" : "Non"}
+                {t("discipline.list.justifiedPrefix")}{" "}
+                {row.justified === null
+                  ? "-"
+                  : row.justified
+                    ? t("discipline.common.yes")
+                    : t("discipline.common.no")}
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                Auteur: {row.authorUser.lastName} {row.authorUser.firstName}
+                {t("discipline.list.authorPrefix")} {row.authorUser.lastName}{" "}
+                {row.authorUser.firstName}
               </p>
               {showActions ? (
                 <div className="mt-3 flex gap-2">
                   {onEdit ? (
                     <ActionIconButton
                       icon={Pencil}
-                      label="Modifier l'evenement"
+                      label={t("discipline.list.editAria")}
                       variant="primary"
                       onClick={() => onEdit(row)}
                     />
@@ -204,7 +227,7 @@ export function LifeEventsList({
                   {onDelete ? (
                     <ActionIconButton
                       icon={Trash2}
-                      label="Supprimer l'evenement"
+                      label={t("discipline.list.deleteAria")}
                       variant="destructive"
                       disabled={deletingEventId === row.id}
                       onClick={() => onDelete(row)}

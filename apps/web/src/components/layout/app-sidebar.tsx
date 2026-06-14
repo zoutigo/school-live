@@ -28,6 +28,7 @@ import {
 import { Badge } from "../ui/badge";
 import { getSchoolMessagesUnreadCount } from "../messaging/messaging-api";
 import type { Role } from "../../lib/role-view";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
 type SidebarProps = {
   schoolSlug?: string | null;
@@ -395,7 +396,11 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
   ];
 }
 
-function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
+function buildParentChildItems(
+  schoolSlug: string,
+  childId: string,
+  t: TranslateFn,
+): NavItem[] {
   const base = `/schools/${schoolSlug}/children/${childId}`;
 
   return [
@@ -406,7 +411,7 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
       matchPrefix: `${base}/accueil`,
     },
     {
-      label: "Vie scolaire",
+      label: t("discipline.sidebar.vieScolaire"),
       href: `${base}/vie-scolaire`,
       icon: UserRound,
       matchPrefix: `${base}/vie-scolaire`,
@@ -467,6 +472,7 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
 function buildTeacherClassItems(
   schoolSlug: string,
   classId: string,
+  t: TranslateFn,
 ): NavItem[] {
   const base = `/schools/${schoolSlug}/classes/${classId}`;
 
@@ -484,7 +490,7 @@ function buildTeacherClassItems(
       matchPrefix: `${base}/notes`,
     },
     {
-      label: "Discipline",
+      label: t("discipline.sidebar.discipline"),
       href: `${base}/discipline`,
       icon: ShieldCheck,
       matchPrefix: `${base}/discipline`,
@@ -510,6 +516,7 @@ export function AppSidebar({
   onNavigate,
   onLogoutClick,
 }: SidebarProps) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   const items = buildItems(role, schoolSlug);
@@ -668,9 +675,9 @@ export function AppSidebar({
 
     return parentChildren.map((child) => ({
       ...child,
-      items: buildParentChildItems(schoolSlug, child.id),
+      items: buildParentChildItems(schoolSlug, child.id, t),
     }));
-  }, [parentChildren, schoolSlug]);
+  }, [parentChildren, schoolSlug, t]);
 
   const teacherClassesWithItems = useMemo<TeacherClassWithItems[]>(() => {
     if (!schoolSlug) {
@@ -679,9 +686,9 @@ export function AppSidebar({
 
     return teacherClasses.map((entry) => ({
       ...entry,
-      items: buildTeacherClassItems(schoolSlug, entry.classId),
+      items: buildTeacherClassItems(schoolSlug, entry.classId, t),
     }));
-  }, [teacherClasses, schoolSlug]);
+  }, [teacherClasses, schoolSlug, t]);
 
   const teacherGeneralItems = useMemo(
     () => items.filter((item) => item.href !== "/settings"),

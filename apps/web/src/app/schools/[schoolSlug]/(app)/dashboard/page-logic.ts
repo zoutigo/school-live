@@ -3,6 +3,7 @@ import type {
   StudentNotesTerm,
   StudentNotesTermSnapshot,
 } from "../../../../../components/student-notes/student-notes.types";
+import type { TranslateFn } from "../../../../../i18n/useTranslation";
 
 export type ParentChild = {
   id: string;
@@ -140,6 +141,7 @@ function formatAverage(value: number | null) {
 export function buildDisciplineSummary(
   child: ParentChild,
   lifeEvents: StudentLifeEventRow[],
+  t: TranslateFn,
 ): ChildDisciplineSummary {
   const absences = lifeEvents.filter((entry) => entry.type === "ABSENCE");
   const retards = lifeEvents.filter((entry) => entry.type === "RETARD");
@@ -150,28 +152,40 @@ export function buildDisciplineSummary(
     (entry) => entry.justified === false,
   ).length;
 
-  let statusLabel = "Situation sereine";
+  let statusLabel = t("discipline.dashboard.status.calm");
   let statusTone: ChildDisciplineSummary["statusTone"] = "calm";
-  let detail = "Aucun signal disciplinaire notable sur la periode.";
+  let detail = t("discipline.dashboard.detail.none");
 
   if (unjustifiedAbsences > 0 || incidents.length >= 2) {
-    statusLabel = "Priorite parent";
+    statusLabel = t("discipline.dashboard.status.alert");
     statusTone = "alert";
     detail =
       unjustifiedAbsences > 0
-        ? `${unjustifiedAbsences} absence${unjustifiedAbsences > 1 ? "s" : ""} a justifier.`
-        : `${incidents.length} incidents recenses sur la periode.`;
+        ? t("discipline.dashboard.detail.unjustifiedAbsences").replace(
+            "{count}",
+            String(unjustifiedAbsences),
+          )
+        : t("discipline.dashboard.detail.incidentsRecorded").replace(
+            "{count}",
+            String(incidents.length),
+          );
   } else if (
     absences.length > 0 ||
     retards.length > 1 ||
     incidents.length > 0
   ) {
-    statusLabel = "A surveiller";
+    statusLabel = t("discipline.dashboard.status.watch");
     statusTone = "watch";
     detail =
       absences.length > 0
-        ? `${absences.length} absence${absences.length > 1 ? "s" : ""} enregistree${absences.length > 1 ? "s" : ""}.`
-        : `${retards.length} retard${retards.length > 1 ? "s" : ""} ce trimestre.`;
+        ? t("discipline.dashboard.detail.absencesRecorded").replace(
+            "{count}",
+            String(absences.length),
+          )
+        : t("discipline.dashboard.detail.retardsThisTerm").replace(
+            "{count}",
+            String(retards.length),
+          );
   }
 
   return {

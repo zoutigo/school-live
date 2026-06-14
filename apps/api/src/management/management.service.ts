@@ -5483,6 +5483,7 @@ export class ManagementService {
               select: {
                 email: true,
                 firstName: true,
+                preferredLocale: true,
               },
             },
           },
@@ -5504,7 +5505,6 @@ export class ManagementService {
       return;
     }
 
-    const eventTypeLabel = this.mapStudentLifeEventTypeLabel(params.event.type);
     const authorFullName = params.event.authorUser
       ? `${params.event.authorUser.firstName} ${params.event.authorUser.lastName}`.trim()
       : null;
@@ -5522,31 +5522,17 @@ export class ManagementService {
           schoolSlug: school.slug,
           studentFirstName: student.firstName,
           studentLastName: student.lastName,
-          eventTypeLabel,
+          eventType: params.event.type,
           eventReason: params.event.reason,
           eventDate: params.event.occurredAt.toISOString(),
           eventAction: params.action,
           className: params.event.class?.name ?? null,
           authorFullName,
+          locale: link.parent.preferredLocale === "EN" ? "en" : "fr",
         });
       } catch {
         // The life event is already persisted; mail failures must not block business flow.
       }
-    }
-  }
-
-  private mapStudentLifeEventTypeLabel(type: StudentLifeEventType) {
-    switch (type) {
-      case "ABSENCE":
-        return "Absence";
-      case "RETARD":
-        return "Retard";
-      case "SANCTION":
-        return "Sanction";
-      case "PUNITION":
-        return "Punition";
-      default:
-        return type;
     }
   }
 

@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../../../components/ui/card";
 import { FormSelect } from "../../../../../../../components/ui/form-controls";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
+import { lifeEventTypeLabel } from "../../../../../../../components/life-events/life-events-list";
+import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -35,6 +37,7 @@ type CursusGroup = {
 };
 
 export default function ChildCursusPage() {
+  const { locale, t } = useTranslation();
   const router = useRouter();
   const params = useParams<{ schoolSlug: string; childId: string }>();
   const schoolSlug = params.schoolSlug;
@@ -100,7 +103,7 @@ export default function ChildCursusPage() {
 
       await loadLifeEvents(currentSchoolSlug, currentChildId);
     } catch {
-      setError("Impossible de charger le cursus.");
+      setError(t("discipline.cursus.error"));
     } finally {
       setLoading(false);
     }
@@ -134,13 +137,15 @@ export default function ChildCursusPage() {
     const filteredEvents = lifeEvents.filter((event) => {
       if (
         schoolYearFilter !== "ALL" &&
-        (event.schoolYear?.label ?? "Annee non definie") !== schoolYearFilter
+        (event.schoolYear?.label ?? t("discipline.cursus.notDefined.year")) !==
+          schoolYearFilter
       ) {
         return false;
       }
       if (
         classFilter !== "ALL" &&
-        (event.class?.name ?? "Classe non definie") !== classFilter
+        (event.class?.name ?? t("discipline.cursus.notDefined.class")) !==
+          classFilter
       ) {
         return false;
       }
@@ -153,8 +158,10 @@ export default function ChildCursusPage() {
 
     const map = new Map<string, CursusGroup>();
     for (const event of filteredEvents) {
-      const schoolYearLabel = event.schoolYear?.label ?? "Annee non definie";
-      const className = event.class?.name ?? "Classe non definie";
+      const schoolYearLabel =
+        event.schoolYear?.label ?? t("discipline.cursus.notDefined.year");
+      const className =
+        event.class?.name ?? t("discipline.cursus.notDefined.class");
       const key = `${schoolYearLabel}::${className}`;
       const current = map.get(key);
       if (current) {
@@ -174,19 +181,21 @@ export default function ChildCursusPage() {
         `${a.schoolYearLabel} ${a.className}`,
       ),
     );
-  }, [classFilter, eventTypeFilter, lifeEvents, schoolYearFilter]);
+  }, [classFilter, eventTypeFilter, lifeEvents, schoolYearFilter, t]);
 
   const summary = useMemo(() => {
     const scopedEvents = lifeEvents.filter((event) => {
       if (
         schoolYearFilter !== "ALL" &&
-        (event.schoolYear?.label ?? "Annee non definie") !== schoolYearFilter
+        (event.schoolYear?.label ?? t("discipline.cursus.notDefined.year")) !==
+          schoolYearFilter
       ) {
         return false;
       }
       if (
         classFilter !== "ALL" &&
-        (event.class?.name ?? "Classe non definie") !== classFilter
+        (event.class?.name ?? t("discipline.cursus.notDefined.class")) !==
+          classFilter
       ) {
         return false;
       }
@@ -210,43 +219,33 @@ export default function ChildCursusPage() {
       (entry) => entry.type === "PUNITION",
     ).length;
     return { absences, retards, sanctions, punitions };
-  }, [classFilter, eventTypeFilter, lifeEvents, schoolYearFilter]);
+  }, [classFilter, eventTypeFilter, lifeEvents, schoolYearFilter, t]);
 
   const schoolYearOptions = useMemo(
     () =>
       Array.from(
         new Set(
           lifeEvents.map(
-            (event) => event.schoolYear?.label ?? "Annee non definie",
+            (event) =>
+              event.schoolYear?.label ?? t("discipline.cursus.notDefined.year"),
           ),
         ),
       ).sort((a, b) => b.localeCompare(a)),
-    [lifeEvents],
+    [lifeEvents, t],
   );
 
   const classOptions = useMemo(
     () =>
       Array.from(
         new Set(
-          lifeEvents.map((event) => event.class?.name ?? "Classe non definie"),
+          lifeEvents.map(
+            (event) =>
+              event.class?.name ?? t("discipline.cursus.notDefined.class"),
+          ),
         ),
       ).sort((a, b) => a.localeCompare(b)),
-    [lifeEvents],
+    [lifeEvents, t],
   );
-
-  function typeLabel(type: StudentLifeEventRow["type"]) {
-    if (type === "ABSENCE") {
-      return "Absence";
-    }
-    if (type === "RETARD") {
-      return "Retard";
-    }
-    if (type === "PUNITION") {
-      return "Punition";
-    }
-
-    return "Sanction";
-  }
 
   function resetFilters() {
     setSchoolYearFilter("ALL");
@@ -261,15 +260,17 @@ export default function ChildCursusPage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Cursus"
+        title={t("discipline.cursus.title")}
         subtitle={
           currentChild
             ? `${currentChild.firstName} ${currentChild.lastName}`
-            : "Historique eleve"
+            : t("discipline.cursus.subtitleDefault")
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("discipline.common.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : (
@@ -284,7 +285,7 @@ export default function ChildCursusPage() {
                     : "text-text-secondary"
                 }`}
               >
-                Synthese
+                {t("discipline.cursus.tabs.synthese")}
               </button>
               <button
                 type="button"
@@ -295,7 +296,7 @@ export default function ChildCursusPage() {
                     : "text-text-secondary"
                 }`}
               >
-                Vie scolaire
+                {t("discipline.cursus.tabs.vieScolaire")}
               </button>
               <button
                 type="button"
@@ -306,14 +307,16 @@ export default function ChildCursusPage() {
                     : "text-text-secondary"
                 }`}
               >
-                Aide
+                {t("discipline.cursus.tabs.help")}
               </button>
             </div>
 
             {tab !== "help" ? (
               <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-[1fr_1fr_1fr_auto_auto] print:hidden">
                 <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Annee</span>
+                  <span className="text-text-secondary">
+                    {t("discipline.cursus.filters.year")}
+                  </span>
                   <FormSelect
                     value={schoolYearFilter}
                     onChange={(event) =>
@@ -321,7 +324,9 @@ export default function ChildCursusPage() {
                     }
                     className="bg-surface"
                   >
-                    <option value="ALL">Toutes</option>
+                    <option value="ALL">
+                      {t("discipline.cursus.filters.allFeminine")}
+                    </option>
                     {schoolYearOptions.map((option) => (
                       <option key={option} value={option}>
                         {option}
@@ -330,13 +335,17 @@ export default function ChildCursusPage() {
                   </FormSelect>
                 </label>
                 <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Classe</span>
+                  <span className="text-text-secondary">
+                    {t("discipline.cursus.filters.class")}
+                  </span>
                   <FormSelect
                     value={classFilter}
                     onChange={(event) => setClassFilter(event.target.value)}
                     className="bg-surface"
                   >
-                    <option value="ALL">Toutes</option>
+                    <option value="ALL">
+                      {t("discipline.cursus.filters.allFeminine")}
+                    </option>
                     {classOptions.map((option) => (
                       <option key={option} value={option}>
                         {option}
@@ -345,7 +354,9 @@ export default function ChildCursusPage() {
                   </FormSelect>
                 </label>
                 <label className="grid gap-1 text-sm">
-                  <span className="text-text-secondary">Type</span>
+                  <span className="text-text-secondary">
+                    {t("discipline.cursus.filters.type")}
+                  </span>
                   <FormSelect
                     value={eventTypeFilter}
                     onChange={(event) =>
@@ -353,11 +364,21 @@ export default function ChildCursusPage() {
                     }
                     className="bg-surface"
                   >
-                    <option value="ALL">Tous</option>
-                    <option value="ABSENCE">Absences</option>
-                    <option value="RETARD">Retards</option>
-                    <option value="SANCTION">Sanctions</option>
-                    <option value="PUNITION">Punitions</option>
+                    <option value="ALL">
+                      {t("discipline.cursus.filters.allMasculine")}
+                    </option>
+                    <option value="ABSENCE">
+                      {t("discipline.vieScolaire.kpi.absences")}
+                    </option>
+                    <option value="RETARD">
+                      {t("discipline.vieScolaire.kpi.retards")}
+                    </option>
+                    <option value="SANCTION">
+                      {t("discipline.vieScolaire.kpi.sanctions")}
+                    </option>
+                    <option value="PUNITION">
+                      {t("discipline.vieScolaire.kpi.punitions")}
+                    </option>
                   </FormSelect>
                 </label>
                 <div className="self-end">
@@ -366,7 +387,7 @@ export default function ChildCursusPage() {
                     onClick={resetFilters}
                     className="rounded-card border border-border px-3 py-2 text-sm font-semibold text-text-primary"
                   >
-                    Reinitialiser
+                    {t("discipline.cursus.filters.reset")}
                   </button>
                 </div>
                 <div className="self-end">
@@ -375,7 +396,7 @@ export default function ChildCursusPage() {
                     onClick={exportPdf}
                     className="rounded-card bg-primary px-3 py-2 text-sm font-semibold text-white"
                   >
-                    Exporter PDF
+                    {t("discipline.cursus.filters.exportPdf")}
                   </button>
                 </div>
               </div>
@@ -383,18 +404,19 @@ export default function ChildCursusPage() {
 
             {tab === "help" ? (
               <ModuleHelpTab
-                moduleName="Cursus"
-                moduleSummary="ce module recapitulera le parcours eleve annee par annee et classe par classe."
+                moduleName={t("discipline.cursus.help.moduleName")}
+                moduleSummary={t("discipline.cursus.help.summary")}
                 actions={[
                   {
-                    name: "Consulter",
-                    purpose: "analyser l'historique global de l'eleve.",
-                    howTo:
-                      "ouvrir l'onglet Vie scolaire pour un recap par annee/classe.",
-                    moduleImpact:
-                      "vue chronologique des evenements du parcours.",
-                    crossModuleImpact:
-                      "complete la page Vie scolaire courante qui ne montre que l'annee active.",
+                    name: t("discipline.cursus.help.actionName"),
+                    purpose: t("discipline.cursus.help.actionPurpose"),
+                    howTo: t("discipline.cursus.help.actionHowTo"),
+                    moduleImpact: t(
+                      "discipline.cursus.help.actionModuleImpact",
+                    ),
+                    crossModuleImpact: t(
+                      "discipline.cursus.help.actionCrossModuleImpact",
+                    ),
                   },
                 ]}
               />
@@ -402,7 +424,7 @@ export default function ChildCursusPage() {
               <div className="grid gap-3 md:grid-cols-5">
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Annees / classes
+                    {t("discipline.cursus.synthese.yearsClasses")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {groups.length}
@@ -410,7 +432,7 @@ export default function ChildCursusPage() {
                 </div>
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Absences
+                    {t("discipline.vieScolaire.kpi.absences")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {summary.absences}
@@ -418,7 +440,7 @@ export default function ChildCursusPage() {
                 </div>
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Retards
+                    {t("discipline.vieScolaire.kpi.retards")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {summary.retards}
@@ -426,7 +448,7 @@ export default function ChildCursusPage() {
                 </div>
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Sanctions
+                    {t("discipline.vieScolaire.kpi.sanctions")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {summary.sanctions}
@@ -434,7 +456,7 @@ export default function ChildCursusPage() {
                 </div>
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Punitions
+                    {t("discipline.vieScolaire.kpi.punitions")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {summary.punitions}
@@ -443,7 +465,7 @@ export default function ChildCursusPage() {
               </div>
             ) : groups.length === 0 ? (
               <p className="text-sm text-text-secondary">
-                Aucun evenement vie scolaire sur le cursus pour le moment.
+                {t("discipline.cursus.empty")}
               </p>
             ) : (
               <div className="grid gap-3">
@@ -459,11 +481,19 @@ export default function ChildCursusPage() {
                       <table className="min-w-full border-collapse text-sm">
                         <thead>
                           <tr className="border-b border-border text-left text-text-secondary">
-                            <th className="px-2 py-2 font-medium">Date</th>
-                            <th className="px-2 py-2 font-medium">Type</th>
-                            <th className="px-2 py-2 font-medium">Motif</th>
                             <th className="px-2 py-2 font-medium">
-                              Commentaire
+                              {t("discipline.list.columns.date")}
+                            </th>
+                            <th className="px-2 py-2 font-medium">
+                              {t("discipline.list.columns.type")}
+                            </th>
+                            <th className="px-2 py-2 font-medium">
+                              {t("discipline.list.columns.reason")}
+                            </th>
+                            <th className="px-2 py-2 font-medium">
+                              {t(
+                                "discipline.vieScolaire.absences.columns.comment",
+                              )}
                             </th>
                           </tr>
                         </thead>
@@ -475,11 +505,11 @@ export default function ChildCursusPage() {
                             >
                               <td className="px-2 py-2 text-text-primary">
                                 {new Date(event.occurredAt).toLocaleString(
-                                  "fr-FR",
+                                  locale === "en" ? "en-GB" : "fr-FR",
                                 )}
                               </td>
                               <td className="px-2 py-2 text-text-primary">
-                                {typeLabel(event.type)}
+                                {lifeEventTypeLabel(t, event.type)}
                               </td>
                               <td className="px-2 py-2 text-text-primary">
                                 {event.reason}
