@@ -567,10 +567,7 @@ export default function TeacherClassAgendaPage() {
   const router = useRouter();
 
   const WEEKDAY_OPTIONS = useMemo(() => getWeekdayOptions(t), [t]);
-  const vacationFormSchema = useMemo(
-    () => createVacationFormSchema(t),
-    [t],
-  );
+  const vacationFormSchema = useMemo(() => createVacationFormSchema(t), [t]);
   const slotFormSchema = useMemo(() => createSlotFormSchema(t), [t]);
   const occurrenceFormSchema = useMemo(
     () => createOccurrenceFormSchema(t),
@@ -1181,7 +1178,10 @@ export default function TeacherClassAgendaPage() {
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         setError(
-          parseApiError(payload, t("timetable.agenda.errors.colorUpdateFailed")),
+          parseApiError(
+            payload,
+            t("timetable.agenda.errors.colorUpdateFailed"),
+          ),
         );
         return;
       }
@@ -1241,7 +1241,10 @@ export default function TeacherClassAgendaPage() {
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           setError(
-            parseApiError(payload, t("timetable.agenda.errors.slotUpdateFailed")),
+            parseApiError(
+              payload,
+              t("timetable.agenda.errors.slotUpdateFailed"),
+            ),
           );
           return;
         }
@@ -1291,7 +1294,10 @@ export default function TeacherClassAgendaPage() {
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           setError(
-            parseApiError(payload, t("timetable.agenda.errors.slotCreateFailed")),
+            parseApiError(
+              payload,
+              t("timetable.agenda.errors.slotCreateFailed"),
+            ),
           );
           return;
         }
@@ -1529,7 +1535,10 @@ export default function TeacherClassAgendaPage() {
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           setError(
-            parseApiError(payload, t("timetable.agenda.errors.seriesUpdateFailed")),
+            parseApiError(
+              payload,
+              t("timetable.agenda.errors.seriesUpdateFailed"),
+            ),
           );
           return;
         }
@@ -1552,7 +1561,10 @@ export default function TeacherClassAgendaPage() {
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           setError(
-            parseApiError(payload, t("timetable.agenda.errors.seriesDeleteFailed")),
+            parseApiError(
+              payload,
+              t("timetable.agenda.errors.seriesDeleteFailed"),
+            ),
           );
           return;
         }
@@ -1732,7 +1744,10 @@ export default function TeacherClassAgendaPage() {
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         setError(
-          parseApiError(payload, t("timetable.agenda.errors.vacationDeleteFailed")),
+          parseApiError(
+            payload,
+            t("timetable.agenda.errors.vacationDeleteFailed"),
+          ),
         );
         return;
       }
@@ -1883,7 +1898,9 @@ export default function TeacherClassAgendaPage() {
                           void switchSchoolYear(nextYear.id);
                         }}
                         className="h-8 w-8 px-0"
-                        aria-label={t("timetable.agenda.schoolYear.previousAria")}
+                        aria-label={t(
+                          "timetable.agenda.schoolYear.previousAria",
+                        )}
                         iconLeft={<ChevronLeft size={16} />}
                       />
                       <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-text-primary">
@@ -2326,7 +2343,8 @@ export default function TeacherClassAgendaPage() {
                             <span className="text-text-primary">
                               {WEEKDAY_OPTIONS.find(
                                 (day) => day.value === draft.weekday,
-                              )?.label ?? t("timetable.agenda.slotForm.weekday")}{" "}
+                              )?.label ??
+                                t("timetable.agenda.slotForm.weekday")}{" "}
                               · {minutesToTimeValue(draft.startMinute)} -{" "}
                               {minutesToTimeValue(draft.endMinute)}
                             </span>
@@ -2812,14 +2830,20 @@ export default function TeacherClassAgendaPage() {
                           {occurrenceActionType === "DELETE_SERIES" ? (
                             <div className="mt-1 grid gap-1 text-xs text-text-secondary">
                               <p>
-                                {t("timetable.agenda.occurrenceModal.seriesStart")}{" "}
+                                {t(
+                                  "timetable.agenda.occurrenceModal.seriesStart",
+                                )}{" "}
                                 <span className="font-medium text-text-primary">
                                   {seriesStartLabel ??
-                                    t("timetable.agenda.occurrenceModal.noValue")}
+                                    t(
+                                      "timetable.agenda.occurrenceModal.noValue",
+                                    )}
                                 </span>
                               </p>
                               <p>
-                                {t("timetable.agenda.occurrenceModal.seriesEnd")}{" "}
+                                {t(
+                                  "timetable.agenda.occurrenceModal.seriesEnd",
+                                )}{" "}
                                 <span className="font-medium text-text-primary">
                                   {seriesEndLabel ??
                                     t(

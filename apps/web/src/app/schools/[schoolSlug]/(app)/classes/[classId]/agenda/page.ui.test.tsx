@@ -381,9 +381,7 @@ describe("Agenda page forms", () => {
       await screen.findByRole("button", { name: "Add slot" }),
     ).toBeInTheDocument();
 
-    expect(
-      screen.queryByText("Emploi du temps - 6eC"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Emploi du temps - 6eC")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Creation et gestion de l'emploi du temps annuel"),
     ).not.toBeInTheDocument();

@@ -1145,7 +1145,9 @@ export function TimetableViews({
                                 {slot.teacherName}
                               </p>
                               <p className="truncate text-[11px] font-medium text-[#4B6285]">
-                                {t("timetable.agenda.occurrenceModal.roomPrefix")}{" "}
+                                {t(
+                                  "timetable.agenda.occurrenceModal.roomPrefix",
+                                )}{" "}
                                 {slot.room ?? "-"}
                               </p>
                             </button>
@@ -1308,7 +1310,9 @@ export function TimetableViews({
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-[#8192A8]">{resolvedDayEmptyLabel}</p>
+                <p className="text-xs text-[#8192A8]">
+                  {resolvedDayEmptyLabel}
+                </p>
               )}
             </article>
           </section>

@@ -819,14 +819,10 @@ describe("DashboardPage role dashboards", () => {
       expect(screen.getByTestId("teacher-dashboard")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByTestId("section-teacher-timetable"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("section-teacher-timetable")).toBeInTheDocument();
     expect(screen.getByText("Timetable")).toBeInTheDocument();
     expect(screen.getByText("No class scheduled today")).toBeInTheDocument();
-    expect(
-      screen.queryByText("Emploi du temps"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Emploi du temps")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Aucun cours planifie aujourd'hui"),
     ).not.toBeInTheDocument();

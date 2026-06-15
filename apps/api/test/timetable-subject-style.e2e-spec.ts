@@ -423,7 +423,10 @@ describe("Timetable subject style API e2e", () => {
     );
     expect(conflictingStyle.response.status).toBe(400);
     expect(conflictingStyle.body?.message).toBe(
-      translateTimetableError("fr", "timetable.errors.colorTooCloseToOtherSubject"),
+      translateTimetableError(
+        "fr",
+        "timetable.errors.colorTooCloseToOtherSubject",
+      ),
     );
   });
 

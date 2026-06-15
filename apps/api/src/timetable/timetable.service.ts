@@ -247,7 +247,11 @@ export class TimetableService {
     );
 
     const schoolYearId = query.schoolYearId ?? classEntity.schoolYearId;
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
+    await this.ensureSchoolYearInSchool(
+      schoolYearId,
+      effectiveSchoolId,
+      locale,
+    );
 
     const dateRange = this.parseDateRange(query.fromDate, query.toDate, locale);
     const {
@@ -414,7 +418,11 @@ export class TimetableService {
         : null;
     this.assertActiveDateRange(activeFromDate, activeToDate, locale);
 
-    await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId, locale);
+    await this.ensureSubjectInSchool(
+      payload.subjectId,
+      effectiveSchoolId,
+      locale,
+    );
     await this.ensureSubjectAllowedForClass(
       classEntity.id,
       payload.subjectId,
@@ -500,8 +508,16 @@ export class TimetableService {
     );
 
     const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
-    await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId, locale);
+    await this.ensureSchoolYearInSchool(
+      schoolYearId,
+      effectiveSchoolId,
+      locale,
+    );
+    await this.ensureSubjectInSchool(
+      payload.subjectId,
+      effectiveSchoolId,
+      locale,
+    );
     await this.ensureSubjectAllowedForClass(
       classEntity.id,
       payload.subjectId,
@@ -1019,7 +1035,11 @@ export class TimetableService {
     );
 
     const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
+    await this.ensureSchoolYearInSchool(
+      schoolYearId,
+      effectiveSchoolId,
+      locale,
+    );
     await this.ensureSubjectInSchool(subjectId, effectiveSchoolId, locale);
     await this.ensureSubjectAllowedForClass(
       classId,
@@ -1114,7 +1134,11 @@ export class TimetableService {
 
     if (nextType === "OVERRIDE") {
       this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
-      await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
+      await this.ensureSubjectInSchool(
+        nextSubjectId,
+        effectiveSchoolId,
+        locale,
+      );
       await this.ensureSubjectAllowedForClass(
         classEntity.id,
         nextSubjectId,
@@ -1333,7 +1357,11 @@ export class TimetableService {
 
     if (nextType === "OVERRIDE") {
       this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
-      await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
+      await this.ensureSubjectInSchool(
+        nextSubjectId,
+        effectiveSchoolId,
+        locale,
+      );
       await this.ensureSubjectAllowedForClass(
         classEntity.id,
         nextSubjectId,
@@ -1670,7 +1698,10 @@ export class TimetableService {
 
     if (fromDate && toDate && fromDate > toDate) {
       throw new BadRequestException(
-        translateTimetableError(locale, "timetable.errors.fromDateBeforeToDate"),
+        translateTimetableError(
+          locale,
+          "timetable.errors.fromDateBeforeToDate",
+        ),
       );
     }
 
@@ -1708,7 +1739,11 @@ export class TimetableService {
     const schoolYearId =
       payload.schoolYearId ??
       (await this.getActiveSchoolYearIdOrThrow(effectiveSchoolId, locale));
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
+    await this.ensureSchoolYearInSchool(
+      schoolYearId,
+      effectiveSchoolId,
+      locale,
+    );
 
     const startDate = new Date(payload.startDate);
     const endDate = new Date(payload.endDate);
@@ -1879,7 +1914,10 @@ export class TimetableService {
     }
     if (fromDate && toDate && fromDate > toDate) {
       throw new BadRequestException(
-        translateTimetableError(locale, "timetable.errors.fromDateBeforeToDate"),
+        translateTimetableError(
+          locale,
+          "timetable.errors.fromDateBeforeToDate",
+        ),
       );
     }
     return { fromDate, toDate };
@@ -2354,7 +2392,10 @@ export class TimetableService {
 
     if (startDate > endDate) {
       throw new BadRequestException(
-        translateTimetableError(locale, "timetable.errors.startDateBeforeEndDate"),
+        translateTimetableError(
+          locale,
+          "timetable.errors.startDateBeforeEndDate",
+        ),
       );
     }
   }
@@ -2366,7 +2407,10 @@ export class TimetableService {
   ) {
     if (activeFromDate && activeToDate && activeFromDate > activeToDate) {
       throw new BadRequestException(
-        translateTimetableError(locale, "timetable.errors.activeFromBeforeActiveTo"),
+        translateTimetableError(
+          locale,
+          "timetable.errors.activeFromBeforeActiveTo",
+        ),
       );
     }
   }
@@ -3161,7 +3205,10 @@ export class TimetableService {
 
     if (!teacherMembership) {
       throw new ForbiddenException(
-        translateTimetableError(locale, "timetable.errors.userNotTeacherInSchool"),
+        translateTimetableError(
+          locale,
+          "timetable.errors.userNotTeacherInSchool",
+        ),
       );
     }
 
@@ -3224,10 +3271,7 @@ export class TimetableService {
 
     if (!schoolYear) {
       throw new NotFoundException(
-        translateTimetableError(
-          locale,
-          "timetable.errors.schoolYearNotFound",
-        ),
+        translateTimetableError(locale, "timetable.errors.schoolYearNotFound"),
       );
     }
 

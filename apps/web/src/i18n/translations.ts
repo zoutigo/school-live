@@ -915,8 +915,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.validation.startBeforeEndDate":
       "La date de debut doit etre avant la date de fin.",
     "timetable.agenda.validation.selectSubject": "Selectionnez une matiere.",
-    "timetable.agenda.validation.selectTeacher":
-      "Selectionnez un enseignant.",
+    "timetable.agenda.validation.selectTeacher": "Selectionnez un enseignant.",
     "timetable.agenda.validation.invalidWeekday": "Jour invalide.",
     "timetable.agenda.validation.invalidTime": "Horaire invalide.",
     "timetable.agenda.validation.startBeforeEndTime":
@@ -931,8 +930,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "timetable.agenda.actions.add": "Ajouter",
 
-    "timetable.agenda.colors.title":
-      "Couleurs des matieres (classe + annee)",
+    "timetable.agenda.colors.title": "Couleurs des matieres (classe + annee)",
     "timetable.agenda.colors.colorAria": "Couleur {subject}",
     "timetable.agenda.colors.saving": "...",
     "timetable.agenda.colors.save": "Sauver",
@@ -948,8 +946,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Aucun enseignant affecte a cette matiere",
     "timetable.agenda.slotForm.room": "Salle (optionnel)",
     "timetable.agenda.slotForm.roomPlaceholder": "ex: B14",
-    "timetable.agenda.slotForm.activeFromDate":
-      "Debut occurrences (optionnel)",
+    "timetable.agenda.slotForm.activeFromDate": "Debut occurrences (optionnel)",
     "timetable.agenda.slotForm.activeToDate": "Fin occurrences (optionnel)",
     "timetable.agenda.slotForm.effectiveFromDate":
       "Appliquer a partir du (optionnel)",
@@ -989,8 +986,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.scopeLabel.class": "Classe",
 
     "timetable.agenda.confirm.deleteSlotTitle": "Supprimer ce creneau ?",
-    "timetable.agenda.confirm.deleteVacationTitle":
-      "Supprimer cette periode ?",
+    "timetable.agenda.confirm.deleteVacationTitle": "Supprimer cette periode ?",
 
     "timetable.agenda.occurrenceModal.manage": "Gerer l'occurrence",
     "timetable.agenda.occurrenceModal.close": "Fermer",
@@ -998,10 +994,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Supprimer cette occurrence",
     "timetable.agenda.occurrenceModal.updateOccurrence":
       "Modifier cette occurrence",
-    "timetable.agenda.occurrenceModal.updateSeries":
-      "Modifier toute la serie",
-    "timetable.agenda.occurrenceModal.deleteSeries":
-      "Supprimer toute la serie",
+    "timetable.agenda.occurrenceModal.updateSeries": "Modifier toute la serie",
+    "timetable.agenda.occurrenceModal.deleteSeries": "Supprimer toute la serie",
     "timetable.agenda.occurrenceModal.cancel": "Annuler",
     "timetable.agenda.occurrenceModal.continue": "Continuer",
     "timetable.agenda.occurrenceModal.back": "Retour",
@@ -1015,8 +1009,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.occurrenceModal.roomPrefix": "Salle",
     "timetable.agenda.occurrenceModal.seriesStart": "Debut de serie :",
     "timetable.agenda.occurrenceModal.seriesEnd": "Fin de serie :",
-    "timetable.agenda.occurrenceModal.seriesEndDefault":
-      "Fin annee scolaire",
+    "timetable.agenda.occurrenceModal.seriesEndDefault": "Fin annee scolaire",
     "timetable.agenda.occurrenceModal.noValue": "-",
     "timetable.agenda.occurrenceModal.effectiveDate": "Date de debut d'effet",
     "timetable.agenda.occurrenceModal.date": "Date",
@@ -1875,8 +1868,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "timetable.agenda.page.titlePrefix": "Timetable",
     "timetable.agenda.page.defaultClassName": "Class",
-    "timetable.agenda.page.subtitle":
-      "Create and manage the yearly timetable",
+    "timetable.agenda.page.subtitle": "Create and manage the yearly timetable",
     "timetable.agenda.page.loading": "Loading...",
     "timetable.agenda.page.classNotAccessible": "Class not accessible.",
 
@@ -1897,20 +1889,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.errors.networkError": "Network error.",
     "timetable.agenda.errors.csrfInvalid":
       "Invalid CSRF session. Please log in again.",
-    "timetable.agenda.errors.loadFailed":
-      "Unable to load the class timetable.",
-    "timetable.agenda.errors.refreshFailed":
-      "Unable to refresh the timetable.",
+    "timetable.agenda.errors.loadFailed": "Unable to load the class timetable.",
+    "timetable.agenda.errors.refreshFailed": "Unable to refresh the timetable.",
     "timetable.agenda.errors.schoolYearSwitchFailed":
       "Unable to switch school year.",
-    "timetable.agenda.errors.colorUpdateFailed":
-      "Unable to update the color.",
-    "timetable.agenda.errors.slotUpdateFailed":
-      "Unable to update the slot.",
-    "timetable.agenda.errors.slotCreateFailed":
-      "Unable to create the slot.",
-    "timetable.agenda.errors.slotDeleteFailed":
-      "Unable to delete the slot.",
+    "timetable.agenda.errors.colorUpdateFailed": "Unable to update the color.",
+    "timetable.agenda.errors.slotUpdateFailed": "Unable to update the slot.",
+    "timetable.agenda.errors.slotCreateFailed": "Unable to create the slot.",
+    "timetable.agenda.errors.slotDeleteFailed": "Unable to delete the slot.",
     "timetable.agenda.errors.occurrenceDeleteFailed":
       "Unable to delete the occurrence.",
     "timetable.agenda.errors.occurrenceUpdateFailed":
@@ -1925,8 +1911,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Unable to update the holiday period.",
     "timetable.agenda.errors.vacationDeleteFailed":
       "Unable to delete the period.",
-    "timetable.agenda.errors.noOccurrenceSelected":
-      "No slot selected.",
+    "timetable.agenda.errors.noOccurrenceSelected": "No slot selected.",
     "timetable.agenda.errors.occurrenceNoSource":
       "This occurrence has no editable source.",
     "timetable.agenda.errors.seriesNoSourceUpdate":
@@ -1945,10 +1930,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.success.occurrenceUpdated": "Occurrence updated.",
     "timetable.agenda.success.seriesUpdated": "Series updated.",
     "timetable.agenda.success.seriesDeleted": "Series deleted.",
-    "timetable.agenda.success.vacationCreated":
-      "Holiday period saved.",
-    "timetable.agenda.success.vacationUpdated":
-      "Holiday period updated.",
+    "timetable.agenda.success.vacationCreated": "Holiday period saved.",
+    "timetable.agenda.success.vacationUpdated": "Holiday period updated.",
     "timetable.agenda.success.vacationDeleted": "Period deleted.",
 
     "timetable.agenda.validation.vacationLabelRequired":
@@ -1976,8 +1959,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "timetable.agenda.actions.add": "Add",
 
-    "timetable.agenda.colors.title":
-      "Subject colors (class + year)",
+    "timetable.agenda.colors.title": "Subject colors (class + year)",
     "timetable.agenda.colors.colorAria": "Color {subject}",
     "timetable.agenda.colors.saving": "...",
     "timetable.agenda.colors.save": "Save",
@@ -1986,18 +1968,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.slotForm.start": "Start",
     "timetable.agenda.slotForm.end": "End",
     "timetable.agenda.slotForm.subject": "Subject",
-    "timetable.agenda.slotForm.noSubjectsAvailable":
-      "No subject available",
+    "timetable.agenda.slotForm.noSubjectsAvailable": "No subject available",
     "timetable.agenda.slotForm.teacher": "Teacher",
     "timetable.agenda.slotForm.noTeacherAssigned":
       "No teacher assigned to this subject",
     "timetable.agenda.slotForm.room": "Room (optional)",
     "timetable.agenda.slotForm.roomPlaceholder": "e.g. B14",
-    "timetable.agenda.slotForm.activeFromDate":
-      "Occurrences start (optional)",
+    "timetable.agenda.slotForm.activeFromDate": "Occurrences start (optional)",
     "timetable.agenda.slotForm.activeToDate": "Occurrences end (optional)",
-    "timetable.agenda.slotForm.effectiveFromDate":
-      "Apply from (optional)",
+    "timetable.agenda.slotForm.effectiveFromDate": "Apply from (optional)",
     "timetable.agenda.slotForm.addToList": "Add to list",
     "timetable.agenda.slotForm.saving": "Saving...",
     "timetable.agenda.slotForm.updating": "Updating...",
@@ -2021,8 +2000,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.vacations.updatePeriod": "Update period",
     "timetable.agenda.vacations.addPeriod": "Add period",
     "timetable.agenda.vacations.cancelEdit": "Cancel editing",
-    "timetable.agenda.vacations.noVacations":
-      "No holiday period recorded.",
+    "timetable.agenda.vacations.noVacations": "No holiday period recorded.",
     "timetable.agenda.vacations.manageRestriction":
       "Only the academic lead and admins can edit holiday periods.",
     "timetable.agenda.vacations.edit": "Edit",
@@ -2034,19 +2012,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.scopeLabel.class": "Class",
 
     "timetable.agenda.confirm.deleteSlotTitle": "Delete this slot?",
-    "timetable.agenda.confirm.deleteVacationTitle":
-      "Delete this period?",
+    "timetable.agenda.confirm.deleteVacationTitle": "Delete this period?",
 
     "timetable.agenda.occurrenceModal.manage": "Manage occurrence",
     "timetable.agenda.occurrenceModal.close": "Close",
     "timetable.agenda.occurrenceModal.deleteOccurrence":
       "Delete this occurrence",
-    "timetable.agenda.occurrenceModal.updateOccurrence":
-      "Edit this occurrence",
-    "timetable.agenda.occurrenceModal.updateSeries":
-      "Edit the whole series",
-    "timetable.agenda.occurrenceModal.deleteSeries":
-      "Delete the whole series",
+    "timetable.agenda.occurrenceModal.updateOccurrence": "Edit this occurrence",
+    "timetable.agenda.occurrenceModal.updateSeries": "Edit the whole series",
+    "timetable.agenda.occurrenceModal.deleteSeries": "Delete the whole series",
     "timetable.agenda.occurrenceModal.cancel": "Cancel",
     "timetable.agenda.occurrenceModal.continue": "Continue",
     "timetable.agenda.occurrenceModal.back": "Back",
@@ -2060,8 +2034,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.occurrenceModal.roomPrefix": "Room",
     "timetable.agenda.occurrenceModal.seriesStart": "Series start:",
     "timetable.agenda.occurrenceModal.seriesEnd": "Series end:",
-    "timetable.agenda.occurrenceModal.seriesEndDefault":
-      "End of school year",
+    "timetable.agenda.occurrenceModal.seriesEndDefault": "End of school year",
     "timetable.agenda.occurrenceModal.noValue": "-",
     "timetable.agenda.occurrenceModal.effectiveDate": "Effective start date",
     "timetable.agenda.occurrenceModal.date": "Date",

@@ -36,8 +36,7 @@ const fr: TranslationDict = {
   "timetable.errors.noLinkedStudent": "Aucun élève lié.",
   "timetable.errors.oneOffSlotNotFound": "Créneau ponctuel introuvable.",
   "timetable.errors.schoolYearNotFound": "Année scolaire introuvable.",
-  "timetable.errors.slotExceptionNotFound":
-    "Exception de créneau introuvable.",
+  "timetable.errors.slotExceptionNotFound": "Exception de créneau introuvable.",
   "timetable.errors.startBeforeEnd":
     "L'heure de début doit être antérieure à l'heure de fin.",
   "timetable.errors.studentEnrollmentNotFound":
@@ -97,8 +96,7 @@ const en: TranslationDict = {
     "Conflicting occurrence for the room.",
   "timetable.errors.conflictingOccurrenceForTeacher":
     "Conflicting occurrence for the teacher.",
-  "timetable.errors.conflictingSlotForClass":
-    "Conflicting slot for the class.",
+  "timetable.errors.conflictingSlotForClass": "Conflicting slot for the class.",
   "timetable.errors.conflictingSlotForRoom": "Conflicting slot for the room.",
   "timetable.errors.conflictingSlotForTeacher":
     "Conflicting slot for the teacher.",
@@ -114,8 +112,7 @@ const en: TranslationDict = {
   "timetable.errors.slotExceptionNotFound": "Slot exception not found.",
   "timetable.errors.startBeforeEnd":
     "Start time must be earlier than end time.",
-  "timetable.errors.studentEnrollmentNotFound":
-    "Student enrollment not found.",
+  "timetable.errors.studentEnrollmentNotFound": "Student enrollment not found.",
   "timetable.errors.studentProfileNotFound": "Student profile not found.",
   "timetable.errors.subjectNotAllowedForClass":
     "Subject is not allowed for this class.",
