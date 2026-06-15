@@ -24,6 +24,11 @@ import type { UpdateClassTimetableOneOffSlotDto } from "./dto/update-class-timet
 import type { UpdateClassTimetableSlotExceptionDto } from "./dto/update-class-timetable-slot-exception.dto.js";
 import type { UpdateClassTimetableSlotDto } from "./dto/update-class-timetable-slot.dto.js";
 import type { UpdateSchoolCalendarEventDto } from "./dto/update-school-calendar-event.dto.js";
+import {
+  timetableLocaleFromUser,
+  translateTimetableError,
+  type TimetableLocale,
+} from "./timetable.translations.js";
 
 type ClassContext = {
   id: string;
@@ -130,26 +135,34 @@ export class TimetableService {
     classId: string,
     schoolYearId?: string,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const classEntity = await this.ensureClassInSchool(
       classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
     const requestedSchoolYearId = schoolYearId ?? classEntity.schoolYearId;
     await this.ensureSchoolYearInSchool(
       requestedSchoolYearId,
       effectiveSchoolId,
+      locale,
     );
 
     const [allowedSubjects, assignments, schoolContext, subjectStyles] =
       await Promise.all([
-        this.listAllowedSubjectsForClass(classEntity.id, effectiveSchoolId),
+        this.listAllowedSubjectsForClass(
+          classEntity.id,
+          effectiveSchoolId,
+          locale,
+        ),
         this.prisma.teacherClassSubject.findMany({
           where: {
             schoolId: effectiveSchoolId,
@@ -219,21 +232,24 @@ export class TimetableService {
     classId: string,
     query: ListClassTimetableQueryDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const classEntity = await this.ensureClassInSchool(
       classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
     const schoolYearId = query.schoolYearId ?? classEntity.schoolYearId;
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId);
+    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
 
-    const dateRange = this.parseDateRange(query.fromDate, query.toDate);
+    const dateRange = this.parseDateRange(query.fromDate, query.toDate, locale);
     const {
       slots,
       oneOffSlots,
@@ -269,6 +285,7 @@ export class TimetableService {
     schoolId: string,
     query: ListMyTimetableQueryDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const role = this.resolveRoleForMyTimetable(
       user,
@@ -276,7 +293,9 @@ export class TimetableService {
       query.childId,
     );
     if (!role) {
-      throw new ForbiddenException("Insufficient role");
+      throw new ForbiddenException(
+        translateTimetableError(locale, "timetable.errors.insufficientRole"),
+      );
     }
 
     const targetStudent = await this.resolveTargetStudentForMyTimetable({
@@ -284,6 +303,7 @@ export class TimetableService {
       user,
       role,
       childId: query.childId,
+      locale,
     });
 
     const schoolYearId = query.schoolYearId
@@ -291,10 +311,12 @@ export class TimetableService {
           schoolId: effectiveSchoolId,
           studentId: targetStudent.id,
           schoolYearId: query.schoolYearId,
+          locale,
         })
       : await this.getPreferredSchoolYearForStudent(
           effectiveSchoolId,
           targetStudent.id,
+          locale,
         );
 
     const enrollment = await this.prisma.enrollment.findFirst({
@@ -306,14 +328,20 @@ export class TimetableService {
       select: { classId: true },
     });
     if (!enrollment) {
-      throw new NotFoundException("Student enrollment not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.studentEnrollmentNotFound",
+        ),
+      );
     }
 
     const classEntity = await this.ensureClassInSchool(
       enrollment.classId,
       effectiveSchoolId,
+      locale,
     );
-    const dateRange = this.parseDateRange(query.fromDate, query.toDate);
+    const dateRange = this.parseDateRange(query.fromDate, query.toDate, locale);
     const {
       slots,
       oneOffSlots,
@@ -352,41 +380,46 @@ export class TimetableService {
     classId: string,
     payload: CreateClassTimetableSlotDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
-    this.assertMinuteRange(payload.startMinute, payload.endMinute);
+    this.assertMinuteRange(payload.startMinute, payload.endMinute, locale);
 
     const classEntity = await this.ensureClassInSchool(
       classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
     const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
     const schoolYear = await this.ensureSchoolYearInSchool(
       schoolYearId,
       effectiveSchoolId,
+      locale,
     );
     const activeFromDate = payload.activeFromDate
-      ? this.toDateOnly(payload.activeFromDate)
+      ? this.toDateOnly(payload.activeFromDate, locale)
       : schoolYear.startsAt
-        ? this.toDateOnly(schoolYear.startsAt.toISOString())
+        ? this.toDateOnly(schoolYear.startsAt.toISOString(), locale)
         : null;
     const activeToDate = payload.activeToDate
-      ? this.toDateOnly(payload.activeToDate)
+      ? this.toDateOnly(payload.activeToDate, locale)
       : schoolYear.endsAt
-        ? this.toDateOnly(schoolYear.endsAt.toISOString())
+        ? this.toDateOnly(schoolYear.endsAt.toISOString(), locale)
         : null;
-    this.assertActiveDateRange(activeFromDate, activeToDate);
+    this.assertActiveDateRange(activeFromDate, activeToDate, locale);
 
-    await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId);
+    await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId, locale);
     await this.ensureSubjectAllowedForClass(
       classEntity.id,
       payload.subjectId,
       effectiveSchoolId,
+      locale,
     );
     await this.ensureTeacherAssignedToClassSubject(
       effectiveSchoolId,
@@ -394,6 +427,7 @@ export class TimetableService {
       classEntity.id,
       payload.subjectId,
       payload.teacherUserId,
+      locale,
     );
 
     await this.ensureNoSlotConflicts({
@@ -407,6 +441,7 @@ export class TimetableService {
       room: payload.room ?? null,
       activeFromDate,
       activeToDate,
+      locale,
     });
 
     await this.ensureAutoSubjectStyleExists({
@@ -446,28 +481,32 @@ export class TimetableService {
     classId: string,
     payload: CreateClassTimetableOneOffSlotDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
-    this.assertMinuteRange(payload.startMinute, payload.endMinute);
-    const occurrenceDate = this.toDateOnly(payload.occurrenceDate);
+    this.assertMinuteRange(payload.startMinute, payload.endMinute, locale);
+    const occurrenceDate = this.toDateOnly(payload.occurrenceDate, locale);
 
     const classEntity = await this.ensureClassInSchool(
       classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
       payload.teacherUserId,
+      locale,
     );
 
     const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId);
-    await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId);
+    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
+    await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId, locale);
     await this.ensureSubjectAllowedForClass(
       classEntity.id,
       payload.subjectId,
       effectiveSchoolId,
+      locale,
     );
     await this.ensureTeacherAssignedToClassSubject(
       effectiveSchoolId,
@@ -475,6 +514,7 @@ export class TimetableService {
       classEntity.id,
       payload.subjectId,
       payload.teacherUserId,
+      locale,
     );
 
     await this.ensureNoOccurrenceConflicts({
@@ -487,6 +527,7 @@ export class TimetableService {
       teacherUserId: payload.teacherUserId,
       room: payload.room ?? null,
       ignoreRecurringSlotId: payload.sourceSlotId ?? undefined,
+      locale,
     });
 
     await this.ensureAutoSubjectStyleExists({
@@ -552,6 +593,7 @@ export class TimetableService {
     slotId: string,
     payload: UpdateClassTimetableSlotDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     if (
       payload.weekday === undefined &&
@@ -564,7 +606,9 @@ export class TimetableService {
       payload.activeToDate === undefined &&
       payload.effectiveFromDate === undefined
     ) {
-      throw new BadRequestException("No fields to update");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.noFieldsToUpdate"),
+      );
     }
 
     const existing = await this.prisma.classTimetableSlot.findFirst({
@@ -585,17 +629,24 @@ export class TimetableService {
       },
     });
     if (!existing) {
-      throw new NotFoundException("Timetable slot not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.timetableSlotNotFound",
+        ),
+      );
     }
 
     const classEntity = await this.ensureClassInSchool(
       existing.classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
     const nextWeekday = payload.weekday ?? existing.weekday;
@@ -604,27 +655,28 @@ export class TimetableService {
     const nextSubjectId = payload.subjectId ?? existing.subjectId;
     const nextTeacherUserId = payload.teacherUserId ?? existing.teacherUserId;
     const nextRoom = payload.room === undefined ? existing.room : payload.room;
-    const todayDate = this.toDateOnly(new Date().toISOString());
+    const todayDate = this.toDateOnly(new Date().toISOString(), locale);
     const nextActiveFromDate = payload.activeFromDate
-      ? this.toDateOnly(payload.activeFromDate)
+      ? this.toDateOnly(payload.activeFromDate, locale)
       : existing.activeFromDate;
     const nextActiveToDate = payload.activeToDate
-      ? this.toDateOnly(payload.activeToDate)
+      ? this.toDateOnly(payload.activeToDate, locale)
       : existing.activeToDate;
     const effectiveFromDate = payload.effectiveFromDate
-      ? this.toDateOnly(payload.effectiveFromDate)
+      ? this.toDateOnly(payload.effectiveFromDate, locale)
       : payload.activeFromDate
-        ? this.toDateOnly(payload.activeFromDate)
+        ? this.toDateOnly(payload.activeFromDate, locale)
         : todayDate;
 
-    this.assertMinuteRange(nextStartMinute, nextEndMinute);
-    this.assertActiveDateRange(nextActiveFromDate, nextActiveToDate);
+    this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
+    this.assertActiveDateRange(nextActiveFromDate, nextActiveToDate, locale);
 
-    await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId);
+    await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
     await this.ensureSubjectAllowedForClass(
       classEntity.id,
       nextSubjectId,
       effectiveSchoolId,
+      locale,
     );
     await this.ensureTeacherAssignedToClassSubject(
       effectiveSchoolId,
@@ -632,6 +684,7 @@ export class TimetableService {
       classEntity.id,
       nextSubjectId,
       nextTeacherUserId,
+      locale,
     );
 
     await this.ensureAutoSubjectStyleExists({
@@ -662,6 +715,7 @@ export class TimetableService {
         exceptSlotId: existing.id,
         activeFromDate: nextActiveFromDate,
         activeToDate: nextActiveToDate,
+        locale,
       });
       return this.prisma.classTimetableSlot.update({
         where: { id: existing.id },
@@ -705,6 +759,7 @@ export class TimetableService {
         exceptSlotId: existing.id,
         activeFromDate: nextActiveFromDate,
         activeToDate: nextActiveToDate,
+        locale,
       });
       return this.prisma.classTimetableSlot.update({
         where: { id: existing.id },
@@ -736,9 +791,9 @@ export class TimetableService {
 
     const newActiveFromDate = splitStartDate;
     const newActiveToDate = payload.activeToDate
-      ? this.toDateOnly(payload.activeToDate)
+      ? this.toDateOnly(payload.activeToDate, locale)
       : oldActiveTo;
-    this.assertActiveDateRange(newActiveFromDate, newActiveToDate);
+    this.assertActiveDateRange(newActiveFromDate, newActiveToDate, locale);
 
     await this.ensureNoSlotConflicts({
       schoolId: effectiveSchoolId,
@@ -752,6 +807,7 @@ export class TimetableService {
       exceptSlotId: existing.id,
       activeFromDate: newActiveFromDate,
       activeToDate: newActiveToDate,
+      locale,
     });
 
     const [, created] = await this.prisma.$transaction([
@@ -794,6 +850,7 @@ export class TimetableService {
     oneOffSlotId: string,
     payload: UpdateClassTimetableOneOffSlotDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     if (
       payload.occurrenceDate === undefined &&
@@ -804,7 +861,9 @@ export class TimetableService {
       payload.room === undefined &&
       payload.status === undefined
     ) {
-      throw new BadRequestException("No fields to update");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.noFieldsToUpdate"),
+      );
     }
 
     const existing = await this.prisma.classTimetableOneOffSlot.findFirst({
@@ -817,18 +876,22 @@ export class TimetableService {
       },
     });
     if (!existing) {
-      throw new NotFoundException("One-off slot not found");
+      throw new NotFoundException(
+        translateTimetableError(locale, "timetable.errors.oneOffSlotNotFound"),
+      );
     }
 
     const classEntity = await this.ensureClassInSchool(
       existing.classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
       existing.teacherUserId,
+      locale,
     );
 
     const beforeSnapshot = this.buildSnapshot({
@@ -848,20 +911,21 @@ export class TimetableService {
     });
 
     const nextOccurrenceDate = payload.occurrenceDate
-      ? this.toDateOnly(payload.occurrenceDate)
+      ? this.toDateOnly(payload.occurrenceDate, locale)
       : existing.occurrenceDate;
     const nextSubjectId = payload.subjectId ?? existing.subjectId;
     const nextTeacherUserId = payload.teacherUserId ?? existing.teacherUserId;
     const nextStartMinute = payload.startMinute ?? existing.startMinute;
     const nextEndMinute = payload.endMinute ?? existing.endMinute;
     const nextRoom = payload.room === undefined ? existing.room : payload.room;
-    this.assertMinuteRange(nextStartMinute, nextEndMinute);
+    this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
 
-    await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId);
+    await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
     await this.ensureSubjectAllowedForClass(
       classEntity.id,
       nextSubjectId,
       effectiveSchoolId,
+      locale,
     );
     await this.ensureTeacherAssignedToClassSubject(
       effectiveSchoolId,
@@ -869,6 +933,7 @@ export class TimetableService {
       classEntity.id,
       nextSubjectId,
       nextTeacherUserId,
+      locale,
     );
 
     await this.ensureNoOccurrenceConflicts({
@@ -882,6 +947,7 @@ export class TimetableService {
       room: nextRoom ?? null,
       exceptOneOffSlotId: existing.id,
       ignoreRecurringSlotId: existing.sourceSlotId ?? undefined,
+      locale,
     });
 
     const updated = await this.prisma.classTimetableOneOffSlot.update({
@@ -938,24 +1004,28 @@ export class TimetableService {
     subjectId: string,
     payload: SetClassSubjectStyleDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const classEntity = await this.ensureClassInSchool(
       classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
     const schoolYearId = payload.schoolYearId ?? classEntity.schoolYearId;
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId);
-    await this.ensureSubjectInSchool(subjectId, effectiveSchoolId);
+    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
+    await this.ensureSubjectInSchool(subjectId, effectiveSchoolId, locale);
     await this.ensureSubjectAllowedForClass(
       classId,
       subjectId,
       effectiveSchoolId,
+      locale,
     );
 
     const normalizedColor = payload.colorHex.toUpperCase();
@@ -965,6 +1035,7 @@ export class TimetableService {
       classId,
       subjectId,
       colorHex: normalizedColor,
+      locale,
     });
 
     return this.prisma.classTimetableSubjectStyle.upsert({
@@ -1001,6 +1072,7 @@ export class TimetableService {
     slotId: string,
     payload: CreateClassTimetableSlotExceptionDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const slot = await this.prisma.classTimetableSlot.findFirst({
       where: { id: slotId, schoolId: effectiveSchoolId },
@@ -1012,20 +1084,27 @@ export class TimetableService {
       },
     });
     if (!slot) {
-      throw new NotFoundException("Timetable slot not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.timetableSlotNotFound",
+        ),
+      );
     }
 
     const classEntity = await this.ensureClassInSchool(
       slot.classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
-    const occurrenceDate = this.toDateOnly(payload.occurrenceDate);
+    const occurrenceDate = this.toDateOnly(payload.occurrenceDate, locale);
     const nextType = payload.type;
     const nextSubjectId = payload.subjectId ?? slot.subjectId;
     const nextTeacherUserId = payload.teacherUserId ?? slot.teacherUserId;
@@ -1034,12 +1113,13 @@ export class TimetableService {
     const nextRoom = payload.room === undefined ? null : payload.room;
 
     if (nextType === "OVERRIDE") {
-      this.assertMinuteRange(nextStartMinute, nextEndMinute);
-      await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId);
+      this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
+      await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
       await this.ensureSubjectAllowedForClass(
         classEntity.id,
         nextSubjectId,
         effectiveSchoolId,
+        locale,
       );
       await this.ensureTeacherAssignedToClassSubject(
         effectiveSchoolId,
@@ -1047,6 +1127,7 @@ export class TimetableService {
         classEntity.id,
         nextSubjectId,
         nextTeacherUserId,
+        locale,
       );
       await this.ensureNoOccurrenceConflicts({
         schoolId: effectiveSchoolId,
@@ -1058,6 +1139,7 @@ export class TimetableService {
         teacherUserId: nextTeacherUserId,
         room: nextRoom,
         ignoreRecurringSlotId: slot.id,
+        locale,
       });
     }
 
@@ -1173,6 +1255,7 @@ export class TimetableService {
     exceptionId: string,
     payload: UpdateClassTimetableSlotExceptionDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const existing = await this.prisma.classTimetableSlotException.findFirst({
       where: { id: exceptionId, schoolId: effectiveSchoolId },
@@ -1197,16 +1280,23 @@ export class TimetableService {
       },
     });
     if (!existing) {
-      throw new NotFoundException("Slot exception not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.slotExceptionNotFound",
+        ),
+      );
     }
     const classEntity = await this.ensureClassInSchool(
       existing.classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
     const beforeSnapshot = this.buildSnapshot({
@@ -1227,7 +1317,7 @@ export class TimetableService {
 
     const nextType = payload.type ?? existing.type;
     const nextOccurrenceDate = payload.occurrenceDate
-      ? this.toDateOnly(payload.occurrenceDate)
+      ? this.toDateOnly(payload.occurrenceDate, locale)
       : existing.occurrenceDate;
     const nextSubjectId =
       payload.subjectId ?? existing.subjectId ?? existing.slot.subjectId;
@@ -1242,12 +1332,13 @@ export class TimetableService {
     const nextRoom = payload.room === undefined ? existing.room : payload.room;
 
     if (nextType === "OVERRIDE") {
-      this.assertMinuteRange(nextStartMinute, nextEndMinute);
-      await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId);
+      this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
+      await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
       await this.ensureSubjectAllowedForClass(
         classEntity.id,
         nextSubjectId,
         effectiveSchoolId,
+        locale,
       );
       await this.ensureTeacherAssignedToClassSubject(
         effectiveSchoolId,
@@ -1255,6 +1346,7 @@ export class TimetableService {
         classEntity.id,
         nextSubjectId,
         nextTeacherUserId,
+        locale,
       );
       await this.ensureNoOccurrenceConflicts({
         schoolId: effectiveSchoolId,
@@ -1267,6 +1359,7 @@ export class TimetableService {
         room: nextRoom,
         ignoreRecurringSlotId: existing.slotId,
         exceptExceptionId: existing.id,
+        locale,
       });
     }
 
@@ -1336,6 +1429,7 @@ export class TimetableService {
   }
 
   async deleteSlot(user: AuthenticatedUser, schoolId: string, slotId: string) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
 
     const existing = await this.prisma.classTimetableSlot.findFirst({
@@ -1343,17 +1437,24 @@ export class TimetableService {
       select: { id: true, classId: true },
     });
     if (!existing) {
-      throw new NotFoundException("Timetable slot not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.timetableSlotNotFound",
+        ),
+      );
     }
 
     const classEntity = await this.ensureClassInSchool(
       existing.classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
     await this.prisma.classTimetableSlot.delete({ where: { id: existing.id } });
@@ -1365,6 +1466,7 @@ export class TimetableService {
     schoolId: string,
     oneOffSlotId: string,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const existing = await this.prisma.classTimetableOneOffSlot.findFirst({
       where: { id: oneOffSlotId, schoolId: effectiveSchoolId },
@@ -1376,18 +1478,22 @@ export class TimetableService {
       },
     });
     if (!existing) {
-      throw new NotFoundException("One-off slot not found");
+      throw new NotFoundException(
+        translateTimetableError(locale, "timetable.errors.oneOffSlotNotFound"),
+      );
     }
 
     const classEntity = await this.ensureClassInSchool(
       existing.classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageOneOffSlot(
       user,
       effectiveSchoolId,
       classEntity,
       existing.teacherUserId,
+      locale,
     );
 
     const beforeSnapshot = this.buildSnapshot({
@@ -1428,6 +1534,7 @@ export class TimetableService {
     schoolId: string,
     exceptionId: string,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const existing = await this.prisma.classTimetableSlotException.findFirst({
       where: { id: exceptionId, schoolId: effectiveSchoolId },
@@ -1452,16 +1559,23 @@ export class TimetableService {
       },
     });
     if (!existing) {
-      throw new NotFoundException("Slot exception not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.slotExceptionNotFound",
+        ),
+      );
     }
     const classEntity = await this.ensureClassInSchool(
       existing.classId,
       effectiveSchoolId,
+      locale,
     );
     await this.assertCanManageClassTimetable(
       user,
       effectiveSchoolId,
       classEntity,
+      locale,
     );
 
     const beforeSnapshot = this.buildSnapshot({
@@ -1519,20 +1633,27 @@ export class TimetableService {
     schoolId: string,
     query: ListSchoolCalendarEventsQueryDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
-    await this.assertCanReadCalendarEvents(user, effectiveSchoolId);
+    await this.assertCanReadCalendarEvents(user, effectiveSchoolId, locale);
 
     const schoolYearId =
       query.schoolYearId ??
-      (await this.getActiveSchoolYearIdOrThrow(effectiveSchoolId));
+      (await this.getActiveSchoolYearIdOrThrow(effectiveSchoolId, locale));
 
     if (query.classId) {
       const classEntity = await this.ensureClassInSchool(
         query.classId,
         effectiveSchoolId,
+        locale,
       );
       if (classEntity.schoolYearId !== schoolYearId) {
-        throw new BadRequestException("Class school year mismatch");
+        throw new BadRequestException(
+          translateTimetableError(
+            locale,
+            "timetable.errors.classSchoolYearMismatch",
+          ),
+        );
       }
     }
 
@@ -1540,6 +1661,7 @@ export class TimetableService {
       await this.ensureAcademicLevelInSchool(
         query.academicLevelId,
         effectiveSchoolId,
+        locale,
       );
     }
 
@@ -1548,7 +1670,7 @@ export class TimetableService {
 
     if (fromDate && toDate && fromDate > toDate) {
       throw new BadRequestException(
-        "fromDate must be before or equal to toDate",
+        translateTimetableError(locale, "timetable.errors.fromDateBeforeToDate"),
       );
     }
 
@@ -1579,17 +1701,18 @@ export class TimetableService {
     schoolId: string,
     payload: CreateSchoolCalendarEventDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
-    await this.assertCanManageCalendarEvents(user, effectiveSchoolId);
+    await this.assertCanManageCalendarEvents(user, effectiveSchoolId, locale);
 
     const schoolYearId =
       payload.schoolYearId ??
-      (await this.getActiveSchoolYearIdOrThrow(effectiveSchoolId));
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId);
+      (await this.getActiveSchoolYearIdOrThrow(effectiveSchoolId, locale));
+    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
 
     const startDate = new Date(payload.startDate);
     const endDate = new Date(payload.endDate);
-    this.assertDateRange(startDate, endDate);
+    this.assertDateRange(startDate, endDate, locale);
 
     await this.validateCalendarEventScope({
       schoolId: effectiveSchoolId,
@@ -1597,6 +1720,7 @@ export class TimetableService {
       scope: payload.scope,
       classId: payload.classId,
       academicLevelId: payload.academicLevelId,
+      locale,
     });
 
     return this.prisma.schoolCalendarEvent.create({
@@ -1621,8 +1745,9 @@ export class TimetableService {
     eventId: string,
     payload: UpdateSchoolCalendarEventDto,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
-    await this.assertCanManageCalendarEvents(user, effectiveSchoolId);
+    await this.assertCanManageCalendarEvents(user, effectiveSchoolId, locale);
 
     if (
       payload.type === undefined &&
@@ -1633,7 +1758,9 @@ export class TimetableService {
       payload.classId === undefined &&
       payload.academicLevelId === undefined
     ) {
-      throw new BadRequestException("No fields to update");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.noFieldsToUpdate"),
+      );
     }
 
     const existing = await this.prisma.schoolCalendarEvent.findFirst({
@@ -1651,7 +1778,12 @@ export class TimetableService {
       },
     });
     if (!existing) {
-      throw new NotFoundException("Calendar event not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.calendarEventNotFound",
+        ),
+      );
     }
 
     const nextType = payload.type ?? existing.type;
@@ -1671,7 +1803,7 @@ export class TimetableService {
         ? existing.academicLevelId
         : payload.academicLevelId;
 
-    this.assertDateRange(nextStartDate, nextEndDate);
+    this.assertDateRange(nextStartDate, nextEndDate, locale);
 
     await this.validateCalendarEventScope({
       schoolId: effectiveSchoolId,
@@ -1679,6 +1811,7 @@ export class TimetableService {
       scope: nextScope,
       classId: nextClassId,
       academicLevelId: nextAcademicLevelId,
+      locale,
     });
 
     return this.prisma.schoolCalendarEvent.update({
@@ -1700,8 +1833,9 @@ export class TimetableService {
     schoolId: string,
     eventId: string,
   ) {
+    const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
-    await this.assertCanManageCalendarEvents(user, effectiveSchoolId);
+    await this.assertCanManageCalendarEvents(user, effectiveSchoolId, locale);
 
     const existing = await this.prisma.schoolCalendarEvent.findFirst({
       where: {
@@ -1712,7 +1846,12 @@ export class TimetableService {
     });
 
     if (!existing) {
-      throw new NotFoundException("Calendar event not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.calendarEventNotFound",
+        ),
+      );
     }
 
     await this.prisma.schoolCalendarEvent.delete({
@@ -1721,18 +1860,26 @@ export class TimetableService {
     return { id: existing.id, deleted: true };
   }
 
-  private parseDateRange(fromDateRaw?: string, toDateRaw?: string) {
+  private parseDateRange(
+    fromDateRaw?: string,
+    toDateRaw?: string,
+    locale: TimetableLocale = "fr",
+  ) {
     const fromDate = fromDateRaw ? new Date(fromDateRaw) : null;
     const toDate = toDateRaw ? new Date(toDateRaw) : null;
     if (fromDate && Number.isNaN(fromDate.getTime())) {
-      throw new BadRequestException("Invalid fromDate");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.invalidFromDate"),
+      );
     }
     if (toDate && Number.isNaN(toDate.getTime())) {
-      throw new BadRequestException("Invalid toDate");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.invalidToDate"),
+      );
     }
     if (fromDate && toDate && fromDate > toDate) {
       throw new BadRequestException(
-        "fromDate must be before or equal to toDate",
+        translateTimetableError(locale, "timetable.errors.fromDateBeforeToDate"),
       );
     }
     return { fromDate, toDate };
@@ -1896,6 +2043,7 @@ export class TimetableService {
     user: AuthenticatedUser;
     role: SchoolRole;
     childId?: string;
+    locale: TimetableLocale;
   }) {
     if (input.role === "STUDENT") {
       const student = await this.prisma.student.findFirst({
@@ -1911,7 +2059,12 @@ export class TimetableService {
       });
 
       if (!student) {
-        throw new NotFoundException("Student profile not found");
+        throw new NotFoundException(
+          translateTimetableError(
+            input.locale,
+            "timetable.errors.studentProfileNotFound",
+          ),
+        );
       }
       return student;
     }
@@ -1933,7 +2086,12 @@ export class TimetableService {
     });
 
     if (links.length === 0) {
-      throw new NotFoundException("No linked student");
+      throw new NotFoundException(
+        translateTimetableError(
+          input.locale,
+          "timetable.errors.noLinkedStudent",
+        ),
+      );
     }
 
     if (!input.childId) {
@@ -1942,7 +2100,12 @@ export class TimetableService {
 
     const match = links.find((link) => link.student.id === input.childId);
     if (!match) {
-      throw new ForbiddenException("Child is not linked to this parent");
+      throw new ForbiddenException(
+        translateTimetableError(
+          input.locale,
+          "timetable.errors.childNotLinkedToParent",
+        ),
+      );
     }
     return match.student;
   }
@@ -1950,6 +2113,7 @@ export class TimetableService {
   private async getPreferredSchoolYearForStudent(
     schoolId: string,
     studentId: string,
+    locale: TimetableLocale = "fr",
   ) {
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
@@ -1977,7 +2141,12 @@ export class TimetableService {
     });
 
     if (!latestEnrollment) {
-      throw new NotFoundException("Student enrollment not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.studentEnrollmentNotFound",
+        ),
+      );
     }
 
     return latestEnrollment.schoolYearId;
@@ -1987,6 +2156,7 @@ export class TimetableService {
     schoolId: string;
     studentId: string;
     schoolYearId: string;
+    locale?: TimetableLocale;
   }) {
     const enrollment = await this.prisma.enrollment.findFirst({
       where: {
@@ -1999,7 +2169,10 @@ export class TimetableService {
 
     if (!enrollment) {
       throw new NotFoundException(
-        "Student has no enrollment for requested school year",
+        translateTimetableError(
+          input.locale ?? "fr",
+          "timetable.errors.studentNoEnrollmentForSchoolYear",
+        ),
       );
     }
 
@@ -2011,6 +2184,7 @@ export class TimetableService {
     schoolYearId: string;
     classId: string;
     subjectId: string;
+    locale?: TimetableLocale;
   }) {
     const existing = await this.prisma.classTimetableSubjectStyle.findUnique({
       where: {
@@ -2036,7 +2210,10 @@ export class TimetableService {
       select: { colorHex: true },
     });
     const usedColors = rows.map((row) => row.colorHex.toUpperCase());
-    const nextColor = this.pickDistinctColorFromPalette(usedColors);
+    const nextColor = this.pickDistinctColorFromPalette(
+      usedColors,
+      input.locale,
+    );
 
     await this.prisma.classTimetableSubjectStyle.create({
       data: {
@@ -2049,7 +2226,10 @@ export class TimetableService {
     });
   }
 
-  private pickDistinctColorFromPalette(usedColors: string[]) {
+  private pickDistinctColorFromPalette(
+    usedColors: string[],
+    locale: TimetableLocale = "fr",
+  ) {
     if (usedColors.length === 0) {
       return SUBJECT_COLOR_PALETTE[0];
     }
@@ -2062,7 +2242,11 @@ export class TimetableService {
     let bestColor = candidates[0];
     let bestScore = -1;
     for (const candidate of candidates) {
-      const minDistance = this.minimumColorDistance(candidate, usedColors);
+      const minDistance = this.minimumColorDistance(
+        candidate,
+        usedColors,
+        locale,
+      );
       if (minDistance >= MIN_COLOR_DISTANCE_AUTO) {
         return candidate;
       }
@@ -2080,6 +2264,7 @@ export class TimetableService {
     classId: string;
     subjectId: string;
     colorHex: string;
+    locale: TimetableLocale;
   }) {
     const others = await this.prisma.classTimetableSubjectStyle.findMany({
       where: {
@@ -2091,22 +2276,33 @@ export class TimetableService {
       select: { colorHex: true },
     });
     const otherColors = others.map((entry) => entry.colorHex.toUpperCase());
-    const minDistance = this.minimumColorDistance(input.colorHex, otherColors);
+    const minDistance = this.minimumColorDistance(
+      input.colorHex,
+      otherColors,
+      input.locale,
+    );
     if (otherColors.length > 0 && minDistance < MIN_COLOR_DISTANCE_MANUAL) {
       throw new BadRequestException(
-        "Color too close to another subject color in this class and school year",
+        translateTimetableError(
+          input.locale,
+          "timetable.errors.colorTooCloseToOtherSubject",
+        ),
       );
     }
   }
 
-  private minimumColorDistance(sourceHex: string, targetHexColors: string[]) {
+  private minimumColorDistance(
+    sourceHex: string,
+    targetHexColors: string[],
+    locale: TimetableLocale = "fr",
+  ) {
     if (targetHexColors.length === 0) {
       return Number.POSITIVE_INFINITY;
     }
-    const source = this.hexToRgb(sourceHex);
+    const source = this.hexToRgb(sourceHex, locale);
     let min = Number.POSITIVE_INFINITY;
     for (const targetHex of targetHexColors) {
-      const target = this.hexToRgb(targetHex);
+      const target = this.hexToRgb(targetHex, locale);
       const distance = Math.sqrt(
         (source.r - target.r) ** 2 +
           (source.g - target.g) ** 2 +
@@ -2119,10 +2315,12 @@ export class TimetableService {
     return min;
   }
 
-  private hexToRgb(colorHex: string) {
+  private hexToRgb(colorHex: string, locale: TimetableLocale = "fr") {
     const normalized = colorHex.replace("#", "");
     if (normalized.length !== 6) {
-      throw new BadRequestException("Invalid colorHex");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.invalidColorHex"),
+      );
     }
     return {
       r: Number.parseInt(normalized.slice(0, 2), 16),
@@ -2131,20 +2329,32 @@ export class TimetableService {
     };
   }
 
-  private assertMinuteRange(startMinute: number, endMinute: number) {
+  private assertMinuteRange(
+    startMinute: number,
+    endMinute: number,
+    locale: TimetableLocale = "fr",
+  ) {
     if (startMinute >= endMinute) {
-      throw new BadRequestException("startMinute must be lower than endMinute");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.startBeforeEnd"),
+      );
     }
   }
 
-  private assertDateRange(startDate: Date, endDate: Date) {
+  private assertDateRange(
+    startDate: Date,
+    endDate: Date,
+    locale: TimetableLocale = "fr",
+  ) {
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      throw new BadRequestException("Invalid date range");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.invalidDateRange"),
+      );
     }
 
     if (startDate > endDate) {
       throw new BadRequestException(
-        "startDate must be before or equal to endDate",
+        translateTimetableError(locale, "timetable.errors.startDateBeforeEndDate"),
       );
     }
   }
@@ -2152,10 +2362,11 @@ export class TimetableService {
   private assertActiveDateRange(
     activeFromDate: Date | null,
     activeToDate: Date | null,
+    locale: TimetableLocale = "fr",
   ) {
     if (activeFromDate && activeToDate && activeFromDate > activeToDate) {
       throw new BadRequestException(
-        "activeFromDate must be before or equal to activeToDate",
+        translateTimetableError(locale, "timetable.errors.activeFromBeforeActiveTo"),
       );
     }
   }
@@ -2185,10 +2396,12 @@ export class TimetableService {
     return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
   }
 
-  private toDateOnly(isoDate: string) {
+  private toDateOnly(isoDate: string, locale: TimetableLocale = "fr") {
     const date = new Date(isoDate);
     if (Number.isNaN(date.getTime())) {
-      throw new BadRequestException("Invalid date");
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.invalidDate"),
+      );
     }
     return new Date(
       Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
@@ -2216,6 +2429,7 @@ export class TimetableService {
     exceptSlotId?: string;
     activeFromDate: Date | null;
     activeToDate: Date | null;
+    locale?: TimetableLocale;
   }) {
     const overlapWindow: Prisma.IntFilter = {
       lt: input.endMinute,
@@ -2275,7 +2489,12 @@ export class TimetableService {
       }),
     );
     if (hasClassConflict) {
-      throw new BadRequestException("Conflicting slot for class");
+      throw new BadRequestException(
+        translateTimetableError(
+          input.locale ?? "fr",
+          "timetable.errors.conflictingSlotForClass",
+        ),
+      );
     }
     const hasTeacherConflict = teacherConflicts.some((entry) =>
       this.dateRangesOverlap({
@@ -2286,7 +2505,12 @@ export class TimetableService {
       }),
     );
     if (hasTeacherConflict) {
-      throw new BadRequestException("Conflicting slot for teacher");
+      throw new BadRequestException(
+        translateTimetableError(
+          input.locale ?? "fr",
+          "timetable.errors.conflictingSlotForTeacher",
+        ),
+      );
     }
     const hasRoomConflict = roomConflicts.some((entry) =>
       this.dateRangesOverlap({
@@ -2297,7 +2521,12 @@ export class TimetableService {
       }),
     );
     if (hasRoomConflict) {
-      throw new BadRequestException("Conflicting slot for room");
+      throw new BadRequestException(
+        translateTimetableError(
+          input.locale ?? "fr",
+          "timetable.errors.conflictingSlotForRoom",
+        ),
+      );
     }
   }
 
@@ -2313,12 +2542,15 @@ export class TimetableService {
     ignoreRecurringSlotId?: string;
     exceptOneOffSlotId?: string;
     exceptExceptionId?: string;
+    locale?: TimetableLocale;
   }) {
+    const locale = input.locale ?? "fr";
     const fromDate = input.occurrenceDate;
     const toDate = input.occurrenceDate;
     const classEntity = await this.ensureClassInSchool(
       input.classId,
       input.schoolId,
+      locale,
     );
     const data = await this.fetchClassTimetableData({
       schoolId: input.schoolId,
@@ -2361,7 +2593,12 @@ export class TimetableService {
     });
 
     if (overlaps.length > 0) {
-      throw new BadRequestException("Conflicting occurrence for class");
+      throw new BadRequestException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.conflictingOccurrenceForClass",
+        ),
+      );
     }
 
     const targetWeekday = this.weekdayMondayFirst(input.occurrenceDate);
@@ -2507,7 +2744,12 @@ export class TimetableService {
       oneOffTeacherConflict ||
       overrideTeacherConflict
     ) {
-      throw new BadRequestException("Conflicting occurrence for teacher");
+      throw new BadRequestException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.conflictingOccurrenceForTeacher",
+        ),
+      );
     }
 
     if (!input.room) {
@@ -2542,7 +2784,12 @@ export class TimetableService {
     });
 
     if (recurringRoomConflict || oneOffRoomConflict || overrideRoomConflict) {
-      throw new BadRequestException("Conflicting occurrence for room");
+      throw new BadRequestException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.conflictingOccurrenceForRoom",
+        ),
+      );
     }
   }
 
@@ -2760,6 +3007,7 @@ export class TimetableService {
     classId: string,
     subjectId: string,
     schoolId: string,
+    locale: TimetableLocale = "fr",
   ) {
     const [classEntity, override] = await Promise.all([
       this.prisma.class.findFirst({
@@ -2783,11 +3031,18 @@ export class TimetableService {
     ]);
 
     if (!classEntity) {
-      throw new NotFoundException("Class not found");
+      throw new NotFoundException(
+        translateTimetableError(locale, "timetable.errors.classNotFound"),
+      );
     }
 
     if (override?.action === "REMOVE") {
-      throw new ForbiddenException("Subject is not allowed for this class");
+      throw new ForbiddenException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.subjectNotAllowedForClass",
+        ),
+      );
     }
 
     if (override?.action === "ADD") {
@@ -2795,16 +3050,30 @@ export class TimetableService {
     }
 
     if (!classEntity.curriculumId) {
-      throw new ForbiddenException("Class has no curriculum");
+      throw new ForbiddenException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.classHasNoCurriculum",
+        ),
+      );
     }
 
     const isInCurriculum = (classEntity.curriculum?.subjects?.length ?? 0) > 0;
     if (!isInCurriculum) {
-      throw new ForbiddenException("Subject is not in class curriculum");
+      throw new ForbiddenException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.subjectNotInCurriculum",
+        ),
+      );
     }
   }
 
-  private async listAllowedSubjectsForClass(classId: string, schoolId: string) {
+  private async listAllowedSubjectsForClass(
+    classId: string,
+    schoolId: string,
+    locale: TimetableLocale = "fr",
+  ) {
     const classEntity = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
       select: {
@@ -2824,7 +3093,9 @@ export class TimetableService {
     });
 
     if (!classEntity) {
-      throw new NotFoundException("Class not found");
+      throw new NotFoundException(
+        translateTimetableError(locale, "timetable.errors.classNotFound"),
+      );
     }
 
     const subjectMap = new Map<string, { id: string; name: string }>();
@@ -2865,6 +3136,7 @@ export class TimetableService {
     classId: string,
     subjectId: string,
     teacherUserId: string,
+    locale: TimetableLocale = "fr",
   ) {
     const [teacherMembership, assignment] = await Promise.all([
       this.prisma.schoolMembership.findFirst({
@@ -2889,31 +3161,41 @@ export class TimetableService {
 
     if (!teacherMembership) {
       throw new ForbiddenException(
-        "Selected user is not a teacher in this school",
+        translateTimetableError(locale, "timetable.errors.userNotTeacherInSchool"),
       );
     }
 
     if (!assignment) {
       throw new ForbiddenException(
-        "Teacher is not assigned to this class and subject for the school year",
+        translateTimetableError(
+          locale,
+          "timetable.errors.teacherNotAssignedToClassSubject",
+        ),
       );
     }
   }
 
-  private async ensureSubjectInSchool(subjectId: string, schoolId: string) {
+  private async ensureSubjectInSchool(
+    subjectId: string,
+    schoolId: string,
+    locale: TimetableLocale = "fr",
+  ) {
     const subject = await this.prisma.subject.findFirst({
       where: { id: subjectId, schoolId },
       select: { id: true },
     });
 
     if (!subject) {
-      throw new NotFoundException("Subject not found");
+      throw new NotFoundException(
+        translateTimetableError(locale, "timetable.errors.subjectNotFound"),
+      );
     }
   }
 
   private async ensureAcademicLevelInSchool(
     academicLevelId: string,
     schoolId: string,
+    locale: TimetableLocale = "fr",
   ) {
     const level = await this.prisma.academicLevel.findFirst({
       where: { id: academicLevelId, schoolId },
@@ -2921,13 +3203,19 @@ export class TimetableService {
     });
 
     if (!level) {
-      throw new NotFoundException("Academic level not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.academicLevelNotFound",
+        ),
+      );
     }
   }
 
   private async ensureSchoolYearInSchool(
     schoolYearId: string,
     schoolId: string,
+    locale: TimetableLocale = "fr",
   ) {
     const schoolYear = await this.prisma.schoolYear.findFirst({
       where: { id: schoolYearId, schoolId },
@@ -2935,7 +3223,12 @@ export class TimetableService {
     });
 
     if (!schoolYear) {
-      throw new NotFoundException("School year not found");
+      throw new NotFoundException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.schoolYearNotFound",
+        ),
+      );
     }
 
     return schoolYear;
@@ -2944,6 +3237,7 @@ export class TimetableService {
   private async ensureClassInSchool(
     classId: string,
     schoolId: string,
+    locale: TimetableLocale = "fr",
   ): Promise<ClassContext> {
     const classEntity = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
@@ -2959,13 +3253,18 @@ export class TimetableService {
     });
 
     if (!classEntity) {
-      throw new NotFoundException("Class not found");
+      throw new NotFoundException(
+        translateTimetableError(locale, "timetable.errors.classNotFound"),
+      );
     }
 
     return classEntity;
   }
 
-  private async getActiveSchoolYearIdOrThrow(schoolId: string) {
+  private async getActiveSchoolYearIdOrThrow(
+    schoolId: string,
+    locale: TimetableLocale = "fr",
+  ) {
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
       select: { activeSchoolYearId: true },
@@ -2973,7 +3272,7 @@ export class TimetableService {
 
     if (!school?.activeSchoolYearId) {
       throw new BadRequestException(
-        "No active school year configured for this school",
+        translateTimetableError(locale, "timetable.errors.noActiveSchoolYear"),
       );
     }
 
@@ -2986,11 +3285,16 @@ export class TimetableService {
     scope: "SCHOOL" | "ACADEMIC_LEVEL" | "CLASS";
     classId?: string | null;
     academicLevelId?: string | null;
+    locale?: TimetableLocale;
   }) {
+    const locale = input.locale ?? "fr";
     if (input.scope === "SCHOOL") {
       if (input.classId || input.academicLevelId) {
         throw new BadRequestException(
-          "SCHOOL scope must not include classId or academicLevelId",
+          translateTimetableError(
+            locale,
+            "timetable.errors.schoolScopeNoClassOrLevel",
+          ),
         );
       }
       return;
@@ -2999,38 +3303,54 @@ export class TimetableService {
     if (input.scope === "ACADEMIC_LEVEL") {
       if (!input.academicLevelId) {
         throw new BadRequestException(
-          "ACADEMIC_LEVEL scope requires academicLevelId",
+          translateTimetableError(
+            locale,
+            "timetable.errors.academicLevelScopeRequiresLevelId",
+          ),
         );
       }
       if (input.classId) {
         throw new BadRequestException(
-          "ACADEMIC_LEVEL scope must not include classId",
+          translateTimetableError(
+            locale,
+            "timetable.errors.academicLevelScopeNoClassId",
+          ),
         );
       }
       await this.ensureAcademicLevelInSchool(
         input.academicLevelId,
         input.schoolId,
+        locale,
       );
       return;
     }
 
     if (!input.classId) {
-      throw new BadRequestException("CLASS scope requires classId");
+      throw new BadRequestException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.classScopeRequiresClassId",
+        ),
+      );
     }
 
     if (input.academicLevelId) {
       throw new BadRequestException(
-        "CLASS scope must not include academicLevelId",
+        translateTimetableError(
+          locale,
+          "timetable.errors.classScopeNoAcademicLevelId",
+        ),
       );
     }
 
-    await this.ensureClassInSchool(input.classId, input.schoolId);
+    await this.ensureClassInSchool(input.classId, input.schoolId, locale);
   }
 
   private async assertCanManageClassTimetable(
     user: AuthenticatedUser,
     schoolId: string,
     classEntity: ClassContext,
+    locale: TimetableLocale = "fr",
   ) {
     if (
       this.hasPlatformRole(user, "SUPER_ADMIN") ||
@@ -3048,7 +3368,9 @@ export class TimetableService {
     }
 
     if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
-      throw new ForbiddenException("Insufficient role");
+      throw new ForbiddenException(
+        translateTimetableError(locale, "timetable.errors.insufficientRole"),
+      );
     }
 
     if (
@@ -3056,7 +3378,10 @@ export class TimetableService {
       classEntity.referentTeacherUserId !== user.id
     ) {
       throw new ForbiddenException(
-        "Only class referent teacher can manage timetable for this class",
+        translateTimetableError(
+          locale,
+          "timetable.errors.onlyReferentTeacherCanManage",
+        ),
       );
     }
   }
@@ -3071,6 +3396,7 @@ export class TimetableService {
     schoolId: string,
     classEntity: ClassContext,
     teacherUserId: string,
+    locale: TimetableLocale = "fr",
   ) {
     if (
       this.hasPlatformRole(user, "SUPER_ADMIN") ||
@@ -3088,7 +3414,9 @@ export class TimetableService {
     }
 
     if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
-      throw new ForbiddenException("Insufficient role");
+      throw new ForbiddenException(
+        translateTimetableError(locale, "timetable.errors.insufficientRole"),
+      );
     }
 
     // Referent teacher of the class can always manage one-off slots
@@ -3105,13 +3433,17 @@ export class TimetableService {
     }
 
     throw new ForbiddenException(
-      "Teacher can only manage one-off slots they are assigned to",
+      translateTimetableError(
+        locale,
+        "timetable.errors.teacherOnlyManagesAssignedOneOffSlots",
+      ),
     );
   }
 
   private async assertCanReadCalendarEvents(
     user: AuthenticatedUser,
     schoolId: string,
+    locale: TimetableLocale = "fr",
   ) {
     if (
       this.hasPlatformRole(user, "SUPER_ADMIN") ||
@@ -3129,12 +3461,15 @@ export class TimetableService {
       return;
     }
 
-    throw new ForbiddenException("Insufficient role");
+    throw new ForbiddenException(
+      translateTimetableError(locale, "timetable.errors.insufficientRole"),
+    );
   }
 
   private async assertCanManageCalendarEvents(
     user: AuthenticatedUser,
     schoolId: string,
+    locale: TimetableLocale = "fr",
   ) {
     if (
       this.hasPlatformRole(user, "SUPER_ADMIN") ||
@@ -3151,7 +3486,9 @@ export class TimetableService {
       return;
     }
 
-    throw new ForbiddenException("Insufficient role");
+    throw new ForbiddenException(
+      translateTimetableError(locale, "timetable.errors.insufficientRole"),
+    );
   }
 
   private getEffectiveSchoolId(user: AuthenticatedUser, schoolId: string) {

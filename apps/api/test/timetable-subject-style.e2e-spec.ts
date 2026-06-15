@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
 import { AppModule } from "../src/app.module.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
+import { translateTimetableError } from "../src/timetable/timetable.translations.js";
 
 type JsonValue = Record<string, unknown>;
 
@@ -421,8 +422,8 @@ describe("Timetable subject style API e2e", () => {
       },
     );
     expect(conflictingStyle.response.status).toBe(400);
-    expect(String(conflictingStyle.body?.message)).toContain(
-      "Color too close to another subject color",
+    expect(conflictingStyle.body?.message).toBe(
+      translateTimetableError("fr", "timetable.errors.colorTooCloseToOtherSubject"),
     );
   });
 

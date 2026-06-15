@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StudentTimetablePage from "./page";
+import { useLocaleStore } from "../../../../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../../../../i18n/translations";
 
 const replaceMock = vi.fn();
 let paramsMock: { schoolSlug: string; childId?: string } = {
@@ -221,6 +223,8 @@ describe("StudentTimetablePage UI", () => {
     replaceMock.mockReset();
     paramsMock = { schoolSlug: "college-vogt" };
     searchParamsMock = new URLSearchParams();
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   afterEach(() => {
@@ -254,6 +258,39 @@ describe("StudentTimetablePage UI", () => {
       );
     expect(daySlotButton).toBeDefined();
     expect(daySlotButton?.textContent ?? "").toMatch(/Salle/i);
+  });
+
+  it("renders the page in English when the locale is set to en", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    mockTimetableFlow({
+      firstName: "Lisa",
+      lastName: "MBELE",
+      role: "STUDENT",
+      currentEnrollment: { class: { name: "6eme N3" } },
+    });
+
+    render(<StudentTimetablePage />);
+
+    expect(await screen.findByText("Timetable")).toBeInTheDocument();
+    expect(screen.getByText("Lisa MBELE - 6eme N3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Today" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Previous period (day)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Next period (day)" }),
+    ).toBeInTheDocument();
+    const daySlotButton = screen
+      .getAllByRole("button")
+      .find((button) =>
+        /\d{2}:\d{2}\s-\s\d{2}:\d{2}\s·/i.test(button.textContent ?? ""),
+      );
+    expect(daySlotButton).toBeDefined();
+    expect(daySlotButton?.textContent ?? "").toMatch(/Room/i);
+    expect(screen.queryByText("Emploi du temps")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Aujourd'hui" }),
+    ).not.toBeInTheDocument();
   });
 
   it("navigates days and returns to today from the day title button", async () => {

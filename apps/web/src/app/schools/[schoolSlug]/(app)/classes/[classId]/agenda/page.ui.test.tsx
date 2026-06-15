@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassAgendaPage from "./page";
+import { useLocaleStore } from "../../../../../../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../../../../../../i18n/translations";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -129,6 +131,8 @@ describe("Agenda page forms", () => {
     replaceMock.mockReset();
     getCsrfTokenCookieMock.mockReset();
     getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation(() => ({
@@ -336,5 +340,52 @@ describe("Agenda page forms", () => {
         }),
       );
     });
+  });
+
+  it("renders the agenda page in English when the locale is set to en", async () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER" });
+      }
+      if (url.includes("/timetable/classes/class-1/context")) {
+        return jsonResponse(contextPayload);
+      }
+      if (
+        url.includes("/timetable/classes/class-1?") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse(timetablePayload);
+      }
+
+      return jsonResponse({ message: `Unhandled GET ${url}` }, 404);
+    });
+
+    render(<TeacherClassAgendaPage />);
+
+    expect(await screen.findByText("Timetable - 6eC")).toBeInTheDocument();
+    expect(
+      screen.getByText("Create and manage the yearly timetable"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Slots" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Holidays" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByTitle("Add"));
+
+    expect(
+      await screen.findByRole("button", { name: "Add slot" }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Emploi du temps - 6eC"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Creation et gestion de l'emploi du temps annuel"),
+    ).not.toBeInTheDocument();
   });
 });

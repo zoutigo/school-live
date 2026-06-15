@@ -693,6 +693,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.sidebar.vieScolaire": "Vie scolaire",
     "discipline.sidebar.discipline": "Discipline",
 
+    "timetable.sidebar.emploiDuTemps": "Emploi du temps",
+
     "discipline.cursus.title": "Cursus",
     "discipline.cursus.subtitleDefault": "Historique eleve",
     "discipline.cursus.error": "Impossible de charger le cursus.",
@@ -824,6 +826,271 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Consignes partagees par les enseignants.",
     "homework.cahierDeTexte.bullet3":
       "Preparation de la semaine avec votre enfant.",
+
+    "timetable.agenda.page.titlePrefix": "Emploi du temps",
+    "timetable.agenda.page.defaultClassName": "Classe",
+    "timetable.agenda.page.subtitle":
+      "Creation et gestion de l'emploi du temps annuel",
+    "timetable.agenda.page.loading": "Chargement...",
+    "timetable.agenda.page.classNotAccessible": "Classe non accessible.",
+
+    "timetable.agenda.tabs.slots": "Creneaux",
+    "timetable.agenda.tabs.vacations": "Vacances",
+    "timetable.agenda.tabs.colors": "Couleurs",
+    "timetable.agenda.tabs.help": "Aide",
+
+    "timetable.agenda.weekdays.1": "Lundi",
+    "timetable.agenda.weekdays.2": "Mardi",
+    "timetable.agenda.weekdays.3": "Mercredi",
+    "timetable.agenda.weekdays.4": "Jeudi",
+    "timetable.agenda.weekdays.5": "Vendredi",
+    "timetable.agenda.weekdays.6": "Samedi",
+    "timetable.agenda.weekdays.7": "Dimanche",
+    "timetable.agenda.weekdays.default": "Jour",
+
+    "timetable.agenda.errors.networkError": "Erreur reseau.",
+    "timetable.agenda.errors.csrfInvalid":
+      "Session CSRF invalide. Reconnectez-vous.",
+    "timetable.agenda.errors.loadFailed":
+      "Impossible de charger l'emploi du temps de la classe.",
+    "timetable.agenda.errors.refreshFailed":
+      "Impossible d'actualiser l'emploi du temps.",
+    "timetable.agenda.errors.schoolYearSwitchFailed":
+      "Impossible de changer d'annee scolaire.",
+    "timetable.agenda.errors.colorUpdateFailed":
+      "Mise a jour de la couleur impossible.",
+    "timetable.agenda.errors.slotUpdateFailed":
+      "Mise a jour du creneau impossible.",
+    "timetable.agenda.errors.slotCreateFailed":
+      "Creation du creneau impossible.",
+    "timetable.agenda.errors.slotDeleteFailed":
+      "Suppression du creneau impossible.",
+    "timetable.agenda.errors.occurrenceDeleteFailed":
+      "Suppression de l'occurrence impossible.",
+    "timetable.agenda.errors.occurrenceUpdateFailed":
+      "Mise a jour de l'occurrence impossible.",
+    "timetable.agenda.errors.seriesUpdateFailed":
+      "Mise a jour de la serie impossible.",
+    "timetable.agenda.errors.seriesDeleteFailed":
+      "Suppression de la serie impossible.",
+    "timetable.agenda.errors.vacationCreateFailed":
+      "Creation des vacances impossible.",
+    "timetable.agenda.errors.vacationUpdateFailed":
+      "Mise a jour des vacances impossible.",
+    "timetable.agenda.errors.vacationDeleteFailed":
+      "Suppression de la periode impossible.",
+    "timetable.agenda.errors.noOccurrenceSelected":
+      "Aucun creneau selectionne.",
+    "timetable.agenda.errors.occurrenceNoSource":
+      "Occurrence sans source modifiable.",
+    "timetable.agenda.errors.seriesNoSourceUpdate":
+      "Cette occurrence ponctuelle n'a pas de serie a modifier.",
+    "timetable.agenda.errors.seriesNoSourceDelete":
+      "Cette occurrence ponctuelle n'a pas de serie a supprimer.",
+    "timetable.agenda.errors.cannotEditVacations":
+      "Vous ne pouvez pas modifier les vacances.",
+
+    "timetable.agenda.success.colorSaved": "Couleur de matiere enregistree.",
+    "timetable.agenda.success.slotUpdated": "Creneau mis a jour.",
+    "timetable.agenda.success.slotAdded": "Creneau ajoute.",
+    "timetable.agenda.success.slotsAdded": "{count} creneaux ajoutes.",
+    "timetable.agenda.success.slotDeleted": "Creneau supprime.",
+    "timetable.agenda.success.occurrenceDeleted": "Occurrence supprimee.",
+    "timetable.agenda.success.occurrenceUpdated": "Occurrence modifiee.",
+    "timetable.agenda.success.seriesUpdated": "Serie mise a jour.",
+    "timetable.agenda.success.seriesDeleted": "Serie supprimee.",
+    "timetable.agenda.success.vacationCreated":
+      "Periode de vacances enregistree.",
+    "timetable.agenda.success.vacationUpdated":
+      "Periode de vacances mise a jour.",
+    "timetable.agenda.success.vacationDeleted": "Periode supprimee.",
+
+    "timetable.agenda.validation.vacationLabelRequired":
+      "Le libelle est obligatoire.",
+    "timetable.agenda.validation.vacationStartDateRequired":
+      "La date de debut est obligatoire.",
+    "timetable.agenda.validation.vacationEndDateRequired":
+      "La date de fin est obligatoire.",
+    "timetable.agenda.validation.invalidDates": "Dates invalides.",
+    "timetable.agenda.validation.startBeforeEndDate":
+      "La date de debut doit etre avant la date de fin.",
+    "timetable.agenda.validation.selectSubject": "Selectionnez une matiere.",
+    "timetable.agenda.validation.selectTeacher":
+      "Selectionnez un enseignant.",
+    "timetable.agenda.validation.invalidWeekday": "Jour invalide.",
+    "timetable.agenda.validation.invalidTime": "Horaire invalide.",
+    "timetable.agenda.validation.startBeforeEndTime":
+      "L'heure de debut doit etre avant l'heure de fin.",
+    "timetable.agenda.validation.selectOccurrenceDate":
+      "Selectionnez la date d'occurrence.",
+
+    "timetable.agenda.schoolYear.label": "Annee scolaire",
+    "timetable.agenda.schoolYear.previousAria": "Annee precedente",
+    "timetable.agenda.schoolYear.nextAria": "Annee suivante",
+    "timetable.agenda.schoolYear.inProgressSuffix": " (en cours)",
+
+    "timetable.agenda.actions.add": "Ajouter",
+
+    "timetable.agenda.colors.title":
+      "Couleurs des matieres (classe + annee)",
+    "timetable.agenda.colors.colorAria": "Couleur {subject}",
+    "timetable.agenda.colors.saving": "...",
+    "timetable.agenda.colors.save": "Sauver",
+
+    "timetable.agenda.slotForm.weekday": "Jour",
+    "timetable.agenda.slotForm.start": "Debut",
+    "timetable.agenda.slotForm.end": "Fin",
+    "timetable.agenda.slotForm.subject": "Matiere",
+    "timetable.agenda.slotForm.noSubjectsAvailable":
+      "Aucune matiere disponible",
+    "timetable.agenda.slotForm.teacher": "Enseignant",
+    "timetable.agenda.slotForm.noTeacherAssigned":
+      "Aucun enseignant affecte a cette matiere",
+    "timetable.agenda.slotForm.room": "Salle (optionnel)",
+    "timetable.agenda.slotForm.roomPlaceholder": "ex: B14",
+    "timetable.agenda.slotForm.activeFromDate":
+      "Debut occurrences (optionnel)",
+    "timetable.agenda.slotForm.activeToDate": "Fin occurrences (optionnel)",
+    "timetable.agenda.slotForm.effectiveFromDate":
+      "Appliquer a partir du (optionnel)",
+    "timetable.agenda.slotForm.addToList": "Ajouter a la liste",
+    "timetable.agenda.slotForm.saving": "Enregistrement...",
+    "timetable.agenda.slotForm.updating": "Mise a jour...",
+    "timetable.agenda.slotForm.update": "Mettre a jour",
+    "timetable.agenda.slotForm.addSlot": "Ajouter le creneau",
+    "timetable.agenda.slotForm.saveMultiple": "Enregistrer {count} creneaux",
+    "timetable.agenda.slotForm.cancelEdit": "Annuler la modification",
+    "timetable.agenda.slotForm.clearList": "Vider la liste ({count})",
+    "timetable.agenda.slotForm.pendingSlots": "Creneaux en attente ({count})",
+    "timetable.agenda.slotForm.remove": "Retirer",
+    "timetable.agenda.slotForm.clickHint":
+      "Cliquez sur un creneau dans les vues jour, semaine ou mois pour definir un ponctuel, annuler ou modifier une occurrence.",
+
+    "timetable.agenda.vacations.label": "Libelle",
+    "timetable.agenda.vacations.scope": "Portee",
+    "timetable.agenda.vacations.scopeClass": "Classe",
+    "timetable.agenda.vacations.scopeAcademicLevel": "Niveau",
+    "timetable.agenda.vacations.scopeSchool": "Ecole",
+    "timetable.agenda.vacations.start": "Debut",
+    "timetable.agenda.vacations.end": "Fin",
+    "timetable.agenda.vacations.updatePeriod": "Mettre a jour la periode",
+    "timetable.agenda.vacations.addPeriod": "Ajouter la periode",
+    "timetable.agenda.vacations.cancelEdit": "Annuler la modification",
+    "timetable.agenda.vacations.noVacations":
+      "Aucune periode de vacances enregistree.",
+    "timetable.agenda.vacations.manageRestriction":
+      "Seuls le responsable pedagogique et les admins peuvent modifier les vacances.",
+    "timetable.agenda.vacations.edit": "Modifier",
+    "timetable.agenda.vacations.delete": "Supprimer",
+    "timetable.agenda.vacations.defaultLabel": "Vacances scolaires",
+
+    "timetable.agenda.scopeLabel.school": "Ecole",
+    "timetable.agenda.scopeLabel.academicLevel": "Niveau",
+    "timetable.agenda.scopeLabel.class": "Classe",
+
+    "timetable.agenda.confirm.deleteSlotTitle": "Supprimer ce creneau ?",
+    "timetable.agenda.confirm.deleteVacationTitle":
+      "Supprimer cette periode ?",
+
+    "timetable.agenda.occurrenceModal.manage": "Gerer l'occurrence",
+    "timetable.agenda.occurrenceModal.close": "Fermer",
+    "timetable.agenda.occurrenceModal.deleteOccurrence":
+      "Supprimer cette occurrence",
+    "timetable.agenda.occurrenceModal.updateOccurrence":
+      "Modifier cette occurrence",
+    "timetable.agenda.occurrenceModal.updateSeries":
+      "Modifier toute la serie",
+    "timetable.agenda.occurrenceModal.deleteSeries":
+      "Supprimer toute la serie",
+    "timetable.agenda.occurrenceModal.cancel": "Annuler",
+    "timetable.agenda.occurrenceModal.continue": "Continuer",
+    "timetable.agenda.occurrenceModal.back": "Retour",
+    "timetable.agenda.occurrenceModal.applyAction": "Appliquer l'action",
+    "timetable.agenda.occurrenceModal.saving": "Enregistrement...",
+    "timetable.agenda.occurrenceModal.confirmDeleteSeries":
+      "Voulez-vous vraiment supprimer toute la serie ?",
+    "timetable.agenda.occurrenceModal.confirmDeleteOccurrence":
+      "Voulez-vous vraiment supprimer cette occurrence ?",
+    "timetable.agenda.occurrenceModal.cancelledSuffix": " · Annule",
+    "timetable.agenda.occurrenceModal.roomPrefix": "Salle",
+    "timetable.agenda.occurrenceModal.seriesStart": "Debut de serie :",
+    "timetable.agenda.occurrenceModal.seriesEnd": "Fin de serie :",
+    "timetable.agenda.occurrenceModal.seriesEndDefault":
+      "Fin annee scolaire",
+    "timetable.agenda.occurrenceModal.noValue": "-",
+    "timetable.agenda.occurrenceModal.effectiveDate": "Date de debut d'effet",
+    "timetable.agenda.occurrenceModal.date": "Date",
+    "timetable.agenda.occurrenceModal.seriesEndDateOptional":
+      "Date de fin de serie (optionnel)",
+    "timetable.agenda.occurrenceModal.deleteSeriesWarning":
+      "Cette action supprimera le creneau recurrent et toutes ses occurrences futures.",
+
+    "timetable.agenda.teacherPrefix.mr": "Mr",
+    "timetable.agenda.teacherPrefix.mrs": "Mme",
+
+    "timetable.agenda.help.moduleName": "Emploi du temps",
+    "timetable.agenda.help.moduleSummary":
+      "ce module permet de planifier les cours hebdomadaires et les couleurs de matieres par classe.",
+    "timetable.agenda.help.createSlot.name": "Creer un creneau",
+    "timetable.agenda.help.createSlot.purpose": "ajouter un cours recurrent",
+    "timetable.agenda.help.createSlot.howTo":
+      "selectionner jour, horaires, matiere, enseignant et salle puis enregistrer.",
+    "timetable.agenda.help.createSlot.moduleImpact":
+      "structure la semaine de la classe sur l'annee scolaire.",
+    "timetable.agenda.help.createSlot.crossModuleImpact":
+      "alimente les vues eleve/parent et facilite la coordination pedagogique.",
+    "timetable.agenda.help.defineColor.name": "Definir une couleur matiere",
+    "timetable.agenda.help.defineColor.purpose":
+      "ameliorer la lisibilite de l'emploi du temps",
+    "timetable.agenda.help.defineColor.howTo":
+      "ouvrir l'onglet Couleurs, choisir une couleur puis enregistrer.",
+    "timetable.agenda.help.defineColor.moduleImpact":
+      "harmonise la lecture des cours en vue jour/semaine/mois.",
+    "timetable.agenda.help.defineColor.crossModuleImpact":
+      "les couleurs sont reutilisees dans les vues eleve, parent et enseignant.",
+
+    "timetable.myTimetable.title": "Emploi du temps",
+    "timetable.myTimetable.subtitleDefault": "Vue eleve",
+    "timetable.myTimetable.loading": "Chargement...",
+    "timetable.myTimetable.emptyDay":
+      "Aucun cours programme pour cette journee.",
+    "timetable.myTimetable.errors.noLinkedStudent":
+      "Aucun eleve lie a ce compte parent.",
+    "timetable.myTimetable.errors.loadFailed":
+      "Impossible de charger l'emploi du temps.",
+
+    "timetable.views.today": "Aujourd'hui",
+    "timetable.views.thisWeek": "Cette semaine",
+    "timetable.views.thisMonth": "Ce mois",
+    "timetable.views.modeDay": "Jour",
+    "timetable.views.modeWeek": "Semaine",
+    "timetable.views.modeMonth": "Mois",
+    "timetable.views.previousPeriodLabel": "{mode} precedent",
+    "timetable.views.nextPeriodLabel": "{mode} suivant",
+    "timetable.views.backToCurrentLabel": "Revenir a {mode} courant",
+    "timetable.views.previousPeriod": "Periode precedente",
+    "timetable.views.nextPeriod": "Periode suivante",
+    "timetable.views.backToCurrentPeriod": "Revenir a la periode courante",
+    "timetable.views.dayEmptyDefault": "Aucun creneau pour cette journee.",
+    "timetable.views.monthEmptyDefault": "Aucun creneau pour ce jour.",
+    "timetable.views.selectedSlotDetail": "Detail du creneau selectionne",
+    "timetable.views.subjectLabel": "Matiere:",
+    "timetable.views.dayLabel": "Jour:",
+    "timetable.views.timeRangeLabel": "Plage horaire:",
+    "timetable.views.teacherLabel": "Enseignant:",
+    "timetable.views.roomLabel": "Salle:",
+    "timetable.views.manageSlot": "Gerer ce creneau",
+    "timetable.views.selectSubjectHint":
+      "Selectionnez une matiere dans le tableau pour afficher le detail.",
+    "timetable.views.dayAgenda": "Agenda du jour selectionne",
+    "timetable.views.selectDayHint":
+      "Selectionnez un jour pour voir les creneaux",
+    "timetable.views.slotsForDay": "Creneaux du",
+    "timetable.views.slotSingular": "creneau",
+    "timetable.views.slotPlural": "creneaux",
+    "timetable.dashboard.title": "Emploi du temps",
+    "timetable.dashboard.linkLabel": "Agenda",
+    "timetable.dashboard.noSlotToday": "Aucun cours planifie aujourd'hui",
   },
   en: {
     "common.save": "Save",
@@ -1477,6 +1744,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.sidebar.vieScolaire": "School life",
     "discipline.sidebar.discipline": "Discipline",
 
+    "timetable.sidebar.emploiDuTemps": "Timetable",
+
     "discipline.cursus.title": "Cursus",
     "discipline.cursus.subtitleDefault": "Student history",
     "discipline.cursus.error": "Unable to load the cursus.",
@@ -1603,5 +1872,266 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Today's homework and assignments to submit.",
     "homework.cahierDeTexte.bullet2": "Instructions shared by teachers.",
     "homework.cahierDeTexte.bullet3": "Plan the week ahead with your child.",
+
+    "timetable.agenda.page.titlePrefix": "Timetable",
+    "timetable.agenda.page.defaultClassName": "Class",
+    "timetable.agenda.page.subtitle":
+      "Create and manage the yearly timetable",
+    "timetable.agenda.page.loading": "Loading...",
+    "timetable.agenda.page.classNotAccessible": "Class not accessible.",
+
+    "timetable.agenda.tabs.slots": "Slots",
+    "timetable.agenda.tabs.vacations": "Holidays",
+    "timetable.agenda.tabs.colors": "Colors",
+    "timetable.agenda.tabs.help": "Help",
+
+    "timetable.agenda.weekdays.1": "Monday",
+    "timetable.agenda.weekdays.2": "Tuesday",
+    "timetable.agenda.weekdays.3": "Wednesday",
+    "timetable.agenda.weekdays.4": "Thursday",
+    "timetable.agenda.weekdays.5": "Friday",
+    "timetable.agenda.weekdays.6": "Saturday",
+    "timetable.agenda.weekdays.7": "Sunday",
+    "timetable.agenda.weekdays.default": "Day",
+
+    "timetable.agenda.errors.networkError": "Network error.",
+    "timetable.agenda.errors.csrfInvalid":
+      "Invalid CSRF session. Please log in again.",
+    "timetable.agenda.errors.loadFailed":
+      "Unable to load the class timetable.",
+    "timetable.agenda.errors.refreshFailed":
+      "Unable to refresh the timetable.",
+    "timetable.agenda.errors.schoolYearSwitchFailed":
+      "Unable to switch school year.",
+    "timetable.agenda.errors.colorUpdateFailed":
+      "Unable to update the color.",
+    "timetable.agenda.errors.slotUpdateFailed":
+      "Unable to update the slot.",
+    "timetable.agenda.errors.slotCreateFailed":
+      "Unable to create the slot.",
+    "timetable.agenda.errors.slotDeleteFailed":
+      "Unable to delete the slot.",
+    "timetable.agenda.errors.occurrenceDeleteFailed":
+      "Unable to delete the occurrence.",
+    "timetable.agenda.errors.occurrenceUpdateFailed":
+      "Unable to update the occurrence.",
+    "timetable.agenda.errors.seriesUpdateFailed":
+      "Unable to update the series.",
+    "timetable.agenda.errors.seriesDeleteFailed":
+      "Unable to delete the series.",
+    "timetable.agenda.errors.vacationCreateFailed":
+      "Unable to create the holiday period.",
+    "timetable.agenda.errors.vacationUpdateFailed":
+      "Unable to update the holiday period.",
+    "timetable.agenda.errors.vacationDeleteFailed":
+      "Unable to delete the period.",
+    "timetable.agenda.errors.noOccurrenceSelected":
+      "No slot selected.",
+    "timetable.agenda.errors.occurrenceNoSource":
+      "This occurrence has no editable source.",
+    "timetable.agenda.errors.seriesNoSourceUpdate":
+      "This one-off occurrence has no series to update.",
+    "timetable.agenda.errors.seriesNoSourceDelete":
+      "This one-off occurrence has no series to delete.",
+    "timetable.agenda.errors.cannotEditVacations":
+      "You cannot edit holiday periods.",
+
+    "timetable.agenda.success.colorSaved": "Subject color saved.",
+    "timetable.agenda.success.slotUpdated": "Slot updated.",
+    "timetable.agenda.success.slotAdded": "Slot added.",
+    "timetable.agenda.success.slotsAdded": "{count} slots added.",
+    "timetable.agenda.success.slotDeleted": "Slot deleted.",
+    "timetable.agenda.success.occurrenceDeleted": "Occurrence deleted.",
+    "timetable.agenda.success.occurrenceUpdated": "Occurrence updated.",
+    "timetable.agenda.success.seriesUpdated": "Series updated.",
+    "timetable.agenda.success.seriesDeleted": "Series deleted.",
+    "timetable.agenda.success.vacationCreated":
+      "Holiday period saved.",
+    "timetable.agenda.success.vacationUpdated":
+      "Holiday period updated.",
+    "timetable.agenda.success.vacationDeleted": "Period deleted.",
+
+    "timetable.agenda.validation.vacationLabelRequired":
+      "The label is required.",
+    "timetable.agenda.validation.vacationStartDateRequired":
+      "The start date is required.",
+    "timetable.agenda.validation.vacationEndDateRequired":
+      "The end date is required.",
+    "timetable.agenda.validation.invalidDates": "Invalid dates.",
+    "timetable.agenda.validation.startBeforeEndDate":
+      "The start date must be before the end date.",
+    "timetable.agenda.validation.selectSubject": "Select a subject.",
+    "timetable.agenda.validation.selectTeacher": "Select a teacher.",
+    "timetable.agenda.validation.invalidWeekday": "Invalid day.",
+    "timetable.agenda.validation.invalidTime": "Invalid time.",
+    "timetable.agenda.validation.startBeforeEndTime":
+      "The start time must be before the end time.",
+    "timetable.agenda.validation.selectOccurrenceDate":
+      "Select the occurrence date.",
+
+    "timetable.agenda.schoolYear.label": "School year",
+    "timetable.agenda.schoolYear.previousAria": "Previous year",
+    "timetable.agenda.schoolYear.nextAria": "Next year",
+    "timetable.agenda.schoolYear.inProgressSuffix": " (current)",
+
+    "timetable.agenda.actions.add": "Add",
+
+    "timetable.agenda.colors.title":
+      "Subject colors (class + year)",
+    "timetable.agenda.colors.colorAria": "Color {subject}",
+    "timetable.agenda.colors.saving": "...",
+    "timetable.agenda.colors.save": "Save",
+
+    "timetable.agenda.slotForm.weekday": "Day",
+    "timetable.agenda.slotForm.start": "Start",
+    "timetable.agenda.slotForm.end": "End",
+    "timetable.agenda.slotForm.subject": "Subject",
+    "timetable.agenda.slotForm.noSubjectsAvailable":
+      "No subject available",
+    "timetable.agenda.slotForm.teacher": "Teacher",
+    "timetable.agenda.slotForm.noTeacherAssigned":
+      "No teacher assigned to this subject",
+    "timetable.agenda.slotForm.room": "Room (optional)",
+    "timetable.agenda.slotForm.roomPlaceholder": "e.g. B14",
+    "timetable.agenda.slotForm.activeFromDate":
+      "Occurrences start (optional)",
+    "timetable.agenda.slotForm.activeToDate": "Occurrences end (optional)",
+    "timetable.agenda.slotForm.effectiveFromDate":
+      "Apply from (optional)",
+    "timetable.agenda.slotForm.addToList": "Add to list",
+    "timetable.agenda.slotForm.saving": "Saving...",
+    "timetable.agenda.slotForm.updating": "Updating...",
+    "timetable.agenda.slotForm.update": "Update",
+    "timetable.agenda.slotForm.addSlot": "Add slot",
+    "timetable.agenda.slotForm.saveMultiple": "Save {count} slots",
+    "timetable.agenda.slotForm.cancelEdit": "Cancel editing",
+    "timetable.agenda.slotForm.clearList": "Clear list ({count})",
+    "timetable.agenda.slotForm.pendingSlots": "Pending slots ({count})",
+    "timetable.agenda.slotForm.remove": "Remove",
+    "timetable.agenda.slotForm.clickHint":
+      "Click on a slot in the day, week or month view to set up a one-off, cancel or edit an occurrence.",
+
+    "timetable.agenda.vacations.label": "Label",
+    "timetable.agenda.vacations.scope": "Scope",
+    "timetable.agenda.vacations.scopeClass": "Class",
+    "timetable.agenda.vacations.scopeAcademicLevel": "Level",
+    "timetable.agenda.vacations.scopeSchool": "School",
+    "timetable.agenda.vacations.start": "Start",
+    "timetable.agenda.vacations.end": "End",
+    "timetable.agenda.vacations.updatePeriod": "Update period",
+    "timetable.agenda.vacations.addPeriod": "Add period",
+    "timetable.agenda.vacations.cancelEdit": "Cancel editing",
+    "timetable.agenda.vacations.noVacations":
+      "No holiday period recorded.",
+    "timetable.agenda.vacations.manageRestriction":
+      "Only the academic lead and admins can edit holiday periods.",
+    "timetable.agenda.vacations.edit": "Edit",
+    "timetable.agenda.vacations.delete": "Delete",
+    "timetable.agenda.vacations.defaultLabel": "School holidays",
+
+    "timetable.agenda.scopeLabel.school": "School",
+    "timetable.agenda.scopeLabel.academicLevel": "Level",
+    "timetable.agenda.scopeLabel.class": "Class",
+
+    "timetable.agenda.confirm.deleteSlotTitle": "Delete this slot?",
+    "timetable.agenda.confirm.deleteVacationTitle":
+      "Delete this period?",
+
+    "timetable.agenda.occurrenceModal.manage": "Manage occurrence",
+    "timetable.agenda.occurrenceModal.close": "Close",
+    "timetable.agenda.occurrenceModal.deleteOccurrence":
+      "Delete this occurrence",
+    "timetable.agenda.occurrenceModal.updateOccurrence":
+      "Edit this occurrence",
+    "timetable.agenda.occurrenceModal.updateSeries":
+      "Edit the whole series",
+    "timetable.agenda.occurrenceModal.deleteSeries":
+      "Delete the whole series",
+    "timetable.agenda.occurrenceModal.cancel": "Cancel",
+    "timetable.agenda.occurrenceModal.continue": "Continue",
+    "timetable.agenda.occurrenceModal.back": "Back",
+    "timetable.agenda.occurrenceModal.applyAction": "Apply action",
+    "timetable.agenda.occurrenceModal.saving": "Saving...",
+    "timetable.agenda.occurrenceModal.confirmDeleteSeries":
+      "Are you sure you want to delete the whole series?",
+    "timetable.agenda.occurrenceModal.confirmDeleteOccurrence":
+      "Are you sure you want to delete this occurrence?",
+    "timetable.agenda.occurrenceModal.cancelledSuffix": " · Cancelled",
+    "timetable.agenda.occurrenceModal.roomPrefix": "Room",
+    "timetable.agenda.occurrenceModal.seriesStart": "Series start:",
+    "timetable.agenda.occurrenceModal.seriesEnd": "Series end:",
+    "timetable.agenda.occurrenceModal.seriesEndDefault":
+      "End of school year",
+    "timetable.agenda.occurrenceModal.noValue": "-",
+    "timetable.agenda.occurrenceModal.effectiveDate": "Effective start date",
+    "timetable.agenda.occurrenceModal.date": "Date",
+    "timetable.agenda.occurrenceModal.seriesEndDateOptional":
+      "Series end date (optional)",
+    "timetable.agenda.occurrenceModal.deleteSeriesWarning":
+      "This action will delete the recurring slot and all its future occurrences.",
+
+    "timetable.agenda.teacherPrefix.mr": "Mr",
+    "timetable.agenda.teacherPrefix.mrs": "Mrs",
+
+    "timetable.agenda.help.moduleName": "Timetable",
+    "timetable.agenda.help.moduleSummary":
+      "this module lets you plan weekly classes and subject colors per class.",
+    "timetable.agenda.help.createSlot.name": "Create a slot",
+    "timetable.agenda.help.createSlot.purpose": "add a recurring class",
+    "timetable.agenda.help.createSlot.howTo":
+      "select the day, times, subject, teacher and room, then save.",
+    "timetable.agenda.help.createSlot.moduleImpact":
+      "structures the class's week for the school year.",
+    "timetable.agenda.help.createSlot.crossModuleImpact":
+      "feeds the student/parent views and eases pedagogical coordination.",
+    "timetable.agenda.help.defineColor.name": "Set a subject color",
+    "timetable.agenda.help.defineColor.purpose":
+      "improve the readability of the timetable",
+    "timetable.agenda.help.defineColor.howTo":
+      "open the Colors tab, choose a color then save.",
+    "timetable.agenda.help.defineColor.moduleImpact":
+      "harmonizes class reading in day/week/month views.",
+    "timetable.agenda.help.defineColor.crossModuleImpact":
+      "the colors are reused in student, parent and teacher views.",
+
+    "timetable.myTimetable.title": "Timetable",
+    "timetable.myTimetable.subtitleDefault": "Student view",
+    "timetable.myTimetable.loading": "Loading...",
+    "timetable.myTimetable.emptyDay": "No class scheduled for this day.",
+    "timetable.myTimetable.errors.noLinkedStudent":
+      "No student is linked to this parent account.",
+    "timetable.myTimetable.errors.loadFailed": "Unable to load the timetable.",
+
+    "timetable.views.today": "Today",
+    "timetable.views.thisWeek": "This week",
+    "timetable.views.thisMonth": "This month",
+    "timetable.views.modeDay": "Day",
+    "timetable.views.modeWeek": "Week",
+    "timetable.views.modeMonth": "Month",
+    "timetable.views.previousPeriodLabel": "Previous {mode}",
+    "timetable.views.nextPeriodLabel": "Next {mode}",
+    "timetable.views.backToCurrentLabel": "Back to current {mode}",
+    "timetable.views.previousPeriod": "Previous period",
+    "timetable.views.nextPeriod": "Next period",
+    "timetable.views.backToCurrentPeriod": "Back to the current period",
+    "timetable.views.dayEmptyDefault": "No slot for this day.",
+    "timetable.views.monthEmptyDefault": "No slot for this day.",
+    "timetable.views.selectedSlotDetail": "Selected slot detail",
+    "timetable.views.subjectLabel": "Subject:",
+    "timetable.views.dayLabel": "Day:",
+    "timetable.views.timeRangeLabel": "Time range:",
+    "timetable.views.teacherLabel": "Teacher:",
+    "timetable.views.roomLabel": "Room:",
+    "timetable.views.manageSlot": "Manage this slot",
+    "timetable.views.selectSubjectHint":
+      "Select a subject in the table to display the detail.",
+    "timetable.views.dayAgenda": "Selected day's agenda",
+    "timetable.views.selectDayHint": "Select a day to see the slots",
+    "timetable.views.slotsForDay": "Slots for",
+    "timetable.views.slotSingular": "slot",
+    "timetable.views.slotPlural": "slots",
+    "timetable.dashboard.title": "Timetable",
+    "timetable.dashboard.linkLabel": "Agenda",
+    "timetable.dashboard.noSlotToday": "No class scheduled today",
   },
 };

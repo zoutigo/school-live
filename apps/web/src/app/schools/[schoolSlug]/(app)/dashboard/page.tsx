@@ -897,19 +897,21 @@ function TeacherTimetableSection({
   loading,
   schoolSlug,
   todayLabel,
+  t,
 }: {
   dashboard: RichTeacherDashboard | null;
   loading: boolean;
   schoolSlug: string;
   todayLabel: string;
+  t: TranslateFn;
 }) {
   const accent = "#247C72";
   return (
     <TeacherSectionCard
-      title="Emploi du temps"
+      title={t("timetable.dashboard.title")}
       icon={Calendar}
       iconColor={accent}
-      linkLabel="Agenda"
+      linkLabel={t("timetable.dashboard.linkLabel")}
       linkHref={`/schools/${schoolSlug}/emploi-du-temps`}
       subtitle={todayLabel}
       testId="section-teacher-timetable"
@@ -919,7 +921,7 @@ function TeacherTimetableSection({
       ) : !dashboard || dashboard.todaySlots.length === 0 ? (
         <TeacherEmptyRow
           icon={Calendar}
-          text="Aucun cours planifie aujourd'hui"
+          text={t("timetable.dashboard.noSlotToday")}
         />
       ) : (
         dashboard.todaySlots.map((slot) => (
@@ -1660,6 +1662,7 @@ export default function DashboardPage() {
                 loading={teacherCardsLoading}
                 schoolSlug={schoolSlug}
                 todayLabel={todayLabel}
+                t={t}
               />
             </div>
             <div className="space-y-4">

@@ -5,6 +5,8 @@ import {
   setViewportWidth,
 } from "../../../../../test/responsive";
 import DashboardPage from "./page";
+import { useLocaleStore } from "../../../../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../../../../i18n/translations";
 
 const replaceMock = vi.fn();
 let paramsMock = { schoolSlug: "college-vogt" };
@@ -542,6 +544,8 @@ describe("DashboardPage role dashboards", () => {
     replaceMock.mockReset();
     paramsMock = { schoolSlug: "college-vogt" };
     setViewportWidth(1280);
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("renders rich teacher dashboard with hero, classes grid, and all section cards", async () => {
@@ -770,6 +774,62 @@ describe("DashboardPage role dashboards", () => {
       screen.getByText("Toutes les notes sont a jour"),
     ).toBeInTheDocument();
     expect(screen.getByText("Aucun devoir en cours")).toBeInTheDocument();
+  });
+
+  it("renders the teacher timetable section in English when the locale is set to en", async () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.split("?")[0]?.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({
+          firstName: "Laure",
+          lastName: "Fotsing",
+          role: "TEACHER",
+        });
+      }
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return createJsonResponse({
+          schoolYears: [],
+          selectedSchoolYearId: null,
+          assignments: [],
+          students: [],
+        });
+      }
+
+      if (
+        url.includes("/schools/college-vogt/messages") &&
+        url.includes("folder=inbox")
+      ) {
+        return createJsonResponse({ items: [], meta: {} });
+      }
+
+      if (url.includes("/schools/college-vogt/messages/unread-count")) {
+        return createJsonResponse({ unread: 0 });
+      }
+
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("teacher-dashboard")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByTestId("section-teacher-timetable"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Timetable")).toBeInTheDocument();
+    expect(screen.getByText("No class scheduled today")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Emploi du temps"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Aucun cours planifie aujourd'hui"),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps teacher dashboard constrained at 320px", async () => {

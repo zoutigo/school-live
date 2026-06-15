@@ -423,7 +423,7 @@ function buildParentChildItems(
       matchPrefix: `${base}/vie-de-classe`,
     },
     {
-      label: "Emploi du temps",
+      label: t("timetable.sidebar.emploiDuTemps"),
       href: `/schools/${schoolSlug}/emploi-du-temps?childId=${encodeURIComponent(
         childId,
       )}`,
@@ -496,7 +496,7 @@ function buildTeacherClassItems(
       matchPrefix: `${base}/discipline`,
     },
     {
-      label: "Emploi du temps",
+      label: t("timetable.sidebar.emploiDuTemps"),
       href: `${base}/emploi-du-temps`,
       icon: CalendarDays,
       matchPrefix: `${base}/emploi-du-temps`,
