@@ -361,10 +361,6 @@ function createOccurrenceFormSchema(t: TranslateFn) {
     });
 }
 
-type VacationFormSchema = ReturnType<typeof createVacationFormSchema>;
-type SlotFormSchema = ReturnType<typeof createSlotFormSchema>;
-type OccurrenceFormSchema = ReturnType<typeof createOccurrenceFormSchema>;
-
 function parseApiError(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== "object") {
     return fallback;
