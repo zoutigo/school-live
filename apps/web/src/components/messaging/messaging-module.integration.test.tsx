@@ -24,6 +24,7 @@ import {
   setViewportWidth,
 } from "../../test/responsive";
 import { ActionIconButton } from "../ui/action-icon-button";
+import { useTranslation } from "../../i18n/useTranslation";
 import { buildComposeQueryFromMessage } from "./messaging-compose-logic";
 import { MessagingComposer } from "./messaging-composer";
 import { MessagingFoldersPanel } from "./messaging-folders-panel";
@@ -87,6 +88,7 @@ type ComposerPreset = {
 };
 
 function MessagingModuleHarness() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<MessagingMessage[]>([
     createMessage({
       id: "inbox-1",
@@ -350,6 +352,7 @@ function MessagingModuleHarness() {
                         const query = buildComposeQueryFromMessage(
                           "reply",
                           selectedMessage,
+                          t,
                         );
                         openComposerWithPreset({
                           subject: query.get("subject") ?? "",
@@ -361,7 +364,7 @@ function MessagingModuleHarness() {
                       }}
                     >
                       <Reply className="h-4 w-4" />
-                      Repondre
+                      {t("messaging.detail.reply")}
                     </button>
                     <button
                       type="button"
@@ -369,6 +372,7 @@ function MessagingModuleHarness() {
                         const query = buildComposeQueryFromMessage(
                           "forward",
                           selectedMessage,
+                          t,
                         );
                         openComposerWithPreset({
                           subject: query.get("subject") ?? "",
@@ -378,7 +382,7 @@ function MessagingModuleHarness() {
                       }}
                     >
                       <Forward className="h-4 w-4" />
-                      Transferer
+                      {t("messaging.detail.forward")}
                     </button>
                   </div>
                   <MessagingMessageActions

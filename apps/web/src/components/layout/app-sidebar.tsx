@@ -64,7 +64,11 @@ type TeacherClassWithItems = TeacherClassNav & {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
-function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
+function buildItems(
+  role: Role,
+  schoolSlug: string | null | undefined,
+  t: TranslateFn,
+): NavItem[] {
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "/acceuil";
 
   if (
@@ -218,7 +222,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/student-grades`,
       },
       {
-        label: "Messagerie",
+        label: t("messaging.nav.title"),
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
@@ -265,7 +269,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/student-grades`,
       },
       {
-        label: "Messagerie",
+        label: t("messaging.nav.title"),
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
@@ -312,7 +316,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/boutique-en-ligne`,
       },
       {
-        label: "Messagerie",
+        label: t("messaging.nav.title"),
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
@@ -376,7 +380,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       matchPrefix: "/settings",
     },
     {
-      label: "Messagerie",
+      label: t("messaging.nav.title"),
       href: `${schoolBase}/messagerie`,
       icon: MessageSquare,
       matchPrefix: `${schoolBase}/messagerie`,
@@ -437,7 +441,7 @@ function buildParentChildItems(
       matchPrefix: `${base}/notes`,
     },
     {
-      label: "Messagerie",
+      label: t("messaging.nav.title"),
       href: `${base}/messagerie`,
       icon: MessageSquare,
       matchPrefix: `${base}/messagerie`,
@@ -519,7 +523,7 @@ export function AppSidebar({
   const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
-  const items = buildItems(role, schoolSlug);
+  const items = buildItems(role, schoolSlug, t);
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
   const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
   const [openParentSection, setOpenParentSection] = useState<string>("general");

@@ -276,6 +276,7 @@ export function buildNotesSummary(
 
 export function buildAccountSummary(
   payload: ParentDashboardSummaryResponse,
+  t: TranslateFn,
 ): ParentAccountSummary {
   const unreadMessages = payload.unreadMessages;
   const pendingPayments = payload.payments.pendingCount ?? 0;
@@ -321,12 +322,12 @@ export function buildAccountSummary(
       },
       {
         id: "messages",
-        label: "Messages non lus",
+        label: t("messaging.nav.unreadMessages"),
         value: String(unreadMessages),
         detail:
           unreadMessages > 0
-            ? "Des echanges attendent votre lecture."
-            : "Boite de reception a jour",
+            ? t("messaging.nav.unreadHintPositive")
+            : t("messaging.nav.unreadHintNeutral"),
         tone: unreadMessages > 0 ? "watch" : "neutral",
       },
       {

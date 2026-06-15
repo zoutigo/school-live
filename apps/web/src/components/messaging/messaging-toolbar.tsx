@@ -1,5 +1,6 @@
 import { Plus, RefreshCw, Search } from "lucide-react";
 import { FormSelect, FormTextInput } from "../ui/form-controls";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   title: string;
@@ -16,6 +17,7 @@ export function MessagingToolbar({
   onSearchChange,
   onCompose,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <div
       data-testid="messaging-toolbar"
@@ -32,8 +34,8 @@ export function MessagingToolbar({
             <button
               type="button"
               onClick={onCompose}
-              aria-label="Nouveau message"
-              title="Nouveau message"
+              aria-label={t("messaging.toolbar.newMessage")}
+              title={t("messaging.toolbar.newMessage")}
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary text-white shadow-[0_10px_22px_rgba(12,95,168,0.18)] transition hover:bg-primary-dark lg:hidden"
             >
               <Plus className="h-4 w-4" />
@@ -49,8 +51,8 @@ export function MessagingToolbar({
         </div>
         <div className="flex lg:hidden">
           <FormSelect className="h-8 min-w-0 w-full bg-surface px-3 text-xs text-text-secondary">
-            <option>Annee en cours</option>
-            <option>Annee precedente</option>
+            <option>{t("messaging.toolbar.currentYear")}</option>
+            <option>{t("messaging.toolbar.previousYear")}</option>
           </FormSelect>
         </div>
       </div>
@@ -61,13 +63,13 @@ export function MessagingToolbar({
           <FormTextInput
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Rechercher un message..."
+            placeholder={t("messaging.toolbar.searchPlaceholder")}
             className="h-10 w-full bg-surface pl-9 pr-12 text-sm"
           />
           <button
             type="button"
             className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background text-text-secondary transition hover:bg-primary/10 hover:text-primary"
-            aria-label="Rafraichir"
+            aria-label={t("messaging.toolbar.refresh")}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -76,8 +78,8 @@ export function MessagingToolbar({
 
       <div className="hidden lg:block">
         <FormSelect className="h-9 min-w-0 w-auto max-w-full bg-surface px-3 text-sm text-text-secondary lg:min-w-[170px] lg:h-10 lg:w-auto">
-          <option>Annee en cours</option>
-          <option>Annee precedente</option>
+          <option>{t("messaging.toolbar.currentYear")}</option>
+          <option>{t("messaging.toolbar.previousYear")}</option>
         </FormSelect>
       </div>
     </div>

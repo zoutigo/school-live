@@ -11,6 +11,7 @@ import {
 import { getLeaveComposerConfirmMessage } from "../../../../../../components/messaging/messaging-compose-logic";
 import { MessagingComposer } from "../../../../../../components/messaging/messaging-composer";
 import { ConfirmDialog } from "../../../../../../components/ui/confirm-dialog";
+import { useTranslation } from "../../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -67,6 +68,7 @@ const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
 ];
 
 export default function SchoolNewMessagePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams<{ schoolSlug: string }>();
@@ -160,7 +162,7 @@ export default function SchoolNewMessagePage() {
         );
       }
     } catch {
-      setError("Impossible de charger l'editeur de message.");
+      setError(t("messaging.compose.loadError"));
     } finally {
       setLoading(false);
     }
@@ -171,17 +173,17 @@ export default function SchoolNewMessagePage() {
     () => `/schools/${schoolSlug}/messagerie`,
     [schoolSlug],
   );
-  const leaveMessage = getLeaveComposerConfirmMessage(hasUnsavedChanges);
+  const leaveMessage = getLeaveComposerConfirmMessage(hasUnsavedChanges, t);
   const subtitle = useMemo(() => {
-    const base = schoolName ?? "Messagerie de l'etablissement";
+    const base = schoolName ?? t("messaging.compose.defaultSubtitle");
     if (composeMode === "reply") {
-      return `${base} - Reponse`;
+      return `${base} - ${t("messaging.compose.replySuffix")}`;
     }
     if (composeMode === "forward") {
-      return `${base} - Transfert`;
+      return `${base} - ${t("messaging.compose.forwardSuffix")}`;
     }
     return base;
-  }, [composeMode, schoolName]);
+  }, [composeMode, schoolName, t]);
 
   function requestBackToList() {
     if (!hasUnsavedChanges) {
@@ -225,27 +227,29 @@ export default function SchoolNewMessagePage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Nouveau message"
+        title={t("messaging.compose.pageTitle")}
         subtitle={subtitle}
         actions={
           canCompose ? (
             <BackButton onClick={requestBackToList}>
-              Retour a la liste
+              {t("messaging.compose.backToList")}
             </BackButton>
           ) : null
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("messaging.page.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : !canCompose ? (
           <div className="grid gap-3">
             <p className="text-sm text-text-secondary">
-              Votre role actuel ne peut pas poster de message.
+              {t("messaging.compose.roleNotAllowed")}
             </p>
             <BackButton onClick={() => router.push(backUrl)}>
-              Retour a la messagerie
+              {t("messaging.compose.backToMessaging")}
             </BackButton>
           </div>
         ) : (
@@ -268,9 +272,9 @@ export default function SchoolNewMessagePage() {
       </Card>
       <ConfirmDialog
         open={leaveConfirmOpen}
-        title="Quitter la redaction ?"
+        title={t("messaging.compose.leaveTitle")}
         message={leaveMessage}
-        confirmLabel="Quitter"
+        confirmLabel={t("messaging.compose.leaveConfirm")}
         onCancel={() => setLeaveConfirmOpen(false)}
         onConfirm={() => {
           setLeaveConfirmOpen(false);

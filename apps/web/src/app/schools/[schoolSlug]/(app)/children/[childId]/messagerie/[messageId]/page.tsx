@@ -19,6 +19,7 @@ import type {
   MessagingMessage,
 } from "../../../../../../../../components/messaging/types";
 import { ConfirmDialog } from "../../../../../../../../components/ui/confirm-dialog";
+import { useTranslation } from "../../../../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -29,6 +30,7 @@ type ParentChild = {
 };
 
 export default function ChildMessagerieMessagePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams<{
@@ -113,7 +115,7 @@ export default function ChildMessagerieMessagePage() {
         window.dispatchEvent(new Event("messaging:updated"));
       }
     } catch {
-      setError("Impossible de charger le message.");
+      setError(t("messaging.page.loadMessageError"));
     } finally {
       setLoading(false);
     }
@@ -134,7 +136,7 @@ export default function ChildMessagerieMessagePage() {
       window.dispatchEvent(new Event("messaging:updated"));
       router.push(backUrl);
     } catch {
-      setError("Impossible de mettre a jour l'archivage.");
+      setError(t("messaging.page.archiveError"));
     } finally {
       setActionBusy(false);
     }
@@ -152,7 +154,7 @@ export default function ChildMessagerieMessagePage() {
       window.dispatchEvent(new Event("messaging:updated"));
       router.push(backUrl);
     } catch {
-      setError("Impossible de supprimer le message.");
+      setError(t("messaging.page.deleteError"));
     } finally {
       setActionBusy(false);
     }
@@ -170,7 +172,7 @@ export default function ChildMessagerieMessagePage() {
       setMessage((prev) => (prev ? { ...prev, unread: !nextRead } : prev));
       window.dispatchEvent(new Event("messaging:updated"));
     } catch {
-      setError("Impossible de mettre a jour l'etat de lecture.");
+      setError(t("messaging.page.toggleReadError"));
     } finally {
       setActionBusy(false);
     }
@@ -180,7 +182,7 @@ export default function ChildMessagerieMessagePage() {
     if (!message) {
       return;
     }
-    const query = buildComposeQueryFromMessage(mode, message);
+    const query = buildComposeQueryFromMessage(mode, message, t);
     router.push(
       `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
     );
@@ -194,15 +196,17 @@ export default function ChildMessagerieMessagePage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Messagerie"
+        title={t("messaging.page.title")}
         subtitle={
           currentChild
             ? `${currentChild.firstName} ${currentChild.lastName}`
-            : "Lecture du message"
+            : t("messaging.page.readingSubtitle")
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("messaging.page.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : (
@@ -220,7 +224,7 @@ export default function ChildMessagerieMessagePage() {
                       className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
                     >
                       <Reply className="h-4 w-4" />
-                      Repondre
+                      {t("messaging.detail.reply")}
                     </button>
                     <button
                       type="button"
@@ -228,7 +232,7 @@ export default function ChildMessagerieMessagePage() {
                       className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
                     >
                       <Forward className="h-4 w-4" />
-                      Transferer
+                      {t("messaging.detail.forward")}
                     </button>
                   </div>
                   <MessagingMessageActions
@@ -258,9 +262,9 @@ export default function ChildMessagerieMessagePage() {
       />
       <ConfirmDialog
         open={deleteConfirmOpen}
-        title="Confirmer la suppression"
-        message="Cette action est destructive. Le message sera supprime de votre boite."
-        confirmLabel="Supprimer"
+        title={t("messaging.page.deleteConfirmTitle")}
+        message={t("messaging.page.deleteConfirmMessage")}
+        confirmLabel={t("messaging.page.deleteConfirmAction")}
         loading={actionBusy}
         onCancel={() => setDeleteConfirmOpen(false)}
         onConfirm={() => {

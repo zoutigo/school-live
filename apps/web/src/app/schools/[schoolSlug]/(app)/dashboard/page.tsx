@@ -842,26 +842,31 @@ function TeacherMessagesSection({
   dashboard,
   loading,
   schoolSlug,
+  t,
 }: {
   dashboard: RichTeacherDashboard | null;
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   const accent = "#6B5EA8";
   return (
     <TeacherSectionCard
-      title="Messages non lus"
+      title={t("messaging.nav.unreadMessages")}
       icon={MessageSquare}
       iconColor={accent}
       count={dashboard?.unreadCount}
-      linkLabel="Messagerie"
+      linkLabel={t("messaging.nav.title")}
       linkHref={`/schools/${schoolSlug}/messagerie`}
       testId="section-teacher-messages"
     >
       {loading && !dashboard ? (
         <TeacherSectionSkeleton />
       ) : !dashboard || dashboard.unreadCount === 0 ? (
-        <TeacherEmptyRow icon={CheckCircle2} text="Aucun message non lu" />
+        <TeacherEmptyRow
+          icon={CheckCircle2}
+          text={t("messaging.nav.noUnreadMessage")}
+        />
       ) : (
         dashboard.unreadMessages.map((msg) => (
           <TeacherDataRow
@@ -1287,7 +1292,7 @@ export default function DashboardPage() {
           buildNotesSummary(child, snapshots),
         ),
       );
-      setAccountSummary(buildAccountSummary(accountPayload));
+      setAccountSummary(buildAccountSummary(accountPayload, t));
     } catch {
       setAccountSummary({
         headline: "Compte parent",
@@ -1302,9 +1307,9 @@ export default function DashboardPage() {
           },
           {
             id: "messages",
-            label: "Messages non lus",
+            label: t("messaging.nav.unreadMessages"),
             value: "--",
-            detail: "Le compteur de messages n'a pas pu etre charge.",
+            detail: t("messaging.nav.unreadCounterError"),
             tone: "watch",
           },
           {
@@ -1574,7 +1579,7 @@ export default function DashboardPage() {
   const schoolCoordinationLinks: DashboardQuickLink[] = [
     {
       id: "messages",
-      label: "Messagerie",
+      label: t("messaging.nav.title"),
       value: formatCount(schoolSummary.unreadMessages),
       href: `/schools/${schoolSlug}/messagerie`,
     },
@@ -1656,6 +1661,7 @@ export default function DashboardPage() {
                 dashboard={richTeacher}
                 loading={teacherCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
               <TeacherTimetableSection
                 dashboard={richTeacher}

@@ -31,6 +31,8 @@ import { MessagingReader } from "../../../../../../../components/messaging/messa
 import { MessagingToolbar } from "../../../../../../../components/messaging/messaging-toolbar";
 import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog";
 import { ActionIconButton } from "../../../../../../../components/ui/action-icon-button";
+import { useTranslation } from "../../../../../../../i18n/useTranslation";
+import type { TranslateFn } from "../../../../../../../i18n/useTranslation";
 import type {
   FolderKey,
   MessageAttachment,
@@ -46,27 +48,30 @@ type ParentChild = {
   lastName: string;
 };
 
-const FOLDERS: MessagingFolder[] = [
-  { key: "inbox", label: "Boite de reception", icon: Inbox },
-  { key: "sent", label: "Envoyes", icon: Send },
-  { key: "drafts", label: "Brouillons", icon: FileText },
-  { key: "archive", label: "Archives", icon: Archive },
-];
+function buildFolders(t: TranslateFn): MessagingFolder[] {
+  return [
+    { key: "inbox", label: t("messaging.folders.inbox"), icon: Inbox },
+    { key: "sent", label: t("messaging.folders.sent"), icon: Send },
+    { key: "drafts", label: t("messaging.folders.drafts"), icon: FileText },
+    { key: "archive", label: t("messaging.folders.archive"), icon: Archive },
+  ];
+}
 
-function getFolderLabel(folder: FolderKey) {
+function getFolderLabel(folder: FolderKey, t: TranslateFn) {
   if (folder === "inbox") {
-    return "Boite de reception";
+    return t("messaging.list.panelLabel.inbox");
   }
   if (folder === "sent") {
-    return "Messages envoyes";
+    return t("messaging.list.panelLabel.sent");
   }
   if (folder === "drafts") {
-    return "Brouillons";
+    return t("messaging.list.panelLabel.drafts");
   }
-  return "Messages archives";
+  return t("messaging.list.panelLabel.archive");
 }
 
 export default function ChildMessageriePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams<{ schoolSlug: string; childId: string }>();
@@ -160,7 +165,7 @@ export default function ChildMessageriePage() {
       }
       await loadMessages(currentSchoolSlug, folder, search);
     } catch {
-      setError("Impossible de charger la messagerie.");
+      setError(t("messaging.page.loadError"));
     } finally {
       setLoading(false);
     }
@@ -212,7 +217,7 @@ export default function ChildMessageriePage() {
       setArchiveCount(archivePayload.meta.total);
       setError(null);
     } catch {
-      setError("Impossible de charger la messagerie.");
+      setError(t("messaging.page.loadError"));
     } finally {
       setMessagesLoading(false);
     }
@@ -296,7 +301,7 @@ export default function ChildMessageriePage() {
       window.dispatchEvent(new Event("messaging:updated"));
       await loadMessages(schoolSlug, folder, search);
     } catch {
-      setError("Impossible de mettre a jour l'archivage.");
+      setError(t("messaging.page.archiveError"));
     } finally {
       setActionBusy(false);
     }
@@ -319,7 +324,7 @@ export default function ChildMessageriePage() {
       window.dispatchEvent(new Event("messaging:updated"));
       await loadMessages(schoolSlug, folder, search);
     } catch {
-      setError("Impossible de supprimer le message.");
+      setError(t("messaging.page.deleteError"));
     } finally {
       setActionBusy(false);
     }
@@ -343,7 +348,7 @@ export default function ChildMessageriePage() {
       }
       window.dispatchEvent(new Event("messaging:updated"));
     } catch {
-      setError("Impossible de mettre a jour l'etat de lecture.");
+      setError(t("messaging.page.toggleReadError"));
     }
   }
 
@@ -360,7 +365,7 @@ export default function ChildMessageriePage() {
       }
       window.dispatchEvent(new Event("messaging:updated"));
     } catch {
-      setError("Impossible de restaurer le message.");
+      setError(t("messaging.page.restoreError"));
     }
   }
 
@@ -368,7 +373,7 @@ export default function ChildMessageriePage() {
     mode: "reply" | "forward",
     message: MessagingMessage,
   ) {
-    const query = buildComposeQueryFromMessage(mode, message);
+    const query = buildComposeQueryFromMessage(mode, message, t);
     router.push(
       `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
     );
@@ -382,17 +387,19 @@ export default function ChildMessageriePage() {
         className="h-full overflow-hidden"
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("messaging.page.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : (
           <div className="flex h-full min-h-0 flex-col gap-3">
             <MessagingToolbar
-              title="Messagerie"
+              title={t("messaging.toolbar.title")}
               contextLabel={
                 currentChild
                   ? `${currentChild.firstName} ${currentChild.lastName}`
-                  : "Echanges parents-etablissement"
+                  : t("messaging.page.childDefaultContext")
               }
               search={search}
               onSearchChange={setSearch}
@@ -401,7 +408,7 @@ export default function ChildMessageriePage() {
             <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[230px_320px_minmax(0,1fr)]">
               <div className="lg:min-h-0">
                 <MessagingFoldersPanel
-                  folders={FOLDERS}
+                  folders={buildFolders(t)}
                   activeFolder={folder}
                   onSelectFolder={setFolder}
                   inboxUnreadCount={inboxUnreadCount}
@@ -415,7 +422,7 @@ export default function ChildMessageriePage() {
               </div>
               <div className="lg:min-h-0">
                 <MessagingMessagesList
-                  panelLabel={getFolderLabel(folder)}
+                  panelLabel={getFolderLabel(folder, t)}
                   folder={folder}
                   messages={messages}
                   selectedMessageId={selectedMessageId}
@@ -429,8 +436,8 @@ export default function ChildMessageriePage() {
                           icon={message.unread ? MailOpen : Mail}
                           label={
                             message.unread
-                              ? "Marquer comme lu"
-                              : "Marquer comme non lu"
+                              ? t("messaging.actions.markAsRead")
+                              : t("messaging.actions.markAsUnread")
                           }
                           onClick={() =>
                             void handleToggleRead(message.id, message.unread)
@@ -443,7 +450,7 @@ export default function ChildMessageriePage() {
                       return (
                         <ActionIconButton
                           icon={ArchiveRestore}
-                          label="Restaurer depuis archives"
+                          label={t("messaging.actions.restoreFromArchive")}
                           onClick={() =>
                             void handleRestoreFromArchive(message.id)
                           }
@@ -472,7 +479,7 @@ export default function ChildMessageriePage() {
                             className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
                           >
                             <Reply className="h-4 w-4" />
-                            Repondre
+                            {t("messaging.detail.reply")}
                           </button>
                           <button
                             type="button"
@@ -482,7 +489,7 @@ export default function ChildMessageriePage() {
                             className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
                           >
                             <Forward className="h-4 w-4" />
-                            Transferer
+                            {t("messaging.detail.forward")}
                           </button>
                         </div>
                         <MessagingMessageActions
@@ -508,7 +515,9 @@ export default function ChildMessageriePage() {
               </div>
             </div>
             {messagesLoading ? (
-              <p className="text-xs text-text-secondary">Actualisation...</p>
+              <p className="text-xs text-text-secondary">
+                {t("messaging.page.refreshing")}
+              </p>
             ) : null}
           </div>
         )}
@@ -520,9 +529,9 @@ export default function ChildMessageriePage() {
       />
       <ConfirmDialog
         open={deleteConfirmOpen}
-        title="Confirmer la suppression"
-        message="Cette action est destructive. Le message sera supprime de votre boite."
-        confirmLabel="Supprimer"
+        title={t("messaging.page.deleteConfirmTitle")}
+        message={t("messaging.page.deleteConfirmMessage")}
+        confirmLabel={t("messaging.page.deleteConfirmAction")}
         loading={actionBusy}
         onCancel={() => setDeleteConfirmOpen(false)}
         onConfirm={() => {

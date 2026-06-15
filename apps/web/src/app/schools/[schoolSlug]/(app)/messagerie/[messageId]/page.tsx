@@ -20,6 +20,7 @@ import type {
 } from "../../../../../../components/messaging/types";
 import { Button } from "../../../../../../components/ui/button";
 import { ConfirmDialog } from "../../../../../../components/ui/confirm-dialog";
+import { useTranslation } from "../../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -28,6 +29,7 @@ type MePayload = {
 };
 
 export default function SchoolMessagerieMessagePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams<{ schoolSlug: string; messageId: string }>();
@@ -85,7 +87,7 @@ export default function SchoolMessagerieMessagePage() {
         window.dispatchEvent(new Event("messaging:updated"));
       }
     } catch {
-      setError("Impossible de charger le message.");
+      setError(t("messaging.page.loadMessageError"));
     } finally {
       setLoading(false);
     }
@@ -106,7 +108,7 @@ export default function SchoolMessagerieMessagePage() {
       window.dispatchEvent(new Event("messaging:updated"));
       router.push(backUrl);
     } catch {
-      setError("Impossible de mettre a jour l'archivage.");
+      setError(t("messaging.page.archiveError"));
     } finally {
       setActionBusy(false);
     }
@@ -124,7 +126,7 @@ export default function SchoolMessagerieMessagePage() {
       window.dispatchEvent(new Event("messaging:updated"));
       router.push(backUrl);
     } catch {
-      setError("Impossible de supprimer le message.");
+      setError(t("messaging.page.deleteError"));
     } finally {
       setActionBusy(false);
     }
@@ -142,7 +144,7 @@ export default function SchoolMessagerieMessagePage() {
       setMessage((prev) => (prev ? { ...prev, unread: !nextRead } : prev));
       window.dispatchEvent(new Event("messaging:updated"));
     } catch {
-      setError("Impossible de mettre a jour l'etat de lecture.");
+      setError(t("messaging.page.toggleReadError"));
     } finally {
       setActionBusy(false);
     }
@@ -152,7 +154,7 @@ export default function SchoolMessagerieMessagePage() {
     if (!message) {
       return;
     }
-    const query = buildComposeQueryFromMessage(mode, message);
+    const query = buildComposeQueryFromMessage(mode, message, t);
     router.push(
       `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
     );
@@ -160,9 +162,14 @@ export default function SchoolMessagerieMessagePage() {
 
   return (
     <div className="grid gap-4">
-      <Card title="Messagerie" subtitle={schoolName ?? "Lecture du message"}>
+      <Card
+        title={t("messaging.page.title")}
+        subtitle={schoolName ?? t("messaging.page.readingSubtitle")}
+      >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("messaging.page.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : (
@@ -178,22 +185,22 @@ export default function SchoolMessagerieMessagePage() {
                       type="button"
                       onClick={() => openComposeFromMessage("reply")}
                       iconLeft={<Reply className="h-4 w-4" />}
-                      aria-label="Repondre"
+                      aria-label={t("messaging.detail.reply")}
                       className="px-2.5 min-[360px]:px-4"
                     >
                       <span className="hidden min-[360px]:inline">
-                        Repondre
+                        {t("messaging.detail.reply")}
                       </span>
                     </Button>
                     <Button
                       type="button"
                       onClick={() => openComposeFromMessage("forward")}
                       iconLeft={<Forward className="h-4 w-4" />}
-                      aria-label="Transferer"
+                      aria-label={t("messaging.detail.forward")}
                       className="px-2.5 min-[360px]:px-4"
                     >
                       <span className="hidden min-[360px]:inline">
-                        Transferer
+                        {t("messaging.detail.forward")}
                       </span>
                     </Button>
                   </div>
@@ -224,9 +231,9 @@ export default function SchoolMessagerieMessagePage() {
       />
       <ConfirmDialog
         open={deleteConfirmOpen}
-        title="Confirmer la suppression"
-        message="Cette action est destructive. Le message sera supprime de votre boite."
-        confirmLabel="Supprimer"
+        title={t("messaging.page.deleteConfirmTitle")}
+        message={t("messaging.page.deleteConfirmMessage")}
+        confirmLabel={t("messaging.page.deleteConfirmAction")}
         loading={actionBusy}
         onCancel={() => setDeleteConfirmOpen(false)}
         onConfirm={() => {

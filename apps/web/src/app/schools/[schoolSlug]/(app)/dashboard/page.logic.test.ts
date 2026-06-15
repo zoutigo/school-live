@@ -161,7 +161,7 @@ describe("parent dashboard card logic", () => {
       },
     };
 
-    const summary = buildAccountSummary(payload);
+    const summary = buildAccountSummary(payload, tFr);
 
     expect(summary.headline).toBe("2 points a traiter");
     expect(summary.items.find((item) => item.id === "payments")?.value).toBe(
@@ -192,7 +192,7 @@ describe("parent dashboard card logic", () => {
       },
     };
 
-    const summary = buildAccountSummary(payload);
+    const summary = buildAccountSummary(payload, tFr);
     const paymentsItem = summary.items.find((item) => item.id === "payments");
 
     expect(summary.headline).toBe("2 points a traiter");

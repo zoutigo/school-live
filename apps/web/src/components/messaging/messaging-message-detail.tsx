@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import type { MessageAttachment, MessagingMessage } from "./types";
 import { MessagingReader } from "./messaging-reader";
 import { Button } from "../ui/button";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   message: MessagingMessage | null;
@@ -17,19 +18,23 @@ export function MessagingMessageDetail({
   onOpenAttachment,
   topActions,
 }: Props) {
+  const { t } = useTranslation();
+
   if (!message) {
     return (
       <div className="grid gap-3">
-        <p className="text-sm text-text-secondary">Message introuvable.</p>
+        <p className="text-sm text-text-secondary">
+          {t("messaging.detail.notFound")}
+        </p>
         <Button
           type="button"
           variant="secondary"
           onClick={onBack}
           iconLeft={<ArrowLeft className="h-4 w-4" />}
-          aria-label="Retour a la liste"
+          aria-label={t("messaging.detail.backToList")}
           className="justify-self-start"
         >
-          Retour a la liste
+          {t("messaging.detail.backToList")}
         </Button>
       </div>
     );
@@ -46,10 +51,12 @@ export function MessagingMessageDetail({
             variant="secondary"
             onClick={onBack}
             iconLeft={<ArrowLeft className="h-4 w-4" />}
-            aria-label="Retour a la liste"
+            aria-label={t("messaging.detail.backToList")}
             className="px-2.5 min-[360px]:px-4"
           >
-            <span className="hidden min-[360px]:inline">Retour a la liste</span>
+            <span className="hidden min-[360px]:inline">
+              {t("messaging.detail.backToList")}
+            </span>
           </Button>
           {topActions ? (
             <div className="flex min-w-0 flex-1 items-center justify-between gap-2">

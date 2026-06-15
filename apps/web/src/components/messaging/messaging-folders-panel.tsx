@@ -1,5 +1,6 @@
 import { PencilLine } from "lucide-react";
 import type { MessagingFolder, FolderKey } from "./types";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   folders: MessagingFolder[];
@@ -22,13 +23,14 @@ export function MessagingFoldersPanel({
   showComposeButton = false,
   onCompose,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <aside
       data-testid="messaging-folders-panel"
       className="flex h-full min-h-0 min-w-0 flex-col rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.94)_100%)] p-2 shadow-[0_14px_30px_rgba(77,56,32,0.07)]"
     >
       <p className="mb-2 hidden px-2 text-xs font-semibold uppercase tracking-wide text-text-secondary sm:block">
-        Dossiers
+        {t("messaging.folders.title")}
       </p>
       <div className="min-h-0 overflow-x-auto overflow-y-hidden sm:overflow-y-auto">
         <div className="flex min-w-max gap-1 sm:grid sm:min-w-0">
@@ -78,7 +80,7 @@ export function MessagingFoldersPanel({
         >
           <PencilLine className="h-4 w-4" />
           <span className="hidden min-[360px]:inline sm:inline">
-            Nouveau message
+            {t("messaging.folders.composeButton")}
           </span>
         </button>
       ) : null}

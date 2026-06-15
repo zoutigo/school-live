@@ -270,12 +270,12 @@ function ChildAccueilDashboard({
                 accent="primary"
               />
               <SummaryStat
-                label="Messages non lus"
+                label={t("messaging.nav.unreadMessages")}
                 value={`${unreadCount}`}
                 hint={
                   latestMessage?.subject
-                    ? `Dernier : ${latestMessage.subject}`
-                    : "Aucun message recent"
+                    ? `${t("messaging.nav.lastMessagePrefix")} : ${latestMessage.subject}`
+                    : t("messaging.nav.noRecentMessageShort")
                 }
                 accent="teal"
               />
@@ -422,8 +422,8 @@ function ChildAccueilDashboard({
                   )}`,
                 },
                 {
-                  label: "Messagerie",
-                  hint: "Echanges et suivi",
+                  label: t("messaging.nav.title"),
+                  hint: t("messaging.nav.openMessagingHint"),
                   href: `/schools/${schoolSlug}/children/${childId}/messagerie`,
                 },
                 {
@@ -451,10 +451,10 @@ function ChildAccueilDashboard({
 
         <div className="grid gap-4">
           <DashboardPanel
-            title="Dernier message"
+            title={t("messaging.nav.lastMessage")}
             icon={<MessageSquare className="h-4 w-4" />}
             actionHref={`/schools/${schoolSlug}/children/${childId}/messagerie`}
-            actionLabel="Ouvrir la messagerie"
+            actionLabel={t("messaging.nav.openLink")}
           >
             {latestMessage ? (
               <div className="grid gap-2">
@@ -462,7 +462,8 @@ function ChildAccueilDashboard({
                   {latestMessage.subject}
                 </p>
                 <p className="text-sm text-text-secondary">
-                  {latestMessage.preview?.trim() || "Apercu non disponible."}
+                  {latestMessage.preview?.trim() ||
+                    t("messaging.nav.previewUnavailable")}
                 </p>
                 <p className="text-xs text-text-secondary">
                   {formatDateLabel(latestMessage.createdAt)}
@@ -470,7 +471,7 @@ function ChildAccueilDashboard({
               </div>
             ) : (
               <p className="text-sm text-text-secondary">
-                Aucun message recent.
+                {t("messaging.nav.noRecentMessage")}
               </p>
             )}
           </DashboardPanel>

@@ -27,6 +27,7 @@ import {
   canSendMessage,
   hasUnsavedDraftChanges,
 } from "./messaging-compose-logic";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type RecipientOption = {
   value: string;
@@ -95,6 +96,7 @@ export function MessagingComposer({
   onSaveDraft,
   onUploadInlineImage,
 }: Props) {
+  const { t } = useTranslation();
   const editorApiRef = useRef<RichTextEditorRef | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -272,23 +274,23 @@ export function MessagingComposer({
     setError(null);
     setInfo(null);
     if (hasRecipientGroups && selectedRecipients.length === 0) {
-      setError("Veuillez selectionner au moins un destinataire.");
+      setError(t("messaging.compose.errors.noRecipientGroup"));
       return;
     }
     if (!hasRecipientGroups && !recipient) {
-      setError("Veuillez selectionner un destinataire.");
+      setError(t("messaging.compose.errors.noRecipient"));
       return;
     }
     if (!subject.trim()) {
-      setError("Veuillez renseigner un sujet.");
+      setError(t("messaging.compose.errors.noSubject"));
       return;
     }
     if (!editorText.trim()) {
-      setError("Veuillez saisir un message.");
+      setError(t("messaging.compose.errors.noBody"));
       return;
     }
     if (!onSend) {
-      setInfo("Envoi simule. Le branchement API sera ajoute ensuite.");
+      setInfo(t("messaging.compose.info.sendSimulated"));
       return;
     }
 
@@ -310,9 +312,9 @@ export function MessagingComposer({
         recipientUserIds,
         attachments,
       });
-      setInfo("Message envoye.");
+      setInfo(t("messaging.compose.info.sent"));
     } catch {
-      setError("Impossible d'envoyer le message.");
+      setError(t("messaging.compose.errors.sendFailed"));
     } finally {
       setSending(false);
     }
@@ -321,7 +323,7 @@ export function MessagingComposer({
   async function handleSaveDraft() {
     setError(null);
     if (!onSaveDraft) {
-      setInfo("Brouillon simule en local.");
+      setInfo(t("messaging.compose.info.draftSimulated"));
       return;
     }
 
@@ -338,15 +340,15 @@ export function MessagingComposer({
     setSavingDraft(true);
     try {
       await onSaveDraft({
-        subject: subject.trim() || "Brouillon sans objet",
+        subject: subject.trim() || t("messaging.compose.draftDefaultSubject"),
         body: editorHtml,
         recipientUserIds,
         attachments,
       });
       setLastSavedDraftSnapshot(currentDraftSnapshot);
-      setInfo("Brouillon enregistre.");
+      setInfo(t("messaging.compose.info.draftSaved"));
     } catch {
-      setError("Impossible d'enregistrer le brouillon.");
+      setError(t("messaging.compose.errors.draftFailed"));
     } finally {
       setSavingDraft(false);
     }
@@ -358,7 +360,7 @@ export function MessagingComposer({
         <div className="filter-panel grid gap-4">
           <div className="grid gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
             <label className="pt-2 text-sm font-semibold text-text-primary">
-              A
+              {t("messaging.compose.to")}
             </label>
             {hasRecipientGroups ? (
               <div className="grid gap-2">
@@ -366,7 +368,7 @@ export function MessagingComposer({
                   <div className="min-h-9 flex-1">
                     {selectedRecipients.length === 0 ? (
                       <p className="pt-2 text-xs text-text-secondary">
-                        Aucun destinataire selectionne
+                        {t("messaging.compose.noRecipientSelected")}
                       </p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
@@ -387,7 +389,9 @@ export function MessagingComposer({
                                 removeRecipient(entry.kind, entry.value)
                               }
                               className="rounded-full border border-primary/30 px-1 leading-none transition hover:bg-primary/20"
-                              aria-label="Retirer ce destinataire"
+                              aria-label={t(
+                                "messaging.compose.removeRecipient",
+                              )}
                             >
                               x
                             </button>
@@ -399,13 +403,13 @@ export function MessagingComposer({
                   <div className="flex shrink-0 items-center gap-2">
                     <ActionIconButton
                       icon={UserRound}
-                      label="Ajouter un enseignant"
+                      label={t("messaging.compose.addTeacher")}
                       variant="primary"
                       onClick={() => setTeacherModalOpen(true)}
                     />
                     <ActionIconButton
                       icon={Plus}
-                      label="Ajouter un personnel"
+                      label={t("messaging.compose.addStaff")}
                       variant="primary"
                       onClick={() => setStaffModalOpen(true)}
                     />
@@ -418,7 +422,9 @@ export function MessagingComposer({
                 onChange={(event) => setRecipient(event.target.value)}
                 className="h-10 text-sm"
               >
-                <option value="">Aucun destinataire selectionne</option>
+                <option value="">
+                  {t("messaging.compose.noRecipientOption")}
+                </option>
                 {recipients.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -430,21 +436,21 @@ export function MessagingComposer({
 
           <div className="grid gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
             <label className="pt-2 text-sm font-semibold text-text-primary">
-              Sujet
+              {t("messaging.compose.subject")}
             </label>
             <div className="grid gap-1">
               <FormTextInput
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
                 className="h-10 text-sm"
-                placeholder="Objet du message"
+                placeholder={t("messaging.compose.subjectPlaceholder")}
               />
             </div>
           </div>
 
           <div className="grid gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
             <label className="pt-2 text-sm font-semibold text-text-primary">
-              Message
+              {t("messaging.compose.message")}
             </label>
             <RichTextEditor
               ref={editorApiRef}
@@ -452,13 +458,13 @@ export function MessagingComposer({
               onTextChange={setEditorText}
               onHtmlChange={setEditorHtml}
               onUploadInlineImage={onUploadInlineImage}
-              hint="Astuce: apres insertion, verifiez l'alignement du contenu et les titres."
+              hint={t("messaging.compose.editorHint")}
             />
           </div>
 
           <div className="grid gap-2 md:grid-cols-[auto_minmax(0,1fr)] md:items-start">
             <label className="pt-2 text-sm font-semibold text-text-primary">
-              Pieces jointes
+              {t("messaging.compose.attachments")}
             </label>
             <div
               onDragOver={(event) => {
@@ -478,7 +484,7 @@ export function MessagingComposer({
               }`}
             >
               <p className="text-sm text-text-secondary">
-                Deposez vos fichiers ici, ou selectionnez un fichier.
+                {t("messaging.compose.dropzoneHint")}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <button
@@ -487,7 +493,7 @@ export function MessagingComposer({
                   className="inline-flex items-center gap-2 rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-primary transition hover:bg-warm-highlight/60"
                 >
                   <ImagePlus className="h-4 w-4" />
-                  Depuis mon ordinateur
+                  {t("messaging.compose.fromComputer")}
                 </button>
                 <FormFileInput
                   ref={fileInputRef}
@@ -513,7 +519,7 @@ export function MessagingComposer({
                         onClick={() => removeFile(file.name)}
                         className="rounded border border-warm-border px-2 py-1 text-xs text-text-secondary transition hover:bg-notification/10 hover:text-notification"
                       >
-                        Supprimer
+                        {t("messaging.compose.removeAttachment")}
                       </button>
                     </li>
                   ))}
@@ -535,7 +541,7 @@ export function MessagingComposer({
               }
               className="rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-primary transition hover:bg-warm-highlight/60"
             >
-              Annuler
+              {t("messaging.compose.cancel")}
             </button>
             <button
               type="button"
@@ -543,14 +549,16 @@ export function MessagingComposer({
               disabled={sending || savingDraft}
               className="rounded-[14px] border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary transition hover:bg-primary/20"
             >
-              {savingDraft ? "Enregistrement..." : "Enregistrer en brouillon"}
+              {savingDraft
+                ? t("messaging.compose.savingDraft")
+                : t("messaging.compose.saveDraft")}
             </button>
             <button
               type="button"
               onClick={clearEditor}
               className="rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-secondary transition hover:bg-warm-highlight/60"
             >
-              Effacer
+              {t("messaging.compose.clear")}
             </button>
           </div>
 
@@ -561,7 +569,9 @@ export function MessagingComposer({
             className="inline-flex items-center gap-2 rounded-[14px] bg-primary px-3 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Send className="h-4 w-4" />
-            {sending ? "Envoi..." : "Envoyer"}
+            {sending
+              ? t("messaging.compose.sending")
+              : t("messaging.compose.send")}
           </button>
         </div>
       </div>
@@ -616,6 +626,7 @@ function TeacherRecipientsModal({
   onClose,
   onConfirm,
 }: TeacherModalProps) {
+  const { t } = useTranslation();
   const [nameFilter, setNameFilter] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [classFilter, setClassFilter] = useState("");
@@ -665,14 +676,14 @@ function TeacherRecipientsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label="Fermer la recherche des enseignants"
+        aria-label={t("messaging.compose.teacherModal.close")}
         className="absolute inset-0 bg-text-primary/45"
         onClick={onClose}
       />
       <section className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-[24px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,1)_100%)] p-4 shadow-[0_24px_60px_rgba(47,36,24,0.18)]">
         <header className="mb-3 flex items-center justify-between border-b border-border pb-2">
           <h3 className="font-heading text-base font-semibold text-text-primary">
-            Recherchez des enseignants
+            {t("messaging.compose.teacherModal.title")}
           </h3>
           <button
             type="button"
@@ -685,7 +696,7 @@ function TeacherRecipientsModal({
 
         <div className="mb-3 grid gap-2 md:grid-cols-3">
           <label className="grid gap-1 text-xs text-text-secondary">
-            Nom de l'enseignant
+            {t("messaging.compose.teacherModal.nameLabel")}
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
               <FormTextInput
@@ -696,7 +707,7 @@ function TeacherRecipientsModal({
             </div>
           </label>
           <label className="grid gap-1 text-xs text-text-secondary">
-            Nom de la matiere
+            {t("messaging.compose.teacherModal.subjectLabel")}
             <FormTextInput
               value={subjectFilter}
               onChange={(event) => setSubjectFilter(event.target.value)}
@@ -704,7 +715,7 @@ function TeacherRecipientsModal({
             />
           </label>
           <label className="grid gap-1 text-xs text-text-secondary">
-            Classe
+            {t("messaging.compose.teacherModal.classLabel")}
             <FormTextInput
               value={classFilter}
               onChange={(event) => setClassFilter(event.target.value)}
@@ -718,9 +729,15 @@ function TeacherRecipientsModal({
             <thead className="bg-primary text-white">
               <tr>
                 <th className="w-12 px-2 py-2 text-left" />
-                <th className="px-2 py-2 text-left">Nom</th>
-                <th className="px-2 py-2 text-left">Matiere(s)</th>
-                <th className="px-2 py-2 text-left">Classe(s)</th>
+                <th className="px-2 py-2 text-left">
+                  {t("messaging.compose.teacherModal.colName")}
+                </th>
+                <th className="px-2 py-2 text-left">
+                  {t("messaging.compose.teacherModal.colSubjects")}
+                </th>
+                <th className="px-2 py-2 text-left">
+                  {t("messaging.compose.teacherModal.colClasses")}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -752,7 +769,7 @@ function TeacherRecipientsModal({
               {filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-2 py-3 text-text-secondary">
-                    Aucun enseignant pour ce filtre.
+                    {t("messaging.compose.teacherModal.empty")}
                   </td>
                 </tr>
               ) : null}
@@ -775,7 +792,7 @@ function TeacherRecipientsModal({
             className="rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-primary transition hover:bg-warm-highlight/60"
             onClick={onClose}
           >
-            Fermer
+            {t("messaging.compose.teacherModal.close.action")}
           </button>
           <button
             type="button"
@@ -783,7 +800,7 @@ function TeacherRecipientsModal({
             onClick={() => onConfirm(selectedRows)}
             disabled={selectedRows.length === 0}
           >
-            Ajouter la selection
+            {t("messaging.compose.teacherModal.confirm")}
           </button>
         </footer>
       </section>
@@ -804,6 +821,7 @@ function StaffRecipientsModal({
   onClose,
   onConfirm,
 }: StaffModalProps) {
+  const { t } = useTranslation();
   const [nameFilter, setNameFilter] = useState("");
   const [functionFilter, setFunctionFilter] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -854,14 +872,14 @@ function StaffRecipientsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label="Fermer la recherche des personnels"
+        aria-label={t("messaging.compose.staffModal.close")}
         className="absolute inset-0 bg-text-primary/45"
         onClick={onClose}
       />
       <section className="relative flex max-h-[90vh] w-full max-w-5xl flex-col rounded-[24px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,1)_100%)] p-4 shadow-[0_24px_60px_rgba(47,36,24,0.18)]">
         <header className="mb-3 flex items-center justify-between border-b border-border pb-2">
           <h3 className="font-heading text-base font-semibold text-text-primary">
-            Recherchez des personnels
+            {t("messaging.compose.staffModal.title")}
           </h3>
           <button
             type="button"
@@ -874,7 +892,7 @@ function StaffRecipientsModal({
 
         <div className="mb-3 grid gap-2 md:grid-cols-2">
           <label className="grid gap-1 text-xs text-text-secondary">
-            Nom
+            {t("messaging.compose.staffModal.nameLabel")}
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
               <FormTextInput
@@ -885,13 +903,15 @@ function StaffRecipientsModal({
             </div>
           </label>
           <label className="grid gap-1 text-xs text-text-secondary">
-            Fonction
+            {t("messaging.compose.staffModal.functionLabel")}
             <FormSelect
               value={functionFilter}
               onChange={(event) => setFunctionFilter(event.target.value)}
               className="h-10 text-sm"
             >
-              <option value="">Toutes les fonctions</option>
+              <option value="">
+                {t("messaging.compose.staffModal.allFunctions")}
+              </option>
               {functionOptions.map((entry) => (
                 <option key={entry.value} value={entry.value}>
                   {entry.label}
@@ -906,8 +926,12 @@ function StaffRecipientsModal({
             <thead className="bg-primary text-white">
               <tr>
                 <th className="w-12 px-2 py-2 text-left" />
-                <th className="px-2 py-2 text-left">Nom</th>
-                <th className="px-2 py-2 text-left">Fonction</th>
+                <th className="px-2 py-2 text-left">
+                  {t("messaging.compose.staffModal.colName")}
+                </th>
+                <th className="px-2 py-2 text-left">
+                  {t("messaging.compose.staffModal.colFunction")}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -939,7 +963,7 @@ function StaffRecipientsModal({
               {filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-2 py-3 text-text-secondary">
-                    Aucun personnel pour ce filtre.
+                    {t("messaging.compose.staffModal.empty")}
                   </td>
                 </tr>
               ) : null}
@@ -962,7 +986,7 @@ function StaffRecipientsModal({
             className="rounded-[14px] border border-warm-border bg-surface px-3 py-2 text-sm text-text-primary transition hover:bg-warm-highlight/60"
             onClick={onClose}
           >
-            Fermer
+            {t("messaging.compose.staffModal.close.action")}
           </button>
           <button
             type="button"
@@ -970,7 +994,7 @@ function StaffRecipientsModal({
             onClick={() => onConfirm(selectedRows)}
             disabled={selectedRows.length === 0}
           >
-            Ajouter la selection
+            {t("messaging.compose.staffModal.confirm")}
           </button>
         </footer>
       </section>

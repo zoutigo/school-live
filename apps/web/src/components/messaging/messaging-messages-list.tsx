@@ -7,6 +7,7 @@ import {
   getSubjectClass,
   shouldShowPreview,
 } from "./messaging-messages-list.logic";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   panelLabel: string;
@@ -29,6 +30,7 @@ export function MessagingMessagesList({
   onUnreadOnlyChange,
   renderActions,
 }: Props) {
+  const { t } = useTranslation();
   const filteredMessages =
     folder === "inbox" && unreadOnly
       ? messages.filter((message) => message.unread)
@@ -47,14 +49,14 @@ export function MessagingMessagesList({
               onChange={(event) => onUnreadOnlyChange(event.target.checked)}
               className="h-3.5 w-3.5"
             />
-            Non lus
+            {t("messaging.list.unreadOnly")}
           </label>
         ) : null}
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {filteredMessages.length === 0 ? (
           <p className="px-4 py-5 text-sm text-text-secondary">
-            Aucun message pour ce filtre.
+            {t("messaging.list.empty")}
           </p>
         ) : (
           <ul className="divide-y divide-border">
