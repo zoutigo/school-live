@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StudentNotesPage } from "./student-notes-page";
 import type { StudentNotesTermSnapshot } from "./student-notes.types";
+import { translate } from "../../i18n/useTranslation";
 
 vi.mock("../family/child-module-page", () => ({
   ChildModulePage: ({
@@ -196,40 +197,72 @@ describe("StudentNotesPage UI", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getAllByRole("button", { name: "Abs" }).length,
+      screen.getAllByRole("button", {
+        name: translate("fr", "notes.student.evaluation.shortAbsent"),
+      }).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByRole("button", { name: "Disp" }).length,
+      screen.getAllByRole("button", {
+        name: translate("fr", "notes.student.evaluation.shortExcused"),
+      }).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByRole("button", { name: "NE" }).length,
+      screen.getAllByRole("button", {
+        name: translate("fr", "notes.student.evaluation.shortNotGraded"),
+      }).length,
     ).toBeGreaterThan(0);
 
-    expect(screen.getAllByText("Absent").length).toBeGreaterThan(0);
-    expect(screen.getByText("Dispense")).toBeInTheDocument();
-    expect(screen.getByText("Non evalue")).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        translate("fr", "notes.student.evaluation.statusAbsent"),
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        translate("fr", "notes.student.evaluation.statusExcused"),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        translate("fr", "notes.student.evaluation.statusNotGraded"),
+      ),
+    ).toBeInTheDocument();
   });
 
   it("opens the evaluation detail modal when a note is clicked", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
     const absentBadge = (
-      await screen.findAllByRole("button", { name: "Abs" })
+      await screen.findAllByRole("button", {
+        name: translate("fr", "notes.student.evaluation.shortAbsent"),
+      })
     )[0];
     fireEvent.click(absentBadge);
 
     const dialog = screen.getByRole("dialog");
     expect(
-      within(dialog).getByText("Detail de l'evaluation"),
+      within(dialog).getByText(
+        translate("fr", "notes.student.evaluation.detailTitle"),
+      ),
     ).toBeInTheDocument();
     expect(within(dialog).getByText("Anglais")).toBeInTheDocument();
-    expect(within(dialog).getByText("Absent")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        translate("fr", "notes.student.evaluation.statusAbsent"),
+      ),
+    ).toBeInTheDocument();
     expect(within(dialog).getByText("15/10")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText("Fermer le detail de la note"));
+    fireEvent.click(
+      screen.getByLabelText(
+        translate("fr", "notes.student.evaluation.closeAria"),
+      ),
+    );
     await waitFor(() => {
       expect(
-        screen.queryByText("Detail de l'evaluation"),
+        screen.queryByText(
+          translate("fr", "notes.student.evaluation.detailTitle"),
+        ),
       ).not.toBeInTheDocument();
     });
   });
@@ -239,7 +272,9 @@ describe("StudentNotesPage UI", () => {
 
     fireEvent.click(
       (
-        await screen.findByText("Comparaison eleve, classe, min et max")
+        await screen.findByText(
+          translate("fr", "notes.student.tabs.averages.description"),
+        )
       ).closest("button")!,
     );
 
@@ -248,7 +283,14 @@ describe("StudentNotesPage UI", () => {
     ).toBeInTheDocument();
     const rowScope = within(screen.getByTestId("averages-subject-row-anglais"));
     expect(rowScope.getAllByText("16,53").length).toBeGreaterThan(0);
-    expect(rowScope.getByText(/Classe :/i)).toBeInTheDocument();
+    expect(
+      rowScope.getByText(
+        new RegExp(
+          translate("fr", "notes.student.averagesTable.classPrefix"),
+          "i",
+        ),
+      ),
+    ).toBeInTheDocument();
     expect(rowScope.getAllByText(/14,74/).length).toBeGreaterThan(0);
     expect(rowScope.getAllByText(/11,80/).length).toBeGreaterThan(0);
     expect(rowScope.getAllByText(/17,70/).length).toBeGreaterThan(0);
@@ -259,18 +301,47 @@ describe("StudentNotesPage UI", () => {
 
     fireEvent.click(
       (
-        await screen.findByText("Comparaison eleve, classe, min et max")
+        await screen.findByText(
+          translate("fr", "notes.student.tabs.averages.description"),
+        )
       ).closest("button")!,
     );
 
     const rowScope = within(screen.getByTestId("averages-subject-row-anglais"));
+    const coefficientPrefix = translate(
+      "fr",
+      "notes.student.averagesTable.coefficientPrefix",
+    ).replace("{coefficient}", "1");
     expect(rowScope.getAllByText("16,53").length).toBeGreaterThan(0);
-    expect(rowScope.getByText(/Coef 1/i)).toBeInTheDocument();
-    expect(rowScope.getByText(/Classe :/i)).toBeInTheDocument();
+    expect(
+      rowScope.getByText(new RegExp(coefficientPrefix, "i")),
+    ).toBeInTheDocument();
+    expect(
+      rowScope.getByText(
+        new RegExp(
+          translate("fr", "notes.student.averagesTable.classPrefix"),
+          "i",
+        ),
+      ),
+    ).toBeInTheDocument();
     expect(rowScope.getAllByText(/14,74/).length).toBeGreaterThan(0);
-    expect(rowScope.getByText(/Min :/i)).toBeInTheDocument();
+    expect(
+      rowScope.getByText(
+        new RegExp(
+          translate("fr", "notes.student.averagesTable.minPrefix"),
+          "i",
+        ),
+      ),
+    ).toBeInTheDocument();
     expect(rowScope.getAllByText(/11,80/).length).toBeGreaterThan(0);
-    expect(rowScope.getByText(/Max :/i)).toBeInTheDocument();
+    expect(
+      rowScope.getByText(
+        new RegExp(
+          translate("fr", "notes.student.averagesTable.maxPrefix"),
+          "i",
+        ),
+      ),
+    ).toBeInTheDocument();
     expect(rowScope.getAllByText(/17,70/).length).toBeGreaterThan(0);
   });
 
@@ -278,12 +349,14 @@ describe("StudentNotesPage UI", () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
     const tabsSummary = await screen.findByText(
-      "Lecture detaillee des notes publiees par matiere",
+      translate("fr", "notes.student.tabs.evaluations.description"),
     );
     const evaluationTable = screen.getByTestId(
       "evaluations-subject-row-anglais",
     );
-    const periodHeroHeading = screen.getByText("Bulletin de periode");
+    const periodHeroHeading = screen.getByText(
+      translate("fr", "notes.student.hero.badge"),
+    );
 
     expect(
       tabsSummary.compareDocumentPosition(evaluationTable) &
@@ -305,7 +378,7 @@ describe("StudentNotesPage UI", () => {
     expect(evaluationTab.className).toContain("min-w-0");
 
     const tabsSummary = screen.getByText(
-      "Lecture detaillee des notes publiees par matiere",
+      translate("fr", "notes.student.tabs.evaluations.description"),
     );
     expect(tabsSummary.className).toContain("hidden");
     expect(tabsSummary.className).toContain("md:block");
@@ -316,20 +389,39 @@ describe("StudentNotesPage UI", () => {
 
     const select = await screen.findByTestId("notes-term-select-mobile");
     expect(select).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
     expect(
-      screen.getByText("Evals et Moyennes Lisa MBELE"),
+      screen.getByRole("heading", {
+        name: translate("fr", "notes.student.page.title"),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        translate("fr", "notes.student.page.mobileSubtitle").replace(
+          "{childName}",
+          "Lisa MBELE",
+        ),
+      ),
     ).toBeInTheDocument();
 
     const evaluationTab = screen.getByTestId("notes-view-tab-evaluations");
     const averagesTab = screen.getByTestId("notes-view-tab-averages");
     const chartsTab = screen.getByTestId("notes-view-tab-charts");
 
-    expect(within(evaluationTab).getAllByText("Eval").length).toBeGreaterThan(
-      0,
-    );
-    expect(within(averagesTab).getAllByText("Moy").length).toBeGreaterThan(0);
-    expect(within(chartsTab).getAllByText("Graph").length).toBeGreaterThan(0);
+    expect(
+      within(evaluationTab).getAllByText(
+        translate("fr", "notes.student.tabs.evaluations.mobileLabel"),
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(averagesTab).getAllByText(
+        translate("fr", "notes.student.tabs.averages.mobileLabel"),
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(chartsTab).getAllByText(
+        translate("fr", "notes.student.tabs.charts.mobileLabel"),
+      ).length,
+    ).toBeGreaterThan(0);
 
     expect(evaluationTab.className).toContain("rounded-[8px]");
   });
@@ -368,7 +460,12 @@ describe("StudentNotesPage UI", () => {
 
     expect(screen.getAllByText("3eme Trimestre").length).toBeGreaterThan(0);
     expect(
-      screen.getByText(/Les evaluations de cette periode seront visibles/i),
+      screen.getByText(
+        new RegExp(
+          translate("fr", "notes.student.table.empty").slice(0, 40),
+          "i",
+        ),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -385,15 +482,26 @@ describe("StudentNotesPage UI", () => {
     const chartsTab = screen.getByTestId("notes-view-tab-charts");
     fireEvent.click(chartsTab);
 
-    expect(screen.getByText("Comparaison par matiere")).toBeInTheDocument();
-    expect(screen.getByText("Radar des moyennes")).toBeInTheDocument();
+    expect(
+      screen.getByText(translate("fr", "notes.student.charts.comparisonTitle")),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(translate("fr", "notes.student.charts.radarTitle")),
+    ).toBeInTheDocument();
   });
 
   it("keeps the smartphone subtitle full-width below the header row", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
-    const title = screen.getByRole("heading", { name: "Notes" });
-    const subtitle = screen.getByText("Evals et Moyennes Lisa MBELE");
+    const title = screen.getByRole("heading", {
+      name: translate("fr", "notes.student.page.title"),
+    });
+    const subtitle = screen.getByText(
+      translate("fr", "notes.student.page.mobileSubtitle").replace(
+        "{childName}",
+        "Lisa MBELE",
+      ),
+    );
 
     expect(subtitle.className).toContain("w-full");
     expect(
@@ -446,7 +554,12 @@ describe("StudentNotesPage UI", () => {
       screen.getByRole("button", { name: "3eme Trimestre" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Les evaluations de cette periode seront visibles/i),
+      screen.getByText(
+        new RegExp(
+          translate("fr", "notes.student.table.empty").slice(0, 40),
+          "i",
+        ),
+      ),
     ).toBeInTheDocument();
   });
 });

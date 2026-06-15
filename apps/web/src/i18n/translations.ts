@@ -765,6 +765,350 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.mail.openPortal": "Ouvrir le portail",
     "discipline.mail.consultPortal": "Consulter le portail",
 
+    "notes.common.loading": "Chargement...",
+    "notes.common.saving": "Enregistrement...",
+    "notes.common.networkError": "Erreur reseau.",
+    "notes.common.select": "Selectionner",
+
+    "notes.teacher.card.title": "Evaluations - {className}",
+    "notes.teacher.card.defaultClassName": "Classe",
+    "notes.teacher.card.subtitle": "Creation, publication et saisie des notes",
+    "notes.teacher.tabs.evaluations": "Evaluations",
+    "notes.teacher.tabs.scores": "Saisie des notes",
+    "notes.teacher.tabs.council": "Conseil de classe",
+    "notes.teacher.tabs.help": "Aide",
+    "notes.teacher.page.classNotAccessible":
+      "Classe non accessible avec vos affectations.",
+    "notes.teacher.errors.loadModule":
+      "Impossible de charger le module evaluations.",
+    "notes.teacher.errors.uploadAttachment":
+      "Impossible de televerser la piece jointe.",
+    "notes.teacher.errors.downloadAttachment":
+      "Impossible de telecharger la piece jointe.",
+    "notes.teacher.errors.createEvaluation": "Echec creation evaluation",
+    "notes.teacher.errors.updateEvaluation": "Echec mise a jour evaluation",
+    "notes.teacher.errors.saveScores": "Impossible d'enregistrer les notes.",
+    "notes.teacher.errors.saveCouncil":
+      "Impossible d'enregistrer les appreciations du trimestre.",
+    "notes.teacher.success.evaluationCreated": "Evaluation enregistree.",
+    "notes.teacher.success.evaluationUpdated": "Evaluation mise a jour.",
+    "notes.teacher.success.scoresUpdated":
+      "Notes de l'evaluation mises a jour.",
+    "notes.teacher.success.councilPublished": "Conseil de classe publie.",
+    "notes.teacher.success.councilDraftSaved":
+      "Brouillon du conseil de classe enregistre.",
+
+    "notes.teacher.help.moduleName": "Evaluations de classe",
+    "notes.teacher.help.summary":
+      "cet espace enseignant permet de creer une evaluation, joindre un support, publier ou garder en brouillon et saisir ensuite les notes des eleves.",
+    "notes.teacher.help.create.name": "Creer",
+    "notes.teacher.help.create.purpose":
+      "preparer une evaluation sur une matiere et une sous-branche.",
+    "notes.teacher.help.create.howTo":
+      "selectionner la matiere, le type, le bareme, le coefficient puis enregistrer en brouillon ou publier.",
+    "notes.teacher.help.create.moduleImpact":
+      "l'evaluation devient disponible pour la saisie des notes.",
+    "notes.teacher.help.create.crossModuleImpact":
+      "une evaluation publiee et notee alimente automatiquement le module Notes parent/eleve.",
+    "notes.teacher.help.enter.name": "Saisir",
+    "notes.teacher.help.enter.purpose":
+      "renseigner les notes, absences ou exemptions des eleves.",
+    "notes.teacher.help.enter.howTo":
+      "choisir une evaluation puis saisir les notes eleve par eleve.",
+    "notes.teacher.help.enter.moduleImpact":
+      "les moyennes sont recalculees en tenant compte du coefficient.",
+    "notes.teacher.help.enter.crossModuleImpact":
+      "les familles voient uniquement les evaluations publiees.",
+    "notes.teacher.help.council.name": "Conseil de classe",
+    "notes.teacher.help.council.purpose":
+      "saisir les appreciations trimestrielles qui enrichissent l'onglet Moyennes des familles.",
+    "notes.teacher.help.council.howTo":
+      "selectionner le trimestre, renseigner les appreciations par eleve et par matiere, puis garder en brouillon ou publier.",
+    "notes.teacher.help.council.moduleImpact":
+      "les appreciations sont stockees separement des evaluations et n'alterent pas le calcul des moyennes.",
+    "notes.teacher.help.council.crossModuleImpact":
+      "une publication rend visibles les appreciations dans le module Notes parent/eleve.",
+
+    "notes.teacher.list.title": "Evaluations",
+    "notes.teacher.list.subtitle":
+      "Parcourez les evaluations puis ouvrez leur detail.",
+    "notes.teacher.list.addAria": "Ajouter une evaluation",
+    "notes.teacher.list.addLabel": "Ajouter une evaluation",
+    "notes.teacher.list.empty": "Aucune evaluation pour cette classe.",
+    "notes.teacher.status.published": "Publiee",
+    "notes.teacher.status.draft": "Brouillon",
+
+    "notes.teacher.detail.editAria": "Editer l'evaluation selectionnee",
+    "notes.teacher.detail.editLabel": "Editer l'evaluation",
+    "notes.teacher.detail.enterScores": "Saisir les notes",
+    "notes.teacher.detail.period": "Periode",
+    "notes.teacher.detail.maxScore": "Bareme",
+    "notes.teacher.detail.coefficient": "Coefficient",
+    "notes.teacher.detail.scoresEntered": "Notes saisies",
+    "notes.teacher.detail.noInstructions":
+      "Aucune consigne detaillee pour cette evaluation.",
+    "notes.teacher.detail.attachments": "Pieces jointes",
+    "notes.teacher.detail.noAttachment": "Aucune piece jointe.",
+    "notes.teacher.detail.planning": "Planification",
+    "notes.teacher.detail.trackingTitle": "Suivi de saisie",
+    "notes.teacher.detail.scoresEnteredCount": "note(s) renseignee(s)",
+    "notes.teacher.detail.absencesCount": "absence(s)",
+    "notes.teacher.detail.excusedCount": "dispense(s)",
+    "notes.teacher.detail.contentTitle": "Contenu / consignes",
+    "notes.teacher.detail.noEvaluationTitle": "Aucune evaluation selectionnee",
+    "notes.teacher.detail.noEvaluationSubtitle":
+      "Choisissez une evaluation dans la liste ou creez-en une nouvelle pour commencer.",
+    "notes.teacher.detail.backToDetail": "Retour au detail",
+    "notes.teacher.detail.cancel": "Annuler",
+    "notes.teacher.detail.download": "Telecharger",
+    "notes.teacher.detail.remove": "Retirer",
+
+    "notes.teacher.terms.term1": "1er trimestre",
+    "notes.teacher.terms.term2": "2eme trimestre",
+    "notes.teacher.terms.term3": "3eme trimestre",
+
+    "notes.teacher.form.editTitle": "Editer l'evaluation",
+    "notes.teacher.form.createTitle": "Nouvelle evaluation",
+    "notes.teacher.form.editSubtitle":
+      "Mettez a jour l'evaluation selectionnee puis enregistrez les changements.",
+    "notes.teacher.form.createSubtitle":
+      "Preparez une evaluation puis publiez-la ou gardez-la en brouillon.",
+    "notes.teacher.form.subject": "Matiere",
+    "notes.teacher.form.subjectBranch": "Sous-branche",
+    "notes.teacher.form.noSubjectBranch": "Aucune sous-branche",
+    "notes.teacher.form.evaluationType": "Type d'evaluation",
+    "notes.teacher.form.term": "Periode",
+    "notes.teacher.form.title": "Titre",
+    "notes.teacher.form.titlePlaceholder": "Ex. Composition sur les fractions",
+    "notes.teacher.form.content": "Contenu / consignes",
+    "notes.teacher.form.contentHint":
+      "Ajoutez les consignes, notions a evaluer et attentes de correction.",
+    "notes.teacher.form.coefficient": "Coefficient",
+    "notes.teacher.form.maxScore": "Bareme",
+    "notes.teacher.form.scheduledAt": "Date prevue",
+    "notes.teacher.form.status": "Publication",
+    "notes.teacher.form.statusDraft": "Brouillon",
+    "notes.teacher.form.statusPublished": "Publie",
+    "notes.teacher.form.attachment": "Piece jointe",
+    "notes.teacher.form.attachmentHint":
+      "Formats acceptes: JPG, PNG, WEBP, PDF, TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX. Taille maximale: 10 Mo.",
+    "notes.teacher.form.attachmentUploading": "Televersement...",
+    "notes.teacher.form.attachmentAdd": "Ajouter un fichier",
+    "notes.teacher.form.submitCreate": "Creer l'evaluation",
+    "notes.teacher.form.submitEdit": "Enregistrer",
+    "notes.teacher.form.submitSaving": "Enregistrement...",
+
+    "notes.teacher.validation.subjectRequired": "Selectionnez une matiere.",
+    "notes.teacher.validation.evaluationTypeRequired":
+      "Selectionnez un type d'evaluation.",
+    "notes.teacher.validation.titleMinLength":
+      "Le titre doit contenir au moins 3 caracteres.",
+    "notes.teacher.validation.coefficientPositive":
+      "Le coefficient doit etre superieur a 0.",
+    "notes.teacher.validation.maxScorePositive":
+      "Le bareme doit etre superieur a 0.",
+    "notes.teacher.validation.scheduledAtRequired":
+      "La date prevue est obligatoire.",
+
+    "notes.teacher.scores.evaluationLabel": "Evaluation",
+    "notes.teacher.scores.selectPrompt":
+      "Selectionnez une evaluation pour saisir les notes.",
+    "notes.teacher.scores.summaryLine":
+      "{evaluationType} • Coef. {coefficient} • Bareme {maxScore}",
+    "notes.teacher.scores.columnStudent": "Eleve",
+    "notes.teacher.scores.columnStatus": "Statut",
+    "notes.teacher.scores.columnScore": "Note",
+    "notes.teacher.scores.columnComment": "Commentaire",
+    "notes.teacher.scores.statusEntered": "Note saisie",
+    "notes.teacher.scores.statusAbsent": "Absent",
+    "notes.teacher.scores.statusExcused": "Dispense",
+    "notes.teacher.scores.statusNotGraded": "Non note",
+    "notes.teacher.scores.commentPlaceholder": "Commentaire optionnel",
+    "notes.teacher.scores.save": "Enregistrer les notes",
+    "notes.teacher.scores.saving": "Enregistrement...",
+
+    "notes.teacher.council.term": "Trimestre",
+    "notes.teacher.council.heldAt": "Date du conseil",
+    "notes.teacher.council.publication": "Publication",
+    "notes.teacher.council.appreciationsSubtitle":
+      "Appreciations de fin de trimestre",
+    "notes.teacher.council.generalAppreciation": "Appreciation generale",
+    "notes.teacher.council.generalAppreciationPlaceholder":
+      "Synthese generale du trimestre...",
+    "notes.teacher.council.subjectAppreciationPlaceholder":
+      "Appreciation {subject}...",
+    "notes.teacher.council.publish": "Publier le conseil de classe",
+    "notes.teacher.council.saveDraft": "Enregistrer le brouillon",
+    "notes.teacher.council.saving": "Enregistrement...",
+
+    "notes.admin.card.title": "Notes & Devoirs",
+    "notes.admin.card.subtitle": "Saisie et historique des resultats",
+    "notes.admin.form.schoolYear": "Annee scolaire",
+    "notes.admin.form.schoolYearActiveSuffix": " (active)",
+    "notes.admin.form.assignment": "Affectation (classe + matiere)",
+    "notes.admin.form.student": "Eleve",
+    "notes.admin.form.term": "Periode",
+    "notes.admin.form.value": "Note",
+    "notes.admin.form.maxValue": "Note max",
+    "notes.admin.form.assessmentWeight": "Coef. evaluation",
+    "notes.admin.form.submit": "Ajouter la note",
+    "notes.admin.form.submitting": "Enregistrement...",
+    "notes.admin.table.student": "Eleve",
+    "notes.admin.table.class": "Classe",
+    "notes.admin.table.subject": "Matiere",
+    "notes.admin.table.score": "Note",
+    "notes.admin.table.weight": "Coef eval.",
+    "notes.admin.table.term": "Periode",
+    "notes.admin.table.loading": "Chargement...",
+    "notes.admin.table.empty": "Aucune note disponible.",
+    "notes.admin.errors.loadContext":
+      "Impossible de charger le contexte de saisie des notes.",
+    "notes.admin.errors.missingAssignmentOrStudent":
+      "Selectionnez une affectation et un eleve.",
+    "notes.admin.errors.csrfInvalid":
+      "Session CSRF invalide. Reconnectez-vous.",
+    "notes.admin.errors.createGradeFailed": "Creation de note impossible.",
+    "notes.admin.errors.networkError": "Erreur reseau.",
+    "notes.admin.success.gradeCreated": "Note enregistree.",
+    "notes.admin.validation.schoolYearRequired":
+      "L'annee scolaire est obligatoire.",
+    "notes.admin.validation.assignmentRequired":
+      "L'affectation est obligatoire.",
+    "notes.admin.validation.studentRequired": "L'eleve est obligatoire.",
+    "notes.admin.validation.valuePositive": "La note doit etre positive.",
+    "notes.admin.validation.maxValuePositive":
+      "La note max doit etre superieure a 0.",
+    "notes.admin.validation.weightPositive":
+      "Le coefficient doit etre positif.",
+
+    "notes.student.page.title": "Notes",
+    "notes.student.page.subtitle": "Evaluations et moyennes de l'eleve",
+    "notes.student.page.summary":
+      "Suivez les notes, les moyennes et les tendances par matiere de votre enfant.",
+    "notes.student.page.bullet1":
+      "Lecture par trimestre des evaluations publiees.",
+    "notes.student.page.bullet2":
+      "Comparaison avec les statistiques de classe sur chaque matiere.",
+    "notes.student.page.bullet3":
+      "Visualisation simple des points forts et des points de vigilance.",
+    "notes.student.page.subtitleWithChild":
+      "Evaluations et moyennes de l'eleve - {childName}",
+    "notes.student.page.chooseTerm": "Choisir le trimestre",
+    "notes.student.page.mobileSubtitle": "Evals et Moyennes {childName}",
+    "notes.student.page.mobileSubtitleNoChild": "Evals et Moyennes",
+    "notes.student.page.demoWarning":
+      "Affichage temporaire des donnees de demonstration en attendant la publication des evaluations.",
+
+    "notes.student.tabs.evaluations.label": "Evaluations",
+    "notes.student.tabs.evaluations.mobileLabel": "Eval",
+    "notes.student.tabs.evaluations.description":
+      "Lecture detaillee des notes publiees par matiere",
+    "notes.student.tabs.averages.label": "Moyennes",
+    "notes.student.tabs.averages.mobileLabel": "Moy",
+    "notes.student.tabs.averages.description":
+      "Comparaison eleve, classe, min et max",
+    "notes.student.tabs.charts.label": "Graphiques",
+    "notes.student.tabs.charts.mobileLabel": "Graph",
+    "notes.student.tabs.charts.description":
+      "Vue visuelle des performances et amplitudes",
+
+    "notes.student.hero.badge": "Bulletin de periode",
+    "notes.student.hero.publishedData": "Donnees publiees",
+    "notes.student.hero.studentAverage": "Moyenne eleve",
+    "notes.student.hero.classAverage": "Moyenne classe",
+    "notes.student.hero.classAverageHint": "Amplitude {min} - {max}",
+    "notes.student.hero.strongSubject": "Matiere forte",
+    "notes.student.hero.watchSubject": "Point de vigilance",
+    "notes.student.hero.noData": "Aucune donnee",
+    "notes.student.hero.levelWithClass": "Au niveau de la classe",
+    "notes.student.hero.deltaVsClass": "{value} pts vs classe",
+
+    "notes.student.evaluation.detailTitle": "Detail de l'evaluation",
+    "notes.student.evaluation.closeAria": "Fermer le detail de la note",
+    "notes.student.evaluation.score": "Note",
+    "notes.student.evaluation.status": "Statut",
+    "notes.student.evaluation.date": "Date",
+    "notes.student.evaluation.coefficient": "Coefficient",
+    "notes.student.evaluation.context": "Contexte",
+    "notes.student.evaluation.contextValue":
+      "Classe {classAverage} | Min {classMin} | Max {classMax}",
+    "notes.student.evaluation.subjectAverage": "Moyenne de la matiere:",
+    "notes.student.evaluation.positioning": "Positionnement:",
+    "notes.student.evaluation.noComparison": "Aucune comparaison",
+    "notes.student.evaluation.statusAbsent": "Absent",
+    "notes.student.evaluation.statusExcused": "Dispense",
+    "notes.student.evaluation.statusNotGraded": "Non evalue",
+    "notes.student.evaluation.statusEntered": "Note saisie",
+    "notes.student.evaluation.shortAbsent": "Abs",
+    "notes.student.evaluation.shortExcused": "Disp",
+    "notes.student.evaluation.shortNotGraded": "NE",
+    "notes.student.evaluation.legendAbsent": "Absent",
+    "notes.student.evaluation.legendExcused": "Dispense",
+    "notes.student.evaluation.legendNotGraded": "Non evalue",
+
+    "notes.student.average.detailTitle": "Detail de la moyenne",
+    "notes.student.average.closeAria": "Fermer le detail de la moyenne",
+    "notes.student.average.defaultSubject": "Matiere",
+    "notes.student.average.student": "Eleve",
+    "notes.student.average.coefficient": "Coefficient",
+    "notes.student.average.class": "Classe",
+    "notes.student.average.amplitude": "Amplitude",
+    "notes.student.average.amplitudeValue": "Min {min} / Max {max}",
+    "notes.student.average.positioning": "Positionnement:",
+    "notes.student.average.evaluationsCount": "Evaluations prises en compte:",
+    "notes.student.average.appreciation": "Appreciation:",
+    "notes.student.average.noComparison": "Aucune comparaison",
+
+    "notes.student.table.subjects": "Disciplines",
+    "notes.student.table.coefficient": "Coef.",
+    "notes.student.table.averages": "Moyennes",
+    "notes.student.table.evaluations": "Evaluations",
+    "notes.student.table.generalAverage": "Moyenne generale",
+    "notes.student.table.publishedSummary":
+      "Synthese des evaluations publiees sur la periode.",
+    "notes.student.table.averageDetailAria":
+      "Voir le detail de la moyenne de {subject}",
+    "notes.student.table.empty":
+      "Les evaluations de cette periode seront visibles des qu'elles seront disponibles.",
+
+    "notes.student.averagesTable.discipline": "Discipline",
+    "notes.student.averagesTable.coefficient": "Coef.",
+    "notes.student.averagesTable.student": "Eleve",
+    "notes.student.averagesTable.class": "Classe",
+    "notes.student.averagesTable.min": "Min",
+    "notes.student.averagesTable.max": "Max",
+    "notes.student.averagesTable.appreciation": "Appreciation generale",
+    "notes.student.averagesTable.coefficientPrefix": "Coef {coefficient}",
+    "notes.student.averagesTable.classPrefix": "Classe :",
+    "notes.student.averagesTable.minPrefix": "Min :",
+    "notes.student.averagesTable.maxPrefix": "Max :",
+    "notes.student.averagesTable.generalAverage": "Moyenne generale",
+    "notes.student.averagesTable.globalPositioning":
+      "Positionnement global de l'eleve sur la periode.",
+    "notes.student.averagesTable.empty":
+      "Les moyennes de cette periode seront affichees apres publication.",
+
+    "notes.student.charts.empty":
+      "Les graphiques seront disponibles quand les moyennes de la periode seront publiees.",
+    "notes.student.charts.comparisonTitle": "Comparaison par matiere",
+    "notes.student.charts.comparisonSubtitle":
+      "Chaque bande represente l'amplitude min-max de la classe, avec la position de l'eleve et de la moyenne de classe.",
+    "notes.student.charts.studentVsClass":
+      "Eleve {studentAverage} / Classe {classAverage}",
+    "notes.student.charts.classRange": "{min} - {max}",
+    "notes.student.charts.legendStudentAverage": "Moyenne de l'eleve",
+    "notes.student.charts.legendClassAverage": "Moyenne de la classe",
+    "notes.student.charts.legendClassRange": "Min et max de la classe",
+    "notes.student.charts.radarTitle": "Radar des moyennes",
+    "notes.student.charts.radarSubtitle":
+      "Vue globale des matieres les plus fortes et des ecarts avec la classe.",
+    "notes.student.charts.radarReadingTitle": "Lecture du radar",
+    "notes.student.charts.radarReadingText":
+      "Plus le trait s'approche du bord, plus la moyenne est elevee sur la matiere.",
+    "notes.student.charts.comparisonLegendTitle": "Comparaison",
+    "notes.student.charts.comparisonLegendText":
+      "Le polygone bleu represente l'eleve. Le gris correspond au niveau moyen de la classe.",
+
     "homework.page.title": "Devoirs",
     "homework.page.defaultClassName": "Classe",
     "homework.page.subtitle": "Suivi des devoirs et etat de rendu",
@@ -1374,7 +1718,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.classPage.title": "Fil de classe",
     "feed.classPage.loadingSubtitle": "Chargement de la classe",
     "feed.classPage.exchangesSubtitle": "Echanges classe",
-    "feed.classPage.contextError": "Impossible de charger le contexte de classe.",
+    "feed.classPage.contextError":
+      "Impossible de charger le contexte de classe.",
     "feed.classPage.networkError": "Erreur reseau.",
     "feed.classPage.defaultClassName": "la classe",
 
@@ -1389,8 +1734,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.vieDeClasse.defaultStudentLabel": "votre enfant",
     "feed.vieDeClasse.headingWithClass":
       "Fil d'actualite de la classe de {className} de {studentLabel}",
-    "feed.vieDeClasse.headingWithoutClass":
-      "Fil d'actualite de {studentLabel}",
+    "feed.vieDeClasse.headingWithoutClass": "Fil d'actualite de {studentLabel}",
   },
   en: {
     "common.save": "Save",
@@ -2112,6 +2456,341 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.mail.author": "Recorded by",
     "discipline.mail.openPortal": "Open the portal",
     "discipline.mail.consultPortal": "View the portal",
+
+    "notes.common.loading": "Loading...",
+    "notes.common.saving": "Saving...",
+    "notes.common.networkError": "Network error.",
+    "notes.common.select": "Select",
+
+    "notes.teacher.card.title": "Evaluations - {className}",
+    "notes.teacher.card.defaultClassName": "Class",
+    "notes.teacher.card.subtitle": "Creation, publishing and grade entry",
+    "notes.teacher.tabs.evaluations": "Evaluations",
+    "notes.teacher.tabs.scores": "Grade entry",
+    "notes.teacher.tabs.council": "Class council",
+    "notes.teacher.tabs.help": "Help",
+    "notes.teacher.page.classNotAccessible":
+      "Class not accessible with your assignments.",
+    "notes.teacher.errors.loadModule": "Unable to load the evaluations module.",
+    "notes.teacher.errors.uploadAttachment": "Unable to upload the attachment.",
+    "notes.teacher.errors.downloadAttachment":
+      "Unable to download the attachment.",
+    "notes.teacher.errors.createEvaluation": "Failed to create evaluation",
+    "notes.teacher.errors.updateEvaluation": "Failed to update evaluation",
+    "notes.teacher.errors.saveScores": "Unable to save the grades.",
+    "notes.teacher.errors.saveCouncil":
+      "Unable to save the term council remarks.",
+    "notes.teacher.success.evaluationCreated": "Evaluation saved.",
+    "notes.teacher.success.evaluationUpdated": "Evaluation updated.",
+    "notes.teacher.success.scoresUpdated": "Evaluation grades updated.",
+    "notes.teacher.success.councilPublished": "Class council published.",
+    "notes.teacher.success.councilDraftSaved": "Class council draft saved.",
+
+    "notes.teacher.help.moduleName": "Class evaluations",
+    "notes.teacher.help.summary":
+      "this teacher space lets you create an evaluation, attach a resource, publish or keep it as a draft, and then enter student grades.",
+    "notes.teacher.help.create.name": "Create",
+    "notes.teacher.help.create.purpose":
+      "prepare an evaluation for a subject and a sub-branch.",
+    "notes.teacher.help.create.howTo":
+      "select the subject, type, max score and coefficient, then save as a draft or publish it.",
+    "notes.teacher.help.create.moduleImpact":
+      "the evaluation becomes available for grade entry.",
+    "notes.teacher.help.create.crossModuleImpact":
+      "a published, graded evaluation automatically feeds the parent/student Grades module.",
+    "notes.teacher.help.enter.name": "Enter",
+    "notes.teacher.help.enter.purpose":
+      "record student grades, absences or exemptions.",
+    "notes.teacher.help.enter.howTo":
+      "pick an evaluation, then enter grades student by student.",
+    "notes.teacher.help.enter.moduleImpact":
+      "averages are recalculated taking the coefficient into account.",
+    "notes.teacher.help.enter.crossModuleImpact":
+      "families only see published evaluations.",
+    "notes.teacher.help.council.name": "Class council",
+    "notes.teacher.help.council.purpose":
+      "enter the end-of-term remarks that enrich the families' Averages tab.",
+    "notes.teacher.help.council.howTo":
+      "select the term, fill in remarks per student and subject, then keep as a draft or publish.",
+    "notes.teacher.help.council.moduleImpact":
+      "remarks are stored separately from evaluations and do not affect average calculations.",
+    "notes.teacher.help.council.crossModuleImpact":
+      "publishing makes the remarks visible in the parent/student Grades module.",
+
+    "notes.teacher.list.title": "Evaluations",
+    "notes.teacher.list.subtitle":
+      "Browse the evaluations then open their detail.",
+    "notes.teacher.list.addAria": "Add an evaluation",
+    "notes.teacher.list.addLabel": "Add an evaluation",
+    "notes.teacher.list.empty": "No evaluation for this class.",
+    "notes.teacher.status.published": "Published",
+    "notes.teacher.status.draft": "Draft",
+
+    "notes.teacher.detail.editAria": "Edit the selected evaluation",
+    "notes.teacher.detail.editLabel": "Edit the evaluation",
+    "notes.teacher.detail.enterScores": "Enter grades",
+    "notes.teacher.detail.period": "Term",
+    "notes.teacher.detail.maxScore": "Max score",
+    "notes.teacher.detail.coefficient": "Coefficient",
+    "notes.teacher.detail.scoresEntered": "Grades entered",
+    "notes.teacher.detail.noInstructions":
+      "No detailed instructions for this evaluation.",
+    "notes.teacher.detail.attachments": "Attachments",
+    "notes.teacher.detail.noAttachment": "No attachment.",
+    "notes.teacher.detail.planning": "Schedule",
+    "notes.teacher.detail.trackingTitle": "Entry tracking",
+    "notes.teacher.detail.scoresEnteredCount": "grade(s) entered",
+    "notes.teacher.detail.absencesCount": "absence(s)",
+    "notes.teacher.detail.excusedCount": "exemption(s)",
+    "notes.teacher.detail.contentTitle": "Content / instructions",
+    "notes.teacher.detail.noEvaluationTitle": "No evaluation selected",
+    "notes.teacher.detail.noEvaluationSubtitle":
+      "Choose an evaluation from the list or create a new one to get started.",
+    "notes.teacher.detail.backToDetail": "Back to detail",
+    "notes.teacher.detail.cancel": "Cancel",
+    "notes.teacher.detail.download": "Download",
+    "notes.teacher.detail.remove": "Remove",
+
+    "notes.teacher.terms.term1": "1st term",
+    "notes.teacher.terms.term2": "2nd term",
+    "notes.teacher.terms.term3": "3rd term",
+
+    "notes.teacher.form.editTitle": "Edit evaluation",
+    "notes.teacher.form.createTitle": "New evaluation",
+    "notes.teacher.form.editSubtitle":
+      "Update the selected evaluation then save your changes.",
+    "notes.teacher.form.createSubtitle":
+      "Prepare an evaluation then publish it or keep it as a draft.",
+    "notes.teacher.form.subject": "Subject",
+    "notes.teacher.form.subjectBranch": "Sub-branch",
+    "notes.teacher.form.noSubjectBranch": "No sub-branch",
+    "notes.teacher.form.evaluationType": "Evaluation type",
+    "notes.teacher.form.term": "Term",
+    "notes.teacher.form.title": "Title",
+    "notes.teacher.form.titlePlaceholder": "E.g. Test on fractions",
+    "notes.teacher.form.content": "Content / instructions",
+    "notes.teacher.form.contentHint":
+      "Add the instructions, topics to assess and grading expectations.",
+    "notes.teacher.form.coefficient": "Coefficient",
+    "notes.teacher.form.maxScore": "Max score",
+    "notes.teacher.form.scheduledAt": "Scheduled date",
+    "notes.teacher.form.status": "Publication",
+    "notes.teacher.form.statusDraft": "Draft",
+    "notes.teacher.form.statusPublished": "Published",
+    "notes.teacher.form.attachment": "Attachment",
+    "notes.teacher.form.attachmentHint":
+      "Accepted formats: JPG, PNG, WEBP, PDF, TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX. Maximum size: 10 MB.",
+    "notes.teacher.form.attachmentUploading": "Uploading...",
+    "notes.teacher.form.attachmentAdd": "Add a file",
+    "notes.teacher.form.submitCreate": "Create evaluation",
+    "notes.teacher.form.submitEdit": "Save",
+    "notes.teacher.form.submitSaving": "Saving...",
+
+    "notes.teacher.validation.subjectRequired": "Select a subject.",
+    "notes.teacher.validation.evaluationTypeRequired":
+      "Select an evaluation type.",
+    "notes.teacher.validation.titleMinLength":
+      "The title must contain at least 3 characters.",
+    "notes.teacher.validation.coefficientPositive":
+      "The coefficient must be greater than 0.",
+    "notes.teacher.validation.maxScorePositive":
+      "The max score must be greater than 0.",
+    "notes.teacher.validation.scheduledAtRequired":
+      "The scheduled date is required.",
+
+    "notes.teacher.scores.evaluationLabel": "Evaluation",
+    "notes.teacher.scores.selectPrompt":
+      "Select an evaluation to enter grades.",
+    "notes.teacher.scores.summaryLine":
+      "{evaluationType} • Coef. {coefficient} • Max score {maxScore}",
+    "notes.teacher.scores.columnStudent": "Student",
+    "notes.teacher.scores.columnStatus": "Status",
+    "notes.teacher.scores.columnScore": "Grade",
+    "notes.teacher.scores.columnComment": "Comment",
+    "notes.teacher.scores.statusEntered": "Grade entered",
+    "notes.teacher.scores.statusAbsent": "Absent",
+    "notes.teacher.scores.statusExcused": "Exempted",
+    "notes.teacher.scores.statusNotGraded": "Not graded",
+    "notes.teacher.scores.commentPlaceholder": "Optional comment",
+    "notes.teacher.scores.save": "Save grades",
+    "notes.teacher.scores.saving": "Saving...",
+
+    "notes.teacher.council.term": "Term",
+    "notes.teacher.council.heldAt": "Council date",
+    "notes.teacher.council.publication": "Publication",
+    "notes.teacher.council.appreciationsSubtitle": "End-of-term remarks",
+    "notes.teacher.council.generalAppreciation": "General remark",
+    "notes.teacher.council.generalAppreciationPlaceholder":
+      "Overall summary for the term...",
+    "notes.teacher.council.subjectAppreciationPlaceholder":
+      "{subject} remark...",
+    "notes.teacher.council.publish": "Publish class council",
+    "notes.teacher.council.saveDraft": "Save draft",
+    "notes.teacher.council.saving": "Saving...",
+
+    "notes.admin.card.title": "Grades & Homework",
+    "notes.admin.card.subtitle": "Entry and history of results",
+    "notes.admin.form.schoolYear": "School year",
+    "notes.admin.form.schoolYearActiveSuffix": " (active)",
+    "notes.admin.form.assignment": "Assignment (class + subject)",
+    "notes.admin.form.student": "Student",
+    "notes.admin.form.term": "Term",
+    "notes.admin.form.value": "Grade",
+    "notes.admin.form.maxValue": "Max grade",
+    "notes.admin.form.assessmentWeight": "Assessment coef.",
+    "notes.admin.form.submit": "Add grade",
+    "notes.admin.form.submitting": "Saving...",
+    "notes.admin.table.student": "Student",
+    "notes.admin.table.class": "Class",
+    "notes.admin.table.subject": "Subject",
+    "notes.admin.table.score": "Grade",
+    "notes.admin.table.weight": "Assessment coef.",
+    "notes.admin.table.term": "Term",
+    "notes.admin.table.loading": "Loading...",
+    "notes.admin.table.empty": "No grade available.",
+    "notes.admin.errors.loadContext": "Unable to load the grade entry context.",
+    "notes.admin.errors.missingAssignmentOrStudent":
+      "Select an assignment and a student.",
+    "notes.admin.errors.csrfInvalid":
+      "Invalid CSRF session. Please log in again.",
+    "notes.admin.errors.createGradeFailed": "Unable to create the grade.",
+    "notes.admin.errors.networkError": "Network error.",
+    "notes.admin.success.gradeCreated": "Grade saved.",
+    "notes.admin.validation.schoolYearRequired": "The school year is required.",
+    "notes.admin.validation.assignmentRequired": "The assignment is required.",
+    "notes.admin.validation.studentRequired": "The student is required.",
+    "notes.admin.validation.valuePositive": "The grade must be positive.",
+    "notes.admin.validation.maxValuePositive":
+      "The max grade must be greater than 0.",
+    "notes.admin.validation.weightPositive":
+      "The coefficient must be positive.",
+
+    "notes.student.page.title": "Grades",
+    "notes.student.page.subtitle": "Student evaluations and averages",
+    "notes.student.page.summary":
+      "Track your child's grades, averages and trends by subject.",
+    "notes.student.page.bullet1": "Per-term view of published evaluations.",
+    "notes.student.page.bullet2":
+      "Comparison with class statistics for each subject.",
+    "notes.student.page.bullet3":
+      "Simple view of strengths and areas to watch.",
+    "notes.student.page.subtitleWithChild":
+      "Student evaluations and averages - {childName}",
+    "notes.student.page.chooseTerm": "Choose the term",
+    "notes.student.page.mobileSubtitle": "Grades and averages {childName}",
+    "notes.student.page.mobileSubtitleNoChild": "Grades and averages",
+    "notes.student.page.demoWarning":
+      "Showing demo data temporarily while evaluations are being published.",
+
+    "notes.student.tabs.evaluations.label": "Evaluations",
+    "notes.student.tabs.evaluations.mobileLabel": "Eval",
+    "notes.student.tabs.evaluations.description":
+      "Detailed view of published grades by subject",
+    "notes.student.tabs.averages.label": "Averages",
+    "notes.student.tabs.averages.mobileLabel": "Avg",
+    "notes.student.tabs.averages.description":
+      "Comparison of student, class, min and max",
+    "notes.student.tabs.charts.label": "Charts",
+    "notes.student.tabs.charts.mobileLabel": "Charts",
+    "notes.student.tabs.charts.description":
+      "Visual view of performance and ranges",
+
+    "notes.student.hero.badge": "Term report",
+    "notes.student.hero.publishedData": "Published data",
+    "notes.student.hero.studentAverage": "Student average",
+    "notes.student.hero.classAverage": "Class average",
+    "notes.student.hero.classAverageHint": "Range {min} - {max}",
+    "notes.student.hero.strongSubject": "Strong subject",
+    "notes.student.hero.watchSubject": "Subject to watch",
+    "notes.student.hero.noData": "No data",
+    "notes.student.hero.levelWithClass": "On par with the class",
+    "notes.student.hero.deltaVsClass": "{value} pts vs class",
+
+    "notes.student.evaluation.detailTitle": "Evaluation detail",
+    "notes.student.evaluation.closeAria": "Close the grade detail",
+    "notes.student.evaluation.score": "Grade",
+    "notes.student.evaluation.status": "Status",
+    "notes.student.evaluation.date": "Date",
+    "notes.student.evaluation.coefficient": "Coefficient",
+    "notes.student.evaluation.context": "Context",
+    "notes.student.evaluation.contextValue":
+      "Class {classAverage} | Min {classMin} | Max {classMax}",
+    "notes.student.evaluation.subjectAverage": "Subject average:",
+    "notes.student.evaluation.positioning": "Position:",
+    "notes.student.evaluation.noComparison": "No comparison",
+    "notes.student.evaluation.statusAbsent": "Absent",
+    "notes.student.evaluation.statusExcused": "Exempted",
+    "notes.student.evaluation.statusNotGraded": "Not graded",
+    "notes.student.evaluation.statusEntered": "Grade entered",
+    "notes.student.evaluation.shortAbsent": "Abs",
+    "notes.student.evaluation.shortExcused": "Exc",
+    "notes.student.evaluation.shortNotGraded": "NG",
+    "notes.student.evaluation.legendAbsent": "Absent",
+    "notes.student.evaluation.legendExcused": "Exempted",
+    "notes.student.evaluation.legendNotGraded": "Not graded",
+
+    "notes.student.average.detailTitle": "Average detail",
+    "notes.student.average.closeAria": "Close the average detail",
+    "notes.student.average.defaultSubject": "Subject",
+    "notes.student.average.student": "Student",
+    "notes.student.average.coefficient": "Coefficient",
+    "notes.student.average.class": "Class",
+    "notes.student.average.amplitude": "Range",
+    "notes.student.average.amplitudeValue": "Min {min} / Max {max}",
+    "notes.student.average.positioning": "Position:",
+    "notes.student.average.evaluationsCount": "Evaluations included:",
+    "notes.student.average.appreciation": "Remark:",
+    "notes.student.average.noComparison": "No comparison",
+
+    "notes.student.table.subjects": "Subjects",
+    "notes.student.table.coefficient": "Coef.",
+    "notes.student.table.averages": "Averages",
+    "notes.student.table.evaluations": "Evaluations",
+    "notes.student.table.generalAverage": "General average",
+    "notes.student.table.publishedSummary":
+      "Summary of evaluations published for the period.",
+    "notes.student.table.averageDetailAria":
+      "View the average detail for {subject}",
+    "notes.student.table.empty":
+      "Evaluations for this period will be visible as soon as they are available.",
+
+    "notes.student.averagesTable.discipline": "Subject",
+    "notes.student.averagesTable.coefficient": "Coef.",
+    "notes.student.averagesTable.student": "Student",
+    "notes.student.averagesTable.class": "Class",
+    "notes.student.averagesTable.min": "Min",
+    "notes.student.averagesTable.max": "Max",
+    "notes.student.averagesTable.appreciation": "General remark",
+    "notes.student.averagesTable.coefficientPrefix": "Coef {coefficient}",
+    "notes.student.averagesTable.classPrefix": "Class:",
+    "notes.student.averagesTable.minPrefix": "Min:",
+    "notes.student.averagesTable.maxPrefix": "Max:",
+    "notes.student.averagesTable.generalAverage": "General average",
+    "notes.student.averagesTable.globalPositioning":
+      "Student's overall position for the period.",
+    "notes.student.averagesTable.empty":
+      "Averages for this period will be shown once published.",
+
+    "notes.student.charts.empty":
+      "Charts will be available once the period's averages are published.",
+    "notes.student.charts.comparisonTitle": "Comparison by subject",
+    "notes.student.charts.comparisonSubtitle":
+      "Each band represents the class min-max range, with the student's position and the class average.",
+    "notes.student.charts.studentVsClass":
+      "Student {studentAverage} / Class {classAverage}",
+    "notes.student.charts.classRange": "{min} - {max}",
+    "notes.student.charts.legendStudentAverage": "Student average",
+    "notes.student.charts.legendClassAverage": "Class average",
+    "notes.student.charts.legendClassRange": "Class min and max",
+    "notes.student.charts.radarTitle": "Average radar",
+    "notes.student.charts.radarSubtitle":
+      "Overall view of the strongest subjects and gaps with the class.",
+    "notes.student.charts.radarReadingTitle": "Reading the radar",
+    "notes.student.charts.radarReadingText":
+      "The closer the line is to the edge, the higher the average for that subject.",
+    "notes.student.charts.comparisonLegendTitle": "Comparison",
+    "notes.student.charts.comparisonLegendText":
+      "The blue polygon represents the student. The grey one shows the class average level.",
 
     "homework.page.title": "Homework",
     "homework.page.defaultClassName": "Class",

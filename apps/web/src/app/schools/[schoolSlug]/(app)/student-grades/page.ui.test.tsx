@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StudentGradesPage from "./page";
+import { translate } from "../../../../../i18n/useTranslation";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -78,29 +79,28 @@ describe("Student grades page form", () => {
     render(<StudentGradesPage />);
 
     const submitButton = await screen.findByRole("button", {
-      name: "Ajouter la note",
+      name: translate("fr", "notes.admin.form.submit"),
     });
     expect(submitButton).toBeDisabled();
     expect(
-      screen.getByText(
-        "Vous devez remplir correctement les champs obligatoires.",
-      ),
+      screen.getByText(translate("fr", "common.requiredFieldsHint")),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Note")).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
+    expect(
+      screen.getByLabelText(translate("fr", "notes.admin.form.value")),
+    ).toHaveAttribute("aria-invalid", "true");
 
-    fireEvent.change(screen.getByLabelText("Note"), {
-      target: { value: "15.5", valueAsNumber: 15.5 },
-    });
+    fireEvent.change(
+      screen.getByLabelText(translate("fr", "notes.admin.form.value")),
+      {
+        target: { value: "15.5", valueAsNumber: 15.5 },
+      },
+    );
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
-      expect(screen.getByLabelText("Note")).toHaveAttribute(
-        "aria-invalid",
-        "false",
-      );
+      expect(
+        screen.getByLabelText(translate("fr", "notes.admin.form.value")),
+      ).toHaveAttribute("aria-invalid", "false");
     });
 
     fireEvent.click(submitButton);

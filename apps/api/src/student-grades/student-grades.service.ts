@@ -6,6 +6,11 @@ import {
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser, SchoolRole } from "../auth/auth.types.js";
+import {
+  studentGradesLocaleFromUser,
+  translateStudentGradesError,
+  type StudentGradesLocale,
+} from "./student-grades.translations.js";
 import type { CreateStudentGradeDto } from "./dto/create-student-grade.dto.js";
 import type { ListStudentGradesDto } from "./dto/list-student-grades.dto.js";
 import type { UpdateStudentGradeDto } from "./dto/update-student-grade.dto.js";
@@ -19,24 +24,36 @@ export class StudentGradesService {
     schoolId: string,
     payload: CreateStudentGradeDto,
   ) {
-    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = studentGradesLocaleFromUser(user);
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId, locale);
 
     const classEntity = await this.ensureClassInSchool(
       payload.classId,
       effectiveSchoolId,
+      locale,
     );
-    await this.ensureStudentInSchool(payload.studentId, effectiveSchoolId);
+    await this.ensureStudentInSchool(
+      payload.studentId,
+      effectiveSchoolId,
+      locale,
+    );
     await this.ensureStudentEnrollment(
       payload.studentId,
       payload.classId,
       classEntity.schoolYearId,
       effectiveSchoolId,
+      locale,
     );
-    await this.ensureSubjectInSchool(payload.subjectId, effectiveSchoolId);
+    await this.ensureSubjectInSchool(
+      payload.subjectId,
+      effectiveSchoolId,
+      locale,
+    );
     await this.ensureSubjectAllowedForClass(
       payload.classId,
       payload.subjectId,
       effectiveSchoolId,
+      locale,
     );
 
     if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
@@ -46,6 +63,7 @@ export class StudentGradesService {
         payload.classId,
         payload.subjectId,
         classEntity.schoolYearId,
+        locale,
       );
     }
 
@@ -70,7 +88,8 @@ export class StudentGradesService {
     schoolId: string,
     filters: ListStudentGradesDto,
   ) {
-    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = studentGradesLocaleFromUser(user);
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId, locale);
     const where: Prisma.StudentGradeWhereInput = {
       schoolId: effectiveSchoolId,
     };
@@ -189,7 +208,7 @@ export class StudentGradesService {
     }
 
     throw new ForbiddenException(
-      "Student grades are reserved for school staff, teachers and the student owner",
+      translateStudentGradesError(locale, "studentGrades.errors.notAccessible"),
     );
   }
 
@@ -199,14 +218,20 @@ export class StudentGradesService {
     studentGradeId: string,
     payload: UpdateStudentGradeDto,
   ) {
-    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = studentGradesLocaleFromUser(user);
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId, locale);
 
     const studentGrade = await this.prisma.studentGrade.findFirst({
       where: { id: studentGradeId, schoolId: effectiveSchoolId },
     });
 
     if (!studentGrade) {
-      throw new NotFoundException("Student grade not found");
+      throw new NotFoundException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.gradeNotFound",
+        ),
+      );
     }
 
     if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
@@ -216,6 +241,7 @@ export class StudentGradesService {
         studentGrade.classId,
         studentGrade.subjectId,
         studentGrade.schoolYearId,
+        locale,
       );
     }
 
@@ -235,7 +261,8 @@ export class StudentGradesService {
     schoolId: string,
     schoolYearId?: string,
   ) {
-    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = studentGradesLocaleFromUser(user);
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId, locale);
     const school = await this.prisma.school.findUnique({
       where: { id: effectiveSchoolId },
       select: {
@@ -404,7 +431,8 @@ export class StudentGradesService {
     schoolId: string,
     studentGradeId: string,
   ) {
-    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = studentGradesLocaleFromUser(user);
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId, locale);
 
     const studentGrade = await this.prisma.studentGrade.findFirst({
       where: {
@@ -414,7 +442,12 @@ export class StudentGradesService {
     });
 
     if (!studentGrade) {
-      throw new NotFoundException("Student grade not found");
+      throw new NotFoundException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.gradeNotFound",
+        ),
+      );
     }
 
     return this.prisma.studentGrade.delete({ where: { id: studentGrade.id } });
@@ -423,6 +456,7 @@ export class StudentGradesService {
   private getEffectiveSchoolId(
     user: AuthenticatedUser,
     scopedSchoolId: string,
+    locale: StudentGradesLocale = "fr",
   ): string {
     if (this.hasPlatformRole(user, "SUPER_ADMIN")) {
       return scopedSchoolId;
@@ -432,7 +466,12 @@ export class StudentGradesService {
       (membership) => membership.schoolId === scopedSchoolId,
     );
     if (!hasMembership) {
-      throw new ForbiddenException("User is not bound to a school");
+      throw new ForbiddenException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.userNotBoundToSchool",
+        ),
+      );
     }
 
     return scopedSchoolId;
@@ -444,6 +483,7 @@ export class StudentGradesService {
     classId: string,
     subjectId: string,
     schoolYearId: string,
+    locale: StudentGradesLocale = "fr",
   ) {
     const assignment = await this.prisma.teacherClassSubject.findFirst({
       where: {
@@ -458,19 +498,31 @@ export class StudentGradesService {
 
     if (!assignment) {
       throw new ForbiddenException(
-        "Teacher is not assigned to this class/subject",
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.teacherNotAssigned",
+        ),
       );
     }
   }
 
-  private async ensureStudentInSchool(studentId: string, schoolId: string) {
+  private async ensureStudentInSchool(
+    studentId: string,
+    schoolId: string,
+    locale: StudentGradesLocale = "fr",
+  ) {
     const student = await this.prisma.student.findFirst({
       where: { id: studentId, schoolId },
       select: { id: true },
     });
 
     if (!student) {
-      throw new NotFoundException("Student not found");
+      throw new NotFoundException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.studentNotFound",
+        ),
+      );
     }
   }
 
@@ -479,6 +531,7 @@ export class StudentGradesService {
     classId: string,
     schoolYearId: string,
     schoolId: string,
+    locale: StudentGradesLocale = "fr",
   ) {
     const enrollment = await this.prisma.enrollment.findFirst({
       where: {
@@ -496,18 +549,30 @@ export class StudentGradesService {
     }
 
     throw new ForbiddenException(
-      "Student is not enrolled in this class for the school year",
+      translateStudentGradesError(
+        locale,
+        "studentGrades.errors.studentNotEnrolled",
+      ),
     );
   }
 
-  private async ensureClassInSchool(classId: string, schoolId: string) {
+  private async ensureClassInSchool(
+    classId: string,
+    schoolId: string,
+    locale: StudentGradesLocale = "fr",
+  ) {
     const classFound = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
       select: { id: true, schoolYearId: true },
     });
 
     if (!classFound) {
-      throw new NotFoundException("Class not found");
+      throw new NotFoundException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.classNotFound",
+        ),
+      );
     }
 
     return classFound;
@@ -517,6 +582,7 @@ export class StudentGradesService {
     classId: string,
     subjectId: string,
     schoolId: string,
+    locale: StudentGradesLocale = "fr",
   ) {
     const [classEntity, override] = await this.prisma.$transaction([
       this.prisma.class.findFirst({
@@ -540,11 +606,21 @@ export class StudentGradesService {
     ]);
 
     if (!classEntity) {
-      throw new NotFoundException("Class not found");
+      throw new NotFoundException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.classNotFound",
+        ),
+      );
     }
 
     if (override?.action === "REMOVE") {
-      throw new ForbiddenException("Subject is not allowed for this class");
+      throw new ForbiddenException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.subjectNotAllowedForClass",
+        ),
+      );
     }
 
     if (override?.action === "ADD") {
@@ -557,18 +633,32 @@ export class StudentGradesService {
 
     const isInCurriculum = (classEntity.curriculum?.subjects?.length ?? 0) > 0;
     if (!isInCurriculum) {
-      throw new ForbiddenException("Subject is not in the class curriculum");
+      throw new ForbiddenException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.subjectNotInCurriculum",
+        ),
+      );
     }
   }
 
-  private async ensureSubjectInSchool(subjectId: string, schoolId: string) {
+  private async ensureSubjectInSchool(
+    subjectId: string,
+    schoolId: string,
+    locale: StudentGradesLocale = "fr",
+  ) {
     const subject = await this.prisma.subject.findFirst({
       where: { id: subjectId, schoolId },
       select: { id: true },
     });
 
     if (!subject) {
-      throw new NotFoundException("Subject not found");
+      throw new NotFoundException(
+        translateStudentGradesError(
+          locale,
+          "studentGrades.errors.subjectNotFound",
+        ),
+      );
     }
   }
 

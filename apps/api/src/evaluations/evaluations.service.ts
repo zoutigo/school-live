@@ -16,6 +16,11 @@ import {
 } from "../common/rich-text-sanitizer.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import {
+  evaluationsLocaleFromUser,
+  translateEvaluationsError,
+  type EvaluationsLocale,
+} from "./evaluations.translations.js";
 import type { CreateEvaluationDto } from "./dto/create-evaluation.dto.js";
 import type { UpdateEvaluationDto } from "./dto/update-evaluation.dto.js";
 import type { UpsertEvaluationScoresDto } from "./dto/upsert-evaluation-scores.dto.js";
@@ -166,6 +171,7 @@ export class EvaluationsService {
     classId: string,
     payload: CreateEvaluationDto,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     await this.ensureDefaultEvaluationTypes(schoolId);
     const classEntity = await this.ensureClassAccessible(
       user,
@@ -179,11 +185,16 @@ export class EvaluationsService {
       classEntity.schoolYearId,
       payload.subjectId,
     );
-    await this.ensureEvaluationTypeInSchool(schoolId, payload.evaluationTypeId);
+    await this.ensureEvaluationTypeInSchool(
+      schoolId,
+      payload.evaluationTypeId,
+      locale,
+    );
     await this.ensureSubjectBranchBelongsToSubject(
       schoolId,
       payload.subjectId,
       payload.subjectBranchId,
+      locale,
     );
 
     const status =
@@ -294,6 +305,7 @@ export class EvaluationsService {
     evaluationId: string,
     payload: UpdateEvaluationDto,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     const existing = await this.findAccessibleEvaluation(
       user,
       schoolId,
@@ -313,11 +325,13 @@ export class EvaluationsService {
       schoolId,
       payload.subjectId ?? existing.subjectId,
       payload.subjectBranchId,
+      locale,
     );
     if (payload.evaluationTypeId) {
       await this.ensureEvaluationTypeInSchool(
         schoolId,
         payload.evaluationTypeId,
+        locale,
       );
     }
 
@@ -408,6 +422,7 @@ export class EvaluationsService {
     evaluationId: string,
     payload: UpsertEvaluationScoresDto,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     const evaluation = await this.findAccessibleEvaluation(
       user,
       schoolId,
@@ -430,14 +445,22 @@ export class EvaluationsService {
 
     for (const entry of payload.scores) {
       if (!allowedStudentIds.has(entry.studentId)) {
-        throw new BadRequestException("Student is not enrolled in this class");
+        throw new BadRequestException(
+          translateEvaluationsError(
+            locale,
+            "evaluations.errors.studentNotEnrolled",
+          ),
+        );
       }
       if (
         entry.status === "ENTERED" &&
         (entry.score === undefined || entry.score === null || entry.score < 0)
       ) {
         throw new BadRequestException(
-          "A positive score is required for entered status",
+          translateEvaluationsError(
+            locale,
+            "evaluations.errors.positiveScoreRequired",
+          ),
         );
       }
       if (
@@ -446,7 +469,10 @@ export class EvaluationsService {
         entry.score > evaluation.maxScore
       ) {
         throw new BadRequestException(
-          "Score cannot exceed evaluation max score",
+          translateEvaluationsError(
+            locale,
+            "evaluations.errors.scoreExceedsMaxScore",
+          ),
         );
       }
     }
@@ -584,8 +610,11 @@ export class EvaluationsService {
     term: Term | undefined,
     payload: UpsertTermReportsDto,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     if (!term || !Object.values(Term).includes(term)) {
-      throw new BadRequestException("Invalid term");
+      throw new BadRequestException(
+        translateEvaluationsError(locale, "evaluations.errors.invalidTerm"),
+      );
     }
 
     const classEntity = await this.ensureClassAccessible(
@@ -623,11 +652,21 @@ export class EvaluationsService {
 
     for (const report of payload.reports) {
       if (!enrolledStudentIds.has(report.studentId)) {
-        throw new BadRequestException("Student is not enrolled in this class");
+        throw new BadRequestException(
+          translateEvaluationsError(
+            locale,
+            "evaluations.errors.studentNotEnrolled",
+          ),
+        );
       }
       for (const subject of report.subjects) {
         if (!allowedSubjectIds.has(subject.subjectId)) {
-          throw new ForbiddenException("Subject appreciation not accessible");
+          throw new ForbiddenException(
+            translateEvaluationsError(
+              locale,
+              "evaluations.errors.subjectAppreciationNotAccessible",
+            ),
+          );
         }
       }
     }
@@ -730,13 +769,16 @@ export class EvaluationsService {
     studentId: string,
     term?: Term,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     await this.ensureStudentNotesAccess(user, schoolId, studentId);
     const student = await this.prisma.student.findFirst({
       where: { id: studentId, schoolId },
       select: { id: true, firstName: true, lastName: true },
     });
     if (!student) {
-      throw new NotFoundException("Student not found");
+      throw new NotFoundException(
+        translateEvaluationsError(locale, "evaluations.errors.studentNotFound"),
+      );
     }
 
     const enrollments = await this.prisma.enrollment.findMany({
@@ -1111,6 +1153,7 @@ export class EvaluationsService {
     schoolId: string,
     studentId: string,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     if (
       this.hasAnySchoolRole(user, schoolId, [
         "SCHOOL_ADMIN",
@@ -1127,7 +1170,12 @@ export class EvaluationsService {
         select: { id: true },
       });
       if (student?.id !== studentId) {
-        throw new ForbiddenException("Student notes not accessible");
+        throw new ForbiddenException(
+          translateEvaluationsError(
+            locale,
+            "evaluations.errors.studentNotesNotAccessible",
+          ),
+        );
       }
       return;
     }
@@ -1137,12 +1185,22 @@ export class EvaluationsService {
         select: { id: true },
       });
       if (!link) {
-        throw new ForbiddenException("Student notes not accessible");
+        throw new ForbiddenException(
+          translateEvaluationsError(
+            locale,
+            "evaluations.errors.studentNotesNotAccessible",
+          ),
+        );
       }
       return;
     }
 
-    throw new ForbiddenException("Student notes not accessible");
+    throw new ForbiddenException(
+      translateEvaluationsError(
+        locale,
+        "evaluations.errors.studentNotesNotAccessible",
+      ),
+    );
   }
 
   private async findAccessibleEvaluation(
@@ -1151,6 +1209,7 @@ export class EvaluationsService {
     classId: string,
     evaluationId: string,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     const evaluation = await this.prisma.evaluation.findFirst({
       where: { id: evaluationId, schoolId, classId },
       include: {
@@ -1162,7 +1221,12 @@ export class EvaluationsService {
       },
     });
     if (!evaluation) {
-      throw new NotFoundException("Evaluation not found");
+      throw new NotFoundException(
+        translateEvaluationsError(
+          locale,
+          "evaluations.errors.evaluationNotFound",
+        ),
+      );
     }
     if (this.hasAnySchoolRole(user, schoolId, ["TEACHER"])) {
       await this.ensureSubjectAccessible(
@@ -1181,12 +1245,15 @@ export class EvaluationsService {
     schoolId: string,
     classId: string,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     const classEntity = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
       select: { id: true, name: true, schoolYearId: true },
     });
     if (!classEntity) {
-      throw new NotFoundException("Class not found");
+      throw new NotFoundException(
+        translateEvaluationsError(locale, "evaluations.errors.classNotFound"),
+      );
     }
     if (
       this.hasAnySchoolRole(user, schoolId, [
@@ -1209,11 +1276,21 @@ export class EvaluationsService {
         select: { id: true },
       });
       if (!assignment) {
-        throw new ForbiddenException("Class not accessible");
+        throw new ForbiddenException(
+          translateEvaluationsError(
+            locale,
+            "evaluations.errors.classNotAccessible",
+          ),
+        );
       }
       return classEntity;
     }
-    throw new ForbiddenException("Class not accessible");
+    throw new ForbiddenException(
+      translateEvaluationsError(
+        locale,
+        "evaluations.errors.classNotAccessible",
+      ),
+    );
   }
 
   private async ensureSubjectAccessible(
@@ -1223,12 +1300,15 @@ export class EvaluationsService {
     schoolYearId: string,
     subjectId: string,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     const subject = await this.prisma.subject.findFirst({
       where: { id: subjectId, schoolId },
       select: { id: true },
     });
     if (!subject) {
-      throw new NotFoundException("Subject not found");
+      throw new NotFoundException(
+        translateEvaluationsError(locale, "evaluations.errors.subjectNotFound"),
+      );
     }
 
     if (
@@ -1253,7 +1333,12 @@ export class EvaluationsService {
       select: { id: true },
     });
     if (!assignment) {
-      throw new ForbiddenException("Subject not accessible for this class");
+      throw new ForbiddenException(
+        translateEvaluationsError(
+          locale,
+          "evaluations.errors.subjectNotAccessible",
+        ),
+      );
     }
   }
 
@@ -1262,12 +1347,15 @@ export class EvaluationsService {
     schoolId: string,
     classId: string,
   ) {
+    const locale = evaluationsLocaleFromUser(user);
     const classEntity = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
       select: { schoolYearId: true },
     });
     if (!classEntity) {
-      throw new NotFoundException("Class not found");
+      throw new NotFoundException(
+        translateEvaluationsError(locale, "evaluations.errors.classNotFound"),
+      );
     }
     return this.prisma.teacherClassSubject.findMany({
       where: {
@@ -1311,13 +1399,19 @@ export class EvaluationsService {
   private async ensureEvaluationTypeInSchool(
     schoolId: string,
     evaluationTypeId: string,
+    locale: EvaluationsLocale = "fr",
   ) {
     const evaluationType = await this.prisma.evaluationType.findFirst({
       where: { id: evaluationTypeId, schoolId },
       select: { id: true },
     });
     if (!evaluationType) {
-      throw new NotFoundException("Evaluation type not found");
+      throw new NotFoundException(
+        translateEvaluationsError(
+          locale,
+          "evaluations.errors.evaluationTypeNotFound",
+        ),
+      );
     }
   }
 
@@ -1325,6 +1419,7 @@ export class EvaluationsService {
     schoolId: string,
     subjectId: string,
     subjectBranchId?: string,
+    locale: EvaluationsLocale = "fr",
   ) {
     if (!subjectBranchId) {
       return;
@@ -1336,7 +1431,10 @@ export class EvaluationsService {
     });
     if (!branch) {
       throw new BadRequestException(
-        "Subject branch does not belong to subject",
+        translateEvaluationsError(
+          locale,
+          "evaluations.errors.subjectBranchMismatch",
+        ),
       );
     }
   }

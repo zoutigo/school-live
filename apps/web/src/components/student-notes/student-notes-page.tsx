@@ -13,6 +13,7 @@ import { ChildModulePage } from "../family/child-module-page";
 import { Card } from "../ui/card";
 import { FormSelect } from "../ui/form-controls";
 import { STUDENT_NOTES_DEMO_DATA } from "./student-notes-demo-data";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import type {
   StudentEvaluation,
   StudentNotesTerm,
@@ -36,18 +37,25 @@ function formatScore(value: number | null) {
   return value % 1 === 0 ? `${value}` : value.toFixed(2).replace(".", ",");
 }
 
-function formatDelta(studentValue: number | null, classValue: number | null) {
+function formatDelta(
+  t: TranslateFn,
+  studentValue: number | null,
+  classValue: number | null,
+) {
   if (studentValue === null || classValue === null) {
     return null;
   }
 
   const delta = studentValue - classValue;
   if (Math.abs(delta) < 0.01) {
-    return "Au niveau de la classe";
+    return t("notes.student.hero.levelWithClass");
   }
 
   const prefix = delta > 0 ? "+" : "";
-  return `${prefix}${delta.toFixed(2).replace(".", ",")} pts vs classe`;
+  return t("notes.student.hero.deltaVsClass").replace(
+    "{value}",
+    `${prefix}${delta.toFixed(2).replace(".", ",")}`,
+  );
 }
 
 function formatEvaluationLabel(evaluation: StudentEvaluation) {
@@ -55,15 +63,24 @@ function formatEvaluationLabel(evaluation: StudentEvaluation) {
   return `${formatScore(evaluation.score)}/${formatScore(evaluation.maxScore)}${weightLabel}`;
 }
 
-function formatPlainEvaluationScore(evaluation: StudentEvaluation) {
+function formatPlainEvaluationScore(
+  t: TranslateFn,
+  evaluation: StudentEvaluation,
+) {
   if (evaluation.status === "ABSENT") {
-    return { score: "Abs", maxScore: null };
+    return { score: t("notes.student.evaluation.shortAbsent"), maxScore: null };
   }
   if (evaluation.status === "EXCUSED") {
-    return { score: "Disp", maxScore: null };
+    return {
+      score: t("notes.student.evaluation.shortExcused"),
+      maxScore: null,
+    };
   }
   if (evaluation.status === "NOT_GRADED") {
-    return { score: "NE", maxScore: null };
+    return {
+      score: t("notes.student.evaluation.shortNotGraded"),
+      maxScore: null,
+    };
   }
   return {
     score: formatScore(evaluation.score),
@@ -104,6 +121,7 @@ function buildRadarPoints(snapshot: StudentNotesTermSnapshot) {
 }
 
 function PeriodHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
+  const { t } = useTranslation();
   const bestSubject = [...snapshot.subjects]
     .filter((subject) => subject.studentAverage !== null)
     .sort((a, b) => (b.studentAverage ?? 0) - (a.studentAverage ?? 0))[0];
@@ -114,36 +132,39 @@ function PeriodHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
 
   const stats = [
     {
-      label: "Moyenne eleve",
+      label: t("notes.student.hero.studentAverage"),
       value: formatScore(snapshot.generalAverage.student),
       hint: formatDelta(
+        t,
         snapshot.generalAverage.student,
         snapshot.generalAverage.class,
       ),
       icon: Medal,
     },
     {
-      label: "Moyenne classe",
+      label: t("notes.student.hero.classAverage"),
       value: formatScore(snapshot.generalAverage.class),
-      hint: `Amplitude ${formatScore(snapshot.generalAverage.min)} - ${formatScore(snapshot.generalAverage.max)}`,
+      hint: t("notes.student.hero.classAverageHint")
+        .replace("{min}", formatScore(snapshot.generalAverage.min))
+        .replace("{max}", formatScore(snapshot.generalAverage.max)),
       icon: TrendingUp,
     },
     {
-      label: "Matiere forte",
+      label: t("notes.student.hero.strongSubject"),
       value: bestSubject?.subjectLabel ?? "-",
       hint:
         bestSubject?.studentAverage != null
           ? `${formatScore(bestSubject.studentAverage)}/20`
-          : "Aucune donnee",
+          : t("notes.student.hero.noData"),
       icon: Sparkles,
     },
     {
-      label: "Point de vigilance",
+      label: t("notes.student.hero.watchSubject"),
       value: watchSubject?.subjectLabel ?? "-",
       hint:
         watchSubject?.studentAverage != null
           ? `${formatScore(watchSubject.studentAverage)}/20`
-          : "Aucune donnee",
+          : t("notes.student.hero.noData"),
       icon: BarChart3,
     },
   ];
@@ -157,7 +178,7 @@ function PeriodHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
           <div className="grid gap-2">
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-surface/80 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary min-[360px]:text-[11px] sm:text-xs sm:tracking-[0.18em]">
               <CalendarDays className="h-3.5 w-3.5" />
-              Bulletin de periode
+              {t("notes.student.hero.badge")}
             </div>
             <div>
               <h3 className="font-heading text-lg font-semibold text-text-primary min-[360px]:text-xl sm:text-2xl">
@@ -171,7 +192,7 @@ function PeriodHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
 
           <div className="rounded-[18px] border border-white/70 bg-white/82 px-4 py-3 text-left shadow-[0_12px_28px_rgba(10,98,191,0.08)] backdrop-blur sm:text-right">
             <p className="text-[10px] uppercase tracking-[0.14em] text-text-secondary min-[360px]:text-[11px] sm:text-xs sm:tracking-[0.16em]">
-              Donnees publiees
+              {t("notes.student.hero.publishedData")}
             </p>
             <p className="mt-1 text-[11px] font-semibold text-text-primary min-[360px]:text-xs sm:text-sm">
               {snapshot.generatedAtLabel}
@@ -217,6 +238,7 @@ function ViewTabs({
   view: StudentNotesView;
   setView: (view: StudentNotesView) => void;
 }) {
+  const { t } = useTranslation();
   const items: Array<{
     key: StudentNotesView;
     label: string;
@@ -225,21 +247,21 @@ function ViewTabs({
   }> = [
     {
       key: "evaluations",
-      label: "Evaluations",
-      mobileLabel: "Eval",
-      description: "Lecture detaillee des notes publiees par matiere",
+      label: t("notes.student.tabs.evaluations.label"),
+      mobileLabel: t("notes.student.tabs.evaluations.mobileLabel"),
+      description: t("notes.student.tabs.evaluations.description"),
     },
     {
       key: "averages",
-      label: "Moyennes",
-      mobileLabel: "Moy",
-      description: "Comparaison eleve, classe, min et max",
+      label: t("notes.student.tabs.averages.label"),
+      mobileLabel: t("notes.student.tabs.averages.mobileLabel"),
+      description: t("notes.student.tabs.averages.description"),
     },
     {
       key: "charts",
-      label: "Graphiques",
-      mobileLabel: "Graph",
-      description: "Vue visuelle des performances et amplitudes",
+      label: t("notes.student.tabs.charts.label"),
+      mobileLabel: t("notes.student.tabs.charts.mobileLabel"),
+      description: t("notes.student.tabs.charts.description"),
     },
   ];
 
@@ -294,11 +316,12 @@ function EvaluationChip({
   evaluation: StudentEvaluation;
   onOpen: (evaluation: StudentEvaluation) => void;
 }) {
+  const { t } = useTranslation();
   const ratio =
     evaluation.score !== null && evaluation.maxScore > 0
       ? evaluation.score / evaluation.maxScore
       : 0;
-  const display = formatPlainEvaluationScore(evaluation);
+  const display = formatPlainEvaluationScore(t, evaluation);
   const isSpecialStatus =
     evaluation.status === "ABSENT" ||
     evaluation.status === "EXCUSED" ||
@@ -354,6 +377,7 @@ function EvaluationDetailModal({
   evaluation: StudentEvaluation | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) {
       return;
@@ -377,7 +401,7 @@ function EvaluationDetailModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label="Fermer le detail de la note"
+        aria-label={t("notes.student.evaluation.closeAria")}
         className="absolute inset-0 bg-text-primary/45 backdrop-blur-[1px]"
         onClick={onClose}
       />
@@ -389,7 +413,7 @@ function EvaluationDetailModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              Detail de l'evaluation
+              {t("notes.student.evaluation.detailTitle")}
             </p>
             <h3 className="mt-1 font-heading text-xl font-semibold text-text-primary">
               {subject.subjectLabel}
@@ -410,34 +434,34 @@ function EvaluationDetailModal({
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="rounded-card border border-border bg-background px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Note
+              {t("notes.student.evaluation.score")}
             </p>
             <p className="mt-1 font-heading text-2xl font-semibold text-primary">
-              {formatPlainEvaluationScore(evaluation).score}
-              {formatPlainEvaluationScore(evaluation).maxScore ? (
+              {formatPlainEvaluationScore(t, evaluation).score}
+              {formatPlainEvaluationScore(t, evaluation).maxScore ? (
                 <span className="ml-1 text-base font-medium text-text-secondary">
-                  /{formatPlainEvaluationScore(evaluation).maxScore}
+                  /{formatPlainEvaluationScore(t, evaluation).maxScore}
                 </span>
               ) : null}
             </p>
           </div>
           <div className="rounded-card border border-border bg-background px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Statut
+              {t("notes.student.evaluation.status")}
             </p>
             <p className="mt-1 font-heading text-2xl font-semibold text-text-primary">
               {evaluation.status === "ABSENT"
-                ? "Absent"
+                ? t("notes.student.evaluation.statusAbsent")
                 : evaluation.status === "EXCUSED"
-                  ? "Dispense"
+                  ? t("notes.student.evaluation.statusExcused")
                   : evaluation.status === "NOT_GRADED"
-                    ? "Non evalue"
-                    : "Note saisie"}
+                    ? t("notes.student.evaluation.statusNotGraded")
+                    : t("notes.student.evaluation.statusEntered")}
             </p>
           </div>
           <div className="rounded-card border border-border bg-background px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Date
+              {t("notes.student.evaluation.date")}
             </p>
             <p className="mt-1 text-sm font-semibold text-text-primary">
               {evaluation.recordedAt}
@@ -445,7 +469,7 @@ function EvaluationDetailModal({
           </div>
           <div className="rounded-card border border-border bg-background px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Coefficient
+              {t("notes.student.evaluation.coefficient")}
             </p>
             <p className="mt-1 text-sm font-semibold text-text-primary">
               {evaluation.weight ? formatScore(evaluation.weight) : "1"}
@@ -453,28 +477,29 @@ function EvaluationDetailModal({
           </div>
           <div className="rounded-card border border-border bg-background px-4 py-3 sm:col-span-2">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Contexte
+              {t("notes.student.evaluation.context")}
             </p>
             <p className="mt-1 text-sm font-semibold text-text-primary">
-              Classe {formatScore(subject.classAverage)} | Min{" "}
-              {formatScore(subject.classMin)} | Max{" "}
-              {formatScore(subject.classMax)}
+              {t("notes.student.evaluation.contextValue")
+                .replace("{classAverage}", formatScore(subject.classAverage))
+                .replace("{classMin}", formatScore(subject.classMin))
+                .replace("{classMax}", formatScore(subject.classMax))}
             </p>
           </div>
         </div>
 
         <div className="mt-4 rounded-card border border-border bg-background px-4 py-3 text-sm text-text-secondary">
           <p>
-            Moyenne de la matiere:{" "}
+            {t("notes.student.evaluation.subjectAverage")}{" "}
             <span className="font-semibold text-text-primary">
               {formatScore(subject.studentAverage)}
             </span>
           </p>
           <p className="mt-1">
-            Positionnement:{" "}
+            {t("notes.student.evaluation.positioning")}{" "}
             <span className="font-semibold text-text-primary">
-              {formatDelta(subject.studentAverage, subject.classAverage) ??
-                "Aucune comparaison"}
+              {formatDelta(t, subject.studentAverage, subject.classAverage) ??
+                t("notes.student.evaluation.noComparison")}
             </span>
           </p>
         </div>
@@ -492,6 +517,7 @@ function SubjectAverageDetailModal({
   subject: StudentSubjectNotes | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) {
       return;
@@ -515,7 +541,7 @@ function SubjectAverageDetailModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label="Fermer le detail de la moyenne"
+        aria-label={t("notes.student.average.closeAria")}
         className="absolute inset-0 bg-text-primary/45 backdrop-blur-[1px]"
         onClick={onClose}
       />
@@ -527,13 +553,14 @@ function SubjectAverageDetailModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              Detail de la moyenne
+              {t("notes.student.average.detailTitle")}
             </p>
             <h3 className="mt-1 font-heading text-xl font-semibold text-text-primary">
               {subject.subjectLabel}
             </h3>
             <p className="mt-1 text-sm text-text-secondary">
-              {subject.teachers.join(" - ") || "Matiere"}
+              {subject.teachers.join(" - ") ||
+                t("notes.student.average.defaultSubject")}
             </p>
           </div>
           <button
@@ -548,7 +575,7 @@ function SubjectAverageDetailModal({
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="rounded-card border border-border bg-background px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Eleve
+              {t("notes.student.average.student")}
             </p>
             <p className="mt-1 font-heading text-2xl font-semibold text-primary">
               {formatScore(subject.studentAverage)}
@@ -556,7 +583,7 @@ function SubjectAverageDetailModal({
           </div>
           <div className="rounded-card border border-border bg-background px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Coefficient
+              {t("notes.student.average.coefficient")}
             </p>
             <p className="mt-1 font-heading text-2xl font-semibold text-text-primary">
               {formatScore(subject.coefficient)}
@@ -564,7 +591,7 @@ function SubjectAverageDetailModal({
           </div>
           <div className="rounded-card border border-border bg-background px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Classe
+              {t("notes.student.average.class")}
             </p>
             <p className="mt-1 text-sm font-semibold text-text-primary">
               {formatScore(subject.classAverage)}
@@ -572,32 +599,33 @@ function SubjectAverageDetailModal({
           </div>
           <div className="rounded-card border border-border bg-background px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">
-              Amplitude
+              {t("notes.student.average.amplitude")}
             </p>
             <p className="mt-1 text-sm font-semibold text-text-primary">
-              Min {formatScore(subject.classMin)} / Max{" "}
-              {formatScore(subject.classMax)}
+              {t("notes.student.average.amplitudeValue")
+                .replace("{min}", formatScore(subject.classMin))
+                .replace("{max}", formatScore(subject.classMax))}
             </p>
           </div>
         </div>
 
         <div className="mt-4 grid gap-2 rounded-card border border-border bg-background px-4 py-3 text-sm text-text-secondary">
           <p>
-            Positionnement:{" "}
+            {t("notes.student.average.positioning")}{" "}
             <span className="font-semibold text-text-primary">
-              {formatDelta(subject.studentAverage, subject.classAverage) ??
-                "Aucune comparaison"}
+              {formatDelta(t, subject.studentAverage, subject.classAverage) ??
+                t("notes.student.average.noComparison")}
             </span>
           </p>
           <p>
-            Evaluations prises en compte:{" "}
+            {t("notes.student.average.evaluationsCount")}{" "}
             <span className="font-semibold text-text-primary">
               {subject.evaluations.length}
             </span>
           </p>
           {subject.appreciation ? (
             <p>
-              Appreciation:{" "}
+              {t("notes.student.average.appreciation")}{" "}
               <span className="font-semibold text-text-primary">
                 {subject.appreciation}
               </span>
@@ -610,6 +638,7 @@ function SubjectAverageDetailModal({
 }
 
 function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
+  const { t } = useTranslation();
   const [selectedEvaluation, setSelectedEvaluation] =
     useState<StudentEvaluation | null>(null);
   const [selectedSubject, setSelectedSubject] =
@@ -620,8 +649,7 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
   if (subjects.length === 0) {
     return (
       <div className="rounded-card border border-dashed border-border bg-background p-8 text-sm text-text-secondary">
-        Les evaluations de cette periode seront visibles des qu'elles seront
-        disponibles.
+        {t("notes.student.table.empty")}
       </div>
     );
   }
@@ -630,10 +658,10 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
     <>
       <div className="overflow-hidden rounded-[20px] border border-border bg-surface shadow-[0_16px_34px_rgba(15,23,42,0.05)]">
         <div className="hidden bg-[linear-gradient(90deg,#0A62BF,#1182D8)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white lg:grid lg:grid-cols-[190px_52px_90px_minmax(0,1fr)]">
-          <span>Disciplines</span>
-          <span>Coef.</span>
-          <span>Moyennes</span>
-          <span>Evaluations</span>
+          <span>{t("notes.student.table.subjects")}</span>
+          <span>{t("notes.student.table.coefficient")}</span>
+          <span>{t("notes.student.table.averages")}</span>
+          <span>{t("notes.student.table.evaluations")}</span>
         </div>
 
         <div className="divide-y divide-border">
@@ -659,7 +687,10 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
                       type="button"
                       onClick={() => setSelectedAverageSubject(subject)}
                       className="text-[11px] font-semibold text-primary/80 transition hover:text-primary min-[360px]:text-xs sm:text-sm"
-                      title={`Voir le detail de la moyenne de ${subject.subjectLabel}`}
+                      title={t("notes.student.table.averageDetailAria").replace(
+                        "{subject}",
+                        subject.subjectLabel,
+                      )}
                     >
                       {formatScore(subject.studentAverage)}
                     </button>
@@ -667,7 +698,7 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
 
                   <div className="shrink-0 text-right text-[11px] font-semibold text-text-primary min-[360px]:text-xs sm:text-sm">
                     <span className="mr-1 text-[8px] uppercase tracking-[0.08em] text-text-secondary min-[360px]:text-[9px] min-[360px]:tracking-[0.1em] sm:text-[10px] sm:tracking-[0.12em]">
-                      Coef.
+                      {t("notes.student.table.coefficient")}
                     </span>
                     {subject.coefficient}
                   </div>
@@ -717,7 +748,10 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
                     type="button"
                     onClick={() => setSelectedAverageSubject(subject)}
                     className="text-sm font-semibold text-primary/80 transition hover:text-primary"
-                    title={`Voir le detail de la moyenne de ${subject.subjectLabel}`}
+                    title={t("notes.student.table.averageDetailAria").replace(
+                      "{subject}",
+                      subject.subjectLabel,
+                    )}
                   >
                     {formatScore(subject.studentAverage)}
                   </button>
@@ -748,7 +782,7 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
           <div className="grid gap-2 bg-[linear-gradient(90deg,rgba(10,98,191,0.06),rgba(28,154,138,0.08))] px-4 py-3 lg:grid-cols-[190px_52px_90px_minmax(0,1fr)] lg:items-center">
             <div>
               <p className="font-heading text-[13px] font-semibold uppercase text-primary min-[360px]:text-sm sm:text-base">
-                Moyenne generale
+                {t("notes.student.table.generalAverage")}
               </p>
             </div>
             <div className="text-sm text-text-secondary">-</div>
@@ -761,7 +795,7 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
               )}
             </div>
             <div className="text-[10px] text-text-secondary min-[360px]:text-[11px] sm:text-xs">
-              Synthese des evaluations publiees sur la periode.
+              {t("notes.student.table.publishedSummary")}
             </div>
           </div>
         </div>
@@ -769,13 +803,22 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-secondary">
         <span>
-          <span className="font-semibold text-sky-600">Abs</span> Absent
+          <span className="font-semibold text-sky-600">
+            {t("notes.student.evaluation.shortAbsent")}
+          </span>{" "}
+          {t("notes.student.evaluation.legendAbsent")}
         </span>
         <span>
-          <span className="font-semibold text-emerald-600">Disp</span> Dispense
+          <span className="font-semibold text-emerald-600">
+            {t("notes.student.evaluation.shortExcused")}
+          </span>{" "}
+          {t("notes.student.evaluation.legendExcused")}
         </span>
         <span>
-          <span className="font-semibold text-slate-500">NE</span> Non evalue
+          <span className="font-semibold text-slate-500">
+            {t("notes.student.evaluation.shortNotGraded")}
+          </span>{" "}
+          {t("notes.student.evaluation.legendNotGraded")}
         </span>
       </div>
 
@@ -804,10 +847,11 @@ function AveragesTable({
   snapshot: StudentNotesTermSnapshot;
   subjects: StudentSubjectNotes[];
 }) {
+  const { t } = useTranslation();
   if (subjects.length === 0) {
     return (
       <div className="rounded-card border border-dashed border-border bg-background p-8 text-sm text-text-secondary">
-        Les moyennes de cette periode seront affichees apres publication.
+        {t("notes.student.averagesTable.empty")}
       </div>
     );
   }
@@ -815,13 +859,27 @@ function AveragesTable({
   return (
     <div className="overflow-hidden rounded-[20px] border border-border bg-surface shadow-[0_16px_34px_rgba(15,23,42,0.05)]">
       <div className="hidden grid-cols-[220px_60px_80px_80px_70px_70px_minmax(260px,1fr)] gap-0 bg-[linear-gradient(90deg,#0A62BF,#1182D8)] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white lg:grid">
-        <span className="text-left">Discipline</span>
-        <span className="text-center">Coef.</span>
-        <span className="text-center">Eleve</span>
-        <span className="text-center">Classe</span>
-        <span className="text-center">Min</span>
-        <span className="text-center">Max</span>
-        <span className="text-left">Appreciation generale</span>
+        <span className="text-left">
+          {t("notes.student.averagesTable.discipline")}
+        </span>
+        <span className="text-center">
+          {t("notes.student.averagesTable.coefficient")}
+        </span>
+        <span className="text-center">
+          {t("notes.student.averagesTable.student")}
+        </span>
+        <span className="text-center">
+          {t("notes.student.averagesTable.class")}
+        </span>
+        <span className="text-center">
+          {t("notes.student.averagesTable.min")}
+        </span>
+        <span className="text-center">
+          {t("notes.student.averagesTable.max")}
+        </span>
+        <span className="text-left">
+          {t("notes.student.averagesTable.appreciation")}
+        </span>
       </div>
 
       <div className="divide-y divide-border">
@@ -842,7 +900,9 @@ function AveragesTable({
                       {formatScore(subject.studentAverage)}
                     </span>
                     <span className="text-[11px] text-text-secondary lg:hidden">
-                      Coef {subject.coefficient}
+                      {t(
+                        "notes.student.averagesTable.coefficientPrefix",
+                      ).replace("{coefficient}", String(subject.coefficient))}
                     </span>
                   </div>
                   <p className="mt-1 hidden text-[11px] text-text-secondary lg:block">
@@ -852,19 +912,19 @@ function AveragesTable({
 
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-text-secondary lg:hidden">
                   <span>
-                    Classe :{" "}
+                    {t("notes.student.averagesTable.classPrefix")}{" "}
                     <span className="font-medium text-text-primary">
                       {formatScore(subject.classAverage)}
                     </span>
                   </span>
                   <span>
-                    Min :{" "}
+                    {t("notes.student.averagesTable.minPrefix")}{" "}
                     <span className="font-medium text-text-primary">
                       {formatScore(subject.classMin)}
                     </span>
                   </span>
                   <span>
-                    Max :{" "}
+                    {t("notes.student.averagesTable.maxPrefix")}{" "}
                     <span className="font-medium text-text-primary">
                       {formatScore(subject.classMax)}
                     </span>
@@ -873,13 +933,13 @@ function AveragesTable({
               </div>
               <div className="hidden text-center text-sm font-semibold text-text-primary lg:block">
                 <span className="mr-2 text-[10px] uppercase tracking-[0.12em] text-text-secondary lg:hidden">
-                  Coef.
+                  {t("notes.student.averagesTable.coefficient")}
                 </span>
                 {subject.coefficient}
               </div>
               <div className="hidden text-center font-heading text-lg font-semibold text-primary lg:block">
                 <span className="mr-2 align-middle font-body text-[10px] uppercase tracking-[0.12em] text-text-secondary lg:hidden">
-                  Eleve
+                  {t("notes.student.averagesTable.student")}
                 </span>
                 {formatScore(subject.studentAverage)}
               </div>
@@ -915,7 +975,7 @@ function AveragesTable({
           <div className="grid gap-2 lg:block">
             <div className="flex items-baseline justify-between gap-3 lg:block">
               <p className="font-heading text-base font-semibold uppercase text-primary">
-                Moyenne generale
+                {t("notes.student.averagesTable.generalAverage")}
               </p>
               <span className="font-heading text-lg font-semibold text-primary lg:hidden">
                 {formatScore(snapshot.generalAverage.student)}
@@ -923,19 +983,19 @@ function AveragesTable({
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-text-secondary lg:hidden">
               <span>
-                Classe :{" "}
+                {t("notes.student.averagesTable.classPrefix")}{" "}
                 <span className="font-medium text-text-primary">
                   {formatScore(snapshot.generalAverage.class)}
                 </span>
               </span>
               <span>
-                Min :{" "}
+                {t("notes.student.averagesTable.minPrefix")}{" "}
                 <span className="font-medium text-text-primary">
                   {formatScore(snapshot.generalAverage.min)}
                 </span>
               </span>
               <span>
-                Max :{" "}
+                {t("notes.student.averagesTable.maxPrefix")}{" "}
                 <span className="font-medium text-text-primary">
                   {formatScore(snapshot.generalAverage.max)}
                 </span>
@@ -956,7 +1016,7 @@ function AveragesTable({
             {formatScore(snapshot.generalAverage.max)}
           </div>
           <div className="text-sm text-text-secondary">
-            Positionnement global de l'eleve sur la periode.
+            {t("notes.student.averagesTable.globalPositioning")}
           </div>
         </div>
       </div>
@@ -971,11 +1031,11 @@ function ChartsPanel({
   snapshot: StudentNotesTermSnapshot;
   radar: ReturnType<typeof buildRadarPoints>;
 }) {
+  const { t } = useTranslation();
   if (snapshot.subjects.length === 0) {
     return (
       <div className="rounded-card border border-dashed border-border bg-background p-8 text-sm text-text-secondary">
-        Les graphiques seront disponibles quand les moyennes de la periode
-        seront publiees.
+        {t("notes.student.charts.empty")}
       </div>
     );
   }
@@ -983,8 +1043,8 @@ function ChartsPanel({
   return (
     <div className="grid gap-4 xl:grid-cols-[1.15fr_0.95fr]">
       <Card
-        title="Comparaison par matiere"
-        subtitle="Chaque bande represente l'amplitude min-max de la classe, avec la position de l'eleve et de la moyenne de classe."
+        title={t("notes.student.charts.comparisonTitle")}
+        subtitle={t("notes.student.charts.comparisonSubtitle")}
         className="overflow-hidden border-primary/10 bg-[linear-gradient(180deg,rgba(10,98,191,0.05),#FFFFFF_20%,rgba(28,154,138,0.03))]"
       >
         <div className="grid gap-5">
@@ -996,13 +1056,21 @@ function ChartsPanel({
                     {subject.subjectLabel}
                   </p>
                   <p className="text-xs text-text-secondary">
-                    Eleve {formatScore(subject.studentAverage)} / Classe{" "}
-                    {formatScore(subject.classAverage)}
+                    {t("notes.student.charts.studentVsClass")
+                      .replace(
+                        "{studentAverage}",
+                        formatScore(subject.studentAverage),
+                      )
+                      .replace(
+                        "{classAverage}",
+                        formatScore(subject.classAverage),
+                      )}
                   </p>
                 </div>
                 <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-text-secondary">
-                  {formatScore(subject.classMin)} -{" "}
-                  {formatScore(subject.classMax)}
+                  {t("notes.student.charts.classRange")
+                    .replace("{min}", formatScore(subject.classMin))
+                    .replace("{max}", formatScore(subject.classMax))}
                 </span>
               </div>
 
@@ -1033,23 +1101,23 @@ function ChartsPanel({
           <div className="flex flex-wrap gap-4 text-xs text-text-secondary">
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full border-2 border-primary bg-white" />
-              Moyenne de l'eleve
+              {t("notes.student.charts.legendStudentAverage")}
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-slate-600" />
-              Moyenne de la classe
+              {t("notes.student.charts.legendClassAverage")}
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-8 rounded-full bg-[linear-gradient(90deg,rgba(10,98,191,0.24),rgba(28,154,138,0.30))]" />
-              Min et max de la classe
+              {t("notes.student.charts.legendClassRange")}
             </div>
           </div>
         </div>
       </Card>
 
       <Card
-        title="Radar des moyennes"
-        subtitle="Vue globale des matieres les plus fortes et des ecarts avec la classe."
+        title={t("notes.student.charts.radarTitle")}
+        subtitle={t("notes.student.charts.radarSubtitle")}
         className="border-primary/10 bg-[linear-gradient(180deg,rgba(28,154,138,0.06),#FFFFFF_18%,rgba(10,98,191,0.03))]"
       >
         <div className="grid gap-4">
@@ -1127,18 +1195,18 @@ function ChartsPanel({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-card border border-border bg-background p-3 text-sm text-text-secondary">
               <p className="font-semibold text-text-primary">
-                Lecture du radar
+                {t("notes.student.charts.radarReadingTitle")}
               </p>
               <p className="mt-1">
-                Plus le trait s'approche du bord, plus la moyenne est elevee sur
-                la matiere.
+                {t("notes.student.charts.radarReadingText")}
               </p>
             </div>
             <div className="rounded-card border border-border bg-background p-3 text-sm text-text-secondary">
-              <p className="font-semibold text-text-primary">Comparaison</p>
+              <p className="font-semibold text-text-primary">
+                {t("notes.student.charts.comparisonLegendTitle")}
+              </p>
               <p className="mt-1">
-                Le polygone bleu represente l'eleve. Le gris correspond au
-                niveau moyen de la classe.
+                {t("notes.student.charts.comparisonLegendText")}
               </p>
             </div>
           </div>
@@ -1180,6 +1248,7 @@ function StudentNotesContent({
 }
 
 export function StudentNotesPage({ schoolSlug, childId }: Props) {
+  const { t } = useTranslation();
   const [selectedTerm, setSelectedTerm] = useState<StudentNotesTerm>("TERM_1");
   const [snapshots, setSnapshots] = useState(STUDENT_NOTES_DEMO_DATA);
   const [warning, setWarning] = useState<string | null>(null);
@@ -1212,9 +1281,7 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
           return;
         }
         setSnapshots(STUDENT_NOTES_DEMO_DATA);
-        setWarning(
-          "Affichage temporaire des donnees de demonstration en attendant la publication des evaluations.",
-        );
+        setWarning(t("notes.student.page.demoWarning"));
       }
     }
 
@@ -1232,13 +1299,13 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
       schoolSlug={schoolSlug}
       childId={childId}
       currentTab="notes"
-      title="Notes"
-      subtitle="Evaluations et moyennes de l'eleve"
-      summary="Suivez les notes, les moyennes et les tendances par matiere de votre enfant."
+      title={t("notes.student.page.title")}
+      subtitle={t("notes.student.page.subtitle")}
+      summary={t("notes.student.page.summary")}
       bullets={[
-        "Lecture par trimestre des evaluations publiees.",
-        "Comparaison avec les statistiques de classe sur chaque matiere.",
-        "Visualisation simple des points forts et des points de vigilance.",
+        t("notes.student.page.bullet1"),
+        t("notes.student.page.bullet2"),
+        t("notes.student.page.bullet3"),
       ]}
       hidePrimaryTabs
       hideSecondaryTabs
@@ -1249,20 +1316,24 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h1 className="font-heading text-xl font-semibold text-text-primary">
-                  Notes
+                  {t("notes.student.page.title")}
                 </h1>
                 <p className="mt-1 hidden text-sm text-text-secondary min-[360px]:block">
-                  Evaluations et moyennes de l'eleve -{" "}
-                  {child ? `${child.lastName} ${child.firstName}` : ""}
+                  {t("notes.student.page.subtitleWithChild").replace(
+                    "{childName}",
+                    child ? `${child.lastName} ${child.firstName}` : "",
+                  )}
                 </p>
               </div>
 
               <div className="shrink-0 min-[360px]:hidden">
                 <label className="block">
-                  <span className="sr-only">Choisir le trimestre</span>
+                  <span className="sr-only">
+                    {t("notes.student.page.chooseTerm")}
+                  </span>
                   <FormSelect
                     data-testid="notes-term-select-mobile"
-                    aria-label="Choisir le trimestre"
+                    aria-label={t("notes.student.page.chooseTerm")}
                     value={selectedTerm}
                     onChange={(event) =>
                       setSelectedTerm(event.target.value as StudentNotesTerm)
@@ -1281,8 +1352,11 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
 
             <p className="w-full text-sm text-text-secondary min-[360px]:hidden">
               {child
-                ? `Evals et Moyennes ${child.firstName} ${child.lastName}`
-                : "Evals et Moyennes"}
+                ? t("notes.student.page.mobileSubtitle").replace(
+                    "{childName}",
+                    `${child.firstName} ${child.lastName}`,
+                  )
+                : t("notes.student.page.mobileSubtitleNoChild")}
             </p>
           </div>
 
