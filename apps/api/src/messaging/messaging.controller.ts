@@ -28,6 +28,11 @@ import { CreateMessageDto } from "./dto/create-message.dto.js";
 import { ListMessagesDto } from "./dto/list-messages.dto.js";
 import { MarkMessageReadDto } from "./dto/mark-message-read.dto.js";
 import { UpdateDraftMessageDto } from "./dto/update-draft-message.dto.js";
+import {
+  messagingLocaleFromUser,
+  translateMessagingError,
+  type MessagingLocale,
+} from "./messaging.translations.js";
 import { MessagingService } from "./messaging.service.js";
 
 @Controller("schools/:schoolSlug/messages")
@@ -74,7 +79,12 @@ export class MessagingController {
     @UploadedFile() file?: { buffer: Buffer; mimetype: string; size: number },
   ) {
     if (!file) {
-      throw new BadRequestException("Fichier image manquant");
+      throw new BadRequestException(
+        translateMessagingError(
+          messagingLocaleFromUser(user),
+          "messaging.errors.missingImageFile",
+        ),
+      );
     }
     const uploaded = await this.mediaClientService.uploadImage(
       "messaging-inline-image",
@@ -129,7 +139,7 @@ export class MessagingController {
     return this.messagingService.createMessage(
       user,
       schoolId,
-      this.normalizeCreatePayload(payload),
+      this.normalizeCreatePayload(payload, messagingLocaleFromUser(user)),
       attachments ?? [],
     );
   }
@@ -197,13 +207,25 @@ export class MessagingController {
     return this.messagingService.deleteFromMailbox(user, schoolId, messageId);
   }
 
-  private normalizeCreatePayload(payload: Record<string, unknown>) {
-    const subject = this.ensureStringField(payload.subject, "subject");
-    const body = this.ensureStringField(payload.body, "body");
+  private normalizeCreatePayload(
+    payload: Record<string, unknown>,
+    locale: MessagingLocale,
+  ) {
+    const subject = this.ensureStringField(
+      payload.subject,
+      "messaging.errors.invalidSubject",
+      locale,
+    );
+    const body = this.ensureStringField(
+      payload.body,
+      "messaging.errors.invalidBody",
+      locale,
+    );
     const recipientUserIds = this.normalizeRecipientIds(
       payload.recipientUserIds,
+      locale,
     );
-    const isDraft = this.normalizeBoolean(payload.isDraft);
+    const isDraft = this.normalizeBoolean(payload.isDraft, locale);
 
     return {
       subject,
@@ -213,15 +235,19 @@ export class MessagingController {
     } satisfies CreateMessageDto;
   }
 
-  private ensureStringField(value: unknown, fieldName: string) {
+  private ensureStringField(
+    value: unknown,
+    errorKey: string,
+    locale: MessagingLocale,
+  ) {
     if (typeof value !== "string") {
-      throw new BadRequestException(`Invalid ${fieldName}`);
+      throw new BadRequestException(translateMessagingError(locale, errorKey));
     }
 
     return value;
   }
 
-  private normalizeRecipientIds(value: unknown) {
+  private normalizeRecipientIds(value: unknown, locale: MessagingLocale) {
     if (value === undefined || value === null || value === "") {
       return undefined;
     }
@@ -231,7 +257,12 @@ export class MessagingController {
     }
 
     if (typeof value !== "string") {
-      throw new BadRequestException("Invalid recipientUserIds");
+      throw new BadRequestException(
+        translateMessagingError(
+          locale,
+          "messaging.errors.invalidRecipientUserIds",
+        ),
+      );
     }
 
     const normalized = value.trim();
@@ -246,7 +277,12 @@ export class MessagingController {
           return parsed.map((entry) => String(entry));
         }
       } catch {
-        throw new BadRequestException("Invalid recipientUserIds");
+        throw new BadRequestException(
+          translateMessagingError(
+            locale,
+            "messaging.errors.invalidRecipientUserIds",
+          ),
+        );
       }
     }
 
@@ -260,7 +296,7 @@ export class MessagingController {
     return [normalized];
   }
 
-  private normalizeBoolean(value: unknown) {
+  private normalizeBoolean(value: unknown, locale: MessagingLocale) {
     if (value === undefined || value === null || value === "") {
       return undefined;
     }
@@ -270,7 +306,9 @@ export class MessagingController {
     }
 
     if (typeof value !== "string") {
-      throw new BadRequestException("Invalid isDraft");
+      throw new BadRequestException(
+        translateMessagingError(locale, "messaging.errors.invalidIsDraft"),
+      );
     }
 
     const normalized = value.trim().toLowerCase();
@@ -281,6 +319,8 @@ export class MessagingController {
       return false;
     }
 
-    throw new BadRequestException("Invalid isDraft");
+    throw new BadRequestException(
+      translateMessagingError(locale, "messaging.errors.invalidIsDraft"),
+    );
   }
 }

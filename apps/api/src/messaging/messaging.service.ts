@@ -16,6 +16,11 @@ import type { CreateMessageDto } from "./dto/create-message.dto.js";
 import type { ListMessagesDto } from "./dto/list-messages.dto.js";
 import type { MarkMessageReadDto } from "./dto/mark-message-read.dto.js";
 import type { UpdateDraftMessageDto } from "./dto/update-draft-message.dto.js";
+import {
+  messagingLocaleFromUser,
+  translateMessagingError,
+  type MessagingLocale,
+} from "./messaging.translations.js";
 
 type MessageFolder = "inbox" | "sent" | "drafts" | "archive";
 type UploadedAttachment = {
@@ -254,6 +259,7 @@ export class MessagingService {
     messageId: string,
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = messagingLocaleFromUser(user);
 
     const message = await this.prisma.internalMessage.findFirst({
       where: {
@@ -311,7 +317,9 @@ export class MessagingService {
     });
 
     if (!message) {
-      throw new NotFoundException("Message not found");
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
     }
 
     const isSender = message.senderUserId === user.id;
@@ -320,11 +328,15 @@ export class MessagingService {
     );
 
     if (!isSender && !recipientRow) {
-      throw new ForbiddenException("Message access denied");
+      throw new ForbiddenException(
+        translateMessagingError(locale, "messaging.errors.accessDenied"),
+      );
     }
 
     if (recipientRow?.deletedAt) {
-      throw new NotFoundException("Message not found");
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
     }
 
     return {
@@ -368,16 +380,23 @@ export class MessagingService {
     attachments: UploadedAttachment[] = [],
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = messagingLocaleFromUser(user);
     const recipientIds = this.normalizeRecipientIds(payload.recipientUserIds);
     const isDraft = payload.isDraft ?? false;
     const sanitizedBody = sanitizeRichTextHtml(payload.body);
 
     if (!isDraft && recipientIds.length === 0) {
-      throw new BadRequestException("At least one recipient is required");
+      throw new BadRequestException(
+        translateMessagingError(locale, "messaging.errors.recipientRequired"),
+      );
     }
 
     if (recipientIds.length > 0) {
-      await this.ensureRecipientsInSchool(effectiveSchoolId, recipientIds);
+      await this.ensureRecipientsInSchool(
+        effectiveSchoolId,
+        recipientIds,
+        locale,
+      );
     }
 
     const uploadedAttachments = attachments.length
@@ -455,6 +474,7 @@ export class MessagingService {
     payload: UpdateDraftMessageDto,
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = messagingLocaleFromUser(user);
 
     const draft = await this.prisma.internalMessage.findFirst({
       where: {
@@ -470,7 +490,9 @@ export class MessagingService {
     });
 
     if (!draft) {
-      throw new NotFoundException("Draft not found");
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.draftNotFound"),
+      );
     }
 
     if (
@@ -478,7 +500,9 @@ export class MessagingService {
       payload.body === undefined &&
       payload.recipientUserIds === undefined
     ) {
-      throw new BadRequestException("No fields to update");
+      throw new BadRequestException(
+        translateMessagingError(locale, "messaging.errors.noFieldsToUpdate"),
+      );
     }
 
     const recipientIds =
@@ -491,7 +515,11 @@ export class MessagingService {
         : sanitizeRichTextHtml(payload.body);
 
     if (recipientIds) {
-      await this.ensureRecipientsInSchool(effectiveSchoolId, recipientIds);
+      await this.ensureRecipientsInSchool(
+        effectiveSchoolId,
+        recipientIds,
+        locale,
+      );
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -540,6 +568,7 @@ export class MessagingService {
     messageId: string,
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = messagingLocaleFromUser(user);
 
     const draft = await this.prisma.internalMessage.findFirst({
       where: {
@@ -559,11 +588,15 @@ export class MessagingService {
     });
 
     if (!draft) {
-      throw new NotFoundException("Draft not found");
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.draftNotFound"),
+      );
     }
 
     if (draft._count.recipients === 0) {
-      throw new BadRequestException("At least one recipient is required");
+      throw new BadRequestException(
+        translateMessagingError(locale, "messaging.errors.recipientRequired"),
+      );
     }
 
     await this.prisma.internalMessage.update({
@@ -597,7 +630,12 @@ export class MessagingService {
     });
 
     if (!recipient) {
-      throw new NotFoundException("Message not found");
+      throw new NotFoundException(
+        translateMessagingError(
+          messagingLocaleFromUser(user),
+          "messaging.errors.messageNotFound",
+        ),
+      );
     }
 
     await this.prisma.internalMessageRecipient.update({
@@ -617,6 +655,7 @@ export class MessagingService {
     archived: ArchiveMessageDto["archived"],
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = messagingLocaleFromUser(user);
 
     const message = await this.prisma.internalMessage.findFirst({
       where: {
@@ -630,7 +669,9 @@ export class MessagingService {
     });
 
     if (!message) {
-      throw new NotFoundException("Message not found");
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
     }
 
     if (message.senderUserId === user.id) {
@@ -656,7 +697,9 @@ export class MessagingService {
     });
 
     if (!recipient) {
-      throw new NotFoundException("Message not found");
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
     }
 
     await this.prisma.internalMessageRecipient.update({
@@ -675,6 +718,7 @@ export class MessagingService {
     messageId: string,
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const locale = messagingLocaleFromUser(user);
 
     const message = await this.prisma.internalMessage.findFirst({
       where: {
@@ -689,7 +733,9 @@ export class MessagingService {
     });
 
     if (!message) {
-      throw new NotFoundException("Message not found");
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
     }
 
     if (message.senderUserId === user.id) {
@@ -727,7 +773,9 @@ export class MessagingService {
     });
 
     if (!recipient) {
-      throw new NotFoundException("Message not found");
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
     }
 
     await this.prisma.internalMessageRecipient.update({
@@ -939,6 +987,7 @@ export class MessagingService {
   private async ensureRecipientsInSchool(
     schoolId: string,
     recipientIds: string[],
+    locale: MessagingLocale,
   ) {
     if (recipientIds.length === 0) {
       return;
@@ -964,7 +1013,10 @@ export class MessagingService {
 
     if (missing.length > 0) {
       throw new BadRequestException(
-        "Some recipients are not members of the school",
+        translateMessagingError(
+          locale,
+          "messaging.errors.recipientsNotInSchool",
+        ),
       );
     }
   }
@@ -1099,7 +1151,12 @@ export class MessagingService {
     );
 
     if (!hasMembership) {
-      throw new ForbiddenException("Insufficient role");
+      throw new ForbiddenException(
+        translateMessagingError(
+          messagingLocaleFromUser(user),
+          "messaging.errors.insufficientRole",
+        ),
+      );
     }
 
     return schoolId;

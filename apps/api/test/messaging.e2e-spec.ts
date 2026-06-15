@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import cookieParser from "cookie-parser";
 import { AppModule } from "../src/app.module.js";
 import { MediaClientService } from "../src/media-client/media-client.service.js";
+import { translateMessagingError } from "../src/messaging/messaging.translations.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 
 type JsonObject = Record<string, unknown>;
@@ -399,7 +400,9 @@ describe("Messaging API e2e", () => {
     const body = (await response.json()) as JsonObject;
 
     expect(response.status).toBe(400);
-    expect(String(body.message)).toBe("Fichier image manquant");
+    expect(String(body.message)).toBe(
+      translateMessagingError("fr", "messaging.errors.missingImageFile"),
+    );
   });
 
   it("surfaces media service failures for inline image uploads", async () => {
@@ -517,7 +520,9 @@ describe("Messaging API e2e", () => {
     const body = (await response.json()) as JsonObject;
 
     expect(response.status).toBe(400);
-    expect(String(body.message)).toBe("At least one recipient is required");
+    expect(String(body.message)).toBe(
+      translateMessagingError("fr", "messaging.errors.recipientRequired"),
+    );
   });
 
   it("surfaces attachment upload failures from the media service", async () => {
