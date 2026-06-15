@@ -1636,8 +1636,8 @@ export default function DashboardPage() {
           {me?.role === "PARENT" ? (
             <FamilyFeedPage
               schoolSlug={schoolSlug}
-              childFullName="vos enfants"
-              scopeLabel="la vie de l'ecole"
+              childFullName={t("feed.dashboard.yourChildren")}
+              scopeLabel={t("feed.scope.school")}
               viewerRole={me.role}
               viewScope="GENERAL"
             />

@@ -26,6 +26,7 @@ import { CreateFeedCommentDto } from "./dto/create-feed-comment.dto.js";
 import { CreateFeedPostDto } from "./dto/create-feed-post.dto.js";
 import { ListFeedPostsDto } from "./dto/list-feed-posts.dto.js";
 import { UpdateFeedPostDto } from "./dto/update-feed-post.dto.js";
+import { feedLocaleFromUser, translateFeed } from "./feed.translations.js";
 import { FeedService } from "./feed.service.js";
 
 @Controller("schools/:schoolSlug/feed")
@@ -100,7 +101,9 @@ export class FeedController {
     @UploadedFile() file?: { buffer: Buffer; mimetype: string; size: number },
   ) {
     if (!file) {
-      throw new BadRequestException("Fichier image manquant");
+      throw new BadRequestException(
+        translateFeed(feedLocaleFromUser(user), "feed.errors.missingImageFile"),
+      );
     }
     const uploaded = await this.mediaClientService.uploadImage(
       "messaging-inline-image",

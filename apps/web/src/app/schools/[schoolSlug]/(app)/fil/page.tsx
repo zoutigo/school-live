@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page";
 import { Card } from "../../../../../components/ui/card";
 import type { FeedViewerRole } from "../../../../../components/feed/types";
+import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -40,6 +41,7 @@ const ALLOWED_ROLES: FeedViewerRole[] = [
 export default function SchoolFeedPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [viewerRole, setViewerRole] = useState<FeedViewerRole>("PARENT");
   const [schoolName, setSchoolName] = useState<string>(schoolSlug);
@@ -98,8 +100,8 @@ export default function SchoolFeedPage() {
 
   if (loading) {
     return (
-      <Card title="Fil d'actualite" subtitle="Vie de l'ecole">
-        <p className="text-sm text-text-secondary">Chargement...</p>
+      <Card title={t("feed.page.title")} subtitle={t("feed.page.schoolSubtitle")}>
+        <p className="text-sm text-text-secondary">{t("common.loading")}</p>
       </Card>
     );
   }
@@ -108,10 +110,13 @@ export default function SchoolFeedPage() {
     <FamilyFeedPage
       schoolSlug={schoolSlug}
       childFullName={schoolName}
-      scopeLabel="la vie de l'ecole"
+      scopeLabel={t("feed.scope.school")}
       viewerRole={viewerRole}
       viewScope="GENERAL"
-      headingTitle={`Fil d'actualite general de ${schoolName}`}
+      headingTitle={t("feed.page.generalHeading").replace(
+        "{schoolName}",
+        schoolName,
+      )}
       hideSectionLabel
     />
   );

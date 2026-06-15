@@ -47,6 +47,8 @@ import {
 import { isFeedFormValid } from "./feed-validation";
 import type { FeedFilter, FeedPost } from "./types";
 import type { FeedAudience, FeedAudienceScope, FeedViewerRole } from "./types";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
+import type { Locale } from "../../i18n/translations";
 
 type Props = {
   schoolSlug: string;
@@ -78,11 +80,11 @@ type EditableAttachment = {
 
 const COMMENT_EMOJIS = ["😀", "👍", "❤️", "🎉", "👏"];
 const STAFF_VIEW_FILTERS = [
-  { key: "ALL", label: "Tous" },
-  { key: "PARENTS", label: "Parents/eleves" },
-  { key: "STAFF", label: "Staff" },
-  { key: "LEVEL", label: "Niveau" },
-  { key: "CLASS", label: "Classe" },
+  { key: "ALL", labelKey: "feed.staffFilters.all" },
+  { key: "PARENTS", labelKey: "feed.staffFilters.parents" },
+  { key: "STAFF", labelKey: "feed.staffFilters.staff" },
+  { key: "LEVEL", labelKey: "feed.staffFilters.level" },
+  { key: "CLASS", labelKey: "feed.staffFilters.class" },
 ] as const;
 
 type StaffViewFilterKey = (typeof STAFF_VIEW_FILTERS)[number]["key"];
@@ -105,8 +107,8 @@ function getPromotedFeaturedIds(posts: FeedPost[]) {
     .map((post) => post.id);
 }
 
-function formatDate(dateIso: string) {
-  return new Intl.DateTimeFormat("fr-FR", {
+function formatDate(dateIso: string, locale: Locale) {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "fr-FR", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(dateIso));
@@ -152,6 +154,7 @@ export function FamilyFeedPage({
   hideSectionLabel = false,
   useDemoSeed = true,
 }: Props) {
+  const { t, locale } = useTranslation();
   const editorRef = useRef<RichTextEditorRef | null>(null);
   const editEditorRef = useRef<RichTextEditorRef | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -175,11 +178,15 @@ export function FamilyFeedPage({
   const [featuredDays, setFeaturedDays] = useState(0);
   const audienceOptions = useMemo(
     () =>
-      getAudienceOptions(viewerRole, {
-        classId: currentClassId,
-        levelId: currentLevelId,
-      }),
-    [viewerRole, currentClassId, currentLevelId],
+      getAudienceOptions(
+        viewerRole,
+        {
+          classId: currentClassId,
+          levelId: currentLevelId,
+        },
+        t,
+      ),
+    [viewerRole, currentClassId, currentLevelId, t],
   );
   const [selectedAudienceScope, setSelectedAudienceScope] =
     useState<FeedAudienceScope>("SCHOOL_ALL");
@@ -194,12 +201,12 @@ export function FamilyFeedPage({
     Record<string, boolean>
   >({});
   const classOptions = useMemo<ClassOption[]>(
-    () => buildClassOptions(posts, currentClassId, currentLevelId),
-    [posts, currentClassId, currentLevelId],
+    () => buildClassOptions(posts, currentClassId, currentLevelId, t),
+    [posts, currentClassId, currentLevelId, t],
   );
   const levelOptions = useMemo<LevelOption[]>(
-    () => buildLevelOptions(classOptions, posts, currentLevelId),
-    [classOptions, posts, currentLevelId],
+    () => buildLevelOptions(classOptions, posts, currentLevelId, t),
+    [classOptions, posts, currentLevelId, t],
   );
   const [selectedAudienceLevelId, setSelectedAudienceLevelId] = useState(
     currentLevelId ?? levelOptions[0]?.id ?? "",
@@ -273,9 +280,7 @@ export function FamilyFeedPage({
         if (cancelled) {
           return;
         }
-        setInfo(
-          "Impossible de charger le fil depuis le serveur, affichage local.",
-        );
+        setInfo(t("feed.info.loadError"));
       })
       .finally(() => {
         if (!cancelled) {
@@ -295,6 +300,7 @@ export function FamilyFeedPage({
     filter,
     search,
     loadFeedPage,
+    locale,
   ]);
 
   const loadNextPage = useCallback(async () => {
@@ -429,15 +435,18 @@ export function FamilyFeedPage({
         classId: targetClassId || undefined,
         levelId: selectedClass?.levelId,
         label: selectedClass
-          ? `Classe ${selectedClass.label} (eleves, parents, enseignants)`
-          : "Communaute de classe",
+          ? t("feed.audience.classAllLabel").replace(
+              "{className}",
+              selectedClass.label,
+            )
+          : t("feed.audience.classCommunity"),
       };
     }
 
     if (viewerRole === "PARENT") {
       return {
         scope: "PARENTS_ONLY",
-        label: "Parents uniquement",
+        label: t("feed.audience.parentsOnly"),
       };
     }
 
@@ -450,8 +459,11 @@ export function FamilyFeedPage({
         classId: selectedClass?.id,
         levelId: selectedClass?.levelId,
         label: selectedClass
-          ? `Parents/eleves classe ${selectedClass.label}`
-          : "Parents/eleves d'une classe",
+          ? t("feed.audience.classParentsStudentsLabel").replace(
+              "{className}",
+              selectedClass.label,
+            )
+          : t("feed.audience.classParentsStudentsGeneric"),
       };
     }
 
@@ -461,7 +473,7 @@ export function FamilyFeedPage({
     return (
       matched ?? {
         scope: "SCHOOL_ALL",
-        label: "Toute l'ecole",
+        label: t("feed.audience.wholeSchool"),
       }
     );
   }
@@ -518,8 +530,8 @@ export function FamilyFeedPage({
       setPosts((prev) => [created, ...prev]);
       setInfo(
         openComposerMode === "POLL"
-          ? "Sondage publie."
-          : "Publication ajoutee au fil.",
+          ? t("feed.info.pollPublished")
+          : t("feed.info.postPublished"),
       );
     } catch {
       const newPost: FeedPost = {
@@ -528,9 +540,12 @@ export function FamilyFeedPage({
         schoolSlug,
         author: {
           id: "current-user",
-          fullName: "Equipe pedagogique",
+          fullName: t("feed.localAuthor.fullName"),
           civility: viewerRole === "PARENT" ? "Mme" : "M.",
-          roleLabel: openComposerMode === "POLL" ? "Sondage" : "Publication",
+          roleLabel:
+            openComposerMode === "POLL"
+              ? t("feed.localAuthor.roleLabelPoll")
+              : t("feed.localAuthor.roleLabelPost"),
           avatarText: "EQ",
         },
         title: title.trim(),
@@ -565,7 +580,7 @@ export function FamilyFeedPage({
             : undefined,
       };
       setPosts((prev) => [newPost, ...prev]);
-      setInfo("Publication en local uniquement (API indisponible).");
+      setInfo(t("feed.info.publishedLocalOnly"));
     }
     resetComposer();
     setOpenComposerMode(null);
@@ -687,7 +702,7 @@ export function FamilyFeedPage({
       setPosts((prev) =>
         prev.map((entry) => (entry.id === post.id ? updated : entry)),
       );
-      setInfo("Publication modifiee.");
+      setInfo(t("feed.info.updated"));
       closeEditForm();
     } catch {
       setPosts((prev) =>
@@ -722,7 +737,7 @@ export function FamilyFeedPage({
             : entry,
         ),
       );
-      setInfo("Publication modifiee en local uniquement.");
+      setInfo(t("feed.info.updatedLocalOnly"));
       closeEditForm();
     } finally {
       setSavingEdit(false);
@@ -742,7 +757,7 @@ export function FamilyFeedPage({
     try {
       await deleteFeedPost(schoolSlug, targetPost.id);
     } catch {
-      setInfo("Suppression locale uniquement (API indisponible).");
+      setInfo(t("feed.info.deleteLocalOnly"));
     } finally {
       setPosts((prev) => prev.filter((post) => post.id !== targetPost.id));
       if (editingPostId === targetPost.id) {
@@ -774,7 +789,7 @@ export function FamilyFeedPage({
       );
       return;
     } catch {
-      setInfo("Vote local uniquement (API indisponible).");
+      setInfo(t("feed.info.voteLocalOnly"));
     }
 
     setPosts((prev) =>
@@ -893,7 +908,7 @@ export function FamilyFeedPage({
             ...post.comments,
             {
               id: `comment-${crypto.randomUUID()}`,
-              authorName: "Vous",
+              authorName: t("feed.localAuthor.you"),
               text: raw,
               createdAt: new Date().toISOString(),
             },
@@ -953,12 +968,14 @@ export function FamilyFeedPage({
               {hideSectionLabel ? null : (
                 <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Fil d'actualite famille
+                  {t("feed.header.sectionLabel")}
                 </p>
               )}
               <h2 className="mt-1 text-balance font-heading text-lg font-semibold leading-tight text-text-primary min-[360px]:text-xl">
                 {headingTitle ??
-                  `Bonjour, suivez ${scopeLabel} de ${childFullName}`}
+                  t("feed.header.greeting")
+                    .replace("{scopeLabel}", scopeLabel)
+                    .replace("{childFullName}", childFullName)}
               </h2>
             </div>
             {allowComposer ? (
@@ -971,7 +988,7 @@ export function FamilyFeedPage({
                   onClick={() => toggleComposer("POST")}
                   className="h-10 w-full justify-center px-3 text-sm lg:w-auto"
                 >
-                  Publier une info
+                  {t("feed.composer.publishPost")}
                 </Button>
                 <Button
                   variant={
@@ -981,7 +998,7 @@ export function FamilyFeedPage({
                   onClick={() => toggleComposer("POLL")}
                   className="h-10 w-full justify-center px-3 text-sm lg:w-auto"
                 >
-                  Realiser un sondage
+                  {t("feed.composer.createPoll")}
                 </Button>
               </div>
             ) : (
@@ -990,8 +1007,11 @@ export function FamilyFeedPage({
                 className="border-primary/30 text-primary"
               >
                 {syncing
-                  ? "Synchronisation..."
-                  : `${filteredPosts.length} publication(s)`}
+                  ? t("feed.badge.syncing")
+                  : t("feed.badge.postCount").replace(
+                      "{count}",
+                      String(filteredPosts.length),
+                    )}
               </Badge>
             )}
           </div>
@@ -1003,33 +1023,33 @@ export function FamilyFeedPage({
             <FormTextInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Rechercher dans le fil..."
+              placeholder={t("feed.search.placeholder")}
               className="h-10 min-w-0 w-full bg-background text-sm"
             />
             <div className="-mx-1 flex min-w-0 items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
               <FilterButton
-                label="Tous"
+                label={t("feed.filters.all")}
                 active={filter === "all"}
                 onClick={() => setFilter("all")}
                 icon={<AlignJustify className="h-4 w-4" />}
                 iconOnly
               />
               <FilterButton
-                label="A la une"
+                label={t("feed.filters.featured")}
                 active={filter === "featured"}
                 onClick={() => setFilter("featured")}
                 icon={<Crown className="h-4 w-4" />}
                 iconOnly
               />
               <FilterButton
-                label="Sondages"
+                label={t("feed.filters.polls")}
                 active={filter === "polls"}
                 onClick={() => setFilter("polls")}
                 icon={<Vote className="h-4 w-4" />}
                 iconOnly
               />
               <FilterButton
-                label="Mes posts"
+                label={t("feed.filters.mine")}
                 active={filter === "mine"}
                 onClick={() => setFilter("mine")}
                 icon={<UserRound className="h-4 w-4" />}
@@ -1044,7 +1064,7 @@ export function FamilyFeedPage({
                 {STAFF_VIEW_FILTERS.map((entry) => (
                   <FilterButton
                     key={entry.key}
-                    label={entry.label}
+                    label={t(entry.labelKey)}
                     active={staffViewFilter === entry.key}
                     onClick={() => setStaffViewFilter(entry.key)}
                   />
@@ -1113,8 +1133,8 @@ export function FamilyFeedPage({
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder={
                   openComposerMode === "POLL"
-                    ? "Titre du sondage"
-                    : "Titre de la publication"
+                    ? t("feed.composer.titlePlaceholderPoll")
+                    : t("feed.composer.titlePlaceholderPost")
                 }
                 className="h-10 bg-background text-sm"
               />
@@ -1181,7 +1201,10 @@ export function FamilyFeedPage({
 
             <FormTextInput
               readOnly
-              value={`Public cible: ${getSelectedAudience().label}`}
+              value={t("feed.composer.audienceTarget").replace(
+                "{label}",
+                getSelectedAudience().label,
+              )}
               className="h-9 bg-muted px-3 text-xs text-text-secondary"
             />
 
@@ -1194,7 +1217,7 @@ export function FamilyFeedPage({
                 uploadFeedInlineImage(schoolSlug, file)
               }
               minHeightClassName="min-h-[140px]"
-              hint="Ajoutez du contexte, des points cles et des liens utiles pour les familles."
+              hint={t("feed.composer.editorHint")}
             />
 
             {openComposerMode === "POLL" ? (
@@ -1202,7 +1225,7 @@ export function FamilyFeedPage({
                 <FormTextInput
                   value={pollQuestion}
                   onChange={(event) => setPollQuestion(event.target.value)}
-                  placeholder="Question du sondage"
+                  placeholder={t("feed.composer.pollQuestionPlaceholder")}
                   className="h-10 bg-surface text-sm"
                 />
                 {pollOptions.map((option, index) => (
@@ -1216,7 +1239,10 @@ export function FamilyFeedPage({
                         ),
                       )
                     }
-                    placeholder={`Option ${index + 1}`}
+                    placeholder={t("feed.composer.pollOptionPlaceholder").replace(
+                      "{number}",
+                      String(index + 1),
+                    )}
                     className="h-10 bg-surface text-sm"
                   />
                 ))}
@@ -1227,7 +1253,7 @@ export function FamilyFeedPage({
                     className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Ajouter une option
+                    {t("feed.composer.addOption")}
                   </button>
                 ) : null}
               </div>
@@ -1236,7 +1262,7 @@ export function FamilyFeedPage({
             <div className="grid gap-2 p-0">
               <FormFileInput
                 multiple
-                aria-label="Ajouter des pieces jointes a la publication"
+                aria-label={t("feed.composer.attachmentsAriaAdd")}
                 onChange={(event) => onAttachmentPick(event.target.files)}
               />
               {draftAttachments.length > 0 ? (
@@ -1257,7 +1283,7 @@ export function FamilyFeedPage({
             <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
               <div className="inline-flex items-center gap-2 text-sm text-text-secondary">
                 <CalendarDays className="h-4 w-4" />
-                Mise en avant (jours)
+                {t("feed.composer.featuredDaysLabel")}
                 <FormSelect
                   value={featuredDays}
                   onChange={(event) =>
@@ -1265,11 +1291,11 @@ export function FamilyFeedPage({
                   }
                   className="h-8 bg-background px-2"
                 >
-                  <option value={0}>Aucune</option>
-                  <option value={1}>1 jour</option>
-                  <option value={3}>3 jours</option>
-                  <option value={5}>5 jours</option>
-                  <option value={7}>7 jours</option>
+                  <option value={0}>{t("feed.composer.featuredNone")}</option>
+                  <option value={1}>{t("feed.composer.featured1Day")}</option>
+                  <option value={3}>{t("feed.composer.featured3Days")}</option>
+                  <option value={5}>{t("feed.composer.featured5Days")}</option>
+                  <option value={7}>{t("feed.composer.featured7Days")}</option>
                 </FormSelect>
               </div>
               <Button
@@ -1278,7 +1304,7 @@ export function FamilyFeedPage({
                 disabled={!canPublish()}
                 className="sm:justify-self-end"
               >
-                Publier
+                {t("feed.composer.publish")}
               </Button>
             </div>
             {info ? <p className="text-sm text-success">{info}</p> : null}
@@ -1315,7 +1341,7 @@ export function FamilyFeedPage({
                 </p>
                 <p className="text-[0.72rem] text-text-secondary">
                   {formatAuthorDisplay(post.author)} • {post.author.roleLabel} •{" "}
-                  {formatDate(post.createdAt)}
+                  {formatDate(post.createdAt, locale)}
                 </p>
               </div>
               <div className="inline-flex items-center gap-2">
@@ -1323,8 +1349,8 @@ export function FamilyFeedPage({
                   <Badge
                     variant="neutral"
                     className="border-amber-300 bg-amber-50 text-amber-700"
-                    title="Publication mise en avant"
-                    aria-label="Publication mise en avant"
+                    title={t("feed.post.featuredLabel")}
+                    aria-label={t("feed.post.featuredLabel")}
                   >
                     <Crown className="h-3.5 w-3.5" />
                   </Badge>
@@ -1334,7 +1360,7 @@ export function FamilyFeedPage({
                     variant="neutral"
                     className="border-primary/30 text-primary"
                   >
-                    SONDAGE
+                    {t("feed.post.pollBadge")}
                   </Badge>
                 ) : null}
               </div>
@@ -1408,7 +1434,10 @@ export function FamilyFeedPage({
                         <span className="relative z-10 flex items-center justify-between gap-2">
                           <span>{option.label}</span>
                           <span className="text-xs text-text-secondary">
-                            {option.votes} vote(s)
+                            {t("feed.post.voteCount").replace(
+                              "{count}",
+                              String(option.votes),
+                            )}
                           </span>
                         </span>
                         <span
@@ -1428,7 +1457,7 @@ export function FamilyFeedPage({
                 <FormTextInput
                   value={editTitle}
                   onChange={(event) => setEditTitle(event.target.value)}
-                  placeholder="Titre de la publication"
+                  placeholder={t("feed.edit.titlePlaceholder")}
                   className="h-10 bg-background text-sm"
                 />
 
@@ -1451,7 +1480,7 @@ export function FamilyFeedPage({
                       onChange={(event) =>
                         setEditPollQuestion(event.target.value)
                       }
-                      placeholder="Question du sondage"
+                      placeholder={t("feed.edit.pollQuestionPlaceholder")}
                       className="h-10 bg-surface text-sm"
                     />
                     {editPollOptions.map((option, index) => (
@@ -1465,7 +1494,10 @@ export function FamilyFeedPage({
                             ),
                           )
                         }
-                        placeholder={`Option ${index + 1}`}
+                        placeholder={t("feed.edit.pollOptionPlaceholder").replace(
+                          "{number}",
+                          String(index + 1),
+                        )}
                         className="h-10 bg-surface text-sm"
                       />
                     ))}
@@ -1478,7 +1510,7 @@ export function FamilyFeedPage({
                         className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        Ajouter une option
+                        {t("feed.edit.addOption")}
                       </button>
                     ) : null}
                   </div>
@@ -1487,7 +1519,7 @@ export function FamilyFeedPage({
                 <div className="grid gap-2 p-0">
                   <FormFileInput
                     multiple
-                    aria-label="Modifier les pieces jointes de la publication"
+                    aria-label={t("feed.edit.attachmentsAriaEdit")}
                     onChange={(event) =>
                       onEditAttachmentPick(event.target.files)
                     }
@@ -1509,13 +1541,15 @@ export function FamilyFeedPage({
                             </span>
                             <button
                               type="button"
-                              aria-label={`Supprimer ${attachment.fileName}`}
+                              aria-label={t(
+                                "feed.edit.removeAttachmentAria",
+                              ).replace("{fileName}", attachment.fileName)}
                               className="text-xs font-semibold text-notification hover:underline"
                               onClick={() =>
                                 removeEditAttachment(attachment.id)
                               }
                             >
-                              Retirer
+                              {t("feed.edit.remove")}
                             </button>
                           </div>
                         </li>
@@ -1523,7 +1557,7 @@ export function FamilyFeedPage({
                     </ul>
                   ) : (
                     <p className="text-xs text-text-secondary">
-                      Aucune piece jointe.
+                      {t("feed.edit.noAttachments")}
                     </p>
                   )}
                 </div>
@@ -1535,14 +1569,16 @@ export function FamilyFeedPage({
                     onClick={closeEditForm}
                     disabled={savingEdit}
                   >
-                    Annuler
+                    {t("feed.edit.cancel")}
                   </Button>
                   <Button
                     type="button"
                     onClick={() => saveEditedPost(post)}
                     disabled={savingEdit || !canSaveEdit(post)}
                   >
-                    {savingEdit ? "Enregistrement..." : "Enregistrer"}
+                    {savingEdit
+                      ? t("feed.edit.saving")
+                      : t("feed.edit.save")}
                   </Button>
                 </div>
               </div>
@@ -1556,8 +1592,14 @@ export function FamilyFeedPage({
                     onClick={() => toggleLike(post.id)}
                     aria-label={
                       post.likedByViewer
-                        ? `Retirer le like (${post.likesCount})`
-                        : `Aimer (${post.likesCount})`
+                        ? t("feed.reactions.unlikeAria").replace(
+                            "{count}",
+                            String(post.likesCount),
+                          )
+                        : t("feed.reactions.likeAria").replace(
+                            "{count}",
+                            String(post.likesCount),
+                          )
                     }
                     className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-semibold shadow-sm transition ${
                       post.likedByViewer
@@ -1573,8 +1615,14 @@ export function FamilyFeedPage({
                     onClick={() => toggleComments(post.id)}
                     aria-label={
                       commentsOpenByPostId[post.id]
-                        ? `Masquer les commentaires (${post.comments.length})`
-                        : `Voir les commentaires (${post.comments.length})`
+                        ? t("feed.reactions.hideCommentsAria").replace(
+                            "{count}",
+                            String(post.comments.length),
+                          )
+                        : t("feed.reactions.showCommentsAria").replace(
+                            "{count}",
+                            String(post.comments.length),
+                          )
                     }
                     className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-semibold shadow-sm transition ${
                       commentsOpenByPostId[post.id]
@@ -1596,8 +1644,8 @@ export function FamilyFeedPage({
                   >
                     <Send className="h-3.5 w-3.5" />
                     {commentFormOpenByPostId[post.id]
-                      ? "Masquer reaction"
-                      : "Reagir"}
+                      ? t("feed.reactions.hideReaction")
+                      : t("feed.reactions.react")}
                   </button>
                 </div>
                 {post.canManage ? (
@@ -1605,8 +1653,8 @@ export function FamilyFeedPage({
                     <button
                       type="button"
                       onClick={() => openEditForm(post)}
-                      aria-label="Modifier la publication"
-                      title="Modifier"
+                      aria-label={t("feed.reactions.editAria")}
+                      title={t("feed.reactions.editTitle")}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-card border border-primary/30 bg-primary/10 text-primary transition hover:bg-primary/20"
                     >
                       <Pencil className="h-4 w-4" />
@@ -1614,8 +1662,8 @@ export function FamilyFeedPage({
                     <button
                       type="button"
                       onClick={() => requestDeletePost(post)}
-                      aria-label="Supprimer la publication"
-                      title="Supprimer"
+                      aria-label={t("feed.reactions.deleteAria")}
+                      title={t("feed.reactions.deleteTitle")}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-card border border-notification/40 bg-notification/10 text-notification transition hover:bg-notification/20"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1639,13 +1687,13 @@ export function FamilyFeedPage({
                           {comment.text}
                         </p>
                         <p className="text-xs text-text-secondary">
-                          {formatDate(comment.createdAt)}
+                          {formatDate(comment.createdAt, locale)}
                         </p>
                       </div>
                     ))
                   ) : (
                     <p className="text-xs text-text-secondary">
-                      Aucun commentaire pour le moment.
+                      {t("feed.comments.empty")}
                     </p>
                   )}
                 </div>
@@ -1658,7 +1706,7 @@ export function FamilyFeedPage({
                     onChange={(event) =>
                       updateCommentDraft(post.id, event.target.value)
                     }
-                    placeholder="Ajouter un commentaire..."
+                    placeholder={t("feed.comments.placeholder")}
                     className="min-h-[78px] bg-surface text-sm"
                   />
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1669,8 +1717,14 @@ export function FamilyFeedPage({
                           type="button"
                           onClick={() => appendEmoji(post.id, emoji)}
                           className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface text-sm"
-                          aria-label={`Ajouter ${emoji}`}
-                          title={`Ajouter ${emoji}`}
+                          aria-label={t("feed.comments.addEmojiAria").replace(
+                            "{emoji}",
+                            emoji,
+                          )}
+                          title={t("feed.comments.addEmojiAria").replace(
+                            "{emoji}",
+                            emoji,
+                          )}
                         >
                           {emoji}
                         </button>
@@ -1681,7 +1735,7 @@ export function FamilyFeedPage({
                       disabled={!(commentInputByPostId[post.id] ?? "").trim()}
                       className="h-8 px-3"
                     >
-                      Commenter
+                      {t("feed.comments.submit")}
                     </Button>
                   </div>
                 </div>
@@ -1698,10 +1752,12 @@ export function FamilyFeedPage({
               </div>
             ) : hasMore ? (
               <span className="text-xs text-text-secondary/80">
-                Faites defiler pour charger plus
+                {t("feed.pagination.loadMore")}
               </span>
             ) : (
-              <span className="text-xs text-text-secondary/70">Fin du fil</span>
+              <span className="text-xs text-text-secondary/70">
+                {t("feed.pagination.end")}
+              </span>
             )}
           </div>
         ) : null}
@@ -1709,14 +1765,17 @@ export function FamilyFeedPage({
 
       <ConfirmDialog
         open={Boolean(deleteCandidatePost)}
-        title="Supprimer la publication ?"
+        title={t("feed.deleteDialog.title")}
         message={
           deleteCandidatePost
-            ? `Cette action est definitive. Publication: "${deleteCandidatePost.title}".`
+            ? t("feed.deleteDialog.message").replace(
+                "{title}",
+                deleteCandidatePost.title,
+              )
             : ""
         }
-        confirmLabel="Supprimer"
-        cancelLabel="Annuler"
+        confirmLabel={t("feed.deleteDialog.confirm")}
+        cancelLabel={t("feed.deleteDialog.cancel")}
         loading={deletingPost}
         onCancel={() => {
           if (!deletingPost) {
@@ -1776,6 +1835,7 @@ function isStaff(role: FeedViewerRole) {
 function getAudienceOptions(
   role: FeedViewerRole,
   context: { classId?: string; levelId?: string },
+  t: TranslateFn,
 ): FeedAudience[] {
   if (role === "STUDENT") {
     return [
@@ -1783,24 +1843,30 @@ function getAudienceOptions(
         scope: "CLASS",
         classId: context.classId,
         levelId: context.levelId,
-        label: "Classe (eleves, parents, enseignants)",
+        label: t("feed.audience.classGeneric"),
       },
     ];
   }
 
   if (role === "PARENT") {
-    return [{ scope: "PARENTS_ONLY", label: "Parents uniquement" }];
+    return [{ scope: "PARENTS_ONLY", label: t("feed.audience.parentsOnly") }];
   }
 
   if (isStaff(role)) {
     return [
-      { scope: "PARENTS_STUDENTS", label: "Parents et eleves (ecole)" },
-      { scope: "CLASS", label: "Parents et eleves d'une classe" },
-      { scope: "STAFF_ONLY", label: "Staff uniquement" },
+      {
+        scope: "PARENTS_STUDENTS",
+        label: t("feed.audience.parentsAndStudentsSchool"),
+      },
+      {
+        scope: "CLASS",
+        label: t("feed.audience.classParentsStudentsGeneric"),
+      },
+      { scope: "STAFF_ONLY", label: t("feed.audience.staffOnly") },
     ];
   }
 
-  return [{ scope: "SCHOOL_ALL", label: "Toute l'ecole" }];
+  return [{ scope: "SCHOOL_ALL", label: t("feed.audience.wholeSchool") }];
 }
 
 function canViewerSeePost(
@@ -1853,16 +1919,42 @@ function canViewerSeePost(
   return false;
 }
 
+function extractClassNameFromAudienceLabel(label: string) {
+  return label
+    .replace(/^Parents\/eleves classe /, "")
+    .replace(/^Class /, "")
+    .replace(/ parents\/students$/, "")
+    .trim();
+}
+
 function buildClassOptions(
   posts: FeedPost[],
   currentClassId?: string,
   currentLevelId?: string,
+  t?: TranslateFn,
 ): ClassOption[] {
+  const translate = t ?? ((key: string) => key);
   const defaults: ClassOption[] = [
-    { id: "class-6a", label: "6eme A", levelId: "level-6e" },
-    { id: "class-6b", label: "6eme B", levelId: "level-6e" },
-    { id: "class-6c", label: "6eme C", levelId: "level-6e" },
-    { id: "class-5a", label: "5eme A", levelId: "level-5e" },
+    {
+      id: "class-6a",
+      label: translate("feed.classDefaults.6eA"),
+      levelId: "level-6e",
+    },
+    {
+      id: "class-6b",
+      label: translate("feed.classDefaults.6eB"),
+      levelId: "level-6e",
+    },
+    {
+      id: "class-6c",
+      label: translate("feed.classDefaults.6eC"),
+      levelId: "level-6e",
+    },
+    {
+      id: "class-5a",
+      label: translate("feed.classDefaults.5eA"),
+      levelId: "level-5e",
+    },
   ];
 
   const derived = posts
@@ -1870,9 +1962,9 @@ function buildClassOptions(
     .map((post) => ({
       id: post.audience.classId as string,
       label:
-        post.audience.label.replace("Parents/eleves classe ", "") ||
+        extractClassNameFromAudienceLabel(post.audience.label) ||
         post.audience.classId ||
-        "Classe",
+        translate("feed.classDefaults.fallback"),
       levelId: post.audience.levelId || "level-6e",
     }));
 
@@ -1880,7 +1972,7 @@ function buildClassOptions(
   if (currentClassId && !all.some((entry) => entry.id === currentClassId)) {
     all.push({
       id: currentClassId,
-      label: "Classe actuelle",
+      label: translate("feed.classDefaults.current"),
       levelId: currentLevelId || "level-current",
     });
   }
@@ -1898,20 +1990,22 @@ function buildLevelOptions(
   classOptions: ClassOption[],
   posts: FeedPost[],
   currentLevelId?: string,
+  t?: TranslateFn,
 ): LevelOption[] {
   const levelsFromClass = classOptions.map((entry) => ({
     id: entry.levelId,
-    label: levelLabel(entry.levelId),
+    label: levelLabel(entry.levelId, t),
   }));
   const levelsFromPosts = posts
     .filter((post) => post.audience.scope === "LEVEL" && post.audience.levelId)
     .map((post) => ({
       id: post.audience.levelId as string,
-      label: post.audience.label || levelLabel(post.audience.levelId as string),
+      label:
+        post.audience.label || levelLabel(post.audience.levelId as string, t),
     }));
   const all = [...levelsFromClass, ...levelsFromPosts];
   if (currentLevelId && !all.some((entry) => entry.id === currentLevelId)) {
-    all.push({ id: currentLevelId, label: levelLabel(currentLevelId) });
+    all.push({ id: currentLevelId, label: levelLabel(currentLevelId, t) });
   }
 
   const byId = new Map<string, LevelOption>();
@@ -1924,12 +2018,13 @@ function buildLevelOptions(
   return Array.from(byId.values());
 }
 
-function levelLabel(levelId: string) {
-  if (levelId === "level-6e") return "6eme";
-  if (levelId === "level-5e") return "5eme";
-  if (levelId === "level-4e") return "4eme";
-  if (levelId === "level-3e") return "3eme";
-  return "Niveau";
+function levelLabel(levelId: string, t?: TranslateFn) {
+  const translate = t ?? ((key: string) => key);
+  if (levelId === "level-6e") return translate("feed.levels.6e");
+  if (levelId === "level-5e") return translate("feed.levels.5e");
+  if (levelId === "level-4e") return translate("feed.levels.4e");
+  if (levelId === "level-3e") return translate("feed.levels.3e");
+  return translate("feed.levels.default");
 }
 
 function applyStaffAudienceFilter(
