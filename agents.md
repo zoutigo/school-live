@@ -41,6 +41,13 @@ Primary goals: security (school isolation), maintainability, performance, and cl
 
 ---
 
+## Subagents (must follow)
+
+- Never use the `Agent` tool (subagents/Task) to do the requested work.
+- Do all the work yourself, step by step if needed.
+
+---
+
 ## Restricted environment escalation (must follow)
 
 - If a command, hook, test suite, or verification depends on Docker, docker compose, system services, local daemons, privileged sockets, or any resource that may be blocked by the current execution sandbox, the agent MUST:
