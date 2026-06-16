@@ -1239,10 +1239,9 @@ export function FamilyFeedPage({
                         ),
                       )
                     }
-                    placeholder={t("feed.composer.pollOptionPlaceholder").replace(
-                      "{number}",
-                      String(index + 1),
-                    )}
+                    placeholder={t(
+                      "feed.composer.pollOptionPlaceholder",
+                    ).replace("{number}", String(index + 1))}
                     className="h-10 bg-surface text-sm"
                   />
                 ))}
@@ -1494,10 +1493,9 @@ export function FamilyFeedPage({
                             ),
                           )
                         }
-                        placeholder={t("feed.edit.pollOptionPlaceholder").replace(
-                          "{number}",
-                          String(index + 1),
-                        )}
+                        placeholder={t(
+                          "feed.edit.pollOptionPlaceholder",
+                        ).replace("{number}", String(index + 1))}
                         className="h-10 bg-surface text-sm"
                       />
                     ))}
@@ -1576,9 +1574,7 @@ export function FamilyFeedPage({
                     onClick={() => saveEditedPost(post)}
                     disabled={savingEdit || !canSaveEdit(post)}
                   >
-                    {savingEdit
-                      ? t("feed.edit.saving")
-                      : t("feed.edit.save")}
+                    {savingEdit ? t("feed.edit.saving") : t("feed.edit.save")}
                   </Button>
                 </div>
               </div>

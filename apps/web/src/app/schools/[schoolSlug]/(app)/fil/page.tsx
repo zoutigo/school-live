@@ -100,7 +100,10 @@ export default function SchoolFeedPage() {
 
   if (loading) {
     return (
-      <Card title={t("feed.page.title")} subtitle={t("feed.page.schoolSubtitle")}>
+      <Card
+        title={t("feed.page.title")}
+        subtitle={t("feed.page.schoolSubtitle")}
+      >
         <p className="text-sm text-text-secondary">{t("common.loading")}</p>
       </Card>
     );

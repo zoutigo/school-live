@@ -105,7 +105,10 @@ export default function TeacherClassFeedPage() {
 
   if (loading) {
     return (
-      <Card title={t("feed.classPage.title")} subtitle={t("feed.classPage.loadingSubtitle")}>
+      <Card
+        title={t("feed.classPage.title")}
+        subtitle={t("feed.classPage.loadingSubtitle")}
+      >
         <p className="text-sm text-text-secondary">{t("common.loading")}</p>
       </Card>
     );
@@ -113,7 +116,10 @@ export default function TeacherClassFeedPage() {
 
   if (error) {
     return (
-      <Card title={t("feed.classPage.title")} subtitle={t("feed.classPage.exchangesSubtitle")}>
+      <Card
+        title={t("feed.classPage.title")}
+        subtitle={t("feed.classPage.exchangesSubtitle")}
+      >
         <p className="text-sm text-notification">{error}</p>
       </Card>
     );
@@ -122,7 +128,9 @@ export default function TeacherClassFeedPage() {
   return (
     <FamilyFeedPage
       schoolSlug={schoolSlug}
-      childFullName={classContext?.className ?? t("feed.classPage.defaultClassName")}
+      childFullName={
+        classContext?.className ?? t("feed.classPage.defaultClassName")
+      }
       scopeLabel={t("feed.scope.class")}
       viewerRole={viewerRole}
       viewScope="CLASS"

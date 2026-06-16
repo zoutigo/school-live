@@ -926,10 +926,7 @@ export class FeedService {
     if (scope === FeedAudienceScope.CLASS) {
       if (!payload.audienceClassId) {
         throw new BadRequestException(
-          translateFeed(
-            context.locale,
-            "feed.errors.audienceClassIdRequired",
-          ),
+          translateFeed(context.locale, "feed.errors.audienceClassIdRequired"),
         );
       }
       const classRoom = await this.prisma.class.findFirst({
@@ -965,10 +962,7 @@ export class FeedService {
     if (scope === FeedAudienceScope.LEVEL) {
       if (!payload.audienceLevelId) {
         throw new BadRequestException(
-          translateFeed(
-            context.locale,
-            "feed.errors.audienceLevelIdRequired",
-          ),
+          translateFeed(context.locale, "feed.errors.audienceLevelIdRequired"),
         );
       }
       const level = await this.prisma.academicLevel.findFirst({
@@ -1423,8 +1417,10 @@ export class FeedService {
       return translateFeed(locale, "feed.roles.supervision");
     if (role === "SCHOOL_ACCOUNTANT")
       return translateFeed(locale, "feed.roles.accounting");
-    if (role === "SCHOOL_STAFF") return translateFeed(locale, "feed.roles.staff");
-    if (role === "TEACHER") return translateFeed(locale, "feed.roles.schoolLife");
+    if (role === "SCHOOL_STAFF")
+      return translateFeed(locale, "feed.roles.staff");
+    if (role === "TEACHER")
+      return translateFeed(locale, "feed.roles.schoolLife");
     if (role === "PARENT") return translateFeed(locale, "feed.roles.parents");
     return translateFeed(locale, "feed.roles.students");
   }

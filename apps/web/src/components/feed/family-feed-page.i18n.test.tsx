@@ -93,9 +93,7 @@ describe("FamilyFeedPage i18n", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Staff" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Staff" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Parents/students" }),
     ).toBeInTheDocument();

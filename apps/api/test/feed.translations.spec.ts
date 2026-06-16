@@ -86,12 +86,12 @@ describe("feed.translations", () => {
   });
 
   it("interpolates {className} and {levelLabel} in audience labels", () => {
-    expect(
-      fr("feed.audience.classAllLabel", { className: "6e A" }),
-    ).toBe("Classe 6e A (eleves, parents, enseignants)");
-    expect(
-      en("feed.audience.classAllLabel", { className: "6e A" }),
-    ).toBe("Class 6e A (students, parents, teachers)");
+    expect(fr("feed.audience.classAllLabel", { className: "6e A" })).toBe(
+      "Classe 6e A (eleves, parents, enseignants)",
+    );
+    expect(en("feed.audience.classAllLabel", { className: "6e A" })).toBe(
+      "Class 6e A (students, parents, teachers)",
+    );
     expect(
       fr("feed.audience.classParentsStudentsLabel", { className: "6e A" }),
     ).toBe("Parents/eleves classe 6e A");

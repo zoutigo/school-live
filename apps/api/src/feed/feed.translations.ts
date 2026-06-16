@@ -49,7 +49,8 @@ const fr: TranslationDict = {
   "feed.audience.wholeSchool": "Toute l'ecole",
   "feed.audience.classAllLabel":
     "Classe {className} (eleves, parents, enseignants)",
-  "feed.audience.classParentsStudentsLabel": "Parents/eleves classe {className}",
+  "feed.audience.classParentsStudentsLabel":
+    "Parents/eleves classe {className}",
   "feed.audience.levelLabel": "Niveau {levelLabel}",
 };
 
@@ -96,8 +97,10 @@ const en: TranslationDict = {
   "feed.audience.parentsAndStudents": "Parents and students",
   "feed.audience.parentsOnly": "Parents only",
   "feed.audience.wholeSchool": "Whole school",
-  "feed.audience.classAllLabel": "Class {className} (students, parents, teachers)",
-  "feed.audience.classParentsStudentsLabel": "Class {className} parents/students",
+  "feed.audience.classAllLabel":
+    "Class {className} (students, parents, teachers)",
+  "feed.audience.classParentsStudentsLabel":
+    "Class {className} parents/students",
   "feed.audience.levelLabel": "Level {levelLabel}",
 };
 
