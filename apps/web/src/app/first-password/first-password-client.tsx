@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
@@ -12,26 +12,49 @@ import { FormSubmitHint } from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
+import { RecoveryShell } from "../../components/layout/recovery-shell";
+import { useTranslation } from "../../i18n/useTranslation";
+import type { ReactNode } from "react";
+
+export function FirstPasswordShell({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <RecoveryShell title={t("firstPassword.shell.title")}>
+      {children}
+    </RecoveryShell>
+  );
+}
+
+export function FirstPasswordFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="text-sm text-text-secondary">{t("common.loading")}</div>
+  );
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
-const firstPasswordSchema = z
-  .object({
-    newPassword: z
-      .string()
-      .min(8, "Le mot de passe doit faire au moins 8 caracteres.")
-      .regex(
-        PASSWORD_COMPLEXITY_REGEX,
-        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-      ),
-    confirmPassword: z.string().min(1, "Confirmez le mot de passe."),
-  })
-  .refine((value) => value.newPassword === value.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "La confirmation ne correspond pas au nouveau mot de passe.",
-  });
+function createFirstPasswordSchema(t: (key: string) => string) {
+  return z
+    .object({
+      newPassword: z
+        .string()
+        .min(8, t("recovery.password.errors.passwordMinLength"))
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          t("recovery.password.errors.passwordComplexity"),
+        ),
+      confirmPassword: z
+        .string()
+        .min(1, t("recovery.password.errors.confirmPasswordRequired")),
+    })
+    .refine((value) => value.newPassword === value.confirmPassword, {
+      path: ["confirmPassword"],
+      message: t("recovery.password.errors.passwordConfirmMismatch"),
+    });
+}
 
 type FirstPasswordClientProps = {
   username: string;
@@ -43,11 +66,13 @@ export function FirstPasswordClient({
   schoolSlug,
 }: FirstPasswordClientProps) {
   const router = useRouter();
+  const { locale, t } = useTranslation();
+  const schema = useMemo(() => createFirstPasswordSchema(t), [locale]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const form = useForm<z.infer<typeof firstPasswordSchema>>({
-    resolver: zodResolver(firstPasswordSchema),
+  const form = useForm<z.infer<typeof schema>>({
+    resolver: zodResolver(schema),
     mode: "onChange",
     defaultValues: { newPassword: "", confirmPassword: "" },
   });
@@ -55,7 +80,7 @@ export function FirstPasswordClient({
   const newPassword = form.watch("newPassword");
 
   const onSubmit = useCallback(
-    async (values: z.infer<typeof firstPasswordSchema>) => {
+    async (values: z.infer<typeof schema>) => {
       setError(null);
       try {
         const response = await fetch(
@@ -78,7 +103,7 @@ export function FirstPasswordClient({
           const message =
             payload?.message && Array.isArray(payload.message)
               ? payload.message.join(", ")
-              : (payload?.message ?? "Changement de mot de passe impossible.");
+              : (payload?.message ?? t("firstPassword.errors.changeFailed"));
           setError(String(message));
           return;
         }
@@ -89,18 +114,20 @@ export function FirstPasswordClient({
           router.replace(href);
         }, 2000);
       } catch {
-        setError("Erreur reseau.");
+        setError(t("recovery.password.errors.networkError"));
       }
     },
-    [username, schoolSlug, router],
+    [username, schoolSlug, router, t],
   );
 
   if (success) {
     return (
-      <Card title="Mot de passe defini" subtitle="Redirection en cours...">
+      <Card
+        title={t("firstPassword.success.title")}
+        subtitle={t("firstPassword.success.subtitle")}
+      >
         <p className="text-sm text-text-secondary">
-          Votre mot de passe a ete defini avec succes. Vous allez etre redirige
-          vers la connexion.
+          {t("firstPassword.success.message")}
         </p>
       </Card>
     );
@@ -108,17 +135,17 @@ export function FirstPasswordClient({
 
   return (
     <Card
-      title="Definir mon mot de passe"
-      subtitle="Premiere connexion — choisissez un mot de passe securise"
+      title={t("firstPassword.cardTitle")}
+      subtitle={t("firstPassword.cardSubtitle")}
     >
       <div className="mb-3 rounded-card border border-border bg-background px-3 py-2 text-sm text-text-secondary">
-        Identifiant :{" "}
+        {t("firstPassword.identifierLabel")}{" "}
         <span className="font-semibold text-text-primary">{username}</span>
       </div>
 
       <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
         <FormField
-          label="Nouveau mot de passe"
+          label={t("recovery.password.fields.newPassword")}
           error={form.formState.errors.newPassword?.message}
         >
           <Controller
@@ -126,7 +153,7 @@ export function FirstPasswordClient({
             name="newPassword"
             render={({ field }) => (
               <PasswordInput
-                aria-label="Nouveau mot de passe"
+                aria-label={t("recovery.password.fields.newPassword")}
                 name={field.name}
                 aria-invalid={
                   form.formState.errors.newPassword ? "true" : "false"
@@ -148,7 +175,7 @@ export function FirstPasswordClient({
         <PasswordRequirementsHint password={newPassword} />
 
         <FormField
-          label="Confirmer le mot de passe"
+          label={t("firstPassword.fields.confirmPassword")}
           error={form.formState.errors.confirmPassword?.message}
         >
           <Controller
@@ -156,7 +183,7 @@ export function FirstPasswordClient({
             name="confirmPassword"
             render={({ field }) => (
               <PasswordInput
-                aria-label="Confirmer le mot de passe"
+                aria-label={t("firstPassword.fields.confirmPassword")}
                 name={field.name}
                 aria-invalid={
                   form.formState.errors.confirmPassword ? "true" : "false"
@@ -181,14 +208,14 @@ export function FirstPasswordClient({
           disabled={form.formState.isSubmitting || !form.formState.isValid}
         >
           {form.formState.isSubmitting
-            ? "Enregistrement..."
-            : "Definir mon mot de passe"}
+            ? t("firstPassword.submit.saving")
+            : t("firstPassword.submit.submit")}
         </SubmitButton>
 
         {error ? <p className="text-sm text-notification">{error}</p> : null}
 
         <BackLinkButton href="/" className="mt-2">
-          Retour a la connexion
+          {t("recovery.password.backToLogin")}
         </BackLinkButton>
       </form>
     </Card>

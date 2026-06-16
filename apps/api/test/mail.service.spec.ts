@@ -80,10 +80,11 @@ describe("MailService", () => {
       studentLastName: "Kid",
       schoolName: "Scolive",
       schoolSlug: "school-live",
-      eventTypeLabel: "Discipline",
+      eventType: "RETARD" as const,
       eventReason: "Retards successifs",
       eventAction: "CREATED" as const,
       eventDate: "2026-02-21T10:00:00.000Z",
+      locale: "fr" as const,
     };
 
     await service.sendStudentLifeEventNotification(lifePayload);

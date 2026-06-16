@@ -14,6 +14,10 @@ import { SubmitButton } from "../../../../../components/ui/form-buttons";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import {
+  useTranslation,
+  type TranslateFn,
+} from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -68,21 +72,35 @@ type StudentGradesContext = {
   }>;
 };
 
-const createGradeSchema = z.object({
-  schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
-  assignmentKey: z.string().trim().min(1, "L'affectation est obligatoire."),
-  studentId: z.string().trim().min(1, "L'eleve est obligatoire."),
-  term: z.enum(["TERM_1", "TERM_2", "TERM_3"]),
-  value: z.coerce.number().min(0, "La note doit etre positive."),
-  maxValue: z.coerce.number().gt(0, "La note max doit etre superieure a 0."),
-  assessmentWeight: z.coerce
-    .number()
-    .min(0, "Le coefficient doit etre positif."),
-});
+function createGradeSchema(t: TranslateFn) {
+  return z.object({
+    schoolYearId: z
+      .string()
+      .trim()
+      .min(1, t("notes.admin.validation.schoolYearRequired")),
+    assignmentKey: z
+      .string()
+      .trim()
+      .min(1, t("notes.admin.validation.assignmentRequired")),
+    studentId: z
+      .string()
+      .trim()
+      .min(1, t("notes.admin.validation.studentRequired")),
+    term: z.enum(["TERM_1", "TERM_2", "TERM_3"]),
+    value: z.coerce.number().min(0, t("notes.admin.validation.valuePositive")),
+    maxValue: z.coerce
+      .number()
+      .gt(0, t("notes.admin.validation.maxValuePositive")),
+    assessmentWeight: z.coerce
+      .number()
+      .min(0, t("notes.admin.validation.weightPositive")),
+  });
+}
 
 export default function StudentGradesPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [role, setRole] = useState<Role | null>(null);
   const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
@@ -93,12 +111,13 @@ export default function StudentGradesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const gradeSchema = useMemo(() => createGradeSchema(t), [t]);
   const createGradeForm = useForm<
-    z.input<typeof createGradeSchema>,
+    z.input<typeof gradeSchema>,
     unknown,
-    z.output<typeof createGradeSchema>
+    z.output<typeof gradeSchema>
   >({
-    resolver: zodResolver(createGradeSchema),
+    resolver: zodResolver(gradeSchema),
     mode: "onChange",
     defaultValues: {
       schoolYearId: "",
@@ -208,7 +227,7 @@ export default function StudentGradesPage() {
       );
 
       if (!response.ok) {
-        setError("Impossible de charger le contexte de saisie des notes.");
+        setError(t("notes.admin.errors.loadContext"));
         return;
       }
 
@@ -343,15 +362,15 @@ export default function StudentGradesPage() {
     }
   }, [createGradeForm, gradeValues.studentId, studentOptions]);
 
-  async function onCreateGrade(values: z.output<typeof createGradeSchema>) {
+  async function onCreateGrade(values: z.output<typeof gradeSchema>) {
     if (!selectedAssignment || !values.studentId) {
-      setError("Selectionnez une affectation et un eleve.");
+      setError(t("notes.admin.errors.missingAssignmentOrStudent"));
       return;
     }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("notes.admin.errors.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -389,7 +408,7 @@ export default function StudentGradesPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Creation de note impossible.");
+            : (payload?.message ?? t("notes.admin.errors.createGradeFailed"));
         setError(String(message));
         return;
       }
@@ -403,10 +422,10 @@ export default function StudentGradesPage() {
         maxValue: 20,
         assessmentWeight: 1,
       });
-      setSuccess("Note enregistree.");
+      setSuccess(t("notes.admin.success.gradeCreated"));
       await loadStudentGrades();
     } catch {
-      setError("Erreur reseau.");
+      setError(t("notes.admin.errors.networkError"));
     } finally {
       setSaving(false);
     }
@@ -418,8 +437,8 @@ export default function StudentGradesPage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Notes & Devoirs"
-        subtitle="Saisie et historique des resultats"
+        title={t("notes.admin.card.title")}
+        subtitle={t("notes.admin.card.subtitle")}
       >
         {canWrite ? (
           <form
@@ -427,11 +446,11 @@ export default function StudentGradesPage() {
             onSubmit={createGradeForm.handleSubmit(onCreateGrade)}
           >
             <FormField
-              label="Annee scolaire"
+              label={t("notes.admin.form.schoolYear")}
               error={createGradeForm.formState.errors.schoolYearId?.message}
             >
               <FormSelect
-                aria-label="Annee scolaire"
+                aria-label={t("notes.admin.form.schoolYear")}
                 invalid={schoolYearInvalid}
                 value={gradeValues.schoolYearId ?? ""}
                 onChange={(event) => {
@@ -445,23 +464,25 @@ export default function StudentGradesPage() {
                 }}
                 disabled={loadingContext}
               >
-                <option value="">Selectionner</option>
+                <option value="">{t("notes.common.select")}</option>
                 {(context?.schoolYears ?? []).map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {entry.label}
-                    {entry.isActive ? " (active)" : ""}
+                    {entry.isActive
+                      ? t("notes.admin.form.schoolYearActiveSuffix")
+                      : ""}
                   </option>
                 ))}
               </FormSelect>
             </FormField>
 
             <FormField
-              label="Affectation (classe + matiere)"
+              label={t("notes.admin.form.assignment")}
               error={createGradeForm.formState.errors.assignmentKey?.message}
               className="md:col-span-2"
             >
               <FormSelect
-                aria-label="Affectation"
+                aria-label={t("notes.admin.form.assignment")}
                 invalid={assignmentInvalid}
                 value={gradeValues.assignmentKey ?? ""}
                 onChange={(event) =>
@@ -477,7 +498,7 @@ export default function StudentGradesPage() {
                 }
                 disabled={loadingContext}
               >
-                <option value="">Selectionner</option>
+                <option value="">{t("notes.common.select")}</option>
                 {assignmentOptions.map((entry) => (
                   <option key={entry.key} value={entry.key}>
                     {entry.label}
@@ -487,11 +508,11 @@ export default function StudentGradesPage() {
             </FormField>
 
             <FormField
-              label="Eleve"
+              label={t("notes.admin.form.student")}
               error={createGradeForm.formState.errors.studentId?.message}
             >
               <FormSelect
-                aria-label="Eleve"
+                aria-label={t("notes.admin.form.student")}
                 invalid={studentInvalid}
                 value={gradeValues.studentId ?? ""}
                 onChange={(event) =>
@@ -503,7 +524,7 @@ export default function StudentGradesPage() {
                 }
                 disabled={loadingContext}
               >
-                <option value="">Selectionner</option>
+                <option value="">{t("notes.common.select")}</option>
                 {studentOptions.map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {entry.label}
@@ -513,11 +534,11 @@ export default function StudentGradesPage() {
             </FormField>
 
             <FormField
-              label="Periode"
+              label={t("notes.admin.form.term")}
               error={createGradeForm.formState.errors.term?.message}
             >
               <FormSelect
-                aria-label="Periode"
+                aria-label={t("notes.admin.form.term")}
                 invalid={termInvalid}
                 value={gradeValues.term ?? "TERM_1"}
                 onChange={(event) =>
@@ -539,11 +560,11 @@ export default function StudentGradesPage() {
             </FormField>
 
             <FormField
-              label="Note"
+              label={t("notes.admin.form.value")}
               error={createGradeForm.formState.errors.value?.message}
             >
               <FormNumberInput
-                aria-label="Note"
+                aria-label={t("notes.admin.form.value")}
                 invalid={valueInvalid}
                 min={0}
                 step="0.01"
@@ -563,11 +584,11 @@ export default function StudentGradesPage() {
             </FormField>
 
             <FormField
-              label="Note max"
+              label={t("notes.admin.form.maxValue")}
               error={createGradeForm.formState.errors.maxValue?.message}
             >
               <FormNumberInput
-                aria-label="Note max"
+                aria-label={t("notes.admin.form.maxValue")}
                 invalid={maxValueInvalid}
                 min={1}
                 step="0.01"
@@ -587,11 +608,11 @@ export default function StudentGradesPage() {
             </FormField>
 
             <FormField
-              label="Coef. evaluation"
+              label={t("notes.admin.form.assessmentWeight")}
               error={createGradeForm.formState.errors.assessmentWeight?.message}
             >
               <FormNumberInput
-                aria-label="Coef. evaluation"
+                aria-label={t("notes.admin.form.assessmentWeight")}
                 invalid={assessmentWeightInvalid}
                 min={0}
                 step="0.1"
@@ -620,7 +641,9 @@ export default function StudentGradesPage() {
                   saving || loadingContext || !createGradeForm.formState.isValid
                 }
               >
-                {saving ? "Enregistrement..." : "Ajouter la note"}
+                {saving
+                  ? t("notes.admin.form.submitting")
+                  : t("notes.admin.form.submit")}
               </SubmitButton>
             </div>
           </form>
@@ -630,19 +653,31 @@ export default function StudentGradesPage() {
           <table className="min-w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border text-left text-text-secondary">
-                <th className="px-3 py-2 font-medium">Eleve</th>
-                <th className="px-3 py-2 font-medium">Classe</th>
-                <th className="px-3 py-2 font-medium">Matiere</th>
-                <th className="px-3 py-2 font-medium">Note</th>
-                <th className="px-3 py-2 font-medium">Coef eval.</th>
-                <th className="px-3 py-2 font-medium">Periode</th>
+                <th className="px-3 py-2 font-medium">
+                  {t("notes.admin.table.student")}
+                </th>
+                <th className="px-3 py-2 font-medium">
+                  {t("notes.admin.table.class")}
+                </th>
+                <th className="px-3 py-2 font-medium">
+                  {t("notes.admin.table.subject")}
+                </th>
+                <th className="px-3 py-2 font-medium">
+                  {t("notes.admin.table.score")}
+                </th>
+                <th className="px-3 py-2 font-medium">
+                  {t("notes.admin.table.weight")}
+                </th>
+                <th className="px-3 py-2 font-medium">
+                  {t("notes.admin.table.term")}
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
                   <td className="px-3 py-6 text-text-secondary" colSpan={6}>
-                    Chargement...
+                    {t("notes.admin.table.loading")}
                   </td>
                 </tr>
               ) : null}
@@ -675,7 +710,7 @@ export default function StudentGradesPage() {
               {!loading && studentGrades.length === 0 ? (
                 <tr>
                   <td className="px-3 py-6 text-text-secondary" colSpan={6}>
-                    Aucune note disponible.
+                    {t("notes.admin.table.empty")}
                   </td>
                 </tr>
               ) : null}

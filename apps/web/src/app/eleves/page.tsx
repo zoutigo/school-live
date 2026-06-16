@@ -30,6 +30,7 @@ import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -140,28 +141,39 @@ const updateStudentSchema = z.object({
   lastName: z.string().trim().min(1, "Le nom est obligatoire."),
 });
 
-const createLifeEventSchema = z.object({
-  type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]),
-  occurredAt: z.string().trim().min(1, "La date est obligatoire."),
-  reason: z.string().trim().min(1, "Le motif est obligatoire."),
-  justified: z.boolean().optional(),
-  comment: z.string().trim().optional(),
-});
+function createLifeEventSchema(t: TranslateFn) {
+  return z.object({
+    type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]),
+    occurredAt: z
+      .string()
+      .trim()
+      .min(1, t("discipline.validation.dateRequired")),
+    reason: z.string().trim().min(1, t("discipline.validation.reasonRequired")),
+    justified: z.boolean().optional(),
+    comment: z.string().trim().optional(),
+  });
+}
 
-const createLifeEventFormSchema = createLifeEventSchema.extend({
-  durationMinutes: z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        value.length === 0 ||
-        (/^\d+$/.test(value) && Number.parseInt(value, 10) >= 0),
-      {
-        message: "La duree doit etre un entier positif.",
-      },
-    )
-    .optional(),
-});
+function createLifeEventFormSchema(t: TranslateFn) {
+  return createLifeEventSchema(t).extend({
+    durationMinutes: z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          value.length === 0 ||
+          (/^\d+$/.test(value) && Number.parseInt(value, 10) >= 0),
+        {
+          message: t("discipline.validation.durationPositive"),
+        },
+      )
+      .optional(),
+  });
+}
+
+type LifeEventFormValues = z.infer<
+  ReturnType<typeof createLifeEventFormSchema>
+>;
 
 const linkParentSchema = z
   .object({
@@ -245,7 +257,9 @@ function normalizeCmPhoneInput(value: string) {
 }
 
 export default function ElevesPage() {
+  const { t } = useTranslation();
   const router = useRouter();
+  const lifeEventFormSchema = useMemo(() => createLifeEventFormSchema(t), [t]);
 
   const [tab, setTab] = useState<Tab>("list");
   const [loading, setLoading] = useState(true);
@@ -335,11 +349,11 @@ export default function ElevesPage() {
   });
   const editStudentValues = editStudentForm.watch();
   const createLifeEventForm = useForm<
-    z.input<typeof createLifeEventFormSchema>,
+    z.input<ReturnType<typeof createLifeEventFormSchema>>,
     unknown,
-    z.output<typeof createLifeEventFormSchema>
+    z.output<ReturnType<typeof createLifeEventFormSchema>>
   >({
-    resolver: zodResolver(createLifeEventFormSchema),
+    resolver: zodResolver(lifeEventFormSchema),
     mode: "onChange",
     defaultValues: {
       type: "ABSENCE",
@@ -352,11 +366,11 @@ export default function ElevesPage() {
   });
   const createLifeEventValues = createLifeEventForm.watch();
   const editLifeEventForm = useForm<
-    z.input<typeof createLifeEventFormSchema>,
+    z.input<ReturnType<typeof createLifeEventFormSchema>>,
     unknown,
-    z.output<typeof createLifeEventFormSchema>
+    z.output<ReturnType<typeof createLifeEventFormSchema>>
   >({
-    resolver: zodResolver(createLifeEventFormSchema),
+    resolver: zodResolver(lifeEventFormSchema),
     mode: "onChange",
     defaultValues: {
       type: "ABSENCE",
@@ -1093,9 +1107,7 @@ export default function ElevesPage() {
     }
   }
 
-  async function createStudentLifeEvent(
-    values: z.output<typeof createLifeEventFormSchema>,
-  ) {
+  async function createStudentLifeEvent(values: LifeEventFormValues) {
     if (!schoolSlug || !selectedStudentId) {
       return;
     }
@@ -1199,9 +1211,7 @@ export default function ElevesPage() {
     setSuccess(null);
   }
 
-  async function saveLifeEvent(
-    values: z.output<typeof createLifeEventFormSchema>,
-  ) {
+  async function saveLifeEvent(values: LifeEventFormValues) {
     if (!schoolSlug || !selectedStudentId || !editingLifeEventId) {
       return;
     }
@@ -2036,11 +2046,11 @@ export default function ElevesPage() {
 
                   <div className="grid gap-3 rounded-card border border-border bg-background p-3">
                     <p className="text-sm font-medium text-text-primary">
-                      Vie scolaire: absences, retards, sanctions et punitions
+                      {t("discipline.eleves.sectionTitle")}
                     </p>
                     <div className="grid gap-3 md:grid-cols-6">
                       <FormField
-                        label="Type"
+                        label={t("discipline.form.type")}
                         error={
                           createLifeEventForm.formState.errors.type?.message
                         }
@@ -2060,14 +2070,22 @@ export default function ElevesPage() {
                             )
                           }
                         >
-                          <option value="ABSENCE">Absence</option>
-                          <option value="RETARD">Retard</option>
-                          <option value="SANCTION">Sanction</option>
-                          <option value="PUNITION">Punition</option>
+                          <option value="ABSENCE">
+                            {t("discipline.types.absence")}
+                          </option>
+                          <option value="RETARD">
+                            {t("discipline.types.retard")}
+                          </option>
+                          <option value="SANCTION">
+                            {t("discipline.types.sanction")}
+                          </option>
+                          <option value="PUNITION">
+                            {t("discipline.types.punition")}
+                          </option>
                         </FormSelect>
                       </FormField>
                       <FormField
-                        label="Date/heure"
+                        label={t("discipline.form.dateTime")}
                         className="md:col-span-2"
                         error={
                           createLifeEventForm.formState.errors.occurredAt
@@ -2091,7 +2109,7 @@ export default function ElevesPage() {
                         />
                       </FormField>
                       <FormField
-                        label="Motif"
+                        label={t("discipline.form.reason")}
                         className="md:col-span-2"
                         error={
                           createLifeEventForm.formState.errors.reason?.message
@@ -2111,10 +2129,10 @@ export default function ElevesPage() {
                               },
                             )
                           }
-                          placeholder="Motif de l'evenement"
+                          placeholder={t("discipline.form.reasonPlaceholder")}
                         />
                       </FormField>
-                      <FormField label="Duree (min)">
+                      <FormField label={t("discipline.form.duration")}>
                         <FormNumberInput
                           invalid={createLifeEventDurationInvalid}
                           value={createLifeEventValues.durationMinutes ?? ""}
@@ -2134,7 +2152,7 @@ export default function ElevesPage() {
                       </FormField>
                     </div>
                     <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                      <FormField label="Commentaire">
+                      <FormField label={t("discipline.form.comment")}>
                         <FormTextInput
                           value={createLifeEventValues.comment ?? ""}
                           onChange={(event) =>
@@ -2148,7 +2166,7 @@ export default function ElevesPage() {
                               },
                             )
                           }
-                          placeholder="Commentaire (optionnel)"
+                          placeholder={t("discipline.form.comment")}
                         />
                       </FormField>
                       <label className="inline-flex items-center gap-2 text-sm text-text-secondary">
@@ -2170,7 +2188,7 @@ export default function ElevesPage() {
                             createLifeEventValues.type === "PUNITION"
                           }
                         />
-                        Justifie
+                        {t("discipline.form.justified")}
                       </label>
                     </div>
                     <div>
@@ -2190,20 +2208,22 @@ export default function ElevesPage() {
                           )();
                         }}
                       >
-                        {submittingLifeEvent ? "Enregistrement..." : "Signaler"}
+                        {submittingLifeEvent
+                          ? t("discipline.form.saving")
+                          : t("discipline.form.submitReport")}
                       </Button>
                     </div>
 
                     {editingLifeEventId ? (
                       <div className="grid gap-3 rounded-card border border-border bg-surface p-3 md:grid-cols-2">
                         <FormField
-                          label="Type edition evenement"
+                          label={t("discipline.form.typeEditAria")}
                           error={
                             editLifeEventForm.formState.errors.type?.message
                           }
                         >
                           <FormSelect
-                            aria-label="Type edition evenement"
+                            aria-label={t("discipline.form.typeEditAria")}
                             invalid={editLifeEventTypeInvalid}
                             value={editLifeEventValues.type ?? "ABSENCE"}
                             onChange={(event) =>
@@ -2218,21 +2238,29 @@ export default function ElevesPage() {
                               )
                             }
                           >
-                            <option value="ABSENCE">Absence</option>
-                            <option value="RETARD">Retard</option>
-                            <option value="SANCTION">Sanction</option>
-                            <option value="PUNITION">Punition</option>
+                            <option value="ABSENCE">
+                              {t("discipline.types.absence")}
+                            </option>
+                            <option value="RETARD">
+                              {t("discipline.types.retard")}
+                            </option>
+                            <option value="SANCTION">
+                              {t("discipline.types.sanction")}
+                            </option>
+                            <option value="PUNITION">
+                              {t("discipline.types.punition")}
+                            </option>
                           </FormSelect>
                         </FormField>
                         <FormField
-                          label="Date/heure edition evenement"
+                          label={t("discipline.form.dateTimeEditAria")}
                           error={
                             editLifeEventForm.formState.errors.occurredAt
                               ?.message
                           }
                         >
                           <FormDateTimeInput
-                            aria-label="Date/heure edition evenement"
+                            aria-label={t("discipline.form.dateTimeEditAria")}
                             invalid={editLifeEventOccurredAtInvalid}
                             value={editLifeEventValues.occurredAt ?? ""}
                             onChange={(event) =>
@@ -2249,14 +2277,14 @@ export default function ElevesPage() {
                           />
                         </FormField>
                         <FormField
-                          label="Motif edition evenement"
+                          label={t("discipline.form.reasonEditAria")}
                           className="md:col-span-2"
                           error={
                             editLifeEventForm.formState.errors.reason?.message
                           }
                         >
                           <FormTextInput
-                            aria-label="Motif edition evenement"
+                            aria-label={t("discipline.form.reasonEditAria")}
                             invalid={editLifeEventReasonInvalid}
                             value={editLifeEventValues.reason ?? ""}
                             onChange={(event) =>
@@ -2273,14 +2301,14 @@ export default function ElevesPage() {
                           />
                         </FormField>
                         <FormField
-                          label="Duree edition evenement (min)"
+                          label={t("discipline.form.durationEditAria")}
                           error={
                             editLifeEventForm.formState.errors.durationMinutes
                               ?.message
                           }
                         >
                           <FormNumberInput
-                            aria-label="Duree edition evenement (min)"
+                            aria-label={t("discipline.form.durationEditAria")}
                             invalid={editLifeEventDurationInvalid}
                             min={0}
                             value={editLifeEventValues.durationMinutes ?? ""}
@@ -2298,11 +2326,11 @@ export default function ElevesPage() {
                           />
                         </FormField>
                         <FormField
-                          label="Commentaire edition evenement"
+                          label={t("discipline.form.commentEditAria")}
                           className="md:col-span-2"
                         >
                           <FormTextInput
-                            aria-label="Commentaire edition evenement"
+                            aria-label={t("discipline.form.commentEditAria")}
                             value={editLifeEventValues.comment ?? ""}
                             onChange={(event) =>
                               editLifeEventForm.setValue(
@@ -2336,7 +2364,7 @@ export default function ElevesPage() {
                               editLifeEventValues.type === "PUNITION"
                             }
                           />
-                          Justifie
+                          {t("discipline.form.justified")}
                         </label>
                         <FormSubmitHint
                           visible={!editLifeEventForm.formState.isValid}
@@ -2356,8 +2384,8 @@ export default function ElevesPage() {
                             }
                           >
                             {updatingLifeEventId === editingLifeEventId
-                              ? "Enregistrement..."
-                              : "Enregistrer"}
+                              ? t("discipline.form.saving")
+                              : t("discipline.form.submitUpdate")}
                           </Button>
                           <Button
                             type="button"
@@ -2374,7 +2402,7 @@ export default function ElevesPage() {
                               });
                             }}
                           >
-                            Annuler
+                            {t("discipline.form.cancel")}
                           </Button>
                         </div>
                       </div>
@@ -2382,7 +2410,7 @@ export default function ElevesPage() {
 
                     <LifeEventsList
                       events={studentLifeEvents}
-                      emptyLabel="Aucun evenement de vie scolaire."
+                      emptyLabel={t("discipline.empty.eleves")}
                       deletingEventId={deletingLifeEventId}
                       onEdit={startEditLifeEvent}
                       onDelete={(row) => setLifeEventDeleteTarget(row)}
@@ -2557,14 +2585,17 @@ export default function ElevesPage() {
       />
       <ConfirmDialog
         open={Boolean(lifeEventDeleteTarget)}
-        title="Supprimer cet evenement ?"
+        title={t("discipline.delete.title")}
         message={
           lifeEventDeleteTarget
-            ? `Cette action est irreversible. L'evenement "${lifeEventTypeLabel(lifeEventDeleteTarget.type)} - ${lifeEventDeleteTarget.reason}" sera supprime definitivement.`
+            ? t("discipline.delete.message").replace(
+                "{label}",
+                `${lifeEventTypeLabel(t, lifeEventDeleteTarget.type)} - ${lifeEventDeleteTarget.reason}`,
+              )
             : ""
         }
-        confirmLabel="Supprimer"
-        cancelLabel="Annuler"
+        confirmLabel={t("discipline.delete.confirm")}
+        cancelLabel={t("discipline.form.cancel")}
         loading={
           Boolean(lifeEventDeleteTarget) &&
           deletingLifeEventId === lifeEventDeleteTarget?.id

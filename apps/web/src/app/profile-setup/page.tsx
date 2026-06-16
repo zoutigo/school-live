@@ -2,10 +2,12 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "../../i18n/useTranslation";
 
 function LegacyProfileSetupRedirect() {
   const router = useRouter();
   const params = useSearchParams();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const target = params.toString()
@@ -16,20 +18,23 @@ function LegacyProfileSetupRedirect() {
 
   return (
     <div className="min-h-screen bg-background p-6 text-text-secondary">
-      Redirection vers le nouvel onboarding...
+      {t("profileSetup.redirecting")}
+    </div>
+  );
+}
+
+function ProfileSetupFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background p-6 text-text-secondary">
+      {t("common.loading")}
     </div>
   );
 }
 
 export default function ProfileSetupPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background p-6 text-text-secondary">
-          Chargement...
-        </div>
-      }
-    >
+    <Suspense fallback={<ProfileSetupFallback />}>
       <LegacyProfileSetupRedirect />
     </Suspense>
   );

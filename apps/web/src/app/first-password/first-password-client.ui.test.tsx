@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FirstPasswordClient } from "./first-password-client";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 const replaceMock = vi.fn();
 
@@ -12,6 +14,7 @@ describe("FirstPasswordClient UI — branche username", () => {
   beforeEach(() => {
     replaceMock.mockReset();
     vi.restoreAllMocks();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("shows username as readonly label and password fields", () => {
@@ -211,5 +214,19 @@ describe("FirstPasswordClient UI — branche username", () => {
         screen.getByText("Changement de mot de passe impossible."),
       ).toBeInTheDocument();
     });
+  });
+
+  it("traduit le contenu de la page en anglais quand la langue EN est active", () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    render(<FirstPasswordClient username="JeanDUPONT" />);
+
+    expect(screen.getAllByText("Set my password").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirm password")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Set my password" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Back to sign in")).toBeInTheDocument();
   });
 });

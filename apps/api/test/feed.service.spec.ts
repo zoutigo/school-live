@@ -128,6 +128,30 @@ describe("FeedService permissions + media cleanup on PATCH/DELETE", () => {
     });
   });
 
+  it("translates 'post not found' based on preferredLocale", async () => {
+    mockViewerContextLookups();
+    prisma.feedPost.findFirst.mockResolvedValueOnce(null);
+
+    await expect(
+      service.deletePost(baseUser, schoolId, "missing-post"),
+    ).rejects.toThrow("Publication introuvable.");
+
+    mockViewerContextLookups();
+    prisma.feedPost.findFirst.mockResolvedValueOnce(null);
+    const enUser = { ...baseUser, preferredLocale: "EN" as const };
+
+    await expect(
+      service.deletePost(enUser, schoolId, "missing-post"),
+    ).rejects.toThrow("Post not found.");
+  });
+
+  it("translates author role labels based on preferredLocale", () => {
+    expect((service as any).roleLabel("fr", "TEACHER")).toBe("Vie scolaire");
+    expect((service as any).roleLabel("en", "TEACHER")).toBe("School life");
+    expect((service as any).roleLabel("fr", undefined)).toBe("Membre");
+    expect((service as any).roleLabel("en", undefined)).toBe("Member");
+  });
+
   it("forbids staff deleting another staff post", async () => {
     mockViewerContextLookups();
     mockPostForPermission("staff-2", ["TEACHER"]);

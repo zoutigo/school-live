@@ -268,7 +268,9 @@ describe("Child context web pages", () => {
       screen.getByText("Vue synthese des modules de 6e C."),
     ).toBeInTheDocument();
     expect(screen.getAllByText("13,40").length).toBeGreaterThan(0);
-    expect(screen.getByText("1 absence non justifiee")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 absence(s) non justifiee(s)"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Mathematiques · 15,20")).toBeInTheDocument();
     expect(
       screen.getByText("Absence : Absence non justifiee"),

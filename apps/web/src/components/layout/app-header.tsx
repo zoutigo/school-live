@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, Menu } from "lucide-react";
 import { Badge } from "../ui/badge";
 import type { Role } from "../../lib/role-view";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import { useAppShellUiStore } from "./app-shell-ui-store";
 
 type Props = {
@@ -19,29 +20,29 @@ type Props = {
   hidden?: boolean;
 };
 
-function roleLabel(role: Role): string {
-  if (role === "SUPER_ADMIN") return "Super admin";
-  if (role === "ADMIN") return "Admin";
-  if (role === "SALES") return "Commercial";
-  if (role === "SUPPORT") return "Support";
-  if (role === "SCHOOL_ADMIN") return "Admin ecole";
-  if (role === "SCHOOL_MANAGER") return "Gestionnaire ecole";
-  if (role === "SUPERVISOR") return "Superviseur";
-  if (role === "SCHOOL_ACCOUNTANT") return "Comptable";
-  if (role === "SCHOOL_STAFF") return "Staff";
-  if (role === "TEACHER") return "Enseignant";
-  if (role === "PARENT") return "Parent";
-  return "Eleve";
+function roleLabel(role: Role, t: TranslateFn): string {
+  if (role === "SUPER_ADMIN") return t("header.role.superAdmin");
+  if (role === "ADMIN") return t("header.role.admin");
+  if (role === "SALES") return t("header.role.sales");
+  if (role === "SUPPORT") return t("header.role.support");
+  if (role === "SCHOOL_ADMIN") return t("header.role.schoolAdmin");
+  if (role === "SCHOOL_MANAGER") return t("header.role.schoolManager");
+  if (role === "SUPERVISOR") return t("header.role.supervisor");
+  if (role === "SCHOOL_ACCOUNTANT") return t("header.role.schoolAccountant");
+  if (role === "SCHOOL_STAFF") return t("header.role.schoolStaff");
+  if (role === "TEACHER") return t("header.role.teacher");
+  if (role === "PARENT") return t("header.role.parent");
+  return t("header.role.student");
 }
 
-function getPortalLabel(role: Role): string {
+function getPortalLabel(role: Role, t: TranslateFn): string {
   if (
     role === "SUPER_ADMIN" ||
     role === "ADMIN" ||
     role === "SALES" ||
     role === "SUPPORT"
   ) {
-    return "Portail administration";
+    return t("header.portal.admin");
   }
 
   if (
@@ -51,14 +52,14 @@ function getPortalLabel(role: Role): string {
     role === "SCHOOL_ACCOUNTANT" ||
     role === "SCHOOL_STAFF"
   ) {
-    return "Portail etablissement";
+    return t("header.portal.school");
   }
 
   if (role === "TEACHER") {
-    return "Portail enseignant";
+    return t("header.portal.teacher");
   }
 
-  return "Portail famille";
+  return t("header.portal.family");
 }
 
 export function AppHeader({
@@ -73,6 +74,7 @@ export function AppHeader({
   hidden = false,
 }: Props) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [menuHintActive, setMenuHintActive] = useState(false);
   const hasOpenedMobileMenu = useAppShellUiStore(
     (state) => state.hasOpenedMobileMenu,
@@ -122,7 +124,7 @@ export function AppHeader({
               scolive
             </p>
             <p className="text-xs text-text-secondary">
-              {getPortalLabel(role)}
+              {getPortalLabel(role, t)}
             </p>
           </div>
         </div>
@@ -151,7 +153,7 @@ export function AppHeader({
             </>
           ) : (
             <h1 className="font-heading text-base font-semibold text-text-primary">
-              Dashboard d'administration de la plateforme
+              {t("header.adminDashboardTitle")}
             </h1>
           )}
         </div>
@@ -161,11 +163,11 @@ export function AppHeader({
             <p className="text-sm font-semibold text-text-primary">
               {userDisplayName}
             </p>
-            <p className="text-xs text-text-secondary">{roleLabel(role)}</p>
+            <p className="text-xs text-text-secondary">{roleLabel(role, t)}</p>
           </div>
 
           <button
-            aria-label="Notifications"
+            aria-label={t("header.notifications")}
             className="relative inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary shadow-sm transition-colors hover:bg-warm-highlight"
             type="button"
           >
@@ -176,7 +178,7 @@ export function AppHeader({
           </button>
 
           <button
-            aria-label="Compte utilisateur"
+            aria-label={t("header.account")}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-semibold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]"
             type="button"
             onClick={() => router.push("/account")}
@@ -185,8 +187,8 @@ export function AppHeader({
           </button>
 
           <button
-            aria-label="Se deconnecter"
-            title="Se deconnecter"
+            aria-label={t("header.logout")}
+            title={t("header.logout")}
             className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary transition-colors hover:bg-warm-highlight"
             type="button"
             onClick={onLogoutClick}
@@ -196,7 +198,7 @@ export function AppHeader({
         </div>
 
         <button
-          aria-label="Ouvrir le menu"
+          aria-label={t("header.openMenu")}
           data-attention={
             hasOpenedMobileMenu
               ? "dismissed"

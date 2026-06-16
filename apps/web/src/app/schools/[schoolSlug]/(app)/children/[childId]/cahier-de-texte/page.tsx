@@ -1,24 +1,28 @@
-import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
+"use client";
 
-export default async function ChildCahierDeTextePage({
-  params,
-}: {
-  params: Promise<{ schoolSlug: string; childId: string }>;
-}) {
-  const { schoolSlug, childId } = await params;
+import { useParams } from "next/navigation";
+import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
+import { useTranslation } from "../../../../../../../i18n/useTranslation";
+
+export default function ChildCahierDeTextePage() {
+  const { t } = useTranslation();
+  const { schoolSlug, childId } = useParams<{
+    schoolSlug: string;
+    childId: string;
+  }>();
 
   return (
     <ChildModulePage
       schoolSlug={schoolSlug}
       childId={childId}
       currentTab="cahier-de-texte"
-      title="Cahier de texte"
-      subtitle="Travail a faire"
-      summary="Consultez les devoirs et consignes de travail de votre enfant."
+      title={t("homework.cahierDeTexte.title")}
+      subtitle={t("homework.cahierDeTexte.subtitle")}
+      summary={t("homework.cahierDeTexte.summary")}
       bullets={[
-        "Devoirs du jour et travaux a rendre.",
-        "Consignes partagees par les enseignants.",
-        "Preparation de la semaine avec votre enfant.",
+        t("homework.cahierDeTexte.bullet1"),
+        t("homework.cahierDeTexte.bullet2"),
+        t("homework.cahierDeTexte.bullet3"),
       ]}
     />
   );

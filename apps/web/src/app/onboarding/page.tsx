@@ -30,14 +30,10 @@ import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import { PinInput } from "../../components/ui/pin-input";
 import { SuccessRedirectToast } from "../../components/ui/success-redirect-toast";
+import { useTranslation } from "../../i18n/useTranslation";
 import {
   buildRecoveryRows,
-  step1PhoneSchema,
-  step1Schema,
-  step1UsernameSchema,
-  step2Schema,
-  step3PinSchema,
-  step4Schema,
+  createOnboardingSchemas,
 } from "./onboarding-schema";
 import { type QuestionKey, useOnboardingStore } from "./onboarding-store";
 
@@ -56,6 +52,8 @@ type StepKey = 1 | 2 | 3 | 4;
 function OnboardingContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const { locale, t } = useTranslation();
+  const schemas = useMemo(() => createOnboardingSchemas(t), [locale]);
   const [step, setStep] = useState<StepKey>(1);
   const [options, setOptions] = useState<SetupOptionsResponse | null>(null);
   const [loadingOptions, setLoadingOptions] = useState(false);
@@ -120,7 +118,7 @@ function OnboardingContent() {
       );
 
       if (!response.ok) {
-        setError("Impossible de charger les options d'activation.");
+        setError(t("onboarding.errors.loadOptionsFailed"));
         return;
       }
 
@@ -130,7 +128,7 @@ function OnboardingContent() {
         setField("schoolSlug", payload.schoolSlug);
       }
     } catch {
-      setError("Erreur de connexion.");
+      setError(t("onboarding.errors.connectionError"));
     } finally {
       setLoadingOptions(false);
     }
@@ -146,11 +144,11 @@ function OnboardingContent() {
     [schoolSlug],
   );
   const passwordStepForm = useForm<
-    z.input<typeof step1Schema>,
+    z.input<typeof schemas.step1Schema>,
     unknown,
-    z.output<typeof step1Schema>
+    z.output<typeof schemas.step1Schema>
   >({
-    resolver: zodResolver(step1Schema),
+    resolver: zodResolver(schemas.step1Schema),
     mode: "onChange",
     defaultValues: {
       email,
@@ -160,11 +158,11 @@ function OnboardingContent() {
     },
   });
   const tokenStepForm = useForm<
-    z.input<typeof step1PhoneSchema>,
+    z.input<typeof schemas.step1PhoneSchema>,
     unknown,
-    z.output<typeof step1PhoneSchema>
+    z.output<typeof schemas.step1PhoneSchema>
   >({
-    resolver: zodResolver(step1PhoneSchema),
+    resolver: zodResolver(schemas.step1PhoneSchema),
     mode: "onChange",
     defaultValues: {
       email,
@@ -172,11 +170,11 @@ function OnboardingContent() {
     },
   });
   const usernameStepForm = useForm<
-    z.input<typeof step1UsernameSchema>,
+    z.input<typeof schemas.step1UsernameSchema>,
     unknown,
-    z.output<typeof step1UsernameSchema>
+    z.output<typeof schemas.step1UsernameSchema>
   >({
-    resolver: zodResolver(step1UsernameSchema),
+    resolver: zodResolver(schemas.step1UsernameSchema),
     mode: "onChange",
     defaultValues: {
       username,
@@ -186,11 +184,11 @@ function OnboardingContent() {
     },
   });
   const profileStepForm = useForm<
-    z.input<typeof step2Schema>,
+    z.input<typeof schemas.step2Schema>,
     unknown,
-    z.output<typeof step2Schema>
+    z.output<typeof schemas.step2Schema>
   >({
-    resolver: zodResolver(step2Schema),
+    resolver: zodResolver(schemas.step2Schema),
     mode: "onChange",
     defaultValues: {
       firstName,
@@ -200,11 +198,11 @@ function OnboardingContent() {
     },
   });
   const pinStepForm = useForm<
-    z.input<typeof step3PinSchema>,
+    z.input<typeof schemas.step3PinSchema>,
     unknown,
-    z.output<typeof step3PinSchema>
+    z.output<typeof schemas.step3PinSchema>
   >({
-    resolver: zodResolver(step3PinSchema),
+    resolver: zodResolver(schemas.step3PinSchema),
     mode: "onChange",
     defaultValues: {
       newPin,
@@ -212,11 +210,11 @@ function OnboardingContent() {
     },
   });
   const recoveryStepForm = useForm<
-    z.input<typeof step4Schema>,
+    z.input<typeof schemas.step4Schema>,
     unknown,
-    z.output<typeof step4Schema>
+    z.output<typeof schemas.step4Schema>
   >({
-    resolver: zodResolver(step4Schema),
+    resolver: zodResolver(schemas.step4Schema),
     mode: "onChange",
     defaultValues: {
       selectedQuestions,
@@ -557,7 +555,8 @@ function OnboardingContent() {
           const message =
             payload?.message && Array.isArray(payload.message)
               ? payload.message.join(", ")
-              : (payload?.message ?? "Changement de mot de passe impossible.");
+              : (payload?.message ??
+                t("onboarding.errors.passwordChangeFailed"));
           setError(String(message));
           setSubmitting(false);
           return;
@@ -601,7 +600,7 @@ function OnboardingContent() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Activation impossible.");
+            : (payload?.message ?? t("onboarding.errors.activationFailed"));
         setError(String(message));
         return;
       }
@@ -610,7 +609,7 @@ function OnboardingContent() {
       clearOnboardingState();
       setShowSuccessToast(true);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("onboarding.errors.networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -618,31 +617,29 @@ function OnboardingContent() {
 
   return (
     <RecoveryShell
-      title="Activation de compte"
+      title={t("onboarding.shell.title")}
       contentMaxWidthClassName="max-w-7xl"
       centerContent={false}
     >
       <SuccessRedirectToast
         open={showSuccessToast}
-        title="Enregistrement termine"
-        description="Votre compte a bien ete configure. Vous serez redirige vers l ecran de connexion pour vous connecter en toute securite."
+        title={t("onboarding.success.title")}
+        description={t("onboarding.success.description")}
         onComplete={handleSuccessRedirect}
       />
       <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
         <section className="order-2 rounded-card border border-border bg-surface p-6 shadow-card lg:p-8 xl:order-1">
           <p className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
             <ShieldCheck className="h-4 w-4 text-primary" />
-            Onboarding securise
+            {t("onboarding.hero.badge")}
           </p>
 
           <h1 className="mt-4 font-heading text-3xl font-bold leading-tight md:text-4xl">
-            Activez votre compte en une seule sequence
+            {t("onboarding.hero.title")}
           </h1>
 
           <p className="mt-4 max-w-xl text-base text-text-secondary">
-            Renseignez les informations d&apos;activation, votre profil et vos
-            questions de recuperation. A la fin, vous retournez directement a la
-            connexion.
+            {t("onboarding.hero.description")}
           </p>
 
           <div className="mt-6 grid gap-3 text-sm">
@@ -650,30 +647,29 @@ function OnboardingContent() {
               <KeyRound className="mt-0.5 h-4 w-4 text-primary" />
               <p className="text-text-secondary">
                 {isTokenFlow
-                  ? "Etape 1: email optionnel."
-                  : "Etape 1: mot de passe provisoire et nouveau mot de passe."}
+                  ? t("onboarding.hero.step1Token")
+                  : t("onboarding.hero.step1Password")}
               </p>
             </div>
             <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
               <UserCheck className="mt-0.5 h-4 w-4 text-primary" />
               <p className="text-text-secondary">
-                Etape 2: informations personnelles (nom, prenom, genre, date de
-                naissance).
+                {t("onboarding.hero.step2")}
               </p>
             </div>
             <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
               <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
               <p className="text-text-secondary">
                 {isTokenFlow
-                  ? "Etape 3: changement du PIN de connexion."
-                  : "Etape 3: questions de recuperation puis validation finale."}
+                  ? t("onboarding.hero.step3Token")
+                  : t("onboarding.hero.step3Recovery")}
               </p>
             </div>
             {isTokenFlow ? (
               <div className="flex items-start gap-3 rounded-card border border-border bg-background p-3">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
                 <p className="text-text-secondary">
-                  Etape 4: questions de recuperation puis validation finale.
+                  {t("onboarding.hero.step4")}
                 </p>
               </div>
             ) : null}
@@ -681,14 +677,14 @@ function OnboardingContent() {
 
           <img
             src="/images/camer-school1.png"
-            alt="Scene de classe"
+            alt={t("onboarding.hero.imageAlt")}
             className="mt-6 hidden h-56 w-full rounded-card border border-border object-cover object-center md:h-64 lg:block"
           />
         </section>
 
         <Card
-          title="Finaliser l'activation"
-          subtitle={`Etape ${step} / ${totalSteps}`}
+          title={t("onboarding.form.title")}
+          subtitle={`${t("onboarding.form.stepLabel")} ${step} / ${totalSteps}`}
           className="order-1 self-start xl:order-2 xl:sticky xl:top-6"
         >
           <form
@@ -699,13 +695,15 @@ function OnboardingContent() {
             }}
           >
             <div className="grid gap-1 text-sm">
-              <span className="text-text-secondary">Compte concerne</span>
+              <span className="text-text-secondary">
+                {t("onboarding.form.accountLabel")}
+              </span>
               <div className="rounded-card border border-border bg-background px-3 py-2 text-text-primary">
                 {usernameStepValues.username ||
                   passwordStepValues.email ||
                   tokenStepValues.email ||
                   phoneFromQuery ||
-                  "Compte en attente"}
+                  t("onboarding.form.accountPending")}
               </div>
             </div>
 
@@ -714,7 +712,7 @@ function OnboardingContent() {
                 {isTokenFlow ? (
                   <>
                     <FormField
-                      label="Email (optionnel)"
+                      label={t("onboarding.form.emailOptional")}
                       error={tokenStepForm.formState.errors.email?.message}
                     >
                       <EmailInput
@@ -730,20 +728,19 @@ function OnboardingContent() {
                       />
                     </FormField>
                     <p className="text-xs text-text-secondary">
-                      Vous pouvez continuer sans email et le renseigner plus
-                      tard dans votre compte.
+                      {t("onboarding.form.emailOptionalHint")}
                     </p>
                   </>
                 ) : isUsernameFlow ? (
                   <>
                     <div className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-secondary">
-                      Identifiant:{" "}
+                      {t("onboarding.form.usernameLabel")}{" "}
                       <span className="font-semibold">
                         {usernameStepValues.username}
                       </span>
                     </div>
                     <FormField
-                      label="Mot de passe provisoire"
+                      label={t("onboarding.form.temporaryPassword")}
                       error={
                         usernameStepForm.formState.errors.temporaryPassword
                           ?.message
@@ -765,7 +762,7 @@ function OnboardingContent() {
                       />
                     </FormField>
                     <FormField
-                      label="Nouveau mot de passe"
+                      label={t("onboarding.form.newPassword")}
                       error={
                         usernameStepForm.formState.errors.newPassword?.message
                       }
@@ -786,7 +783,7 @@ function OnboardingContent() {
                       />
                     </FormField>
                     <FormField
-                      label="Confirmation"
+                      label={t("onboarding.form.confirmation")}
                       error={
                         usernameStepForm.formState.errors.confirmPassword
                           ?.message
@@ -811,7 +808,7 @@ function OnboardingContent() {
                 ) : (
                   <>
                     <FormField
-                      label="Mot de passe provisoire"
+                      label={t("onboarding.form.temporaryPassword")}
                       error={
                         passwordStepForm.formState.errors.temporaryPassword
                           ?.message
@@ -834,7 +831,7 @@ function OnboardingContent() {
                     </FormField>
 
                     <FormField
-                      label="Nouveau mot de passe"
+                      label={t("onboarding.form.newPassword")}
                       error={
                         passwordStepForm.formState.errors.newPassword?.message
                       }
@@ -859,7 +856,7 @@ function OnboardingContent() {
                     />
 
                     <FormField
-                      label="Confirmation"
+                      label={t("onboarding.form.confirmation")}
                       error={
                         passwordStepForm.formState.errors.confirmPassword
                           ?.message
@@ -889,11 +886,11 @@ function OnboardingContent() {
               <>
                 <div className="grid gap-3 md:grid-cols-2">
                   <FormField
-                    label="Votre prenom"
+                    label={t("onboarding.form.firstName")}
                     error={profileStepForm.formState.errors.firstName?.message}
                   >
                     <FormTextInput
-                      aria-label="Votre prenom"
+                      aria-label={t("onboarding.form.firstName")}
                       invalid={!!profileStepForm.formState.errors.firstName}
                       value={profileStepValues.firstName ?? ""}
                       onChange={(event) => {
@@ -911,11 +908,11 @@ function OnboardingContent() {
                   </FormField>
 
                   <FormField
-                    label="Votre nom"
+                    label={t("onboarding.form.lastName")}
                     error={profileStepForm.formState.errors.lastName?.message}
                   >
                     <FormTextInput
-                      aria-label="Votre nom"
+                      aria-label={t("onboarding.form.lastName")}
                       invalid={!!profileStepForm.formState.errors.lastName}
                       value={profileStepValues.lastName ?? ""}
                       onChange={(event) => {
@@ -935,11 +932,11 @@ function OnboardingContent() {
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <FormField
-                    label="Votre genre"
+                    label={t("onboarding.form.gender")}
                     error={profileStepForm.formState.errors.gender?.message}
                   >
                     <FormSelect
-                      aria-label="Votre genre"
+                      aria-label={t("onboarding.form.gender")}
                       invalid={!!profileStepForm.formState.errors.gender}
                       value={profileStepValues.gender ?? ""}
                       onChange={(event) => {
@@ -954,19 +951,21 @@ function OnboardingContent() {
                         );
                       }}
                     >
-                      <option value="">Selectionner</option>
-                      <option value="M">Masculin</option>
-                      <option value="F">Feminin</option>
-                      <option value="OTHER">Autre</option>
+                      <option value="">{t("onboarding.form.select")}</option>
+                      <option value="M">{t("onboarding.form.male")}</option>
+                      <option value="F">{t("onboarding.form.female")}</option>
+                      <option value="OTHER">
+                        {t("onboarding.form.otherGender")}
+                      </option>
                     </FormSelect>
                   </FormField>
 
                   <FormField
-                    label="Votre date de naissance"
+                    label={t("onboarding.form.birthDate")}
                     error={profileStepForm.formState.errors.birthDate?.message}
                   >
                     <DateInput
-                      aria-label="Votre date de naissance"
+                      aria-label={t("onboarding.form.birthDate")}
                       value={profileStepValues.birthDate ?? ""}
                       onChange={(event) => {
                         profileStepForm.setValue(
@@ -994,11 +993,11 @@ function OnboardingContent() {
               <>
                 <div className="rounded-card border border-border bg-background p-3">
                   <p className="mb-2 text-sm text-text-secondary">
-                    Modifiez votre PIN de connexion
+                    {t("onboarding.form.pinSectionTitle")}
                   </p>
                   <div className="grid gap-3">
                     <FormField
-                      label="Nouveau PIN"
+                      label={t("onboarding.form.newPin")}
                       error={pinStepForm.formState.errors.newPin?.message}
                     >
                       <PinInput
@@ -1023,7 +1022,7 @@ function OnboardingContent() {
                       />
                     </FormField>
                     <FormField
-                      label="Confirmer PIN"
+                      label={t("onboarding.form.confirmPin")}
                       error={pinStepForm.formState.errors.confirmPin?.message}
                     >
                       <PinInput
@@ -1056,7 +1055,7 @@ function OnboardingContent() {
               <>
                 <div className="rounded-card border border-border bg-background p-3">
                   <p className="mb-2 text-sm text-text-secondary">
-                    Choisissez 3 questions de recuperation
+                    {t("onboarding.form.chooseQuestions")}
                   </p>
                   <div className="grid gap-2">
                     {(options?.questions ?? []).map((question) => {
@@ -1098,7 +1097,7 @@ function OnboardingContent() {
                           </span>
                           {checked ? (
                             <FormField
-                              label="Votre reponse"
+                              label={t("onboarding.form.yourAnswer")}
                               className="pl-6"
                               error={
                                 recoveryStepForm.formState.errors.answers?.[
@@ -1128,7 +1127,7 @@ function OnboardingContent() {
                                     },
                                   );
                                 }}
-                                placeholder="Votre reponse"
+                                placeholder={t("onboarding.form.yourAnswer")}
                               />
                             </FormField>
                           ) : null}
@@ -1141,7 +1140,7 @@ function OnboardingContent() {
                 {isParent ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     <FormField
-                      label="Classe de votre enfant"
+                      label={t("onboarding.form.childClass")}
                       error={
                         recoveryStepForm.formState.errors.parentClassId?.message
                       }
@@ -1163,7 +1162,9 @@ function OnboardingContent() {
                           );
                         }}
                       >
-                        <option value="">Selectionner une classe</option>
+                        <option value="">
+                          {t("onboarding.form.selectClass")}
+                        </option>
                         {(options?.classes ?? []).map((entry) => (
                           <option key={entry.id} value={entry.id}>
                             {entry.name} ({entry.year})
@@ -1173,7 +1174,7 @@ function OnboardingContent() {
                     </FormField>
 
                     <FormField
-                      label="Nom de l'enfant"
+                      label={t("onboarding.form.childName")}
                       error={
                         recoveryStepForm.formState.errors.parentStudentId
                           ?.message
@@ -1196,7 +1197,9 @@ function OnboardingContent() {
                           );
                         }}
                       >
-                        <option value="">Selectionner un eleve</option>
+                        <option value="">
+                          {t("onboarding.form.selectStudent")}
+                        </option>
                         {(options?.students ?? []).map((entry) => (
                           <option key={entry.id} value={entry.id}>
                             {entry.lastName} {entry.firstName}
@@ -1211,7 +1214,7 @@ function OnboardingContent() {
 
             {loadingOptions ? (
               <p className="text-sm text-text-secondary">
-                Chargement des options...
+                {t("onboarding.form.loadingOptions")}
               </p>
             ) : null}
             {error ? (
@@ -1228,11 +1231,13 @@ function OnboardingContent() {
                   onClick={nextStep}
                   disabled={!canContinueCurrentStep}
                 >
-                  Continuer
+                  {t("onboarding.form.continue")}
                 </Button>
               ) : (
                 <SubmitButton disabled={submitting || !canContinueCurrentStep}>
-                  {submitting ? "Validation..." : "Finaliser l'activation"}
+                  {submitting
+                    ? t("onboarding.form.submitting")
+                    : t("onboarding.form.submit")}
                 </SubmitButton>
               )}
             </div>
@@ -1243,15 +1248,18 @@ function OnboardingContent() {
   );
 }
 
+function OnboardingFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background p-6 text-text-secondary">
+      {t("common.loading")}
+    </div>
+  );
+}
+
 export default function OnboardingPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background p-6 text-text-secondary">
-          Chargement...
-        </div>
-      }
-    >
+    <Suspense fallback={<OnboardingFallback />}>
       <OnboardingContent />
     </Suspense>
   );

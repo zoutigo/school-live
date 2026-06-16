@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 import { AppHeader } from "./app-header";
 import { useAppShellUiStore } from "./app-shell-ui-store";
 
@@ -14,6 +16,7 @@ describe("AppHeader mobile menu attention", () => {
     vi.useFakeTimers();
     window.localStorage.clear();
     useAppShellUiStore.getState().reset();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("animates the mobile menu button every 15 seconds until the first click", () => {
@@ -134,5 +137,80 @@ describe("AppHeader mobile menu attention", () => {
     fireEvent.click(screen.getByRole("button", { name: "Se deconnecter" }));
 
     expect(onLogoutClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AppHeader localization", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+    useAppShellUiStore.getState().reset();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+  });
+
+  it("renders French labels by default", () => {
+    render(
+      <AppHeader
+        schoolName="college vogt"
+        isSchoolContext
+        role="PARENT"
+        userInitials="RN"
+        userDisplayName="Robert Ntamack"
+        onToggleMenu={vi.fn()}
+        onLogoutClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Portail famille")).toBeInTheDocument();
+    expect(screen.getByText("Parent")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Se deconnecter" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Ouvrir le menu" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders English labels when the locale is set to English", () => {
+    useLocaleStore.getState().setLocale("en");
+
+    render(
+      <AppHeader
+        schoolName="college vogt"
+        isSchoolContext
+        role="PARENT"
+        userInitials="RN"
+        userDisplayName="Robert Ntamack"
+        onToggleMenu={vi.fn()}
+        onLogoutClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Family portal")).toBeInTheDocument();
+    expect(screen.getByText("Parent")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open menu" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the platform admin dashboard title translated for the active locale", () => {
+    useLocaleStore.getState().setLocale("en");
+
+    render(
+      <AppHeader
+        schoolName="Plateforme"
+        isSchoolContext={false}
+        role="ADMIN"
+        userInitials="AD"
+        userDisplayName="Admin User"
+        onToggleMenu={vi.fn()}
+        onLogoutClick={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("Platform administration dashboard"),
+    ).toBeInTheDocument();
   });
 });

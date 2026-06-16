@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassNotesPage from "./page";
+import { translate } from "../../../../../../../i18n/useTranslation";
 
 function setRichTextEditorHtml(container: HTMLElement, value: string) {
   const editor = container.querySelector(
@@ -312,7 +313,12 @@ describe("TeacherClassNotesPage evaluations tab", () => {
       1,
     );
     expect(
-      screen.getByRole("button", { name: /Saisir les notes/i }),
+      screen.getByRole("button", {
+        name: new RegExp(
+          translate("fr", "notes.teacher.detail.enterScores"),
+          "i",
+        ),
+      }),
     ).toBeInTheDocument();
     const attachmentDownloadButton = screen.getByRole("button", {
       name: "consignes-composition.pdf",
@@ -334,20 +340,28 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     render(<TeacherClassNotesPage />);
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Ajouter une evaluation" }),
+      await screen.findByRole("button", {
+        name: translate("fr", "notes.teacher.list.addAria"),
+      }),
     );
 
-    expect(await screen.findByText("Nouvelle evaluation")).toBeInTheDocument();
     expect(
-      screen.getByPlaceholderText("Ex. Composition sur les fractions"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Creer l'evaluation" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Vous devez remplir correctement les champs obligatoires.",
+      await screen.findByText(
+        translate("fr", "notes.teacher.form.createTitle"),
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(
+        translate("fr", "notes.teacher.form.titlePlaceholder"),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: translate("fr", "notes.teacher.form.submitCreate"),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(translate("fr", "common.requiredFieldsHint")),
     ).toBeInTheDocument();
   });
 
@@ -357,12 +371,14 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     const { container } = render(<TeacherClassNotesPage />);
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Ajouter une evaluation" }),
+      await screen.findByRole("button", {
+        name: translate("fr", "notes.teacher.list.addAria"),
+      }),
     );
 
-    await screen.findByText("Nouvelle evaluation");
+    await screen.findByText(translate("fr", "notes.teacher.form.createTitle"));
     const submitButton = await screen.findByRole("button", {
-      name: "Creer l'evaluation",
+      name: translate("fr", "notes.teacher.form.submitCreate"),
     });
     const titleInput = container.querySelector(
       "#evaluation-title",
@@ -383,15 +399,15 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     expect(titleInput.className).toContain("border-notification");
     expect(scheduledAtInput.className).toContain("border-notification");
     expect(
-      await screen.findByText(
-        "Vous devez remplir correctement les champs obligatoires.",
-      ),
+      await screen.findByText(translate("fr", "common.requiredFieldsHint")),
     ).toBeInTheDocument();
 
     fireEvent.input(titleInput, { target: { value: "Ab" } });
 
     expect(
-      await screen.findByText("Le titre doit contenir au moins 3 caracteres."),
+      await screen.findByText(
+        translate("fr", "notes.teacher.validation.titleMinLength"),
+      ),
     ).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
 
@@ -402,7 +418,9 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     fireEvent.input(scheduledAtInput, { target: { value: "" } });
 
     expect(
-      await screen.findByText("La date prevue est obligatoire."),
+      await screen.findByText(
+        translate("fr", "notes.teacher.validation.scheduledAtRequired"),
+      ),
     ).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
 
@@ -413,9 +431,7 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     await waitFor(() => expect(submitButton).toBeEnabled());
     await waitFor(() =>
       expect(
-        screen.queryByText(
-          "Vous devez remplir correctement les champs obligatoires.",
-        ),
+        screen.queryByText(translate("fr", "common.requiredFieldsHint")),
       ).not.toBeInTheDocument(),
     );
   });
@@ -426,10 +442,12 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     const { container } = render(<TeacherClassNotesPage />);
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Ajouter une evaluation" }),
+      await screen.findByRole("button", {
+        name: translate("fr", "notes.teacher.list.addAria"),
+      }),
     );
 
-    await screen.findByText("Nouvelle evaluation");
+    await screen.findByText(translate("fr", "notes.teacher.form.createTitle"));
     const titleInput = container.querySelector(
       "#evaluation-title",
     ) as HTMLInputElement | null;
@@ -440,7 +458,7 @@ describe("TeacherClassNotesPage evaluations tab", () => {
       "#evaluation-scheduled-at",
     ) as HTMLInputElement | null;
     const submitButton = screen.getByRole("button", {
-      name: "Creer l'evaluation",
+      name: translate("fr", "notes.teacher.form.submitCreate"),
     });
     const descriptionEditor = screen.getByTestId(
       "evaluation-description-editor",
@@ -460,7 +478,9 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     });
 
     expect(
-      await screen.findByText("Le coefficient doit etre superieur a 0."),
+      await screen.findByText(
+        translate("fr", "notes.teacher.validation.coefficientPositive"),
+      ),
     ).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
 
@@ -521,14 +541,20 @@ describe("TeacherClassNotesPage evaluations tab", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Editer l'evaluation selectionnee",
+        name: translate("fr", "notes.teacher.detail.editAria"),
       }),
     );
 
-    expect(await screen.findByText("Editer l'evaluation")).toBeInTheDocument();
+    expect(
+      await screen.findByText(translate("fr", "notes.teacher.form.editTitle")),
+    ).toBeInTheDocument();
 
-    const titleInput = screen.getByLabelText("Titre") as HTMLInputElement;
-    const submitButton = screen.getByRole("button", { name: "Enregistrer" });
+    const titleInput = screen.getByLabelText(
+      translate("fr", "notes.teacher.form.title"),
+    ) as HTMLInputElement;
+    const submitButton = screen.getByRole("button", {
+      name: translate("fr", "notes.teacher.form.submitEdit"),
+    });
     const descriptionEditor = screen.getByTestId(
       "evaluation-description-editor",
     );
@@ -597,12 +623,12 @@ describe("TeacherClassNotesPage evaluations tab", () => {
 
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Editer l'evaluation selectionnee",
+        name: translate("fr", "notes.teacher.detail.editAria"),
       }),
     );
 
     const scheduledAtInput = (await screen.findByLabelText(
-      "Date prevue",
+      translate("fr", "notes.teacher.form.scheduledAt"),
     )) as HTMLInputElement;
 
     expect(scheduledAtInput.value).toBe("2026-03-12T08:00");
@@ -688,12 +714,17 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     render(<TeacherClassNotesPage />);
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Ajouter une evaluation" }),
+      await screen.findByRole("button", {
+        name: translate("fr", "notes.teacher.list.addAria"),
+      }),
     );
 
-    const fileInput = screen.getByLabelText(/Ajouter un fichier/i, {
-      selector: 'input[type="file"]',
-    });
+    const fileInput = screen.getByLabelText(
+      new RegExp(translate("fr", "notes.teacher.form.attachmentAdd"), "i"),
+      {
+        selector: 'input[type="file"]',
+      },
+    );
     const file = new File(["bad"], "archive.zip", { type: "application/zip" });
 
     fireEvent.change(fileInput, { target: { files: [file] } });
@@ -712,7 +743,10 @@ describe("TeacherClassNotesPage evaluations tab", () => {
       await screen.findByRole("button", { name: /Composition fractions/i }),
     ).toBeInTheDocument();
 
-    expect(screen.getAllByText("Publiee").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(translate("fr", "notes.teacher.status.published"))
+        .length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText("11/03/2026")).toBeInTheDocument();
     expect(screen.getAllByText("12/20").length).toBeGreaterThan(0);
   });
@@ -756,7 +790,7 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     render(<TeacherClassNotesPage />);
 
     expect(
-      await screen.findByText("Aucune evaluation pour cette classe."),
+      await screen.findByText(translate("fr", "notes.teacher.list.empty")),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Page suivante" }),

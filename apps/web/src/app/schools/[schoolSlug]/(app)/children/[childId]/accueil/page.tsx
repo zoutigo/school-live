@@ -13,6 +13,8 @@ import {
   Users,
 } from "lucide-react";
 import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
+import { lifeEventTypeLabel } from "../../../../../../../components/life-events/life-events-list";
+import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -88,13 +90,6 @@ function minuteToTimeLabel(value: number) {
   return `${hours}:${minutes}`;
 }
 
-function formatEventTypeLabel(type: LifeEventRow["type"]) {
-  if (type === "ABSENCE") return "Absence";
-  if (type === "RETARD") return "Retard";
-  if (type === "SANCTION") return "Sanction";
-  return "Punition";
-}
-
 function formatDateLabel(value: string) {
   try {
     return new Intl.DateTimeFormat("fr-FR", {
@@ -117,6 +112,7 @@ function ChildAccueilDashboard({
   childId: string;
   child: ChildContext | null;
 }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState<NotesSnapshot[]>([]);
   const [events, setEvents] = useState<LifeEventRow[]>([]);
@@ -274,24 +270,30 @@ function ChildAccueilDashboard({
                 accent="primary"
               />
               <SummaryStat
-                label="Messages non lus"
+                label={t("messaging.nav.unreadMessages")}
                 value={`${unreadCount}`}
                 hint={
                   latestMessage?.subject
-                    ? `Dernier : ${latestMessage.subject}`
-                    : "Aucun message recent"
+                    ? `${t("messaging.nav.lastMessagePrefix")} : ${latestMessage.subject}`
+                    : t("messaging.nav.noRecentMessageShort")
                 }
                 accent="teal"
               />
               <SummaryStat
-                label="Vie scolaire"
+                label={t("discipline.sidebar.vieScolaire")}
                 value={`${events.length}`}
                 hint={
                   unjustifiedCount > 0
-                    ? `${unjustifiedCount} absence non justifiee`
+                    ? t("discipline.accueil.summaryHint.unjustified").replace(
+                        "{count}",
+                        String(unjustifiedCount),
+                      )
                     : sanctionsCount > 0
-                      ? `${sanctionsCount} sanction(s) ou punition(s)`
-                      : "Aucun point de vigilance"
+                      ? t("discipline.accueil.summaryHint.sanctions").replace(
+                          "{count}",
+                          String(sanctionsCount),
+                        )
+                      : t("discipline.accueil.summaryHint.none")
                 }
                 accent="gold"
               />
@@ -366,24 +368,24 @@ function ChildAccueilDashboard({
             </DashboardPanel>
 
             <DashboardPanel
-              title="Vie scolaire"
+              title={t("discipline.sidebar.vieScolaire")}
               icon={<ShieldAlert className="h-4 w-4" />}
               actionHref={`/schools/${schoolSlug}/children/${childId}/vie-scolaire`}
-              actionLabel="Voir la synthese"
+              actionLabel={t("discipline.accueil.panel.action")}
             >
               <div className="grid gap-3">
                 <p className="text-sm text-text-secondary">
                   {latestEvent
-                    ? `${formatEventTypeLabel(latestEvent.type)} : ${latestEvent.reason}`
-                    : "Aucun evenement vie scolaire recent."}
+                    ? `${lifeEventTypeLabel(t, latestEvent.type)} : ${latestEvent.reason}`
+                    : t("discipline.accueil.panel.noRecentEvent")}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <MetricBadge
-                    label="Absences non justifiees"
+                    label={t("discipline.accueil.metrics.unjustifiedAbsences")}
                     value={`${unjustifiedCount}`}
                   />
                   <MetricBadge
-                    label="Sanctions / punitions"
+                    label={t("discipline.accueil.metrics.sanctionsPunitions")}
                     value={`${sanctionsCount}`}
                   />
                 </div>
@@ -403,8 +405,8 @@ function ChildAccueilDashboard({
                   href: `/schools/${schoolSlug}/children/${childId}/notes`,
                 },
                 {
-                  label: "Vie scolaire",
-                  hint: "Absences, retards, sanctions",
+                  label: t("discipline.sidebar.vieScolaire"),
+                  hint: t("discipline.accueil.quickAccess.hint"),
                   href: `/schools/${schoolSlug}/children/${childId}/vie-scolaire`,
                 },
                 {
@@ -420,8 +422,8 @@ function ChildAccueilDashboard({
                   )}`,
                 },
                 {
-                  label: "Messagerie",
-                  hint: "Echanges et suivi",
+                  label: t("messaging.nav.title"),
+                  hint: t("messaging.nav.openMessagingHint"),
                   href: `/schools/${schoolSlug}/children/${childId}/messagerie`,
                 },
                 {
@@ -449,10 +451,10 @@ function ChildAccueilDashboard({
 
         <div className="grid gap-4">
           <DashboardPanel
-            title="Dernier message"
+            title={t("messaging.nav.lastMessage")}
             icon={<MessageSquare className="h-4 w-4" />}
             actionHref={`/schools/${schoolSlug}/children/${childId}/messagerie`}
-            actionLabel="Ouvrir la messagerie"
+            actionLabel={t("messaging.nav.openLink")}
           >
             {latestMessage ? (
               <div className="grid gap-2">
@@ -460,7 +462,8 @@ function ChildAccueilDashboard({
                   {latestMessage.subject}
                 </p>
                 <p className="text-sm text-text-secondary">
-                  {latestMessage.preview?.trim() || "Apercu non disponible."}
+                  {latestMessage.preview?.trim() ||
+                    t("messaging.nav.previewUnavailable")}
                 </p>
                 <p className="text-xs text-text-secondary">
                   {formatDateLabel(latestMessage.createdAt)}
@@ -468,7 +471,7 @@ function ChildAccueilDashboard({
               </div>
             ) : (
               <p className="text-sm text-text-secondary">
-                Aucun message recent.
+                {t("messaging.nav.noRecentMessage")}
               </p>
             )}
           </DashboardPanel>

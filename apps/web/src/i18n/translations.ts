@@ -1,0 +1,3363 @@
+export type Locale = "fr" | "en";
+
+export const SUPPORTED_LOCALES: Locale[] = ["fr", "en"];
+
+export const DEFAULT_LOCALE: Locale = "fr";
+
+/**
+ * Translation dictionaries, namespaced (e.g. "common.save", "header.logout").
+ * Keep `en` keys aligned with `fr` keys: useTranslation falls back fr -> key.
+ */
+export const translations: Record<Locale, Record<string, string>> = {
+  fr: {
+    "common.save": "Enregistrer",
+    "common.cancel": "Annuler",
+    "common.back": "Retour",
+    "common.loading": "Chargement...",
+    "common.apply": "Appliquer",
+    "common.requiredFieldsHint":
+      "Vous devez remplir correctement les champs obligatoires.",
+    "common.passwordHint.title":
+      "8 caracteres minimum, dont au moins 1 Maj, 1 Min, 1 Chiffre",
+    "common.passwordHint.minLength": "8 caracteres minimum",
+    "common.passwordHint.uppercase": "Au moins 1 majuscule",
+    "common.passwordHint.lowercase": "Au moins 1 minuscule",
+    "common.passwordHint.digit": "Au moins 1 chiffre",
+
+    "settings.title": "Parametres",
+    "settings.subtitle": "Preferences de navigation",
+    "settings.tab.navigation": "Navigation",
+    "settings.tab.help": "Aide",
+    "settings.tab.staff": "Personnel",
+    "settings.tab.language": "Langue",
+    "settings.language.title": "Langue de ce navigateur",
+    "settings.language.subtitle": "Choisissez la langue de l'interface",
+    "settings.language.hint":
+      "La langue choisie est appliquee immediatement et conservee sur ce navigateur.",
+    "settings.language.fr": "Francais",
+    "settings.language.en": "Anglais",
+
+    "settings.accountLanguage.title": "Langue du compte",
+    "settings.accountLanguage.subtitle":
+      "Cette langue est associee a votre compte",
+    "settings.accountLanguage.hint":
+      "Elle s'applique automatiquement a chaque connexion, sur n'importe quel appareil.",
+    "settings.accountLanguage.success":
+      "La langue de votre compte a ete enregistree.",
+    "settings.accountLanguage.error":
+      "La langue du compte n'a pas pu etre mise a jour.",
+
+    "header.portal.admin": "Portail administration",
+    "header.portal.school": "Portail etablissement",
+    "header.portal.teacher": "Portail enseignant",
+    "header.portal.family": "Portail famille",
+    "header.role.superAdmin": "Super admin",
+    "header.role.admin": "Admin",
+    "header.role.sales": "Commercial",
+    "header.role.support": "Support",
+    "header.role.schoolAdmin": "Admin ecole",
+    "header.role.schoolManager": "Gestionnaire ecole",
+    "header.role.supervisor": "Superviseur",
+    "header.role.schoolAccountant": "Comptable",
+    "header.role.schoolStaff": "Staff",
+    "header.role.teacher": "Enseignant",
+    "header.role.parent": "Parent",
+    "header.role.student": "Eleve",
+    "header.adminDashboardTitle": "Dashboard d'administration de la plateforme",
+    "header.notifications": "Notifications",
+    "header.account": "Compte utilisateur",
+    "header.logout": "Se deconnecter",
+    "header.openMenu": "Ouvrir le menu",
+
+    "recoveryShell.subtitle": "Portail recuperation",
+
+    "landing.hero.title": "Acces Scolive",
+    "landing.hero.subtitle":
+      "Connectez-vous avec la methode fournie par votre ecole.",
+    "landing.mobileApp.title": "Application mobile Scolive",
+    "landing.mobileApp.subtitle": "Disponible sur iOS et Android",
+    "landing.mobileApp.description":
+      "Restez connecte a la vie scolaire de votre etablissement depuis votre mobile.",
+    "landing.mobileApp.appStore": "Telecharger sur App Store",
+    "landing.mobileApp.androidApk": "Telecharger l'APK Android",
+    "landing.platform.title": "Une plateforme pensee pour les ecoles",
+    "landing.platform.subtitle":
+      "Un environnement scolaire moderne et connecte",
+    "landing.platform.imageAlt": "Eleves africains dans une ecole moderne",
+    "landing.platform.description":
+      "Scolive valorise la reussite des apprenants avec des outils numeriques clairs, accessibles et adaptes au quotidien scolaire.",
+    "landing.features.notes.title": "Suivi des notes",
+    "landing.features.notes.description":
+      "Consultez resultats, moyennes et progression en temps reel.",
+    "landing.features.messaging.title": "Messagerie centralisee",
+    "landing.features.messaging.description":
+      "Echanges familles, eleves et equipe pedagogique en un seul endroit.",
+    "landing.features.payments.title": "Paiements simplifies",
+    "landing.features.payments.description":
+      "Reglez cantine, sorties et frais scolaires en ligne.",
+    "landing.features.schoolLife.title": "Vie scolaire",
+    "landing.features.schoolLife.description":
+      "Absences, emploi du temps, documents et informations utiles.",
+    "landing.features.cardFooter":
+      "Scolive centralise vos interactions ecole-famille.",
+
+    "login.languageSwitcher.ariaLabel": "Langue de ce navigateur",
+    "login.switchMethod": "Se connecter autrement",
+    "login.method.phone": "Telephone + PIN",
+    "login.method.email": "Email + Mot de passe",
+    "login.method.username": "Identifiant + Mot de passe",
+    "login.method.sso": "Google / Apple",
+    "login.phone.subtitle": "Connexion rapide",
+    "login.phone.fieldPhone": "Telephone",
+    "login.phone.fieldPin": "PIN",
+    "login.phone.submit": "Connexion telephone + PIN",
+    "login.phone.submitLoading": "Connexion PIN...",
+    "login.phone.forgotPin": "PIN perdu ?",
+    "login.email.subtitle": "Connexion classique",
+    "login.email.fieldEmail": "Email",
+    "login.email.submit": "Se connecter",
+    "login.email.submitLoading": "Connexion...",
+    "login.common.password": "Mot de passe",
+    "login.common.forgotPassword": "Mot de passe oublie ?",
+    "login.username.subtitle": "Connexion par identifiant",
+    "login.username.fieldUsername": "Identifiant",
+    "login.username.passwordAriaLabel": "Mot de passe (identifiant)",
+    "login.username.submit": "Se connecter (identifiant)",
+    "login.username.submitLoading": "Connexion...",
+    "login.sso.subtitle": "SSO ecole",
+    "login.errors.invalidPhone": "Numero invalide (9 chiffres attendus).",
+    "login.errors.invalidPin": "PIN invalide (6 chiffres attendus).",
+    "login.errors.invalidEmail": "Adresse email invalide.",
+    "login.errors.passwordRequired": "Mot de passe requis.",
+    "login.errors.invalidUsername":
+      "Identifiant invalide (3 caracteres minimum).",
+    "login.errors.invalidSession": "Session invalide apres connexion",
+    "login.errors.noSchool": "Aucune ecole associee a ce compte",
+    "login.errors.connectionError": "Erreur de connexion",
+    "login.errors.invalidPhonePin": "Telephone ou PIN invalide",
+    "login.errors.invalidEmailPassword": "Email ou mot de passe invalide",
+    "login.errors.invalidUsernamePassword":
+      "Identifiant ou mot de passe invalide",
+
+    "onboarding.errors.loadOptionsFailed":
+      "Impossible de charger les options d'activation.",
+    "onboarding.errors.connectionError": "Erreur de connexion.",
+    "onboarding.errors.passwordChangeFailed":
+      "Changement de mot de passe impossible.",
+    "onboarding.errors.activationFailed": "Activation impossible.",
+    "onboarding.errors.networkError": "Erreur reseau.",
+    "onboarding.errors.invalidLinkMissingEmail":
+      "Lien invalide: email manquant.",
+    "onboarding.errors.temporaryPasswordRequired":
+      "Le mot de passe provisoire est obligatoire.",
+    "onboarding.errors.passwordMinLength":
+      "Le mot de passe doit faire au moins 8 caracteres.",
+    "onboarding.errors.passwordComplexity":
+      "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+    "onboarding.errors.confirmPasswordRequired": "Confirmez le mot de passe.",
+    "onboarding.errors.passwordConfirmMismatch":
+      "La confirmation ne correspond pas au nouveau mot de passe.",
+    "onboarding.errors.invalidUsername": "Identifiant invalide.",
+    "onboarding.errors.invalidEmail": "Adresse email invalide.",
+    "onboarding.errors.missingSetupToken": "Jeton d onboarding manquant.",
+    "onboarding.errors.firstNameRequired": "Le prenom est obligatoire.",
+    "onboarding.errors.lastNameRequired": "Le nom est obligatoire.",
+    "onboarding.errors.genderRequired": "Le genre est obligatoire.",
+    "onboarding.errors.birthDateRequired":
+      "La date de naissance est obligatoire.",
+    "onboarding.errors.invalidDateFormat":
+      "Format de date invalide (aaaa-mm-jj).",
+    "onboarding.errors.birthDateInFuture":
+      "La date de naissance ne peut pas etre dans le futur.",
+    "onboarding.errors.newPinDigits":
+      "Le nouveau PIN doit contenir 6 chiffres.",
+    "onboarding.errors.confirmPinRequired": "Confirmez le nouveau PIN.",
+    "onboarding.errors.pinConfirmMismatch":
+      "La confirmation ne correspond pas au nouveau PIN.",
+    "onboarding.errors.chooseThreeQuestions":
+      "Choisissez exactement 3 questions.",
+    "onboarding.errors.questionsMustDiffer":
+      "Les 3 questions doivent etre differentes.",
+    "onboarding.errors.answerMinLength":
+      "Chaque reponse doit contenir au moins 2 caracteres.",
+    "onboarding.errors.parentClassRequired":
+      "La classe de votre enfant est obligatoire.",
+    "onboarding.errors.parentStudentRequired":
+      "Le nom de votre enfant est obligatoire.",
+
+    "onboarding.shell.title": "Activation de compte",
+    "onboarding.success.title": "Enregistrement termine",
+    "onboarding.success.description":
+      "Votre compte a bien ete configure. Vous serez redirige vers l ecran de connexion pour vous connecter en toute securite.",
+    "onboarding.hero.badge": "Onboarding securise",
+    "onboarding.hero.title": "Activez votre compte en une seule sequence",
+    "onboarding.hero.description":
+      "Renseignez les informations d'activation, votre profil et vos questions de recuperation. A la fin, vous retournez directement a la connexion.",
+    "onboarding.hero.step1Token": "Etape 1: email optionnel.",
+    "onboarding.hero.step1Password":
+      "Etape 1: mot de passe provisoire et nouveau mot de passe.",
+    "onboarding.hero.step2":
+      "Etape 2: informations personnelles (nom, prenom, genre, date de naissance).",
+    "onboarding.hero.step3Token": "Etape 3: changement du PIN de connexion.",
+    "onboarding.hero.step3Recovery":
+      "Etape 3: questions de recuperation puis validation finale.",
+    "onboarding.hero.step4":
+      "Etape 4: questions de recuperation puis validation finale.",
+    "onboarding.hero.imageAlt": "Scene de classe",
+    "onboarding.form.title": "Finaliser l'activation",
+    "onboarding.form.stepLabel": "Etape",
+    "onboarding.form.accountLabel": "Compte concerne",
+    "onboarding.form.accountPending": "Compte en attente",
+    "onboarding.form.emailOptional": "Email (optionnel)",
+    "onboarding.form.emailOptionalHint":
+      "Vous pouvez continuer sans email et le renseigner plus tard dans votre compte.",
+    "onboarding.form.usernameLabel": "Identifiant:",
+    "onboarding.form.temporaryPassword": "Mot de passe provisoire",
+    "onboarding.form.newPassword": "Nouveau mot de passe",
+    "onboarding.form.confirmation": "Confirmation",
+    "onboarding.form.firstName": "Votre prenom",
+    "onboarding.form.lastName": "Votre nom",
+    "onboarding.form.gender": "Votre genre",
+    "onboarding.form.select": "Selectionner",
+    "onboarding.form.male": "Masculin",
+    "onboarding.form.female": "Feminin",
+    "onboarding.form.otherGender": "Autre",
+    "onboarding.form.birthDate": "Votre date de naissance",
+    "onboarding.form.pinSectionTitle": "Modifiez votre PIN de connexion",
+    "onboarding.form.newPin": "Nouveau PIN",
+    "onboarding.form.confirmPin": "Confirmer PIN",
+    "onboarding.form.chooseQuestions": "Choisissez 3 questions de recuperation",
+    "onboarding.form.yourAnswer": "Votre reponse",
+    "onboarding.form.childClass": "Classe de votre enfant",
+    "onboarding.form.selectClass": "Selectionner une classe",
+    "onboarding.form.childName": "Nom de l'enfant",
+    "onboarding.form.selectStudent": "Selectionner un eleve",
+    "onboarding.form.loadingOptions": "Chargement des options...",
+    "onboarding.form.continue": "Continuer",
+    "onboarding.form.submitting": "Validation...",
+    "onboarding.form.submit": "Finaliser l'activation",
+
+    "recovery.password.shell.title": "Recuperation de mot de passe",
+    "recovery.password.cardTitle": "Mot de passe oublie",
+    "recovery.password.step1": "Etape 1/3: demande de lien",
+    "recovery.password.step2": "Etape 2/3: verification",
+    "recovery.password.step3": "Etape 3/3: nouveau mot de passe",
+    "recovery.password.fields.email": "Email du compte",
+    "recovery.password.fields.birthDate": "Date de naissance",
+    "recovery.password.fields.newPassword": "Nouveau mot de passe",
+    "recovery.password.fields.confirmation": "Confirmation",
+    "recovery.password.submit.sending": "Envoi en cours...",
+    "recovery.password.submit.send": "Envoyer le lien",
+    "recovery.password.submit.verifying": "Verification...",
+    "recovery.password.submit.verify": "Verifier mon identite",
+    "recovery.password.submit.resetting": "Reinitialisation...",
+    "recovery.password.submit.reset": "Reinitialiser mon mot de passe",
+    "recovery.password.loadingLink": "Chargement du lien...",
+    "recovery.password.loading": "Chargement...",
+    "recovery.password.accountDetected": "Compte detecte:",
+    "recovery.password.linkInvalid":
+      "Ce lien n'est plus valide. Demandez un nouveau lien de reinitialisation.",
+    "recovery.password.newRequest": "Nouvelle demande",
+    "recovery.password.backToLogin": "Retour a la connexion",
+    "recovery.password.errors.invalidEmail": "Adresse email invalide.",
+    "recovery.password.errors.invalidLink": "Lien invalide.",
+    "recovery.password.errors.birthDateRequired":
+      "La date de naissance est obligatoire.",
+    "recovery.password.errors.answerRequiredPrefix": "Reponse obligatoire",
+    "recovery.password.errors.passwordMinLength":
+      "Le mot de passe doit faire au moins 8 caracteres.",
+    "recovery.password.errors.passwordComplexity":
+      "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
+    "recovery.password.errors.confirmPasswordRequired":
+      "Confirmez le mot de passe.",
+    "recovery.password.errors.passwordConfirmMismatch":
+      "La confirmation ne correspond pas au nouveau mot de passe.",
+    "recovery.password.errors.invalidOrExpiredLink":
+      "Lien de reinitialisation invalide ou expire.",
+    "recovery.password.errors.networkError": "Erreur reseau.",
+    "recovery.password.errors.requestFailed":
+      "Demande impossible. Veuillez reessayer.",
+    "recovery.password.errors.invalidRecoveryInfo":
+      "Informations de recuperation invalides.",
+    "recovery.password.errors.resetFailed": "Reinitialisation impossible.",
+    "recovery.password.success.requestSentDefault":
+      "Si ce compte existe, un lien de reinitialisation a ete envoye.",
+    "recovery.password.success.verified":
+      "Verification validee. Definissez votre nouveau mot de passe.",
+    "recovery.password.toast.requestSent.title": "Demande envoyee",
+    "recovery.password.toast.requestSent.description":
+      "Si ce compte existe, la demande de reinitialisation a bien ete prise en compte. Vous allez etre redirige vers la connexion.",
+    "recovery.password.toast.passwordReset.title": "Mot de passe reinitialise",
+    "recovery.password.toast.passwordReset.description":
+      "Votre nouveau mot de passe a bien ete enregistre. Vous allez etre redirige vers la connexion.",
+
+    "recovery.username.shell.title": "Recuperation par identifiant",
+    "recovery.username.cardTitle": "Mot de passe oublie (identifiant)",
+    "recovery.username.step1": "Etape 1/3: saisir votre identifiant",
+    "recovery.username.fields.username": "Identifiant",
+    "recovery.username.usernamePlaceholder": "PrenomNOM",
+    "recovery.username.identifierLabel": "Identifiant:",
+    "recovery.username.submit.searching": "Recherche...",
+    "recovery.username.submit.continue": "Continuer",
+    "recovery.username.noQuestionsConfigured":
+      "Aucune question de recuperation n'est configuree pour ce compte. Contactez votre administration scolaire.",
+    "recovery.username.loading": "Chargement...",
+    "recovery.username.errors.usernameInvalid":
+      "Identifiant invalide (3 caracteres minimum).",
+    "recovery.username.errors.usernameNotFound": "Identifiant introuvable.",
+    "recovery.pin.shell.title": "Recuperation de PIN",
+    "recovery.pin.cardTitle": "PIN perdu",
+    "recovery.pin.cardSubtitle":
+      "Recuperez l acces avec vos questions de securite",
+    "recovery.pin.fields.emailOptional": "Email (optionnel)",
+    "recovery.pin.fields.phoneOptional": "Telephone (optionnel)",
+    "recovery.pin.emailPlaceholder": "prenom.nom@gmail.com",
+    "recovery.pin.phonePlaceholder": "6XXXXXXXX",
+    "recovery.pin.pinPlaceholder": "123456",
+    "recovery.pin.submit.loadingOptions": "Chargement...",
+    "recovery.pin.submit.continueToQuestions":
+      "Continuer vers les questions de recuperation",
+    "recovery.pin.submit.verifying": "Verification...",
+    "recovery.pin.submit.verify": "Verifier mes reponses",
+    "recovery.pin.fields.newPin": "Nouveau PIN (6 chiffres)",
+    "recovery.pin.fields.confirmPin": "Confirmer le PIN",
+    "recovery.pin.submit.resetting": "Reinitialisation...",
+    "recovery.pin.submit.reset": "Definir mon nouveau PIN",
+    "recovery.pin.success.verified":
+      "Verification reussie. Vous pouvez definir un nouveau PIN.",
+    "recovery.pin.errors.loadOptionsFailed":
+      "Impossible de charger les questions de recuperation.",
+    "recovery.pin.errors.questionsNotLoaded":
+      "Chargez d abord les questions de recuperation.",
+    "recovery.pin.errors.resetFailed": "Reinitialisation du PIN impossible.",
+    "recovery.pin.errors.emailOrPhoneRequired":
+      "Renseignez un email ou un telephone.",
+    "recovery.pin.errors.invalidPhone":
+      "Numero invalide (9 chiffres attendus).",
+    "recovery.pin.errors.invalidSession": "Session de recuperation invalide.",
+    "recovery.pin.errors.pinFormat":
+      "Le PIN doit contenir exactement 6 chiffres.",
+    "recovery.pin.errors.confirmPinRequired": "Confirmez le PIN.",
+    "recovery.pin.errors.pinConfirmMismatch":
+      "La confirmation ne correspond pas au PIN.",
+    "recovery.pin.toast.title": "PIN reinitialise",
+    "recovery.pin.toast.description":
+      "Votre nouveau PIN a bien ete enregistre. Vous allez etre redirige vers la connexion.",
+    "firstPassword.shell.title": "Premiere connexion",
+    "firstPassword.success.title": "Mot de passe defini",
+    "firstPassword.success.subtitle": "Redirection en cours...",
+    "firstPassword.success.message":
+      "Votre mot de passe a ete defini avec succes. Vous allez etre redirige vers la connexion.",
+    "firstPassword.cardTitle": "Definir mon mot de passe",
+    "firstPassword.cardSubtitle":
+      "Premiere connexion — choisissez un mot de passe securise",
+    "firstPassword.identifierLabel": "Identifiant :",
+    "firstPassword.fields.confirmPassword": "Confirmer le mot de passe",
+    "firstPassword.submit.saving": "Enregistrement...",
+    "firstPassword.submit.submit": "Definir mon mot de passe",
+    "firstPassword.errors.changeFailed":
+      "Changement de mot de passe impossible.",
+    "pendingAccount.cardLeft.title": "Compte en attente",
+    "pendingAccount.cardLeft.subtitle":
+      "Finalisez l'activation pour acceder aux donnees de votre ecole",
+    "pendingAccount.cardLeft.description":
+      "Votre compte a bien ete cree, mais il doit etre valide avant de pouvoir consulter vos donnees scolaires.",
+    "pendingAccount.info.account": "Compte:",
+    "pendingAccount.info.school": "Ecole:",
+    "pendingAccount.info.methods": "Methodes:",
+    "pendingAccount.info.methodsValue": "Code activation ou PIN initial",
+    "pendingAccount.cardRight.title": "Activer le compte",
+    "pendingAccount.cardRight.subtitle": "Telephone confirme + nouveau PIN",
+    "pendingAccount.fields.email": "Email",
+    "pendingAccount.fields.accountPhone": "Telephone du compte",
+    "pendingAccount.fields.confirmedPhone": "Telephone confirme",
+    "pendingAccount.fields.activationCode": "Code d activation (optionnel)",
+    "pendingAccount.fields.initialPin": "PIN initial (optionnel)",
+    "pendingAccount.fields.newPin": "Nouveau PIN (6 chiffres)",
+    "pendingAccount.placeholders.email": "prenom.nom@gmail.com",
+    "pendingAccount.placeholders.phone": "6XXXXXXXX",
+    "pendingAccount.placeholders.activationCode": "Ex: A1B2C3D4",
+    "pendingAccount.placeholders.initialPin": "PIN temporaire fourni",
+    "pendingAccount.placeholders.newPin": "123456",
+    "pendingAccount.submit.activating": "Activation...",
+    "pendingAccount.submit.activate": "Activer mon compte",
+    "pendingAccount.success.activated": "Compte active avec succes.",
+    "pendingAccount.errors.activationMethodRequired":
+      "Saisissez un code d activation ou votre PIN initial.",
+    "pendingAccount.errors.newPinFormat":
+      "Le nouveau PIN doit contenir exactement 6 chiffres.",
+    "pendingAccount.errors.loadOptionsFailed":
+      "Impossible de charger les options d activation",
+    "pendingAccount.errors.loadError": "Erreur lors du chargement",
+    "pendingAccount.errors.activationFailed":
+      "Activation impossible. Verifiez vos informations.",
+    "profileSetup.redirecting": "Redirection vers le nouvel onboarding...",
+    "authError.title": "Erreur d'authentification",
+    "authError.codeLabel": "Code:",
+    "authError.hint.noCode":
+      "Erreur OAuth sans code explicite. Verifiez AUTH_SECRET/NEXTAUTH_SECRET, AUTH_URL/NEXTAUTH_URL et les providers actifs.",
+    "authError.hint.configuration":
+      "Configuration NextAuth invalide. Verifiez AUTH_SECRET et les credentials provider.",
+    "authError.hint.accessDenied":
+      "Acces refuse par le provider ou par les callbacks applicatifs.",
+    "authError.hint.oauthHandshake":
+      "Echec lors du handshake OAuth. Verifiez AUTH_URL/NEXTAUTH_URL et les redirect URIs.",
+    "authError.hint.accountNotLinked":
+      "Ce compte provider est deja lie a un autre utilisateur.",
+    "authError.hint.default":
+      "Consultez les logs serveur [next-auth][error] pour le detail technique.",
+    "verifyEmail.noToken.title": "Lien invalide",
+    "verifyEmail.noToken.message":
+      "Ce lien de verification est incomplet ou malforme.",
+    "verifyEmail.success.title": "Email verifie !",
+    "verifyEmail.success.followUp":
+      "Vous pouvez maintenant utiliser votre adresse email pour vous connecter.",
+    "verifyEmail.failure.title": "Echec de la verification",
+    "verifyEmail.backToHome": "Retour a l'accueil",
+    "verifyEmail.fallback.verified": "Email verifie avec succes.",
+    "verifyEmail.fallback.invalidOrExpired": "Lien invalide ou expire.",
+    "verifyEmail.fallback.serverError":
+      "Impossible de contacter le serveur. Reessayez plus tard.",
+    "ssoProfile.shell.title": "Recuperation du profil SSO",
+    "ssoProfile.cardTitle": "Completer votre profil",
+    "ssoProfile.cardSubtitle":
+      "Certaines informations sont requises avant la premiere connexion",
+    "ssoProfile.infoBox":
+      "Finalisez votre profil SSO pour securiser l acces a votre compte.",
+    "ssoProfile.fields.firstName": "Prenom",
+    "ssoProfile.fields.lastName": "Nom",
+    "ssoProfile.fields.gender": "Genre",
+    "ssoProfile.fields.phone": "Telephone",
+    "ssoProfile.fields.pin": "PIN (6 chiffres)",
+    "ssoProfile.gender.male": "Masculin",
+    "ssoProfile.gender.female": "Feminin",
+    "ssoProfile.gender.other": "Autre",
+    "ssoProfile.missingFieldsPrefix": "Champs manquants detectes",
+    "ssoProfile.submit.saving": "Enregistrement...",
+    "ssoProfile.submit.submit": "Finaliser mon profil",
+    "ssoProfile.errors.firstNameRequired": "Prenom requis.",
+    "ssoProfile.errors.lastNameRequired": "Nom requis.",
+    "ssoProfile.errors.invalidSession": "Session SSO invalide.",
+    "ssoProfile.errors.ssoLoginFailed":
+      "Connexion SSO impossible apres completion du profil.",
+    "ssoProfile.errors.sessionInvalidAfterLogin":
+      "Session invalide apres connexion SSO",
+    "ssoProfile.errors.noSchoolLinked": "Aucune ecole associee a ce compte",
+    "ssoProfile.errors.incompleteSession": "Session SSO incomplete",
+    "ssoProfile.errors.loadProfileFailed":
+      "Impossible de charger les informations de profil SSO",
+    "ssoProfile.errors.completionFailed": "Completion du profil impossible.",
+    "ssoProfile.errors.generic": "Erreur",
+    "platformCredentials.cardTitle": "Completer vos identifiants",
+    "platformCredentials.cardSubtitle":
+      "Pour securiser votre acces, renseignez les informations manquantes.",
+    "platformCredentials.accountLabel": "Compte:",
+    "platformCredentials.fields.newPassword": "Nouveau mot de passe",
+    "platformCredentials.fields.confirmPassword": "Confirmer le mot de passe",
+    "platformCredentials.fields.phone": "Telephone",
+    "platformCredentials.fields.confirmPhone": "Confirmer le telephone",
+    "platformCredentials.fields.newPin": "Nouveau PIN (6 chiffres)",
+    "platformCredentials.fields.confirmPin": "Confirmer le PIN",
+    "platformCredentials.submit.validating": "Validation...",
+    "platformCredentials.submit.validate": "Valider",
+    "platformCredentials.errors.invalidSession": "Session invalide.",
+    "platformCredentials.errors.confirmPasswordMismatch":
+      "La confirmation du mot de passe ne correspond pas.",
+    "platformCredentials.errors.confirmPhoneMismatch":
+      "La confirmation du telephone ne correspond pas.",
+    "platformCredentials.errors.confirmPinMismatch":
+      "La confirmation du PIN ne correspond pas.",
+    "platformCredentials.errors.configFailed": "Configuration impossible.",
+
+    "common.close": "Fermer",
+    "common.edit": "Modifier",
+    "common.create": "Creer",
+    "common.configure": "Configurer",
+    "common.errors.invalidCsrfSession":
+      "Session CSRF invalide. Reconnectez-vous.",
+
+    "account.password.title": "Mot de passe",
+    "account.password.notConfigured": "Non configure",
+    "account.password.closeAriaLabel": "Fermer la section mot de passe",
+    "account.password.createAriaLabel": "Creer un mot de passe",
+    "account.password.editAriaLabel": "Modifier le mot de passe",
+    "account.password.create.intro":
+      "Votre compte n'a pas encore de mot de passe. Definissez-en un pour pouvoir vous connecter avec votre email.",
+    "account.password.fields.newPassword": "Nouveau mot de passe",
+    "account.password.fields.confirmPassword": "Confirmer le mot de passe",
+    "account.password.fields.currentPassword": "Ancien mot de passe",
+    "account.password.fields.confirmNewPassword":
+      "Confirmer le nouveau mot de passe",
+    "account.password.create.submit.creating": "Creation...",
+    "account.password.create.submit.create": "Creer le mot de passe",
+    "account.password.submit.updating": "Mise a jour...",
+    "account.password.submit.change": "Changer le mot de passe",
+    "account.password.errors.currentRequired":
+      "Le mot de passe actuel est obligatoire.",
+    "account.password.errors.confirmMismatch":
+      "La confirmation du nouveau mot de passe ne correspond pas.",
+    "account.password.errors.createFailed":
+      "Impossible de creer le mot de passe.",
+    "account.password.errors.changeFailed":
+      "Changement de mot de passe impossible.",
+    "account.password.success.created": "Mot de passe cree avec succes.",
+    "account.password.success.updated": "Mot de passe mis a jour avec succes.",
+
+    "account.pin.title": "PIN de connexion",
+    "account.pin.notConfigured": "Non configure",
+    "account.pin.closeAriaLabel": "Fermer la section PIN",
+    "account.pin.configureAriaLabel": "Configurer telephone et PIN",
+    "account.pin.editAriaLabel": "Modifier le PIN",
+    "account.pin.addPhone.intro":
+      "Ajoutez un numero de telephone et un code PIN pour vous connecter depuis le mobile.",
+    "account.pin.fields.phone": "Telephone (9 chiffres)",
+    "account.pin.fields.pinCode": "Code PIN (6 chiffres)",
+    "account.pin.fields.confirmPin": "Confirmer le PIN",
+    "account.pin.fields.currentPin": "PIN actuel",
+    "account.pin.fields.newPin": "Nouveau PIN (6 chiffres)",
+    "account.pin.fields.confirmNewPin": "Confirmation PIN",
+    "account.pin.addPhone.submit.configuring": "Configuration...",
+    "account.pin.submit.updating": "Mise a jour PIN...",
+    "account.pin.submit.change": "Changer le PIN",
+    "account.pin.errors.currentFormat":
+      "Le PIN actuel doit contenir 6 chiffres.",
+    "account.pin.errors.newFormat": "Le nouveau PIN doit contenir 6 chiffres.",
+    "account.pin.errors.confirmMismatch":
+      "La confirmation du nouveau PIN ne correspond pas.",
+    "account.pin.errors.pinMismatch": "Les PINs ne correspondent pas.",
+    "account.pin.errors.addPhoneFailed": "Impossible d'ajouter le telephone.",
+    "account.pin.errors.changeFailed": "Changement de PIN impossible.",
+    "account.pin.success.configured":
+      "Telephone et PIN configures avec succes.",
+    "account.pin.success.updated": "PIN mis a jour avec succes.",
+
+    "discipline.types.absence": "Absence",
+    "discipline.types.retard": "Retard",
+    "discipline.types.sanction": "Sanction",
+    "discipline.types.punition": "Punition",
+
+    "discipline.common.yes": "Oui",
+    "discipline.common.no": "Non",
+    "discipline.common.loading": "Chargement...",
+    "discipline.common.cancel": "Annuler",
+    "discipline.common.delete": "Supprimer",
+    "discipline.common.networkError": "Erreur reseau.",
+    "discipline.common.csrfInvalid": "Session CSRF invalide. Reconnectez-vous.",
+
+    "discipline.list.columns.type": "Type",
+    "discipline.list.columns.date": "Date",
+    "discipline.list.columns.reason": "Motif",
+    "discipline.list.columns.duration": "Duree",
+    "discipline.list.columns.justified": "Justifie",
+    "discipline.list.columns.author": "Auteur",
+    "discipline.list.columns.actions": "Actions",
+    "discipline.list.editAria": "Modifier l'evenement",
+    "discipline.list.deleteAria": "Supprimer l'evenement",
+    "discipline.list.durationPrefix": "Duree :",
+    "discipline.list.justifiedPrefix": "Justifie :",
+    "discipline.list.authorPrefix": "Auteur :",
+
+    "discipline.page.defaultClassName": "Classe",
+    "discipline.page.subtitle": "Absences, retards, sanctions et punitions",
+    "discipline.page.tabs.entry": "Saisie",
+    "discipline.page.tabs.history": "Historique",
+    "discipline.page.tabs.help": "Aide",
+    "discipline.page.classNotAccessible":
+      "Classe non accessible avec vos affectations.",
+    "discipline.page.studentLabel": "Eleve",
+
+    "discipline.help.summary":
+      "ce module permet a l'enseignant de declarer des absences, retards, sanctions et punitions sur ses classes affectees.",
+    "discipline.help.record.name": "Saisir",
+    "discipline.help.record.purpose":
+      "enregistrer rapidement un evenement de vie scolaire.",
+    "discipline.help.record.howTo":
+      "selectionner l'eleve puis renseigner type, date et motif.",
+    "discipline.help.record.moduleImpact":
+      "l'evenement est visible au parent sur Vie scolaire (annee en cours).",
+    "discipline.help.record.crossModuleImpact":
+      "alimente ensuite la page Cursus pour l'historique global.",
+    "discipline.help.verify.name": "Verifier",
+    "discipline.help.verify.purpose":
+      "consulter le journal discipline de l'eleve.",
+    "discipline.help.verify.howTo":
+      "ouvrir Historique pour voir les evenements existants.",
+    "discipline.help.verify.moduleImpact": "evite les doublons de saisie.",
+    "discipline.help.verify.crossModuleImpact":
+      "facilite la coordination avec SCHOOL_MANAGER/SUPERVISOR.",
+
+    "discipline.errors.loadClass": "Impossible de charger la classe.",
+    "discipline.errors.loadHistory":
+      "Impossible de charger l'historique discipline.",
+    "discipline.errors.createFailed": "Creation impossible.",
+    "discipline.errors.editFailed": "Modification impossible.",
+    "discipline.errors.deleteFailed": "Suppression impossible.",
+    "discipline.success.eventCreated": "Evenement discipline enregistre.",
+    "discipline.success.eventUpdated": "Evenement modifie.",
+    "discipline.success.eventDeleted": "Evenement supprime.",
+
+    "discipline.validation.dateRequired": "La date est obligatoire.",
+    "discipline.validation.reasonRequired": "Le motif est obligatoire.",
+    "discipline.validation.durationPositive":
+      "La duree doit etre un entier positif.",
+
+    "discipline.form.type": "Type d'evenement",
+    "discipline.form.typeEditAria": "Type d'evenement edition",
+    "discipline.form.dateTime": "Date et heure",
+    "discipline.form.dateTimeEditAria": "Date et heure edition",
+    "discipline.form.reason": "Motif",
+    "discipline.form.reasonEditAria": "Motif edition",
+    "discipline.form.reasonPlaceholder":
+      "Ex: travail non rendu, absence non justifiee",
+    "discipline.form.duration": "Duree (minutes, optionnel)",
+    "discipline.form.durationEditAria": "Duree edition (minutes, optionnel)",
+    "discipline.form.comment": "Commentaire (optionnel)",
+    "discipline.form.commentEditAria": "Commentaire edition (optionnel)",
+    "discipline.form.justified": "Justifie (absence / retard)",
+    "discipline.form.saving": "Enregistrement...",
+    "discipline.form.submitCreate": "Enregistrer l'evenement",
+    "discipline.form.submitUpdate": "Enregistrer les modifications",
+    "discipline.form.submitReport": "Signaler",
+    "discipline.form.cancel": "Annuler",
+
+    "discipline.eleves.sectionTitle":
+      "Vie scolaire : absences, retards, sanctions et punitions",
+
+    "discipline.empty.studentEvents": "Aucun evenement pour cet eleve.",
+    "discipline.empty.eleves": "Aucun evenement de vie scolaire.",
+
+    "discipline.delete.title": "Supprimer cet evenement ?",
+    "discipline.delete.message":
+      'Cette action est irreversible. L\'evenement "{label}" sera supprime definitivement.',
+    "discipline.delete.confirm": "Supprimer",
+
+    "discipline.vieScolaire.title": "Vie scolaire",
+    "discipline.vieScolaire.subtitleDefault": "Suivi eleve",
+    "discipline.vieScolaire.eventsWarning":
+      "Les evenements vie scolaire sont temporairement indisponibles. Affichage des donnees de demonstration.",
+    "discipline.vieScolaire.error": "Impossible de charger la vie scolaire.",
+    "discipline.vieScolaire.tabs.synthese": "Synthese",
+    "discipline.vieScolaire.tabs.absencesRetards": "Absences / retards",
+    "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punitions",
+    "discipline.vieScolaire.kpi.absences": "Absences",
+    "discipline.vieScolaire.kpi.retards": "Retards",
+    "discipline.vieScolaire.kpi.sanctions": "Sanctions",
+    "discipline.vieScolaire.kpi.punitions": "Punitions",
+    "discipline.vieScolaire.synthese.lastAbsence": "Derniere absence",
+    "discipline.vieScolaire.synthese.lastRetard": "Dernier retard",
+    "discipline.vieScolaire.synthese.lastSanction": "Derniere sanction",
+    "discipline.vieScolaire.synthese.lastPunition": "Derniere punition",
+    "discipline.vieScolaire.synthese.noData": "Aucune donnee",
+    "discipline.vieScolaire.absences.columns.event": "Absence / retard",
+    "discipline.vieScolaire.absences.columns.type": "Type",
+    "discipline.vieScolaire.absences.columns.duration": "Duree",
+    "discipline.vieScolaire.absences.columns.justified": "Justifie ?",
+    "discipline.vieScolaire.absences.columns.reason": "Motif",
+    "discipline.vieScolaire.absences.columns.comment": "Commentaire",
+    "discipline.vieScolaire.absences.empty":
+      "Aucun evenement sur l'annee active.",
+    "discipline.vieScolaire.absences.durationPrefix": "Duree:",
+    "discipline.vieScolaire.absences.justifiedPrefix": "Justifie:",
+    "discipline.vieScolaire.absences.reasonPrefix": "Motif:",
+    "discipline.vieScolaire.absences.commentPrefix": "Commentaire:",
+    "discipline.vieScolaire.sanctions.columns.type": "Type",
+    "discipline.vieScolaire.sanctions.columns.incident": "Incident",
+    "discipline.vieScolaire.sanctions.columns.date": "Date",
+    "discipline.vieScolaire.sanctions.columns.reason": "Motif",
+    "discipline.vieScolaire.sanctions.columns.by": "Par",
+    "discipline.vieScolaire.sanctions.columns.comment": "Commentaire",
+    "discipline.vieScolaire.sanctions.columns.executionDate":
+      "Date de deroulement",
+    "discipline.vieScolaire.sanctions.empty":
+      "Aucune sanction/punition sur l'annee active.",
+    "discipline.vieScolaire.sanctions.datePrefix": "Date:",
+    "discipline.vieScolaire.sanctions.reasonPrefix": "Motif:",
+    "discipline.vieScolaire.sanctions.byPrefix": "Par:",
+    "discipline.vieScolaire.sanctions.commentPrefix": "Commentaire:",
+    "discipline.vieScolaire.sanctions.executionDatePrefix":
+      "Date de deroulement:",
+    "discipline.vieScolaire.equipePedagogique": "Equipe pedagogique",
+
+    "discipline.accueil.summaryHint.none": "Aucun point de vigilance",
+    "discipline.accueil.summaryHint.unjustified":
+      "{count} absence(s) non justifiee(s)",
+    "discipline.accueil.summaryHint.sanctions":
+      "{count} sanction(s) ou punition(s)",
+    "discipline.accueil.panel.action": "Voir la synthese",
+    "discipline.accueil.panel.noRecentEvent":
+      "Aucun evenement vie scolaire recent.",
+    "discipline.accueil.metrics.unjustifiedAbsences": "Absences non justifiees",
+    "discipline.accueil.metrics.sanctionsPunitions": "Sanctions / punitions",
+    "discipline.accueil.quickAccess.hint": "Absences, retards, sanctions",
+
+    "discipline.sidebar.vieScolaire": "Vie scolaire",
+    "discipline.sidebar.discipline": "Discipline",
+
+    "timetable.sidebar.emploiDuTemps": "Emploi du temps",
+
+    "discipline.cursus.title": "Cursus",
+    "discipline.cursus.subtitleDefault": "Historique eleve",
+    "discipline.cursus.error": "Impossible de charger le cursus.",
+    "discipline.cursus.tabs.synthese": "Synthese",
+    "discipline.cursus.tabs.vieScolaire": "Vie scolaire",
+    "discipline.cursus.tabs.help": "Aide",
+    "discipline.cursus.filters.year": "Annee",
+    "discipline.cursus.filters.class": "Classe",
+    "discipline.cursus.filters.type": "Type",
+    "discipline.cursus.filters.allFeminine": "Toutes",
+    "discipline.cursus.filters.allMasculine": "Tous",
+    "discipline.cursus.filters.reset": "Reinitialiser",
+    "discipline.cursus.filters.exportPdf": "Exporter PDF",
+    "discipline.cursus.notDefined.year": "Annee non definie",
+    "discipline.cursus.notDefined.class": "Classe non definie",
+    "discipline.cursus.synthese.yearsClasses": "Annees / classes",
+    "discipline.cursus.empty":
+      "Aucun evenement vie scolaire sur le cursus pour le moment.",
+    "discipline.cursus.help.moduleName": "Cursus",
+    "discipline.cursus.help.summary":
+      "ce module recapitulera le parcours eleve annee par annee et classe par classe.",
+    "discipline.cursus.help.actionName": "Consulter",
+    "discipline.cursus.help.actionPurpose":
+      "analyser l'historique global de l'eleve.",
+    "discipline.cursus.help.actionHowTo":
+      "ouvrir l'onglet Vie scolaire pour un recap par annee/classe.",
+    "discipline.cursus.help.actionModuleImpact":
+      "vue chronologique des evenements du parcours.",
+    "discipline.cursus.help.actionCrossModuleImpact":
+      "complete la page Vie scolaire courante qui ne montre que l'annee active.",
+
+    "discipline.dashboard.cardTitle": "Vie scolaire",
+    "discipline.dashboard.cardEyebrow": "Discipline",
+    "discipline.dashboard.empty":
+      "Aucun enfant associe ou aucune donnee de vie scolaire disponible.",
+    "discipline.dashboard.stats.absences": "Absences",
+    "discipline.dashboard.stats.retards": "Retards",
+    "discipline.dashboard.stats.incidents": "Incidents",
+    "discipline.dashboard.openDetail": "Ouvrir le detail discipline",
+    "discipline.dashboard.status.calm": "Situation sereine",
+    "discipline.dashboard.status.watch": "A surveiller",
+    "discipline.dashboard.status.alert": "Priorite parent",
+    "discipline.dashboard.detail.none":
+      "Aucun signal disciplinaire notable sur la periode.",
+    "discipline.dashboard.detail.unjustifiedAbsences":
+      "{count} absence(s) a justifier.",
+    "discipline.dashboard.detail.incidentsRecorded":
+      "{count} incident(s) recense(s) sur la periode.",
+    "discipline.dashboard.detail.absencesRecorded":
+      "{count} absence(s) enregistree(s).",
+    "discipline.dashboard.detail.retardsThisTerm":
+      "{count} retard(s) ce trimestre.",
+
+    "discipline.mail.subjectCreated":
+      "Scolive - Evenement vie scolaire enregistre",
+    "discipline.mail.subjectUpdated":
+      "Scolive - Evenement vie scolaire mis a jour",
+    "discipline.mail.actionCreated": "enregistre",
+    "discipline.mail.actionUpdated": "mis a jour",
+    "discipline.mail.greeting": "Bonjour {firstName},",
+    "discipline.mail.intro":
+      "Un evenement de vie scolaire a ete {action} pour {studentFullName}.",
+    "discipline.mail.type": "Type",
+    "discipline.mail.reason": "Motif",
+    "discipline.mail.date": "Date",
+    "discipline.mail.class": "Classe",
+    "discipline.mail.author": "Saisi par",
+    "discipline.mail.openPortal": "Ouvrir le portail",
+    "discipline.mail.consultPortal": "Consulter le portail",
+
+    "notes.common.loading": "Chargement...",
+    "notes.common.saving": "Enregistrement...",
+    "notes.common.networkError": "Erreur reseau.",
+    "notes.common.select": "Selectionner",
+
+    "notes.teacher.card.title": "Evaluations - {className}",
+    "notes.teacher.card.defaultClassName": "Classe",
+    "notes.teacher.card.subtitle": "Creation, publication et saisie des notes",
+    "notes.teacher.tabs.evaluations": "Evaluations",
+    "notes.teacher.tabs.scores": "Saisie des notes",
+    "notes.teacher.tabs.council": "Conseil de classe",
+    "notes.teacher.tabs.help": "Aide",
+    "notes.teacher.page.classNotAccessible":
+      "Classe non accessible avec vos affectations.",
+    "notes.teacher.errors.loadModule":
+      "Impossible de charger le module evaluations.",
+    "notes.teacher.errors.uploadAttachment":
+      "Impossible de televerser la piece jointe.",
+    "notes.teacher.errors.downloadAttachment":
+      "Impossible de telecharger la piece jointe.",
+    "notes.teacher.errors.createEvaluation": "Echec creation evaluation",
+    "notes.teacher.errors.updateEvaluation": "Echec mise a jour evaluation",
+    "notes.teacher.errors.saveScores": "Impossible d'enregistrer les notes.",
+    "notes.teacher.errors.saveCouncil":
+      "Impossible d'enregistrer les appreciations du trimestre.",
+    "notes.teacher.success.evaluationCreated": "Evaluation enregistree.",
+    "notes.teacher.success.evaluationUpdated": "Evaluation mise a jour.",
+    "notes.teacher.success.scoresUpdated":
+      "Notes de l'evaluation mises a jour.",
+    "notes.teacher.success.councilPublished": "Conseil de classe publie.",
+    "notes.teacher.success.councilDraftSaved":
+      "Brouillon du conseil de classe enregistre.",
+
+    "notes.teacher.help.moduleName": "Evaluations de classe",
+    "notes.teacher.help.summary":
+      "cet espace enseignant permet de creer une evaluation, joindre un support, publier ou garder en brouillon et saisir ensuite les notes des eleves.",
+    "notes.teacher.help.create.name": "Creer",
+    "notes.teacher.help.create.purpose":
+      "preparer une evaluation sur une matiere et une sous-branche.",
+    "notes.teacher.help.create.howTo":
+      "selectionner la matiere, le type, le bareme, le coefficient puis enregistrer en brouillon ou publier.",
+    "notes.teacher.help.create.moduleImpact":
+      "l'evaluation devient disponible pour la saisie des notes.",
+    "notes.teacher.help.create.crossModuleImpact":
+      "une evaluation publiee et notee alimente automatiquement le module Notes parent/eleve.",
+    "notes.teacher.help.enter.name": "Saisir",
+    "notes.teacher.help.enter.purpose":
+      "renseigner les notes, absences ou exemptions des eleves.",
+    "notes.teacher.help.enter.howTo":
+      "choisir une evaluation puis saisir les notes eleve par eleve.",
+    "notes.teacher.help.enter.moduleImpact":
+      "les moyennes sont recalculees en tenant compte du coefficient.",
+    "notes.teacher.help.enter.crossModuleImpact":
+      "les familles voient uniquement les evaluations publiees.",
+    "notes.teacher.help.council.name": "Conseil de classe",
+    "notes.teacher.help.council.purpose":
+      "saisir les appreciations trimestrielles qui enrichissent l'onglet Moyennes des familles.",
+    "notes.teacher.help.council.howTo":
+      "selectionner le trimestre, renseigner les appreciations par eleve et par matiere, puis garder en brouillon ou publier.",
+    "notes.teacher.help.council.moduleImpact":
+      "les appreciations sont stockees separement des evaluations et n'alterent pas le calcul des moyennes.",
+    "notes.teacher.help.council.crossModuleImpact":
+      "une publication rend visibles les appreciations dans le module Notes parent/eleve.",
+
+    "notes.teacher.list.title": "Evaluations",
+    "notes.teacher.list.subtitle":
+      "Parcourez les evaluations puis ouvrez leur detail.",
+    "notes.teacher.list.addAria": "Ajouter une evaluation",
+    "notes.teacher.list.addLabel": "Ajouter une evaluation",
+    "notes.teacher.list.empty": "Aucune evaluation pour cette classe.",
+    "notes.teacher.status.published": "Publiee",
+    "notes.teacher.status.draft": "Brouillon",
+
+    "notes.teacher.detail.editAria": "Editer l'evaluation selectionnee",
+    "notes.teacher.detail.editLabel": "Editer l'evaluation",
+    "notes.teacher.detail.enterScores": "Saisir les notes",
+    "notes.teacher.detail.period": "Periode",
+    "notes.teacher.detail.maxScore": "Bareme",
+    "notes.teacher.detail.coefficient": "Coefficient",
+    "notes.teacher.detail.scoresEntered": "Notes saisies",
+    "notes.teacher.detail.noInstructions":
+      "Aucune consigne detaillee pour cette evaluation.",
+    "notes.teacher.detail.attachments": "Pieces jointes",
+    "notes.teacher.detail.noAttachment": "Aucune piece jointe.",
+    "notes.teacher.detail.planning": "Planification",
+    "notes.teacher.detail.trackingTitle": "Suivi de saisie",
+    "notes.teacher.detail.scoresEnteredCount": "note(s) renseignee(s)",
+    "notes.teacher.detail.absencesCount": "absence(s)",
+    "notes.teacher.detail.excusedCount": "dispense(s)",
+    "notes.teacher.detail.contentTitle": "Contenu / consignes",
+    "notes.teacher.detail.noEvaluationTitle": "Aucune evaluation selectionnee",
+    "notes.teacher.detail.noEvaluationSubtitle":
+      "Choisissez une evaluation dans la liste ou creez-en une nouvelle pour commencer.",
+    "notes.teacher.detail.backToDetail": "Retour au detail",
+    "notes.teacher.detail.cancel": "Annuler",
+    "notes.teacher.detail.download": "Telecharger",
+    "notes.teacher.detail.remove": "Retirer",
+
+    "notes.teacher.terms.term1": "1er trimestre",
+    "notes.teacher.terms.term2": "2eme trimestre",
+    "notes.teacher.terms.term3": "3eme trimestre",
+
+    "notes.teacher.form.editTitle": "Editer l'evaluation",
+    "notes.teacher.form.createTitle": "Nouvelle evaluation",
+    "notes.teacher.form.editSubtitle":
+      "Mettez a jour l'evaluation selectionnee puis enregistrez les changements.",
+    "notes.teacher.form.createSubtitle":
+      "Preparez une evaluation puis publiez-la ou gardez-la en brouillon.",
+    "notes.teacher.form.subject": "Matiere",
+    "notes.teacher.form.subjectBranch": "Sous-branche",
+    "notes.teacher.form.noSubjectBranch": "Aucune sous-branche",
+    "notes.teacher.form.evaluationType": "Type d'evaluation",
+    "notes.teacher.form.term": "Periode",
+    "notes.teacher.form.title": "Titre",
+    "notes.teacher.form.titlePlaceholder": "Ex. Composition sur les fractions",
+    "notes.teacher.form.content": "Contenu / consignes",
+    "notes.teacher.form.contentHint":
+      "Ajoutez les consignes, notions a evaluer et attentes de correction.",
+    "notes.teacher.form.coefficient": "Coefficient",
+    "notes.teacher.form.maxScore": "Bareme",
+    "notes.teacher.form.scheduledAt": "Date prevue",
+    "notes.teacher.form.status": "Publication",
+    "notes.teacher.form.statusDraft": "Brouillon",
+    "notes.teacher.form.statusPublished": "Publie",
+    "notes.teacher.form.attachment": "Piece jointe",
+    "notes.teacher.form.attachmentHint":
+      "Formats acceptes: JPG, PNG, WEBP, PDF, TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX. Taille maximale: 10 Mo.",
+    "notes.teacher.form.attachmentUploading": "Televersement...",
+    "notes.teacher.form.attachmentAdd": "Ajouter un fichier",
+    "notes.teacher.form.submitCreate": "Creer l'evaluation",
+    "notes.teacher.form.submitEdit": "Enregistrer",
+    "notes.teacher.form.submitSaving": "Enregistrement...",
+
+    "notes.teacher.validation.subjectRequired": "Selectionnez une matiere.",
+    "notes.teacher.validation.evaluationTypeRequired":
+      "Selectionnez un type d'evaluation.",
+    "notes.teacher.validation.titleMinLength":
+      "Le titre doit contenir au moins 3 caracteres.",
+    "notes.teacher.validation.coefficientPositive":
+      "Le coefficient doit etre superieur a 0.",
+    "notes.teacher.validation.maxScorePositive":
+      "Le bareme doit etre superieur a 0.",
+    "notes.teacher.validation.scheduledAtRequired":
+      "La date prevue est obligatoire.",
+
+    "notes.teacher.scores.evaluationLabel": "Evaluation",
+    "notes.teacher.scores.selectPrompt":
+      "Selectionnez une evaluation pour saisir les notes.",
+    "notes.teacher.scores.summaryLine":
+      "{evaluationType} • Coef. {coefficient} • Bareme {maxScore}",
+    "notes.teacher.scores.columnStudent": "Eleve",
+    "notes.teacher.scores.columnStatus": "Statut",
+    "notes.teacher.scores.columnScore": "Note",
+    "notes.teacher.scores.columnComment": "Commentaire",
+    "notes.teacher.scores.statusEntered": "Note saisie",
+    "notes.teacher.scores.statusAbsent": "Absent",
+    "notes.teacher.scores.statusExcused": "Dispense",
+    "notes.teacher.scores.statusNotGraded": "Non note",
+    "notes.teacher.scores.commentPlaceholder": "Commentaire optionnel",
+    "notes.teacher.scores.save": "Enregistrer les notes",
+    "notes.teacher.scores.saving": "Enregistrement...",
+
+    "notes.teacher.council.term": "Trimestre",
+    "notes.teacher.council.heldAt": "Date du conseil",
+    "notes.teacher.council.publication": "Publication",
+    "notes.teacher.council.appreciationsSubtitle":
+      "Appreciations de fin de trimestre",
+    "notes.teacher.council.generalAppreciation": "Appreciation generale",
+    "notes.teacher.council.generalAppreciationPlaceholder":
+      "Synthese generale du trimestre...",
+    "notes.teacher.council.subjectAppreciationPlaceholder":
+      "Appreciation {subject}...",
+    "notes.teacher.council.publish": "Publier le conseil de classe",
+    "notes.teacher.council.saveDraft": "Enregistrer le brouillon",
+    "notes.teacher.council.saving": "Enregistrement...",
+
+    "notes.admin.card.title": "Notes & Devoirs",
+    "notes.admin.card.subtitle": "Saisie et historique des resultats",
+    "notes.admin.form.schoolYear": "Annee scolaire",
+    "notes.admin.form.schoolYearActiveSuffix": " (active)",
+    "notes.admin.form.assignment": "Affectation (classe + matiere)",
+    "notes.admin.form.student": "Eleve",
+    "notes.admin.form.term": "Periode",
+    "notes.admin.form.value": "Note",
+    "notes.admin.form.maxValue": "Note max",
+    "notes.admin.form.assessmentWeight": "Coef. evaluation",
+    "notes.admin.form.submit": "Ajouter la note",
+    "notes.admin.form.submitting": "Enregistrement...",
+    "notes.admin.table.student": "Eleve",
+    "notes.admin.table.class": "Classe",
+    "notes.admin.table.subject": "Matiere",
+    "notes.admin.table.score": "Note",
+    "notes.admin.table.weight": "Coef eval.",
+    "notes.admin.table.term": "Periode",
+    "notes.admin.table.loading": "Chargement...",
+    "notes.admin.table.empty": "Aucune note disponible.",
+    "notes.admin.errors.loadContext":
+      "Impossible de charger le contexte de saisie des notes.",
+    "notes.admin.errors.missingAssignmentOrStudent":
+      "Selectionnez une affectation et un eleve.",
+    "notes.admin.errors.csrfInvalid":
+      "Session CSRF invalide. Reconnectez-vous.",
+    "notes.admin.errors.createGradeFailed": "Creation de note impossible.",
+    "notes.admin.errors.networkError": "Erreur reseau.",
+    "notes.admin.success.gradeCreated": "Note enregistree.",
+    "notes.admin.validation.schoolYearRequired":
+      "L'annee scolaire est obligatoire.",
+    "notes.admin.validation.assignmentRequired":
+      "L'affectation est obligatoire.",
+    "notes.admin.validation.studentRequired": "L'eleve est obligatoire.",
+    "notes.admin.validation.valuePositive": "La note doit etre positive.",
+    "notes.admin.validation.maxValuePositive":
+      "La note max doit etre superieure a 0.",
+    "notes.admin.validation.weightPositive":
+      "Le coefficient doit etre positif.",
+
+    "notes.student.page.title": "Notes",
+    "notes.student.page.subtitle": "Evaluations et moyennes de l'eleve",
+    "notes.student.page.summary":
+      "Suivez les notes, les moyennes et les tendances par matiere de votre enfant.",
+    "notes.student.page.bullet1":
+      "Lecture par trimestre des evaluations publiees.",
+    "notes.student.page.bullet2":
+      "Comparaison avec les statistiques de classe sur chaque matiere.",
+    "notes.student.page.bullet3":
+      "Visualisation simple des points forts et des points de vigilance.",
+    "notes.student.page.subtitleWithChild":
+      "Evaluations et moyennes de l'eleve - {childName}",
+    "notes.student.page.chooseTerm": "Choisir le trimestre",
+    "notes.student.page.mobileSubtitle": "Evals et Moyennes {childName}",
+    "notes.student.page.mobileSubtitleNoChild": "Evals et Moyennes",
+    "notes.student.page.demoWarning":
+      "Affichage temporaire des donnees de demonstration en attendant la publication des evaluations.",
+
+    "notes.student.tabs.evaluations.label": "Evaluations",
+    "notes.student.tabs.evaluations.mobileLabel": "Eval",
+    "notes.student.tabs.evaluations.description":
+      "Lecture detaillee des notes publiees par matiere",
+    "notes.student.tabs.averages.label": "Moyennes",
+    "notes.student.tabs.averages.mobileLabel": "Moy",
+    "notes.student.tabs.averages.description":
+      "Comparaison eleve, classe, min et max",
+    "notes.student.tabs.charts.label": "Graphiques",
+    "notes.student.tabs.charts.mobileLabel": "Graph",
+    "notes.student.tabs.charts.description":
+      "Vue visuelle des performances et amplitudes",
+
+    "notes.student.hero.badge": "Bulletin de periode",
+    "notes.student.hero.publishedData": "Donnees publiees",
+    "notes.student.hero.studentAverage": "Moyenne eleve",
+    "notes.student.hero.classAverage": "Moyenne classe",
+    "notes.student.hero.classAverageHint": "Amplitude {min} - {max}",
+    "notes.student.hero.strongSubject": "Matiere forte",
+    "notes.student.hero.watchSubject": "Point de vigilance",
+    "notes.student.hero.noData": "Aucune donnee",
+    "notes.student.hero.levelWithClass": "Au niveau de la classe",
+    "notes.student.hero.deltaVsClass": "{value} pts vs classe",
+
+    "notes.student.evaluation.detailTitle": "Detail de l'evaluation",
+    "notes.student.evaluation.closeAria": "Fermer le detail de la note",
+    "notes.student.evaluation.score": "Note",
+    "notes.student.evaluation.status": "Statut",
+    "notes.student.evaluation.date": "Date",
+    "notes.student.evaluation.coefficient": "Coefficient",
+    "notes.student.evaluation.context": "Contexte",
+    "notes.student.evaluation.contextValue":
+      "Classe {classAverage} | Min {classMin} | Max {classMax}",
+    "notes.student.evaluation.subjectAverage": "Moyenne de la matiere:",
+    "notes.student.evaluation.positioning": "Positionnement:",
+    "notes.student.evaluation.noComparison": "Aucune comparaison",
+    "notes.student.evaluation.statusAbsent": "Absent",
+    "notes.student.evaluation.statusExcused": "Dispense",
+    "notes.student.evaluation.statusNotGraded": "Non evalue",
+    "notes.student.evaluation.statusEntered": "Note saisie",
+    "notes.student.evaluation.shortAbsent": "Abs",
+    "notes.student.evaluation.shortExcused": "Disp",
+    "notes.student.evaluation.shortNotGraded": "NE",
+    "notes.student.evaluation.legendAbsent": "Absent",
+    "notes.student.evaluation.legendExcused": "Dispense",
+    "notes.student.evaluation.legendNotGraded": "Non evalue",
+
+    "notes.student.average.detailTitle": "Detail de la moyenne",
+    "notes.student.average.closeAria": "Fermer le detail de la moyenne",
+    "notes.student.average.defaultSubject": "Matiere",
+    "notes.student.average.student": "Eleve",
+    "notes.student.average.coefficient": "Coefficient",
+    "notes.student.average.class": "Classe",
+    "notes.student.average.amplitude": "Amplitude",
+    "notes.student.average.amplitudeValue": "Min {min} / Max {max}",
+    "notes.student.average.positioning": "Positionnement:",
+    "notes.student.average.evaluationsCount": "Evaluations prises en compte:",
+    "notes.student.average.appreciation": "Appreciation:",
+    "notes.student.average.noComparison": "Aucune comparaison",
+
+    "notes.student.table.subjects": "Disciplines",
+    "notes.student.table.coefficient": "Coef.",
+    "notes.student.table.averages": "Moyennes",
+    "notes.student.table.evaluations": "Evaluations",
+    "notes.student.table.generalAverage": "Moyenne generale",
+    "notes.student.table.publishedSummary":
+      "Synthese des evaluations publiees sur la periode.",
+    "notes.student.table.averageDetailAria":
+      "Voir le detail de la moyenne de {subject}",
+    "notes.student.table.empty":
+      "Les evaluations de cette periode seront visibles des qu'elles seront disponibles.",
+
+    "notes.student.averagesTable.discipline": "Discipline",
+    "notes.student.averagesTable.coefficient": "Coef.",
+    "notes.student.averagesTable.student": "Eleve",
+    "notes.student.averagesTable.class": "Classe",
+    "notes.student.averagesTable.min": "Min",
+    "notes.student.averagesTable.max": "Max",
+    "notes.student.averagesTable.appreciation": "Appreciation generale",
+    "notes.student.averagesTable.coefficientPrefix": "Coef {coefficient}",
+    "notes.student.averagesTable.classPrefix": "Classe :",
+    "notes.student.averagesTable.minPrefix": "Min :",
+    "notes.student.averagesTable.maxPrefix": "Max :",
+    "notes.student.averagesTable.generalAverage": "Moyenne generale",
+    "notes.student.averagesTable.globalPositioning":
+      "Positionnement global de l'eleve sur la periode.",
+    "notes.student.averagesTable.empty":
+      "Les moyennes de cette periode seront affichees apres publication.",
+
+    "notes.student.charts.empty":
+      "Les graphiques seront disponibles quand les moyennes de la periode seront publiees.",
+    "notes.student.charts.comparisonTitle": "Comparaison par matiere",
+    "notes.student.charts.comparisonSubtitle":
+      "Chaque bande represente l'amplitude min-max de la classe, avec la position de l'eleve et de la moyenne de classe.",
+    "notes.student.charts.studentVsClass":
+      "Eleve {studentAverage} / Classe {classAverage}",
+    "notes.student.charts.classRange": "{min} - {max}",
+    "notes.student.charts.legendStudentAverage": "Moyenne de l'eleve",
+    "notes.student.charts.legendClassAverage": "Moyenne de la classe",
+    "notes.student.charts.legendClassRange": "Min et max de la classe",
+    "notes.student.charts.radarTitle": "Radar des moyennes",
+    "notes.student.charts.radarSubtitle":
+      "Vue globale des matieres les plus fortes et des ecarts avec la classe.",
+    "notes.student.charts.radarReadingTitle": "Lecture du radar",
+    "notes.student.charts.radarReadingText":
+      "Plus le trait s'approche du bord, plus la moyenne est elevee sur la matiere.",
+    "notes.student.charts.comparisonLegendTitle": "Comparaison",
+    "notes.student.charts.comparisonLegendText":
+      "Le polygone bleu represente l'eleve. Le gris correspond au niveau moyen de la classe.",
+
+    "homework.page.title": "Devoirs",
+    "homework.page.defaultClassName": "Classe",
+    "homework.page.subtitle": "Suivi des devoirs et etat de rendu",
+    "homework.page.classNotAccessible":
+      "Classe non accessible avec vos affectations.",
+
+    "homework.tabs.list": "Liste",
+    "homework.tabs.view": "Voir",
+    "homework.tabs.help": "Aide",
+
+    "homework.status.todo": "A faire",
+    "homework.status.late": "En retard",
+    "homework.status.done": "Valide",
+
+    "homework.table.title": "Titre",
+    "homework.table.subject": "Matiere",
+    "homework.table.dueDate": "Echeance",
+    "homework.table.status": "Statut",
+
+    "homework.common.loading": "Chargement...",
+    "homework.errors.loadFailed":
+      "Impossible de charger les devoirs de classe.",
+    "homework.errors.networkError": "Erreur reseau.",
+
+    "homework.help.summary":
+      "ce module centralise les devoirs annonces a la classe et leur statut de suivi.",
+    "homework.help.list.name": "Lister",
+    "homework.help.list.purpose": "suivre les devoirs en cours.",
+    "homework.help.list.howTo": "consulter l'onglet Liste.",
+    "homework.help.list.moduleImpact":
+      "permet de gerer la charge eleve par eleve.",
+    "homework.help.list.crossModuleImpact":
+      "en lien avec Notes pour evaluer les rendus.",
+    "homework.help.view.name": "Voir",
+    "homework.help.view.purpose": "obtenir une synthese rapide de la classe.",
+    "homework.help.view.howTo": "ouvrir l'onglet Voir.",
+    "homework.help.view.moduleImpact": "priorisation des relances.",
+    "homework.help.view.crossModuleImpact":
+      "ameliore le suivi parent via les espaces enfant.",
+
+    "homework.summary.class": "Classe",
+    "homework.summary.total": "Devoirs",
+    "homework.summary.todo": "A faire",
+    "homework.summary.late": "En retard",
+
+    "homework.sidebar.devoirs": "Devoirs",
+    "homework.sidebar.cahierDeTexte": "Cahier de texte",
+
+    "homework.dashboard.title": "Devoirs en cours",
+    "homework.dashboard.noHomework": "Aucun devoir en cours",
+    "homework.dashboard.viewAll": "Voir tout",
+
+    "homework.cahierDeTexte.title": "Cahier de texte",
+    "homework.cahierDeTexte.subtitle": "Travail a faire",
+    "homework.cahierDeTexte.summary":
+      "Consultez les devoirs et consignes de travail de votre enfant.",
+    "homework.cahierDeTexte.bullet1": "Devoirs du jour et travaux a rendre.",
+    "homework.cahierDeTexte.bullet2":
+      "Consignes partagees par les enseignants.",
+    "homework.cahierDeTexte.bullet3":
+      "Preparation de la semaine avec votre enfant.",
+
+    "timetable.agenda.page.titlePrefix": "Emploi du temps",
+    "timetable.agenda.page.defaultClassName": "Classe",
+    "timetable.agenda.page.subtitle":
+      "Creation et gestion de l'emploi du temps annuel",
+    "timetable.agenda.page.loading": "Chargement...",
+    "timetable.agenda.page.classNotAccessible": "Classe non accessible.",
+
+    "timetable.agenda.tabs.slots": "Creneaux",
+    "timetable.agenda.tabs.vacations": "Vacances",
+    "timetable.agenda.tabs.colors": "Couleurs",
+    "timetable.agenda.tabs.help": "Aide",
+
+    "timetable.agenda.weekdays.1": "Lundi",
+    "timetable.agenda.weekdays.2": "Mardi",
+    "timetable.agenda.weekdays.3": "Mercredi",
+    "timetable.agenda.weekdays.4": "Jeudi",
+    "timetable.agenda.weekdays.5": "Vendredi",
+    "timetable.agenda.weekdays.6": "Samedi",
+    "timetable.agenda.weekdays.7": "Dimanche",
+    "timetable.agenda.weekdays.default": "Jour",
+
+    "timetable.agenda.errors.networkError": "Erreur reseau.",
+    "timetable.agenda.errors.csrfInvalid":
+      "Session CSRF invalide. Reconnectez-vous.",
+    "timetable.agenda.errors.loadFailed":
+      "Impossible de charger l'emploi du temps de la classe.",
+    "timetable.agenda.errors.refreshFailed":
+      "Impossible d'actualiser l'emploi du temps.",
+    "timetable.agenda.errors.schoolYearSwitchFailed":
+      "Impossible de changer d'annee scolaire.",
+    "timetable.agenda.errors.colorUpdateFailed":
+      "Mise a jour de la couleur impossible.",
+    "timetable.agenda.errors.slotUpdateFailed":
+      "Mise a jour du creneau impossible.",
+    "timetable.agenda.errors.slotCreateFailed":
+      "Creation du creneau impossible.",
+    "timetable.agenda.errors.slotDeleteFailed":
+      "Suppression du creneau impossible.",
+    "timetable.agenda.errors.occurrenceDeleteFailed":
+      "Suppression de l'occurrence impossible.",
+    "timetable.agenda.errors.occurrenceUpdateFailed":
+      "Mise a jour de l'occurrence impossible.",
+    "timetable.agenda.errors.seriesUpdateFailed":
+      "Mise a jour de la serie impossible.",
+    "timetable.agenda.errors.seriesDeleteFailed":
+      "Suppression de la serie impossible.",
+    "timetable.agenda.errors.vacationCreateFailed":
+      "Creation des vacances impossible.",
+    "timetable.agenda.errors.vacationUpdateFailed":
+      "Mise a jour des vacances impossible.",
+    "timetable.agenda.errors.vacationDeleteFailed":
+      "Suppression de la periode impossible.",
+    "timetable.agenda.errors.noOccurrenceSelected":
+      "Aucun creneau selectionne.",
+    "timetable.agenda.errors.occurrenceNoSource":
+      "Occurrence sans source modifiable.",
+    "timetable.agenda.errors.seriesNoSourceUpdate":
+      "Cette occurrence ponctuelle n'a pas de serie a modifier.",
+    "timetable.agenda.errors.seriesNoSourceDelete":
+      "Cette occurrence ponctuelle n'a pas de serie a supprimer.",
+    "timetable.agenda.errors.cannotEditVacations":
+      "Vous ne pouvez pas modifier les vacances.",
+
+    "timetable.agenda.success.colorSaved": "Couleur de matiere enregistree.",
+    "timetable.agenda.success.slotUpdated": "Creneau mis a jour.",
+    "timetable.agenda.success.slotAdded": "Creneau ajoute.",
+    "timetable.agenda.success.slotsAdded": "{count} creneaux ajoutes.",
+    "timetable.agenda.success.slotDeleted": "Creneau supprime.",
+    "timetable.agenda.success.occurrenceDeleted": "Occurrence supprimee.",
+    "timetable.agenda.success.occurrenceUpdated": "Occurrence modifiee.",
+    "timetable.agenda.success.seriesUpdated": "Serie mise a jour.",
+    "timetable.agenda.success.seriesDeleted": "Serie supprimee.",
+    "timetable.agenda.success.vacationCreated":
+      "Periode de vacances enregistree.",
+    "timetable.agenda.success.vacationUpdated":
+      "Periode de vacances mise a jour.",
+    "timetable.agenda.success.vacationDeleted": "Periode supprimee.",
+
+    "timetable.agenda.validation.vacationLabelRequired":
+      "Le libelle est obligatoire.",
+    "timetable.agenda.validation.vacationStartDateRequired":
+      "La date de debut est obligatoire.",
+    "timetable.agenda.validation.vacationEndDateRequired":
+      "La date de fin est obligatoire.",
+    "timetable.agenda.validation.invalidDates": "Dates invalides.",
+    "timetable.agenda.validation.startBeforeEndDate":
+      "La date de debut doit etre avant la date de fin.",
+    "timetable.agenda.validation.selectSubject": "Selectionnez une matiere.",
+    "timetable.agenda.validation.selectTeacher": "Selectionnez un enseignant.",
+    "timetable.agenda.validation.invalidWeekday": "Jour invalide.",
+    "timetable.agenda.validation.invalidTime": "Horaire invalide.",
+    "timetable.agenda.validation.startBeforeEndTime":
+      "L'heure de debut doit etre avant l'heure de fin.",
+    "timetable.agenda.validation.selectOccurrenceDate":
+      "Selectionnez la date d'occurrence.",
+
+    "timetable.agenda.schoolYear.label": "Annee scolaire",
+    "timetable.agenda.schoolYear.previousAria": "Annee precedente",
+    "timetable.agenda.schoolYear.nextAria": "Annee suivante",
+    "timetable.agenda.schoolYear.inProgressSuffix": " (en cours)",
+
+    "timetable.agenda.actions.add": "Ajouter",
+
+    "timetable.agenda.colors.title": "Couleurs des matieres (classe + annee)",
+    "timetable.agenda.colors.colorAria": "Couleur {subject}",
+    "timetable.agenda.colors.saving": "...",
+    "timetable.agenda.colors.save": "Sauver",
+
+    "timetable.agenda.slotForm.weekday": "Jour",
+    "timetable.agenda.slotForm.start": "Debut",
+    "timetable.agenda.slotForm.end": "Fin",
+    "timetable.agenda.slotForm.subject": "Matiere",
+    "timetable.agenda.slotForm.noSubjectsAvailable":
+      "Aucune matiere disponible",
+    "timetable.agenda.slotForm.teacher": "Enseignant",
+    "timetable.agenda.slotForm.noTeacherAssigned":
+      "Aucun enseignant affecte a cette matiere",
+    "timetable.agenda.slotForm.room": "Salle (optionnel)",
+    "timetable.agenda.slotForm.roomPlaceholder": "ex: B14",
+    "timetable.agenda.slotForm.activeFromDate": "Debut occurrences (optionnel)",
+    "timetable.agenda.slotForm.activeToDate": "Fin occurrences (optionnel)",
+    "timetable.agenda.slotForm.effectiveFromDate":
+      "Appliquer a partir du (optionnel)",
+    "timetable.agenda.slotForm.addToList": "Ajouter a la liste",
+    "timetable.agenda.slotForm.saving": "Enregistrement...",
+    "timetable.agenda.slotForm.updating": "Mise a jour...",
+    "timetable.agenda.slotForm.update": "Mettre a jour",
+    "timetable.agenda.slotForm.addSlot": "Ajouter le creneau",
+    "timetable.agenda.slotForm.saveMultiple": "Enregistrer {count} creneaux",
+    "timetable.agenda.slotForm.cancelEdit": "Annuler la modification",
+    "timetable.agenda.slotForm.clearList": "Vider la liste ({count})",
+    "timetable.agenda.slotForm.pendingSlots": "Creneaux en attente ({count})",
+    "timetable.agenda.slotForm.remove": "Retirer",
+    "timetable.agenda.slotForm.clickHint":
+      "Cliquez sur un creneau dans les vues jour, semaine ou mois pour definir un ponctuel, annuler ou modifier une occurrence.",
+
+    "timetable.agenda.vacations.label": "Libelle",
+    "timetable.agenda.vacations.scope": "Portee",
+    "timetable.agenda.vacations.scopeClass": "Classe",
+    "timetable.agenda.vacations.scopeAcademicLevel": "Niveau",
+    "timetable.agenda.vacations.scopeSchool": "Ecole",
+    "timetable.agenda.vacations.start": "Debut",
+    "timetable.agenda.vacations.end": "Fin",
+    "timetable.agenda.vacations.updatePeriod": "Mettre a jour la periode",
+    "timetable.agenda.vacations.addPeriod": "Ajouter la periode",
+    "timetable.agenda.vacations.cancelEdit": "Annuler la modification",
+    "timetable.agenda.vacations.noVacations":
+      "Aucune periode de vacances enregistree.",
+    "timetable.agenda.vacations.manageRestriction":
+      "Seuls le responsable pedagogique et les admins peuvent modifier les vacances.",
+    "timetable.agenda.vacations.edit": "Modifier",
+    "timetable.agenda.vacations.delete": "Supprimer",
+    "timetable.agenda.vacations.defaultLabel": "Vacances scolaires",
+
+    "timetable.agenda.scopeLabel.school": "Ecole",
+    "timetable.agenda.scopeLabel.academicLevel": "Niveau",
+    "timetable.agenda.scopeLabel.class": "Classe",
+
+    "timetable.agenda.confirm.deleteSlotTitle": "Supprimer ce creneau ?",
+    "timetable.agenda.confirm.deleteVacationTitle": "Supprimer cette periode ?",
+
+    "timetable.agenda.occurrenceModal.manage": "Gerer l'occurrence",
+    "timetable.agenda.occurrenceModal.close": "Fermer",
+    "timetable.agenda.occurrenceModal.deleteOccurrence":
+      "Supprimer cette occurrence",
+    "timetable.agenda.occurrenceModal.updateOccurrence":
+      "Modifier cette occurrence",
+    "timetable.agenda.occurrenceModal.updateSeries": "Modifier toute la serie",
+    "timetable.agenda.occurrenceModal.deleteSeries": "Supprimer toute la serie",
+    "timetable.agenda.occurrenceModal.cancel": "Annuler",
+    "timetable.agenda.occurrenceModal.continue": "Continuer",
+    "timetable.agenda.occurrenceModal.back": "Retour",
+    "timetable.agenda.occurrenceModal.applyAction": "Appliquer l'action",
+    "timetable.agenda.occurrenceModal.saving": "Enregistrement...",
+    "timetable.agenda.occurrenceModal.confirmDeleteSeries":
+      "Voulez-vous vraiment supprimer toute la serie ?",
+    "timetable.agenda.occurrenceModal.confirmDeleteOccurrence":
+      "Voulez-vous vraiment supprimer cette occurrence ?",
+    "timetable.agenda.occurrenceModal.cancelledSuffix": " · Annule",
+    "timetable.agenda.occurrenceModal.roomPrefix": "Salle",
+    "timetable.agenda.occurrenceModal.seriesStart": "Debut de serie :",
+    "timetable.agenda.occurrenceModal.seriesEnd": "Fin de serie :",
+    "timetable.agenda.occurrenceModal.seriesEndDefault": "Fin annee scolaire",
+    "timetable.agenda.occurrenceModal.noValue": "-",
+    "timetable.agenda.occurrenceModal.effectiveDate": "Date de debut d'effet",
+    "timetable.agenda.occurrenceModal.date": "Date",
+    "timetable.agenda.occurrenceModal.seriesEndDateOptional":
+      "Date de fin de serie (optionnel)",
+    "timetable.agenda.occurrenceModal.deleteSeriesWarning":
+      "Cette action supprimera le creneau recurrent et toutes ses occurrences futures.",
+
+    "timetable.agenda.teacherPrefix.mr": "Mr",
+    "timetable.agenda.teacherPrefix.mrs": "Mme",
+
+    "timetable.agenda.help.moduleName": "Emploi du temps",
+    "timetable.agenda.help.moduleSummary":
+      "ce module permet de planifier les cours hebdomadaires et les couleurs de matieres par classe.",
+    "timetable.agenda.help.createSlot.name": "Creer un creneau",
+    "timetable.agenda.help.createSlot.purpose": "ajouter un cours recurrent",
+    "timetable.agenda.help.createSlot.howTo":
+      "selectionner jour, horaires, matiere, enseignant et salle puis enregistrer.",
+    "timetable.agenda.help.createSlot.moduleImpact":
+      "structure la semaine de la classe sur l'annee scolaire.",
+    "timetable.agenda.help.createSlot.crossModuleImpact":
+      "alimente les vues eleve/parent et facilite la coordination pedagogique.",
+    "timetable.agenda.help.defineColor.name": "Definir une couleur matiere",
+    "timetable.agenda.help.defineColor.purpose":
+      "ameliorer la lisibilite de l'emploi du temps",
+    "timetable.agenda.help.defineColor.howTo":
+      "ouvrir l'onglet Couleurs, choisir une couleur puis enregistrer.",
+    "timetable.agenda.help.defineColor.moduleImpact":
+      "harmonise la lecture des cours en vue jour/semaine/mois.",
+    "timetable.agenda.help.defineColor.crossModuleImpact":
+      "les couleurs sont reutilisees dans les vues eleve, parent et enseignant.",
+
+    "timetable.myTimetable.title": "Emploi du temps",
+    "timetable.myTimetable.subtitleDefault": "Vue eleve",
+    "timetable.myTimetable.loading": "Chargement...",
+    "timetable.myTimetable.emptyDay":
+      "Aucun cours programme pour cette journee.",
+    "timetable.myTimetable.errors.noLinkedStudent":
+      "Aucun eleve lie a ce compte parent.",
+    "timetable.myTimetable.errors.loadFailed":
+      "Impossible de charger l'emploi du temps.",
+
+    "timetable.views.today": "Aujourd'hui",
+    "timetable.views.thisWeek": "Cette semaine",
+    "timetable.views.thisMonth": "Ce mois",
+    "timetable.views.modeDay": "Jour",
+    "timetable.views.modeWeek": "Semaine",
+    "timetable.views.modeMonth": "Mois",
+    "timetable.views.previousPeriodLabel": "{mode} precedent",
+    "timetable.views.nextPeriodLabel": "{mode} suivant",
+    "timetable.views.backToCurrentLabel": "Revenir a {mode} courant",
+    "timetable.views.previousPeriod": "Periode precedente",
+    "timetable.views.nextPeriod": "Periode suivante",
+    "timetable.views.backToCurrentPeriod": "Revenir a la periode courante",
+    "timetable.views.dayEmptyDefault": "Aucun creneau pour cette journee.",
+    "timetable.views.monthEmptyDefault": "Aucun creneau pour ce jour.",
+    "timetable.views.selectedSlotDetail": "Detail du creneau selectionne",
+    "timetable.views.subjectLabel": "Matiere:",
+    "timetable.views.dayLabel": "Jour:",
+    "timetable.views.timeRangeLabel": "Plage horaire:",
+    "timetable.views.teacherLabel": "Enseignant:",
+    "timetable.views.roomLabel": "Salle:",
+    "timetable.views.manageSlot": "Gerer ce creneau",
+    "timetable.views.selectSubjectHint":
+      "Selectionnez une matiere dans le tableau pour afficher le detail.",
+    "timetable.views.dayAgenda": "Agenda du jour selectionne",
+    "timetable.views.selectDayHint":
+      "Selectionnez un jour pour voir les creneaux",
+    "timetable.views.slotsForDay": "Creneaux du",
+    "timetable.views.slotSingular": "creneau",
+    "timetable.views.slotPlural": "creneaux",
+    "timetable.dashboard.title": "Emploi du temps",
+    "timetable.dashboard.linkLabel": "Agenda",
+    "timetable.dashboard.noSlotToday": "Aucun cours planifie aujourd'hui",
+
+    "messaging.nav.title": "Messagerie",
+    "messaging.nav.openLink": "Ouvrir la messagerie",
+    "messaging.nav.lastMessage": "Dernier message",
+    "messaging.nav.noRecentMessage": "Aucun message recent.",
+    "messaging.nav.unreadMessages": "Messages non lus",
+    "messaging.nav.noUnreadMessage": "Aucun message non lu",
+    "messaging.nav.unreadCounterError":
+      "Le compteur de messages n'a pas pu etre charge.",
+    "messaging.nav.unreadHintPositive": "Des echanges attendent votre lecture.",
+    "messaging.nav.unreadHintNeutral": "Boite de reception a jour",
+    "messaging.nav.previewUnavailable": "Apercu non disponible.",
+    "messaging.nav.openMessagingHint": "Echanges et suivi",
+    "messaging.nav.lastMessagePrefix": "Dernier",
+    "messaging.nav.noRecentMessageShort": "Aucun message recent",
+
+    "messaging.folders.title": "Dossiers",
+    "messaging.folders.inbox": "Boite de reception",
+    "messaging.folders.sent": "Envoyes",
+    "messaging.folders.drafts": "Brouillons",
+    "messaging.folders.archive": "Archives",
+    "messaging.folders.composeButton": "Nouveau message",
+
+    "messaging.list.unreadOnly": "Non lus",
+    "messaging.list.empty": "Aucun message pour ce filtre.",
+    "messaging.list.panelLabel.inbox": "Boite de reception",
+    "messaging.list.panelLabel.sent": "Messages envoyes",
+    "messaging.list.panelLabel.drafts": "Brouillons",
+    "messaging.list.panelLabel.archive": "Messages archives",
+
+    "messaging.toolbar.title": "Messagerie",
+    "messaging.toolbar.defaultContext": "Echanges internes et familles",
+    "messaging.toolbar.searchPlaceholder": "Rechercher un message...",
+    "messaging.toolbar.refresh": "Rafraichir",
+    "messaging.toolbar.newMessage": "Nouveau message",
+    "messaging.toolbar.currentYear": "Annee en cours",
+    "messaging.toolbar.previousYear": "Annee precedente",
+
+    "messaging.compose.pageTitle": "Nouveau message",
+    "messaging.compose.defaultSubtitle": "Messagerie de l'etablissement",
+    "messaging.compose.replySuffix": "Reponse",
+    "messaging.compose.forwardSuffix": "Transfert",
+    "messaging.compose.backToList": "Retour a la liste",
+    "messaging.compose.backToMessaging": "Retour a la messagerie",
+    "messaging.compose.roleNotAllowed":
+      "Votre role actuel ne peut pas poster de message.",
+    "messaging.compose.loadError":
+      "Impossible de charger l'editeur de message.",
+    "messaging.compose.leaveTitle": "Quitter la redaction ?",
+    "messaging.compose.leaveConfirm": "Quitter",
+    "messaging.compose.leaveConfirmWithUnsaved":
+      "Vous avez des modifications non enregistrees. Pensez a enregistrer en brouillon avant de quitter. Voulez-vous vraiment revenir a la liste des messages ?",
+    "messaging.compose.leaveConfirmDefault":
+      "Voulez-vous vraiment revenir a la liste des messages ?",
+    "messaging.compose.forwardedHeader":
+      "---------- Message transfere ----------",
+    "messaging.compose.forwardedFrom": "De:",
+    "messaging.compose.forwardedDate": "Date:",
+    "messaging.compose.forwardedSubject": "Sujet:",
+    "messaging.compose.replyPrefix": "Re",
+    "messaging.compose.forwardPrefix": "Tr",
+    "messaging.compose.draftDefaultSubject": "Brouillon sans objet",
+
+    "messaging.compose.to": "A",
+    "messaging.compose.noRecipientSelected": "Aucun destinataire selectionne",
+    "messaging.compose.addTeacher": "Ajouter un enseignant",
+    "messaging.compose.addStaff": "Ajouter un personnel",
+    "messaging.compose.removeRecipient": "Retirer ce destinataire",
+    "messaging.compose.noRecipientOption": "Aucun destinataire selectionne",
+    "messaging.compose.subject": "Sujet",
+    "messaging.compose.subjectPlaceholder": "Objet du message",
+    "messaging.compose.message": "Message",
+    "messaging.compose.editorHint":
+      "Astuce: apres insertion, verifiez l'alignement du contenu et les titres.",
+    "messaging.compose.attachments": "Pieces jointes",
+    "messaging.compose.dropzoneHint":
+      "Deposez vos fichiers ici, ou selectionnez un fichier.",
+    "messaging.compose.fromComputer": "Depuis mon ordinateur",
+    "messaging.compose.removeAttachment": "Supprimer",
+    "messaging.compose.cancel": "Annuler",
+    "messaging.compose.saveDraft": "Enregistrer en brouillon",
+    "messaging.compose.savingDraft": "Enregistrement...",
+    "messaging.compose.clear": "Effacer",
+    "messaging.compose.send": "Envoyer",
+    "messaging.compose.sending": "Envoi...",
+
+    "messaging.compose.errors.noRecipientGroup":
+      "Veuillez selectionner au moins un destinataire.",
+    "messaging.compose.errors.noRecipient":
+      "Veuillez selectionner un destinataire.",
+    "messaging.compose.errors.noSubject": "Veuillez renseigner un sujet.",
+    "messaging.compose.errors.noBody": "Veuillez saisir un message.",
+    "messaging.compose.errors.sendFailed": "Impossible d'envoyer le message.",
+    "messaging.compose.errors.draftFailed":
+      "Impossible d'enregistrer le brouillon.",
+    "messaging.compose.info.sendSimulated":
+      "Envoi simule. Le branchement API sera ajoute ensuite.",
+    "messaging.compose.info.draftSimulated": "Brouillon simule en local.",
+    "messaging.compose.info.sent": "Message envoye.",
+    "messaging.compose.info.draftSaved": "Brouillon enregistre.",
+
+    "messaging.compose.teacherModal.title": "Recherchez des enseignants",
+    "messaging.compose.teacherModal.close":
+      "Fermer la recherche des enseignants",
+    "messaging.compose.teacherModal.nameLabel": "Nom de l'enseignant",
+    "messaging.compose.teacherModal.subjectLabel": "Nom de la matiere",
+    "messaging.compose.teacherModal.classLabel": "Classe",
+    "messaging.compose.teacherModal.colName": "Nom",
+    "messaging.compose.teacherModal.colSubjects": "Matiere(s)",
+    "messaging.compose.teacherModal.colClasses": "Classe(s)",
+    "messaging.compose.teacherModal.empty": "Aucun enseignant pour ce filtre.",
+    "messaging.compose.teacherModal.close.action": "Fermer",
+    "messaging.compose.teacherModal.confirm": "Ajouter la selection",
+
+    "messaging.compose.staffModal.title": "Recherchez des personnels",
+    "messaging.compose.staffModal.close": "Fermer la recherche des personnels",
+    "messaging.compose.staffModal.nameLabel": "Nom",
+    "messaging.compose.staffModal.functionLabel": "Fonction",
+    "messaging.compose.staffModal.allFunctions": "Toutes les fonctions",
+    "messaging.compose.staffModal.colName": "Nom",
+    "messaging.compose.staffModal.colFunction": "Fonction",
+    "messaging.compose.staffModal.empty": "Aucun personnel pour ce filtre.",
+    "messaging.compose.staffModal.close.action": "Fermer",
+    "messaging.compose.staffModal.confirm": "Ajouter la selection",
+
+    "messaging.detail.notFound": "Message introuvable.",
+    "messaging.detail.backToList": "Retour a la liste",
+    "messaging.detail.selectMessageHint":
+      "Selectionnez un message pour le lire.",
+    "messaging.detail.attachments": "Pieces jointes",
+    "messaging.detail.noAttachments": "Aucune piece jointe.",
+    "messaging.detail.reply": "Repondre",
+    "messaging.detail.forward": "Transferer",
+
+    "messaging.actions.markAsRead": "Marquer comme lu",
+    "messaging.actions.markAsUnread": "Marquer comme non lu",
+    "messaging.actions.archive": "Archiver",
+    "messaging.actions.unarchive": "Desarchiver",
+    "messaging.actions.delete": "Supprimer",
+    "messaging.actions.restoreFromArchive": "Restaurer depuis archives",
+
+    "messaging.attachments.modalDownload": "Telecharger",
+    "messaging.attachments.modalClose": "Fermer",
+    "messaging.attachments.previewLabel": "Apercu document",
+    "messaging.attachments.previewPlaceholder":
+      "Apercu factice. Le lecteur PDF reel sera branche quand l'API de fichiers sera connectee.",
+    "messaging.attachments.previewHint":
+      "Vous pourrez ici zoomer, naviguer entre les pages et telecharger.",
+    "messaging.attachments.addedOn": "Ajoute le 07 fev. 2026",
+
+    "messaging.page.title": "Messagerie",
+    "messaging.page.loading": "Chargement...",
+    "messaging.page.refreshing": "Actualisation...",
+    "messaging.page.loadError": "Impossible de charger la messagerie.",
+    "messaging.page.loadMessageError": "Impossible de charger le message.",
+    "messaging.page.archiveError": "Impossible de mettre a jour l'archivage.",
+    "messaging.page.deleteError": "Impossible de supprimer le message.",
+    "messaging.page.toggleReadError":
+      "Impossible de mettre a jour l'etat de lecture.",
+    "messaging.page.restoreError": "Impossible de restaurer le message.",
+    "messaging.page.deleteConfirmTitle": "Confirmer la suppression",
+    "messaging.page.deleteConfirmMessage":
+      "Cette action est destructive. Le message sera supprime de votre boite.",
+    "messaging.page.deleteConfirmAction": "Supprimer",
+    "messaging.page.readingSubtitle": "Lecture du message",
+    "messaging.page.childDefaultContext": "Echanges parents-etablissement",
+
+    "feed.header.sectionLabel": "Fil d'actualite famille",
+    "feed.header.greeting": "Bonjour, suivez {scopeLabel} de {childFullName}",
+    "feed.composer.publishPost": "Publier une info",
+    "feed.composer.createPoll": "Realiser un sondage",
+    "feed.badge.syncing": "Synchronisation...",
+    "feed.badge.postCount": "{count} publication(s)",
+    "feed.search.placeholder": "Rechercher dans le fil...",
+    "feed.filters.all": "Tous",
+    "feed.filters.featured": "A la une",
+    "feed.filters.polls": "Sondages",
+    "feed.filters.mine": "Mes posts",
+    "feed.staffFilters.all": "Tous",
+    "feed.staffFilters.parents": "Parents/eleves",
+    "feed.staffFilters.staff": "Staff",
+    "feed.staffFilters.level": "Niveau",
+    "feed.staffFilters.class": "Classe",
+    "feed.composer.titlePlaceholderPoll": "Titre du sondage",
+    "feed.composer.titlePlaceholderPost": "Titre de la publication",
+    "feed.composer.audienceTarget": "Public cible: {label}",
+    "feed.composer.editorHint":
+      "Ajoutez du contexte, des points cles et des liens utiles pour les familles.",
+    "feed.composer.pollQuestionPlaceholder": "Question du sondage",
+    "feed.composer.pollOptionPlaceholder": "Option {number}",
+    "feed.composer.addOption": "Ajouter une option",
+    "feed.composer.attachmentsAriaAdd":
+      "Ajouter des pieces jointes a la publication",
+    "feed.composer.featuredDaysLabel": "Mise en avant (jours)",
+    "feed.composer.featuredNone": "Aucune",
+    "feed.composer.featured1Day": "1 jour",
+    "feed.composer.featured3Days": "3 jours",
+    "feed.composer.featured5Days": "5 jours",
+    "feed.composer.featured7Days": "7 jours",
+    "feed.composer.publish": "Publier",
+    "feed.info.loadError":
+      "Impossible de charger le fil depuis le serveur, affichage local.",
+    "feed.info.pollPublished": "Sondage publie.",
+    "feed.info.postPublished": "Publication ajoutee au fil.",
+    "feed.info.publishedLocalOnly":
+      "Publication en local uniquement (API indisponible).",
+    "feed.info.updated": "Publication modifiee.",
+    "feed.info.updatedLocalOnly": "Publication modifiee en local uniquement.",
+    "feed.info.deleteLocalOnly":
+      "Suppression locale uniquement (API indisponible).",
+    "feed.info.voteLocalOnly": "Vote local uniquement (API indisponible).",
+    "feed.localAuthor.fullName": "Equipe pedagogique",
+    "feed.localAuthor.roleLabelPoll": "Sondage",
+    "feed.localAuthor.roleLabelPost": "Publication",
+    "feed.localAuthor.you": "Vous",
+    "feed.post.pollBadge": "SONDAGE",
+    "feed.post.featuredLabel": "Publication mise en avant",
+    "feed.post.voteCount": "{count} vote(s)",
+    "feed.edit.titlePlaceholder": "Titre de la publication",
+    "feed.edit.pollQuestionPlaceholder": "Question du sondage",
+    "feed.edit.pollOptionPlaceholder": "Option {number}",
+    "feed.edit.addOption": "Ajouter une option",
+    "feed.edit.attachmentsAriaEdit":
+      "Modifier les pieces jointes de la publication",
+    "feed.edit.removeAttachmentAria": "Supprimer {fileName}",
+    "feed.edit.remove": "Retirer",
+    "feed.edit.noAttachments": "Aucune piece jointe.",
+    "feed.edit.cancel": "Annuler",
+    "feed.edit.saving": "Enregistrement...",
+    "feed.edit.save": "Enregistrer",
+    "feed.reactions.unlikeAria": "Retirer le like ({count})",
+    "feed.reactions.likeAria": "Aimer ({count})",
+    "feed.reactions.hideCommentsAria": "Masquer les commentaires ({count})",
+    "feed.reactions.showCommentsAria": "Voir les commentaires ({count})",
+    "feed.reactions.hideReaction": "Masquer reaction",
+    "feed.reactions.react": "Reagir",
+    "feed.reactions.editAria": "Modifier la publication",
+    "feed.reactions.editTitle": "Modifier",
+    "feed.reactions.deleteAria": "Supprimer la publication",
+    "feed.reactions.deleteTitle": "Supprimer",
+    "feed.comments.empty": "Aucun commentaire pour le moment.",
+    "feed.comments.placeholder": "Ajouter un commentaire...",
+    "feed.comments.addEmojiAria": "Ajouter {emoji}",
+    "feed.comments.submit": "Commenter",
+    "feed.pagination.loadMore": "Faites defiler pour charger plus",
+    "feed.pagination.end": "Fin du fil",
+    "feed.deleteDialog.title": "Supprimer la publication ?",
+    "feed.deleteDialog.message":
+      'Cette action est definitive. Publication: "{title}".',
+    "feed.deleteDialog.confirm": "Supprimer",
+    "feed.deleteDialog.cancel": "Annuler",
+
+    "feed.audience.staffOnly": "Staff uniquement",
+    "feed.audience.parentsAndStudents": "Parents et eleves",
+    "feed.audience.parentsAndStudentsSchool": "Parents et eleves (ecole)",
+    "feed.audience.parentsOnly": "Parents uniquement",
+    "feed.audience.wholeSchool": "Toute l'ecole",
+    "feed.audience.classAllLabel":
+      "Classe {className} (eleves, parents, enseignants)",
+    "feed.audience.classParentsStudentsLabel":
+      "Parents/eleves classe {className}",
+    "feed.audience.classParentsStudentsGeneric": "Parents/eleves d'une classe",
+    "feed.audience.classGeneric": "Classe (eleves, parents, enseignants)",
+    "feed.audience.classCommunity": "Communaute de classe",
+    "feed.audience.levelLabel": "Niveau {levelLabel}",
+
+    "feed.levels.6e": "6eme",
+    "feed.levels.5e": "5eme",
+    "feed.levels.4e": "4eme",
+    "feed.levels.3e": "3eme",
+    "feed.levels.default": "Niveau",
+
+    "feed.classDefaults.6eA": "6eme A",
+    "feed.classDefaults.6eB": "6eme B",
+    "feed.classDefaults.6eC": "6eme C",
+    "feed.classDefaults.5eA": "5eme A",
+    "feed.classDefaults.current": "Classe actuelle",
+    "feed.classDefaults.fallback": "Classe",
+
+    "feed.scope.school": "la vie de l'ecole",
+    "feed.scope.class": "la vie de classe",
+    "feed.dashboard.yourChildren": "vos enfants",
+
+    "feed.page.title": "Fil d'actualite",
+    "feed.page.schoolSubtitle": "Vie de l'ecole",
+    "feed.page.generalHeading": "Fil d'actualite general de {schoolName}",
+
+    "feed.classPage.title": "Fil de classe",
+    "feed.classPage.loadingSubtitle": "Chargement de la classe",
+    "feed.classPage.exchangesSubtitle": "Echanges classe",
+    "feed.classPage.contextError":
+      "Impossible de charger le contexte de classe.",
+    "feed.classPage.networkError": "Erreur reseau.",
+    "feed.classPage.defaultClassName": "la classe",
+
+    "feed.vieDeClasse.title": "Vie de classe",
+    "feed.vieDeClasse.subtitle": "Actualites et dynamique de classe",
+    "feed.vieDeClasse.summary":
+      "Consultez le fil collectif de la classe et les informations partagees par l'equipe pedagogique.",
+    "feed.vieDeClasse.bullet1": "Actualites et rappels de classe.",
+    "feed.vieDeClasse.bullet2":
+      "Informations collectives diffusees aux familles.",
+    "feed.vieDeClasse.bullet3": "Evenements et dynamique de groupe.",
+    "feed.vieDeClasse.defaultStudentLabel": "votre enfant",
+    "feed.vieDeClasse.headingWithClass":
+      "Fil d'actualite de la classe de {className} de {studentLabel}",
+    "feed.vieDeClasse.headingWithoutClass": "Fil d'actualite de {studentLabel}",
+  },
+  en: {
+    "common.save": "Save",
+    "common.cancel": "Cancel",
+    "common.back": "Back",
+    "common.loading": "Loading...",
+    "common.apply": "Apply",
+    "common.requiredFieldsHint": "Required fields must be filled in correctly.",
+    "common.passwordHint.title":
+      "8 characters minimum, including at least 1 uppercase, 1 lowercase, 1 digit",
+    "common.passwordHint.minLength": "8 characters minimum",
+    "common.passwordHint.uppercase": "At least 1 uppercase letter",
+    "common.passwordHint.lowercase": "At least 1 lowercase letter",
+    "common.passwordHint.digit": "At least 1 digit",
+
+    "settings.title": "Settings",
+    "settings.subtitle": "Navigation preferences",
+    "settings.tab.navigation": "Navigation",
+    "settings.tab.help": "Help",
+    "settings.tab.staff": "Staff",
+    "settings.tab.language": "Language",
+    "settings.language.title": "Language of this browser",
+    "settings.language.subtitle": "Choose the interface language",
+    "settings.language.hint":
+      "The selected language is applied immediately and saved on this browser.",
+    "settings.language.fr": "French",
+    "settings.language.en": "English",
+
+    "settings.accountLanguage.title": "Account language",
+    "settings.accountLanguage.subtitle":
+      "This language is tied to your account",
+    "settings.accountLanguage.hint":
+      "It is applied automatically on every login, on any device.",
+    "settings.accountLanguage.success": "Your account language has been saved.",
+    "settings.accountLanguage.error":
+      "The account language could not be updated.",
+
+    "header.portal.admin": "Administration portal",
+    "header.portal.school": "School portal",
+    "header.portal.teacher": "Teacher portal",
+    "header.portal.family": "Family portal",
+    "header.role.superAdmin": "Super admin",
+    "header.role.admin": "Admin",
+    "header.role.sales": "Sales",
+    "header.role.support": "Support",
+    "header.role.schoolAdmin": "School admin",
+    "header.role.schoolManager": "School manager",
+    "header.role.supervisor": "Supervisor",
+    "header.role.schoolAccountant": "Accountant",
+    "header.role.schoolStaff": "Staff",
+    "header.role.teacher": "Teacher",
+    "header.role.parent": "Parent",
+    "header.role.student": "Student",
+    "header.adminDashboardTitle": "Platform administration dashboard",
+    "header.notifications": "Notifications",
+    "header.account": "User account",
+    "header.logout": "Log out",
+    "header.openMenu": "Open menu",
+
+    "recoveryShell.subtitle": "Recovery portal",
+
+    "landing.hero.title": "Scolive Access",
+    "landing.hero.subtitle":
+      "Sign in using the method provided by your school.",
+    "landing.mobileApp.title": "Scolive mobile app",
+    "landing.mobileApp.subtitle": "Available on iOS and Android",
+    "landing.mobileApp.description":
+      "Stay connected to your school's life from your mobile.",
+    "landing.mobileApp.appStore": "Download on the App Store",
+    "landing.mobileApp.androidApk": "Download the Android APK",
+    "landing.platform.title": "A platform designed for schools",
+    "landing.platform.subtitle": "A modern, connected school environment",
+    "landing.platform.imageAlt": "African students in a modern school",
+    "landing.platform.description":
+      "Scolive supports learner success with clear, accessible digital tools suited to everyday school life.",
+    "landing.features.notes.title": "Grade tracking",
+    "landing.features.notes.description":
+      "View results, averages and progress in real time.",
+    "landing.features.messaging.title": "Centralized messaging",
+    "landing.features.messaging.description":
+      "Exchanges between families, students and teaching staff in one place.",
+    "landing.features.payments.title": "Simplified payments",
+    "landing.features.payments.description":
+      "Pay for the canteen, outings and school fees online.",
+    "landing.features.schoolLife.title": "School life",
+    "landing.features.schoolLife.description":
+      "Absences, timetable, documents and useful information.",
+    "landing.features.cardFooter":
+      "Scolive centralizes school-family interactions.",
+
+    "login.languageSwitcher.ariaLabel": "Language of this browser",
+    "login.switchMethod": "Sign in another way",
+    "login.method.phone": "Phone + PIN",
+    "login.method.email": "Email + Password",
+    "login.method.username": "Username + Password",
+    "login.method.sso": "Google / Apple",
+    "login.phone.subtitle": "Quick sign-in",
+    "login.phone.fieldPhone": "Phone",
+    "login.phone.fieldPin": "PIN",
+    "login.phone.submit": "Sign in with phone + PIN",
+    "login.phone.submitLoading": "Signing in...",
+    "login.phone.forgotPin": "Forgot PIN?",
+    "login.email.subtitle": "Standard sign-in",
+    "login.email.fieldEmail": "Email",
+    "login.email.submit": "Sign in",
+    "login.email.submitLoading": "Signing in...",
+    "login.common.password": "Password",
+    "login.common.forgotPassword": "Forgot password?",
+    "login.username.subtitle": "Sign in with username",
+    "login.username.fieldUsername": "Username",
+    "login.username.passwordAriaLabel": "Password (username)",
+    "login.username.submit": "Sign in (username)",
+    "login.username.submitLoading": "Signing in...",
+    "login.sso.subtitle": "School SSO",
+    "login.errors.invalidPhone": "Invalid number (9 digits expected).",
+    "login.errors.invalidPin": "Invalid PIN (6 digits expected).",
+    "login.errors.invalidEmail": "Invalid email address.",
+    "login.errors.passwordRequired": "Password is required.",
+    "login.errors.invalidUsername": "Invalid username (3 characters minimum).",
+    "login.errors.invalidSession": "Invalid session after login",
+    "login.errors.noSchool": "No school associated with this account",
+    "login.errors.connectionError": "Connection error",
+    "login.errors.invalidPhonePin": "Invalid phone or PIN",
+    "login.errors.invalidEmailPassword": "Invalid email or password",
+    "login.errors.invalidUsernamePassword": "Invalid username or password",
+
+    "onboarding.errors.loadOptionsFailed": "Unable to load activation options.",
+    "onboarding.errors.connectionError": "Connection error.",
+    "onboarding.errors.passwordChangeFailed": "Unable to change the password.",
+    "onboarding.errors.activationFailed": "Unable to activate the account.",
+    "onboarding.errors.networkError": "Network error.",
+    "onboarding.errors.invalidLinkMissingEmail": "Invalid link: missing email.",
+    "onboarding.errors.temporaryPasswordRequired":
+      "The temporary password is required.",
+    "onboarding.errors.passwordMinLength":
+      "The password must be at least 8 characters long.",
+    "onboarding.errors.passwordComplexity":
+      "The password must be at least 8 characters long with uppercase, lowercase and numbers.",
+    "onboarding.errors.confirmPasswordRequired": "Confirm the password.",
+    "onboarding.errors.passwordConfirmMismatch":
+      "The confirmation does not match the new password.",
+    "onboarding.errors.invalidUsername": "Invalid username.",
+    "onboarding.errors.invalidEmail": "Invalid email address.",
+    "onboarding.errors.missingSetupToken": "Missing onboarding token.",
+    "onboarding.errors.firstNameRequired": "First name is required.",
+    "onboarding.errors.lastNameRequired": "Last name is required.",
+    "onboarding.errors.genderRequired": "Gender is required.",
+    "onboarding.errors.birthDateRequired": "Date of birth is required.",
+    "onboarding.errors.invalidDateFormat": "Invalid date format (yyyy-mm-dd).",
+    "onboarding.errors.birthDateInFuture":
+      "Date of birth cannot be in the future.",
+    "onboarding.errors.newPinDigits": "The new PIN must have 6 digits.",
+    "onboarding.errors.confirmPinRequired": "Confirm the new PIN.",
+    "onboarding.errors.pinConfirmMismatch":
+      "The confirmation does not match the new PIN.",
+    "onboarding.errors.chooseThreeQuestions": "Choose exactly 3 questions.",
+    "onboarding.errors.questionsMustDiffer":
+      "The 3 questions must be different.",
+    "onboarding.errors.answerMinLength":
+      "Each answer must be at least 2 characters long.",
+    "onboarding.errors.parentClassRequired": "Your child's class is required.",
+    "onboarding.errors.parentStudentRequired": "Your child's name is required.",
+
+    "onboarding.shell.title": "Account activation",
+    "onboarding.success.title": "Setup complete",
+    "onboarding.success.description":
+      "Your account has been successfully configured. You will be redirected to the sign-in screen to log in securely.",
+    "onboarding.hero.badge": "Secure onboarding",
+    "onboarding.hero.title": "Activate your account in one sequence",
+    "onboarding.hero.description":
+      "Fill in the activation information, your profile and your recovery questions. At the end, you'll be taken straight back to sign-in.",
+    "onboarding.hero.step1Token": "Step 1: optional email.",
+    "onboarding.hero.step1Password":
+      "Step 1: temporary password and new password.",
+    "onboarding.hero.step2":
+      "Step 2: personal information (first name, last name, gender, date of birth).",
+    "onboarding.hero.step3Token": "Step 3: change your sign-in PIN.",
+    "onboarding.hero.step3Recovery":
+      "Step 3: recovery questions then final validation.",
+    "onboarding.hero.step4":
+      "Step 4: recovery questions then final validation.",
+    "onboarding.hero.imageAlt": "Classroom scene",
+    "onboarding.form.title": "Complete activation",
+    "onboarding.form.stepLabel": "Step",
+    "onboarding.form.accountLabel": "Account",
+    "onboarding.form.accountPending": "Pending account",
+    "onboarding.form.emailOptional": "Email (optional)",
+    "onboarding.form.emailOptionalHint":
+      "You can continue without an email and add it later in your account.",
+    "onboarding.form.usernameLabel": "Username:",
+    "onboarding.form.temporaryPassword": "Temporary password",
+    "onboarding.form.newPassword": "New password",
+    "onboarding.form.confirmation": "Confirmation",
+    "onboarding.form.firstName": "Your first name",
+    "onboarding.form.lastName": "Your last name",
+    "onboarding.form.gender": "Your gender",
+    "onboarding.form.select": "Select",
+    "onboarding.form.male": "Male",
+    "onboarding.form.female": "Female",
+    "onboarding.form.otherGender": "Other",
+    "onboarding.form.birthDate": "Your date of birth",
+    "onboarding.form.pinSectionTitle": "Change your sign-in PIN",
+    "onboarding.form.newPin": "New PIN",
+    "onboarding.form.confirmPin": "Confirm PIN",
+    "onboarding.form.chooseQuestions": "Choose 3 recovery questions",
+    "onboarding.form.yourAnswer": "Your answer",
+    "onboarding.form.childClass": "Your child's class",
+    "onboarding.form.selectClass": "Select a class",
+    "onboarding.form.childName": "Your child's name",
+    "onboarding.form.selectStudent": "Select a student",
+    "onboarding.form.loadingOptions": "Loading options...",
+    "onboarding.form.continue": "Continue",
+    "onboarding.form.submitting": "Submitting...",
+    "onboarding.form.submit": "Complete activation",
+
+    "recovery.password.shell.title": "Password recovery",
+    "recovery.password.cardTitle": "Forgot password",
+    "recovery.password.step1": "Step 1/3: request a link",
+    "recovery.password.step2": "Step 2/3: verification",
+    "recovery.password.step3": "Step 3/3: new password",
+    "recovery.password.fields.email": "Account email",
+    "recovery.password.fields.birthDate": "Date of birth",
+    "recovery.password.fields.newPassword": "New password",
+    "recovery.password.fields.confirmation": "Confirmation",
+    "recovery.password.submit.sending": "Sending...",
+    "recovery.password.submit.send": "Send link",
+    "recovery.password.submit.verifying": "Verifying...",
+    "recovery.password.submit.verify": "Verify my identity",
+    "recovery.password.submit.resetting": "Resetting...",
+    "recovery.password.submit.reset": "Reset my password",
+    "recovery.password.loadingLink": "Loading link...",
+    "recovery.password.loading": "Loading...",
+    "recovery.password.accountDetected": "Account detected:",
+    "recovery.password.linkInvalid":
+      "This link is no longer valid. Request a new reset link.",
+    "recovery.password.newRequest": "New request",
+    "recovery.password.backToLogin": "Back to sign in",
+    "recovery.password.errors.invalidEmail": "Invalid email address.",
+    "recovery.password.errors.invalidLink": "Invalid link.",
+    "recovery.password.errors.birthDateRequired": "Date of birth is required.",
+    "recovery.password.errors.answerRequiredPrefix": "Answer required",
+    "recovery.password.errors.passwordMinLength":
+      "The password must be at least 8 characters long.",
+    "recovery.password.errors.passwordComplexity":
+      "The password must be at least 8 characters long with uppercase, lowercase and numbers.",
+    "recovery.password.errors.confirmPasswordRequired": "Confirm the password.",
+    "recovery.password.errors.passwordConfirmMismatch":
+      "The confirmation does not match the new password.",
+    "recovery.password.errors.invalidOrExpiredLink":
+      "Invalid or expired reset link.",
+    "recovery.password.errors.networkError": "Network error.",
+    "recovery.password.errors.requestFailed":
+      "Request failed. Please try again.",
+    "recovery.password.errors.invalidRecoveryInfo":
+      "Invalid recovery information.",
+    "recovery.password.errors.resetFailed": "Unable to reset the password.",
+    "recovery.password.success.requestSentDefault":
+      "If this account exists, a reset link has been sent.",
+    "recovery.password.success.verified":
+      "Verification successful. Set your new password.",
+    "recovery.password.toast.requestSent.title": "Request sent",
+    "recovery.password.toast.requestSent.description":
+      "If this account exists, the reset request has been received. You will be redirected to sign-in.",
+    "recovery.password.toast.passwordReset.title": "Password reset",
+    "recovery.password.toast.passwordReset.description":
+      "Your new password has been saved. You will be redirected to sign-in.",
+
+    "recovery.username.shell.title": "Username recovery",
+    "recovery.username.cardTitle": "Forgot password (username)",
+    "recovery.username.step1": "Step 1/3: enter your username",
+    "recovery.username.fields.username": "Username",
+    "recovery.username.usernamePlaceholder": "FirstnameLASTNAME",
+    "recovery.username.identifierLabel": "Username:",
+    "recovery.username.submit.searching": "Searching...",
+    "recovery.username.submit.continue": "Continue",
+    "recovery.username.noQuestionsConfigured":
+      "No recovery questions are configured for this account. Contact your school administration.",
+    "recovery.username.loading": "Loading...",
+    "recovery.username.errors.usernameInvalid":
+      "Invalid username (3 characters minimum).",
+    "recovery.username.errors.usernameNotFound": "Username not found.",
+    "recovery.pin.shell.title": "PIN recovery",
+    "recovery.pin.cardTitle": "Lost PIN",
+    "recovery.pin.cardSubtitle": "Recover access with your security questions",
+    "recovery.pin.fields.emailOptional": "Email (optional)",
+    "recovery.pin.fields.phoneOptional": "Phone (optional)",
+    "recovery.pin.emailPlaceholder": "firstname.lastname@gmail.com",
+    "recovery.pin.phonePlaceholder": "6XXXXXXXX",
+    "recovery.pin.pinPlaceholder": "123456",
+    "recovery.pin.submit.loadingOptions": "Loading...",
+    "recovery.pin.submit.continueToQuestions": "Continue to recovery questions",
+    "recovery.pin.submit.verifying": "Verifying...",
+    "recovery.pin.submit.verify": "Verify my answers",
+    "recovery.pin.fields.newPin": "New PIN (6 digits)",
+    "recovery.pin.fields.confirmPin": "Confirm PIN",
+    "recovery.pin.submit.resetting": "Resetting...",
+    "recovery.pin.submit.reset": "Set my new PIN",
+    "recovery.pin.success.verified":
+      "Verification successful. You can now set a new PIN.",
+    "recovery.pin.errors.loadOptionsFailed":
+      "Unable to load the recovery questions.",
+    "recovery.pin.errors.questionsNotLoaded":
+      "Load the recovery questions first.",
+    "recovery.pin.errors.resetFailed": "Unable to reset the PIN.",
+    "recovery.pin.errors.emailOrPhoneRequired":
+      "Provide an email or a phone number.",
+    "recovery.pin.errors.invalidPhone": "Invalid number (9 digits expected).",
+    "recovery.pin.errors.invalidSession": "Invalid recovery session.",
+    "recovery.pin.errors.pinFormat": "The PIN must contain exactly 6 digits.",
+    "recovery.pin.errors.confirmPinRequired": "Confirm the PIN.",
+    "recovery.pin.errors.pinConfirmMismatch":
+      "The confirmation does not match the new PIN.",
+    "recovery.pin.toast.title": "PIN reset",
+    "recovery.pin.toast.description":
+      "Your new PIN has been saved. You will be redirected to sign-in.",
+    "firstPassword.shell.title": "First sign-in",
+    "firstPassword.success.title": "Password set",
+    "firstPassword.success.subtitle": "Redirecting...",
+    "firstPassword.success.message":
+      "Your password has been set successfully. You will be redirected to sign-in.",
+    "firstPassword.cardTitle": "Set my password",
+    "firstPassword.cardSubtitle": "First sign-in — choose a secure password",
+    "firstPassword.identifierLabel": "Username:",
+    "firstPassword.fields.confirmPassword": "Confirm password",
+    "firstPassword.submit.saving": "Saving...",
+    "firstPassword.submit.submit": "Set my password",
+    "firstPassword.errors.changeFailed": "Unable to change the password.",
+    "pendingAccount.cardLeft.title": "Pending account",
+    "pendingAccount.cardLeft.subtitle":
+      "Complete activation to access your school's data",
+    "pendingAccount.cardLeft.description":
+      "Your account has been created, but it must be activated before you can view your school data.",
+    "pendingAccount.info.account": "Account:",
+    "pendingAccount.info.school": "School:",
+    "pendingAccount.info.methods": "Methods:",
+    "pendingAccount.info.methodsValue": "Activation code or initial PIN",
+    "pendingAccount.cardRight.title": "Activate account",
+    "pendingAccount.cardRight.subtitle": "Confirmed phone + new PIN",
+    "pendingAccount.fields.email": "Email",
+    "pendingAccount.fields.accountPhone": "Account phone",
+    "pendingAccount.fields.confirmedPhone": "Confirmed phone",
+    "pendingAccount.fields.activationCode": "Activation code (optional)",
+    "pendingAccount.fields.initialPin": "Initial PIN (optional)",
+    "pendingAccount.fields.newPin": "New PIN (6 digits)",
+    "pendingAccount.placeholders.email": "firstname.lastname@gmail.com",
+    "pendingAccount.placeholders.phone": "6XXXXXXXX",
+    "pendingAccount.placeholders.activationCode": "E.g.: A1B2C3D4",
+    "pendingAccount.placeholders.initialPin": "Temporary PIN provided",
+    "pendingAccount.placeholders.newPin": "123456",
+    "pendingAccount.submit.activating": "Activating...",
+    "pendingAccount.submit.activate": "Activate my account",
+    "pendingAccount.success.activated": "Account activated successfully.",
+    "pendingAccount.errors.activationMethodRequired":
+      "Enter an activation code or your initial PIN.",
+    "pendingAccount.errors.newPinFormat":
+      "The new PIN must contain exactly 6 digits.",
+    "pendingAccount.errors.loadOptionsFailed":
+      "Unable to load activation options",
+    "pendingAccount.errors.loadError": "Error while loading",
+    "pendingAccount.errors.activationFailed":
+      "Activation failed. Check your information.",
+    "profileSetup.redirecting": "Redirecting to the new onboarding...",
+    "authError.title": "Authentication error",
+    "authError.codeLabel": "Code:",
+    "authError.hint.noCode":
+      "OAuth error without explicit code. Check AUTH_SECRET/NEXTAUTH_SECRET, AUTH_URL/NEXTAUTH_URL and the active providers.",
+    "authError.hint.configuration":
+      "Invalid NextAuth configuration. Check AUTH_SECRET and the provider credentials.",
+    "authError.hint.accessDenied":
+      "Access denied by the provider or by the application callbacks.",
+    "authError.hint.oauthHandshake":
+      "OAuth handshake failed. Check AUTH_URL/NEXTAUTH_URL and the redirect URIs.",
+    "authError.hint.accountNotLinked":
+      "This provider account is already linked to another user.",
+    "authError.hint.default":
+      "Check the [next-auth][error] server logs for technical details.",
+    "verifyEmail.noToken.title": "Invalid link",
+    "verifyEmail.noToken.message":
+      "This verification link is incomplete or malformed.",
+    "verifyEmail.success.title": "Email verified!",
+    "verifyEmail.success.followUp":
+      "You can now use your email address to sign in.",
+    "verifyEmail.failure.title": "Verification failed",
+    "verifyEmail.backToHome": "Back to home",
+    "verifyEmail.fallback.verified": "Email verified successfully.",
+    "verifyEmail.fallback.invalidOrExpired": "Invalid or expired link.",
+    "verifyEmail.fallback.serverError":
+      "Unable to contact the server. Please try again later.",
+    "ssoProfile.shell.title": "SSO profile recovery",
+    "ssoProfile.cardTitle": "Complete your profile",
+    "ssoProfile.cardSubtitle":
+      "Some information is required before your first sign-in",
+    "ssoProfile.infoBox":
+      "Complete your SSO profile to secure access to your account.",
+    "ssoProfile.fields.firstName": "First name",
+    "ssoProfile.fields.lastName": "Last name",
+    "ssoProfile.fields.gender": "Gender",
+    "ssoProfile.fields.phone": "Phone",
+    "ssoProfile.fields.pin": "PIN (6 digits)",
+    "ssoProfile.gender.male": "Male",
+    "ssoProfile.gender.female": "Female",
+    "ssoProfile.gender.other": "Other",
+    "ssoProfile.missingFieldsPrefix": "Missing fields detected",
+    "ssoProfile.submit.saving": "Saving...",
+    "ssoProfile.submit.submit": "Complete my profile",
+    "ssoProfile.errors.firstNameRequired": "First name required.",
+    "ssoProfile.errors.lastNameRequired": "Last name required.",
+    "ssoProfile.errors.invalidSession": "Invalid SSO session.",
+    "ssoProfile.errors.ssoLoginFailed":
+      "SSO sign-in failed after profile completion.",
+    "ssoProfile.errors.sessionInvalidAfterLogin":
+      "Invalid session after SSO sign-in",
+    "ssoProfile.errors.noSchoolLinked": "No school linked to this account",
+    "ssoProfile.errors.incompleteSession": "Incomplete SSO session",
+    "ssoProfile.errors.loadProfileFailed":
+      "Unable to load SSO profile information",
+    "ssoProfile.errors.completionFailed": "Unable to complete the profile.",
+    "ssoProfile.errors.generic": "Error",
+    "platformCredentials.cardTitle": "Complete your credentials",
+    "platformCredentials.cardSubtitle":
+      "To secure your access, fill in the missing information.",
+    "platformCredentials.accountLabel": "Account:",
+    "platformCredentials.fields.newPassword": "New password",
+    "platformCredentials.fields.confirmPassword": "Confirm password",
+    "platformCredentials.fields.phone": "Phone",
+    "platformCredentials.fields.confirmPhone": "Confirm phone",
+    "platformCredentials.fields.newPin": "New PIN (6 digits)",
+    "platformCredentials.fields.confirmPin": "Confirm PIN",
+    "platformCredentials.submit.validating": "Validating...",
+    "platformCredentials.submit.validate": "Submit",
+    "platformCredentials.errors.invalidSession": "Invalid session.",
+    "platformCredentials.errors.confirmPasswordMismatch":
+      "Password confirmation does not match.",
+    "platformCredentials.errors.confirmPhoneMismatch":
+      "Phone confirmation does not match.",
+    "platformCredentials.errors.confirmPinMismatch":
+      "PIN confirmation does not match.",
+    "platformCredentials.errors.configFailed": "Configuration failed.",
+
+    "common.close": "Close",
+    "common.edit": "Edit",
+    "common.create": "Create",
+    "common.configure": "Configure",
+    "common.errors.invalidCsrfSession":
+      "Invalid CSRF session. Please sign in again.",
+
+    "account.password.title": "Password",
+    "account.password.notConfigured": "Not configured",
+    "account.password.closeAriaLabel": "Close password section",
+    "account.password.createAriaLabel": "Create a password",
+    "account.password.editAriaLabel": "Edit password",
+    "account.password.create.intro":
+      "Your account doesn't have a password yet. Set one to be able to sign in with your email.",
+    "account.password.fields.newPassword": "New password",
+    "account.password.fields.confirmPassword": "Confirm password",
+    "account.password.fields.currentPassword": "Old password",
+    "account.password.fields.confirmNewPassword": "Confirm new password",
+    "account.password.create.submit.creating": "Creating...",
+    "account.password.create.submit.create": "Create password",
+    "account.password.submit.updating": "Updating...",
+    "account.password.submit.change": "Change password",
+    "account.password.errors.currentRequired":
+      "The current password is required.",
+    "account.password.errors.confirmMismatch":
+      "The confirmation does not match the new password.",
+    "account.password.errors.createFailed": "Unable to create the password.",
+    "account.password.errors.changeFailed": "Unable to change the password.",
+    "account.password.success.created": "Password created successfully.",
+    "account.password.success.updated": "Password updated successfully.",
+
+    "account.pin.title": "Login PIN",
+    "account.pin.notConfigured": "Not configured",
+    "account.pin.closeAriaLabel": "Close PIN section",
+    "account.pin.configureAriaLabel": "Configure phone and PIN",
+    "account.pin.editAriaLabel": "Edit PIN",
+    "account.pin.addPhone.intro":
+      "Add a phone number and a PIN code to sign in from mobile.",
+    "account.pin.fields.phone": "Phone (9 digits)",
+    "account.pin.fields.pinCode": "PIN code (6 digits)",
+    "account.pin.fields.confirmPin": "Confirm PIN",
+    "account.pin.fields.currentPin": "Current PIN",
+    "account.pin.fields.newPin": "New PIN (6 digits)",
+    "account.pin.fields.confirmNewPin": "Confirm PIN",
+    "account.pin.addPhone.submit.configuring": "Configuring...",
+    "account.pin.submit.updating": "Updating PIN...",
+    "account.pin.submit.change": "Change PIN",
+    "account.pin.errors.currentFormat":
+      "The current PIN must contain 6 digits.",
+    "account.pin.errors.newFormat": "The new PIN must contain 6 digits.",
+    "account.pin.errors.confirmMismatch":
+      "The confirmation does not match the new PIN.",
+    "account.pin.errors.pinMismatch": "The PINs do not match.",
+    "account.pin.errors.addPhoneFailed": "Unable to add the phone.",
+    "account.pin.errors.changeFailed": "Unable to change the PIN.",
+    "account.pin.success.configured": "Phone and PIN configured successfully.",
+    "account.pin.success.updated": "PIN updated successfully.",
+
+    "discipline.types.absence": "Absence",
+    "discipline.types.retard": "Late arrival",
+    "discipline.types.sanction": "Sanction",
+    "discipline.types.punition": "Punishment",
+
+    "discipline.common.yes": "Yes",
+    "discipline.common.no": "No",
+    "discipline.common.loading": "Loading...",
+    "discipline.common.cancel": "Cancel",
+    "discipline.common.delete": "Delete",
+    "discipline.common.networkError": "Network error.",
+    "discipline.common.csrfInvalid":
+      "Invalid CSRF session. Please log in again.",
+
+    "discipline.list.columns.type": "Type",
+    "discipline.list.columns.date": "Date",
+    "discipline.list.columns.reason": "Reason",
+    "discipline.list.columns.duration": "Duration",
+    "discipline.list.columns.justified": "Justified",
+    "discipline.list.columns.author": "Author",
+    "discipline.list.columns.actions": "Actions",
+    "discipline.list.editAria": "Edit this event",
+    "discipline.list.deleteAria": "Delete this event",
+    "discipline.list.durationPrefix": "Duration:",
+    "discipline.list.justifiedPrefix": "Justified:",
+    "discipline.list.authorPrefix": "Author:",
+
+    "discipline.page.defaultClassName": "Class",
+    "discipline.page.subtitle": "Absences, lateness, sanctions and punishments",
+    "discipline.page.tabs.entry": "Entry",
+    "discipline.page.tabs.history": "History",
+    "discipline.page.tabs.help": "Help",
+    "discipline.page.classNotAccessible":
+      "Class not accessible with your assignments.",
+    "discipline.page.studentLabel": "Student",
+
+    "discipline.help.summary":
+      "this module lets the teacher record absences, lateness, sanctions and punishments for their assigned classes.",
+    "discipline.help.record.name": "Record",
+    "discipline.help.record.purpose": "quickly record a school life event.",
+    "discipline.help.record.howTo":
+      "select the student then fill in the type, date and reason.",
+    "discipline.help.record.moduleImpact":
+      "the event is visible to the parent in School life (current year).",
+    "discipline.help.record.crossModuleImpact":
+      "it then feeds the Cursus page for the overall history.",
+    "discipline.help.verify.name": "Check",
+    "discipline.help.verify.purpose": "review the student's discipline log.",
+    "discipline.help.verify.howTo": "open History to see existing events.",
+    "discipline.help.verify.moduleImpact": "avoids duplicate entries.",
+    "discipline.help.verify.crossModuleImpact":
+      "facilitates coordination with SCHOOL_MANAGER/SUPERVISOR.",
+
+    "discipline.errors.loadClass": "Unable to load the class.",
+    "discipline.errors.loadHistory": "Unable to load the discipline history.",
+    "discipline.errors.createFailed": "Unable to create.",
+    "discipline.errors.editFailed": "Unable to update.",
+    "discipline.errors.deleteFailed": "Unable to delete.",
+    "discipline.success.eventCreated": "Discipline event recorded.",
+    "discipline.success.eventUpdated": "Event updated.",
+    "discipline.success.eventDeleted": "Event deleted.",
+
+    "discipline.validation.dateRequired": "Date is required.",
+    "discipline.validation.reasonRequired": "Reason is required.",
+    "discipline.validation.durationPositive":
+      "Duration must be a positive integer.",
+
+    "discipline.form.type": "Event type",
+    "discipline.form.typeEditAria": "Event type edit",
+    "discipline.form.dateTime": "Date and time",
+    "discipline.form.dateTimeEditAria": "Date and time edit",
+    "discipline.form.reason": "Reason",
+    "discipline.form.reasonEditAria": "Reason edit",
+    "discipline.form.reasonPlaceholder":
+      "E.g.: unfinished homework, unjustified absence",
+    "discipline.form.duration": "Duration (minutes, optional)",
+    "discipline.form.durationEditAria": "Duration edit (minutes, optional)",
+    "discipline.form.comment": "Comment (optional)",
+    "discipline.form.commentEditAria": "Comment edit (optional)",
+    "discipline.form.justified": "Justified (absence / lateness)",
+    "discipline.form.saving": "Saving...",
+    "discipline.form.submitCreate": "Save event",
+    "discipline.form.submitUpdate": "Save changes",
+    "discipline.form.submitReport": "Report",
+    "discipline.form.cancel": "Cancel",
+
+    "discipline.eleves.sectionTitle":
+      "School life: absences, lateness, sanctions and punishments",
+
+    "discipline.empty.studentEvents": "No events for this student.",
+    "discipline.empty.eleves": "No school life events.",
+
+    "discipline.delete.title": "Delete this event?",
+    "discipline.delete.message":
+      'This action cannot be undone. The event "{label}" will be permanently deleted.',
+    "discipline.delete.confirm": "Delete",
+
+    "discipline.vieScolaire.title": "School life",
+    "discipline.vieScolaire.subtitleDefault": "Student tracking",
+    "discipline.vieScolaire.eventsWarning":
+      "School life events are temporarily unavailable. Showing demo data.",
+    "discipline.vieScolaire.error": "Unable to load school life data.",
+    "discipline.vieScolaire.tabs.synthese": "Summary",
+    "discipline.vieScolaire.tabs.absencesRetards": "Absences / lateness",
+    "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punishments",
+    "discipline.vieScolaire.kpi.absences": "Absences",
+    "discipline.vieScolaire.kpi.retards": "Lateness",
+    "discipline.vieScolaire.kpi.sanctions": "Sanctions",
+    "discipline.vieScolaire.kpi.punitions": "Punishments",
+    "discipline.vieScolaire.synthese.lastAbsence": "Last absence",
+    "discipline.vieScolaire.synthese.lastRetard": "Last lateness",
+    "discipline.vieScolaire.synthese.lastSanction": "Last sanction",
+    "discipline.vieScolaire.synthese.lastPunition": "Last punishment",
+    "discipline.vieScolaire.synthese.noData": "No data",
+    "discipline.vieScolaire.absences.columns.event": "Absence / lateness",
+    "discipline.vieScolaire.absences.columns.type": "Type",
+    "discipline.vieScolaire.absences.columns.duration": "Duration",
+    "discipline.vieScolaire.absences.columns.justified": "Justified?",
+    "discipline.vieScolaire.absences.columns.reason": "Reason",
+    "discipline.vieScolaire.absences.columns.comment": "Comment",
+    "discipline.vieScolaire.absences.empty":
+      "No events for the active school year.",
+    "discipline.vieScolaire.absences.durationPrefix": "Duration:",
+    "discipline.vieScolaire.absences.justifiedPrefix": "Justified:",
+    "discipline.vieScolaire.absences.reasonPrefix": "Reason:",
+    "discipline.vieScolaire.absences.commentPrefix": "Comment:",
+    "discipline.vieScolaire.sanctions.columns.type": "Type",
+    "discipline.vieScolaire.sanctions.columns.incident": "Incident",
+    "discipline.vieScolaire.sanctions.columns.date": "Date",
+    "discipline.vieScolaire.sanctions.columns.reason": "Reason",
+    "discipline.vieScolaire.sanctions.columns.by": "By",
+    "discipline.vieScolaire.sanctions.columns.comment": "Comment",
+    "discipline.vieScolaire.sanctions.columns.executionDate": "Execution date",
+    "discipline.vieScolaire.sanctions.empty":
+      "No sanctions/punishments for the active school year.",
+    "discipline.vieScolaire.sanctions.datePrefix": "Date:",
+    "discipline.vieScolaire.sanctions.reasonPrefix": "Reason:",
+    "discipline.vieScolaire.sanctions.byPrefix": "By:",
+    "discipline.vieScolaire.sanctions.commentPrefix": "Comment:",
+    "discipline.vieScolaire.sanctions.executionDatePrefix": "Execution date:",
+    "discipline.vieScolaire.equipePedagogique": "Teaching staff",
+
+    "discipline.accueil.summaryHint.none": "Nothing to flag",
+    "discipline.accueil.summaryHint.unjustified":
+      "{count} unjustified absence(s)",
+    "discipline.accueil.summaryHint.sanctions":
+      "{count} sanction(s) or punishment(s)",
+    "discipline.accueil.panel.action": "View summary",
+    "discipline.accueil.panel.noRecentEvent": "No recent school life event.",
+    "discipline.accueil.metrics.unjustifiedAbsences": "Unjustified absences",
+    "discipline.accueil.metrics.sanctionsPunitions": "Sanctions / punishments",
+    "discipline.accueil.quickAccess.hint": "Absences, lateness, sanctions",
+
+    "discipline.sidebar.vieScolaire": "School life",
+    "discipline.sidebar.discipline": "Discipline",
+
+    "timetable.sidebar.emploiDuTemps": "Timetable",
+
+    "discipline.cursus.title": "Cursus",
+    "discipline.cursus.subtitleDefault": "Student history",
+    "discipline.cursus.error": "Unable to load the cursus.",
+    "discipline.cursus.tabs.synthese": "Summary",
+    "discipline.cursus.tabs.vieScolaire": "School life",
+    "discipline.cursus.tabs.help": "Help",
+    "discipline.cursus.filters.year": "Year",
+    "discipline.cursus.filters.class": "Class",
+    "discipline.cursus.filters.type": "Type",
+    "discipline.cursus.filters.allFeminine": "All",
+    "discipline.cursus.filters.allMasculine": "All",
+    "discipline.cursus.filters.reset": "Reset",
+    "discipline.cursus.filters.exportPdf": "Export PDF",
+    "discipline.cursus.notDefined.year": "Year not set",
+    "discipline.cursus.notDefined.class": "Class not set",
+    "discipline.cursus.synthese.yearsClasses": "Years / classes",
+    "discipline.cursus.empty": "No school life event on the cursus yet.",
+    "discipline.cursus.help.moduleName": "Cursus",
+    "discipline.cursus.help.summary":
+      "this module will summarize the student's path year by year and class by class.",
+    "discipline.cursus.help.actionName": "View",
+    "discipline.cursus.help.actionPurpose":
+      "analyze the student's overall history.",
+    "discipline.cursus.help.actionHowTo":
+      "open the School life tab for a recap by year/class.",
+    "discipline.cursus.help.actionModuleImpact":
+      "chronological view of the path's events.",
+    "discipline.cursus.help.actionCrossModuleImpact":
+      "complements the current School life page which only shows the active year.",
+
+    "discipline.dashboard.cardTitle": "School life",
+    "discipline.dashboard.cardEyebrow": "Discipline",
+    "discipline.dashboard.empty":
+      "No child linked or no school life data available.",
+    "discipline.dashboard.stats.absences": "Absences",
+    "discipline.dashboard.stats.retards": "Lateness",
+    "discipline.dashboard.stats.incidents": "Incidents",
+    "discipline.dashboard.openDetail": "Open discipline details",
+    "discipline.dashboard.status.calm": "Calm situation",
+    "discipline.dashboard.status.watch": "To watch",
+    "discipline.dashboard.status.alert": "Parent priority",
+    "discipline.dashboard.detail.none":
+      "No notable disciplinary signal for the period.",
+    "discipline.dashboard.detail.unjustifiedAbsences":
+      "{count} unjustified absence(s) to clear.",
+    "discipline.dashboard.detail.incidentsRecorded":
+      "{count} incident(s) recorded for the period.",
+    "discipline.dashboard.detail.absencesRecorded":
+      "{count} absence(s) recorded.",
+    "discipline.dashboard.detail.retardsThisTerm":
+      "{count} late arrival(s) this term.",
+
+    "discipline.mail.subjectCreated": "Scolive - School life event recorded",
+    "discipline.mail.subjectUpdated": "Scolive - School life event updated",
+    "discipline.mail.actionCreated": "recorded",
+    "discipline.mail.actionUpdated": "updated",
+    "discipline.mail.greeting": "Hello {firstName},",
+    "discipline.mail.intro":
+      "A school life event has been {action} for {studentFullName}.",
+    "discipline.mail.type": "Type",
+    "discipline.mail.reason": "Reason",
+    "discipline.mail.date": "Date",
+    "discipline.mail.class": "Class",
+    "discipline.mail.author": "Recorded by",
+    "discipline.mail.openPortal": "Open the portal",
+    "discipline.mail.consultPortal": "View the portal",
+
+    "notes.common.loading": "Loading...",
+    "notes.common.saving": "Saving...",
+    "notes.common.networkError": "Network error.",
+    "notes.common.select": "Select",
+
+    "notes.teacher.card.title": "Evaluations - {className}",
+    "notes.teacher.card.defaultClassName": "Class",
+    "notes.teacher.card.subtitle": "Creation, publishing and grade entry",
+    "notes.teacher.tabs.evaluations": "Evaluations",
+    "notes.teacher.tabs.scores": "Grade entry",
+    "notes.teacher.tabs.council": "Class council",
+    "notes.teacher.tabs.help": "Help",
+    "notes.teacher.page.classNotAccessible":
+      "Class not accessible with your assignments.",
+    "notes.teacher.errors.loadModule": "Unable to load the evaluations module.",
+    "notes.teacher.errors.uploadAttachment": "Unable to upload the attachment.",
+    "notes.teacher.errors.downloadAttachment":
+      "Unable to download the attachment.",
+    "notes.teacher.errors.createEvaluation": "Failed to create evaluation",
+    "notes.teacher.errors.updateEvaluation": "Failed to update evaluation",
+    "notes.teacher.errors.saveScores": "Unable to save the grades.",
+    "notes.teacher.errors.saveCouncil":
+      "Unable to save the term council remarks.",
+    "notes.teacher.success.evaluationCreated": "Evaluation saved.",
+    "notes.teacher.success.evaluationUpdated": "Evaluation updated.",
+    "notes.teacher.success.scoresUpdated": "Evaluation grades updated.",
+    "notes.teacher.success.councilPublished": "Class council published.",
+    "notes.teacher.success.councilDraftSaved": "Class council draft saved.",
+
+    "notes.teacher.help.moduleName": "Class evaluations",
+    "notes.teacher.help.summary":
+      "this teacher space lets you create an evaluation, attach a resource, publish or keep it as a draft, and then enter student grades.",
+    "notes.teacher.help.create.name": "Create",
+    "notes.teacher.help.create.purpose":
+      "prepare an evaluation for a subject and a sub-branch.",
+    "notes.teacher.help.create.howTo":
+      "select the subject, type, max score and coefficient, then save as a draft or publish it.",
+    "notes.teacher.help.create.moduleImpact":
+      "the evaluation becomes available for grade entry.",
+    "notes.teacher.help.create.crossModuleImpact":
+      "a published, graded evaluation automatically feeds the parent/student Grades module.",
+    "notes.teacher.help.enter.name": "Enter",
+    "notes.teacher.help.enter.purpose":
+      "record student grades, absences or exemptions.",
+    "notes.teacher.help.enter.howTo":
+      "pick an evaluation, then enter grades student by student.",
+    "notes.teacher.help.enter.moduleImpact":
+      "averages are recalculated taking the coefficient into account.",
+    "notes.teacher.help.enter.crossModuleImpact":
+      "families only see published evaluations.",
+    "notes.teacher.help.council.name": "Class council",
+    "notes.teacher.help.council.purpose":
+      "enter the end-of-term remarks that enrich the families' Averages tab.",
+    "notes.teacher.help.council.howTo":
+      "select the term, fill in remarks per student and subject, then keep as a draft or publish.",
+    "notes.teacher.help.council.moduleImpact":
+      "remarks are stored separately from evaluations and do not affect average calculations.",
+    "notes.teacher.help.council.crossModuleImpact":
+      "publishing makes the remarks visible in the parent/student Grades module.",
+
+    "notes.teacher.list.title": "Evaluations",
+    "notes.teacher.list.subtitle":
+      "Browse the evaluations then open their detail.",
+    "notes.teacher.list.addAria": "Add an evaluation",
+    "notes.teacher.list.addLabel": "Add an evaluation",
+    "notes.teacher.list.empty": "No evaluation for this class.",
+    "notes.teacher.status.published": "Published",
+    "notes.teacher.status.draft": "Draft",
+
+    "notes.teacher.detail.editAria": "Edit the selected evaluation",
+    "notes.teacher.detail.editLabel": "Edit the evaluation",
+    "notes.teacher.detail.enterScores": "Enter grades",
+    "notes.teacher.detail.period": "Term",
+    "notes.teacher.detail.maxScore": "Max score",
+    "notes.teacher.detail.coefficient": "Coefficient",
+    "notes.teacher.detail.scoresEntered": "Grades entered",
+    "notes.teacher.detail.noInstructions":
+      "No detailed instructions for this evaluation.",
+    "notes.teacher.detail.attachments": "Attachments",
+    "notes.teacher.detail.noAttachment": "No attachment.",
+    "notes.teacher.detail.planning": "Schedule",
+    "notes.teacher.detail.trackingTitle": "Entry tracking",
+    "notes.teacher.detail.scoresEnteredCount": "grade(s) entered",
+    "notes.teacher.detail.absencesCount": "absence(s)",
+    "notes.teacher.detail.excusedCount": "exemption(s)",
+    "notes.teacher.detail.contentTitle": "Content / instructions",
+    "notes.teacher.detail.noEvaluationTitle": "No evaluation selected",
+    "notes.teacher.detail.noEvaluationSubtitle":
+      "Choose an evaluation from the list or create a new one to get started.",
+    "notes.teacher.detail.backToDetail": "Back to detail",
+    "notes.teacher.detail.cancel": "Cancel",
+    "notes.teacher.detail.download": "Download",
+    "notes.teacher.detail.remove": "Remove",
+
+    "notes.teacher.terms.term1": "1st term",
+    "notes.teacher.terms.term2": "2nd term",
+    "notes.teacher.terms.term3": "3rd term",
+
+    "notes.teacher.form.editTitle": "Edit evaluation",
+    "notes.teacher.form.createTitle": "New evaluation",
+    "notes.teacher.form.editSubtitle":
+      "Update the selected evaluation then save your changes.",
+    "notes.teacher.form.createSubtitle":
+      "Prepare an evaluation then publish it or keep it as a draft.",
+    "notes.teacher.form.subject": "Subject",
+    "notes.teacher.form.subjectBranch": "Sub-branch",
+    "notes.teacher.form.noSubjectBranch": "No sub-branch",
+    "notes.teacher.form.evaluationType": "Evaluation type",
+    "notes.teacher.form.term": "Term",
+    "notes.teacher.form.title": "Title",
+    "notes.teacher.form.titlePlaceholder": "E.g. Test on fractions",
+    "notes.teacher.form.content": "Content / instructions",
+    "notes.teacher.form.contentHint":
+      "Add the instructions, topics to assess and grading expectations.",
+    "notes.teacher.form.coefficient": "Coefficient",
+    "notes.teacher.form.maxScore": "Max score",
+    "notes.teacher.form.scheduledAt": "Scheduled date",
+    "notes.teacher.form.status": "Publication",
+    "notes.teacher.form.statusDraft": "Draft",
+    "notes.teacher.form.statusPublished": "Published",
+    "notes.teacher.form.attachment": "Attachment",
+    "notes.teacher.form.attachmentHint":
+      "Accepted formats: JPG, PNG, WEBP, PDF, TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX. Maximum size: 10 MB.",
+    "notes.teacher.form.attachmentUploading": "Uploading...",
+    "notes.teacher.form.attachmentAdd": "Add a file",
+    "notes.teacher.form.submitCreate": "Create evaluation",
+    "notes.teacher.form.submitEdit": "Save",
+    "notes.teacher.form.submitSaving": "Saving...",
+
+    "notes.teacher.validation.subjectRequired": "Select a subject.",
+    "notes.teacher.validation.evaluationTypeRequired":
+      "Select an evaluation type.",
+    "notes.teacher.validation.titleMinLength":
+      "The title must contain at least 3 characters.",
+    "notes.teacher.validation.coefficientPositive":
+      "The coefficient must be greater than 0.",
+    "notes.teacher.validation.maxScorePositive":
+      "The max score must be greater than 0.",
+    "notes.teacher.validation.scheduledAtRequired":
+      "The scheduled date is required.",
+
+    "notes.teacher.scores.evaluationLabel": "Evaluation",
+    "notes.teacher.scores.selectPrompt":
+      "Select an evaluation to enter grades.",
+    "notes.teacher.scores.summaryLine":
+      "{evaluationType} • Coef. {coefficient} • Max score {maxScore}",
+    "notes.teacher.scores.columnStudent": "Student",
+    "notes.teacher.scores.columnStatus": "Status",
+    "notes.teacher.scores.columnScore": "Grade",
+    "notes.teacher.scores.columnComment": "Comment",
+    "notes.teacher.scores.statusEntered": "Grade entered",
+    "notes.teacher.scores.statusAbsent": "Absent",
+    "notes.teacher.scores.statusExcused": "Exempted",
+    "notes.teacher.scores.statusNotGraded": "Not graded",
+    "notes.teacher.scores.commentPlaceholder": "Optional comment",
+    "notes.teacher.scores.save": "Save grades",
+    "notes.teacher.scores.saving": "Saving...",
+
+    "notes.teacher.council.term": "Term",
+    "notes.teacher.council.heldAt": "Council date",
+    "notes.teacher.council.publication": "Publication",
+    "notes.teacher.council.appreciationsSubtitle": "End-of-term remarks",
+    "notes.teacher.council.generalAppreciation": "General remark",
+    "notes.teacher.council.generalAppreciationPlaceholder":
+      "Overall summary for the term...",
+    "notes.teacher.council.subjectAppreciationPlaceholder":
+      "{subject} remark...",
+    "notes.teacher.council.publish": "Publish class council",
+    "notes.teacher.council.saveDraft": "Save draft",
+    "notes.teacher.council.saving": "Saving...",
+
+    "notes.admin.card.title": "Grades & Homework",
+    "notes.admin.card.subtitle": "Entry and history of results",
+    "notes.admin.form.schoolYear": "School year",
+    "notes.admin.form.schoolYearActiveSuffix": " (active)",
+    "notes.admin.form.assignment": "Assignment (class + subject)",
+    "notes.admin.form.student": "Student",
+    "notes.admin.form.term": "Term",
+    "notes.admin.form.value": "Grade",
+    "notes.admin.form.maxValue": "Max grade",
+    "notes.admin.form.assessmentWeight": "Assessment coef.",
+    "notes.admin.form.submit": "Add grade",
+    "notes.admin.form.submitting": "Saving...",
+    "notes.admin.table.student": "Student",
+    "notes.admin.table.class": "Class",
+    "notes.admin.table.subject": "Subject",
+    "notes.admin.table.score": "Grade",
+    "notes.admin.table.weight": "Assessment coef.",
+    "notes.admin.table.term": "Term",
+    "notes.admin.table.loading": "Loading...",
+    "notes.admin.table.empty": "No grade available.",
+    "notes.admin.errors.loadContext": "Unable to load the grade entry context.",
+    "notes.admin.errors.missingAssignmentOrStudent":
+      "Select an assignment and a student.",
+    "notes.admin.errors.csrfInvalid":
+      "Invalid CSRF session. Please log in again.",
+    "notes.admin.errors.createGradeFailed": "Unable to create the grade.",
+    "notes.admin.errors.networkError": "Network error.",
+    "notes.admin.success.gradeCreated": "Grade saved.",
+    "notes.admin.validation.schoolYearRequired": "The school year is required.",
+    "notes.admin.validation.assignmentRequired": "The assignment is required.",
+    "notes.admin.validation.studentRequired": "The student is required.",
+    "notes.admin.validation.valuePositive": "The grade must be positive.",
+    "notes.admin.validation.maxValuePositive":
+      "The max grade must be greater than 0.",
+    "notes.admin.validation.weightPositive":
+      "The coefficient must be positive.",
+
+    "notes.student.page.title": "Grades",
+    "notes.student.page.subtitle": "Student evaluations and averages",
+    "notes.student.page.summary":
+      "Track your child's grades, averages and trends by subject.",
+    "notes.student.page.bullet1": "Per-term view of published evaluations.",
+    "notes.student.page.bullet2":
+      "Comparison with class statistics for each subject.",
+    "notes.student.page.bullet3":
+      "Simple view of strengths and areas to watch.",
+    "notes.student.page.subtitleWithChild":
+      "Student evaluations and averages - {childName}",
+    "notes.student.page.chooseTerm": "Choose the term",
+    "notes.student.page.mobileSubtitle": "Grades and averages {childName}",
+    "notes.student.page.mobileSubtitleNoChild": "Grades and averages",
+    "notes.student.page.demoWarning":
+      "Showing demo data temporarily while evaluations are being published.",
+
+    "notes.student.tabs.evaluations.label": "Evaluations",
+    "notes.student.tabs.evaluations.mobileLabel": "Eval",
+    "notes.student.tabs.evaluations.description":
+      "Detailed view of published grades by subject",
+    "notes.student.tabs.averages.label": "Averages",
+    "notes.student.tabs.averages.mobileLabel": "Avg",
+    "notes.student.tabs.averages.description":
+      "Comparison of student, class, min and max",
+    "notes.student.tabs.charts.label": "Charts",
+    "notes.student.tabs.charts.mobileLabel": "Charts",
+    "notes.student.tabs.charts.description":
+      "Visual view of performance and ranges",
+
+    "notes.student.hero.badge": "Term report",
+    "notes.student.hero.publishedData": "Published data",
+    "notes.student.hero.studentAverage": "Student average",
+    "notes.student.hero.classAverage": "Class average",
+    "notes.student.hero.classAverageHint": "Range {min} - {max}",
+    "notes.student.hero.strongSubject": "Strong subject",
+    "notes.student.hero.watchSubject": "Subject to watch",
+    "notes.student.hero.noData": "No data",
+    "notes.student.hero.levelWithClass": "On par with the class",
+    "notes.student.hero.deltaVsClass": "{value} pts vs class",
+
+    "notes.student.evaluation.detailTitle": "Evaluation detail",
+    "notes.student.evaluation.closeAria": "Close the grade detail",
+    "notes.student.evaluation.score": "Grade",
+    "notes.student.evaluation.status": "Status",
+    "notes.student.evaluation.date": "Date",
+    "notes.student.evaluation.coefficient": "Coefficient",
+    "notes.student.evaluation.context": "Context",
+    "notes.student.evaluation.contextValue":
+      "Class {classAverage} | Min {classMin} | Max {classMax}",
+    "notes.student.evaluation.subjectAverage": "Subject average:",
+    "notes.student.evaluation.positioning": "Position:",
+    "notes.student.evaluation.noComparison": "No comparison",
+    "notes.student.evaluation.statusAbsent": "Absent",
+    "notes.student.evaluation.statusExcused": "Exempted",
+    "notes.student.evaluation.statusNotGraded": "Not graded",
+    "notes.student.evaluation.statusEntered": "Grade entered",
+    "notes.student.evaluation.shortAbsent": "Abs",
+    "notes.student.evaluation.shortExcused": "Exc",
+    "notes.student.evaluation.shortNotGraded": "NG",
+    "notes.student.evaluation.legendAbsent": "Absent",
+    "notes.student.evaluation.legendExcused": "Exempted",
+    "notes.student.evaluation.legendNotGraded": "Not graded",
+
+    "notes.student.average.detailTitle": "Average detail",
+    "notes.student.average.closeAria": "Close the average detail",
+    "notes.student.average.defaultSubject": "Subject",
+    "notes.student.average.student": "Student",
+    "notes.student.average.coefficient": "Coefficient",
+    "notes.student.average.class": "Class",
+    "notes.student.average.amplitude": "Range",
+    "notes.student.average.amplitudeValue": "Min {min} / Max {max}",
+    "notes.student.average.positioning": "Position:",
+    "notes.student.average.evaluationsCount": "Evaluations included:",
+    "notes.student.average.appreciation": "Remark:",
+    "notes.student.average.noComparison": "No comparison",
+
+    "notes.student.table.subjects": "Subjects",
+    "notes.student.table.coefficient": "Coef.",
+    "notes.student.table.averages": "Averages",
+    "notes.student.table.evaluations": "Evaluations",
+    "notes.student.table.generalAverage": "General average",
+    "notes.student.table.publishedSummary":
+      "Summary of evaluations published for the period.",
+    "notes.student.table.averageDetailAria":
+      "View the average detail for {subject}",
+    "notes.student.table.empty":
+      "Evaluations for this period will be visible as soon as they are available.",
+
+    "notes.student.averagesTable.discipline": "Subject",
+    "notes.student.averagesTable.coefficient": "Coef.",
+    "notes.student.averagesTable.student": "Student",
+    "notes.student.averagesTable.class": "Class",
+    "notes.student.averagesTable.min": "Min",
+    "notes.student.averagesTable.max": "Max",
+    "notes.student.averagesTable.appreciation": "General remark",
+    "notes.student.averagesTable.coefficientPrefix": "Coef {coefficient}",
+    "notes.student.averagesTable.classPrefix": "Class:",
+    "notes.student.averagesTable.minPrefix": "Min:",
+    "notes.student.averagesTable.maxPrefix": "Max:",
+    "notes.student.averagesTable.generalAverage": "General average",
+    "notes.student.averagesTable.globalPositioning":
+      "Student's overall position for the period.",
+    "notes.student.averagesTable.empty":
+      "Averages for this period will be shown once published.",
+
+    "notes.student.charts.empty":
+      "Charts will be available once the period's averages are published.",
+    "notes.student.charts.comparisonTitle": "Comparison by subject",
+    "notes.student.charts.comparisonSubtitle":
+      "Each band represents the class min-max range, with the student's position and the class average.",
+    "notes.student.charts.studentVsClass":
+      "Student {studentAverage} / Class {classAverage}",
+    "notes.student.charts.classRange": "{min} - {max}",
+    "notes.student.charts.legendStudentAverage": "Student average",
+    "notes.student.charts.legendClassAverage": "Class average",
+    "notes.student.charts.legendClassRange": "Class min and max",
+    "notes.student.charts.radarTitle": "Average radar",
+    "notes.student.charts.radarSubtitle":
+      "Overall view of the strongest subjects and gaps with the class.",
+    "notes.student.charts.radarReadingTitle": "Reading the radar",
+    "notes.student.charts.radarReadingText":
+      "The closer the line is to the edge, the higher the average for that subject.",
+    "notes.student.charts.comparisonLegendTitle": "Comparison",
+    "notes.student.charts.comparisonLegendText":
+      "The blue polygon represents the student. The grey one shows the class average level.",
+
+    "homework.page.title": "Homework",
+    "homework.page.defaultClassName": "Class",
+    "homework.page.subtitle": "Homework tracking and submission status",
+    "homework.page.classNotAccessible":
+      "Class not accessible with your assignments.",
+
+    "homework.tabs.list": "List",
+    "homework.tabs.view": "View",
+    "homework.tabs.help": "Help",
+
+    "homework.status.todo": "To do",
+    "homework.status.late": "Late",
+    "homework.status.done": "Done",
+
+    "homework.table.title": "Title",
+    "homework.table.subject": "Subject",
+    "homework.table.dueDate": "Due date",
+    "homework.table.status": "Status",
+
+    "homework.common.loading": "Loading...",
+    "homework.errors.loadFailed": "Unable to load class homework.",
+    "homework.errors.networkError": "Network error.",
+
+    "homework.help.summary":
+      "this module centralizes homework assigned to the class and its tracking status.",
+    "homework.help.list.name": "List",
+    "homework.help.list.purpose": "track ongoing homework.",
+    "homework.help.list.howTo": "open the List tab.",
+    "homework.help.list.moduleImpact":
+      "helps manage student workload individually.",
+    "homework.help.list.crossModuleImpact":
+      "linked with Grades to assess submissions.",
+    "homework.help.view.name": "View",
+    "homework.help.view.purpose": "get a quick overview of the class.",
+    "homework.help.view.howTo": "open the View tab.",
+    "homework.help.view.moduleImpact": "prioritize follow-ups.",
+    "homework.help.view.crossModuleImpact":
+      "improves parent tracking via child spaces.",
+
+    "homework.summary.class": "Class",
+    "homework.summary.total": "Homework",
+    "homework.summary.todo": "To do",
+    "homework.summary.late": "Late",
+
+    "homework.sidebar.devoirs": "Homework",
+    "homework.sidebar.cahierDeTexte": "Homework notebook",
+
+    "homework.dashboard.title": "Ongoing homework",
+    "homework.dashboard.noHomework": "No homework in progress",
+    "homework.dashboard.viewAll": "View all",
+
+    "homework.cahierDeTexte.title": "Homework notebook",
+    "homework.cahierDeTexte.subtitle": "Work to do",
+    "homework.cahierDeTexte.summary":
+      "View your child's homework and instructions.",
+    "homework.cahierDeTexte.bullet1":
+      "Today's homework and assignments to submit.",
+    "homework.cahierDeTexte.bullet2": "Instructions shared by teachers.",
+    "homework.cahierDeTexte.bullet3": "Plan the week ahead with your child.",
+
+    "timetable.agenda.page.titlePrefix": "Timetable",
+    "timetable.agenda.page.defaultClassName": "Class",
+    "timetable.agenda.page.subtitle": "Create and manage the yearly timetable",
+    "timetable.agenda.page.loading": "Loading...",
+    "timetable.agenda.page.classNotAccessible": "Class not accessible.",
+
+    "timetable.agenda.tabs.slots": "Slots",
+    "timetable.agenda.tabs.vacations": "Holidays",
+    "timetable.agenda.tabs.colors": "Colors",
+    "timetable.agenda.tabs.help": "Help",
+
+    "timetable.agenda.weekdays.1": "Monday",
+    "timetable.agenda.weekdays.2": "Tuesday",
+    "timetable.agenda.weekdays.3": "Wednesday",
+    "timetable.agenda.weekdays.4": "Thursday",
+    "timetable.agenda.weekdays.5": "Friday",
+    "timetable.agenda.weekdays.6": "Saturday",
+    "timetable.agenda.weekdays.7": "Sunday",
+    "timetable.agenda.weekdays.default": "Day",
+
+    "timetable.agenda.errors.networkError": "Network error.",
+    "timetable.agenda.errors.csrfInvalid":
+      "Invalid CSRF session. Please log in again.",
+    "timetable.agenda.errors.loadFailed": "Unable to load the class timetable.",
+    "timetable.agenda.errors.refreshFailed": "Unable to refresh the timetable.",
+    "timetable.agenda.errors.schoolYearSwitchFailed":
+      "Unable to switch school year.",
+    "timetable.agenda.errors.colorUpdateFailed": "Unable to update the color.",
+    "timetable.agenda.errors.slotUpdateFailed": "Unable to update the slot.",
+    "timetable.agenda.errors.slotCreateFailed": "Unable to create the slot.",
+    "timetable.agenda.errors.slotDeleteFailed": "Unable to delete the slot.",
+    "timetable.agenda.errors.occurrenceDeleteFailed":
+      "Unable to delete the occurrence.",
+    "timetable.agenda.errors.occurrenceUpdateFailed":
+      "Unable to update the occurrence.",
+    "timetable.agenda.errors.seriesUpdateFailed":
+      "Unable to update the series.",
+    "timetable.agenda.errors.seriesDeleteFailed":
+      "Unable to delete the series.",
+    "timetable.agenda.errors.vacationCreateFailed":
+      "Unable to create the holiday period.",
+    "timetable.agenda.errors.vacationUpdateFailed":
+      "Unable to update the holiday period.",
+    "timetable.agenda.errors.vacationDeleteFailed":
+      "Unable to delete the period.",
+    "timetable.agenda.errors.noOccurrenceSelected": "No slot selected.",
+    "timetable.agenda.errors.occurrenceNoSource":
+      "This occurrence has no editable source.",
+    "timetable.agenda.errors.seriesNoSourceUpdate":
+      "This one-off occurrence has no series to update.",
+    "timetable.agenda.errors.seriesNoSourceDelete":
+      "This one-off occurrence has no series to delete.",
+    "timetable.agenda.errors.cannotEditVacations":
+      "You cannot edit holiday periods.",
+
+    "timetable.agenda.success.colorSaved": "Subject color saved.",
+    "timetable.agenda.success.slotUpdated": "Slot updated.",
+    "timetable.agenda.success.slotAdded": "Slot added.",
+    "timetable.agenda.success.slotsAdded": "{count} slots added.",
+    "timetable.agenda.success.slotDeleted": "Slot deleted.",
+    "timetable.agenda.success.occurrenceDeleted": "Occurrence deleted.",
+    "timetable.agenda.success.occurrenceUpdated": "Occurrence updated.",
+    "timetable.agenda.success.seriesUpdated": "Series updated.",
+    "timetable.agenda.success.seriesDeleted": "Series deleted.",
+    "timetable.agenda.success.vacationCreated": "Holiday period saved.",
+    "timetable.agenda.success.vacationUpdated": "Holiday period updated.",
+    "timetable.agenda.success.vacationDeleted": "Period deleted.",
+
+    "timetable.agenda.validation.vacationLabelRequired":
+      "The label is required.",
+    "timetable.agenda.validation.vacationStartDateRequired":
+      "The start date is required.",
+    "timetable.agenda.validation.vacationEndDateRequired":
+      "The end date is required.",
+    "timetable.agenda.validation.invalidDates": "Invalid dates.",
+    "timetable.agenda.validation.startBeforeEndDate":
+      "The start date must be before the end date.",
+    "timetable.agenda.validation.selectSubject": "Select a subject.",
+    "timetable.agenda.validation.selectTeacher": "Select a teacher.",
+    "timetable.agenda.validation.invalidWeekday": "Invalid day.",
+    "timetable.agenda.validation.invalidTime": "Invalid time.",
+    "timetable.agenda.validation.startBeforeEndTime":
+      "The start time must be before the end time.",
+    "timetable.agenda.validation.selectOccurrenceDate":
+      "Select the occurrence date.",
+
+    "timetable.agenda.schoolYear.label": "School year",
+    "timetable.agenda.schoolYear.previousAria": "Previous year",
+    "timetable.agenda.schoolYear.nextAria": "Next year",
+    "timetable.agenda.schoolYear.inProgressSuffix": " (current)",
+
+    "timetable.agenda.actions.add": "Add",
+
+    "timetable.agenda.colors.title": "Subject colors (class + year)",
+    "timetable.agenda.colors.colorAria": "Color {subject}",
+    "timetable.agenda.colors.saving": "...",
+    "timetable.agenda.colors.save": "Save",
+
+    "timetable.agenda.slotForm.weekday": "Day",
+    "timetable.agenda.slotForm.start": "Start",
+    "timetable.agenda.slotForm.end": "End",
+    "timetable.agenda.slotForm.subject": "Subject",
+    "timetable.agenda.slotForm.noSubjectsAvailable": "No subject available",
+    "timetable.agenda.slotForm.teacher": "Teacher",
+    "timetable.agenda.slotForm.noTeacherAssigned":
+      "No teacher assigned to this subject",
+    "timetable.agenda.slotForm.room": "Room (optional)",
+    "timetable.agenda.slotForm.roomPlaceholder": "e.g. B14",
+    "timetable.agenda.slotForm.activeFromDate": "Occurrences start (optional)",
+    "timetable.agenda.slotForm.activeToDate": "Occurrences end (optional)",
+    "timetable.agenda.slotForm.effectiveFromDate": "Apply from (optional)",
+    "timetable.agenda.slotForm.addToList": "Add to list",
+    "timetable.agenda.slotForm.saving": "Saving...",
+    "timetable.agenda.slotForm.updating": "Updating...",
+    "timetable.agenda.slotForm.update": "Update",
+    "timetable.agenda.slotForm.addSlot": "Add slot",
+    "timetable.agenda.slotForm.saveMultiple": "Save {count} slots",
+    "timetable.agenda.slotForm.cancelEdit": "Cancel editing",
+    "timetable.agenda.slotForm.clearList": "Clear list ({count})",
+    "timetable.agenda.slotForm.pendingSlots": "Pending slots ({count})",
+    "timetable.agenda.slotForm.remove": "Remove",
+    "timetable.agenda.slotForm.clickHint":
+      "Click on a slot in the day, week or month view to set up a one-off, cancel or edit an occurrence.",
+
+    "timetable.agenda.vacations.label": "Label",
+    "timetable.agenda.vacations.scope": "Scope",
+    "timetable.agenda.vacations.scopeClass": "Class",
+    "timetable.agenda.vacations.scopeAcademicLevel": "Level",
+    "timetable.agenda.vacations.scopeSchool": "School",
+    "timetable.agenda.vacations.start": "Start",
+    "timetable.agenda.vacations.end": "End",
+    "timetable.agenda.vacations.updatePeriod": "Update period",
+    "timetable.agenda.vacations.addPeriod": "Add period",
+    "timetable.agenda.vacations.cancelEdit": "Cancel editing",
+    "timetable.agenda.vacations.noVacations": "No holiday period recorded.",
+    "timetable.agenda.vacations.manageRestriction":
+      "Only the academic lead and admins can edit holiday periods.",
+    "timetable.agenda.vacations.edit": "Edit",
+    "timetable.agenda.vacations.delete": "Delete",
+    "timetable.agenda.vacations.defaultLabel": "School holidays",
+
+    "timetable.agenda.scopeLabel.school": "School",
+    "timetable.agenda.scopeLabel.academicLevel": "Level",
+    "timetable.agenda.scopeLabel.class": "Class",
+
+    "timetable.agenda.confirm.deleteSlotTitle": "Delete this slot?",
+    "timetable.agenda.confirm.deleteVacationTitle": "Delete this period?",
+
+    "timetable.agenda.occurrenceModal.manage": "Manage occurrence",
+    "timetable.agenda.occurrenceModal.close": "Close",
+    "timetable.agenda.occurrenceModal.deleteOccurrence":
+      "Delete this occurrence",
+    "timetable.agenda.occurrenceModal.updateOccurrence": "Edit this occurrence",
+    "timetable.agenda.occurrenceModal.updateSeries": "Edit the whole series",
+    "timetable.agenda.occurrenceModal.deleteSeries": "Delete the whole series",
+    "timetable.agenda.occurrenceModal.cancel": "Cancel",
+    "timetable.agenda.occurrenceModal.continue": "Continue",
+    "timetable.agenda.occurrenceModal.back": "Back",
+    "timetable.agenda.occurrenceModal.applyAction": "Apply action",
+    "timetable.agenda.occurrenceModal.saving": "Saving...",
+    "timetable.agenda.occurrenceModal.confirmDeleteSeries":
+      "Are you sure you want to delete the whole series?",
+    "timetable.agenda.occurrenceModal.confirmDeleteOccurrence":
+      "Are you sure you want to delete this occurrence?",
+    "timetable.agenda.occurrenceModal.cancelledSuffix": " · Cancelled",
+    "timetable.agenda.occurrenceModal.roomPrefix": "Room",
+    "timetable.agenda.occurrenceModal.seriesStart": "Series start:",
+    "timetable.agenda.occurrenceModal.seriesEnd": "Series end:",
+    "timetable.agenda.occurrenceModal.seriesEndDefault": "End of school year",
+    "timetable.agenda.occurrenceModal.noValue": "-",
+    "timetable.agenda.occurrenceModal.effectiveDate": "Effective start date",
+    "timetable.agenda.occurrenceModal.date": "Date",
+    "timetable.agenda.occurrenceModal.seriesEndDateOptional":
+      "Series end date (optional)",
+    "timetable.agenda.occurrenceModal.deleteSeriesWarning":
+      "This action will delete the recurring slot and all its future occurrences.",
+
+    "timetable.agenda.teacherPrefix.mr": "Mr",
+    "timetable.agenda.teacherPrefix.mrs": "Mrs",
+
+    "timetable.agenda.help.moduleName": "Timetable",
+    "timetable.agenda.help.moduleSummary":
+      "this module lets you plan weekly classes and subject colors per class.",
+    "timetable.agenda.help.createSlot.name": "Create a slot",
+    "timetable.agenda.help.createSlot.purpose": "add a recurring class",
+    "timetable.agenda.help.createSlot.howTo":
+      "select the day, times, subject, teacher and room, then save.",
+    "timetable.agenda.help.createSlot.moduleImpact":
+      "structures the class's week for the school year.",
+    "timetable.agenda.help.createSlot.crossModuleImpact":
+      "feeds the student/parent views and eases pedagogical coordination.",
+    "timetable.agenda.help.defineColor.name": "Set a subject color",
+    "timetable.agenda.help.defineColor.purpose":
+      "improve the readability of the timetable",
+    "timetable.agenda.help.defineColor.howTo":
+      "open the Colors tab, choose a color then save.",
+    "timetable.agenda.help.defineColor.moduleImpact":
+      "harmonizes class reading in day/week/month views.",
+    "timetable.agenda.help.defineColor.crossModuleImpact":
+      "the colors are reused in student, parent and teacher views.",
+
+    "timetable.myTimetable.title": "Timetable",
+    "timetable.myTimetable.subtitleDefault": "Student view",
+    "timetable.myTimetable.loading": "Loading...",
+    "timetable.myTimetable.emptyDay": "No class scheduled for this day.",
+    "timetable.myTimetable.errors.noLinkedStudent":
+      "No student is linked to this parent account.",
+    "timetable.myTimetable.errors.loadFailed": "Unable to load the timetable.",
+
+    "timetable.views.today": "Today",
+    "timetable.views.thisWeek": "This week",
+    "timetable.views.thisMonth": "This month",
+    "timetable.views.modeDay": "Day",
+    "timetable.views.modeWeek": "Week",
+    "timetable.views.modeMonth": "Month",
+    "timetable.views.previousPeriodLabel": "Previous {mode}",
+    "timetable.views.nextPeriodLabel": "Next {mode}",
+    "timetable.views.backToCurrentLabel": "Back to current {mode}",
+    "timetable.views.previousPeriod": "Previous period",
+    "timetable.views.nextPeriod": "Next period",
+    "timetable.views.backToCurrentPeriod": "Back to the current period",
+    "timetable.views.dayEmptyDefault": "No slot for this day.",
+    "timetable.views.monthEmptyDefault": "No slot for this day.",
+    "timetable.views.selectedSlotDetail": "Selected slot detail",
+    "timetable.views.subjectLabel": "Subject:",
+    "timetable.views.dayLabel": "Day:",
+    "timetable.views.timeRangeLabel": "Time range:",
+    "timetable.views.teacherLabel": "Teacher:",
+    "timetable.views.roomLabel": "Room:",
+    "timetable.views.manageSlot": "Manage this slot",
+    "timetable.views.selectSubjectHint":
+      "Select a subject in the table to display the detail.",
+    "timetable.views.dayAgenda": "Selected day's agenda",
+    "timetable.views.selectDayHint": "Select a day to see the slots",
+    "timetable.views.slotsForDay": "Slots for",
+    "timetable.views.slotSingular": "slot",
+    "timetable.views.slotPlural": "slots",
+    "timetable.dashboard.title": "Timetable",
+    "timetable.dashboard.linkLabel": "Agenda",
+    "timetable.dashboard.noSlotToday": "No class scheduled today",
+
+    "messaging.nav.title": "Messaging",
+    "messaging.nav.openLink": "Open messaging",
+    "messaging.nav.lastMessage": "Latest message",
+    "messaging.nav.noRecentMessage": "No recent message.",
+    "messaging.nav.unreadMessages": "Unread messages",
+    "messaging.nav.noUnreadMessage": "No unread message",
+    "messaging.nav.unreadCounterError":
+      "The message counter could not be loaded.",
+    "messaging.nav.unreadHintPositive": "New messages are waiting for you.",
+    "messaging.nav.unreadHintNeutral": "Inbox is up to date",
+    "messaging.nav.previewUnavailable": "Preview unavailable.",
+    "messaging.nav.openMessagingHint": "Messages and follow-up",
+    "messaging.nav.lastMessagePrefix": "Latest",
+    "messaging.nav.noRecentMessageShort": "No recent message",
+
+    "messaging.folders.title": "Folders",
+    "messaging.folders.inbox": "Inbox",
+    "messaging.folders.sent": "Sent",
+    "messaging.folders.drafts": "Drafts",
+    "messaging.folders.archive": "Archive",
+    "messaging.folders.composeButton": "New message",
+
+    "messaging.list.unreadOnly": "Unread",
+    "messaging.list.empty": "No message for this filter.",
+    "messaging.list.panelLabel.inbox": "Inbox",
+    "messaging.list.panelLabel.sent": "Sent messages",
+    "messaging.list.panelLabel.drafts": "Drafts",
+    "messaging.list.panelLabel.archive": "Archived messages",
+
+    "messaging.toolbar.title": "Messaging",
+    "messaging.toolbar.defaultContext": "Internal and family exchanges",
+    "messaging.toolbar.searchPlaceholder": "Search a message...",
+    "messaging.toolbar.refresh": "Refresh",
+    "messaging.toolbar.newMessage": "New message",
+    "messaging.toolbar.currentYear": "Current year",
+    "messaging.toolbar.previousYear": "Previous year",
+
+    "messaging.compose.pageTitle": "New message",
+    "messaging.compose.defaultSubtitle": "School messaging",
+    "messaging.compose.replySuffix": "Reply",
+    "messaging.compose.forwardSuffix": "Forward",
+    "messaging.compose.backToList": "Back to list",
+    "messaging.compose.backToMessaging": "Back to messaging",
+    "messaging.compose.roleNotAllowed":
+      "Your current role cannot send messages.",
+    "messaging.compose.loadError": "Unable to load the message editor.",
+    "messaging.compose.leaveTitle": "Leave the editor?",
+    "messaging.compose.leaveConfirm": "Leave",
+    "messaging.compose.leaveConfirmWithUnsaved":
+      "You have unsaved changes. Consider saving as draft before leaving. Are you sure you want to go back to the message list?",
+    "messaging.compose.leaveConfirmDefault":
+      "Are you sure you want to go back to the message list?",
+    "messaging.compose.forwardedHeader":
+      "---------- Forwarded message ----------",
+    "messaging.compose.forwardedFrom": "From:",
+    "messaging.compose.forwardedDate": "Date:",
+    "messaging.compose.forwardedSubject": "Subject:",
+    "messaging.compose.replyPrefix": "Re",
+    "messaging.compose.forwardPrefix": "Fwd",
+    "messaging.compose.draftDefaultSubject": "Draft without subject",
+
+    "messaging.compose.to": "To",
+    "messaging.compose.noRecipientSelected": "No recipient selected",
+    "messaging.compose.addTeacher": "Add a teacher",
+    "messaging.compose.addStaff": "Add a staff member",
+    "messaging.compose.removeRecipient": "Remove this recipient",
+    "messaging.compose.noRecipientOption": "No recipient selected",
+    "messaging.compose.subject": "Subject",
+    "messaging.compose.subjectPlaceholder": "Message subject",
+    "messaging.compose.message": "Message",
+    "messaging.compose.editorHint":
+      "Tip: after inserting content, check the alignment and headings.",
+    "messaging.compose.attachments": "Attachments",
+    "messaging.compose.dropzoneHint": "Drop your files here, or select a file.",
+    "messaging.compose.fromComputer": "From my computer",
+    "messaging.compose.removeAttachment": "Remove",
+    "messaging.compose.cancel": "Cancel",
+    "messaging.compose.saveDraft": "Save as draft",
+    "messaging.compose.savingDraft": "Saving...",
+    "messaging.compose.clear": "Clear",
+    "messaging.compose.send": "Send",
+    "messaging.compose.sending": "Sending...",
+
+    "messaging.compose.errors.noRecipientGroup":
+      "Please select at least one recipient.",
+    "messaging.compose.errors.noRecipient": "Please select a recipient.",
+    "messaging.compose.errors.noSubject": "Please enter a subject.",
+    "messaging.compose.errors.noBody": "Please enter a message.",
+    "messaging.compose.errors.sendFailed": "Unable to send the message.",
+    "messaging.compose.errors.draftFailed": "Unable to save the draft.",
+    "messaging.compose.info.sendSimulated":
+      "Simulated send. The API connection will be added later.",
+    "messaging.compose.info.draftSimulated": "Draft simulated locally.",
+    "messaging.compose.info.sent": "Message sent.",
+    "messaging.compose.info.draftSaved": "Draft saved.",
+
+    "messaging.compose.teacherModal.title": "Search for teachers",
+    "messaging.compose.teacherModal.close": "Close teacher search",
+    "messaging.compose.teacherModal.nameLabel": "Teacher name",
+    "messaging.compose.teacherModal.subjectLabel": "Subject name",
+    "messaging.compose.teacherModal.classLabel": "Class",
+    "messaging.compose.teacherModal.colName": "Name",
+    "messaging.compose.teacherModal.colSubjects": "Subject(s)",
+    "messaging.compose.teacherModal.colClasses": "Class(es)",
+    "messaging.compose.teacherModal.empty": "No teacher for this filter.",
+    "messaging.compose.teacherModal.close.action": "Close",
+    "messaging.compose.teacherModal.confirm": "Add selection",
+
+    "messaging.compose.staffModal.title": "Search for staff members",
+    "messaging.compose.staffModal.close": "Close staff search",
+    "messaging.compose.staffModal.nameLabel": "Name",
+    "messaging.compose.staffModal.functionLabel": "Role",
+    "messaging.compose.staffModal.allFunctions": "All roles",
+    "messaging.compose.staffModal.colName": "Name",
+    "messaging.compose.staffModal.colFunction": "Role",
+    "messaging.compose.staffModal.empty": "No staff member for this filter.",
+    "messaging.compose.staffModal.close.action": "Close",
+    "messaging.compose.staffModal.confirm": "Add selection",
+
+    "messaging.detail.notFound": "Message not found.",
+    "messaging.detail.backToList": "Back to list",
+    "messaging.detail.selectMessageHint": "Select a message to read it.",
+    "messaging.detail.attachments": "Attachments",
+    "messaging.detail.noAttachments": "No attachment.",
+    "messaging.detail.reply": "Reply",
+    "messaging.detail.forward": "Forward",
+
+    "messaging.actions.markAsRead": "Mark as read",
+    "messaging.actions.markAsUnread": "Mark as unread",
+    "messaging.actions.archive": "Archive",
+    "messaging.actions.unarchive": "Unarchive",
+    "messaging.actions.delete": "Delete",
+    "messaging.actions.restoreFromArchive": "Restore from archive",
+
+    "messaging.attachments.modalDownload": "Download",
+    "messaging.attachments.modalClose": "Close",
+    "messaging.attachments.previewLabel": "Document preview",
+    "messaging.attachments.previewPlaceholder":
+      "Placeholder preview. The actual PDF viewer will be wired once the files API is connected.",
+    "messaging.attachments.previewHint":
+      "Here you will be able to zoom, navigate between pages and download.",
+    "messaging.attachments.addedOn": "Added on Feb 07, 2026",
+
+    "messaging.page.title": "Messaging",
+    "messaging.page.loading": "Loading...",
+    "messaging.page.refreshing": "Refreshing...",
+    "messaging.page.loadError": "Unable to load messaging.",
+    "messaging.page.loadMessageError": "Unable to load the message.",
+    "messaging.page.archiveError": "Unable to update the archive status.",
+    "messaging.page.deleteError": "Unable to delete the message.",
+    "messaging.page.toggleReadError": "Unable to update the read status.",
+    "messaging.page.restoreError": "Unable to restore the message.",
+    "messaging.page.deleteConfirmTitle": "Confirm deletion",
+    "messaging.page.deleteConfirmMessage":
+      "This action is destructive. The message will be deleted from your mailbox.",
+    "messaging.page.deleteConfirmAction": "Delete",
+    "messaging.page.readingSubtitle": "Reading the message",
+    "messaging.page.childDefaultContext": "Family-school exchanges",
+
+    "feed.header.sectionLabel": "Family news feed",
+    "feed.header.greeting": "Hello, follow {scopeLabel} for {childFullName}",
+    "feed.composer.publishPost": "Post an update",
+    "feed.composer.createPoll": "Create a poll",
+    "feed.badge.syncing": "Syncing...",
+    "feed.badge.postCount": "{count} post(s)",
+    "feed.search.placeholder": "Search the feed...",
+    "feed.filters.all": "All",
+    "feed.filters.featured": "Featured",
+    "feed.filters.polls": "Polls",
+    "feed.filters.mine": "My posts",
+    "feed.staffFilters.all": "All",
+    "feed.staffFilters.parents": "Parents/students",
+    "feed.staffFilters.staff": "Staff",
+    "feed.staffFilters.level": "Level",
+    "feed.staffFilters.class": "Class",
+    "feed.composer.titlePlaceholderPoll": "Poll title",
+    "feed.composer.titlePlaceholderPost": "Post title",
+    "feed.composer.audienceTarget": "Target audience: {label}",
+    "feed.composer.editorHint":
+      "Add context, key points and useful links for families.",
+    "feed.composer.pollQuestionPlaceholder": "Poll question",
+    "feed.composer.pollOptionPlaceholder": "Option {number}",
+    "feed.composer.addOption": "Add an option",
+    "feed.composer.attachmentsAriaAdd": "Add attachments to the post",
+    "feed.composer.featuredDaysLabel": "Highlight (days)",
+    "feed.composer.featuredNone": "None",
+    "feed.composer.featured1Day": "1 day",
+    "feed.composer.featured3Days": "3 days",
+    "feed.composer.featured5Days": "5 days",
+    "feed.composer.featured7Days": "7 days",
+    "feed.composer.publish": "Publish",
+    "feed.info.loadError":
+      "Unable to load the feed from the server, showing local data.",
+    "feed.info.pollPublished": "Poll published.",
+    "feed.info.postPublished": "Post added to the feed.",
+    "feed.info.publishedLocalOnly":
+      "Post saved locally only (API unavailable).",
+    "feed.info.updated": "Post updated.",
+    "feed.info.updatedLocalOnly": "Post updated locally only.",
+    "feed.info.deleteLocalOnly": "Deleted locally only (API unavailable).",
+    "feed.info.voteLocalOnly": "Vote saved locally only (API unavailable).",
+    "feed.localAuthor.fullName": "Teaching team",
+    "feed.localAuthor.roleLabelPoll": "Poll",
+    "feed.localAuthor.roleLabelPost": "Post",
+    "feed.localAuthor.you": "You",
+    "feed.post.pollBadge": "POLL",
+    "feed.post.featuredLabel": "Featured post",
+    "feed.post.voteCount": "{count} vote(s)",
+    "feed.edit.titlePlaceholder": "Post title",
+    "feed.edit.pollQuestionPlaceholder": "Poll question",
+    "feed.edit.pollOptionPlaceholder": "Option {number}",
+    "feed.edit.addOption": "Add an option",
+    "feed.edit.attachmentsAriaEdit": "Edit the post's attachments",
+    "feed.edit.removeAttachmentAria": "Remove {fileName}",
+    "feed.edit.remove": "Remove",
+    "feed.edit.noAttachments": "No attachments.",
+    "feed.edit.cancel": "Cancel",
+    "feed.edit.saving": "Saving...",
+    "feed.edit.save": "Save",
+    "feed.reactions.unlikeAria": "Remove like ({count})",
+    "feed.reactions.likeAria": "Like ({count})",
+    "feed.reactions.hideCommentsAria": "Hide comments ({count})",
+    "feed.reactions.showCommentsAria": "View comments ({count})",
+    "feed.reactions.hideReaction": "Hide reaction",
+    "feed.reactions.react": "React",
+    "feed.reactions.editAria": "Edit the post",
+    "feed.reactions.editTitle": "Edit",
+    "feed.reactions.deleteAria": "Delete the post",
+    "feed.reactions.deleteTitle": "Delete",
+    "feed.comments.empty": "No comments yet.",
+    "feed.comments.placeholder": "Add a comment...",
+    "feed.comments.addEmojiAria": "Add {emoji}",
+    "feed.comments.submit": "Comment",
+    "feed.pagination.loadMore": "Scroll to load more",
+    "feed.pagination.end": "End of feed",
+    "feed.deleteDialog.title": "Delete this post?",
+    "feed.deleteDialog.message": 'This action is permanent. Post: "{title}".',
+    "feed.deleteDialog.confirm": "Delete",
+    "feed.deleteDialog.cancel": "Cancel",
+
+    "feed.audience.staffOnly": "Staff only",
+    "feed.audience.parentsAndStudents": "Parents and students",
+    "feed.audience.parentsAndStudentsSchool": "Parents and students (school)",
+    "feed.audience.parentsOnly": "Parents only",
+    "feed.audience.wholeSchool": "Whole school",
+    "feed.audience.classAllLabel":
+      "Class {className} (students, parents, teachers)",
+    "feed.audience.classParentsStudentsLabel":
+      "Class {className} parents/students",
+    "feed.audience.classParentsStudentsGeneric": "Parents/students of a class",
+    "feed.audience.classGeneric": "Class (students, parents, teachers)",
+    "feed.audience.classCommunity": "Class community",
+    "feed.audience.levelLabel": "Level {levelLabel}",
+
+    "feed.levels.6e": "Grade 6",
+    "feed.levels.5e": "Grade 5",
+    "feed.levels.4e": "Grade 4",
+    "feed.levels.3e": "Grade 3",
+    "feed.levels.default": "Level",
+
+    "feed.classDefaults.6eA": "Grade 6 A",
+    "feed.classDefaults.6eB": "Grade 6 B",
+    "feed.classDefaults.6eC": "Grade 6 C",
+    "feed.classDefaults.5eA": "Grade 5 A",
+    "feed.classDefaults.current": "Current class",
+    "feed.classDefaults.fallback": "Class",
+  },
+};

@@ -1,5 +1,6 @@
 import { Download, X } from "lucide-react";
 import type { MessageAttachment } from "./types";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   attachment: MessageAttachment | null;
@@ -10,6 +11,8 @@ export function MessagingAttachmentPreviewModal({
   attachment,
   onClose,
 }: Props) {
+  const { t } = useTranslation();
+
   if (!attachment) {
     return null;
   }
@@ -36,13 +39,13 @@ export function MessagingAttachmentPreviewModal({
               className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-3 py-1.5 text-sm text-text-primary transition hover:bg-primary/10"
             >
               <Download className="h-4 w-4" />
-              Telecharger
+              {t("messaging.attachments.modalDownload")}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="inline-flex h-9 w-9 items-center justify-center rounded-card border border-border bg-background text-text-secondary transition hover:bg-notification/10 hover:text-notification"
-              aria-label="Fermer"
+              aria-label={t("messaging.attachments.modalClose")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -52,7 +55,7 @@ export function MessagingAttachmentPreviewModal({
         <div className="grid place-items-center bg-slate-100 p-4">
           <div className="h-full w-full max-w-4xl overflow-hidden rounded-card border border-slate-300 bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              <span>Apercu document</span>
+              <span>{t("messaging.attachments.previewLabel")}</span>
               <span>{attachment.mimeType}</span>
             </div>
             <div className="grid h-[calc(100%-33px)] place-items-center p-4">
@@ -61,12 +64,10 @@ export function MessagingAttachmentPreviewModal({
                   {attachment.fileName}
                 </p>
                 <p className="text-sm">
-                  Apercu factice. Le lecteur PDF reel sera branche quand l'API
-                  de fichiers sera connectee.
+                  {t("messaging.attachments.previewPlaceholder")}
                 </p>
                 <p className="mt-4 text-xs text-slate-500">
-                  Vous pourrez ici zoomer, naviguer entre les pages et
-                  telecharger.
+                  {t("messaging.attachments.previewHint")}
                 </p>
               </div>
             </div>
@@ -74,7 +75,7 @@ export function MessagingAttachmentPreviewModal({
         </div>
 
         <footer className="border-t border-border px-4 py-2 text-xs text-text-secondary">
-          Ajoute le 07 fev. 2026
+          {t("messaging.attachments.addedOn")}
         </footer>
       </div>
     </div>

@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LandingLoginForm } from "./landing-login-form";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 const pushMock = vi.fn();
 
@@ -16,6 +18,8 @@ describe("LandingLoginForm UI", () => {
   beforeEach(() => {
     pushMock.mockReset();
     vi.restoreAllMocks();
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("does not show inline errors on initial render", () => {
@@ -31,6 +35,69 @@ describe("LandingLoginForm UI", () => {
       screen.queryByText("Adresse email invalide."),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Mot de passe requis.")).not.toBeInTheDocument();
+  });
+
+  it("affiche le sélecteur de langue de l'appareil avec FR sélectionné par défaut", () => {
+    render(<LandingLoginForm />);
+
+    expect(screen.getByTestId("login-language-switcher")).toBeInTheDocument();
+    expect(screen.getByTestId("login-language-fr")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByTestId("login-language-en")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("bascule la langue de l'appareil en anglais au clic sur EN", () => {
+    render(<LandingLoginForm />);
+
+    fireEvent.click(screen.getByTestId("login-language-en"));
+
+    expect(useLocaleStore.getState().locale).toBe("en");
+    expect(screen.getByTestId("login-language-en")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("traduit le contenu du formulaire en anglais quand la langue EN est active", () => {
+    useLocaleStore.setState({ locale: "en" });
+    render(<LandingLoginForm />);
+
+    expect(screen.getAllByText("Phone + PIN").length).toBeGreaterThan(0);
+    expect(screen.getByText("Email + Password")).toBeInTheDocument();
+    expect(screen.getByLabelText("Phone")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Sign in with phone + PIN" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByText("Forgot PIN?")).toBeInTheDocument();
+    expect(screen.getByText("Forgot password?")).toBeInTheDocument();
+    expect(screen.getByText("Google / Apple")).toBeInTheDocument();
+    expect(screen.getByText("School SSO")).toBeInTheDocument();
+  });
+
+  it("affiche les messages de validation en anglais quand la langue EN est active", () => {
+    useLocaleStore.setState({ locale: "en" });
+    render(<LandingLoginForm />);
+
+    fireEvent.input(screen.getByLabelText("Phone"), {
+      target: { value: "12" },
+    });
+    fireEvent.input(screen.getByLabelText("PIN"), {
+      target: { value: "1234" },
+    });
+
+    expect(
+      screen.getByText("Invalid number (9 digits expected)."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Invalid PIN (6 digits expected)."),
+    ).toBeInTheDocument();
   });
 
   it("shows phone and pin inline validation errors after input interactions", () => {

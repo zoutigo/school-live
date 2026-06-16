@@ -19,6 +19,8 @@ import { FormField } from "../../components/ui/form-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { extractAvailableRoles, type Role } from "../../lib/role-view";
+import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -32,7 +34,7 @@ const staffAssignmentSchema = z.object({
   userId: z.string().min(1, "Selectionnez un personnel."),
 });
 
-type Tab = "navigation" | "staff" | "help";
+type Tab = "navigation" | "staff" | "help" | "language";
 
 type MeResponse = {
   role: Role | null;
@@ -118,6 +120,7 @@ function getHomeRoute(role: Role, schoolSlug: string | null): string {
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("navigation");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -470,7 +473,7 @@ export default function SettingsPage() {
       schoolName={schoolSlug ? `Etablissement (${schoolSlug})` : "Plateforme"}
     >
       <div className="grid gap-4">
-        <Card title="Parametres" subtitle="Preferences de navigation">
+        <Card title={t("settings.title")} subtitle={t("settings.subtitle")}>
           <div className="mb-4 flex items-end gap-2 border-b border-border">
             <button
               type="button"
@@ -481,7 +484,18 @@ export default function SettingsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Navigation
+              {t("settings.tab.navigation")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("language")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "language"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              {t("settings.tab.language")}
             </button>
             <button
               type="button"
@@ -492,7 +506,7 @@ export default function SettingsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Aide
+              {t("settings.tab.help")}
             </button>
             {canReadStaff ? (
               <button
@@ -504,7 +518,7 @@ export default function SettingsPage() {
                     : "text-text-secondary"
                 }`}
               >
-                Personnel
+                {t("settings.tab.staff")}
               </button>
             ) : null}
           </div>
@@ -575,6 +589,21 @@ export default function SettingsPage() {
                 </div>
               </div>
             )
+          ) : tab === "language" ? (
+            <div className="grid gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">
+                  {t("settings.language.title")}
+                </h3>
+                <p className="text-sm text-text-secondary">
+                  {t("settings.language.subtitle")}
+                </p>
+              </div>
+              <LanguageSwitcher />
+              <p className="text-sm text-text-secondary">
+                {t("settings.language.hint")}
+              </p>
+            </div>
           ) : tab === "staff" ? (
             !canReadStaff ? (
               <p className="text-sm text-text-secondary">

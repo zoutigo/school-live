@@ -7,6 +7,7 @@
  */
 import { ForbiddenException } from "@nestjs/common";
 import { TimetableService } from "../src/timetable/timetable.service.js";
+import { translateTimetableError } from "../src/timetable/timetable.translations.js";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -314,7 +315,9 @@ describe("deleteOneOffSlot — permissions", () => {
     const user = makeUser("teacher-albert", "TEACHER");
     await expect(
       service.deleteOneOffSlot(user, "school-1", "oof-missing"),
-    ).rejects.toThrow("One-off slot not found");
+    ).rejects.toThrow(
+      translateTimetableError("fr", "timetable.errors.oneOffSlotNotFound"),
+    );
   });
 });
 

@@ -9,6 +9,10 @@ import type {
   TimetableChangeMailPayload,
   TemporaryPasswordMailPayload,
 } from "../../mail/mail.types.js";
+import {
+  lifeEventTypeMailLabel,
+  translateStudentLifeEventMail,
+} from "../../mail/student-life-event-mail.translations.js";
 import type { EmailPort } from "./email.port.js";
 
 @Injectable()
@@ -151,8 +155,21 @@ export class SmtpEmailAdapter implements EmailPort {
     const schoolUrl = payload.schoolSlug
       ? `${webUrl}/schools/${payload.schoolSlug}/dashboard`
       : `${webUrl}/`;
-    const actionLabel =
-      payload.eventAction === "UPDATED" ? "mis a jour" : "enregistre";
+    const locale = payload.locale;
+    const tr = (key: string, params?: Record<string, string>) =>
+      translateStudentLifeEventMail(locale, key, params);
+    const actionLabel = tr(
+      payload.eventAction === "UPDATED"
+        ? "discipline.mail.actionUpdated"
+        : "discipline.mail.actionCreated",
+    );
+    const eventTypeLabel = lifeEventTypeMailLabel(locale, payload.eventType);
+    const subject = tr(
+      payload.eventAction === "UPDATED"
+        ? "discipline.mail.subjectUpdated"
+        : "discipline.mail.subjectCreated",
+    );
+    const studentFullName = `${payload.studentFirstName} ${payload.studentLastName}`;
 
     const transporter = nodemailer.createTransport({
       host,
@@ -164,24 +181,28 @@ export class SmtpEmailAdapter implements EmailPort {
     await transporter.sendMail({
       from,
       to: payload.to,
-      subject: `Scolive - Evenement vie scolaire ${actionLabel}`,
+      subject,
       text: [
-        `Bonjour ${payload.parentFirstName},`,
+        tr("discipline.mail.greeting", { firstName: payload.parentFirstName }),
         "",
-        `Un evenement de vie scolaire a ete ${actionLabel} pour ${payload.studentFirstName} ${payload.studentLastName}.`,
-        `Type: ${payload.eventTypeLabel}`,
-        `Motif: ${payload.eventReason}`,
-        `Date: ${payload.eventDate}`,
-        payload.className ? `Classe: ${payload.className}` : "",
-        payload.authorFullName ? `Saisi par: ${payload.authorFullName}` : "",
+        tr("discipline.mail.intro", { action: actionLabel, studentFullName }),
+        `${tr("discipline.mail.type")}: ${eventTypeLabel}`,
+        `${tr("discipline.mail.reason")}: ${payload.eventReason}`,
+        `${tr("discipline.mail.date")}: ${payload.eventDate}`,
+        payload.className
+          ? `${tr("discipline.mail.class")}: ${payload.className}`
+          : "",
+        payload.authorFullName
+          ? `${tr("discipline.mail.author")}: ${payload.authorFullName}`
+          : "",
         "",
-        `Consulter le portail: ${schoolUrl}`,
+        `${tr("discipline.mail.consultPortal")}: ${schoolUrl}`,
       ]
         .filter(Boolean)
         .join("\n"),
       html: `
 <!doctype html>
-<html lang="fr">
+<html lang="${locale}">
   <body style="margin:0;padding:0;background:#F8F9FA;font-family:Roboto,Arial,sans-serif;color:#212529;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F8F9FA;padding:24px 0;">
       <tr>
@@ -195,23 +216,22 @@ export class SmtpEmailAdapter implements EmailPort {
             <tr>
               <td style="padding:24px;">
                 <h1 style="margin:0 0 12px;font-family:Poppins,Arial,sans-serif;font-size:22px;line-height:1.3;color:#212529;">
-                  Bonjour ${payload.parentFirstName},
+                  ${tr("discipline.mail.greeting", { firstName: payload.parentFirstName })}
                 </h1>
                 <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4A4A4A;">
-                  Un evenement de vie scolaire a ete <strong>${actionLabel}</strong> pour
-                  <strong>${payload.studentFirstName} ${payload.studentLastName}</strong>.
+                  ${tr("discipline.mail.intro", { action: `<strong>${actionLabel}</strong>`, studentFullName: `<strong>${studentFullName}</strong>` })}
                 </p>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 16px;background:#F8F9FA;border:1px solid #E3E6E8;border-radius:8px;">
                   <tr><td style="padding:12px 16px;font-size:14px;color:#4A4A4A;">
-                    <div><strong>Type :</strong> ${payload.eventTypeLabel}</div>
-                    <div><strong>Motif :</strong> ${payload.eventReason}</div>
-                    <div><strong>Date :</strong> ${payload.eventDate}</div>
-                    ${payload.className ? `<div><strong>Classe :</strong> ${payload.className}</div>` : ""}
-                    ${payload.authorFullName ? `<div><strong>Saisi par :</strong> ${payload.authorFullName}</div>` : ""}
+                    <div><strong>${tr("discipline.mail.type")} :</strong> ${eventTypeLabel}</div>
+                    <div><strong>${tr("discipline.mail.reason")} :</strong> ${payload.eventReason}</div>
+                    <div><strong>${tr("discipline.mail.date")} :</strong> ${payload.eventDate}</div>
+                    ${payload.className ? `<div><strong>${tr("discipline.mail.class")} :</strong> ${payload.className}</div>` : ""}
+                    ${payload.authorFullName ? `<div><strong>${tr("discipline.mail.author")} :</strong> ${payload.authorFullName}</div>` : ""}
                   </td></tr>
                 </table>
                 <a href="${schoolUrl}" style="display:inline-block;background:#0A62BF;color:#FFFFFF;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">
-                  Ouvrir le portail
+                  ${tr("discipline.mail.openPortal")}
                 </a>
               </td>
             </tr>

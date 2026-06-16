@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { Card } from "../ui/card";
 import { ModuleHelpTab } from "../ui/module-help-tab";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -67,6 +68,7 @@ export function ChildModulePage({
   hideSecondaryTabs = false,
   hideModuleHeader = false,
 }: Props) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"content" | "help">("content");
@@ -209,7 +211,13 @@ export function ChildModulePage({
                 href={`/schools/${schoolSlug}/children/${childId}/${item.key}`}
                 className={`section-tab ${currentTab === item.key ? "section-tab-active" : ""}`}
               >
-                {item.label}
+                {item.key === "vie-scolaire"
+                  ? t("discipline.sidebar.vieScolaire")
+                  : item.key === "cahier-de-texte"
+                    ? t("homework.sidebar.cahierDeTexte")
+                    : item.key === "messagerie"
+                      ? t("messaging.nav.title")
+                      : item.label}
               </Link>
             ))}
           </div>

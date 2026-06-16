@@ -10,6 +10,7 @@ import {
   getClassContext,
   type MeResponse,
 } from "../_shared";
+import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 const ALLOWED_ROLES = [
   "TEACHER",
@@ -36,6 +37,7 @@ export default function TeacherClassFeedPage() {
     | "SUPERVISOR"
     | "SCHOOL_STAFF"
   >("TEACHER");
+  const { t } = useTranslation();
 
   useEffect(() => {
     void bootstrap();
@@ -76,7 +78,7 @@ export default function TeacherClassFeedPage() {
 
       if (!contextResponse.ok) {
         if (me.role === "TEACHER") {
-          setError("Impossible de charger le contexte de classe.");
+          setError(t("feed.classPage.contextError"));
         }
         return;
       }
@@ -95,7 +97,7 @@ export default function TeacherClassFeedPage() {
         }
       }
     } catch {
-      setError("Erreur reseau.");
+      setError(t("feed.classPage.networkError"));
     } finally {
       setLoading(false);
     }
@@ -103,15 +105,21 @@ export default function TeacherClassFeedPage() {
 
   if (loading) {
     return (
-      <Card title="Fil de classe" subtitle="Chargement de la classe">
-        <p className="text-sm text-text-secondary">Chargement...</p>
+      <Card
+        title={t("feed.classPage.title")}
+        subtitle={t("feed.classPage.loadingSubtitle")}
+      >
+        <p className="text-sm text-text-secondary">{t("common.loading")}</p>
       </Card>
     );
   }
 
   if (error) {
     return (
-      <Card title="Fil de classe" subtitle="Echanges classe">
+      <Card
+        title={t("feed.classPage.title")}
+        subtitle={t("feed.classPage.exchangesSubtitle")}
+      >
         <p className="text-sm text-notification">{error}</p>
       </Card>
     );
@@ -120,8 +128,10 @@ export default function TeacherClassFeedPage() {
   return (
     <FamilyFeedPage
       schoolSlug={schoolSlug}
-      childFullName={classContext?.className ?? "la classe"}
-      scopeLabel="la vie de classe"
+      childFullName={
+        classContext?.className ?? t("feed.classPage.defaultClassName")
+      }
+      scopeLabel={t("feed.scope.class")}
       viewerRole={viewerRole}
       viewScope="CLASS"
       currentClassId={classId}

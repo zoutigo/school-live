@@ -1,5 +1,6 @@
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { ForbiddenException } from "@nestjs/common";
 import { HomeworkService } from "../src/homework/homework.service";
+import { translateHomeworkError } from "../src/homework/homework.translations";
 
 describe("HomeworkService", () => {
   const prisma = {
@@ -30,6 +31,7 @@ describe("HomeworkService", () => {
     profileCompleted: true,
     firstName: "Albert",
     lastName: "Mvondo",
+    preferredLocale: "FR" as const,
   };
 
   beforeEach(() => {
@@ -343,6 +345,7 @@ describe("HomeworkService", () => {
         profileCompleted: true,
         firstName: "Robert",
         lastName: "Ntamack",
+        preferredLocale: "FR" as const,
       };
 
       await expect(
@@ -350,7 +353,49 @@ describe("HomeworkService", () => {
           done: true,
           // studentId omis
         }),
-      ).rejects.toBeInstanceOf(BadRequestException);
+      ).rejects.toMatchObject({
+        message: translateHomeworkError(
+          "fr",
+          "homework.errors.studentIdRequiredForParent",
+        ),
+      });
+    });
+
+    it("exige studentId avec un message anglais quand preferredLocale=EN", async () => {
+      const prismaForTest = makePrismaForCompletion([
+        { student: STUDENT_RECORD },
+        {
+          student: { id: "student-2", firstName: "Jean", lastName: "Mbele" },
+        },
+      ]);
+      const svc = new HomeworkService(
+        prismaForTest as never,
+        mediaClientService as never,
+        inlineMediaService as never,
+      );
+
+      const parentUser = {
+        id: "parent-1",
+        activeRole: "PARENT",
+        platformRoles: [] as never[],
+        memberships: [{ schoolId: "school-1", role: "PARENT" as const }],
+        profileCompleted: true,
+        firstName: "Robert",
+        lastName: "Ntamack",
+        preferredLocale: "EN" as const,
+      };
+
+      await expect(
+        svc.setCompletion(parentUser as never, "school-1", "class-1", "hw-1", {
+          done: true,
+          // studentId omitted
+        }),
+      ).rejects.toMatchObject({
+        message: translateHomeworkError(
+          "en",
+          "homework.errors.studentIdRequiredForParent",
+        ),
+      });
     });
 
     it("bloque un parent sans lien avec la classe sur setCompletion", async () => {
@@ -415,6 +460,59 @@ describe("HomeworkService", () => {
         "class-1",
         await (service as any).findHomeworkOrThrow(),
       ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).rejects.toMatchObject({
+      message: translateHomeworkError(
+        "fr",
+        "homework.errors.onlyAuthorCanManage",
+      ),
+    });
+  });
+
+  it("forbids a teacher from managing another teacher homework with an English message for preferredLocale=EN", async () => {
+    (service as any).ensureClassManageAccess = jest.fn().mockResolvedValue({
+      id: "class-1",
+      schoolYearId: "sy-1",
+    });
+    (service as any).findHomeworkOrThrow = jest.fn().mockResolvedValue({
+      id: "hw-1",
+      schoolId: "school-1",
+      schoolYearId: "sy-1",
+      classId: "class-1",
+      subjectId: "sub-1",
+      authorUserId: "teacher-2",
+      title: "Preparation",
+      contentHtml: null,
+      expectedAt: new Date("2026-05-05T07:00:00.000Z"),
+      attachments: [],
+      comments: [],
+      completions: [],
+      _count: { comments: 0 },
+      subject: { id: "sub-1", name: "Mathematiques" },
+      authorUser: {
+        id: "teacher-2",
+        firstName: "Aline",
+        lastName: "Bika",
+        memberships: [{ schoolId: "school-1", role: "TEACHER" as const }],
+      },
+    });
+
+    const englishTeacherUser = {
+      ...teacherUser,
+      preferredLocale: "EN" as const,
+    };
+
+    await expect(
+      (service as any).assertCanManageHomework(
+        englishTeacherUser,
+        "school-1",
+        "class-1",
+        await (service as any).findHomeworkOrThrow(),
+      ),
+    ).rejects.toMatchObject({
+      message: translateHomeworkError(
+        "en",
+        "homework.errors.onlyAuthorCanManage",
+      ),
+    });
   });
 });

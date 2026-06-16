@@ -30,6 +30,7 @@ export interface AuthenticatedUser {
   firstName: string;
   lastName: string;
   gender?: "M" | "F" | "OTHER" | null;
+  preferredLocale?: "FR" | "EN";
 }
 
 export interface AuthResponse {

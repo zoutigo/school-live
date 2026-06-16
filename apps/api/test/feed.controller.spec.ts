@@ -68,6 +68,17 @@ describe("FeedController", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("translates the missing image file message based on preferredLocale", async () => {
+    await expect(
+      controller.uploadInlineImage(user, "school-1", undefined),
+    ).rejects.toThrow("Fichier image manquant.");
+
+    const enUser = { ...user, preferredLocale: "EN" as const };
+    await expect(
+      controller.uploadInlineImage(enUser, "school-1", undefined),
+    ).rejects.toThrow("Missing image file.");
+  });
+
   it("delegates likes and comments to service", async () => {
     await controller.toggleLike(user, "school-1", "post-1");
     expect(feedService.toggleLike).toHaveBeenCalledWith(

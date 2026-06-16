@@ -326,19 +326,27 @@ describe("Eleves page parent link modes", () => {
         "Vous devez remplir correctement les champs obligatoires.",
       ).length,
     ).toBeGreaterThan(0);
-    expect(screen.getByPlaceholderText("Motif de l'evenement")).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
+    expect(
+      screen.getByPlaceholderText(
+        "Ex: travail non rendu, absence non justifiee",
+      ),
+    ).toHaveAttribute("aria-invalid", "true");
 
-    fireEvent.change(screen.getByPlaceholderText("Motif de l'evenement"), {
-      target: { value: "Absence justifiee" },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Ex: travail non rendu, absence non justifiee",
+      ),
+      {
+        target: { value: "Absence justifiee" },
+      },
+    );
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
       expect(
-        screen.getByPlaceholderText("Motif de l'evenement"),
+        screen.getByPlaceholderText(
+          "Ex: travail non rendu, absence non justifiee",
+        ),
       ).toHaveAttribute("aria-invalid", "false");
     });
 
@@ -468,10 +476,10 @@ describe("Eleves page parent link modes", () => {
     );
 
     const saveButton = await screen.findByRole("button", {
-      name: "Enregistrer",
+      name: "Enregistrer les modifications",
     });
 
-    fireEvent.change(screen.getByLabelText("Motif edition evenement"), {
+    fireEvent.change(screen.getByLabelText("Motif edition"), {
       target: { value: "" },
     });
 
@@ -480,7 +488,7 @@ describe("Eleves page parent link modes", () => {
       expect(saveButton).toBeDisabled();
     });
 
-    fireEvent.change(screen.getByLabelText("Motif edition evenement"), {
+    fireEvent.change(screen.getByLabelText("Motif edition"), {
       target: { value: "Absence corrigee" },
     });
 

@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 
+import { useTranslation } from "../../i18n/useTranslation";
+
 type RecoveryShellProps = {
   title: string;
   children: ReactNode;
@@ -15,6 +17,8 @@ export function RecoveryShell({
   contentMaxWidthClassName = "max-w-3xl",
   centerContent = true,
 }: RecoveryShellProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex h-screen flex-col overflow-x-hidden bg-background text-text-primary">
       <header
@@ -29,7 +33,9 @@ export function RecoveryShell({
             <p className="font-heading text-sm font-semibold text-text-primary">
               scolive
             </p>
-            <p className="text-xs text-text-secondary">Portail recuperation</p>
+            <p className="text-xs text-text-secondary">
+              {t("recoveryShell.subtitle")}
+            </p>
           </div>
         </div>
 

@@ -2,6 +2,7 @@
 
 import { Archive, ArchiveRestore, Mail, MailOpen, Trash2 } from "lucide-react";
 import { ActionIconButton } from "../ui/action-icon-button";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   archivedView: boolean;
@@ -20,12 +21,17 @@ export function MessagingMessageActions({
   unread = false,
   onToggleRead,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-1.5 min-[360px]:gap-2">
       {onToggleRead ? (
         <ActionIconButton
           icon={unread ? MailOpen : Mail}
-          label={unread ? "Marquer comme lu" : "Marquer comme non lu"}
+          label={
+            unread
+              ? t("messaging.actions.markAsRead")
+              : t("messaging.actions.markAsUnread")
+          }
           variant="neutral"
           onClick={onToggleRead}
           disabled={busy}
@@ -34,7 +40,11 @@ export function MessagingMessageActions({
       ) : null}
       <ActionIconButton
         icon={archivedView ? ArchiveRestore : Archive}
-        label={archivedView ? "Desarchiver" : "Archiver"}
+        label={
+          archivedView
+            ? t("messaging.actions.unarchive")
+            : t("messaging.actions.archive")
+        }
         variant="primary"
         onClick={onArchiveToggle}
         disabled={busy}
@@ -42,7 +52,7 @@ export function MessagingMessageActions({
       />
       <ActionIconButton
         icon={Trash2}
-        label="Supprimer"
+        label={t("messaging.actions.delete")}
         variant="destructive"
         onClick={onDelete}
         disabled={busy}

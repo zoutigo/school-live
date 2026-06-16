@@ -142,4 +142,52 @@ describe("Personal profile API e2e", () => {
     });
     expect(loginPhone.response.status).toBe(201);
   });
+
+  it("exposes and updates the account preferred language", async () => {
+    const login = await apiJson("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    expect(login.response.status).toBe(201);
+    const accessToken = String(login.body?.accessToken ?? "");
+
+    const me = await apiJson("/api/me", {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(me.response.status).toBe(200);
+    expect(me.body?.preferredLocale).toBe("FR");
+
+    const update = await apiJson("/api/me/language", {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ preferredLocale: "EN" }),
+    });
+    expect(update.response.status).toBe(200);
+    expect(update.body?.preferredLocale).toBe("EN");
+
+    const updated = await prisma.user.findUniqueOrThrow({
+      where: { email },
+    });
+    expect(updated.preferredLocale).toBe("EN");
+
+    const meAfter = await apiJson("/api/me", {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    expect(meAfter.response.status).toBe(200);
+    expect(meAfter.body?.preferredLocale).toBe("EN");
+
+    const invalid = await apiJson("/api/me/language", {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ preferredLocale: "DE" }),
+    });
+    expect(invalid.response.status).toBe(400);
+  });
 });

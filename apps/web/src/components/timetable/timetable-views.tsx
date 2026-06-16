@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
 export type TimetableViewMode = "day" | "week" | "month";
 
@@ -40,15 +41,17 @@ type TimetableViewsProps = {
   monthEmptyLabel?: string;
 };
 
-const WEEKDAY_OPTIONS = [
-  { value: 1, label: "Lundi" },
-  { value: 2, label: "Mardi" },
-  { value: 3, label: "Mercredi" },
-  { value: 4, label: "Jeudi" },
-  { value: 5, label: "Vendredi" },
-  { value: 6, label: "Samedi" },
-  { value: 7, label: "Dimanche" },
-];
+function getWeekdayOptions(t: TranslateFn) {
+  return [
+    { value: 1, label: t("timetable.agenda.weekdays.1") },
+    { value: 2, label: t("timetable.agenda.weekdays.2") },
+    { value: 3, label: t("timetable.agenda.weekdays.3") },
+    { value: 4, label: t("timetable.agenda.weekdays.4") },
+    { value: 5, label: t("timetable.agenda.weekdays.5") },
+    { value: 6, label: t("timetable.agenda.weekdays.6") },
+    { value: 7, label: t("timetable.agenda.weekdays.7") },
+  ];
+}
 
 function minutesToTimeValue(totalMinutes: number) {
   const normalized = Number.isFinite(totalMinutes)
@@ -186,9 +189,12 @@ function subjectVisualTone(subjectColorHex: string | undefined) {
   };
 }
 
-function teacherPrefixFromGender(gender: string | null | undefined) {
+function teacherPrefixFromGender(
+  t: TranslateFn,
+  gender: string | null | undefined,
+) {
   if (!gender) {
-    return "Mr";
+    return t("timetable.agenda.teacherPrefix.mr");
   }
   const normalized = gender.trim().toUpperCase();
   if (
@@ -197,9 +203,9 @@ function teacherPrefixFromGender(gender: string | null | undefined) {
     normalized === "FEMININE" ||
     normalized === "F"
   ) {
-    return "Mme";
+    return t("timetable.agenda.teacherPrefix.mrs");
   }
-  return "Mr";
+  return t("timetable.agenda.teacherPrefix.mr");
 }
 
 function subjectShortLabel(subjectName: string) {
@@ -207,11 +213,11 @@ function subjectShortLabel(subjectName: string) {
   return firstWord.slice(0, 3).toUpperCase();
 }
 
-function formatTeacherDisplay(slot: TimetableDisplaySlot) {
+function formatTeacherDisplay(t: TranslateFn, slot: TimetableDisplaySlot) {
   if (!slot.teacherGender) {
     return slot.teacherName;
   }
-  return `${teacherPrefixFromGender(slot.teacherGender)} ${slot.teacherName}`;
+  return `${teacherPrefixFromGender(t, slot.teacherGender)} ${slot.teacherName}`;
 }
 
 export function TimetableViews({
@@ -223,10 +229,17 @@ export function TimetableViews({
   isCompactViewport,
   subjectColorsBySubjectId,
   onSlotClick,
-  dayEmptyLabel = "Aucun creneau pour cette journee.",
-  monthEmptyLabel = "Aucun creneau pour ce jour.",
+  dayEmptyLabel,
+  monthEmptyLabel,
 }: TimetableViewsProps) {
+  const { t } = useTranslation();
+  const resolvedDayEmptyLabel =
+    dayEmptyLabel ?? t("timetable.views.dayEmptyDefault");
+  const resolvedMonthEmptyLabel =
+    monthEmptyLabel ?? t("timetable.views.monthEmptyDefault");
   const today = stripTime(new Date());
+
+  const weekdayOptions = useMemo(() => getWeekdayOptions(t), [t]);
 
   const weekStart = useMemo(() => startOfWeek(cursorDate), [cursorDate]);
   const weekDays = useMemo<WeekDay[]>(
@@ -236,11 +249,11 @@ export function TimetableViews({
         return {
           weekday: index + 1,
           date,
-          label: WEEKDAY_OPTIONS[index]?.label ?? "",
-          shortLabel: WEEKDAY_OPTIONS[index]?.label.slice(0, 3) ?? "",
+          label: weekdayOptions[index]?.label ?? "",
+          shortLabel: weekdayOptions[index]?.label.slice(0, 3) ?? "",
         };
       }),
-    [weekStart],
+    [weekStart, weekdayOptions],
   );
 
   const daySlots = useMemo(
@@ -299,13 +312,13 @@ export function TimetableViews({
 
   const visibleWeekdayOptions = useMemo(
     () =>
-      WEEKDAY_OPTIONS.filter(
+      weekdayOptions.filter(
         (entry) =>
           entry.value <= 5 ||
           (entry.value === 6 && showSaturday) ||
           (entry.value === 7 && showSunday),
       ),
-    [showSaturday, showSunday],
+    [weekdayOptions, showSaturday, showSunday],
   );
 
   const monthColumns = visibleWeekdayOptions.length;
@@ -548,18 +561,18 @@ export function TimetableViews({
   }, [selectedMonthDate, slots]);
 
   const dayTabLabel = sameDate(cursorDate, today)
-    ? "Aujourd'hui"
+    ? t("timetable.views.today")
     : new Intl.DateTimeFormat("fr-FR", {
         day: "2-digit",
         month: "short",
       }).format(cursorDate);
   const weekTabLabel = sameDate(startOfWeek(cursorDate), startOfWeek(today))
-    ? "Cette semaine"
+    ? t("timetable.views.thisWeek")
     : formatWeekRangeLabel(cursorDate);
   const monthTabLabel =
     cursorDate.getMonth() === today.getMonth() &&
     cursorDate.getFullYear() === today.getFullYear()
-      ? "Ce mois"
+      ? t("timetable.views.thisMonth")
       : formatMonthLabel(cursorDate);
   const activePeriodLabel =
     viewMode === "day"
@@ -568,7 +581,11 @@ export function TimetableViews({
         ? weekTabLabel
         : monthTabLabel;
   const activeModeLabel =
-    viewMode === "day" ? "Jour" : viewMode === "week" ? "Semaine" : "Mois";
+    viewMode === "day"
+      ? t("timetable.views.modeDay")
+      : viewMode === "week"
+        ? t("timetable.views.modeWeek")
+        : t("timetable.views.modeMonth");
 
   function moveCursorForMode(mode: TimetableViewMode, direction: -1 | 1) {
     if (mode === "day") {
@@ -605,9 +622,9 @@ export function TimetableViews({
           <div className="grid min-w-0 grid-cols-3 gap-1 rounded-[8px] border border-[#DCE8F7] bg-[#F8FBFF] p-1">
             {(
               [
-                { key: "day", label: "Jour" },
-                { key: "week", label: "Semaine" },
-                { key: "month", label: "Mois" },
+                { key: "day", label: t("timetable.views.modeDay") },
+                { key: "week", label: t("timetable.views.modeWeek") },
+                { key: "month", label: t("timetable.views.modeMonth") },
               ] as Array<{ key: TimetableViewMode; label: string }>
             ).map((tabOption) => (
               <button
@@ -630,7 +647,10 @@ export function TimetableViews({
               type="button"
               onClick={() => moveCursorForMode(viewMode, -1)}
               className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#EAF3FF] text-[#0A62BF] hover:bg-[#DCEBFF]"
-              aria-label={`${activeModeLabel} precedent`}
+              aria-label={t("timetable.views.previousPeriodLabel").replace(
+                "{mode}",
+                activeModeLabel,
+              )}
             >
               <ChevronLeft className="h-5 w-5" strokeWidth={2.6} />
             </button>
@@ -656,7 +676,10 @@ export function TimetableViews({
                 onCursorDateChange(today);
               }}
               className="min-w-0 rounded-[6px] bg-white px-2 py-1 text-center text-[13px] font-semibold text-[#163158]"
-              title={`Revenir a ${activeModeLabel.toLowerCase()} courant`}
+              title={t("timetable.views.backToCurrentLabel").replace(
+                "{mode}",
+                activeModeLabel.toLowerCase(),
+              )}
             >
               <span className="block truncate">{activePeriodLabel}</span>
             </button>
@@ -665,7 +688,10 @@ export function TimetableViews({
               type="button"
               onClick={() => moveCursorForMode(viewMode, 1)}
               className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] bg-[#EAF3FF] text-[#0A62BF] hover:bg-[#DCEBFF]"
-              aria-label={`${activeModeLabel} suivant`}
+              aria-label={t("timetable.views.nextPeriodLabel").replace(
+                "{mode}",
+                activeModeLabel,
+              )}
             >
               <ChevronRight className="h-5 w-5" strokeWidth={2.6} />
             </button>
@@ -699,7 +725,7 @@ export function TimetableViews({
                     ? "bg-white/15 text-white hover:bg-white/25"
                     : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
                 }`}
-                aria-label={`Periode precedente (${entry.key})`}
+                aria-label={`${t("timetable.views.previousPeriod")} (${entry.key})`}
               >
                 <ChevronLeft className="h-5 w-5" strokeWidth={2.6} />
               </button>
@@ -710,7 +736,7 @@ export function TimetableViews({
                   onCursorDateChange(today);
                 }}
                 className="min-w-0 rounded-[4px] px-2 py-1 text-[13px]"
-                title="Revenir a la periode courante"
+                title={t("timetable.views.backToCurrentPeriod")}
               >
                 <span className="block truncate">{entry.label}</span>
               </button>
@@ -725,7 +751,7 @@ export function TimetableViews({
                     ? "bg-white/15 text-white hover:bg-white/25"
                     : "bg-[#E8F2FF] text-[#0A62BF] hover:bg-[#D7E9FF]"
                 }`}
-                aria-label={`Periode suivante (${entry.key})`}
+                aria-label={`${t("timetable.views.nextPeriod")} (${entry.key})`}
               >
                 <ChevronRight className="h-5 w-5" strokeWidth={2.6} />
               </button>
@@ -738,7 +764,7 @@ export function TimetableViews({
         <div className="grid gap-2">
           {daySlots.length === 0 ? (
             <p className="rounded-card border border-dashed border-border bg-surface px-3 py-3 text-sm text-text-secondary">
-              {dayEmptyLabel}
+              {resolvedDayEmptyLabel}
             </p>
           ) : (
             daySlots.map((slot) => {
@@ -792,11 +818,12 @@ export function TimetableViews({
                       {minutesToTimeValue(slot.endMinute)} · {slot.subjectName}
                     </p>
                     <p className="text-xs text-text-secondary">
-                      {formatTeacherDisplay(slot)}
+                      {formatTeacherDisplay(t, slot)}
                     </p>
                     {slot.room ? (
                       <p className="text-xs font-semibold uppercase tracking-wide text-[#36557A]">
-                        Salle {slot.room}
+                        {t("timetable.agenda.occurrenceModal.roomPrefix")}{" "}
+                        {slot.room}
                       </p>
                     ) : null}
                   </button>
@@ -982,16 +1009,20 @@ export function TimetableViews({
               }
             >
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#4C6284]">
-                Detail du creneau selectionne
+                {t("timetable.views.selectedSlotDetail")}
               </p>
               {selectedCompactWeekCell ? (
                 <div className="grid gap-1 text-[13px] text-[#213B5D]">
                   <p>
-                    <span className="font-semibold">Matiere:</span>{" "}
+                    <span className="font-semibold">
+                      {t("timetable.views.subjectLabel")}
+                    </span>{" "}
                     {selectedCompactWeekCell.slot.subjectName}
                   </p>
                   <p>
-                    <span className="font-semibold">Jour:</span>{" "}
+                    <span className="font-semibold">
+                      {t("timetable.views.dayLabel")}
+                    </span>{" "}
                     {new Intl.DateTimeFormat("fr-FR", {
                       weekday: "long",
                       day: "2-digit",
@@ -999,7 +1030,9 @@ export function TimetableViews({
                     }).format(selectedCompactWeekCell.date)}
                   </p>
                   <p>
-                    <span className="font-semibold">Plage horaire:</span>{" "}
+                    <span className="font-semibold">
+                      {t("timetable.views.timeRangeLabel")}
+                    </span>{" "}
                     {minutesToTimeValue(
                       selectedCompactWeekCell.slot.startMinute,
                     )}{" "}
@@ -1007,11 +1040,15 @@ export function TimetableViews({
                     {minutesToTimeValue(selectedCompactWeekCell.slot.endMinute)}
                   </p>
                   <p>
-                    <span className="font-semibold">Enseignant:</span>{" "}
-                    {formatTeacherDisplay(selectedCompactWeekCell.slot)}
+                    <span className="font-semibold">
+                      {t("timetable.views.teacherLabel")}
+                    </span>{" "}
+                    {formatTeacherDisplay(t, selectedCompactWeekCell.slot)}
                   </p>
                   <p>
-                    <span className="font-semibold">Salle:</span>{" "}
+                    <span className="font-semibold">
+                      {t("timetable.views.roomLabel")}
+                    </span>{" "}
                     {selectedCompactWeekCell.slot.room ?? "-"}
                   </p>
                   {onSlotClick ? (
@@ -1023,15 +1060,14 @@ export function TimetableViews({
                           onClickSlot(selectedCompactWeekCell.slot)
                         }
                       >
-                        Gerer ce creneau
+                        {t("timetable.views.manageSlot")}
                       </button>
                     </div>
                   ) : null}
                 </div>
               ) : (
                 <p className="text-xs text-[#8192A8]">
-                  Selectionnez une matiere dans le tableau pour afficher le
-                  detail.
+                  {t("timetable.views.selectSubjectHint")}
                 </p>
               )}
             </article>
@@ -1109,7 +1145,10 @@ export function TimetableViews({
                                 {slot.teacherName}
                               </p>
                               <p className="truncate text-[11px] font-medium text-[#4B6285]">
-                                Salle {slot.room ?? "-"}
+                                {t(
+                                  "timetable.agenda.occurrenceModal.roomPrefix",
+                                )}{" "}
+                                {slot.room ?? "-"}
                               </p>
                             </button>
                           );
@@ -1207,7 +1246,7 @@ export function TimetableViews({
 
             <article className="rounded-card border border-border bg-surface p-3 shadow-[0_8px_20px_-18px_rgba(7,38,78,0.45)]">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#4C6284]">
-                Agenda du jour selectionne
+                {t("timetable.views.dayAgenda")}
               </p>
               <p className="mb-3 text-sm font-semibold text-[#163158]">
                 {selectedCompactMonthDate
@@ -1263,14 +1302,17 @@ export function TimetableViews({
                           {slot.teacherName}
                         </p>
                         <p className="truncate text-[11px] font-medium text-[#4B6285]">
-                          Salle {slot.room ?? "-"}
+                          {t("timetable.agenda.occurrenceModal.roomPrefix")}{" "}
+                          {slot.room ?? "-"}
                         </p>
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-[#8192A8]">{dayEmptyLabel}</p>
+                <p className="text-xs text-[#8192A8]">
+                  {resolvedDayEmptyLabel}
+                </p>
               )}
             </article>
           </section>
@@ -1326,12 +1368,11 @@ export function TimetableViews({
                           (slot) => (slot.status ?? "PLANNED") === "PLANNED",
                         ).length
                       }{" "}
-                      creneau
                       {entry.slots.filter(
                         (slot) => (slot.status ?? "PLANNED") === "PLANNED",
                       ).length > 1
-                        ? "x"
-                        : ""}
+                        ? t("timetable.views.slotPlural")
+                        : t("timetable.views.slotSingular")}
                     </p>
                   </button>
                 );
@@ -1341,17 +1382,20 @@ export function TimetableViews({
             <div className="rounded-card border border-border bg-surface p-3">
               <p className="mb-2 text-sm font-semibold text-text-primary">
                 {selectedMonthDate
-                  ? `Creneaux du ${new Intl.DateTimeFormat("fr-FR", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "long",
-                    }).format(selectedMonthDate)}`
-                  : "Selectionnez un jour pour voir les creneaux"}
+                  ? `${t("timetable.views.slotsForDay")} ${new Intl.DateTimeFormat(
+                      "fr-FR",
+                      {
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "long",
+                      },
+                    ).format(selectedMonthDate)}`
+                  : t("timetable.views.selectDayHint")}
               </p>
               {selectedMonthDate ? (
                 selectedMonthSlots.length === 0 ? (
                   <p className="text-sm text-text-secondary">
-                    {monthEmptyLabel}
+                    {resolvedMonthEmptyLabel}
                   </p>
                 ) : (
                   <div className="grid gap-2">
@@ -1396,10 +1440,14 @@ export function TimetableViews({
                             {slot.subjectName}
                           </p>
                           <p className="text-xs text-text-secondary">
-                            {formatTeacherDisplay(slot)}
-                            {slot.room ? ` · Salle ${slot.room}` : ""}
+                            {formatTeacherDisplay(t, slot)}
+                            {slot.room
+                              ? ` · ${t("timetable.agenda.occurrenceModal.roomPrefix")} ${slot.room}`
+                              : ""}
                             {(slot.status ?? "PLANNED") === "CANCELLED"
-                              ? " · Annule"
+                              ? t(
+                                  "timetable.agenda.occurrenceModal.cancelledSuffix",
+                                )
                               : ""}
                           </p>
                         </button>

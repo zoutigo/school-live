@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PendingAccountClient } from "./pending-account-client";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 const replaceMock = vi.fn();
 
@@ -13,6 +15,7 @@ describe("PendingAccountClient UI", () => {
     replaceMock.mockReset();
     vi.restoreAllMocks();
     vi.useRealTimers();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   it("activates account with activation code and redirects to school login", async () => {
@@ -250,5 +253,21 @@ describe("PendingAccountClient UI", () => {
       ).not.toBeInTheDocument();
       expect(submitButton).toBeEnabled();
     });
+  });
+
+  it("traduit le contenu de la page en anglais quand la langue EN est active", () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    render(<PendingAccountClient />);
+
+    expect(screen.getByText("Pending account")).toBeInTheDocument();
+    expect(screen.getByText("Activate account")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Account phone")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmed phone")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Activate my account" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Back to sign in")).toBeInTheDocument();
   });
 });

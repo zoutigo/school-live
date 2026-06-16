@@ -1,11 +1,21 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   TimetableViews,
   type TimetableDisplaySlot,
   type TimetableViewMode,
 } from "./timetable-views";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 beforeAll(() => {
   vi.useFakeTimers();
@@ -14,6 +24,11 @@ beforeAll(() => {
 
 afterAll(() => {
   vi.useRealTimers();
+});
+
+beforeEach(() => {
+  window.localStorage.clear();
+  useLocaleStore.setState({ locale: DEFAULT_LOCALE });
 });
 
 function buildSlot(
@@ -222,5 +237,43 @@ describe("TimetableViews", () => {
     // Weekday columns still visible
     expect(screen.getByText("Lun")).toBeInTheDocument();
     expect(screen.getByText("Ven")).toBeInTheDocument();
+  });
+
+  it("renders desktop and compact views in English when the locale is set to en", () => {
+    useLocaleStore.setState({ locale: "en" });
+    render(<Harness />);
+
+    expect(
+      screen.getByRole("button", { name: "Previous period (day)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Next period (day)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /10 mars|Today/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Room B14/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Salle B14/i)).not.toBeInTheDocument();
+  });
+
+  it("shows English labels in compact week detail panel", () => {
+    useLocaleStore.setState({ locale: "en" });
+    const onSlotClick = vi.fn();
+    render(<Harness compact onSlotClick={onSlotClick} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Week" }));
+    expect(screen.getByText("Selected slot detail")).toBeInTheDocument();
+
+    const compactSlot = document.querySelector(
+      '[data-testid^="compact-week-slot-"]',
+    ) as HTMLElement | null;
+    expect(compactSlot).toBeTruthy();
+    fireEvent.click(compactSlot!);
+
+    expect(
+      screen.getByRole("button", { name: "Manage this slot" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Subject:")).toBeInTheDocument();
+    expect(screen.getByText("Teacher:")).toBeInTheDocument();
   });
 });

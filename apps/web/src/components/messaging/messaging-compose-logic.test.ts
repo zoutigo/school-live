@@ -6,6 +6,9 @@ import {
   getLeaveComposerConfirmMessage,
   hasUnsavedDraftChanges,
 } from "./messaging-compose-logic";
+import { translate } from "../../i18n/useTranslation";
+
+const t = (key: string) => translate("fr", key);
 
 describe("canSendMessage", () => {
   it("returns false when recipient is missing", () => {
@@ -67,18 +70,22 @@ describe("canSendMessage", () => {
 
 describe("buildComposeQueryFromMessage", () => {
   it("prefills recipient on reply", () => {
-    const query = buildComposeQueryFromMessage("reply", {
-      id: "msg-1",
-      folder: "inbox",
-      sender: "DOE John",
-      senderUserId: "user-123",
-      subject: "Sujet original",
-      preview: "preview",
-      createdAt: "21 fev. 2026, 10:30",
-      unread: true,
-      body: ["Ligne 1"],
-      attachments: [],
-    });
+    const query = buildComposeQueryFromMessage(
+      "reply",
+      {
+        id: "msg-1",
+        folder: "inbox",
+        sender: "DOE John",
+        senderUserId: "user-123",
+        subject: "Sujet original",
+        preview: "preview",
+        createdAt: "21 fev. 2026, 10:30",
+        unread: true,
+        body: ["Ligne 1"],
+        attachments: [],
+      },
+      t,
+    );
 
     expect(query.get("subject")).toBe("Re: Sujet original");
     expect(query.get("recipientUserIds")).toBe("user-123");
@@ -100,7 +107,7 @@ describe("leave composer confirmation", () => {
     });
 
     expect(unsaved).toBe(true);
-    expect(getLeaveComposerConfirmMessage(unsaved)).toContain(
+    expect(getLeaveComposerConfirmMessage(unsaved, t)).toContain(
       "enregistrer en brouillon",
     );
   });
@@ -119,7 +126,7 @@ describe("leave composer confirmation", () => {
     });
 
     expect(unsaved).toBe(false);
-    expect(getLeaveComposerConfirmMessage(unsaved)).toBe(
+    expect(getLeaveComposerConfirmMessage(unsaved, t)).toBe(
       "Voulez-vous vraiment revenir a la liste des messages ?",
     );
   });

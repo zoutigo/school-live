@@ -17,10 +17,9 @@ import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import { SuccessRedirectToast } from "../../components/ui/success-redirect-toast";
+import { useTranslation } from "../../i18n/useTranslation";
 import {
-  buildStep2Schema,
-  step1Schema,
-  step3Schema,
+  createUsernameRecoverySchemas,
   type RecoveryQuestion,
 } from "./username-recovery-schema";
 
@@ -30,6 +29,8 @@ type Step = 1 | 2 | 3;
 
 export function UsernameRecoveryClient() {
   const router = useRouter();
+  const { locale, t } = useTranslation();
+  const schemas = useMemo(() => createUsernameRecoverySchemas(t), [locale]);
 
   const [step, setStep] = useState<Step>(1);
   const [username, setUsername] = useState("");
@@ -44,15 +45,18 @@ export function UsernameRecoveryClient() {
 
   // ── Step 1 form ────────────────────────────────────────────────────────────
 
-  const step1Form = useForm<z.infer<typeof step1Schema>>({
-    resolver: zodResolver(step1Schema),
+  const step1Form = useForm<z.infer<typeof schemas.step1Schema>>({
+    resolver: zodResolver(schemas.step1Schema),
     mode: "onChange",
     defaultValues: { username: "" },
   });
 
   // ── Step 2 form ────────────────────────────────────────────────────────────
 
-  const step2Schema = useMemo(() => buildStep2Schema(questions), [questions]);
+  const step2Schema = useMemo(
+    () => schemas.buildStep2Schema(questions),
+    [schemas, questions],
+  );
   const step2Form = useForm<{
     birthDate: string;
     answers: Record<string, string>;
@@ -75,8 +79,8 @@ export function UsernameRecoveryClient() {
 
   // ── Step 3 form ────────────────────────────────────────────────────────────
 
-  const step3Form = useForm<z.infer<typeof step3Schema>>({
-    resolver: zodResolver(step3Schema),
+  const step3Form = useForm<z.infer<typeof schemas.step3Schema>>({
+    resolver: zodResolver(schemas.step3Schema),
     mode: "onChange",
     defaultValues: { newPassword: "", confirmPassword: "" },
   });
@@ -85,7 +89,7 @@ export function UsernameRecoveryClient() {
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const onStep1Submit = useCallback(
-    async (values: z.infer<typeof step1Schema>) => {
+    async (values: z.infer<typeof schemas.step1Schema>) => {
       setError(null);
       try {
         const response = await fetch(`${API_URL}/auth/recover/username/start`, {
@@ -101,7 +105,8 @@ export function UsernameRecoveryClient() {
           const message =
             payload?.message && Array.isArray(payload.message)
               ? payload.message.join(", ")
-              : (payload?.message ?? "Identifiant introuvable.");
+              : (payload?.message ??
+                t("recovery.username.errors.usernameNotFound"));
           setError(String(message));
           return;
         }
@@ -125,10 +130,10 @@ export function UsernameRecoveryClient() {
         });
         setStep(2);
       } catch {
-        setError("Erreur reseau.");
+        setError(t("recovery.password.errors.networkError"));
       }
     },
-    [step2Form],
+    [step2Form, t],
   );
 
   const onStep2Submit = useCallback(
@@ -158,7 +163,8 @@ export function UsernameRecoveryClient() {
           const message =
             payload?.message && Array.isArray(payload.message)
               ? payload.message.join(", ")
-              : (payload?.message ?? "Informations de recuperation invalides.");
+              : (payload?.message ??
+                t("recovery.password.errors.invalidRecoveryInfo"));
           setError(String(message));
           return;
         }
@@ -168,14 +174,14 @@ export function UsernameRecoveryClient() {
         step3Form.reset({ newPassword: "", confirmPassword: "" });
         setStep(3);
       } catch {
-        setError("Erreur reseau.");
+        setError(t("recovery.password.errors.networkError"));
       }
     },
-    [username, questions, step3Form],
+    [username, questions, step3Form, t],
   );
 
   const onStep3Submit = useCallback(
-    async (values: z.infer<typeof step3Schema>) => {
+    async (values: z.infer<typeof schemas.step3Schema>) => {
       setError(null);
       try {
         const response = await fetch(`${API_URL}/auth/recover/username/reset`, {
@@ -194,32 +200,31 @@ export function UsernameRecoveryClient() {
           const message =
             payload?.message && Array.isArray(payload.message)
               ? payload.message.join(", ")
-              : (payload?.message ?? "Reinitialisation impossible.");
+              : (payload?.message ?? t("recovery.password.errors.resetFailed"));
           setError(String(message));
           return;
         }
 
         step3Form.reset();
         setRedirectToast({
-          title: "Mot de passe reinitialise",
-          description:
-            "Votre nouveau mot de passe a bien ete enregistre. Vous allez etre redirige vers la connexion.",
+          title: t("recovery.password.toast.passwordReset.title"),
+          description: t("recovery.password.toast.passwordReset.description"),
         });
       } catch {
-        setError("Erreur reseau.");
+        setError(t("recovery.password.errors.networkError"));
       }
     },
-    [recoveryToken, step3Form],
+    [recoveryToken, step3Form, t],
   );
 
   // ── Subtitle ───────────────────────────────────────────────────────────────
 
   const subtitle =
     step === 1
-      ? "Etape 1/3: saisir votre identifiant"
+      ? t("recovery.username.step1")
       : step === 2
-        ? "Etape 2/3: verification"
-        : "Etape 3/3: nouveau mot de passe";
+        ? t("recovery.password.step2")
+        : t("recovery.password.step3");
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -236,18 +241,17 @@ export function UsernameRecoveryClient() {
       />
 
       <Card
-        title="Mot de passe oublie (identifiant)"
+        title={t("recovery.username.cardTitle")}
         subtitle={subtitle}
         className="lg:mt-2"
       >
         {noQuestionsConfigured ? (
           <div className="grid gap-3">
             <p className="text-sm text-text-secondary">
-              Aucune question de recuperation n&apos;est configuree pour ce
-              compte. Contactez votre administration scolaire.
+              {t("recovery.username.noQuestionsConfigured")}
             </p>
             <BackLinkButton href="/" className="mt-2">
-              Retour a la connexion
+              {t("recovery.password.backToLogin")}
             </BackLinkButton>
           </div>
         ) : step === 1 ? (
@@ -256,7 +260,7 @@ export function UsernameRecoveryClient() {
             onSubmit={step1Form.handleSubmit(onStep1Submit)}
           >
             <FormField
-              label="Identifiant"
+              label={t("recovery.username.fields.username")}
               error={step1Form.formState.errors.username?.message}
             >
               <Controller
@@ -276,7 +280,7 @@ export function UsernameRecoveryClient() {
                       })
                     }
                     onBlur={field.onBlur}
-                    placeholder="PrenomNOM"
+                    placeholder={t("recovery.username.usernamePlaceholder")}
                   />
                 )}
               />
@@ -285,7 +289,9 @@ export function UsernameRecoveryClient() {
             <FormSubmitHint visible={!step1Form.formState.isValid} />
 
             <SubmitButton disabled={step1Form.formState.isSubmitting}>
-              {step1Form.formState.isSubmitting ? "Recherche..." : "Continuer"}
+              {step1Form.formState.isSubmitting
+                ? t("recovery.username.submit.searching")
+                : t("recovery.username.submit.continue")}
             </SubmitButton>
 
             {error ? (
@@ -293,7 +299,7 @@ export function UsernameRecoveryClient() {
             ) : null}
 
             <BackLinkButton href="/" className="mt-2">
-              Retour a la connexion
+              {t("recovery.password.backToLogin")}
             </BackLinkButton>
           </form>
         ) : step === 2 ? (
@@ -302,11 +308,12 @@ export function UsernameRecoveryClient() {
             onSubmit={step2Form.handleSubmit(onStep2Submit)}
           >
             <div className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-secondary">
-              Identifiant: <span className="font-semibold">{username}</span>
+              {t("recovery.username.identifierLabel")}{" "}
+              <span className="font-semibold">{username}</span>
             </div>
 
             <FormField
-              label="Date de naissance"
+              label={t("recovery.password.fields.birthDate")}
               error={step2Form.formState.errors.birthDate?.message}
             >
               <Controller
@@ -374,8 +381,8 @@ export function UsernameRecoveryClient() {
 
             <SubmitButton disabled={step2Form.formState.isSubmitting}>
               {step2Form.formState.isSubmitting
-                ? "Verification..."
-                : "Verifier mon identite"}
+                ? t("recovery.password.submit.verifying")
+                : t("recovery.password.submit.verify")}
             </SubmitButton>
 
             {error ? (
@@ -383,7 +390,7 @@ export function UsernameRecoveryClient() {
             ) : null}
 
             <BackLinkButton href="/" className="mt-2">
-              Retour a la connexion
+              {t("recovery.password.backToLogin")}
             </BackLinkButton>
           </form>
         ) : (
@@ -392,7 +399,7 @@ export function UsernameRecoveryClient() {
             onSubmit={step3Form.handleSubmit(onStep3Submit)}
           >
             <FormField
-              label="Nouveau mot de passe"
+              label={t("recovery.password.fields.newPassword")}
               error={step3Form.formState.errors.newPassword?.message}
             >
               <Controller
@@ -400,7 +407,7 @@ export function UsernameRecoveryClient() {
                 name="newPassword"
                 render={({ field }) => (
                   <PasswordInput
-                    aria-label="Nouveau mot de passe"
+                    aria-label={t("recovery.password.fields.newPassword")}
                     name={field.name}
                     aria-invalid={
                       step3Form.formState.errors.newPassword ? "true" : "false"
@@ -422,7 +429,7 @@ export function UsernameRecoveryClient() {
             <PasswordRequirementsHint password={newPassword} />
 
             <FormField
-              label="Confirmation"
+              label={t("recovery.password.fields.confirmation")}
               error={step3Form.formState.errors.confirmPassword?.message}
             >
               <Controller
@@ -430,7 +437,7 @@ export function UsernameRecoveryClient() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <PasswordInput
-                    aria-label="Confirmation"
+                    aria-label={t("recovery.password.fields.confirmation")}
                     name={field.name}
                     value={field.value}
                     onChange={(event) =>
@@ -454,8 +461,8 @@ export function UsernameRecoveryClient() {
 
             <SubmitButton disabled={step3Form.formState.isSubmitting}>
               {step3Form.formState.isSubmitting
-                ? "Reinitialisation..."
-                : "Reinitialiser mon mot de passe"}
+                ? t("recovery.password.submit.resetting")
+                : t("recovery.password.submit.reset")}
             </SubmitButton>
 
             {error ? (
@@ -463,7 +470,7 @@ export function UsernameRecoveryClient() {
             ) : null}
 
             <BackLinkButton href="/" className="mt-2">
-              Retour a la connexion
+              {t("recovery.password.backToLogin")}
             </BackLinkButton>
           </form>
         )}

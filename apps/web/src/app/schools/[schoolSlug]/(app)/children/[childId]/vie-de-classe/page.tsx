@@ -3,25 +3,27 @@
 import { useParams } from "next/navigation";
 import { FamilyFeedPage } from "../../../../../../../components/feed/family-feed-page";
 import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
+import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 export default function ChildVieDeClassePage() {
   const { schoolSlug, childId } = useParams<{
     schoolSlug: string;
     childId: string;
   }>();
+  const { t } = useTranslation();
 
   return (
     <ChildModulePage
       schoolSlug={schoolSlug}
       childId={childId}
       currentTab="vie-de-classe"
-      title="Vie de classe"
-      subtitle="Actualites et dynamique de classe"
-      summary="Consultez le fil collectif de la classe et les informations partagees par l'equipe pedagogique."
+      title={t("feed.vieDeClasse.title")}
+      subtitle={t("feed.vieDeClasse.subtitle")}
+      summary={t("feed.vieDeClasse.summary")}
       bullets={[
-        "Actualites et rappels de classe.",
-        "Informations collectives diffusees aux familles.",
-        "Evenements et dynamique de groupe.",
+        t("feed.vieDeClasse.bullet1"),
+        t("feed.vieDeClasse.bullet2"),
+        t("feed.vieDeClasse.bullet3"),
       ]}
       hideModuleHeader
       hidePrimaryTabs
@@ -29,17 +31,22 @@ export default function ChildVieDeClassePage() {
       content={({ child }) => {
         const studentLabel = child
           ? `${child.lastName.toUpperCase()} ${child.firstName}`
-          : "votre enfant";
+          : t("feed.vieDeClasse.defaultStudentLabel");
         const classLabel = child?.className?.trim();
         const headingTitle = classLabel
-          ? `Fil d'actualite de la classe de ${classLabel} de ${studentLabel}`
-          : `Fil d'actualite de ${studentLabel}`;
+          ? t("feed.vieDeClasse.headingWithClass")
+              .replace("{className}", classLabel)
+              .replace("{studentLabel}", studentLabel)
+          : t("feed.vieDeClasse.headingWithoutClass").replace(
+              "{studentLabel}",
+              studentLabel,
+            );
 
         return (
           <FamilyFeedPage
             schoolSlug={schoolSlug}
             childFullName={studentLabel}
-            scopeLabel="la vie de classe"
+            scopeLabel={t("feed.scope.class")}
             headingTitle={headingTitle}
             viewScope="CLASS"
             currentClassId={child?.classId ?? undefined}

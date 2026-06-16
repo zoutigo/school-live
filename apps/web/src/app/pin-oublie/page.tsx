@@ -17,10 +17,9 @@ import {
 import { FormField } from "../../components/ui/form-field";
 import { PinInput } from "../../components/ui/pin-input";
 import { SuccessRedirectToast } from "../../components/ui/success-redirect-toast";
+import { useTranslation } from "../../i18n/useTranslation";
 import {
-  buildVerifyPinRecoverySchema,
-  completePinRecoverySchema,
-  requestPinRecoverySchema,
+  createPinRecoverySchemas,
   type RecoveryQuestion,
 } from "./pin-recovery-schema";
 import type { z } from "zod";
@@ -51,6 +50,8 @@ type PinRecoveryVerifyResponse = {
 function PinRecoveryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { locale, t } = useTranslation();
+  const schemas = useMemo(() => createPinRecoverySchemas(t), [locale]);
   const [schoolSlug, setSchoolSlug] = useState(
     () => searchParams.get("schoolSlug") ?? "",
   );
@@ -68,11 +69,11 @@ function PinRecoveryPageContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const requestForm = useForm<
-    z.input<typeof requestPinRecoverySchema>,
+    z.input<typeof schemas.requestPinRecoverySchema>,
     unknown,
-    z.output<typeof requestPinRecoverySchema>
+    z.output<typeof schemas.requestPinRecoverySchema>
   >({
-    resolver: zodResolver(requestPinRecoverySchema),
+    resolver: zodResolver(schemas.requestPinRecoverySchema),
     mode: "onChange",
     defaultValues: {
       email: searchParams.get("email") ?? "",
@@ -88,8 +89,8 @@ function PinRecoveryPageContent() {
   }, [searchParams]);
 
   const verifySchema = useMemo(
-    () => buildVerifyPinRecoverySchema(options?.questions ?? []),
-    [options?.questions],
+    () => schemas.buildVerifyPinRecoverySchema(options?.questions ?? []),
+    [schemas, options?.questions],
   );
   const verifyForm = useForm<{
     birthDate: string;
@@ -103,11 +104,11 @@ function PinRecoveryPageContent() {
     },
   });
   const completeForm = useForm<
-    z.input<typeof completePinRecoverySchema>,
+    z.input<typeof schemas.completePinRecoverySchema>,
     unknown,
-    z.output<typeof completePinRecoverySchema>
+    z.output<typeof schemas.completePinRecoverySchema>
   >({
-    resolver: zodResolver(completePinRecoverySchema),
+    resolver: zodResolver(schemas.completePinRecoverySchema),
     mode: "onChange",
     defaultValues: {
       recoveryToken: "",
@@ -141,7 +142,7 @@ function PinRecoveryPageContent() {
   }, [options?.schoolSlug, schoolSlug]);
 
   async function onLoadOptions(
-    values: z.infer<typeof requestPinRecoverySchema>,
+    values: z.infer<typeof schemas.requestPinRecoverySchema>,
   ) {
     setError(null);
     setSuccess(null);
@@ -168,10 +169,8 @@ function PinRecoveryPageContent() {
             ? Array.isArray(payload.message)
               ? payload.message.join(", ")
               : payload.message
-            : "Impossible de charger les questions de recuperation.";
-        setError(
-          message ?? "Impossible de charger les questions de recuperation.",
-        );
+            : t("recovery.pin.errors.loadOptionsFailed");
+        setError(message ?? t("recovery.pin.errors.loadOptionsFailed"));
         return;
       }
 
@@ -185,7 +184,7 @@ function PinRecoveryPageContent() {
         ),
       });
     } catch {
-      setError("Erreur reseau.");
+      setError(t("recovery.password.errors.networkError"));
     } finally {
       setLoadingOptions(false);
     }
@@ -198,7 +197,7 @@ function PinRecoveryPageContent() {
     setError(null);
     setSuccess(null);
     if (!options) {
-      setError("Chargez d abord les questions de recuperation.");
+      setError(t("recovery.pin.errors.questionsNotLoaded"));
       return;
     }
 
@@ -229,23 +228,25 @@ function PinRecoveryPageContent() {
             ? Array.isArray(payload.message)
               ? payload.message.join(", ")
               : payload.message
-            : "Informations de recuperation invalides.";
-        setError(message ?? "Informations de recuperation invalides.");
+            : t("recovery.password.errors.invalidRecoveryInfo");
+        setError(message ?? t("recovery.password.errors.invalidRecoveryInfo"));
         return;
       }
 
       const validPayload = payload as PinRecoveryVerifyResponse;
       setRecoveryToken(validPayload.recoveryToken);
       setSchoolSlug(validPayload.schoolSlug ?? schoolSlug);
-      setSuccess("Verification reussie. Vous pouvez definir un nouveau PIN.");
+      setSuccess(t("recovery.pin.success.verified"));
     } catch {
-      setError("Erreur reseau.");
+      setError(t("recovery.password.errors.networkError"));
     } finally {
       setVerifying(false);
     }
   }
 
-  async function onComplete(values: z.infer<typeof completePinRecoverySchema>) {
+  async function onComplete(
+    values: z.infer<typeof schemas.completePinRecoverySchema>,
+  ) {
     setError(null);
     setSuccess(null);
 
@@ -272,8 +273,8 @@ function PinRecoveryPageContent() {
             ? Array.isArray(payload.message)
               ? payload.message.join(", ")
               : payload.message
-            : "Reinitialisation du PIN impossible.";
-        setError(message ?? "Reinitialisation du PIN impossible.");
+            : t("recovery.pin.errors.resetFailed");
+        setError(message ?? t("recovery.pin.errors.resetFailed"));
         return;
       }
 
@@ -293,18 +294,18 @@ function PinRecoveryPageContent() {
       setShowSuccessToast(true);
       return;
     } catch {
-      setError("Erreur reseau.");
+      setError(t("recovery.password.errors.networkError"));
     } finally {
       setCompleting(false);
     }
   }
 
   return (
-    <RecoveryShell title="Recuperation de PIN">
+    <RecoveryShell title={t("recovery.pin.shell.title")}>
       <SuccessRedirectToast
         open={showSuccessToast}
-        title="PIN reinitialise"
-        description="Votre nouveau PIN a bien ete enregistre. Vous allez etre redirige vers la connexion."
+        title={t("recovery.pin.toast.title")}
+        description={t("recovery.pin.toast.description")}
         onComplete={() => {
           setShowSuccessToast(false);
           router.replace(loginHref);
@@ -312,8 +313,8 @@ function PinRecoveryPageContent() {
       />
       <div className="mx-auto w-full max-w-2xl">
         <Card
-          title="PIN perdu"
-          subtitle="Recuperez l acces avec vos questions de securite"
+          title={t("recovery.pin.cardTitle")}
+          subtitle={t("recovery.pin.cardSubtitle")}
         >
           <div className="grid gap-5">
             {!options ? (
@@ -323,7 +324,7 @@ function PinRecoveryPageContent() {
                 noValidate
               >
                 <FormField
-                  label="Email (optionnel)"
+                  label={t("recovery.pin.fields.emailOptional")}
                   error={requestForm.formState.errors.email?.message}
                 >
                   <Controller
@@ -343,14 +344,14 @@ function PinRecoveryPageContent() {
                           void requestForm.trigger(["email", "phone"]);
                         }}
                         onBlur={field.onBlur}
-                        placeholder="prenom.nom@gmail.com"
+                        placeholder={t("recovery.pin.emailPlaceholder")}
                       />
                     )}
                   />
                 </FormField>
 
                 <FormField
-                  label="Telephone (optionnel)"
+                  label={t("recovery.pin.fields.phoneOptional")}
                   error={requestForm.formState.errors.phone?.message}
                 >
                   <Controller
@@ -375,7 +376,7 @@ function PinRecoveryPageContent() {
                           void requestForm.trigger(["email", "phone"]);
                         }}
                         onBlur={field.onBlur}
-                        placeholder="6XXXXXXXX"
+                        placeholder={t("recovery.pin.phonePlaceholder")}
                       />
                     )}
                   />
@@ -386,8 +387,8 @@ function PinRecoveryPageContent() {
                   disabled={loadingOptions || !requestForm.formState.isValid}
                 >
                   {loadingOptions
-                    ? "Chargement..."
-                    : "Continuer vers les questions de recuperation"}
+                    ? t("recovery.pin.submit.loadingOptions")
+                    : t("recovery.pin.submit.continueToQuestions")}
                 </SubmitButton>
               </form>
             ) : null}
@@ -399,13 +400,13 @@ function PinRecoveryPageContent() {
                 noValidate
               >
                 <p className="text-sm text-text-secondary">
-                  Compte detecte:{" "}
+                  {t("recovery.password.accountDetected")}{" "}
                   <span className="font-medium text-text-primary">
                     {options.principalHint}
                   </span>
                 </p>
                 <FormField
-                  label="Date de naissance"
+                  label={t("recovery.password.fields.birthDate")}
                   error={verifyForm.formState.errors.birthDate?.message}
                 >
                   <Controller
@@ -413,7 +414,7 @@ function PinRecoveryPageContent() {
                     name="birthDate"
                     render={({ field }) => (
                       <DateInput
-                        aria-label="Date de naissance"
+                        aria-label={t("recovery.password.fields.birthDate")}
                         name={field.name}
                         invalid={!!verifyForm.formState.errors.birthDate}
                         value={field.value}
@@ -474,7 +475,9 @@ function PinRecoveryPageContent() {
                 <SubmitButton
                   disabled={verifying || !verifyForm.formState.isValid}
                 >
-                  {verifying ? "Verification..." : "Verifier mes reponses"}
+                  {verifying
+                    ? t("recovery.pin.submit.verifying")
+                    : t("recovery.pin.submit.verify")}
                 </SubmitButton>
               </form>
             ) : null}
@@ -486,7 +489,7 @@ function PinRecoveryPageContent() {
                 noValidate
               >
                 <FormField
-                  label="Nouveau PIN (6 chiffres)"
+                  label={t("recovery.pin.fields.newPin")}
                   error={completeForm.formState.errors.newPin?.message}
                 >
                   <Controller
@@ -494,7 +497,7 @@ function PinRecoveryPageContent() {
                     name="newPin"
                     render={({ field }) => (
                       <PinInput
-                        aria-label="Nouveau PIN (6 chiffres)"
+                        aria-label={t("recovery.pin.fields.newPin")}
                         name={field.name}
                         aria-invalid={
                           completeForm.formState.errors.newPin
@@ -514,13 +517,13 @@ function PinRecoveryPageContent() {
                           )
                         }
                         onBlur={field.onBlur}
-                        placeholder="123456"
+                        placeholder={t("recovery.pin.pinPlaceholder")}
                       />
                     )}
                   />
                 </FormField>
                 <FormField
-                  label="Confirmer le PIN"
+                  label={t("recovery.pin.fields.confirmPin")}
                   error={completeForm.formState.errors.confirmPin?.message}
                 >
                   <Controller
@@ -528,7 +531,7 @@ function PinRecoveryPageContent() {
                     name="confirmPin"
                     render={({ field }) => (
                       <PinInput
-                        aria-label="Confirmer le PIN"
+                        aria-label={t("recovery.pin.fields.confirmPin")}
                         name={field.name}
                         aria-invalid={
                           completeForm.formState.errors.confirmPin
@@ -548,7 +551,7 @@ function PinRecoveryPageContent() {
                           )
                         }
                         onBlur={field.onBlur}
-                        placeholder="123456"
+                        placeholder={t("recovery.pin.pinPlaceholder")}
                       />
                     )}
                   />
@@ -558,8 +561,8 @@ function PinRecoveryPageContent() {
                   disabled={completing || !completeForm.formState.isValid}
                 >
                   {completing
-                    ? "Reinitialisation..."
-                    : "Definir mon nouveau PIN"}
+                    ? t("recovery.pin.submit.resetting")
+                    : t("recovery.pin.submit.reset")}
                 </SubmitButton>
               </form>
             ) : null}
@@ -570,7 +573,7 @@ function PinRecoveryPageContent() {
             {success ? <p className="text-sm text-success">{success}</p> : null}
 
             <BackLinkButton href={loginHref}>
-              Retour a la connexion
+              {t("recovery.password.backToLogin")}
             </BackLinkButton>
           </div>
         </Card>
@@ -579,19 +582,25 @@ function PinRecoveryPageContent() {
   );
 }
 
+function PinRecoveryFallback() {
+  const { t } = useTranslation();
+  return (
+    <RecoveryShell title={t("recovery.pin.shell.title")}>
+      <div className="mx-auto w-full max-w-2xl">
+        <Card
+          title={t("recovery.pin.cardTitle")}
+          subtitle={t("common.loading")}
+        >
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
+        </Card>
+      </div>
+    </RecoveryShell>
+  );
+}
+
 export default function PinRecoveryPage() {
   return (
-    <Suspense
-      fallback={
-        <RecoveryShell title="Recuperation de PIN">
-          <div className="mx-auto w-full max-w-2xl">
-            <Card title="PIN perdu" subtitle="Chargement...">
-              <p className="text-sm text-text-secondary">Chargement...</p>
-            </Card>
-          </div>
-        </RecoveryShell>
-      }
-    >
+    <Suspense fallback={<PinRecoveryFallback />}>
       <PinRecoveryPageContent />
     </Suspense>
   );

@@ -647,6 +647,7 @@ describe("Authentication modes API e2e", () => {
       }),
     });
     expect(invalidVerify.response.status).toBe(403);
+    expect(invalidVerify.body?.code).toBe("RECOVERY_INVALID");
 
     const verify = await apiJson("/api/auth/forgot-pin/verify", {
       method: "POST",
@@ -685,5 +686,45 @@ describe("Authentication modes API e2e", () => {
       },
     );
     expect(relogin.response.status).toBe(201);
+  });
+
+  it("rejects PIN recovery completion with an expired/invalid session and an unchanged PIN", async () => {
+    const invalidSession = await apiJson("/api/auth/forgot-pin/complete", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        recoveryToken: "not-a-valid-token",
+        newPin: "888888",
+      }),
+    });
+    expect(invalidSession.response.status).toBe(403);
+    expect(invalidSession.body?.code).toBe("RECOVERY_SESSION_EXPIRED");
+
+    const verify = await apiJson("/api/auth/forgot-pin/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        phone: "+237600000020",
+        birthDate: "1990-05-15",
+        answers: [
+          { questionKey: "MOTHER_MAIDEN_NAME", answer: "alpha" },
+          { questionKey: "FATHER_FIRST_NAME", answer: "bravo" },
+          { questionKey: "FAVORITE_SPORT", answer: "charlie" },
+        ],
+      }),
+    });
+    expect(verify.response.status).toBe(201);
+    const recoveryToken = String(verify.body?.recoveryToken ?? "");
+
+    const samePin = await apiJson("/api/auth/forgot-pin/complete", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        recoveryToken,
+        newPin: "777777",
+      }),
+    });
+    expect(samePin.response.status).toBe(403);
+    expect(samePin.body?.code).toBe("SAME_PIN");
   });
 });

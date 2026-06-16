@@ -41,6 +41,13 @@ Primary goals: security (school isolation), maintainability, performance, and cl
 
 ---
 
+## Subagents (must follow)
+
+- Never use the `Agent` tool (subagents/Task) to do the requested work.
+- Do all the work yourself, step by step if needed.
+
+---
+
 ## Restricted environment escalation (must follow)
 
 - If a command, hook, test suite, or verification depends on Docker, docker compose, system services, local daemons, privileged sockets, or any resource that may be blocked by the current execution sandbox, the agent MUST:
@@ -53,6 +60,13 @@ Primary goals: security (school isolation), maintainability, performance, and cl
   - e2e suites using Dockerized databases or services,
   - local API/media/worker processes,
   - and any system-level dependency check.
+
+---
+
+## Git workflow (must follow)
+
+- Unless the user explicitly says otherwise, all development work happens on the `dev` branch.
+- If the current branch is not `dev`, switch to it before starting any modification, or clearly explain the blocker if that is not safely possible.
 
 ---
 
@@ -178,6 +192,22 @@ Implement ownership checks in services (not controllers):
   - `/api/schools/${schoolSlug}/...`
 - JWT stored in SecureStore (preferred).
 - Provide a single API client wrapper that injects slug + token.
+
+---
+
+## Internationalization (i18n) — required
+
+Both web (`apps/web/src/i18n/`) and mobile (`scolive-mobile/src/i18n/`) use a custom translation system:
+
+- `translations.ts`: per-locale dictionaries with namespaced keys (e.g. `settings.language.title`)
+- `useTranslation.ts`: `useTranslation()` hook → `{ locale, setLocale, t }`
+- Supported locales (`SUPPORTED_LOCALES`): `fr` (default, `DEFAULT_LOCALE`) and `en`
+
+**For every new feature or fix:**
+
+- Never hardcode user-facing text (titles, labels, messages, placeholders, errors, toasts, etc.)
+- Add the corresponding key to `translations` for EVERY supported locale (`fr` AND `en`)
+- Render text via `t("namespace.key")` (from `useTranslation()`)
 
 ---
 

@@ -7,6 +7,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type ControlProps = {
   invalid?: boolean;
@@ -228,15 +229,16 @@ type SubmitHintProps = {
 
 export function FormSubmitHint({
   visible,
-  message = "Vous devez remplir correctement les champs obligatoires.",
+  message,
   className = "",
 }: SubmitHintProps) {
+  const { t } = useTranslation();
   if (!visible) {
     return null;
   }
   return (
     <p className={`text-[11px] leading-4 text-notification ${className}`}>
-      {message}
+      {message ?? t("common.requiredFieldsHint")}
     </p>
   );
 }

@@ -5,6 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../../../components/ui/card";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import {
+  useTranslation,
+  type TranslateFn,
+} from "../../../../../../../i18n/useTranslation";
+import {
   API_URL,
   type GradesContext,
   getClassContext,
@@ -55,17 +59,18 @@ function statusPill(status: HomeworkRow["status"]) {
   return "border-sky-200 bg-sky-50 text-sky-700";
 }
 
-function statusLabel(status: HomeworkRow["status"]) {
+function statusLabel(status: HomeworkRow["status"], t: TranslateFn) {
   if (status === "VALIDE") {
-    return "Valide";
+    return t("homework.status.done");
   }
   if (status === "EN_RETARD") {
-    return "En retard";
+    return t("homework.status.late");
   }
-  return "A faire";
+  return t("homework.status.todo");
 }
 
 export default function TeacherClassHomeworkPage() {
+  const { t } = useTranslation();
   const { schoolSlug, classId } = useParams<{
     schoolSlug: string;
     classId: string;
@@ -109,14 +114,14 @@ export default function TeacherClassHomeworkPage() {
       );
 
       if (!contextResponse.ok) {
-        setError("Impossible de charger les devoirs de classe.");
+        setError(t("homework.errors.loadFailed"));
         return;
       }
 
       const contextPayload = (await contextResponse.json()) as GradesContext;
       setContext(contextPayload);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("homework.errors.networkError"));
     } finally {
       setLoading(false);
     }
@@ -130,8 +135,8 @@ export default function TeacherClassHomeworkPage() {
   return (
     <div className="grid gap-4">
       <Card
-        title={`Devoirs - ${classContext?.className ?? "Classe"}`}
-        subtitle="Suivi des devoirs et etat de rendu"
+        title={`${t("homework.page.title")} - ${classContext?.className ?? t("homework.page.defaultClassName")}`}
+        subtitle={t("homework.page.subtitle")}
       >
         <div className="mb-4 flex items-end gap-2 border-b border-border">
           <button
@@ -143,7 +148,7 @@ export default function TeacherClassHomeworkPage() {
                 : "text-text-secondary"
             }`}
           >
-            Liste
+            {t("homework.tabs.list")}
           </button>
           <button
             type="button"
@@ -154,7 +159,7 @@ export default function TeacherClassHomeworkPage() {
                 : "text-text-secondary"
             }`}
           >
-            Voir
+            {t("homework.tabs.view")}
           </button>
           <button
             type="button"
@@ -165,38 +170,38 @@ export default function TeacherClassHomeworkPage() {
                 : "text-text-secondary"
             }`}
           >
-            Aide
+            {t("homework.tabs.help")}
           </button>
         </div>
 
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("homework.common.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : !classContext ? (
           <p className="text-sm text-notification">
-            Classe non accessible avec vos affectations.
+            {t("homework.page.classNotAccessible")}
           </p>
         ) : tab === "help" ? (
           <ModuleHelpTab
-            moduleName="Devoirs"
-            moduleSummary="ce module centralise les devoirs annonces a la classe et leur statut de suivi."
+            moduleName={t("homework.page.title")}
+            moduleSummary={t("homework.help.summary")}
             actions={[
               {
-                name: "Lister",
-                purpose: "suivre les devoirs en cours.",
-                howTo: "consulter l'onglet Liste.",
-                moduleImpact: "permet de gerer la charge eleve par eleve.",
-                crossModuleImpact:
-                  "en lien avec Notes pour evaluer les rendus.",
+                name: t("homework.help.list.name"),
+                purpose: t("homework.help.list.purpose"),
+                howTo: t("homework.help.list.howTo"),
+                moduleImpact: t("homework.help.list.moduleImpact"),
+                crossModuleImpact: t("homework.help.list.crossModuleImpact"),
               },
               {
-                name: "Voir",
-                purpose: "obtenir une synthese rapide de la classe.",
-                howTo: "ouvrir l'onglet Voir.",
-                moduleImpact: "priorisation des relances.",
-                crossModuleImpact:
-                  "ameliore le suivi parent via les espaces enfant.",
+                name: t("homework.help.view.name"),
+                purpose: t("homework.help.view.purpose"),
+                howTo: t("homework.help.view.howTo"),
+                moduleImpact: t("homework.help.view.moduleImpact"),
+                crossModuleImpact: t("homework.help.view.crossModuleImpact"),
               },
             ]}
           />
@@ -205,10 +210,18 @@ export default function TeacherClassHomeworkPage() {
             <table className="min-w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-text-secondary">
-                  <th className="px-3 py-2 font-medium">Titre</th>
-                  <th className="px-3 py-2 font-medium">Matiere</th>
-                  <th className="px-3 py-2 font-medium">Echeance</th>
-                  <th className="px-3 py-2 font-medium">Statut</th>
+                  <th className="px-3 py-2 font-medium">
+                    {t("homework.table.title")}
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    {t("homework.table.subject")}
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    {t("homework.table.dueDate")}
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    {t("homework.table.status")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -223,7 +236,7 @@ export default function TeacherClassHomeworkPage() {
                           row.status,
                         )}`}
                       >
-                        {statusLabel(row.status)}
+                        {statusLabel(row.status, t)}
                       </span>
                     </td>
                   </tr>
@@ -234,19 +247,25 @@ export default function TeacherClassHomeworkPage() {
         ) : (
           <div className="grid gap-3 md:grid-cols-4">
             <div className="rounded-card border border-border bg-background p-3">
-              <p className="text-xs text-text-secondary">Classe</p>
+              <p className="text-xs text-text-secondary">
+                {t("homework.summary.class")}
+              </p>
               <p className="text-sm font-semibold text-text-primary">
                 {classContext.className}
               </p>
             </div>
             <div className="rounded-card border border-border bg-background p-3">
-              <p className="text-xs text-text-secondary">Devoirs</p>
+              <p className="text-xs text-text-secondary">
+                {t("homework.summary.total")}
+              </p>
               <p className="text-sm font-semibold text-text-primary">
                 {DEMO_HOMEWORKS.length}
               </p>
             </div>
             <div className="rounded-card border border-border bg-background p-3">
-              <p className="text-xs text-text-secondary">A faire</p>
+              <p className="text-xs text-text-secondary">
+                {t("homework.summary.todo")}
+              </p>
               <p className="text-sm font-semibold text-text-primary">
                 {
                   DEMO_HOMEWORKS.filter((entry) => entry.status === "A_FAIRE")
@@ -255,7 +274,9 @@ export default function TeacherClassHomeworkPage() {
               </p>
             </div>
             <div className="rounded-card border border-border bg-background p-3">
-              <p className="text-xs text-text-secondary">En retard</p>
+              <p className="text-xs text-text-secondary">
+                {t("homework.summary.late")}
+              </p>
               <p className="text-sm font-semibold text-text-primary">
                 {
                   DEMO_HOMEWORKS.filter((entry) => entry.status === "EN_RETARD")

@@ -29,6 +29,10 @@ import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-ta
 import { PaginationControls } from "../../../../../../../components/ui/pagination-controls";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
+  useTranslation,
+  type TranslateFn,
+} from "../../../../../../../i18n/useTranslation";
+import {
   getCreateEvaluationDefaults,
   getEvaluationListMeta,
   hasMeaningfulRichTextContent,
@@ -40,8 +44,6 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const EVALUATION_ATTACHMENT_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
-const EVALUATION_ATTACHMENT_HINT =
-  "Formats acceptes: JPG, PNG, WEBP, PDF, TXT, DOC, DOCX, XLS, XLSX, PPT, PPTX. Taille maximale: 10 Mo.";
 
 type TabKey = "evaluations" | "scores" | "council" | "help";
 
@@ -127,21 +129,29 @@ type CouncilTermReport = {
   }>;
 };
 
-const createEvaluationSchema = z.object({
-  subjectId: z.string().min(1, "Selectionnez une matiere."),
-  subjectBranchId: z.string(),
-  evaluationTypeId: z.string().min(1, "Selectionnez un type d'evaluation."),
-  title: z
-    .string()
-    .trim()
-    .min(3, "Le titre doit contenir au moins 3 caracteres."),
-  description: z.string(),
-  coefficient: z.number().gt(0, "Le coefficient doit etre superieur a 0."),
-  maxScore: z.number().gt(0, "Le bareme doit etre superieur a 0."),
-  term: z.enum(["TERM_1", "TERM_2", "TERM_3"]),
-  scheduledAt: z.string().min(1, "La date prevue est obligatoire."),
-  status: z.enum(["DRAFT", "PUBLISHED"]),
-});
+function createEvaluationSchema(t: TranslateFn) {
+  return z.object({
+    subjectId: z.string().min(1, t("notes.teacher.validation.subjectRequired")),
+    subjectBranchId: z.string(),
+    evaluationTypeId: z
+      .string()
+      .min(1, t("notes.teacher.validation.evaluationTypeRequired")),
+    title: z
+      .string()
+      .trim()
+      .min(3, t("notes.teacher.validation.titleMinLength")),
+    description: z.string(),
+    coefficient: z
+      .number()
+      .gt(0, t("notes.teacher.validation.coefficientPositive")),
+    maxScore: z.number().gt(0, t("notes.teacher.validation.maxScorePositive")),
+    term: z.enum(["TERM_1", "TERM_2", "TERM_3"]),
+    scheduledAt: z
+      .string()
+      .min(1, t("notes.teacher.validation.scheduledAtRequired")),
+    status: z.enum(["DRAFT", "PUBLISHED"]),
+  });
+}
 
 export default function TeacherClassNotesPage() {
   const { schoolSlug, classId } = useParams<{
@@ -149,6 +159,7 @@ export default function TeacherClassNotesPage() {
     classId: string;
   }>();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabKey>("evaluations");
   const [loading, setLoading] = useState(true);
@@ -190,8 +201,9 @@ export default function TeacherClassNotesPage() {
   const [scoreDrafts, setScoreDrafts] = useState<
     Record<string, { score: string; status: string; comment: string }>
   >({});
+  const evaluationSchema = useMemo(() => createEvaluationSchema(t), [t]);
   const createEvaluationForm = useForm<CreateEvaluationFormValues>({
-    resolver: zodResolver(createEvaluationSchema),
+    resolver: zodResolver(evaluationSchema),
     mode: "onChange",
     defaultValues: getCreateEvaluationDefaults(),
   });
@@ -296,7 +308,7 @@ export default function TeacherClassNotesPage() {
 
       await Promise.all([loadContext(), loadEvaluations()]);
     } catch {
-      setPageError("Impossible de charger le module evaluations.");
+      setPageError(t("notes.teacher.errors.loadModule"));
     } finally {
       setLoading(false);
     }
@@ -442,7 +454,7 @@ export default function TeacherClassNotesPage() {
         const message = Array.isArray(payload?.message)
           ? payload.message.join(", ")
           : payload?.message;
-        throw new Error(message ?? "Impossible de televerser la piece jointe.");
+        throw new Error(message ?? t("notes.teacher.errors.uploadAttachment"));
       }
 
       const payload = (await response.json()) as {
@@ -464,7 +476,7 @@ export default function TeacherClassNotesPage() {
       setError(
         err instanceof Error && err.message.trim().length > 0
           ? err.message
-          : "Impossible de televerser la piece jointe.",
+          : t("notes.teacher.errors.uploadAttachment"),
       );
     } finally {
       setUploadingAttachment(false);
@@ -476,7 +488,7 @@ export default function TeacherClassNotesPage() {
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error("Impossible de telecharger la piece jointe.");
+        throw new Error(t("notes.teacher.errors.downloadAttachment"));
       }
 
       const blob = await response.blob();
@@ -492,7 +504,7 @@ export default function TeacherClassNotesPage() {
       setError(
         err instanceof Error && err.message.trim().length > 0
           ? err.message
-          : "Impossible de telecharger la piece jointe.",
+          : t("notes.teacher.errors.downloadAttachment"),
       );
     }
   }
@@ -538,13 +550,13 @@ export default function TeacherClassNotesPage() {
         const message = Array.isArray(payload?.message)
           ? payload?.message.join(", ")
           : payload?.message;
-        throw new Error(message ?? "Echec creation evaluation");
+        throw new Error(message ?? t("notes.teacher.errors.createEvaluation"));
       }
 
       const createdEvaluation = (await response.json()) as {
         id?: string;
       } | null;
-      setSuccess("Evaluation enregistree.");
+      setSuccess(t("notes.teacher.success.evaluationCreated"));
       reset(
         getCreateEvaluationDefaults(context, {
           subjectId: values.subjectId,
@@ -561,7 +573,9 @@ export default function TeacherClassNotesPage() {
         setSelectedEvaluationId(createdEvaluation.id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur reseau.");
+      setError(
+        err instanceof Error ? err.message : t("notes.common.networkError"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -612,15 +626,17 @@ export default function TeacherClassNotesPage() {
         const message = Array.isArray(payload?.message)
           ? payload?.message.join(", ")
           : payload?.message;
-        throw new Error(message ?? "Echec mise a jour evaluation");
+        throw new Error(message ?? t("notes.teacher.errors.updateEvaluation"));
       }
 
-      setSuccess("Evaluation mise a jour.");
+      setSuccess(t("notes.teacher.success.evaluationUpdated"));
       setEvaluationPanelMode("details");
       await loadEvaluations();
       await loadEvaluationDetail(selectedEvaluation.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur reseau.");
+      setError(
+        err instanceof Error ? err.message : t("notes.common.networkError"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -660,14 +676,16 @@ export default function TeacherClassNotesPage() {
       );
 
       if (!response.ok) {
-        throw new Error("Impossible d'enregistrer les notes.");
+        throw new Error(t("notes.teacher.errors.saveScores"));
       }
 
       await loadEvaluationDetail(selectedEvaluation.id);
       await loadEvaluations();
-      setSuccess("Notes de l'evaluation mises a jour.");
+      setSuccess(t("notes.teacher.success.scoresUpdated"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur reseau.");
+      setError(
+        err instanceof Error ? err.message : t("notes.common.networkError"),
+      );
     } finally {
       setSavingScores(false);
     }
@@ -714,19 +732,19 @@ export default function TeacherClassNotesPage() {
       );
 
       if (!response.ok) {
-        throw new Error(
-          "Impossible d'enregistrer les appreciations du trimestre.",
-        );
+        throw new Error(t("notes.teacher.errors.saveCouncil"));
       }
 
       await loadCouncilReports(councilTerm);
       setSuccess(
         councilStatus === "PUBLISHED"
-          ? "Conseil de classe publie."
-          : "Brouillon du conseil de classe enregistre.",
+          ? t("notes.teacher.success.councilPublished")
+          : t("notes.teacher.success.councilDraftSaved"),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur reseau.");
+      setError(
+        err instanceof Error ? err.message : t("notes.common.networkError"),
+      );
     } finally {
       setSavingCouncil(false);
     }
@@ -821,15 +839,18 @@ export default function TeacherClassNotesPage() {
   return (
     <div className="grid gap-4">
       <Card
-        title={`Evaluations - ${context?.class.name ?? "Classe"}`}
-        subtitle="Creation, publication et saisie des notes"
+        title={t("notes.teacher.card.title").replace(
+          "{className}",
+          context?.class.name ?? t("notes.teacher.card.defaultClassName"),
+        )}
+        subtitle={t("notes.teacher.card.subtitle")}
       >
         <div className="section-tabs mb-4">
           {[
-            { key: "evaluations", label: "Evaluations" },
-            { key: "scores", label: "Saisie des notes" },
-            { key: "council", label: "Conseil de classe" },
-            { key: "help", label: "Aide" },
+            { key: "evaluations", label: t("notes.teacher.tabs.evaluations") },
+            { key: "scores", label: t("notes.teacher.tabs.scores") },
+            { key: "council", label: t("notes.teacher.tabs.council") },
+            { key: "help", label: t("notes.teacher.tabs.help") },
           ].map((item) => (
             <button
               key={item.key}
@@ -843,50 +864,46 @@ export default function TeacherClassNotesPage() {
         </div>
 
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("notes.common.loading")}
+          </p>
         ) : pageError ? (
           <p className="text-sm text-notification">{pageError}</p>
         ) : !context ? (
           <p className="text-sm text-notification">
-            Classe non accessible avec vos affectations.
+            {t("notes.teacher.page.classNotAccessible")}
           </p>
         ) : tab === "help" ? (
           <ModuleHelpTab
-            moduleName="Evaluations de classe"
-            moduleSummary="cet espace enseignant permet de creer une evaluation, joindre un support, publier ou garder en brouillon et saisir ensuite les notes des eleves."
+            moduleName={t("notes.teacher.help.moduleName")}
+            moduleSummary={t("notes.teacher.help.summary")}
             actions={[
               {
-                name: "Creer",
-                purpose:
-                  "preparer une evaluation sur une matiere et une sous-branche.",
-                howTo:
-                  "selectionner la matiere, le type, le bareme, le coefficient puis enregistrer en brouillon ou publier.",
-                moduleImpact:
-                  "l'evaluation devient disponible pour la saisie des notes.",
-                crossModuleImpact:
-                  "une evaluation publiee et notee alimente automatiquement le module Notes parent/eleve.",
+                name: t("notes.teacher.help.create.name"),
+                purpose: t("notes.teacher.help.create.purpose"),
+                howTo: t("notes.teacher.help.create.howTo"),
+                moduleImpact: t("notes.teacher.help.create.moduleImpact"),
+                crossModuleImpact: t(
+                  "notes.teacher.help.create.crossModuleImpact",
+                ),
               },
               {
-                name: "Saisir",
-                purpose:
-                  "renseigner les notes, absences ou exemptions des eleves.",
-                howTo:
-                  "choisir une evaluation puis saisir les notes eleve par eleve.",
-                moduleImpact:
-                  "les moyennes sont recalculees en tenant compte du coefficient.",
-                crossModuleImpact:
-                  "les familles voient uniquement les evaluations publiees.",
+                name: t("notes.teacher.help.enter.name"),
+                purpose: t("notes.teacher.help.enter.purpose"),
+                howTo: t("notes.teacher.help.enter.howTo"),
+                moduleImpact: t("notes.teacher.help.enter.moduleImpact"),
+                crossModuleImpact: t(
+                  "notes.teacher.help.enter.crossModuleImpact",
+                ),
               },
               {
-                name: "Conseil de classe",
-                purpose:
-                  "saisir les appreciations trimestrielles qui enrichissent l'onglet Moyennes des familles.",
-                howTo:
-                  "selectionner le trimestre, renseigner les appreciations par eleve et par matiere, puis garder en brouillon ou publier.",
-                moduleImpact:
-                  "les appreciations sont stockees separement des evaluations et n'alterent pas le calcul des moyennes.",
-                crossModuleImpact:
-                  "une publication rend visibles les appreciations dans le module Notes parent/eleve.",
+                name: t("notes.teacher.help.council.name"),
+                purpose: t("notes.teacher.help.council.purpose"),
+                howTo: t("notes.teacher.help.council.howTo"),
+                moduleImpact: t("notes.teacher.help.council.moduleImpact"),
+                crossModuleImpact: t(
+                  "notes.teacher.help.council.crossModuleImpact",
+                ),
               },
             ]}
           />
@@ -896,21 +913,21 @@ export default function TeacherClassNotesPage() {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="font-heading text-lg font-semibold text-text-primary">
-                    Evaluations
+                    {t("notes.teacher.list.title")}
                   </p>
                   <p className="text-sm text-text-secondary">
-                    Parcourez les evaluations puis ouvrez leur detail.
+                    {t("notes.teacher.list.subtitle")}
                   </p>
                 </div>
                 <button
                   type="button"
-                  aria-label="Ajouter une evaluation"
+                  aria-label={t("notes.teacher.list.addAria")}
                   onClick={startCreateEvaluation}
                   className="group inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-primary px-3 text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition-all duration-200 hover:bg-primary-dark"
                 >
                   <Plus className="h-5 w-5 shrink-0" />
                   <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-40 group-hover:opacity-100">
-                    Ajouter une evaluation
+                    {t("notes.teacher.list.addLabel")}
                   </span>
                 </button>
               </div>
@@ -918,7 +935,7 @@ export default function TeacherClassNotesPage() {
               <div className="grid gap-3">
                 {evaluations.length === 0 ? (
                   <div className="rounded-[18px] border border-dashed border-warm-border bg-warm-surface/70 p-4 text-sm text-text-secondary">
-                    Aucune evaluation pour cette classe.
+                    {t("notes.teacher.list.empty")}
                   </div>
                 ) : (
                   paginatedEvaluations.map((evaluation) => {
@@ -961,8 +978,8 @@ export default function TeacherClassNotesPage() {
                             }`}
                           >
                             {evaluation.status === "PUBLISHED"
-                              ? "Publiee"
-                              : "Brouillon"}
+                              ? t("notes.teacher.status.published")
+                              : t("notes.teacher.status.draft")}
                           </span>
                           <span>{listMeta.dateLabel}</span>
                           <span>{listMeta.scoreProgress}</span>
@@ -994,20 +1011,20 @@ export default function TeacherClassNotesPage() {
                     <div>
                       <p className="font-heading text-xl font-semibold text-text-primary">
                         {evaluationPanelMode === "edit"
-                          ? "Editer l'evaluation"
-                          : "Nouvelle evaluation"}
+                          ? t("notes.teacher.form.editTitle")
+                          : t("notes.teacher.form.createTitle")}
                       </p>
                       <p className="text-sm text-text-secondary">
                         {evaluationPanelMode === "edit"
-                          ? "Mettez a jour l'evaluation selectionnee puis enregistrez les changements."
-                          : "Preparez une evaluation puis publiez-la ou gardez-la en brouillon."}
+                          ? t("notes.teacher.form.editSubtitle")
+                          : t("notes.teacher.form.createSubtitle")}
                       </p>
                     </div>
                     {selectedEvaluation ? (
                       <BackButton
                         onClick={() => setEvaluationPanelMode("details")}
                       >
-                        Retour au detail
+                        {t("notes.teacher.detail.backToDetail")}
                       </BackButton>
                     ) : null}
                   </div>
@@ -1023,7 +1040,7 @@ export default function TeacherClassNotesPage() {
                   >
                     <div className="grid gap-3 md:grid-cols-2">
                       <FormField
-                        label="Matiere"
+                        label={t("notes.teacher.form.subject")}
                         htmlFor="evaluation-subject"
                         error={createEvaluationErrors.subjectId?.message}
                       >
@@ -1041,7 +1058,7 @@ export default function TeacherClassNotesPage() {
                       </FormField>
 
                       <FormField
-                        label="Sous-branche"
+                        label={t("notes.teacher.form.subjectBranch")}
                         htmlFor="evaluation-subject-branch"
                         error={createEvaluationErrors.subjectBranchId?.message}
                       >
@@ -1052,7 +1069,9 @@ export default function TeacherClassNotesPage() {
                             createEvaluationErrors.subjectBranchId,
                           )}
                         >
-                          <option value="">Aucune sous-branche</option>
+                          <option value="">
+                            {t("notes.teacher.form.noSubjectBranch")}
+                          </option>
                           {(selectedSubject?.branches ?? []).map((branch) => (
                             <option key={branch.id} value={branch.id}>
                               {branch.name}
@@ -1062,7 +1081,7 @@ export default function TeacherClassNotesPage() {
                       </FormField>
 
                       <FormField
-                        label="Type d'evaluation"
+                        label={t("notes.teacher.form.evaluationType")}
                         htmlFor="evaluation-type"
                         error={createEvaluationErrors.evaluationTypeId?.message}
                       >
@@ -1082,7 +1101,7 @@ export default function TeacherClassNotesPage() {
                       </FormField>
 
                       <FormField
-                        label="Periode"
+                        label={t("notes.teacher.form.term")}
                         htmlFor="evaluation-term"
                         error={createEvaluationErrors.term?.message}
                       >
@@ -1091,14 +1110,20 @@ export default function TeacherClassNotesPage() {
                           {...register("term")}
                           invalid={Boolean(createEvaluationErrors.term)}
                         >
-                          <option value="TERM_1">1er trimestre</option>
-                          <option value="TERM_2">2eme trimestre</option>
-                          <option value="TERM_3">3eme trimestre</option>
+                          <option value="TERM_1">
+                            {t("notes.teacher.terms.term1")}
+                          </option>
+                          <option value="TERM_2">
+                            {t("notes.teacher.terms.term2")}
+                          </option>
+                          <option value="TERM_3">
+                            {t("notes.teacher.terms.term3")}
+                          </option>
                         </FormSelect>
                       </FormField>
 
                       <FormField
-                        label="Titre"
+                        label={t("notes.teacher.form.title")}
                         htmlFor="evaluation-title"
                         error={createEvaluationErrors.title?.message}
                         className="md:col-span-2"
@@ -1107,12 +1132,12 @@ export default function TeacherClassNotesPage() {
                           id="evaluation-title"
                           {...register("title")}
                           invalid={Boolean(createEvaluationErrors.title)}
-                          placeholder="Ex. Composition sur les fractions"
+                          placeholder={t("notes.teacher.form.titlePlaceholder")}
                         />
                       </FormField>
 
                       <FormRichTextEditor
-                        label="Contenu / consignes"
+                        label={t("notes.teacher.form.content")}
                         error={createEvaluationErrors.description?.message}
                         invalid={Boolean(createEvaluationErrors.description)}
                         className="md:col-span-2"
@@ -1120,7 +1145,7 @@ export default function TeacherClassNotesPage() {
                         value={descriptionEditorInitialHtml}
                         allowInlineImages={false}
                         minHeightClassName="min-h-[180px]"
-                        hint="Ajoutez les consignes, notions a evaluer et attentes de correction."
+                        hint={t("notes.teacher.form.contentHint")}
                         onChange={(html) => {
                           setValue("description", html, {
                             shouldDirty: true,
@@ -1130,7 +1155,7 @@ export default function TeacherClassNotesPage() {
                       />
 
                       <FormField
-                        label="Coefficient"
+                        label={t("notes.teacher.form.coefficient")}
                         htmlFor="evaluation-coefficient"
                         error={createEvaluationErrors.coefficient?.message}
                       >
@@ -1144,7 +1169,7 @@ export default function TeacherClassNotesPage() {
                       </FormField>
 
                       <FormField
-                        label="Bareme"
+                        label={t("notes.teacher.form.maxScore")}
                         htmlFor="evaluation-max-score"
                         error={createEvaluationErrors.maxScore?.message}
                       >
@@ -1158,7 +1183,7 @@ export default function TeacherClassNotesPage() {
                       </FormField>
 
                       <FormField
-                        label="Date prevue"
+                        label={t("notes.teacher.form.scheduledAt")}
                         htmlFor="evaluation-scheduled-at"
                         error={createEvaluationErrors.scheduledAt?.message}
                       >
@@ -1170,7 +1195,7 @@ export default function TeacherClassNotesPage() {
                       </FormField>
 
                       <FormField
-                        label="Publication"
+                        label={t("notes.teacher.form.status")}
                         htmlFor="evaluation-status"
                         error={createEvaluationErrors.status?.message}
                       >
@@ -1179,8 +1204,12 @@ export default function TeacherClassNotesPage() {
                           {...register("status")}
                           invalid={Boolean(createEvaluationErrors.status)}
                         >
-                          <option value="DRAFT">Brouillon</option>
-                          <option value="PUBLISHED">Publie</option>
+                          <option value="DRAFT">
+                            {t("notes.teacher.form.statusDraft")}
+                          </option>
+                          <option value="PUBLISHED">
+                            {t("notes.teacher.form.statusPublished")}
+                          </option>
                         </FormSelect>
                       </FormField>
                     </div>
@@ -1189,16 +1218,16 @@ export default function TeacherClassNotesPage() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-text-primary">
-                            Piece jointe
+                            {t("notes.teacher.form.attachment")}
                           </p>
                           <p className="text-xs text-text-secondary">
-                            {EVALUATION_ATTACHMENT_HINT}
+                            {t("notes.teacher.form.attachmentHint")}
                           </p>
                         </div>
                         <label className="rounded-[14px] border border-warm-border bg-warm-surface px-3 py-2 text-sm font-semibold text-primary shadow-sm transition-colors hover:bg-warm-highlight">
                           {uploadingAttachment
-                            ? "Televersement..."
-                            : "Ajouter un fichier"}
+                            ? t("notes.teacher.form.attachmentUploading")
+                            : t("notes.teacher.form.attachmentAdd")}
                           <FormFileInput
                             className="hidden"
                             accept={EVALUATION_ATTACHMENT_ACCEPT}
@@ -1212,7 +1241,7 @@ export default function TeacherClassNotesPage() {
                       <div className="mt-3">
                         {attachments.length === 0 ? (
                           <p className="text-sm text-text-secondary">
-                            Aucune piece jointe.
+                            {t("notes.teacher.detail.noAttachment")}
                           </p>
                         ) : (
                           <ul className="list-disc space-y-2 pl-5 text-sm text-text-primary">
@@ -1241,7 +1270,7 @@ export default function TeacherClassNotesPage() {
                                       }
                                       className="text-xs font-semibold text-primary underline underline-offset-2"
                                     >
-                                      Telecharger
+                                      {t("notes.teacher.detail.download")}
                                     </button>
                                   ) : null}
                                   <button
@@ -1255,7 +1284,7 @@ export default function TeacherClassNotesPage() {
                                     }
                                     className="text-xs font-semibold text-notification"
                                   >
-                                    Retirer
+                                    {t("notes.teacher.detail.remove")}
                                   </button>
                                 </div>
                               </li>
@@ -1279,16 +1308,16 @@ export default function TeacherClassNotesPage() {
                         className="rounded-[10px] bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {submitting
-                          ? "Enregistrement..."
+                          ? t("notes.teacher.form.submitSaving")
                           : evaluationPanelMode === "edit"
-                            ? "Enregistrer"
-                            : "Creer l'evaluation"}
+                            ? t("notes.teacher.form.submitEdit")
+                            : t("notes.teacher.form.submitCreate")}
                       </button>
                       {selectedEvaluation ? (
                         <BackButton
                           onClick={() => setEvaluationPanelMode("details")}
                         >
-                          Annuler
+                          {t("notes.teacher.detail.cancel")}
                         </BackButton>
                       ) : null}
                     </div>
@@ -1298,11 +1327,10 @@ export default function TeacherClassNotesPage() {
                 <div className="grid min-h-[420px] place-items-center rounded-[20px] border border-dashed border-warm-border bg-warm-surface/60 p-6 text-center">
                   <div className="max-w-md">
                     <p className="font-heading text-xl font-semibold text-text-primary">
-                      Aucune evaluation selectionnee
+                      {t("notes.teacher.detail.noEvaluationTitle")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
-                      Choisissez une evaluation dans la liste ou creez-en une
-                      nouvelle pour commencer.
+                      {t("notes.teacher.detail.noEvaluationSubtitle")}
                     </p>
                   </div>
                 </div>
@@ -1325,8 +1353,8 @@ export default function TeacherClassNotesPage() {
                           }`}
                         >
                           {selectedEvaluation.status === "PUBLISHED"
-                            ? "Publiee"
-                            : "Brouillon"}
+                            ? t("notes.teacher.status.published")
+                            : t("notes.teacher.status.draft")}
                         </span>
                       </div>
                       <p className="mt-2 text-sm text-text-secondary">
@@ -1345,17 +1373,17 @@ export default function TeacherClassNotesPage() {
                         className="inline-flex items-center gap-2 rounded-[14px] bg-primary px-3 py-2 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)]"
                       >
                         <ClipboardCheck className="h-4 w-4" />
-                        Saisir les notes
+                        {t("notes.teacher.detail.enterScores")}
                       </button>
                       <button
                         type="button"
-                        aria-label="Editer l'evaluation selectionnee"
+                        aria-label={t("notes.teacher.detail.editAria")}
                         onClick={startEditEvaluation}
                         className="group inline-flex h-10 items-center gap-2 overflow-hidden rounded-full border border-warm-border bg-warm-surface px-3 text-text-primary shadow-[0_10px_22px_rgba(77,56,32,0.08)] transition-all duration-200 hover:border-primary/30 hover:bg-warm-highlight"
                       >
                         <Pencil className="h-4 w-4 shrink-0" />
                         <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-40 group-hover:opacity-100">
-                          Editer l'evaluation
+                          {t("notes.teacher.detail.editLabel")}
                         </span>
                       </button>
                     </div>
@@ -1365,21 +1393,21 @@ export default function TeacherClassNotesPage() {
                     <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
                       <p className="flex items-center justify-between gap-3 text-sm leading-tight">
                         <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
-                          Periode
+                          {t("notes.teacher.detail.period")}
                         </span>
                         <span className="font-semibold text-text-primary">
                           {selectedEvaluation.term === "TERM_1"
-                            ? "1er trimestre"
+                            ? t("notes.teacher.terms.term1")
                             : selectedEvaluation.term === "TERM_2"
-                              ? "2eme trimestre"
-                              : "3eme trimestre"}
+                              ? t("notes.teacher.terms.term2")
+                              : t("notes.teacher.terms.term3")}
                         </span>
                       </p>
                     </div>
                     <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
                       <p className="flex items-center justify-between gap-3 text-sm leading-tight">
                         <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
-                          Bareme
+                          {t("notes.teacher.detail.maxScore")}
                         </span>
                         <span className="font-semibold text-text-primary">
                           {selectedEvaluation.maxScore}
@@ -1389,7 +1417,7 @@ export default function TeacherClassNotesPage() {
                     <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
                       <p className="flex items-center justify-between gap-3 text-sm leading-tight">
                         <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
-                          Coefficient
+                          {t("notes.teacher.detail.coefficient")}
                         </span>
                         <span className="font-semibold text-text-primary">
                           {selectedEvaluation.coefficient}
@@ -1399,7 +1427,7 @@ export default function TeacherClassNotesPage() {
                     <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
                       <p className="flex items-center justify-between gap-3 text-sm leading-tight">
                         <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
-                          Notes saisies
+                          {t("notes.teacher.detail.scoresEntered")}
                         </span>
                         <span className="font-semibold text-text-primary">
                           {selectedEvaluationScoresCount}/{studentCount}
@@ -1412,7 +1440,7 @@ export default function TeacherClassNotesPage() {
                     <div className="grid gap-4">
                       <div className="rounded-[18px] border border-warm-border bg-background/80 p-4 shadow-[0_10px_24px_rgba(77,56,32,0.06)]">
                         <p className="text-sm font-semibold text-text-primary">
-                          Contenu / consignes
+                          {t("notes.teacher.detail.contentTitle")}
                         </p>
                         {hasMeaningfulRichTextContent(
                           selectedEvaluation.description,
@@ -1425,7 +1453,7 @@ export default function TeacherClassNotesPage() {
                           />
                         ) : (
                           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-text-secondary">
-                            Aucune consigne detaillee pour cette evaluation.
+                            {t("notes.teacher.detail.noInstructions")}
                           </p>
                         )}
                       </div>
@@ -1434,13 +1462,13 @@ export default function TeacherClassNotesPage() {
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-primary" />
                           <p className="text-sm font-semibold text-text-primary">
-                            Pieces jointes
+                            {t("notes.teacher.detail.attachments")}
                           </p>
                         </div>
                         <div className="mt-3">
                           {selectedEvaluation.attachments.length === 0 ? (
                             <p className="text-sm text-text-secondary">
-                              Aucune piece jointe.
+                              {t("notes.teacher.detail.noAttachment")}
                             </p>
                           ) : (
                             <ul className="list-disc space-y-2 pl-5 text-sm text-text-primary">
@@ -1486,7 +1514,7 @@ export default function TeacherClassNotesPage() {
                         <div className="flex items-center gap-2">
                           <CalendarDays className="h-4 w-4 text-primary" />
                           <p className="text-sm font-semibold text-text-primary">
-                            Planification
+                            {t("notes.teacher.detail.planning")}
                           </p>
                         </div>
                         <p className="mt-3 text-sm text-text-secondary">
@@ -1499,7 +1527,7 @@ export default function TeacherClassNotesPage() {
 
                       <div className="rounded-[18px] border border-warm-border bg-background/80 p-4 shadow-[0_10px_24px_rgba(77,56,32,0.06)]">
                         <p className="text-sm font-semibold text-text-primary">
-                          Suivi de saisie
+                          {t("notes.teacher.detail.trackingTitle")}
                         </p>
                         <div className="mt-3 grid gap-2 text-sm text-text-secondary">
                           <p>
@@ -1508,7 +1536,7 @@ export default function TeacherClassNotesPage() {
                                 (student) => student.scoreStatus === "ENTERED",
                               ).length
                             }{" "}
-                            note(s) renseignee(s)
+                            {t("notes.teacher.detail.scoresEnteredCount")}
                           </p>
                           <p>
                             {
@@ -1516,7 +1544,7 @@ export default function TeacherClassNotesPage() {
                                 (student) => student.scoreStatus === "ABSENT",
                               ).length
                             }{" "}
-                            absence(s)
+                            {t("notes.teacher.detail.absencesCount")}
                           </p>
                           <p>
                             {
@@ -1524,7 +1552,7 @@ export default function TeacherClassNotesPage() {
                                 (student) => student.scoreStatus === "EXCUSED",
                               ).length
                             }{" "}
-                            dispense(s)
+                            {t("notes.teacher.detail.excusedCount")}
                           </p>
                         </div>
                       </div>
@@ -1538,14 +1566,16 @@ export default function TeacherClassNotesPage() {
           <div className="grid gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Evaluation</span>
+                <span className="text-text-secondary">
+                  {t("notes.teacher.scores.evaluationLabel")}
+                </span>
                 <FormSelect
                   value={selectedEvaluationId}
                   onChange={(event) =>
                     setSelectedEvaluationId(event.target.value)
                   }
                 >
-                  <option value="">Selectionner</option>
+                  <option value="">{t("notes.common.select")}</option>
                   {evaluations.map((evaluation) => (
                     <option key={evaluation.id} value={evaluation.id}>
                       {evaluation.title} - {evaluation.subject.name}
@@ -1557,7 +1587,7 @@ export default function TeacherClassNotesPage() {
 
             {!selectedEvaluation ? (
               <div className="content-panel p-4 text-sm text-text-secondary">
-                Selectionnez une evaluation pour saisir les notes.
+                {t("notes.teacher.scores.selectPrompt")}
               </div>
             ) : (
               <div className="grid gap-4">
@@ -1570,9 +1600,20 @@ export default function TeacherClassNotesPage() {
                     {selectedEvaluation.subjectBranch
                       ? ` - ${selectedEvaluation.subjectBranch.name}`
                       : ""}{" "}
-                    • {selectedEvaluation.evaluationType.label} • Coef.{" "}
-                    {selectedEvaluation.coefficient} • Bareme{" "}
-                    {selectedEvaluation.maxScore}
+                    •{" "}
+                    {t("notes.teacher.scores.summaryLine")
+                      .replace(
+                        "{evaluationType}",
+                        selectedEvaluation.evaluationType.label,
+                      )
+                      .replace(
+                        "{coefficient}",
+                        String(selectedEvaluation.coefficient),
+                      )
+                      .replace(
+                        "{maxScore}",
+                        String(selectedEvaluation.maxScore),
+                      )}
                   </p>
                 </div>
 
@@ -1580,10 +1621,18 @@ export default function TeacherClassNotesPage() {
                   <table className="min-w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-text-secondary">
-                        <th className="px-3 py-2 font-medium">Eleve</th>
-                        <th className="px-3 py-2 font-medium">Statut</th>
-                        <th className="px-3 py-2 font-medium">Note</th>
-                        <th className="px-3 py-2 font-medium">Commentaire</th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.scores.columnStudent")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.scores.columnStatus")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.scores.columnScore")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.scores.columnComment")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1613,10 +1662,18 @@ export default function TeacherClassNotesPage() {
                                 }))
                               }
                             >
-                              <option value="ENTERED">Note saisie</option>
-                              <option value="ABSENT">Absent</option>
-                              <option value="EXCUSED">Dispense</option>
-                              <option value="NOT_GRADED">Non note</option>
+                              <option value="ENTERED">
+                                {t("notes.teacher.scores.statusEntered")}
+                              </option>
+                              <option value="ABSENT">
+                                {t("notes.teacher.scores.statusAbsent")}
+                              </option>
+                              <option value="EXCUSED">
+                                {t("notes.teacher.scores.statusExcused")}
+                              </option>
+                              <option value="NOT_GRADED">
+                                {t("notes.teacher.scores.statusNotGraded")}
+                              </option>
                             </FormSelect>
                           </td>
                           <td className="px-3 py-2">
@@ -1660,7 +1717,9 @@ export default function TeacherClassNotesPage() {
                                 }))
                               }
                               className="min-w-[220px]"
-                              placeholder="Commentaire optionnel"
+                              placeholder={t(
+                                "notes.teacher.scores.commentPlaceholder",
+                              )}
                             />
                           </td>
                         </tr>
@@ -1681,7 +1740,9 @@ export default function TeacherClassNotesPage() {
                   disabled={savingScores}
                   className="w-fit rounded-[14px] bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] disabled:opacity-70"
                 >
-                  {savingScores ? "Enregistrement..." : "Enregistrer les notes"}
+                  {savingScores
+                    ? t("notes.teacher.scores.saving")
+                    : t("notes.teacher.scores.save")}
                 </button>
               </div>
             )}
@@ -1690,25 +1751,37 @@ export default function TeacherClassNotesPage() {
           <div className="grid gap-4">
             <div className="grid gap-3 md:grid-cols-[180px_220px_180px]">
               <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Trimestre</span>
+                <span className="text-text-secondary">
+                  {t("notes.teacher.council.term")}
+                </span>
                 <FormSelect
                   value={councilTerm}
                   onChange={(event) => setCouncilTerm(event.target.value)}
                 >
-                  <option value="TERM_1">1er trimestre</option>
-                  <option value="TERM_2">2eme trimestre</option>
-                  <option value="TERM_3">3eme trimestre</option>
+                  <option value="TERM_1">
+                    {t("notes.teacher.terms.term1")}
+                  </option>
+                  <option value="TERM_2">
+                    {t("notes.teacher.terms.term2")}
+                  </option>
+                  <option value="TERM_3">
+                    {t("notes.teacher.terms.term3")}
+                  </option>
                 </FormSelect>
               </label>
               <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Date du conseil</span>
+                <span className="text-text-secondary">
+                  {t("notes.teacher.council.heldAt")}
+                </span>
                 <FormDateTimeInput
                   value={councilHeldAt}
                   onChange={(event) => setCouncilHeldAt(event.target.value)}
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                <span className="text-text-secondary">Publication</span>
+                <span className="text-text-secondary">
+                  {t("notes.teacher.council.publication")}
+                </span>
                 <FormSelect
                   value={councilStatus}
                   onChange={(event) =>
@@ -1717,8 +1790,12 @@ export default function TeacherClassNotesPage() {
                     )
                   }
                 >
-                  <option value="DRAFT">Brouillon</option>
-                  <option value="PUBLISHED">Publie</option>
+                  <option value="DRAFT">
+                    {t("notes.teacher.form.statusDraft")}
+                  </option>
+                  <option value="PUBLISHED">
+                    {t("notes.teacher.form.statusPublished")}
+                  </option>
                 </FormSelect>
               </label>
             </div>
@@ -1732,7 +1809,7 @@ export default function TeacherClassNotesPage() {
                         {student.lastName} {student.firstName}
                       </p>
                       <p className="text-xs text-text-secondary">
-                        Appreciations de fin de trimestre
+                        {t("notes.teacher.council.appreciationsSubtitle")}
                       </p>
                     </div>
                   </div>
@@ -1740,7 +1817,7 @@ export default function TeacherClassNotesPage() {
                   <div className="grid gap-3">
                     <label className="grid gap-1 text-sm">
                       <span className="text-text-secondary">
-                        Appreciation generale
+                        {t("notes.teacher.council.generalAppreciation")}
                       </span>
                       <FormTextarea
                         value={
@@ -1763,7 +1840,9 @@ export default function TeacherClassNotesPage() {
                           }))
                         }
                         className="min-h-[90px]"
-                        placeholder="Synthese generale du trimestre..."
+                        placeholder={t(
+                          "notes.teacher.council.generalAppreciationPlaceholder",
+                        )}
                       />
                     </label>
 
@@ -1792,7 +1871,9 @@ export default function TeacherClassNotesPage() {
                               }))
                             }
                             className="min-h-[88px]"
-                            placeholder={`Appreciation ${subject.name.toLowerCase()}...`}
+                            placeholder={t(
+                              "notes.teacher.council.subjectAppreciationPlaceholder",
+                            ).replace("{subject}", subject.name.toLowerCase())}
                           />
                         </label>
                       ))}
@@ -1815,10 +1896,10 @@ export default function TeacherClassNotesPage() {
               className="w-fit rounded-[14px] bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] disabled:opacity-70"
             >
               {savingCouncil
-                ? "Enregistrement..."
+                ? t("notes.teacher.council.saving")
                 : councilStatus === "PUBLISHED"
-                  ? "Publier le conseil de classe"
-                  : "Enregistrer le brouillon"}
+                  ? t("notes.teacher.council.publish")
+                  : t("notes.teacher.council.saveDraft")}
             </button>
           </div>
         )}

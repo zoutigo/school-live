@@ -31,6 +31,10 @@ import {
   type TimetableDisplaySlot,
 } from "../../../../../../../components/timetable/timetable-views";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
+import {
+  useTranslation,
+  type TranslateFn,
+} from "../../../../../../../i18n/useTranslation";
 import { API_URL, type MeResponse } from "../_shared";
 
 type TabKey = "slots" | "colors" | "vacations" | "help";
@@ -171,172 +175,191 @@ const CAN_MANAGE_CALENDAR_ROLES: AllowedRole[] = [
   "SUPERVISOR",
 ];
 
-const WEEKDAY_OPTIONS = [
-  { value: 1, label: "Lundi" },
-  { value: 2, label: "Mardi" },
-  { value: 3, label: "Mercredi" },
-  { value: 4, label: "Jeudi" },
-  { value: 5, label: "Vendredi" },
-  { value: 6, label: "Samedi" },
-  { value: 7, label: "Dimanche" },
-];
+function getWeekdayOptions(t: TranslateFn) {
+  return [
+    { value: 1, label: t("timetable.agenda.weekdays.1") },
+    { value: 2, label: t("timetable.agenda.weekdays.2") },
+    { value: 3, label: t("timetable.agenda.weekdays.3") },
+    { value: 4, label: t("timetable.agenda.weekdays.4") },
+    { value: 5, label: t("timetable.agenda.weekdays.5") },
+    { value: 6, label: t("timetable.agenda.weekdays.6") },
+    { value: 7, label: t("timetable.agenda.weekdays.7") },
+  ];
+}
 
-const vacationFormSchema = z
-  .object({
-    label: z.string().trim().min(1, "Le libelle est obligatoire."),
-    scope: z.enum(["SCHOOL", "ACADEMIC_LEVEL", "CLASS"]),
-    startDate: z.string().min(1, "La date de debut est obligatoire."),
-    endDate: z.string().min(1, "La date de fin est obligatoire."),
-  })
-  .refine(
-    (value) =>
-      !Number.isNaN(new Date(value.startDate).getTime()) &&
-      !Number.isNaN(new Date(value.endDate).getTime()),
-    {
-      path: ["startDate"],
-      message: "Dates invalides.",
-    },
-  )
-  .refine(
-    (value) =>
-      Number.isNaN(new Date(value.startDate).getTime()) ||
-      Number.isNaN(new Date(value.endDate).getTime()) ||
-      new Date(value.startDate) <= new Date(value.endDate),
-    {
-      path: ["endDate"],
-      message: "La date de debut doit etre avant la date de fin.",
-    },
-  );
+function createVacationFormSchema(t: TranslateFn) {
+  return z
+    .object({
+      label: z
+        .string()
+        .trim()
+        .min(1, t("timetable.agenda.validation.vacationLabelRequired")),
+      scope: z.enum(["SCHOOL", "ACADEMIC_LEVEL", "CLASS"]),
+      startDate: z
+        .string()
+        .min(1, t("timetable.agenda.validation.vacationStartDateRequired")),
+      endDate: z
+        .string()
+        .min(1, t("timetable.agenda.validation.vacationEndDateRequired")),
+    })
+    .refine(
+      (value) =>
+        !Number.isNaN(new Date(value.startDate).getTime()) &&
+        !Number.isNaN(new Date(value.endDate).getTime()),
+      {
+        path: ["startDate"],
+        message: t("timetable.agenda.validation.invalidDates"),
+      },
+    )
+    .refine(
+      (value) =>
+        Number.isNaN(new Date(value.startDate).getTime()) ||
+        Number.isNaN(new Date(value.endDate).getTime()) ||
+        new Date(value.startDate) <= new Date(value.endDate),
+      {
+        path: ["endDate"],
+        message: t("timetable.agenda.validation.startBeforeEndDate"),
+      },
+    );
+}
 
-const slotFormSchema = z
-  .object({
-    weekday: z.string(),
-    start: z.string(),
-    end: z.string(),
-    subjectId: z.string().min(1, "Selectionnez une matiere."),
-    teacherUserId: z.string().min(1, "Selectionnez un enseignant."),
-    room: z.string(),
-    activeFromDate: z.string(),
-    activeToDate: z.string(),
-    effectiveFromDate: z.string(),
-  })
-  .superRefine((value, context) => {
-    const weekday = Number.parseInt(value.weekday, 10);
-    if (!Number.isFinite(weekday) || weekday < 1 || weekday > 7) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["weekday"],
-        message: "Jour invalide.",
-      });
-    }
+function createSlotFormSchema(t: TranslateFn) {
+  return z
+    .object({
+      weekday: z.string(),
+      start: z.string(),
+      end: z.string(),
+      subjectId: z
+        .string()
+        .min(1, t("timetable.agenda.validation.selectSubject")),
+      teacherUserId: z
+        .string()
+        .min(1, t("timetable.agenda.validation.selectTeacher")),
+      room: z.string(),
+      activeFromDate: z.string(),
+      activeToDate: z.string(),
+      effectiveFromDate: z.string(),
+    })
+    .superRefine((value, context) => {
+      const weekday = Number.parseInt(value.weekday, 10);
+      if (!Number.isFinite(weekday) || weekday < 1 || weekday > 7) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["weekday"],
+          message: t("timetable.agenda.validation.invalidWeekday"),
+        });
+      }
 
-    const startMinute = timeValueToMinutes(value.start);
-    const endMinute = timeValueToMinutes(value.end);
-    if (!Number.isFinite(startMinute)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["start"],
-        message: "Horaire invalide.",
-      });
-    }
-    if (!Number.isFinite(endMinute)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["end"],
-        message: "Horaire invalide.",
-      });
-    }
-    if (
-      Number.isFinite(startMinute) &&
-      Number.isFinite(endMinute) &&
-      startMinute >= endMinute
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["end"],
-        message: "L'heure de debut doit etre avant l'heure de fin.",
-      });
-    }
-  });
+      const startMinute = timeValueToMinutes(value.start);
+      const endMinute = timeValueToMinutes(value.end);
+      if (!Number.isFinite(startMinute)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["start"],
+          message: t("timetable.agenda.validation.invalidTime"),
+        });
+      }
+      if (!Number.isFinite(endMinute)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["end"],
+          message: t("timetable.agenda.validation.invalidTime"),
+        });
+      }
+      if (
+        Number.isFinite(startMinute) &&
+        Number.isFinite(endMinute) &&
+        startMinute >= endMinute
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["end"],
+          message: t("timetable.agenda.validation.startBeforeEndTime"),
+        });
+      }
+    });
+}
 
-const occurrenceFormSchema = z
-  .object({
-    actionType: z.enum([
-      "DELETE_OCCURRENCE",
-      "UPDATE_OCCURRENCE",
-      "UPDATE_SERIES",
-      "DELETE_SERIES",
-    ]),
-    occurrenceDateInput: z.string(),
-    occurrenceSeriesEndDate: z.string(),
-    subjectId: z.string(),
-    teacherUserId: z.string(),
-    start: z.string(),
-    end: z.string(),
-    room: z.string(),
-  })
-  .superRefine((value, context) => {
-    if (
-      value.actionType !== "DELETE_SERIES" &&
-      value.occurrenceDateInput.trim().length === 0
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["occurrenceDateInput"],
-        message: "Selectionnez la date d'occurrence.",
-      });
-    }
+function createOccurrenceFormSchema(t: TranslateFn) {
+  return z
+    .object({
+      actionType: z.enum([
+        "DELETE_OCCURRENCE",
+        "UPDATE_OCCURRENCE",
+        "UPDATE_SERIES",
+        "DELETE_SERIES",
+      ]),
+      occurrenceDateInput: z.string(),
+      occurrenceSeriesEndDate: z.string(),
+      subjectId: z.string(),
+      teacherUserId: z.string(),
+      start: z.string(),
+      end: z.string(),
+      room: z.string(),
+    })
+    .superRefine((value, context) => {
+      if (
+        value.actionType !== "DELETE_SERIES" &&
+        value.occurrenceDateInput.trim().length === 0
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["occurrenceDateInput"],
+          message: t("timetable.agenda.validation.selectOccurrenceDate"),
+        });
+      }
 
-    if (
-      value.actionType === "DELETE_OCCURRENCE" ||
-      value.actionType === "DELETE_SERIES"
-    ) {
-      return;
-    }
+      if (
+        value.actionType === "DELETE_OCCURRENCE" ||
+        value.actionType === "DELETE_SERIES"
+      ) {
+        return;
+      }
 
-    if (value.subjectId.trim().length === 0) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["subjectId"],
-        message: "Selectionnez une matiere.",
-      });
-    }
-    if (value.teacherUserId.trim().length === 0) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["teacherUserId"],
-        message: "Selectionnez un enseignant.",
-      });
-    }
+      if (value.subjectId.trim().length === 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["subjectId"],
+          message: t("timetable.agenda.validation.selectSubject"),
+        });
+      }
+      if (value.teacherUserId.trim().length === 0) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["teacherUserId"],
+          message: t("timetable.agenda.validation.selectTeacher"),
+        });
+      }
 
-    const startMinute = timeValueToMinutes(value.start);
-    const endMinute = timeValueToMinutes(value.end);
-    if (!Number.isFinite(startMinute)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["start"],
-        message: "Horaire invalide.",
-      });
-    }
-    if (!Number.isFinite(endMinute)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["end"],
-        message: "Horaire invalide.",
-      });
-    }
-    if (
-      Number.isFinite(startMinute) &&
-      Number.isFinite(endMinute) &&
-      startMinute >= endMinute
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["end"],
-        message: "L'heure de debut doit etre avant l'heure de fin.",
-      });
-    }
-  });
+      const startMinute = timeValueToMinutes(value.start);
+      const endMinute = timeValueToMinutes(value.end);
+      if (!Number.isFinite(startMinute)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["start"],
+          message: t("timetable.agenda.validation.invalidTime"),
+        });
+      }
+      if (!Number.isFinite(endMinute)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["end"],
+          message: t("timetable.agenda.validation.invalidTime"),
+        });
+      }
+      if (
+        Number.isFinite(startMinute) &&
+        Number.isFinite(endMinute) &&
+        startMinute >= endMinute
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["end"],
+          message: t("timetable.agenda.validation.startBeforeEndTime"),
+        });
+      }
+    });
+}
 
 function parseApiError(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== "object") {
@@ -414,14 +437,14 @@ function toDateInputValue(isoDate: string) {
   return `${year}-${month}-${day}`;
 }
 
-function scopeLabel(scope: CalendarEventRow["scope"]) {
+function scopeLabel(t: TranslateFn, scope: CalendarEventRow["scope"]) {
   if (scope === "SCHOOL") {
-    return "Ecole";
+    return t("timetable.agenda.scopeLabel.school");
   }
   if (scope === "ACADEMIC_LEVEL") {
-    return "Niveau";
+    return t("timetable.agenda.scopeLabel.academicLevel");
   }
-  return "Classe";
+  return t("timetable.agenda.scopeLabel.class");
 }
 
 function stripTime(date: Date) {
@@ -497,9 +520,12 @@ function subjectVisualTone(subjectColorHex: string | undefined) {
   };
 }
 
-function teacherPrefixFromGender(gender: string | null | undefined) {
+function teacherPrefixFromGender(
+  t: TranslateFn,
+  gender: string | null | undefined,
+) {
   if (!gender) {
-    return "Mr";
+    return t("timetable.agenda.teacherPrefix.mr");
   }
   const normalized = gender.trim().toUpperCase();
   if (
@@ -508,32 +534,41 @@ function teacherPrefixFromGender(gender: string | null | undefined) {
     normalized === "FEMININE" ||
     normalized === "F"
   ) {
-    return "Mme";
+    return t("timetable.agenda.teacherPrefix.mrs");
   }
-  return "Mr";
+  return t("timetable.agenda.teacherPrefix.mr");
 }
 
-function occurrenceActionLabel(action: OccurrenceModalAction) {
+function occurrenceActionLabel(t: TranslateFn, action: OccurrenceModalAction) {
   switch (action) {
     case "DELETE_OCCURRENCE":
-      return "Supprimer cette occurrence";
+      return t("timetable.agenda.occurrenceModal.deleteOccurrence");
     case "UPDATE_OCCURRENCE":
-      return "Modifier cette occurrence";
+      return t("timetable.agenda.occurrenceModal.updateOccurrence");
     case "UPDATE_SERIES":
-      return "Modifier toute la serie";
+      return t("timetable.agenda.occurrenceModal.updateSeries");
     case "DELETE_SERIES":
-      return "Supprimer toute la serie";
+      return t("timetable.agenda.occurrenceModal.deleteSeries");
     default:
-      return "Gerer l'occurrence";
+      return t("timetable.agenda.occurrenceModal.manage");
   }
 }
 
 export default function TeacherClassAgendaPage() {
+  const { t } = useTranslation();
   const { schoolSlug, classId } = useParams<{
     schoolSlug: string;
     classId: string;
   }>();
   const router = useRouter();
+
+  const WEEKDAY_OPTIONS = useMemo(() => getWeekdayOptions(t), [t]);
+  const vacationFormSchema = useMemo(() => createVacationFormSchema(t), [t]);
+  const slotFormSchema = useMemo(() => createSlotFormSchema(t), [t]);
+  const occurrenceFormSchema = useMemo(
+    () => createOccurrenceFormSchema(t),
+    [t],
+  );
 
   const [tab, setTab] = useState<TabKey>("slots");
   const [loading, setLoading] = useState(true);
@@ -589,7 +624,7 @@ export default function TeacherClassAgendaPage() {
     resolver: zodResolver(vacationFormSchema),
     mode: "onChange",
     defaultValues: {
-      label: "Vacances scolaires",
+      label: t("timetable.agenda.vacations.defaultLabel"),
       scope: "CLASS",
       startDate: "",
       endDate: "",
@@ -945,7 +980,7 @@ export default function TeacherClassAgendaPage() {
       if (caught instanceof Error) {
         setError(caught.message);
       } else {
-        setError("Erreur reseau.");
+        setError(t("timetable.agenda.errors.networkError"));
       }
     } finally {
       setLoading(false);
@@ -988,7 +1023,7 @@ export default function TeacherClassAgendaPage() {
       const message =
         parseApiError(contextPayload, "") ||
         parseApiError(timetablePayload, "") ||
-        "Impossible de charger l'emploi du temps de la classe.";
+        t("timetable.agenda.errors.loadFailed");
       throw new Error(message);
     }
 
@@ -1029,7 +1064,7 @@ export default function TeacherClassAgendaPage() {
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
       throw new Error(
-        parseApiError(payload, "Impossible d'actualiser l'emploi du temps."),
+        parseApiError(payload, t("timetable.agenda.errors.refreshFailed")),
       );
     }
 
@@ -1071,7 +1106,7 @@ export default function TeacherClassAgendaPage() {
       if (caught instanceof Error) {
         setError(caught.message);
       } else {
-        setError("Impossible de changer d'annee scolaire.");
+        setError(t("timetable.agenda.errors.schoolYearSwitchFailed"));
       }
     } finally {
       setLoading(false);
@@ -1096,8 +1131,12 @@ export default function TeacherClassAgendaPage() {
     if (!selectedYear) {
       return "";
     }
-    return `${selectedYear.label}${selectedYear.isActive ? " (en cours)" : ""}`;
-  }, [context?.schoolYears, selectedSchoolYearIndex]);
+    return `${selectedYear.label}${
+      selectedYear.isActive
+        ? t("timetable.agenda.schoolYear.inProgressSuffix")
+        : ""
+    }`;
+  }, [context?.schoolYears, selectedSchoolYearIndex, t]);
 
   const canGoToPreviousSchoolYear =
     !!context?.schoolYears.length && selectedSchoolYearIndex > 0;
@@ -1108,7 +1147,7 @@ export default function TeacherClassAgendaPage() {
   async function saveSubjectStyle(subjectId: string, colorHex: string) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("timetable.agenda.errors.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -1135,7 +1174,10 @@ export default function TeacherClassAgendaPage() {
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         setError(
-          parseApiError(payload, "Mise a jour de la couleur impossible."),
+          parseApiError(
+            payload,
+            t("timetable.agenda.errors.colorUpdateFailed"),
+          ),
         );
         return;
       }
@@ -1144,9 +1186,9 @@ export default function TeacherClassAgendaPage() {
         ...current,
         [subjectId]: colorHex.toUpperCase(),
       }));
-      setSuccess("Couleur de matiere enregistree.");
+      setSuccess(t("timetable.agenda.success.colorSaved"));
     } catch {
-      setError("Erreur reseau.");
+      setError(t("timetable.agenda.errors.networkError"));
     } finally {
       setSavingSubjectStyleId(null);
     }
@@ -1158,7 +1200,7 @@ export default function TeacherClassAgendaPage() {
     const endMinute = timeValueToMinutes(values.end);
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("timetable.agenda.errors.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -1195,12 +1237,15 @@ export default function TeacherClassAgendaPage() {
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           setError(
-            parseApiError(payload, "Mise a jour du creneau impossible."),
+            parseApiError(
+              payload,
+              t("timetable.agenda.errors.slotUpdateFailed"),
+            ),
           );
           return;
         }
         await refreshTimetable();
-        setSuccess("Creneau mis a jour.");
+        setSuccess(t("timetable.agenda.success.slotUpdated"));
         resetSlotForm();
         return;
       }
@@ -1244,7 +1289,12 @@ export default function TeacherClassAgendaPage() {
         );
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          setError(parseApiError(payload, "Creation du creneau impossible."));
+          setError(
+            parseApiError(
+              payload,
+              t("timetable.agenda.errors.slotCreateFailed"),
+            ),
+          );
           return;
         }
       }
@@ -1252,8 +1302,11 @@ export default function TeacherClassAgendaPage() {
       await refreshTimetable();
       setSuccess(
         drafts.length > 1
-          ? `${drafts.length} creneaux ajoutes.`
-          : "Creneau ajoute.",
+          ? t("timetable.agenda.success.slotsAdded").replace(
+              "{count}",
+              String(drafts.length),
+            )
+          : t("timetable.agenda.success.slotAdded"),
       );
       slotForm.setValue("room", "", {
         shouldDirty: false,
@@ -1262,7 +1315,7 @@ export default function TeacherClassAgendaPage() {
       });
       setSlotDrafts([]);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("timetable.agenda.errors.networkError"));
     } finally {
       setSavingSlot(false);
     }
@@ -1311,13 +1364,13 @@ export default function TeacherClassAgendaPage() {
     values: z.output<typeof occurrenceFormSchema>,
   ) {
     if (!occurrenceModalSlot) {
-      setError("Aucun creneau selectionne.");
+      setError(t("timetable.agenda.errors.noOccurrenceSelected"));
       return;
     }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("timetable.agenda.errors.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -1340,7 +1393,10 @@ export default function TeacherClassAgendaPage() {
           if (!response.ok) {
             const payload = await response.json().catch(() => null);
             setError(
-              parseApiError(payload, "Suppression de l'occurrence impossible."),
+              parseApiError(
+                payload,
+                t("timetable.agenda.errors.occurrenceDeleteFailed"),
+              ),
             );
             return;
           }
@@ -1363,15 +1419,18 @@ export default function TeacherClassAgendaPage() {
           if (!response.ok) {
             const body = await response.json().catch(() => null);
             setError(
-              parseApiError(body, "Suppression de l'occurrence impossible."),
+              parseApiError(
+                body,
+                t("timetable.agenda.errors.occurrenceDeleteFailed"),
+              ),
             );
             return;
           }
         } else {
-          setError("Occurrence sans source modifiable.");
+          setError(t("timetable.agenda.errors.occurrenceNoSource"));
           return;
         }
-        setSuccess("Occurrence supprimee.");
+        setSuccess(t("timetable.agenda.success.occurrenceDeleted"));
       } else if (values.actionType === "UPDATE_OCCURRENCE") {
         const startMinute = timeValueToMinutes(values.start);
         const endMinute = timeValueToMinutes(values.end);
@@ -1398,7 +1457,10 @@ export default function TeacherClassAgendaPage() {
           if (!response.ok) {
             const payload = await response.json().catch(() => null);
             setError(
-              parseApiError(payload, "Mise a jour de l'occurrence impossible."),
+              parseApiError(
+                payload,
+                t("timetable.agenda.errors.occurrenceUpdateFailed"),
+              ),
             );
             return;
           }
@@ -1426,18 +1488,21 @@ export default function TeacherClassAgendaPage() {
           if (!response.ok) {
             const body = await response.json().catch(() => null);
             setError(
-              parseApiError(body, "Mise a jour de l'occurrence impossible."),
+              parseApiError(
+                body,
+                t("timetable.agenda.errors.occurrenceUpdateFailed"),
+              ),
             );
             return;
           }
         } else {
-          setError("Occurrence sans source modifiable.");
+          setError(t("timetable.agenda.errors.occurrenceNoSource"));
           return;
         }
-        setSuccess("Occurrence modifiee.");
+        setSuccess(t("timetable.agenda.success.occurrenceUpdated"));
       } else if (values.actionType === "UPDATE_SERIES") {
         if (!occurrenceModalSlot.slotId) {
-          setError("Cette occurrence ponctuelle n'a pas de serie a modifier.");
+          setError(t("timetable.agenda.errors.seriesNoSourceUpdate"));
           return;
         }
         const startMinute = timeValueToMinutes(values.start);
@@ -1466,14 +1531,17 @@ export default function TeacherClassAgendaPage() {
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           setError(
-            parseApiError(payload, "Mise a jour de la serie impossible."),
+            parseApiError(
+              payload,
+              t("timetable.agenda.errors.seriesUpdateFailed"),
+            ),
           );
           return;
         }
-        setSuccess("Serie mise a jour.");
+        setSuccess(t("timetable.agenda.success.seriesUpdated"));
       } else if (values.actionType === "DELETE_SERIES") {
         if (!occurrenceModalSlot.slotId) {
-          setError("Cette occurrence ponctuelle n'a pas de serie a supprimer.");
+          setError(t("timetable.agenda.errors.seriesNoSourceDelete"));
           return;
         }
         const response = await fetch(
@@ -1489,17 +1557,20 @@ export default function TeacherClassAgendaPage() {
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
           setError(
-            parseApiError(payload, "Suppression de la serie impossible."),
+            parseApiError(
+              payload,
+              t("timetable.agenda.errors.seriesDeleteFailed"),
+            ),
           );
           return;
         }
-        setSuccess("Serie supprimee.");
+        setSuccess(t("timetable.agenda.success.seriesDeleted"));
       }
 
       await refreshTimetable();
       setOccurrenceModalSlot(null);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("timetable.agenda.errors.networkError"));
     } finally {
       setSavingOccurrenceAction(false);
     }
@@ -1512,7 +1583,7 @@ export default function TeacherClassAgendaPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("timetable.agenda.errors.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -1535,7 +1606,9 @@ export default function TeacherClassAgendaPage() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        setError(parseApiError(payload, "Suppression du creneau impossible."));
+        setError(
+          parseApiError(payload, t("timetable.agenda.errors.slotDeleteFailed")),
+        );
         return;
       }
 
@@ -1544,10 +1617,10 @@ export default function TeacherClassAgendaPage() {
       }
 
       await refreshTimetable();
-      setSuccess("Creneau supprime.");
+      setSuccess(t("timetable.agenda.success.slotDeleted"));
       setSlotToDelete(null);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("timetable.agenda.errors.networkError"));
     } finally {
       setDeletingSlotId(null);
     }
@@ -1556,7 +1629,7 @@ export default function TeacherClassAgendaPage() {
   function resetVacationForm() {
     setEditingVacationId(null);
     vacationForm.reset({
-      label: "Vacances scolaires",
+      label: t("timetable.agenda.vacations.defaultLabel"),
       scope: "CLASS",
       startDate: "",
       endDate: "",
@@ -1565,13 +1638,13 @@ export default function TeacherClassAgendaPage() {
 
   async function submitVacation(values: z.output<typeof vacationFormSchema>) {
     if (!canManageCalendar) {
-      setError("Vous ne pouvez pas modifier les vacances.");
+      setError(t("timetable.agenda.errors.cannotEditVacations"));
       return;
     }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("timetable.agenda.errors.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -1615,8 +1688,8 @@ export default function TeacherClassAgendaPage() {
           parseApiError(
             payload,
             isEdition
-              ? "Mise a jour des vacances impossible."
-              : "Creation des vacances impossible.",
+              ? t("timetable.agenda.errors.vacationUpdateFailed")
+              : t("timetable.agenda.errors.vacationCreateFailed"),
           ),
         );
         return;
@@ -1625,12 +1698,12 @@ export default function TeacherClassAgendaPage() {
       await refreshTimetable();
       setSuccess(
         isEdition
-          ? "Periode de vacances mise a jour."
-          : "Periode de vacances enregistree.",
+          ? t("timetable.agenda.success.vacationUpdated")
+          : t("timetable.agenda.success.vacationCreated"),
       );
       resetVacationForm();
     } catch {
-      setError("Erreur reseau.");
+      setError(t("timetable.agenda.errors.networkError"));
     } finally {
       setSavingVacation(false);
     }
@@ -1643,7 +1716,7 @@ export default function TeacherClassAgendaPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("timetable.agenda.errors.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -1667,19 +1740,22 @@ export default function TeacherClassAgendaPage() {
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         setError(
-          parseApiError(payload, "Suppression de la periode impossible."),
+          parseApiError(
+            payload,
+            t("timetable.agenda.errors.vacationDeleteFailed"),
+          ),
         );
         return;
       }
 
       await refreshTimetable();
-      setSuccess("Periode supprimee.");
+      setSuccess(t("timetable.agenda.success.vacationDeleted"));
       if (editingVacationId === eventToDelete.id) {
         resetVacationForm();
       }
       setEventToDelete(null);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("timetable.agenda.errors.networkError"));
     } finally {
       setDeletingEventId(null);
     }
@@ -1701,8 +1777,10 @@ export default function TeacherClassAgendaPage() {
   return (
     <div className="grid gap-4">
       <Card
-        title={`Emploi du temps - ${context?.class.name ?? "Classe"}`}
-        subtitle="Creation et gestion de l'emploi du temps annuel"
+        title={`${t("timetable.agenda.page.titlePrefix")} - ${
+          context?.class.name ?? t("timetable.agenda.page.defaultClassName")
+        }`}
+        subtitle={t("timetable.agenda.page.subtitle")}
       >
         <div className="mb-4 flex items-end gap-2 border-b border-border">
           <button
@@ -1714,7 +1792,7 @@ export default function TeacherClassAgendaPage() {
                 : "text-text-secondary"
             }`}
           >
-            Creneaux
+            {t("timetable.agenda.tabs.slots")}
           </button>
           <button
             type="button"
@@ -1725,7 +1803,7 @@ export default function TeacherClassAgendaPage() {
                 : "text-text-secondary"
             }`}
           >
-            Vacances
+            {t("timetable.agenda.tabs.vacations")}
           </button>
           <button
             type="button"
@@ -1736,7 +1814,7 @@ export default function TeacherClassAgendaPage() {
                 : "text-text-secondary"
             }`}
           >
-            Couleurs
+            {t("timetable.agenda.tabs.colors")}
           </button>
           <button
             type="button"
@@ -1747,40 +1825,46 @@ export default function TeacherClassAgendaPage() {
                 : "text-text-secondary"
             }`}
           >
-            Aide
+            {t("timetable.agenda.tabs.help")}
           </button>
         </div>
 
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("timetable.agenda.page.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : !context ? (
-          <p className="text-sm text-notification">Classe non accessible.</p>
+          <p className="text-sm text-notification">
+            {t("timetable.agenda.page.classNotAccessible")}
+          </p>
         ) : tab === "help" ? (
           <ModuleHelpTab
-            moduleName="Emploi du temps"
-            moduleSummary="ce module permet de planifier les cours hebdomadaires et les couleurs de matieres par classe."
+            moduleName={t("timetable.agenda.help.moduleName")}
+            moduleSummary={t("timetable.agenda.help.moduleSummary")}
             actions={[
               {
-                name: "Creer un creneau",
-                purpose: "ajouter un cours recurrent",
-                howTo:
-                  "selectionner jour, horaires, matiere, enseignant et salle puis enregistrer.",
-                moduleImpact:
-                  "structure la semaine de la classe sur l'annee scolaire.",
-                crossModuleImpact:
-                  "alimente les vues eleve/parent et facilite la coordination pedagogique.",
+                name: t("timetable.agenda.help.createSlot.name"),
+                purpose: t("timetable.agenda.help.createSlot.purpose"),
+                howTo: t("timetable.agenda.help.createSlot.howTo"),
+                moduleImpact: t(
+                  "timetable.agenda.help.createSlot.moduleImpact",
+                ),
+                crossModuleImpact: t(
+                  "timetable.agenda.help.createSlot.crossModuleImpact",
+                ),
               },
               {
-                name: "Definir une couleur matiere",
-                purpose: "ameliorer la lisibilite de l'emploi du temps",
-                howTo:
-                  "ouvrir l'onglet Couleurs, choisir une couleur puis enregistrer.",
-                moduleImpact:
-                  "harmonise la lecture des cours en vue jour/semaine/mois.",
-                crossModuleImpact:
-                  "les couleurs sont reutilisees dans les vues eleve, parent et enseignant.",
+                name: t("timetable.agenda.help.defineColor.name"),
+                purpose: t("timetable.agenda.help.defineColor.purpose"),
+                howTo: t("timetable.agenda.help.defineColor.howTo"),
+                moduleImpact: t(
+                  "timetable.agenda.help.defineColor.moduleImpact",
+                ),
+                crossModuleImpact: t(
+                  "timetable.agenda.help.defineColor.crossModuleImpact",
+                ),
               },
             ]}
           />
@@ -1790,7 +1874,9 @@ export default function TeacherClassAgendaPage() {
               <div className="rounded-card border border-border bg-background p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-text-secondary">Annee scolaire</span>
+                    <span className="text-text-secondary">
+                      {t("timetable.agenda.schoolYear.label")}
+                    </span>
                     <div className="inline-flex w-full items-center justify-between gap-2 rounded-card border border-border bg-surface px-2 py-1 sm:w-auto sm:min-w-[320px] sm:max-w-[360px]">
                       <Button
                         type="button"
@@ -1808,7 +1894,9 @@ export default function TeacherClassAgendaPage() {
                           void switchSchoolYear(nextYear.id);
                         }}
                         className="h-8 w-8 px-0"
-                        aria-label="Annee precedente"
+                        aria-label={t(
+                          "timetable.agenda.schoolYear.previousAria",
+                        )}
                         iconLeft={<ChevronLeft size={16} />}
                       />
                       <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold text-text-primary">
@@ -1830,7 +1918,7 @@ export default function TeacherClassAgendaPage() {
                           void switchSchoolYear(nextYear.id);
                         }}
                         className="h-8 w-8 px-0"
-                        aria-label="Annee suivante"
+                        aria-label={t("timetable.agenda.schoolYear.nextAria")}
                         iconLeft={<ChevronRight size={16} />}
                       />
                     </div>
@@ -1838,8 +1926,8 @@ export default function TeacherClassAgendaPage() {
                   {tab === "slots" ? (
                     <button
                       type="button"
-                      aria-label="Ajouter"
-                      title="Ajouter"
+                      aria-label={t("timetable.agenda.actions.add")}
+                      title={t("timetable.agenda.actions.add")}
                       className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                         showSlotCreateForm
                           ? "bg-accent-teal-dark text-white"
@@ -1870,7 +1958,7 @@ export default function TeacherClassAgendaPage() {
             {tab === "colors" ? (
               <section className="rounded-card border border-border bg-background p-4">
                 <h3 className="mb-2 text-sm font-semibold text-text-primary">
-                  Couleurs des matieres (classe + annee)
+                  {t("timetable.agenda.colors.title")}
                 </h3>
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                   {context.allowedSubjects.map((subject) => {
@@ -1898,7 +1986,9 @@ export default function TeacherClassAgendaPage() {
                                 [subject.id]: event.target.value.toUpperCase(),
                               }));
                             }}
-                            aria-label={`Couleur ${subject.name}`}
+                            aria-label={t(
+                              "timetable.agenda.colors.colorAria",
+                            ).replace("{subject}", subject.name)}
                           />
                           <Button
                             type="button"
@@ -1910,8 +2000,8 @@ export default function TeacherClassAgendaPage() {
                             }}
                           >
                             {savingSubjectStyleId === subject.id
-                              ? "..."
-                              : "Sauver"}
+                              ? t("timetable.agenda.colors.saving")
+                              : t("timetable.agenda.colors.save")}
                           </Button>
                         </div>
                       </article>
@@ -1932,7 +2022,7 @@ export default function TeacherClassAgendaPage() {
                     >
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <FormField
-                          label="Jour"
+                          label={t("timetable.agenda.slotForm.weekday")}
                           htmlFor="slot-weekday"
                           error={slotForm.formState.errors.weekday?.message}
                         >
@@ -1957,7 +2047,7 @@ export default function TeacherClassAgendaPage() {
                         </FormField>
 
                         <FormField
-                          label="Debut"
+                          label={t("timetable.agenda.slotForm.start")}
                           error={slotForm.formState.errors.start?.message}
                         >
                           <TimeInput
@@ -1975,7 +2065,7 @@ export default function TeacherClassAgendaPage() {
                         </FormField>
 
                         <FormField
-                          label="Fin"
+                          label={t("timetable.agenda.slotForm.end")}
                           error={slotForm.formState.errors.end?.message}
                         >
                           <TimeInput
@@ -1993,7 +2083,7 @@ export default function TeacherClassAgendaPage() {
                         </FormField>
 
                         <FormField
-                          label="Matiere"
+                          label={t("timetable.agenda.slotForm.subject")}
                           htmlFor="slot-subject"
                           error={slotForm.formState.errors.subjectId?.message}
                         >
@@ -2015,7 +2105,9 @@ export default function TeacherClassAgendaPage() {
                           >
                             {context.allowedSubjects.length === 0 ? (
                               <option value="">
-                                Aucune matiere disponible
+                                {t(
+                                  "timetable.agenda.slotForm.noSubjectsAvailable",
+                                )}
                               </option>
                             ) : null}
                             {context.allowedSubjects.map((subject) => (
@@ -2027,7 +2119,7 @@ export default function TeacherClassAgendaPage() {
                         </FormField>
 
                         <FormField
-                          label="Enseignant"
+                          label={t("timetable.agenda.slotForm.teacher")}
                           htmlFor="slot-teacher"
                           error={
                             slotForm.formState.errors.teacherUserId?.message
@@ -2051,7 +2143,9 @@ export default function TeacherClassAgendaPage() {
                           >
                             {teacherChoices.length === 0 ? (
                               <option value="">
-                                Aucun enseignant affecte a cette matiere
+                                {t(
+                                  "timetable.agenda.slotForm.noTeacherAssigned",
+                                )}
                               </option>
                             ) : null}
                             {teacherChoices.map((teacher) => (
@@ -2063,7 +2157,7 @@ export default function TeacherClassAgendaPage() {
                         </FormField>
 
                         <FormField
-                          label="Salle (optionnel)"
+                          label={t("timetable.agenda.slotForm.room")}
                           htmlFor="slot-room"
                         >
                           <FormTextInput
@@ -2076,12 +2170,16 @@ export default function TeacherClassAgendaPage() {
                                 shouldValidate: true,
                               })
                             }
-                            placeholder="ex: B14"
+                            placeholder={t(
+                              "timetable.agenda.slotForm.roomPlaceholder",
+                            )}
                             className="text-sm"
                           />
                         </FormField>
 
-                        <FormField label="Debut occurrences (optionnel)">
+                        <FormField
+                          label={t("timetable.agenda.slotForm.activeFromDate")}
+                        >
                           <DateInput
                             value={slotValues.activeFromDate}
                             onChange={(event) =>
@@ -2099,7 +2197,9 @@ export default function TeacherClassAgendaPage() {
                           />
                         </FormField>
 
-                        <FormField label="Fin occurrences (optionnel)">
+                        <FormField
+                          label={t("timetable.agenda.slotForm.activeToDate")}
+                        >
                           <DateInput
                             value={slotValues.activeToDate}
                             onChange={(event) =>
@@ -2118,7 +2218,11 @@ export default function TeacherClassAgendaPage() {
                         </FormField>
 
                         {editingSlotId ? (
-                          <FormField label="Appliquer a partir du (optionnel)">
+                          <FormField
+                            label={t(
+                              "timetable.agenda.slotForm.effectiveFromDate",
+                            )}
+                          >
                             <DateInput
                               value={slotValues.effectiveFromDate}
                               onChange={(event) =>
@@ -2175,13 +2279,18 @@ export default function TeacherClassAgendaPage() {
                         >
                           {savingSlot
                             ? editingSlotId
-                              ? "Mise a jour..."
-                              : "Enregistrement..."
+                              ? t("timetable.agenda.slotForm.updating")
+                              : t("timetable.agenda.slotForm.saving")
                             : editingSlotId
-                              ? "Mettre a jour"
+                              ? t("timetable.agenda.slotForm.update")
                               : slotDrafts.length > 0
-                                ? `Enregistrer ${slotDrafts.length + 1} creneaux`
-                                : "Ajouter le creneau"}
+                                ? t(
+                                    "timetable.agenda.slotForm.saveMultiple",
+                                  ).replace(
+                                    "{count}",
+                                    String(slotDrafts.length + 1),
+                                  )
+                                : t("timetable.agenda.slotForm.addSlot")}
                         </Button>
                         {editingSlotId ? (
                           <Button
@@ -2190,7 +2299,7 @@ export default function TeacherClassAgendaPage() {
                             onClick={resetSlotForm}
                             disabled={savingSlot}
                           >
-                            Annuler la modification
+                            {t("timetable.agenda.slotForm.cancelEdit")}
                           </Button>
                         ) : slotDrafts.length > 0 ? (
                           <Button
@@ -2199,7 +2308,10 @@ export default function TeacherClassAgendaPage() {
                             onClick={() => setSlotDrafts([])}
                             disabled={savingSlot}
                           >
-                            Vider la liste ({slotDrafts.length})
+                            {t("timetable.agenda.slotForm.clearList").replace(
+                              "{count}",
+                              String(slotDrafts.length),
+                            )}
                           </Button>
                         ) : null}
                       </div>
@@ -2213,7 +2325,10 @@ export default function TeacherClassAgendaPage() {
                   {showSlotCreateForm && slotDrafts.length > 0 ? (
                     <div className="mt-3 rounded-card border border-border bg-surface p-3">
                       <p className="mb-2 text-sm font-semibold text-text-primary">
-                        Creneaux en attente ({slotDrafts.length})
+                        {t("timetable.agenda.slotForm.pendingSlots").replace(
+                          "{count}",
+                          String(slotDrafts.length),
+                        )}
                       </p>
                       <div className="grid gap-2">
                         {slotDrafts.map((draft, index) => (
@@ -2224,7 +2339,8 @@ export default function TeacherClassAgendaPage() {
                             <span className="text-text-primary">
                               {WEEKDAY_OPTIONS.find(
                                 (day) => day.value === draft.weekday,
-                              )?.label ?? "Jour"}{" "}
+                              )?.label ??
+                                t("timetable.agenda.slotForm.weekday")}{" "}
                               · {minutesToTimeValue(draft.startMinute)} -{" "}
                               {minutesToTimeValue(draft.endMinute)}
                             </span>
@@ -2239,7 +2355,7 @@ export default function TeacherClassAgendaPage() {
                                 )
                               }
                             >
-                              Retirer
+                              {t("timetable.agenda.slotForm.remove")}
                             </button>
                           </div>
                         ))}
@@ -2248,9 +2364,7 @@ export default function TeacherClassAgendaPage() {
                   ) : null}
 
                   <p className="mt-3 rounded-card border border-[#DCE9F8] bg-[#F7FBFF] px-3 py-2 text-sm text-[#36557A]">
-                    Cliquez sur un creneau dans les vues jour, semaine ou mois
-                    pour definir un ponctuel, annuler ou modifier une
-                    occurrence.
+                    {t("timetable.agenda.slotForm.clickHint")}
                   </p>
 
                   <TimetableViews
@@ -2282,7 +2396,7 @@ export default function TeacherClassAgendaPage() {
                   >
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                       <FormField
-                        label="Libelle"
+                        label={t("timetable.agenda.vacations.label")}
                         htmlFor="vacation-label"
                         error={vacationForm.formState.errors.label?.message}
                         className="md:col-span-2 xl:col-span-2"
@@ -2303,7 +2417,7 @@ export default function TeacherClassAgendaPage() {
                       </FormField>
 
                       <FormField
-                        label="Portee"
+                        label={t("timetable.agenda.vacations.scope")}
                         htmlFor="vacation-scope"
                         error={vacationForm.formState.errors.scope?.message}
                       >
@@ -2326,18 +2440,24 @@ export default function TeacherClassAgendaPage() {
                             )
                           }
                         >
-                          <option value="CLASS">Classe</option>
+                          <option value="CLASS">
+                            {t("timetable.agenda.scopeLabel.class")}
+                          </option>
                           {context.class.academicLevelId ? (
-                            <option value="ACADEMIC_LEVEL">Niveau</option>
+                            <option value="ACADEMIC_LEVEL">
+                              {t("timetable.agenda.scopeLabel.academicLevel")}
+                            </option>
                           ) : null}
-                          <option value="SCHOOL">Ecole</option>
+                          <option value="SCHOOL">
+                            {t("timetable.agenda.scopeLabel.school")}
+                          </option>
                         </FormSelect>
                       </FormField>
 
                       <div className="hidden xl:block" />
 
                       <FormField
-                        label="Debut"
+                        label={t("timetable.agenda.vacations.start")}
                         error={vacationForm.formState.errors.startDate?.message}
                       >
                         <DateInput
@@ -2358,7 +2478,7 @@ export default function TeacherClassAgendaPage() {
                       </FormField>
 
                       <FormField
-                        label="Fin"
+                        label={t("timetable.agenda.vacations.end")}
                         error={vacationForm.formState.errors.endDate?.message}
                       >
                         <DateInput
@@ -2395,10 +2515,10 @@ export default function TeacherClassAgendaPage() {
                           }
                         >
                           {savingVacation
-                            ? "Enregistrement..."
+                            ? t("timetable.agenda.slotForm.saving")
                             : editingVacationId
-                              ? "Mettre a jour la periode"
-                              : "Ajouter la periode"}
+                              ? t("timetable.agenda.vacations.updatePeriod")
+                              : t("timetable.agenda.vacations.addPeriod")}
                         </Button>
                         {editingVacationId ? (
                           <Button
@@ -2407,7 +2527,7 @@ export default function TeacherClassAgendaPage() {
                             onClick={resetVacationForm}
                             disabled={savingVacation}
                           >
-                            Annuler la modification
+                            {t("timetable.agenda.vacations.cancelEdit")}
                           </Button>
                         ) : null}
                       </div>
@@ -2419,15 +2539,14 @@ export default function TeacherClassAgendaPage() {
                   </form>
                 ) : (
                   <p className="rounded-card border border-border bg-background px-3 py-2 text-sm text-text-secondary">
-                    Seuls le responsable pedagogique et les admins peuvent
-                    modifier les vacances.
+                    {t("timetable.agenda.vacations.manageRestriction")}
                   </p>
                 )}
 
                 <div className="grid gap-2">
                   {sortedVacations.length === 0 ? (
                     <div className="rounded-card border border-dashed border-border bg-background p-4 text-sm text-text-secondary">
-                      Aucune periode de vacances enregistree.
+                      {t("timetable.agenda.vacations.noVacations")}
                     </div>
                   ) : (
                     sortedVacations.map((event) => (
@@ -2441,7 +2560,7 @@ export default function TeacherClassAgendaPage() {
                           </p>
                           <p className="text-xs text-text-secondary">
                             {formatDateRange(event.startDate, event.endDate)} ·{" "}
-                            {scopeLabel(event.scope)}
+                            {scopeLabel(t, event.scope)}
                           </p>
                         </div>
                         {canManageCalendar ? (
@@ -2453,7 +2572,7 @@ export default function TeacherClassAgendaPage() {
                               className="px-2 py-1 text-xs"
                               iconLeft={<Pencil size={14} />}
                             >
-                              Modifier
+                              {t("timetable.agenda.vacations.edit")}
                             </Button>
                             <Button
                               type="button"
@@ -2462,7 +2581,7 @@ export default function TeacherClassAgendaPage() {
                               className="px-2 py-1 text-xs text-notification hover:bg-[#FEECEC]"
                               iconLeft={<Trash2 size={14} />}
                             >
-                              Supprimer
+                              {t("timetable.agenda.vacations.delete")}
                             </Button>
                           </div>
                         ) : null}
@@ -2478,7 +2597,7 @@ export default function TeacherClassAgendaPage() {
 
       <ConfirmDialog
         open={slotToDelete !== null}
-        title="Supprimer ce creneau ?"
+        title={t("timetable.agenda.confirm.deleteSlotTitle")}
         message={
           slotToDelete
             ? `${minutesToTimeValue(slotToDelete.startMinute)} - ${minutesToTimeValue(slotToDelete.endMinute)} · ${slotToDelete.subject.name}`
@@ -2498,7 +2617,7 @@ export default function TeacherClassAgendaPage() {
 
       <ConfirmDialog
         open={eventToDelete !== null}
-        title="Supprimer cette periode ?"
+        title={t("timetable.agenda.confirm.deleteVacationTitle")}
         message={
           eventToDelete
             ? `${eventToDelete.label} · ${formatDateRange(eventToDelete.startDate, eventToDelete.endDate)}`
@@ -2526,8 +2645,8 @@ export default function TeacherClassAgendaPage() {
               <div>
                 <h3 className="text-base font-semibold text-text-primary">
                   {occurrenceModalStep === "action"
-                    ? "Gerer l'occurrence"
-                    : occurrenceActionLabel(occurrenceActionType)}
+                    ? t("timetable.agenda.occurrenceModal.manage")
+                    : occurrenceActionLabel(t, occurrenceActionType)}
                 </h3>
                 <p className="text-xs text-text-secondary">
                   {new Intl.DateTimeFormat("fr-FR", {
@@ -2552,7 +2671,7 @@ export default function TeacherClassAgendaPage() {
                   }
                 }}
               >
-                Fermer
+                {t("timetable.agenda.occurrenceModal.close")}
               </Button>
             </div>
 
@@ -2584,7 +2703,7 @@ export default function TeacherClassAgendaPage() {
                           : "border-border bg-surface text-text-primary hover:bg-background"
                       }`}
                     >
-                      {occurrenceActionLabel(action)}
+                      {occurrenceActionLabel(t, action)}
                     </button>
                   ))}
                 </div>
@@ -2598,13 +2717,13 @@ export default function TeacherClassAgendaPage() {
                     }}
                     disabled={savingOccurrenceAction}
                   >
-                    Annuler
+                    {t("timetable.agenda.occurrenceModal.cancel")}
                   </Button>
                   <Button
                     type="button"
                     onClick={() => setOccurrenceModalStep("details")}
                   >
-                    Continuer
+                    {t("timetable.agenda.occurrenceModal.continue")}
                   </Button>
                 </div>
               </div>
@@ -2635,8 +2754,12 @@ export default function TeacherClassAgendaPage() {
                       <div className="grid gap-3">
                         <p className="text-sm text-text-secondary">
                           {occurrenceActionType === "DELETE_SERIES"
-                            ? "Voulez-vous vraiment supprimer toute la serie ?"
-                            : "Voulez-vous vraiment supprimer cette occurrence ?"}
+                            ? t(
+                                "timetable.agenda.occurrenceModal.confirmDeleteSeries",
+                              )
+                            : t(
+                                "timetable.agenda.occurrenceModal.confirmDeleteOccurrence",
+                              )}
                         </p>
                         <article
                           className="rounded-card border px-3 py-2"
@@ -2683,31 +2806,45 @@ export default function TeacherClassAgendaPage() {
                           </p>
                           <p className="text-xs text-text-secondary">
                             {teacherPrefixFromGender(
+                              t,
                               occurrenceModalSlot.teacherUser.gender,
                             )}{" "}
                             {occurrenceModalSlot.teacherUser.lastName.toUpperCase()}{" "}
                             {occurrenceModalSlot.teacherUser.firstName}
                             {occurrenceModalSlot.status === "CANCELLED"
-                              ? " · Annule"
+                              ? t(
+                                  "timetable.agenda.occurrenceModal.cancelledSuffix",
+                                )
                               : ""}
                           </p>
                           {occurrenceModalSlot.room ? (
                             <p className="text-xs font-semibold uppercase tracking-wide text-[#36557A]">
-                              Salle {occurrenceModalSlot.room}
+                              {t("timetable.agenda.occurrenceModal.roomPrefix")}{" "}
+                              {occurrenceModalSlot.room}
                             </p>
                           ) : null}
                           {occurrenceActionType === "DELETE_SERIES" ? (
                             <div className="mt-1 grid gap-1 text-xs text-text-secondary">
                               <p>
-                                Debut de serie :{" "}
+                                {t(
+                                  "timetable.agenda.occurrenceModal.seriesStart",
+                                )}{" "}
                                 <span className="font-medium text-text-primary">
-                                  {seriesStartLabel ?? "-"}
+                                  {seriesStartLabel ??
+                                    t(
+                                      "timetable.agenda.occurrenceModal.noValue",
+                                    )}
                                 </span>
                               </p>
                               <p>
-                                Fin de serie :{" "}
+                                {t(
+                                  "timetable.agenda.occurrenceModal.seriesEnd",
+                                )}{" "}
                                 <span className="font-medium text-text-primary">
-                                  {seriesEndLabel ?? "Fin annee scolaire"}
+                                  {seriesEndLabel ??
+                                    t(
+                                      "timetable.agenda.occurrenceModal.seriesEndDefault",
+                                    )}
                                 </span>
                               </p>
                             </div>
@@ -2721,8 +2858,8 @@ export default function TeacherClassAgendaPage() {
                     <FormField
                       label={
                         occurrenceActionType === "UPDATE_SERIES"
-                          ? "Date de debut d'effet"
-                          : "Date"
+                          ? t("timetable.agenda.occurrenceModal.effectiveDate")
+                          : t("timetable.agenda.occurrenceModal.date")
                       }
                       error={
                         occurrenceForm.formState.errors.occurrenceDateInput
@@ -2746,7 +2883,11 @@ export default function TeacherClassAgendaPage() {
                       />
                     </FormField>
                     {occurrenceActionType === "UPDATE_SERIES" ? (
-                      <FormField label="Date de fin de serie (optionnel)">
+                      <FormField
+                        label={t(
+                          "timetable.agenda.occurrenceModal.seriesEndDateOptional",
+                        )}
+                      >
                         <DateInput
                           value={occurrenceValues.occurrenceSeriesEndDate}
                           onChange={(event) =>
@@ -2769,8 +2910,7 @@ export default function TeacherClassAgendaPage() {
 
                 {occurrenceActionType === "DELETE_SERIES" ? (
                   <p className="rounded-card border border-[#F7D5A0] bg-[#FFFAEB] px-3 py-2 text-sm text-[#92400E]">
-                    Cette action supprimera le creneau recurrent et toutes ses
-                    occurrences futures.
+                    {t("timetable.agenda.occurrenceModal.deleteSeriesWarning")}
                   </p>
                 ) : null}
 
@@ -2778,7 +2918,7 @@ export default function TeacherClassAgendaPage() {
                 occurrenceActionType !== "DELETE_SERIES" ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     <FormField
-                      label="Debut"
+                      label={t("timetable.agenda.slotForm.start")}
                       error={occurrenceForm.formState.errors.start?.message}
                     >
                       <TimeInput
@@ -2795,7 +2935,7 @@ export default function TeacherClassAgendaPage() {
                       />
                     </FormField>
                     <FormField
-                      label="Fin"
+                      label={t("timetable.agenda.slotForm.end")}
                       error={occurrenceForm.formState.errors.end?.message}
                     >
                       <TimeInput
@@ -2812,7 +2952,7 @@ export default function TeacherClassAgendaPage() {
                       />
                     </FormField>
                     <FormField
-                      label="Matiere"
+                      label={t("timetable.agenda.slotForm.subject")}
                       htmlFor="occurrence-subject"
                       error={occurrenceForm.formState.errors.subjectId?.message}
                     >
@@ -2843,7 +2983,7 @@ export default function TeacherClassAgendaPage() {
                       </FormSelect>
                     </FormField>
                     <FormField
-                      label="Enseignant"
+                      label={t("timetable.agenda.slotForm.teacher")}
                       htmlFor="occurrence-teacher"
                       error={
                         occurrenceForm.formState.errors.teacherUserId?.message
@@ -2876,7 +3016,7 @@ export default function TeacherClassAgendaPage() {
                       </FormSelect>
                     </FormField>
                     <FormField
-                      label="Salle (optionnel)"
+                      label={t("timetable.agenda.slotForm.room")}
                       htmlFor="occurrence-room"
                       className="md:col-span-2"
                     >
@@ -2904,7 +3044,7 @@ export default function TeacherClassAgendaPage() {
                     disabled={savingOccurrenceAction}
                     iconLeft={<ChevronLeft size={16} />}
                   >
-                    Retour
+                    {t("timetable.agenda.occurrenceModal.back")}
                   </Button>
                   <div className="flex items-center gap-2">
                     <FormSubmitHint
@@ -2920,7 +3060,7 @@ export default function TeacherClassAgendaPage() {
                       }}
                       disabled={savingOccurrenceAction}
                     >
-                      Annuler
+                      {t("timetable.agenda.occurrenceModal.cancel")}
                     </Button>
                     <Button
                       type="submit"
@@ -2930,8 +3070,8 @@ export default function TeacherClassAgendaPage() {
                       }
                     >
                       {savingOccurrenceAction
-                        ? "Enregistrement..."
-                        : "Appliquer l'action"}
+                        ? t("timetable.agenda.occurrenceModal.saving")
+                        : t("timetable.agenda.occurrenceModal.applyAction")}
                     </Button>
                   </div>
                 </div>

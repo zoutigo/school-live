@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { RecoveryShell } from "../../components/layout/recovery-shell";
-import { FirstPasswordClient } from "./first-password-client";
+import {
+  FirstPasswordClient,
+  FirstPasswordFallback,
+  FirstPasswordShell,
+} from "./first-password-client";
 
 type FirstPasswordPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -45,16 +48,12 @@ export default async function FirstPasswordPage({
   }
 
   return (
-    <RecoveryShell title="Premiere connexion">
+    <FirstPasswordShell>
       <div className="mx-auto w-full max-w-xl">
-        <Suspense
-          fallback={
-            <div className="text-sm text-text-secondary">Chargement...</div>
-          }
-        >
+        <Suspense fallback={<FirstPasswordFallback />}>
           <FirstPasswordClient username={username} schoolSlug={schoolSlug} />
         </Suspense>
       </div>
-    </RecoveryShell>
+    </FirstPasswordShell>
   );
 }

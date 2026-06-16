@@ -46,6 +46,11 @@ enum Gender {
   OTHER
 }
 
+enum Locale {
+  FR
+  EN
+}
+
 enum AccountActivationStatus {
   PENDING
   ACTIVE

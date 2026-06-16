@@ -23,6 +23,10 @@ import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page"
 import { getSchoolMessagesUnreadCount } from "../../../../../components/messaging/messaging-api";
 import type { StudentNotesTermSnapshot } from "../../../../../components/student-notes/student-notes.types";
 import {
+  useTranslation,
+  type TranslateFn,
+} from "../../../../../i18n/useTranslation";
+import {
   buildAccountSummary,
   buildDisciplineSummary,
   buildNotesSummary,
@@ -315,15 +319,17 @@ function ParentDisciplineCard({
   summaries,
   loading,
   schoolSlug,
+  t,
 }: {
   summaries: ChildDisciplineSummary[];
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   return (
     <FamilyCardShell
-      title="Vie scolaire"
-      eyebrow="Discipline"
+      title={t("discipline.dashboard.cardTitle")}
+      eyebrow={t("discipline.dashboard.cardEyebrow")}
       icon={ShieldAlert}
       accent="from-[#ffe2b8] via-[#fff2dc] to-white"
     >
@@ -342,7 +348,7 @@ function ParentDisciplineCard({
           </div>
         ) : summaries.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-orange-200 bg-white/70 px-3 py-4 text-sm text-slate-600 min-[360px]:rounded-[18px] min-[360px]:py-5 md:rounded-[22px] md:px-4 md:py-6">
-            Aucun enfant associe ou aucune donnee de vie scolaire disponible.
+            {t("discipline.dashboard.empty")}
           </div>
         ) : (
           <div className="space-y-3">
@@ -369,7 +375,7 @@ function ParentDisciplineCard({
                 <div className="mt-3 grid grid-cols-3 gap-1 text-center min-[360px]:gap-1.5 md:mt-4 md:gap-2">
                   <div className="rounded-lg bg-[#fff8f1] px-1.5 py-2 min-[360px]:rounded-xl min-[360px]:px-2 min-[360px]:py-2.5 md:rounded-2xl md:px-3 md:py-3">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 sm:text-xs">
-                      Absences
+                      {t("discipline.dashboard.stats.absences")}
                     </p>
                     <p className="mt-2 font-heading text-xl font-semibold text-slate-950 sm:text-2xl">
                       {summary.absences}
@@ -377,7 +383,7 @@ function ParentDisciplineCard({
                   </div>
                   <div className="rounded-lg bg-[#fff8f1] px-1.5 py-2 min-[360px]:rounded-xl min-[360px]:px-2 min-[360px]:py-2.5 md:rounded-2xl md:px-3 md:py-3">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 sm:text-xs">
-                      Retards
+                      {t("discipline.dashboard.stats.retards")}
                     </p>
                     <p className="mt-2 font-heading text-xl font-semibold text-slate-950 sm:text-2xl">
                       {summary.retards}
@@ -385,7 +391,7 @@ function ParentDisciplineCard({
                   </div>
                   <div className="rounded-lg bg-[#fff8f1] px-1.5 py-2 min-[360px]:rounded-xl min-[360px]:px-2 min-[360px]:py-2.5 md:rounded-2xl md:px-3 md:py-3">
                     <p className="text-[10px] uppercase tracking-[0.15em] text-slate-500 sm:text-xs">
-                      Incidents
+                      {t("discipline.dashboard.stats.incidents")}
                     </p>
                     <p className="mt-2 font-heading text-xl font-semibold text-slate-950 sm:text-2xl">
                       {summary.incidents}
@@ -393,7 +399,7 @@ function ParentDisciplineCard({
                   </div>
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-orange-700 sm:text-sm">
-                  Ouvrir le detail discipline
+                  {t("discipline.dashboard.openDetail")}
                   <ChevronRight className="h-4 w-4" />
                 </div>
               </Link>
@@ -836,26 +842,31 @@ function TeacherMessagesSection({
   dashboard,
   loading,
   schoolSlug,
+  t,
 }: {
   dashboard: RichTeacherDashboard | null;
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   const accent = "#6B5EA8";
   return (
     <TeacherSectionCard
-      title="Messages non lus"
+      title={t("messaging.nav.unreadMessages")}
       icon={MessageSquare}
       iconColor={accent}
       count={dashboard?.unreadCount}
-      linkLabel="Messagerie"
+      linkLabel={t("messaging.nav.title")}
       linkHref={`/schools/${schoolSlug}/messagerie`}
       testId="section-teacher-messages"
     >
       {loading && !dashboard ? (
         <TeacherSectionSkeleton />
       ) : !dashboard || dashboard.unreadCount === 0 ? (
-        <TeacherEmptyRow icon={CheckCircle2} text="Aucun message non lu" />
+        <TeacherEmptyRow
+          icon={CheckCircle2}
+          text={t("messaging.nav.noUnreadMessage")}
+        />
       ) : (
         dashboard.unreadMessages.map((msg) => (
           <TeacherDataRow
@@ -891,19 +902,21 @@ function TeacherTimetableSection({
   loading,
   schoolSlug,
   todayLabel,
+  t,
 }: {
   dashboard: RichTeacherDashboard | null;
   loading: boolean;
   schoolSlug: string;
   todayLabel: string;
+  t: TranslateFn;
 }) {
   const accent = "#247C72";
   return (
     <TeacherSectionCard
-      title="Emploi du temps"
+      title={t("timetable.dashboard.title")}
       icon={Calendar}
       iconColor={accent}
-      linkLabel="Agenda"
+      linkLabel={t("timetable.dashboard.linkLabel")}
       linkHref={`/schools/${schoolSlug}/emploi-du-temps`}
       subtitle={todayLabel}
       testId="section-teacher-timetable"
@@ -913,7 +926,7 @@ function TeacherTimetableSection({
       ) : !dashboard || dashboard.todaySlots.length === 0 ? (
         <TeacherEmptyRow
           icon={Calendar}
-          text="Aucun cours planifie aujourd'hui"
+          text={t("timetable.dashboard.noSlotToday")}
         />
       ) : (
         dashboard.todaySlots.map((slot) => (
@@ -1029,26 +1042,31 @@ function TeacherHomeworkSection({
   dashboard,
   loading,
   schoolSlug,
+  t,
 }: {
   dashboard: RichTeacherDashboard | null;
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   const accent = "#2E7D32";
   return (
     <TeacherSectionCard
-      title="Devoirs en cours"
+      title={t("homework.dashboard.title")}
       icon={BookOpen}
       iconColor={accent}
       count={dashboard?.openHomework.length}
-      linkLabel="Voir tout"
+      linkLabel={t("homework.dashboard.viewAll")}
       linkHref={`/schools/${schoolSlug}/student-grades`}
       testId="section-teacher-homework"
     >
       {loading && !dashboard ? (
         <TeacherSectionSkeleton />
       ) : !dashboard || dashboard.openHomework.length === 0 ? (
-        <TeacherEmptyRow icon={CheckCircle2} text="Aucun devoir en cours" />
+        <TeacherEmptyRow
+          icon={CheckCircle2}
+          text={t("homework.dashboard.noHomework")}
+        />
       ) : (
         dashboard.openHomework.map((hw) => (
           <TeacherDataRow
@@ -1133,6 +1151,7 @@ function SchoolOperationsCard({
 }
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -1265,7 +1284,7 @@ export default function DashboardPage() {
 
       setDisciplineSummaries(
         lifeEventsGroups.map(({ child, events }) =>
-          buildDisciplineSummary(child, events),
+          buildDisciplineSummary(child, events, t),
         ),
       );
       setNotesSummaries(
@@ -1273,7 +1292,7 @@ export default function DashboardPage() {
           buildNotesSummary(child, snapshots),
         ),
       );
-      setAccountSummary(buildAccountSummary(accountPayload));
+      setAccountSummary(buildAccountSummary(accountPayload, t));
     } catch {
       setAccountSummary({
         headline: "Compte parent",
@@ -1288,9 +1307,9 @@ export default function DashboardPage() {
           },
           {
             id: "messages",
-            label: "Messages non lus",
+            label: t("messaging.nav.unreadMessages"),
             value: "--",
-            detail: "Le compteur de messages n'a pas pu etre charge.",
+            detail: t("messaging.nav.unreadCounterError"),
             tone: "watch",
           },
           {
@@ -1560,7 +1579,7 @@ export default function DashboardPage() {
   const schoolCoordinationLinks: DashboardQuickLink[] = [
     {
       id: "messages",
-      label: "Messagerie",
+      label: t("messaging.nav.title"),
       value: formatCount(schoolSummary.unreadMessages),
       href: `/schools/${schoolSlug}/messagerie`,
     },
@@ -1599,6 +1618,7 @@ export default function DashboardPage() {
                 summaries={disciplineSummaries}
                 loading={parentCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
               <ParentEvaluationsCard
                 summaries={notesSummaries}
@@ -1616,8 +1636,8 @@ export default function DashboardPage() {
           {me?.role === "PARENT" ? (
             <FamilyFeedPage
               schoolSlug={schoolSlug}
-              childFullName="vos enfants"
-              scopeLabel="la vie de l'ecole"
+              childFullName={t("feed.dashboard.yourChildren")}
+              scopeLabel={t("feed.scope.school")}
               viewerRole={me.role}
               viewScope="GENERAL"
             />
@@ -1641,12 +1661,14 @@ export default function DashboardPage() {
                 dashboard={richTeacher}
                 loading={teacherCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
               <TeacherTimetableSection
                 dashboard={richTeacher}
                 loading={teacherCardsLoading}
                 schoolSlug={schoolSlug}
                 todayLabel={todayLabel}
+                t={t}
               />
             </div>
             <div className="space-y-4">
@@ -1659,6 +1681,7 @@ export default function DashboardPage() {
                 dashboard={richTeacher}
                 loading={teacherCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
             </div>
           </div>

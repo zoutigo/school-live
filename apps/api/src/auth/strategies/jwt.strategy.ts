@@ -37,6 +37,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         avatarUrl: true,
         firstName: true,
         lastName: true,
+        preferredLocale: true,
         platformRoles: {
           select: { role: true },
         },
@@ -68,6 +69,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       avatarUrl: user.avatarUrl,
       firstName: user.firstName,
       lastName: user.lastName,
+      preferredLocale: user.preferredLocale,
     };
   }
 }

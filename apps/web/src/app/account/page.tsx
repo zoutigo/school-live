@@ -24,75 +24,80 @@ import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { SUPPORTED_LOCALES, type Locale } from "../../i18n/translations";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-const changePasswordSchema = z
-  .object({
-    currentPassword: z
-      .string()
-      .min(8, "Le mot de passe actuel est obligatoire."),
-    newPassword: z
-      .string()
-      .regex(
-        PASSWORD_COMPLEXITY_REGEX,
-        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-      ),
-    confirmNewPassword: z.string(),
-  })
-  .refine((value) => value.newPassword === value.confirmNewPassword, {
-    message: "La confirmation du nouveau mot de passe ne correspond pas.",
-    path: ["confirmNewPassword"],
-  });
+function createChangePasswordSchema(t: (key: string) => string) {
+  return z
+    .object({
+      currentPassword: z
+        .string()
+        .min(8, t("account.password.errors.currentRequired")),
+      newPassword: z
+        .string()
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          t("recovery.password.errors.passwordComplexity"),
+        ),
+      confirmNewPassword: z.string(),
+    })
+    .refine((value) => value.newPassword === value.confirmNewPassword, {
+      message: t("account.password.errors.confirmMismatch"),
+      path: ["confirmNewPassword"],
+    });
+}
 
-const createPasswordSchema = z
-  .object({
-    newPassword: z
-      .string()
-      .regex(
-        PASSWORD_COMPLEXITY_REGEX,
-        "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-      ),
-    confirmNewPassword: z.string(),
-  })
-  .refine((value) => value.newPassword === value.confirmNewPassword, {
-    message: "La confirmation du nouveau mot de passe ne correspond pas.",
-    path: ["confirmNewPassword"],
-  });
+function createCreatePasswordSchema(t: (key: string) => string) {
+  return z
+    .object({
+      newPassword: z
+        .string()
+        .regex(
+          PASSWORD_COMPLEXITY_REGEX,
+          t("recovery.password.errors.passwordComplexity"),
+        ),
+      confirmNewPassword: z.string(),
+    })
+    .refine((value) => value.newPassword === value.confirmNewPassword, {
+      message: t("account.password.errors.confirmMismatch"),
+      path: ["confirmNewPassword"],
+    });
+}
 
 const addEmailSchema = z.object({
   email: z.string().email("Adresse email invalide."),
 });
 
-const addPhoneCredentialSchema = z
-  .object({
-    phone: z
-      .string()
-      .regex(/^\d{9}$/, "Numero invalide (9 chiffres attendus)."),
-    pin: z
-      .string()
-      .regex(/^\d{6}$/, "Le PIN doit contenir exactement 6 chiffres."),
-    confirmPin: z.string(),
-  })
-  .refine((v) => v.pin === v.confirmPin, {
-    message: "Les PINs ne correspondent pas.",
-    path: ["confirmPin"],
-  });
+function createAddPhoneCredentialSchema(t: (key: string) => string) {
+  return z
+    .object({
+      phone: z.string().regex(/^\d{9}$/, t("recovery.pin.errors.invalidPhone")),
+      pin: z.string().regex(/^\d{6}$/, t("recovery.pin.errors.pinFormat")),
+      confirmPin: z.string(),
+    })
+    .refine((v) => v.pin === v.confirmPin, {
+      message: t("account.pin.errors.pinMismatch"),
+      path: ["confirmPin"],
+    });
+}
 
-const changePinSchema = z
-  .object({
-    currentPin: z
-      .string()
-      .regex(/^\d{6}$/, "Le PIN actuel doit contenir 6 chiffres."),
-    newPin: z
-      .string()
-      .regex(/^\d{6}$/, "Le nouveau PIN doit contenir 6 chiffres."),
-    confirmNewPin: z.string(),
-  })
-  .refine((value) => value.newPin === value.confirmNewPin, {
-    message: "La confirmation du nouveau PIN ne correspond pas.",
-    path: ["confirmNewPin"],
-  });
+function createChangePinSchema(t: (key: string) => string) {
+  return z
+    .object({
+      currentPin: z
+        .string()
+        .regex(/^\d{6}$/, t("account.pin.errors.currentFormat")),
+      newPin: z.string().regex(/^\d{6}$/, t("account.pin.errors.newFormat")),
+      confirmNewPin: z.string(),
+    })
+    .refine((value) => value.newPin === value.confirmNewPin, {
+      message: t("account.pin.errors.confirmMismatch"),
+      path: ["confirmNewPin"],
+    });
+}
 
 const personalProfileSchema = z.object({
   firstName: z.string().trim().min(1, "Le prenom est obligatoire."),
@@ -189,6 +194,7 @@ type MeResponse = {
   schoolSlug: string | null;
   hasPassword: boolean;
   hasPhoneCredential: boolean;
+  preferredLocale?: "FR" | "EN";
 };
 
 type RecoveryOption = {
@@ -228,6 +234,20 @@ function normalizePhoneInput(value: string) {
 
 export default function AccountPage() {
   const router = useRouter();
+  const { locale, t, setLocale: setDeviceLocale } = useTranslation();
+  const changePasswordSchema = useMemo(
+    () => createChangePasswordSchema(t),
+    [locale],
+  );
+  const createPasswordSchema = useMemo(
+    () => createCreatePasswordSchema(t),
+    [locale],
+  );
+  const addPhoneCredentialSchema = useMemo(
+    () => createAddPhoneCredentialSchema(t),
+    [locale],
+  );
+  const changePinSchema = useMemo(() => createChangePinSchema(t), [locale]);
   const [tab, setTab] = useState<Tab>("personal");
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -235,6 +255,13 @@ export default function AccountPage() {
   const [personalError, setPersonalError] = useState<string | null>(null);
   const [personalSuccess, setPersonalSuccess] = useState<string | null>(null);
   const [updatingPersonal, setUpdatingPersonal] = useState(false);
+  const [accountLanguageError, setAccountLanguageError] = useState<
+    string | null
+  >(null);
+  const [accountLanguageSuccess, setAccountLanguageSuccess] = useState<
+    string | null
+  >(null);
+  const [savingAccountLanguage, setSavingAccountLanguage] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [updatingPassword, setUpdatingPassword] = useState(false);
@@ -402,6 +429,11 @@ export default function AccountPage() {
 
     const payload = (await response.json()) as MeResponse;
     setMe(payload);
+    if (payload.preferredLocale) {
+      useLocaleStore
+        .getState()
+        .setLocale(payload.preferredLocale === "EN" ? "en" : "fr");
+    }
     personalForm.reset({
       firstName: payload.firstName ?? "",
       lastName: payload.lastName ?? "",
@@ -484,6 +516,50 @@ export default function AccountPage() {
     }
   }
 
+  async function onUpdateAccountLanguage(option: Locale) {
+    const preferredLocale: "FR" | "EN" = option === "en" ? "EN" : "FR";
+    if (me?.preferredLocale === preferredLocale || savingAccountLanguage) {
+      return;
+    }
+
+    setAccountLanguageError(null);
+    setAccountLanguageSuccess(null);
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setAccountLanguageError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSavingAccountLanguage(true);
+    try {
+      const response = await fetch(`${API_URL}/me/language`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ preferredLocale }),
+      });
+
+      if (!response.ok) {
+        setAccountLanguageError(t("settings.accountLanguage.error"));
+        return;
+      }
+
+      const updatedMe = (await response.json()) as MeResponse;
+      setMe(updatedMe);
+      setDeviceLocale(option);
+      setAccountLanguageSuccess(t("settings.accountLanguage.success"));
+    } catch {
+      setAccountLanguageError(t("settings.accountLanguage.error"));
+    } finally {
+      setSavingAccountLanguage(false);
+    }
+  }
+
   async function onAddEmail(values: z.output<typeof addEmailSchema>) {
     setAddEmailError(null);
     setAddEmailSuccess(null);
@@ -532,7 +608,7 @@ export default function AccountPage() {
     setCreatePasswordSuccess(null);
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setCreatePasswordError("Session CSRF invalide. Reconnectez-vous.");
+      setCreatePasswordError(t("common.errors.invalidCsrfSession"));
       router.replace("/");
       return;
     }
@@ -553,18 +629,18 @@ export default function AccountPage() {
         } | null;
         const message = Array.isArray(payload?.message)
           ? payload.message.join(", ")
-          : (payload?.message ?? "Impossible de creer le mot de passe.");
+          : (payload?.message ?? t("account.password.errors.createFailed"));
         setCreatePasswordError(String(message));
         return;
       }
-      setCreatePasswordSuccess("Mot de passe cree avec succes.");
+      setCreatePasswordSuccess(t("account.password.success.created"));
       createPasswordForm.reset();
       setOpenSecuritySection(null);
       setMe((current) =>
         current ? { ...current, hasPassword: true } : current,
       );
     } catch {
-      setCreatePasswordError("Erreur reseau.");
+      setCreatePasswordError(t("recovery.password.errors.networkError"));
     } finally {
       setCreatingPassword(false);
     }
@@ -575,7 +651,7 @@ export default function AccountPage() {
     setAddPhoneSuccess(null);
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setAddPhoneError("Session CSRF invalide. Reconnectez-vous.");
+      setAddPhoneError(t("common.errors.invalidCsrfSession"));
       router.replace("/");
       return;
     }
@@ -596,11 +672,11 @@ export default function AccountPage() {
         } | null;
         const message = Array.isArray(payload?.message)
           ? payload.message.join(", ")
-          : (payload?.message ?? "Impossible d'ajouter le telephone.");
+          : (payload?.message ?? t("account.pin.errors.addPhoneFailed"));
         setAddPhoneError(String(message));
         return;
       }
-      setAddPhoneSuccess("Telephone et PIN configures avec succes.");
+      setAddPhoneSuccess(t("account.pin.success.configured"));
       addPhoneForm.reset();
       setOpenSecuritySection(null);
       setMe((current) =>
@@ -608,7 +684,7 @@ export default function AccountPage() {
       );
       await loadMe();
     } catch {
-      setAddPhoneError("Erreur reseau.");
+      setAddPhoneError(t("recovery.password.errors.networkError"));
     } finally {
       setAddingPhone(false);
     }
@@ -622,7 +698,7 @@ export default function AccountPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setPasswordError("Session CSRF invalide. Reconnectez-vous.");
+      setPasswordError(t("common.errors.invalidCsrfSession"));
       router.replace("/");
       return;
     }
@@ -649,15 +725,15 @@ export default function AccountPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Changement de mot de passe impossible.");
+            : (payload?.message ?? t("account.password.errors.changeFailed"));
         setPasswordError(String(message));
         return;
       }
 
-      setPasswordSuccess("Mot de passe mis a jour avec succes.");
+      setPasswordSuccess(t("account.password.success.updated"));
       passwordForm.reset();
     } catch {
-      setPasswordError("Erreur reseau.");
+      setPasswordError(t("recovery.password.errors.networkError"));
     } finally {
       setUpdatingPassword(false);
     }
@@ -669,7 +745,7 @@ export default function AccountPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setPinError("Session CSRF invalide. Reconnectez-vous.");
+      setPinError(t("common.errors.invalidCsrfSession"));
       router.replace("/");
       return;
     }
@@ -696,15 +772,15 @@ export default function AccountPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Changement de PIN impossible.");
+            : (payload?.message ?? t("account.pin.errors.changeFailed"));
         setPinError(String(message));
         return;
       }
 
-      setPinSuccess("PIN mis a jour avec succes.");
+      setPinSuccess(t("account.pin.success.updated"));
       pinForm.reset();
     } catch {
-      setPinError("Erreur reseau.");
+      setPinError(t("recovery.password.errors.networkError"));
     } finally {
       setUpdatingPin(false);
     }
@@ -1188,6 +1264,56 @@ export default function AccountPage() {
                     value={me?.schoolSlug ?? "Plateforme"}
                   />
                 </div>
+
+                <section
+                  className="max-w-xl rounded-card border border-border bg-background p-4"
+                  data-testid="account-language-section"
+                >
+                  <p className="text-sm font-semibold text-text-primary">
+                    {t("settings.accountLanguage.title")}
+                  </p>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    {t("settings.accountLanguage.subtitle")}
+                  </p>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    {t("settings.accountLanguage.hint")}
+                  </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    {SUPPORTED_LOCALES.map((option) => {
+                      const selected =
+                        (me?.preferredLocale === "EN" ? "en" : "fr") === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => {
+                            void onUpdateAccountLanguage(option);
+                          }}
+                          disabled={savingAccountLanguage}
+                          aria-pressed={selected}
+                          data-testid={`account-language-${option}`}
+                          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-surface text-text-secondary"
+                          }`}
+                        >
+                          {t(`settings.language.${option}`)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {accountLanguageError ? (
+                    <p className="mt-2 text-sm text-notification">
+                      {accountLanguageError}
+                    </p>
+                  ) : null}
+                  {accountLanguageSuccess ? (
+                    <p className="mt-2 text-sm text-primary">
+                      {accountLanguageSuccess}
+                    </p>
+                  ) : null}
+                </section>
               </div>
             )
           ) : tab === "security" ? (
@@ -1195,10 +1321,10 @@ export default function AccountPage() {
               <section className="max-w-xl rounded-card border border-border bg-background">
                 <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                   <p className="text-sm font-semibold text-text-primary">
-                    Mot de passe
+                    {t("account.password.title")}
                     {me && !me.hasPassword ? (
                       <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
-                        Non configure
+                        {t("account.password.notConfigured")}
                       </span>
                     ) : null}
                   </p>
@@ -1216,10 +1342,10 @@ export default function AccountPage() {
                   >
                     {openSecuritySection === "password" ||
                     openSecuritySection === "create-password"
-                      ? "Fermer"
+                      ? t("common.close")
                       : me && !me.hasPassword
-                        ? "Creer"
-                        : "Modifier"}
+                        ? t("common.create")
+                        : t("common.edit")}
                   </Button>
                   <ActionIconButton
                     icon={
@@ -1231,10 +1357,10 @@ export default function AccountPage() {
                     label={
                       openSecuritySection === "password" ||
                       openSecuritySection === "create-password"
-                        ? "Fermer la section mot de passe"
+                        ? t("account.password.closeAriaLabel")
                         : me && !me.hasPassword
-                          ? "Creer un mot de passe"
-                          : "Modifier le mot de passe"
+                          ? t("account.password.createAriaLabel")
+                          : t("account.password.editAriaLabel")
                     }
                     className="lg:hidden"
                     onClick={() => {
@@ -1254,12 +1380,10 @@ export default function AccountPage() {
                     noValidate
                   >
                     <p className="text-xs text-text-secondary">
-                      Votre compte n&apos;a pas encore de mot de passe.
-                      Definissez-en un pour pouvoir vous connecter avec votre
-                      email.
+                      {t("account.password.create.intro")}
                     </p>
                     <FormField
-                      label="Nouveau mot de passe"
+                      label={t("account.password.fields.newPassword")}
                       error={
                         createPasswordForm.formState.errors.newPassword?.message
                       }
@@ -1269,7 +1393,9 @@ export default function AccountPage() {
                         name="newPassword"
                         render={({ field }) => (
                           <PasswordInput
-                            aria-label="Nouveau mot de passe"
+                            aria-label={t(
+                              "account.password.fields.newPassword",
+                            )}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1297,7 +1423,7 @@ export default function AccountPage() {
                       password={createPasswordForm.watch("newPassword") ?? ""}
                     />
                     <FormField
-                      label="Confirmer le mot de passe"
+                      label={t("account.password.fields.confirmPassword")}
                       error={
                         createPasswordForm.formState.errors.confirmNewPassword
                           ?.message
@@ -1308,7 +1434,9 @@ export default function AccountPage() {
                         name="confirmNewPassword"
                         render={({ field }) => (
                           <PasswordInput
-                            aria-label="Confirmer le mot de passe"
+                            aria-label={t(
+                              "account.password.fields.confirmPassword",
+                            )}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1353,8 +1481,8 @@ export default function AccountPage() {
                       }
                     >
                       {creatingPassword
-                        ? "Creation..."
-                        : "Creer le mot de passe"}
+                        ? t("account.password.create.submit.creating")
+                        : t("account.password.create.submit.create")}
                     </SubmitButton>
                   </form>
                 ) : null}
@@ -1366,7 +1494,7 @@ export default function AccountPage() {
                     noValidate
                   >
                     <FormField
-                      label="Ancien mot de passe"
+                      label={t("account.password.fields.currentPassword")}
                       error={
                         passwordForm.formState.errors.currentPassword?.message
                       }
@@ -1376,7 +1504,9 @@ export default function AccountPage() {
                         name="currentPassword"
                         render={({ field }) => (
                           <PasswordInput
-                            aria-label="Ancien mot de passe"
+                            aria-label={t(
+                              "account.password.fields.currentPassword",
+                            )}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1402,7 +1532,7 @@ export default function AccountPage() {
                     </FormField>
 
                     <FormField
-                      label="Nouveau mot de passe"
+                      label={t("account.password.fields.newPassword")}
                       error={passwordForm.formState.errors.newPassword?.message}
                     >
                       <Controller
@@ -1410,7 +1540,9 @@ export default function AccountPage() {
                         name="newPassword"
                         render={({ field }) => (
                           <PasswordInput
-                            aria-label="Nouveau mot de passe"
+                            aria-label={t(
+                              "account.password.fields.newPassword",
+                            )}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1439,7 +1571,7 @@ export default function AccountPage() {
                     />
 
                     <FormField
-                      label="Confirmer le nouveau mot de passe"
+                      label={t("account.password.fields.confirmNewPassword")}
                       error={
                         passwordForm.formState.errors.confirmNewPassword
                           ?.message
@@ -1450,7 +1582,9 @@ export default function AccountPage() {
                         name="confirmNewPassword"
                         render={({ field }) => (
                           <PasswordInput
-                            aria-label="Confirmer le nouveau mot de passe"
+                            aria-label={t(
+                              "account.password.fields.confirmNewPassword",
+                            )}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1491,8 +1625,8 @@ export default function AccountPage() {
                       }
                     >
                       {updatingPassword
-                        ? "Mise a jour..."
-                        : "Changer le mot de passe"}
+                        ? t("account.password.submit.updating")
+                        : t("account.password.submit.change")}
                     </SubmitButton>
                   </form>
                 ) : null}
@@ -1501,10 +1635,10 @@ export default function AccountPage() {
               <section className="max-w-xl rounded-card border border-border bg-background">
                 <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                   <p className="text-sm font-semibold text-text-primary">
-                    PIN de connexion
+                    {t("account.pin.title")}
                     {me && !me.hasPhoneCredential ? (
                       <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
-                        Non configure
+                        {t("account.pin.notConfigured")}
                       </span>
                     ) : null}
                   </p>
@@ -1522,10 +1656,10 @@ export default function AccountPage() {
                   >
                     {openSecuritySection === "pin" ||
                     openSecuritySection === "add-phone"
-                      ? "Fermer"
+                      ? t("common.close")
                       : me && !me.hasPhoneCredential
-                        ? "Configurer"
-                        : "Modifier"}
+                        ? t("common.configure")
+                        : t("common.edit")}
                   </Button>
                   <ActionIconButton
                     icon={
@@ -1537,10 +1671,10 @@ export default function AccountPage() {
                     label={
                       openSecuritySection === "pin" ||
                       openSecuritySection === "add-phone"
-                        ? "Fermer la section PIN"
+                        ? t("account.pin.closeAriaLabel")
                         : me && !me.hasPhoneCredential
-                          ? "Configurer telephone et PIN"
-                          : "Modifier le PIN"
+                          ? t("account.pin.configureAriaLabel")
+                          : t("account.pin.editAriaLabel")
                     }
                     className="lg:hidden"
                     onClick={() => {
@@ -1560,11 +1694,10 @@ export default function AccountPage() {
                     noValidate
                   >
                     <p className="text-xs text-text-secondary">
-                      Ajoutez un numero de telephone et un code PIN pour vous
-                      connecter depuis le mobile.
+                      {t("account.pin.addPhone.intro")}
                     </p>
                     <FormField
-                      label="Telephone (9 chiffres)"
+                      label={t("account.pin.fields.phone")}
                       error={addPhoneForm.formState.errors.phone?.message}
                     >
                       <Controller
@@ -1597,7 +1730,7 @@ export default function AccountPage() {
                       />
                     </FormField>
                     <FormField
-                      label="Code PIN (6 chiffres)"
+                      label={t("account.pin.fields.pinCode")}
                       error={addPhoneForm.formState.errors.pin?.message}
                     >
                       <Controller
@@ -1605,7 +1738,7 @@ export default function AccountPage() {
                         name="pin"
                         render={({ field }) => (
                           <PinInput
-                            aria-label="Code PIN (6 chiffres)"
+                            aria-label={t("account.pin.fields.pinCode")}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1633,7 +1766,7 @@ export default function AccountPage() {
                       />
                     </FormField>
                     <FormField
-                      label="Confirmer le PIN"
+                      label={t("account.pin.fields.confirmPin")}
                       error={addPhoneForm.formState.errors.confirmPin?.message}
                     >
                       <Controller
@@ -1641,7 +1774,7 @@ export default function AccountPage() {
                         name="confirmPin"
                         render={({ field }) => (
                           <PinInput
-                            aria-label="Confirmer le PIN"
+                            aria-label={t("account.pin.fields.confirmPin")}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1680,7 +1813,9 @@ export default function AccountPage() {
                     <SubmitButton
                       disabled={addingPhone || !addPhoneForm.formState.isValid}
                     >
-                      {addingPhone ? "Configuration..." : "Configurer"}
+                      {addingPhone
+                        ? t("account.pin.addPhone.submit.configuring")
+                        : t("common.configure")}
                     </SubmitButton>
                   </form>
                 ) : null}
@@ -1692,7 +1827,7 @@ export default function AccountPage() {
                     noValidate
                   >
                     <FormField
-                      label="PIN actuel"
+                      label={t("account.pin.fields.currentPin")}
                       error={pinForm.formState.errors.currentPin?.message}
                     >
                       <Controller
@@ -1700,7 +1835,7 @@ export default function AccountPage() {
                         name="currentPin"
                         render={({ field }) => (
                           <PinInput
-                            aria-label="PIN actuel"
+                            aria-label={t("account.pin.fields.currentPin")}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1729,7 +1864,7 @@ export default function AccountPage() {
                     </FormField>
 
                     <FormField
-                      label="Nouveau PIN (6 chiffres)"
+                      label={t("account.pin.fields.newPin")}
                       error={pinForm.formState.errors.newPin?.message}
                     >
                       <Controller
@@ -1737,7 +1872,7 @@ export default function AccountPage() {
                         name="newPin"
                         render={({ field }) => (
                           <PinInput
-                            aria-label="Nouveau PIN (6 chiffres)"
+                            aria-label={t("account.pin.fields.newPin")}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1764,7 +1899,7 @@ export default function AccountPage() {
                     </FormField>
 
                     <FormField
-                      label="Confirmation PIN"
+                      label={t("account.pin.fields.confirmNewPin")}
                       error={pinForm.formState.errors.confirmNewPin?.message}
                     >
                       <Controller
@@ -1772,7 +1907,7 @@ export default function AccountPage() {
                         name="confirmNewPin"
                         render={({ field }) => (
                           <PinInput
-                            aria-label="Confirmation PIN"
+                            aria-label={t("account.pin.fields.confirmNewPin")}
                             name={field.name}
                             value={field.value}
                             aria-invalid={
@@ -1811,7 +1946,9 @@ export default function AccountPage() {
                     <SubmitButton
                       disabled={updatingPin || !pinForm.formState.isValid}
                     >
-                      {updatingPin ? "Mise a jour PIN..." : "Changer le PIN"}
+                      {updatingPin
+                        ? t("account.pin.submit.updating")
+                        : t("account.pin.submit.change")}
                     </SubmitButton>
                   </form>
                 ) : null}

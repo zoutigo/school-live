@@ -28,6 +28,10 @@ import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-ta
 import { SubmitButton } from "../../../../../../../components/ui/form-buttons";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
+  useTranslation,
+  type TranslateFn,
+} from "../../../../../../../i18n/useTranslation";
+import {
   API_URL,
   type GradesContext,
   getClassContext,
@@ -38,24 +42,31 @@ import {
 type TabKey = "entry" | "history" | "help";
 type EventType = LifeEventType;
 
-const createEventSchema = z.object({
-  type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]),
-  occurredAt: z.string().trim().min(1, "La date est obligatoire."),
-  reason: z.string().trim().min(1, "Le motif est obligatoire."),
-  durationMinutes: z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        value.length === 0 ||
-        (/^\d+$/.test(value) && Number.parseInt(value, 10) >= 0),
-      {
-        message: "La duree doit etre un entier positif.",
-      },
-    ),
-  justified: z.boolean().optional(),
-  comment: z.string().trim().optional(),
-});
+function createEventSchema(t: TranslateFn) {
+  return z.object({
+    type: z.enum(["ABSENCE", "RETARD", "SANCTION", "PUNITION"]),
+    occurredAt: z
+      .string()
+      .trim()
+      .min(1, t("discipline.validation.dateRequired")),
+    reason: z.string().trim().min(1, t("discipline.validation.reasonRequired")),
+    durationMinutes: z
+      .string()
+      .trim()
+      .refine(
+        (value) =>
+          value.length === 0 ||
+          (/^\d+$/.test(value) && Number.parseInt(value, 10) >= 0),
+        {
+          message: t("discipline.validation.durationPositive"),
+        },
+      ),
+    justified: z.boolean().optional(),
+    comment: z.string().trim().optional(),
+  });
+}
+
+type EventFormValues = z.infer<ReturnType<typeof createEventSchema>>;
 
 function toDateTimeLocalInput(value: string) {
   const date = new Date(value);
@@ -67,6 +78,7 @@ function toDateTimeLocalInput(value: string) {
 }
 
 export default function TeacherClassDisciplinePage() {
+  const { t } = useTranslation();
   const { schoolSlug, classId } = useParams<{
     schoolSlug: string;
     classId: string;
@@ -82,12 +94,13 @@ export default function TeacherClassDisciplinePage() {
   const [context, setContext] = useState<GradesContext | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [events, setEvents] = useState<LifeEventRow[]>([]);
+  const eventSchema = useMemo(() => createEventSchema(t), [t]);
   const createEventForm = useForm<
-    z.input<typeof createEventSchema>,
+    z.input<typeof eventSchema>,
     unknown,
-    z.output<typeof createEventSchema>
+    z.output<typeof eventSchema>
   >({
-    resolver: zodResolver(createEventSchema),
+    resolver: zodResolver(eventSchema),
     mode: "onChange",
     defaultValues: {
       type: "ABSENCE",
@@ -99,11 +112,11 @@ export default function TeacherClassDisciplinePage() {
     },
   });
   const editEventForm = useForm<
-    z.input<typeof createEventSchema>,
+    z.input<typeof eventSchema>,
     unknown,
-    z.output<typeof createEventSchema>
+    z.output<typeof eventSchema>
   >({
-    resolver: zodResolver(createEventSchema),
+    resolver: zodResolver(eventSchema),
     mode: "onChange",
     defaultValues: {
       type: "ABSENCE",
@@ -241,14 +254,14 @@ export default function TeacherClassDisciplinePage() {
       );
 
       if (!contextResponse.ok) {
-        setError("Impossible de charger la classe.");
+        setError(t("discipline.errors.loadClass"));
         return;
       }
 
       const contextPayload = (await contextResponse.json()) as GradesContext;
       setContext(contextPayload);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("discipline.common.networkError"));
     } finally {
       setLoading(false);
     }
@@ -267,7 +280,7 @@ export default function TeacherClassDisciplinePage() {
       );
 
       if (!response.ok) {
-        setError("Impossible de charger l'historique discipline.");
+        setError(t("discipline.errors.loadHistory"));
         setEvents([]);
         return;
       }
@@ -279,7 +292,7 @@ export default function TeacherClassDisciplinePage() {
     }
   }
 
-  async function createEvent(values: z.output<typeof createEventSchema>) {
+  async function createEvent(values: EventFormValues) {
     if (!schoolSlug || !selectedStudentId) {
       return;
     }
@@ -295,7 +308,7 @@ export default function TeacherClassDisciplinePage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("discipline.common.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -336,7 +349,7 @@ export default function TeacherClassDisciplinePage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Creation impossible.");
+            : (payload?.message ?? t("discipline.errors.createFailed"));
         setError(String(message));
         return;
       }
@@ -349,11 +362,11 @@ export default function TeacherClassDisciplinePage() {
         justified: false,
         comment: "",
       });
-      setSuccess("Evenement discipline enregistre.");
+      setSuccess(t("discipline.success.eventCreated"));
       await loadStudentEvents(schoolSlug, selectedStudentId);
       setTab("history");
     } catch {
-      setError("Erreur reseau.");
+      setError(t("discipline.common.networkError"));
     } finally {
       setSaving(false);
     }
@@ -388,7 +401,7 @@ export default function TeacherClassDisciplinePage() {
     });
   }
 
-  async function saveEditedEvent(values: z.output<typeof createEventSchema>) {
+  async function saveEditedEvent(values: EventFormValues) {
     if (!schoolSlug || !selectedStudentId || !editingEventId) {
       return;
     }
@@ -404,7 +417,7 @@ export default function TeacherClassDisciplinePage() {
         !Number.isFinite(parsedDurationMinutes) ||
         parsedDurationMinutes < 0
       ) {
-        setError("La duree doit etre un entier positif.");
+        setError(t("discipline.validation.durationPositive"));
         return;
       }
       durationMinutes = parsedDurationMinutes;
@@ -412,7 +425,7 @@ export default function TeacherClassDisciplinePage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("discipline.common.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -452,7 +465,7 @@ export default function TeacherClassDisciplinePage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Modification impossible.");
+            : (payload?.message ?? t("discipline.errors.editFailed"));
         setError(String(message));
         return;
       }
@@ -466,10 +479,10 @@ export default function TeacherClassDisciplinePage() {
         justified: false,
         comment: "",
       });
-      setSuccess("Evenement modifie.");
+      setSuccess(t("discipline.success.eventUpdated"));
       await loadStudentEvents(schoolSlug, selectedStudentId);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("discipline.common.networkError"));
     } finally {
       setUpdatingEventId(null);
     }
@@ -482,7 +495,7 @@ export default function TeacherClassDisciplinePage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("discipline.common.csrfInvalid"));
       router.replace(`/schools/${schoolSlug}/login`);
       return;
     }
@@ -509,7 +522,7 @@ export default function TeacherClassDisciplinePage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Suppression impossible.");
+            : (payload?.message ?? t("discipline.errors.deleteFailed"));
         setError(String(message));
         return;
       }
@@ -518,10 +531,10 @@ export default function TeacherClassDisciplinePage() {
         setEditingEventId(null);
       }
       setDeleteTarget(null);
-      setSuccess("Evenement supprime.");
+      setSuccess(t("discipline.success.eventDeleted"));
       await loadStudentEvents(schoolSlug, selectedStudentId);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("discipline.common.networkError"));
     } finally {
       setDeletingEventId(null);
     }
@@ -530,8 +543,8 @@ export default function TeacherClassDisciplinePage() {
   return (
     <div className="grid gap-4">
       <Card
-        title={`Discipline - ${classContext?.className ?? "Classe"}`}
-        subtitle="Absences, retards, sanctions et punitions"
+        title={`Discipline - ${classContext?.className ?? t("discipline.page.defaultClassName")}`}
+        subtitle={t("discipline.page.subtitle")}
       >
         <div className="mb-4 flex items-end gap-2 border-b border-border">
           <button
@@ -543,7 +556,7 @@ export default function TeacherClassDisciplinePage() {
                 : "text-text-secondary"
             }`}
           >
-            Saisie
+            {t("discipline.page.tabs.entry")}
           </button>
           <button
             type="button"
@@ -554,7 +567,7 @@ export default function TeacherClassDisciplinePage() {
                 : "text-text-secondary"
             }`}
           >
-            Historique
+            {t("discipline.page.tabs.history")}
           </button>
           <button
             type="button"
@@ -565,45 +578,49 @@ export default function TeacherClassDisciplinePage() {
                 : "text-text-secondary"
             }`}
           >
-            Aide
+            {t("discipline.page.tabs.help")}
           </button>
         </div>
 
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("discipline.common.loading")}
+          </p>
         ) : !classContext ? (
           <p className="text-sm text-notification">
-            Classe non accessible avec vos affectations.
+            {t("discipline.page.classNotAccessible")}
           </p>
         ) : tab === "help" ? (
           <ModuleHelpTab
             moduleName="Discipline"
-            moduleSummary="ce module permet a l'enseignant de declarer des absences, retards, sanctions et punitions sur ses classes affectees."
+            moduleSummary={t("discipline.help.summary")}
             actions={[
               {
-                name: "Saisir",
-                purpose: "enregistrer rapidement un evenement de vie scolaire.",
-                howTo:
-                  "selectionner l'eleve puis renseigner type, date et motif.",
-                moduleImpact:
-                  "l'evenement est visible au parent sur Vie scolaire (annee en cours).",
-                crossModuleImpact:
-                  "alimente ensuite la page Cursus pour l'historique global.",
+                name: t("discipline.help.record.name"),
+                purpose: t("discipline.help.record.purpose"),
+                howTo: t("discipline.help.record.howTo"),
+                moduleImpact: t("discipline.help.record.moduleImpact"),
+                crossModuleImpact: t(
+                  "discipline.help.record.crossModuleImpact",
+                ),
               },
               {
-                name: "Verifier",
-                purpose: "consulter le journal discipline de l'eleve.",
-                howTo: "ouvrir Historique pour voir les evenements existants.",
-                moduleImpact: "evite les doublons de saisie.",
-                crossModuleImpact:
-                  "facilite la coordination avec SCHOOL_MANAGER/SUPERVISOR.",
+                name: t("discipline.help.verify.name"),
+                purpose: t("discipline.help.verify.purpose"),
+                howTo: t("discipline.help.verify.howTo"),
+                moduleImpact: t("discipline.help.verify.moduleImpact"),
+                crossModuleImpact: t(
+                  "discipline.help.verify.crossModuleImpact",
+                ),
               },
             ]}
           />
         ) : (
           <div className="grid gap-4">
             <label className="grid gap-1 text-sm md:max-w-[420px]">
-              <span className="text-text-secondary">Eleve</span>
+              <span className="text-text-secondary">
+                {t("discipline.page.studentLabel")}
+              </span>
               <FormSelect
                 value={selectedStudentId}
                 onChange={(event) => setSelectedStudentId(event.target.value)}
@@ -627,7 +644,10 @@ export default function TeacherClassDisciplinePage() {
                 onSubmit={createEventForm.handleSubmit(createEvent)}
                 noValidate
               >
-                <FormField label="Type d'evenement" htmlFor="discipline-type">
+                <FormField
+                  label={t("discipline.form.type")}
+                  htmlFor="discipline-type"
+                >
                   <FormSelect
                     id="discipline-type"
                     value={createEventValues.type}
@@ -643,15 +663,23 @@ export default function TeacherClassDisciplinePage() {
                       )
                     }
                   >
-                    <option value="ABSENCE">Absence</option>
-                    <option value="RETARD">Retard</option>
-                    <option value="SANCTION">Sanction</option>
-                    <option value="PUNITION">Punition</option>
+                    <option value="ABSENCE">
+                      {t("discipline.types.absence")}
+                    </option>
+                    <option value="RETARD">
+                      {t("discipline.types.retard")}
+                    </option>
+                    <option value="SANCTION">
+                      {t("discipline.types.sanction")}
+                    </option>
+                    <option value="PUNITION">
+                      {t("discipline.types.punition")}
+                    </option>
                   </FormSelect>
                 </FormField>
 
                 <FormField
-                  label="Date et heure"
+                  label={t("discipline.form.dateTime")}
                   error={createEventForm.formState.errors.occurredAt?.message}
                 >
                   <FormDateTimeInput
@@ -672,7 +700,7 @@ export default function TeacherClassDisciplinePage() {
                 </FormField>
 
                 <FormField
-                  label="Motif"
+                  label={t("discipline.form.reason")}
                   error={createEventForm.formState.errors.reason?.message}
                   className="md:col-span-2"
                 >
@@ -686,12 +714,12 @@ export default function TeacherClassDisciplinePage() {
                         shouldValidate: true,
                       })
                     }
-                    placeholder="Ex: travail non rendu, absence non justifiee"
+                    placeholder={t("discipline.form.reasonPlaceholder")}
                   />
                 </FormField>
 
                 <FormField
-                  label="Duree (minutes, optionnel)"
+                  label={t("discipline.form.duration")}
                   error={
                     createEventForm.formState.errors.durationMinutes?.message
                   }
@@ -715,7 +743,7 @@ export default function TeacherClassDisciplinePage() {
                 </FormField>
 
                 <FormField
-                  label="Commentaire (optionnel)"
+                  label={t("discipline.form.comment")}
                   className="md:col-span-2"
                 >
                   <FormTextarea
@@ -750,7 +778,7 @@ export default function TeacherClassDisciplinePage() {
                       createEventValues.type === "PUNITION"
                     }
                   />
-                  Justifie (absence / retard)
+                  {t("discipline.form.justified")}
                 </label>
 
                 <div className="md:col-span-2">
@@ -765,7 +793,9 @@ export default function TeacherClassDisciplinePage() {
                       !createEventForm.formState.isValid
                     }
                   >
-                    {saving ? "Enregistrement..." : "Enregistrer l'evenement"}
+                    {saving
+                      ? t("discipline.form.saving")
+                      : t("discipline.form.submitCreate")}
                   </SubmitButton>
                 </div>
               </form>
@@ -774,11 +804,11 @@ export default function TeacherClassDisciplinePage() {
                 {editingEventId ? (
                   <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-2">
                     <FormField
-                      label="Type d'evenement edition"
+                      label={t("discipline.form.typeEditAria")}
                       error={editEventForm.formState.errors.type?.message}
                     >
                       <FormSelect
-                        aria-label="Type d'evenement edition"
+                        aria-label={t("discipline.form.typeEditAria")}
                         value={editEventValues.type ?? "ABSENCE"}
                         onChange={(event) =>
                           editEventForm.setValue(
@@ -792,19 +822,27 @@ export default function TeacherClassDisciplinePage() {
                           )
                         }
                       >
-                        <option value="ABSENCE">Absence</option>
-                        <option value="RETARD">Retard</option>
-                        <option value="SANCTION">Sanction</option>
-                        <option value="PUNITION">Punition</option>
+                        <option value="ABSENCE">
+                          {t("discipline.types.absence")}
+                        </option>
+                        <option value="RETARD">
+                          {t("discipline.types.retard")}
+                        </option>
+                        <option value="SANCTION">
+                          {t("discipline.types.sanction")}
+                        </option>
+                        <option value="PUNITION">
+                          {t("discipline.types.punition")}
+                        </option>
                       </FormSelect>
                     </FormField>
 
                     <FormField
-                      label="Date et heure edition"
+                      label={t("discipline.form.dateTimeEditAria")}
                       error={editEventForm.formState.errors.occurredAt?.message}
                     >
                       <FormDateTimeInput
-                        aria-label="Date et heure edition"
+                        aria-label={t("discipline.form.dateTimeEditAria")}
                         invalid={editOccurredAtInvalid}
                         value={editEventValues.occurredAt ?? ""}
                         onChange={(event) =>
@@ -822,12 +860,12 @@ export default function TeacherClassDisciplinePage() {
                     </FormField>
 
                     <FormField
-                      label="Motif edition"
+                      label={t("discipline.form.reasonEditAria")}
                       className="md:col-span-2"
                       error={editEventForm.formState.errors.reason?.message}
                     >
                       <FormTextInput
-                        aria-label="Motif edition"
+                        aria-label={t("discipline.form.reasonEditAria")}
                         invalid={editReasonInvalid}
                         value={editEventValues.reason ?? ""}
                         onChange={(event) =>
@@ -841,13 +879,13 @@ export default function TeacherClassDisciplinePage() {
                     </FormField>
 
                     <FormField
-                      label="Duree edition (minutes, optionnel)"
+                      label={t("discipline.form.durationEditAria")}
                       error={
                         editEventForm.formState.errors.durationMinutes?.message
                       }
                     >
                       <FormNumberInput
-                        aria-label="Duree edition (minutes, optionnel)"
+                        aria-label={t("discipline.form.durationEditAria")}
                         invalid={editDurationInvalid}
                         min={0}
                         value={editEventValues.durationMinutes ?? ""}
@@ -866,11 +904,11 @@ export default function TeacherClassDisciplinePage() {
                     </FormField>
 
                     <FormField
-                      label="Commentaire edition (optionnel)"
+                      label={t("discipline.form.commentEditAria")}
                       className="md:col-span-2"
                     >
                       <FormTextarea
-                        aria-label="Commentaire edition (optionnel)"
+                        aria-label={t("discipline.form.commentEditAria")}
                         value={editEventValues.comment ?? ""}
                         onChange={(event) =>
                           editEventForm.setValue(
@@ -906,7 +944,7 @@ export default function TeacherClassDisciplinePage() {
                           editEventValues.type === "PUNITION"
                         }
                       />
-                      Justifie (absence / retard)
+                      {t("discipline.form.justified")}
                     </label>
 
                     <div className="flex gap-2 md:col-span-2">
@@ -925,15 +963,15 @@ export default function TeacherClassDisciplinePage() {
                         }
                       >
                         {updatingEventId === editingEventId
-                          ? "Enregistrement..."
-                          : "Enregistrer les modifications"}
+                          ? t("discipline.form.saving")
+                          : t("discipline.form.submitUpdate")}
                       </Button>
                       <Button
                         type="button"
                         variant="secondary"
                         onClick={cancelEditEvent}
                       >
-                        Annuler
+                        {t("discipline.form.cancel")}
                       </Button>
                     </div>
                   </div>
@@ -941,7 +979,7 @@ export default function TeacherClassDisciplinePage() {
 
                 <LifeEventsList
                   events={events}
-                  emptyLabel="Aucun evenement pour cet eleve."
+                  emptyLabel={t("discipline.empty.studentEvents")}
                   formatDate={formatShortDateTime}
                   deletingEventId={deletingEventId}
                   onEdit={startEditEvent}
@@ -954,14 +992,17 @@ export default function TeacherClassDisciplinePage() {
       </Card>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Supprimer cet evenement ?"
+        title={t("discipline.delete.title")}
         message={
           deleteTarget
-            ? `Cette action est irreversible. L'evenement "${lifeEventTypeLabel(deleteTarget.type)} - ${deleteTarget.reason}" sera supprime definitivement.`
+            ? t("discipline.delete.message").replace(
+                "{label}",
+                `${lifeEventTypeLabel(t, deleteTarget.type)} - ${deleteTarget.reason}`,
+              )
             : ""
         }
-        confirmLabel="Supprimer"
-        cancelLabel="Annuler"
+        confirmLabel={t("discipline.delete.confirm")}
+        cancelLabel={t("discipline.form.cancel")}
         loading={Boolean(deleteTarget) && deletingEventId === deleteTarget?.id}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => {

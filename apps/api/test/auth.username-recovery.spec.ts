@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import bcrypt from "bcryptjs";
 import { AuthService } from "../src/auth/auth.service";
 
@@ -10,6 +14,8 @@ function makeService(prismaOverrides: Record<string, unknown> = {}) {
     },
     passwordResetToken: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn().mockResolvedValue({ id: "prt-1" }),
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       create: jest.fn().mockResolvedValue({ id: "prt-1" }),
       deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -52,13 +58,17 @@ describe("AuthService username recovery", () => {
     });
   });
 
-  it("startUsernameRecovery lève NotFoundException si le username est inconnu", async () => {
+  it("startUsernameRecovery lève NotFoundException avec code USER_NOT_FOUND si le username est inconnu", async () => {
     const { service, prisma } = makeService();
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
     await expect(service.startUsernameRecovery("ghost")).rejects.toBeInstanceOf(
       NotFoundException,
     );
+
+    await expect(service.startUsernameRecovery("ghost")).rejects.toMatchObject({
+      response: { code: "USER_NOT_FOUND" },
+    });
   });
 
   it("verifyUsernameRecovery retourne un recoveryToken après vérification", async () => {
@@ -217,5 +227,107 @@ describe("AuthService username recovery", () => {
     await service.completeUsernameRecovery("my-token", "NewPass1");
 
     expect(spy).toHaveBeenCalledWith("my-token", "NewPass1");
+  });
+});
+
+describe("AuthService password reset token codes", () => {
+  function buildResetToken(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "prt-1",
+      userId: "user-1",
+      usedAt: null,
+      verifiedAt: new Date(),
+      expiresAt: new Date(Date.now() + 60_000),
+      user: {
+        id: "user-1",
+        passwordHash: null,
+        recoveryBirthDate: new Date("2005-01-15T00:00:00.000Z"),
+        memberships: [],
+        recoveryAnswers: [],
+      },
+      ...overrides,
+    };
+  }
+
+  it("getValidPasswordResetToken lève UnauthorizedException avec code TOKEN_INVALID si le token est inconnu", async () => {
+    const { service, prisma } = makeService();
+    (prisma.passwordResetToken.findFirst as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      service.completePasswordReset("unknown-token", "NewPass1"),
+    ).rejects.toMatchObject({
+      response: { code: "TOKEN_INVALID" },
+    });
+  });
+
+  it("getValidPasswordResetToken lève UnauthorizedException avec code TOKEN_INVALID si le token a déjà été utilisé", async () => {
+    const { service, prisma } = makeService();
+    (prisma.passwordResetToken.findFirst as jest.Mock).mockResolvedValue(
+      buildResetToken({ usedAt: new Date() }),
+    );
+
+    await expect(
+      service.completePasswordReset("used-token", "NewPass1"),
+    ).rejects.toMatchObject({
+      response: { code: "TOKEN_INVALID" },
+    });
+  });
+
+  it("getValidPasswordResetToken lève UnauthorizedException avec code TOKEN_EXPIRED si le token a expiré", async () => {
+    const { service, prisma } = makeService();
+    (prisma.passwordResetToken.findFirst as jest.Mock).mockResolvedValue(
+      buildResetToken({ expiresAt: new Date(Date.now() - 60_000) }),
+    );
+
+    await expect(
+      service.completePasswordReset("expired-token", "NewPass1"),
+    ).rejects.toMatchObject({
+      response: { code: "TOKEN_EXPIRED" },
+    });
+
+    const error = await service
+      .completePasswordReset("expired-token", "NewPass1")
+      .catch((err) => err);
+    expect(error).toBeInstanceOf(UnauthorizedException);
+  });
+
+  it("completePasswordReset lève ForbiddenException avec code SAME_PASSWORD si le mot de passe est inchangé", async () => {
+    const { service, prisma } = makeService();
+    const passwordHash = await bcrypt.hash("Secret123", 10);
+    (prisma.passwordResetToken.findFirst as jest.Mock).mockResolvedValue(
+      buildResetToken({ user: { passwordHash } }),
+    );
+
+    await expect(
+      service.completePasswordReset("valid-token", "Secret123"),
+    ).rejects.toMatchObject({
+      response: { code: "SAME_PASSWORD" },
+    });
+
+    const error = await service
+      .completePasswordReset("valid-token", "Secret123")
+      .catch((err) => err);
+    expect(error).toBeInstanceOf(ForbiddenException);
+  });
+
+  it("verifyPasswordReset lève ForbiddenException avec code RECOVERY_INVALID si la date de naissance ne correspond pas", async () => {
+    const { service, prisma } = makeService();
+    (prisma.passwordResetToken.findFirst as jest.Mock).mockResolvedValue(
+      buildResetToken(),
+    );
+
+    await expect(
+      service.verifyPasswordReset({
+        token: "valid-token",
+        birthDate: "1990-01-01",
+        answers: [
+          { questionKey: "BIRTH_CITY", answer: "Douala" },
+          { questionKey: "FAVORITE_SPORT", answer: "Basket" },
+          { questionKey: "MOTHER_MAIDEN_NAME", answer: "Abena" },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      response: { code: "RECOVERY_INVALID" },
+    });
   });
 });

@@ -24,6 +24,11 @@ import type {
 } from "./dto/create-feed-post.dto.js";
 import type { ListFeedPostsDto } from "./dto/list-feed-posts.dto.js";
 import type { UpdateFeedPostDto } from "./dto/update-feed-post.dto.js";
+import {
+  feedLocaleFromUser,
+  translateFeed,
+  type FeedLocale,
+} from "./feed.translations.js";
 
 type FeedPostPayloadLike = Pick<
   CreateFeedPostDto,
@@ -56,6 +61,7 @@ type ViewerContext = {
   isStaff: boolean;
   isParent: boolean;
   isStudent: boolean;
+  locale: FeedLocale;
 };
 
 @Injectable()
@@ -110,7 +116,10 @@ export class FeedService {
 
     if (query.viewScope === "CLASS" && !query.classId) {
       throw new BadRequestException(
-        "classId is required when viewScope is CLASS",
+        translateFeed(
+          context.locale,
+          "feed.errors.classIdRequiredForClassView",
+        ),
       );
     }
 
@@ -197,7 +206,7 @@ export class FeedService {
       context,
       payload.featuredDays,
     );
-    const pollData = this.resolvePollData(type, payload);
+    const pollData = this.resolvePollData(context.locale, type, payload);
     const attachments = this.normalizeAttachments(payload.attachments);
     const sanitizedBodyHtml = sanitizeRichTextHtml(payload.bodyHtml);
 
@@ -240,6 +249,7 @@ export class FeedService {
       created.id,
       context.schoolId,
       user.id,
+      context.locale,
     );
     return this.mapPost(post, user.id, context);
   }
@@ -296,6 +306,7 @@ export class FeedService {
     const existingMedia = await this.loadPostMediaReferences(
       context.schoolId,
       postId,
+      context.locale,
     );
 
     const type = payload.type ?? existing.type;
@@ -304,7 +315,7 @@ export class FeedService {
       context,
       payload.featuredDays,
     );
-    const pollData = this.resolvePollData(type, payload);
+    const pollData = this.resolvePollData(context.locale, type, payload);
     const attachments = this.normalizeAttachments(payload.attachments);
     const sanitizedBodyHtml = sanitizeRichTextHtml(payload.bodyHtml);
     const urlsToCleanup = this.computeUrlsToCleanup({
@@ -323,7 +334,7 @@ export class FeedService {
               .filter((url): url is string => Boolean(url)),
     });
 
-    await this.cleanupMediaUrls(urlsToCleanup);
+    await this.cleanupMediaUrls(urlsToCleanup, context.locale);
 
     await this.inlineMediaService.syncEntityImages({
       schoolId: context.schoolId,
@@ -372,6 +383,7 @@ export class FeedService {
       postId,
       context.schoolId,
       user.id,
+      context.locale,
     );
     return this.mapPost(post, user.id, context);
   }
@@ -382,6 +394,7 @@ export class FeedService {
     const existingMedia = await this.loadPostMediaReferences(
       context.schoolId,
       postId,
+      context.locale,
     );
     const allUrls = this.computeAllManagedUrls({
       bodyHtml: existingMedia.bodyHtml,
@@ -390,7 +403,7 @@ export class FeedService {
         .filter((url): url is string => Boolean(url)),
     });
 
-    await this.cleanupMediaUrls(allUrls);
+    await this.cleanupMediaUrls(allUrls, context.locale);
     await this.inlineMediaService.removeEntityImages({
       entityType: InlineMediaEntityType.FEED_POST,
       entityId: postId,
@@ -511,11 +524,15 @@ export class FeedService {
       });
 
       if (!post) {
-        throw new NotFoundException("Publication introuvable");
+        throw new NotFoundException(
+          translateFeed(context.locale, "feed.errors.postNotFound"),
+        );
       }
 
       if (post.type !== FeedPostType.POLL || !post.pollQuestion) {
-        throw new BadRequestException("Cette publication n'est pas un sondage");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.notAPoll"),
+        );
       }
 
       const existingVote = await tx.feedPollVote.findUnique({
@@ -531,16 +548,22 @@ export class FeedService {
       });
 
       if (existingVote) {
-        throw new BadRequestException("Vote deja enregistre");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.voteAlreadyRegistered"),
+        );
       }
 
       const options = this.parsePollOptions(post.pollOptionsJson);
       if (options.length < 2) {
-        throw new BadRequestException("Sondage invalide");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.invalidPoll"),
+        );
       }
 
       if (!options.some((option) => option.id === optionId)) {
-        throw new BadRequestException("Option de vote introuvable");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.pollOptionNotFound"),
+        );
       }
 
       const nextOptions = options.map((option) =>
@@ -590,11 +613,15 @@ export class FeedService {
     });
 
     if (!post) {
-      throw new NotFoundException("Publication introuvable");
+      throw new NotFoundException(
+        translateFeed(context.locale, "feed.errors.postNotFound"),
+      );
     }
 
     if (!this.canContextSeeScope(context, post)) {
-      throw new ForbiddenException("Acces refuse");
+      throw new ForbiddenException(
+        translateFeed(context.locale, "feed.errors.accessDenied"),
+      );
     }
   }
 
@@ -624,7 +651,9 @@ export class FeedService {
     });
 
     if (!post) {
-      throw new NotFoundException("Publication introuvable");
+      throw new NotFoundException(
+        translateFeed(context.locale, "feed.errors.postNotFound"),
+      );
     }
 
     const isAuthor = post.authorUserId === viewerUserId;
@@ -642,7 +671,7 @@ export class FeedService {
 
     if (!isAuthor && !isStaffModerator && !isSchoolAdminModerator) {
       throw new ForbiddenException(
-        "Seul l'auteur, un staff/enseignant moderateur, ou le SCHOOL_ADMIN sur un post staff peut modifier ou supprimer cette publication",
+        translateFeed(context.locale, "feed.errors.manageNotAllowed"),
       );
     }
 
@@ -752,6 +781,7 @@ export class FeedService {
       isStaff,
       isParent,
       isStudent,
+      locale: feedLocaleFromUser(user),
     };
   }
 
@@ -841,7 +871,10 @@ export class FeedService {
         payload.audienceClassId ?? Array.from(context.classIds)[0];
       if (!classId || !context.classIds.has(classId)) {
         throw new ForbiddenException(
-          "Un eleve ne peut publier que pour sa classe",
+          translateFeed(
+            context.locale,
+            "feed.errors.studentCanOnlyPostForOwnClass",
+          ),
         );
       }
       const classRoom = await this.prisma.class.findFirst({
@@ -856,7 +889,9 @@ export class FeedService {
         },
       });
       if (!classRoom) {
-        throw new BadRequestException("Classe invalide");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.invalidClass"),
+        );
       }
       return {
         scope: FeedAudienceScope.CLASS,
@@ -864,7 +899,9 @@ export class FeedService {
         levelId: classRoom.academicLevelId,
         label:
           payload.audienceLabel?.trim() ||
-          `Classe ${classRoom.name} (eleves, parents, enseignants)`,
+          translateFeed(context.locale, "feed.audience.classAllLabel", {
+            className: classRoom.name,
+          }),
       };
     }
 
@@ -873,18 +910,24 @@ export class FeedService {
         scope: FeedAudienceScope.PARENTS_ONLY,
         classId: null,
         levelId: null,
-        label: payload.audienceLabel?.trim() || "Parents uniquement",
+        label:
+          payload.audienceLabel?.trim() ||
+          translateFeed(context.locale, "feed.audience.parentsOnly"),
       };
     }
 
     const scope = payload.audienceScope ?? FeedAudienceScope.SCHOOL_ALL;
     if (!context.isStaff && scope !== FeedAudienceScope.SCHOOL_ALL) {
-      throw new ForbiddenException("Audience non autorisee");
+      throw new ForbiddenException(
+        translateFeed(context.locale, "feed.errors.audienceNotAllowed"),
+      );
     }
 
     if (scope === FeedAudienceScope.CLASS) {
       if (!payload.audienceClassId) {
-        throw new BadRequestException("audienceClassId is required for CLASS");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.audienceClassIdRequired"),
+        );
       }
       const classRoom = await this.prisma.class.findFirst({
         where: {
@@ -898,7 +941,9 @@ export class FeedService {
         },
       });
       if (!classRoom) {
-        throw new BadRequestException("Classe invalide");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.invalidClass"),
+        );
       }
       return {
         scope,
@@ -906,13 +951,19 @@ export class FeedService {
         levelId: classRoom.academicLevelId,
         label:
           payload.audienceLabel?.trim() ||
-          `Parents/eleves classe ${classRoom.name}`,
+          translateFeed(
+            context.locale,
+            "feed.audience.classParentsStudentsLabel",
+            { className: classRoom.name },
+          ),
       };
     }
 
     if (scope === FeedAudienceScope.LEVEL) {
       if (!payload.audienceLevelId) {
-        throw new BadRequestException("audienceLevelId is required for LEVEL");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.audienceLevelIdRequired"),
+        );
       }
       const level = await this.prisma.academicLevel.findFirst({
         where: {
@@ -925,13 +976,19 @@ export class FeedService {
         },
       });
       if (!level) {
-        throw new BadRequestException("Niveau invalide");
+        throw new BadRequestException(
+          translateFeed(context.locale, "feed.errors.invalidLevel"),
+        );
       }
       return {
         scope,
         classId: null,
         levelId: level.id,
-        label: payload.audienceLabel?.trim() || `Niveau ${level.label}`,
+        label:
+          payload.audienceLabel?.trim() ||
+          translateFeed(context.locale, "feed.audience.levelLabel", {
+            levelLabel: level.label,
+          }),
       };
     }
 
@@ -939,7 +996,9 @@ export class FeedService {
       scope,
       classId: null,
       levelId: null,
-      label: payload.audienceLabel?.trim() || this.defaultAudienceLabel(scope),
+      label:
+        payload.audienceLabel?.trim() ||
+        this.defaultAudienceLabel(context.locale, scope),
     };
   }
 
@@ -951,7 +1010,11 @@ export class FeedService {
     return new Date(Date.now() + featuredDays * 24 * 60 * 60 * 1000);
   }
 
-  private resolvePollData(type: FeedPostType, payload: FeedPostPayloadLike) {
+  private resolvePollData(
+    locale: FeedLocale,
+    type: FeedPostType,
+    payload: FeedPostPayloadLike,
+  ) {
     if (type !== FeedPostType.POLL) {
       return { question: null, options: null as Prisma.InputJsonValue | null };
     }
@@ -959,7 +1022,7 @@ export class FeedService {
     const question = payload.pollQuestion?.trim();
     if (!question) {
       throw new BadRequestException(
-        "pollQuestion is required for poll publications",
+        translateFeed(locale, "feed.errors.pollQuestionRequired"),
       );
     }
 
@@ -972,7 +1035,9 @@ export class FeedService {
     );
 
     if (options.length < 2) {
-      throw new BadRequestException("A poll needs at least 2 options");
+      throw new BadRequestException(
+        translateFeed(locale, "feed.errors.pollNeedsTwoOptions"),
+      );
     }
 
     return {
@@ -993,23 +1058,24 @@ export class FeedService {
     }));
   }
 
-  private defaultAudienceLabel(scope: FeedAudienceScope) {
+  private defaultAudienceLabel(locale: FeedLocale, scope: FeedAudienceScope) {
     if (scope === FeedAudienceScope.STAFF_ONLY) {
-      return "Staff uniquement";
+      return translateFeed(locale, "feed.audience.staffOnly");
     }
     if (scope === FeedAudienceScope.PARENTS_STUDENTS) {
-      return "Parents et eleves";
+      return translateFeed(locale, "feed.audience.parentsAndStudents");
     }
     if (scope === FeedAudienceScope.PARENTS_ONLY) {
-      return "Parents uniquement";
+      return translateFeed(locale, "feed.audience.parentsOnly");
     }
-    return "Toute l'ecole";
+    return translateFeed(locale, "feed.audience.wholeSchool");
   }
 
   private async loadPostForViewer(
     postId: string,
     schoolId: string,
     viewerUserId: string,
+    locale: FeedLocale,
   ) {
     const post = await this.prisma.feedPost.findFirst({
       where: {
@@ -1069,13 +1135,19 @@ export class FeedService {
     });
 
     if (!post) {
-      throw new NotFoundException("Publication introuvable");
+      throw new NotFoundException(
+        translateFeed(locale, "feed.errors.postNotFound"),
+      );
     }
 
     return post;
   }
 
-  private async loadPostMediaReferences(schoolId: string, postId: string) {
+  private async loadPostMediaReferences(
+    schoolId: string,
+    postId: string,
+    locale: FeedLocale,
+  ) {
     const post = await this.prisma.feedPost.findFirst({
       where: {
         id: postId,
@@ -1093,7 +1165,9 @@ export class FeedService {
     });
 
     if (!post) {
-      throw new NotFoundException("Publication introuvable");
+      throw new NotFoundException(
+        translateFeed(locale, "feed.errors.postNotFound"),
+      );
     }
 
     return post;
@@ -1159,11 +1233,13 @@ export class FeedService {
     return Array.from(existing).filter((url) => !next.has(url));
   }
 
-  private async cleanupMediaUrls(urls: string[]) {
+  private async cleanupMediaUrls(urls: string[], locale: FeedLocale) {
     const mediaServiceUrl = process.env.MEDIA_SERVICE_URL?.trim();
     if (!mediaServiceUrl) {
       if (process.env.NODE_ENV === "production") {
-        throw new BadGatewayException("MEDIA_SERVICE_URL not configured");
+        throw new BadGatewayException(
+          translateFeed(locale, "feed.errors.mediaServiceUrlNotConfigured"),
+        );
       }
       return;
     }
@@ -1176,7 +1252,9 @@ export class FeedService {
           error instanceof Error && error.message.trim()
             ? error.message
             : "media cleanup failed";
-        throw new BadGatewayException(`Echec suppression media: ${message}`);
+        throw new BadGatewayException(
+          translateFeed(locale, "feed.errors.mediaCleanupFailed", { message }),
+        );
       }
     }
   }
@@ -1226,7 +1304,10 @@ export class FeedService {
     viewerUserId: string,
     viewerContext: ViewerContext,
   ) {
-    const roleLabel = this.roleLabel(post.authorUser.memberships[0]?.role);
+    const roleLabel = this.roleLabel(
+      viewerContext.locale,
+      post.authorUser.memberships[0]?.role,
+    );
     const parsedPollOptions = this.parsePollOptions(post.pollOptionsJson);
     const authorIsParentOrStudent = post.authorUser.memberships.some(
       (membership) =>
@@ -1324,18 +1405,24 @@ export class FeedService {
       );
   }
 
-  private roleLabel(role?: SchoolRole) {
+  private roleLabel(locale: FeedLocale, role?: SchoolRole) {
     if (!role) {
-      return "Membre";
+      return translateFeed(locale, "feed.roles.member");
     }
-    if (role === "SCHOOL_ADMIN") return "Administration";
-    if (role === "SCHOOL_MANAGER") return "Direction";
-    if (role === "SUPERVISOR") return "Surveillance";
-    if (role === "SCHOOL_ACCOUNTANT") return "Comptabilite";
-    if (role === "SCHOOL_STAFF") return "Staff";
-    if (role === "TEACHER") return "Vie scolaire";
-    if (role === "PARENT") return "Parents";
-    return "Eleves";
+    if (role === "SCHOOL_ADMIN")
+      return translateFeed(locale, "feed.roles.administration");
+    if (role === "SCHOOL_MANAGER")
+      return translateFeed(locale, "feed.roles.direction");
+    if (role === "SUPERVISOR")
+      return translateFeed(locale, "feed.roles.supervision");
+    if (role === "SCHOOL_ACCOUNTANT")
+      return translateFeed(locale, "feed.roles.accounting");
+    if (role === "SCHOOL_STAFF")
+      return translateFeed(locale, "feed.roles.staff");
+    if (role === "TEACHER")
+      return translateFeed(locale, "feed.roles.schoolLife");
+    if (role === "PARENT") return translateFeed(locale, "feed.roles.parents");
+    return translateFeed(locale, "feed.roles.students");
   }
 
   private getEffectiveSchoolId(user: AuthenticatedUser, schoolId: string) {
@@ -1351,7 +1438,9 @@ export class FeedService {
     );
 
     if (!hasMembership) {
-      throw new ForbiddenException("Insufficient role");
+      throw new ForbiddenException(
+        translateFeed(feedLocaleFromUser(user), "feed.errors.insufficientRole"),
+      );
     }
 
     return schoolId;

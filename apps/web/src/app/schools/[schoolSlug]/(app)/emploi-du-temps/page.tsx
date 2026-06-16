@@ -7,6 +7,7 @@ import {
   TimetableViews,
   type TimetableDisplaySlot,
 } from "../../../../../components/timetable/timetable-views";
+import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -315,6 +316,7 @@ function normalizeApiDateOnly(value: string) {
 }
 
 export default function StudentTimetablePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useParams<{ schoolSlug: string; childId?: string }>();
   const searchParams = useSearchParams();
@@ -379,7 +381,7 @@ export default function StudentTimetablePage() {
       if (payload.role === "PARENT") {
         const linkedStudents = payload.linkedStudents ?? [];
         if (linkedStudents.length === 0) {
-          setError("Aucun eleve lie a ce compte parent.");
+          setError(t("timetable.myTimetable.errors.noLinkedStudent"));
           return;
         }
       }
@@ -403,7 +405,7 @@ export default function StudentTimetablePage() {
       );
 
       if (!timetableResponse.ok) {
-        setError("Impossible de charger l'emploi du temps.");
+        setError(t("timetable.myTimetable.errors.loadFailed"));
         return;
       }
 
@@ -452,13 +454,14 @@ export default function StudentTimetablePage() {
         ),
       );
     } catch {
-      setError("Impossible de charger l'emploi du temps.");
+      setError(t("timetable.myTimetable.errors.loadFailed"));
     } finally {
       setLoading(false);
     }
   }
 
-  const className = activeChildClassName || "6eme N3";
+  const className =
+    activeChildClassName || t("timetable.agenda.page.defaultClassName");
   const activeRange = useMemo(() => {
     if (viewMode === "day") {
       return { from: stripTime(cursorDate), to: stripTime(cursorDate) };
@@ -513,13 +516,17 @@ export default function StudentTimetablePage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Emploi du temps"
+        title={t("timetable.myTimetable.title")}
         subtitle={
-          activeChildLabel ? `${activeChildLabel} - ${className}` : "Vue eleve"
+          activeChildLabel
+            ? `${activeChildLabel} - ${className}`
+            : t("timetable.myTimetable.subtitleDefault")
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">
+            {t("timetable.myTimetable.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : (
@@ -536,8 +543,8 @@ export default function StudentTimetablePage() {
                   onCursorDateChange={setCursorDate}
                   isCompactViewport={isCompactViewport}
                   subjectColorsBySubjectId={subjectColorsBySubjectId}
-                  dayEmptyLabel="Aucun cours programme pour cette journee."
-                  monthEmptyLabel="Aucun cours programme pour cette journee."
+                  dayEmptyLabel={t("timetable.myTimetable.emptyDay")}
+                  monthEmptyLabel={t("timetable.myTimetable.emptyDay")}
                 />
               </div>
             </section>

@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UsernameRecoveryClient } from "./username-recovery-client";
+import { useLocaleStore } from "../../i18n/locale-store";
+import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 const replaceMock = vi.fn();
 
@@ -12,6 +14,7 @@ describe("UsernameRecoveryClient UI", () => {
   beforeEach(() => {
     replaceMock.mockReset();
     vi.restoreAllMocks();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
   // ── Step 1 ──────────────────────────────────────────────────────────────────
@@ -376,5 +379,20 @@ describe("UsernameRecoveryClient UI", () => {
     expect(
       screen.getByRole("link", { name: /Retour a la connexion/i }),
     ).toHaveAttribute("href", "/");
+  });
+
+  it("traduit le contenu de la page en anglais quand la langue EN est active", () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    render(<UsernameRecoveryClient />);
+
+    expect(screen.getByLabelText("Username")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continue" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Step 1/3: enter your username"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Back to sign in")).toBeInTheDocument();
   });
 });

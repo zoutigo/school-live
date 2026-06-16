@@ -28,6 +28,7 @@ import {
 import { Badge } from "../ui/badge";
 import { getSchoolMessagesUnreadCount } from "../messaging/messaging-api";
 import type { Role } from "../../lib/role-view";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
 type SidebarProps = {
   schoolSlug?: string | null;
@@ -63,7 +64,11 @@ type TeacherClassWithItems = TeacherClassNav & {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
-function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
+function buildItems(
+  role: Role,
+  schoolSlug: string | null | undefined,
+  t: TranslateFn,
+): NavItem[] {
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "/acceuil";
 
   if (
@@ -217,7 +222,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/student-grades`,
       },
       {
-        label: "Messagerie",
+        label: t("messaging.nav.title"),
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
@@ -264,7 +269,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/student-grades`,
       },
       {
-        label: "Messagerie",
+        label: t("messaging.nav.title"),
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
@@ -311,7 +316,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
         matchPrefix: `${schoolBase}/boutique-en-ligne`,
       },
       {
-        label: "Messagerie",
+        label: t("messaging.nav.title"),
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
@@ -375,7 +380,7 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
       matchPrefix: "/settings",
     },
     {
-      label: "Messagerie",
+      label: t("messaging.nav.title"),
       href: `${schoolBase}/messagerie`,
       icon: MessageSquare,
       matchPrefix: `${schoolBase}/messagerie`,
@@ -395,7 +400,11 @@ function buildItems(role: Role, schoolSlug?: string | null): NavItem[] {
   ];
 }
 
-function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
+function buildParentChildItems(
+  schoolSlug: string,
+  childId: string,
+  t: TranslateFn,
+): NavItem[] {
   const base = `/schools/${schoolSlug}/children/${childId}`;
 
   return [
@@ -406,7 +415,7 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
       matchPrefix: `${base}/accueil`,
     },
     {
-      label: "Vie scolaire",
+      label: t("discipline.sidebar.vieScolaire"),
       href: `${base}/vie-scolaire`,
       icon: UserRound,
       matchPrefix: `${base}/vie-scolaire`,
@@ -418,7 +427,7 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
       matchPrefix: `${base}/vie-de-classe`,
     },
     {
-      label: "Emploi du temps",
+      label: t("timetable.sidebar.emploiDuTemps"),
       href: `/schools/${schoolSlug}/emploi-du-temps?childId=${encodeURIComponent(
         childId,
       )}`,
@@ -432,7 +441,7 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
       matchPrefix: `${base}/notes`,
     },
     {
-      label: "Messagerie",
+      label: t("messaging.nav.title"),
       href: `${base}/messagerie`,
       icon: MessageSquare,
       matchPrefix: `${base}/messagerie`,
@@ -467,6 +476,7 @@ function buildParentChildItems(schoolSlug: string, childId: string): NavItem[] {
 function buildTeacherClassItems(
   schoolSlug: string,
   classId: string,
+  t: TranslateFn,
 ): NavItem[] {
   const base = `/schools/${schoolSlug}/classes/${classId}`;
 
@@ -484,19 +494,19 @@ function buildTeacherClassItems(
       matchPrefix: `${base}/notes`,
     },
     {
-      label: "Discipline",
+      label: t("discipline.sidebar.discipline"),
       href: `${base}/discipline`,
       icon: ShieldCheck,
       matchPrefix: `${base}/discipline`,
     },
     {
-      label: "Emploi du temps",
+      label: t("timetable.sidebar.emploiDuTemps"),
       href: `${base}/emploi-du-temps`,
       icon: CalendarDays,
       matchPrefix: `${base}/emploi-du-temps`,
     },
     {
-      label: "Devoirs",
+      label: t("homework.sidebar.devoirs"),
       href: `${base}/devoirs`,
       icon: FileText,
       matchPrefix: `${base}/devoirs`,
@@ -510,9 +520,10 @@ export function AppSidebar({
   onNavigate,
   onLogoutClick,
 }: SidebarProps) {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
-  const items = buildItems(role, schoolSlug);
+  const items = buildItems(role, schoolSlug, t);
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
   const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
   const [openParentSection, setOpenParentSection] = useState<string>("general");
@@ -668,9 +679,9 @@ export function AppSidebar({
 
     return parentChildren.map((child) => ({
       ...child,
-      items: buildParentChildItems(schoolSlug, child.id),
+      items: buildParentChildItems(schoolSlug, child.id, t),
     }));
-  }, [parentChildren, schoolSlug]);
+  }, [parentChildren, schoolSlug, t]);
 
   const teacherClassesWithItems = useMemo<TeacherClassWithItems[]>(() => {
     if (!schoolSlug) {
@@ -679,9 +690,9 @@ export function AppSidebar({
 
     return teacherClasses.map((entry) => ({
       ...entry,
-      items: buildTeacherClassItems(schoolSlug, entry.classId),
+      items: buildTeacherClassItems(schoolSlug, entry.classId, t),
     }));
-  }, [teacherClasses, schoolSlug]);
+  }, [teacherClasses, schoolSlug, t]);
 
   const teacherGeneralItems = useMemo(
     () => items.filter((item) => item.href !== "/settings"),

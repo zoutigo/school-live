@@ -23,12 +23,13 @@ export type StudentLifeEventNotificationPayload = {
   schoolSlug: string | null;
   studentFirstName: string;
   studentLastName: string;
-  eventTypeLabel: string;
+  eventType: "ABSENCE" | "RETARD" | "SANCTION" | "PUNITION";
   eventReason: string;
   eventDate: string;
   eventAction: "CREATED" | "UPDATED";
   className?: string | null;
   authorFullName?: string | null;
+  locale: "fr" | "en";
 };
 
 export type PasswordResetMailPayload = {
