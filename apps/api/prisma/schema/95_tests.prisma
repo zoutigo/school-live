@@ -1,0 +1,117 @@
+enum TestCampaignStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum TestCasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TestExecutionStatus {
+  TODO
+  IN_PROGRESS
+  PASSED
+  FAILED
+  BLOCKED
+  SKIPPED
+}
+
+model TestCampaign {
+  id            String             @id @default(cuid())
+  schoolId      String
+  school        School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  targetVersion String?
+  startsAt      DateTime?
+  dueAt         DateTime?
+  status        TestCampaignStatus @default(DRAFT)
+  createdById   String
+  createdBy     User               @relation("TestCampaignCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById   String
+  updatedBy     User               @relation("TestCampaignUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  testCases     TestCase[]
+
+  @@index([schoolId, status, dueAt])
+  @@index([schoolId, createdAt])
+}
+
+model TestCase {
+  id               String                 @id @default(cuid())
+  campaignId       String
+  campaign         TestCampaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  title            String
+  module           String?
+  objective        String?
+  preconditions    String?
+  steps            Json?
+  expectedResult   String
+  orderIndex       Int                    @default(0)
+  priority         TestCasePriority       @default(MEDIUM)
+  evidenceRequired Boolean                @default(false)
+  dueAt            DateTime?
+  createdById      String
+  createdBy        User                   @relation("TestCaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById      String
+  updatedBy        User                   @relation("TestCaseUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  audienceRoles    TestCaseAudienceRole[]
+  executions       TestExecution[]
+
+  @@index([campaignId, orderIndex])
+  @@index([campaignId, priority])
+}
+
+model TestCaseAudienceRole {
+  id         String   @id @default(cuid())
+  testCaseId String
+  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  role       AppRole
+  createdAt  DateTime @default(now())
+
+  @@unique([testCaseId, role])
+  @@index([role])
+}
+
+model TestExecution {
+  id          String              @id @default(cuid())
+  testCaseId  String
+  testCase    TestCase            @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User                @relation("TestExecutionUser", fields: [userId], references: [id], onDelete: Cascade)
+  status      TestExecutionStatus
+  resultText  String?
+  comment     String?
+  deviceInfo  String?
+  appVersion  String?
+  executedAt  DateTime            @default(now())
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  attachments TestExecutionAttachment[]
+
+  @@index([testCaseId, executedAt])
+  @@index([userId, executedAt])
+}
+
+model TestExecutionAttachment {
+  id          String        @id @default(cuid())
+  executionId String
+  execution   TestExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  fileName    String
+  fileUrl     String
+  mimeType    String
+  sizeBytes   Int
+  createdAt   DateTime      @default(now())
+
+  @@index([executionId])
+}

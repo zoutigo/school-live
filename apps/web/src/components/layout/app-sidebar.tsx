@@ -9,6 +9,7 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
+  ClipboardList,
   CreditCard,
   FileText,
   GraduationCap,
@@ -137,6 +138,12 @@ function buildItems(
         href: "/indicators",
         icon: BarChart3,
         matchPrefix: "/indicators",
+      },
+      {
+        label: "Campagnes tests",
+        href: "/test-campaigns",
+        icon: ClipboardList,
+        matchPrefix: "/test-campaigns",
       },
       {
         label: "Parametres",

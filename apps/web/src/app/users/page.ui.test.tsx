@@ -277,6 +277,7 @@ describe("Users page create form", () => {
             temporaryPassword: "Secret123",
             schoolSlug: "college-vogt",
             avatarUrl: "",
+            isTester: false,
           }),
         }),
       );
@@ -315,6 +316,7 @@ describe("Users page create form", () => {
                 role: "TEACHER",
                 platformRoles: [],
                 schoolRoles: ["TEACHER"],
+                isTester: false,
                 state: "ACTIVE",
                 schools: [],
                 createdAt: "2026-01-01T00:00:00.000Z",
@@ -380,6 +382,7 @@ describe("Users page create form", () => {
             phone: "699001122",
             platformRoles: [],
             schoolRoles: ["TEACHER"],
+            isTester: false,
           }),
         }),
       );

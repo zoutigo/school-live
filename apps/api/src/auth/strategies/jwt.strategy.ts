@@ -32,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         activeRole: true,
         activationStatus: true,
         profileCompleted: true,
+        isTester: true,
         email: true,
         phone: true,
         avatarUrl: true,
@@ -57,6 +58,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       id: user.id,
       activeRole: user.activeRole,
+      isTester: user.isTester,
       platformRoles: user.platformRoles.map((assignment) => assignment.role),
       activationStatus: user.activationStatus,
       memberships: user.memberships.map((membership) => ({

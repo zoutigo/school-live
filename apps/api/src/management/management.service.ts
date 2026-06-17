@@ -110,6 +110,7 @@ const createUserSchema = z.object({
   schoolRoles: z.array(z.enum(SCHOOL_ROLES)).optional(),
   schoolSlug: z.string().trim().min(1).optional(),
   avatarUrl: z.string().trim().regex(USER_AVATAR_URL_REGEX).optional(),
+  isTester: z.boolean().optional(),
 });
 
 const updateUserSchema = z.object({
@@ -142,6 +143,7 @@ const updateUserSchema = z.object({
     .optional(),
   schoolRoles: z.array(z.enum(SCHOOL_ROLES)).optional(),
   role: z.enum(CREATABLE_ROLES).optional(),
+  isTester: z.boolean().optional(),
 });
 
 const createSchoolSchema = z.object({
@@ -491,6 +493,7 @@ export class ManagementService {
         email: parsed.email.toLowerCase(),
         phone: parsed.phone ?? null,
         avatarUrl: parsed.avatarUrl,
+        isTester: parsed.isTester ?? false,
         passwordHash,
         mustChangePassword: true,
         profileCompleted: false,
@@ -522,6 +525,7 @@ export class ManagementService {
         email: true,
         phone: true,
         avatarUrl: true,
+        isTester: true,
         activationStatus: true,
         platformRoles: {
           select: { role: true },
@@ -582,7 +586,8 @@ export class ManagementService {
       parsed.platformRoles === undefined &&
       parsed.schoolRole === undefined &&
       parsed.schoolRoles === undefined &&
-      parsed.role === undefined
+      parsed.role === undefined &&
+      parsed.isTester === undefined
     ) {
       throw new BadRequestException("No fields to update");
     }
@@ -668,6 +673,7 @@ export class ManagementService {
           firstName: parsed.firstName,
           lastName: parsed.lastName,
           phone: parsed.phone,
+          isTester: parsed.isTester,
         },
       });
 
@@ -1299,6 +1305,7 @@ export class ManagementService {
       avatarUrl: user.avatarUrl,
       mustChangePassword: user.mustChangePassword,
       profileCompleted: user.profileCompleted,
+      isTester: user.isTester,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       platformRoles: user.platformRoles.map((assignment) => assignment.role),
@@ -5599,6 +5606,7 @@ export class ManagementService {
     avatarUrl?: string | null;
     mustChangePassword?: boolean;
     createdAt?: Date;
+    isTester?: boolean;
     platformRoles: Array<{ role: PlatformRole }>;
     memberships: Array<{
       role: SchoolRole;
@@ -5624,6 +5632,7 @@ export class ManagementService {
       platformRoles: user.platformRoles.map((assignment) => assignment.role),
       schoolRoles: user.memberships.map((membership) => membership.role),
       mustChangePassword: user.mustChangePassword ?? false,
+      isTester: user.isTester ?? false,
       createdAt: user.createdAt ?? new Date(),
       school: schoolMembership?.school
         ? {

@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsEmail,
   IsIn,
   IsOptional,
@@ -95,4 +96,8 @@ export class CreateUserDto {
   @IsString()
   @Matches(USER_AVATAR_URL_REGEX, { message: "URL photo invalide" })
   avatarUrl?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isTester?: boolean;
 }

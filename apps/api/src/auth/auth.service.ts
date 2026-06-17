@@ -3530,6 +3530,7 @@ export class AuthService {
         activeRole: true,
         profileCompleted: true,
         activationStatus: true,
+        isTester: true,
         email: true,
         phone: true,
         avatarUrl: true,
@@ -3608,6 +3609,7 @@ export class AuthService {
       id: user.id,
       platformRoles,
       activationStatus: user.activationStatus,
+      isTester: user.isTester,
       memberships: user.memberships.map((membership) => ({
         schoolId: membership.schoolId,
         role: membership.role,
@@ -3780,6 +3782,7 @@ export class AuthService {
         activeRole: true,
         profileCompleted: true,
         activationStatus: true,
+        isTester: true,
         email: true,
         phone: true,
         avatarUrl: true,
@@ -3823,6 +3826,7 @@ export class AuthService {
       id: user.id,
       platformRoles,
       activationStatus: user.activationStatus,
+      isTester: user.isTester,
       memberships: user.memberships.map((membership) => ({
         schoolId: membership.schoolId,
         role: membership.role,
