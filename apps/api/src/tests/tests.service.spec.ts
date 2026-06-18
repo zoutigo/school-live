@@ -5,7 +5,9 @@ import { MediaClientService } from "../media-client/media-client.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { TestsService } from "./tests.service.js";
 
-function makeUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
+function makeUser(
+  overrides: Partial<AuthenticatedUser> = {},
+): AuthenticatedUser {
   return {
     id: "user-1",
     firstName: "Ada",
@@ -90,8 +92,12 @@ describe("TestsService#createExecution", () => {
       [],
     );
 
-    expect(mailService.sendTestExecutionFailedNotification).toHaveBeenCalledTimes(2);
-    expect(mailService.sendTestExecutionFailedNotification).toHaveBeenCalledWith(
+    expect(
+      mailService.sendTestExecutionFailedNotification,
+    ).toHaveBeenCalledTimes(2);
+    expect(
+      mailService.sendTestExecutionFailedNotification,
+    ).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "admin@scolive.test",
         schoolName: "Ecole Vogt",
@@ -125,7 +131,9 @@ describe("TestsService#createExecution", () => {
       [],
     );
 
-    expect(mailService.sendTestExecutionFailedNotification).not.toHaveBeenCalled();
+    expect(
+      mailService.sendTestExecutionFailedNotification,
+    ).not.toHaveBeenCalled();
   });
 
   it("does not let a mail notification failure break the request", async () => {
