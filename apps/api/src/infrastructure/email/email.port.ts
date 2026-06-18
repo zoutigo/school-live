@@ -3,6 +3,7 @@ import type {
   InternalMessageNotificationPayload,
   PasswordResetMailPayload,
   StudentLifeEventNotificationPayload,
+  TestExecutionFailedNotificationPayload,
   TimetableChangeMailPayload,
   TemporaryPasswordMailPayload,
 } from "../../mail/mail.types.js";
@@ -23,5 +24,8 @@ export type EmailPort = {
   ): Promise<void>;
   sendTimetableChangeNotification(
     payload: TimetableChangeMailPayload,
+  ): Promise<void>;
+  sendTestExecutionFailedNotification(
+    payload: TestExecutionFailedNotificationPayload,
   ): Promise<void>;
 };

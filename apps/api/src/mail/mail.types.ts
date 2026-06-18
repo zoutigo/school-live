@@ -8,6 +8,8 @@ export const MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION =
   "send-internal-message-notification";
 export const MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION =
   "send-timetable-change-notification";
+export const MAIL_JOB_SEND_TEST_EXECUTION_FAILED_NOTIFICATION =
+  "send-test-execution-failed-notification";
 
 export type TemporaryPasswordMailPayload = {
   to: string;
@@ -65,4 +67,16 @@ export type TimetableChangeMailPayload = {
   title: string;
   summary: string;
   details: string[];
+};
+
+export type TestExecutionFailedNotificationPayload = {
+  to: string;
+  recipientFirstName: string;
+  schoolName: string;
+  schoolSlug: string | null;
+  campaignTitle: string;
+  testCaseTitle: string;
+  testerFullName: string;
+  resultText: string;
+  comment: string | null;
 };

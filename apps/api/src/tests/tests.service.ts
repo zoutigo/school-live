@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import {
@@ -11,6 +12,7 @@ import {
   TestExecutionStatus,
 } from "@prisma/client";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { MailService } from "../mail/mail.service.js";
 import { MediaClientService } from "../media-client/media-client.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { CreateTestCampaignDto } from "./dto/create-test-campaign.dto.js";
@@ -38,9 +40,12 @@ const EXECUTION_COMPLETED_STATUSES = new Set<TestExecutionStatus>([
 
 @Injectable()
 export class TestsService {
+  private readonly logger = new Logger(TestsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly mediaClientService: MediaClientService,
+    private readonly mailService: MailService,
   ) {}
 
   assertTester(user: AuthenticatedUser) {
@@ -403,7 +408,16 @@ export class TestsService {
       },
       select: {
         id: true,
+        title: true,
         evidenceRequired: true,
+        campaign: {
+          select: {
+            title: true,
+            school: {
+              select: { name: true, slug: true },
+            },
+          },
+        },
       },
     });
 
@@ -473,6 +487,10 @@ export class TestsService {
         },
       },
     });
+
+    if (execution.status === "FAILED") {
+      await this.notifyTestExecutionFailed(user, testCase, execution);
+    }
 
     return {
       ...execution,
@@ -763,6 +781,55 @@ export class TestsService {
     });
 
     return { success: true };
+  }
+
+  private async notifyTestExecutionFailed(
+    user: AuthenticatedUser,
+    testCase: {
+      title: string;
+      campaign: {
+        title: string;
+        school: { name: string; slug: string };
+      };
+    },
+    execution: { resultText: string | null; comment: string | null },
+  ) {
+    try {
+      const admins = await this.prisma.user.findMany({
+        where: {
+          email: { not: null },
+          platformRoles: {
+            some: { role: { in: ["SUPER_ADMIN", "ADMIN"] } },
+          },
+        },
+        select: { email: true, firstName: true },
+      });
+
+      const testerFullName = `${user.firstName} ${user.lastName}`.trim();
+
+      await Promise.all(
+        admins
+          .filter((admin) => Boolean(admin.email))
+          .map((admin) =>
+            this.mailService.sendTestExecutionFailedNotification({
+              to: admin.email as string,
+              recipientFirstName: admin.firstName,
+              schoolName: testCase.campaign.school.name,
+              schoolSlug: testCase.campaign.school.slug,
+              campaignTitle: testCase.campaign.title,
+              testCaseTitle: testCase.title,
+              testerFullName,
+              resultText: execution.resultText ?? "",
+              comment: execution.comment,
+            }),
+          ),
+      );
+    } catch (error) {
+      this.logger.error(
+        "Failed to notify platform admins about a failed test execution",
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private async assertCampaignExists(schoolId: string, campaignId: string) {
