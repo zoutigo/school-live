@@ -12,15 +12,23 @@ describe("TestsService", () => {
     testExecution: {
       create: jest.fn(),
     },
+    user: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 
   const mediaClientService = {
     uploadImage: jest.fn(),
   };
 
+  const mailService = {
+    sendTestExecutionFailedNotification: jest.fn(),
+  };
+
   const service = new TestsService(
     prisma as never,
     mediaClientService as never,
+    mailService as never,
   );
 
   const testerUser = {
