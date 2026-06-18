@@ -11,6 +11,7 @@ import {
   type Role,
 } from "../../lib/role-view";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -42,6 +43,7 @@ type Props = {
 
 export function AppShell({ schoolSlug, schoolName, children }: Props) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [headerHidden, setHeaderHidden] = useState(false);
@@ -226,7 +228,8 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
     return `${first}${last}`.toUpperCase();
   }, [me?.firstName, me?.lastName]);
   const userDisplayName =
-    `${me?.firstName ?? ""} ${me?.lastName ?? ""}`.trim() || "Utilisateur";
+    `${me?.firstName ?? ""} ${me?.lastName ?? ""}`.trim() ||
+    t("header.userFallback");
 
   async function onLogout() {
     setLogoutLoading(true);
@@ -278,7 +281,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
             >
               <button
                 type="button"
-                aria-label="Fermer le menu"
+                aria-label={t("header.closeMenu")}
                 className="h-full flex-1 bg-text-primary/20"
                 onClick={() => setMobileOpen(false)}
               />
@@ -303,10 +306,10 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
 
       <ConfirmDialog
         open={logoutConfirmOpen}
-        title="Confirmer la deconnexion"
-        message="Voulez-vous vraiment vous deconnecter ?"
-        confirmLabel="Se deconnecter"
-        cancelLabel="Annuler"
+        title={t("header.logoutConfirmTitle")}
+        message={t("header.logoutConfirmMessage")}
+        confirmLabel={t("header.logout")}
+        cancelLabel={t("common.cancel")}
         loading={logoutLoading}
         onCancel={() => {
           if (!logoutLoading) {

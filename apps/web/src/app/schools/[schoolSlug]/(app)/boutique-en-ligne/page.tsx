@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
+import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -127,6 +128,7 @@ function iconFor(item: ShopItem) {
 export default function ParentShopPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [filter, setFilter] = useState<ShopItem["category"] | "all">("all");
@@ -220,25 +222,30 @@ export default function ParentShopPage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Boutique en ligne"
+        title={t("shop.title")}
         subtitle={
           me
-            ? `${me.firstName} ${me.lastName} - achats scolaires et reglements rapides`
-            : "Chargement..."
+            ? t("shop.subtitle").replace(
+                "{fullName}",
+                `${me.firstName} ${me.lastName}`,
+              )
+            : t("common.loading")
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         ) : (
           <div className="grid gap-4">
             <div className="rounded-card border border-primary/25 bg-gradient-to-br from-[#E8F4FF] via-[#F4FAFF] to-surface p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Panier actuel
+                    {t("shop.cart.label")}
                   </p>
                   <p className="mt-1 text-xl font-heading font-bold text-primary">
-                    {cartCount} article{cartCount > 1 ? "s" : ""}
+                    {t("shop.cart.items")
+                      .replace("{count}", String(cartCount))
+                      .replace("{suffix}", cartCount > 1 ? "s" : "")}
                   </p>
                 </div>
                 <div className="rounded-full bg-surface p-2">
@@ -250,11 +257,11 @@ export default function ParentShopPage() {
             <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
               {(
                 [
-                  { key: "all", label: "Tout" },
-                  { key: "cantine", label: "Cantine" },
-                  { key: "fournitures", label: "Fournitures" },
-                  { key: "uniforme", label: "Uniformes" },
-                  { key: "activites", label: "Activites" },
+                  { key: "all", label: t("shop.filter.all") },
+                  { key: "cantine", label: t("shop.filter.canteen") },
+                  { key: "fournitures", label: t("shop.filter.supplies") },
+                  { key: "uniforme", label: t("shop.filter.uniforms") },
+                  { key: "activites", label: t("shop.filter.activities") },
                 ] as const
               ).map((entry) => (
                 <button
@@ -309,7 +316,10 @@ export default function ParentShopPage() {
                             type="button"
                             onClick={() => removeOne(item.id)}
                             className="inline-flex h-8 w-8 items-center justify-center text-text-secondary transition-colors hover:text-primary"
-                            aria-label={`Retirer ${item.title}`}
+                            aria-label={t("shop.item.removeAria").replace(
+                              "{title}",
+                              item.title,
+                            )}
                           >
                             <Minus className="h-4 w-4" />
                           </button>
@@ -320,7 +330,10 @@ export default function ParentShopPage() {
                             type="button"
                             onClick={() => addOne(item.id)}
                             className="inline-flex h-8 w-8 items-center justify-center text-text-secondary transition-colors hover:text-primary"
-                            aria-label={`Ajouter ${item.title}`}
+                            aria-label={t("shop.item.addAria").replace(
+                              "{title}",
+                              item.title,
+                            )}
                           >
                             <Plus className="h-4 w-4" />
                           </button>
@@ -331,7 +344,7 @@ export default function ParentShopPage() {
                           onClick={() => addOne(item.id)}
                           iconLeft={<ShoppingCart className="h-3.5 w-3.5" />}
                         >
-                          Ajouter
+                          {t("shop.item.addButton")}
                         </Button>
                       </div>
                     </article>
@@ -342,7 +355,7 @@ export default function ParentShopPage() {
               <aside className="h-fit rounded-card border border-border bg-background p-4 lg:sticky lg:top-4">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-sm font-heading font-semibold text-text-primary">
-                    Votre panier
+                    {t("shop.summary.title")}
                   </p>
                   <span className="rounded-full bg-surface px-2 py-1 text-xs font-semibold text-primary">
                     {cartCount}
@@ -351,7 +364,7 @@ export default function ParentShopPage() {
 
                 {cartRows.length === 0 ? (
                   <p className="text-sm text-text-secondary">
-                    Votre panier est vide pour le moment.
+                    {t("shop.summary.empty")}
                   </p>
                 ) : (
                   <div className="grid gap-2">
@@ -376,15 +389,15 @@ export default function ParentShopPage() {
 
                 <div className="mt-4 grid gap-1 border-t border-border pt-3 text-sm">
                   <div className="flex items-center justify-between text-text-secondary">
-                    <span>Sous-total</span>
+                    <span>{t("shop.summary.subtotal")}</span>
                     <span>{formatXaf(subtotal)}</span>
                   </div>
                   <div className="flex items-center justify-between text-text-secondary">
-                    <span>Frais de service</span>
+                    <span>{t("shop.summary.fee")}</span>
                     <span>{formatXaf(fee)}</span>
                   </div>
                   <div className="mt-1 flex items-center justify-between font-heading text-base font-bold text-primary">
-                    <span>Total</span>
+                    <span>{t("shop.summary.total")}</span>
                     <span>{formatXaf(total)}</span>
                   </div>
                 </div>
@@ -395,7 +408,7 @@ export default function ParentShopPage() {
                     disabled={cartRows.length === 0}
                     iconLeft={<Smartphone className="h-4 w-4" />}
                   >
-                    Payer avec Orange Money
+                    {t("shop.pay.orangeMoney")}
                   </Button>
                   <Button
                     type="button"
@@ -403,7 +416,7 @@ export default function ParentShopPage() {
                     disabled={cartRows.length === 0}
                     iconLeft={<Smartphone className="h-4 w-4" />}
                   >
-                    Payer avec MTN MoMo
+                    {t("shop.pay.mtnMomo")}
                   </Button>
                   <Button
                     type="button"
@@ -411,7 +424,7 @@ export default function ParentShopPage() {
                     disabled={cartRows.length === 0}
                     iconLeft={<CreditCard className="h-4 w-4" />}
                   >
-                    Reserver et payer en cash
+                    {t("shop.pay.cash")}
                   </Button>
                 </div>
               </aside>

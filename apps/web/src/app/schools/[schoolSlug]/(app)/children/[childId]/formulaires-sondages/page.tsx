@@ -1,24 +1,28 @@
-import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
+"use client";
 
-export default async function ChildFormulairesSondagesPage({
-  params,
-}: {
-  params: Promise<{ schoolSlug: string; childId: string }>;
-}) {
-  const { schoolSlug, childId } = await params;
+import { useParams } from "next/navigation";
+import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
+import { useTranslation } from "../../../../../../../i18n/useTranslation";
+
+export default function ChildFormulairesSondagesPage() {
+  const { schoolSlug, childId } = useParams<{
+    schoolSlug: string;
+    childId: string;
+  }>();
+  const { t } = useTranslation();
 
   return (
     <ChildModulePage
       schoolSlug={schoolSlug}
       childId={childId}
       currentTab="formulaires-sondages"
-      title="Formulaires & sondages"
-      subtitle="Demarches et consultations"
-      summary="Suivez et repondez aux formulaires et sondages concernant votre enfant."
+      title={t("childFormulaires.title")}
+      subtitle={t("childFormulaires.subtitle")}
+      summary={t("childFormulaires.summary")}
       bullets={[
-        "Formulaires administratifs a completer.",
-        "Sondages et consultations de l'etablissement.",
-        "Tracabilite des reponses transmises par la famille.",
+        t("childFormulaires.bullet1"),
+        t("childFormulaires.bullet2"),
+        t("childFormulaires.bullet3"),
       ]}
     />
   );

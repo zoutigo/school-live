@@ -3,6 +3,7 @@
 import { ImageUp, LoaderCircle, X } from "lucide-react";
 import { ChangeEvent, useMemo, useRef, useState } from "react";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
@@ -26,6 +27,7 @@ export function ImageUploadField({
   value,
   onChange,
 }: Props) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,20 +53,20 @@ export function ImageUploadField({
     setError(null);
 
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("Type invalide. Utilisez JPG, PNG ou WEBP.");
+      setError(t("imageUpload.errorType"));
       event.target.value = "";
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setError("Image trop lourde. Maximum 5MB.");
+      setError(t("imageUpload.errorSize"));
       event.target.value = "";
       return;
     }
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session invalide. Reconnectez-vous.");
+      setError(t("imageUpload.errorCsrf"));
       return;
     }
 
@@ -89,7 +91,7 @@ export function ImageUploadField({
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Echec de l'upload");
+            : (payload?.message ?? t("imageUpload.errorUpload"));
         setError(String(message));
         return;
       }
@@ -98,7 +100,7 @@ export function ImageUploadField({
       onChange(payload.url);
       event.target.value = "";
     } catch {
-      setError("Erreur reseau durant upload.");
+      setError(t("imageUpload.errorNetwork"));
     } finally {
       setUploading(false);
     }
@@ -124,7 +126,7 @@ export function ImageUploadField({
                 disabled={uploading}
               >
                 <ImageUp className="h-3.5 w-3.5" />
-                Remplacer
+                {t("imageUpload.replace")}
               </button>
               <button
                 type="button"
@@ -133,7 +135,7 @@ export function ImageUploadField({
                 disabled={uploading}
               >
                 <X className="h-3.5 w-3.5" />
-                Retirer
+                {t("imageUpload.remove")}
               </button>
             </div>
           </div>
@@ -149,7 +151,7 @@ export function ImageUploadField({
             ) : (
               <ImageUp className="h-4 w-4" />
             )}
-            {uploading ? "Upload..." : "Cliquez pour televerser une image"}
+            {uploading ? t("imageUpload.uploading") : t("imageUpload.cta")}
           </button>
         )}
       </div>

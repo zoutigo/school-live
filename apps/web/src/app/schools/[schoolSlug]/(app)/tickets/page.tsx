@@ -22,7 +22,8 @@ import type {
   TicketListItem,
   TicketStatus,
 } from "../../../../../components/tickets/types";
-import { TICKET_FOLDERS } from "../../../../../components/tickets/types";
+import { getTicketFolders } from "../../../../../components/tickets/types";
+import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -38,6 +39,7 @@ export default function SchoolTicketsPage() {
   const router = useRouter();
   const params = useParams<{ schoolSlug: string }>();
   const schoolSlug = params.schoolSlug;
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,11 +60,11 @@ export default function SchoolTicketsPage() {
   const [composing, setComposing] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Folder → statuses mapping
+  const folders = getTicketFolders(t);
   const folderStatuses: TicketStatus[] | undefined =
     activeFolder === "all"
       ? undefined
-      : TICKET_FOLDERS.find((f) => f.key === activeFolder)?.statuses;
+      : folders.find((f) => f.key === activeFolder)?.statuses;
 
   const loadProfile = useCallback(async () => {
     if (!schoolSlug) return;
@@ -112,11 +114,11 @@ export default function SchoolTicketsPage() {
         setTickets(res.data);
       }
     } catch {
-      setError("Impossible de charger les tickets.");
+      setError(t("tickets.page.loadError"));
     } finally {
       setTicketsLoading(false);
     }
-  }, [folderStatuses]);
+  }, [folderStatuses, t]);
 
   useEffect(() => {
     void loadProfile();
@@ -163,7 +165,7 @@ export default function SchoolTicketsPage() {
 
   function handleComposeSuccess() {
     setComposing(false);
-    setSuccessMsg("Ticket envoyé. Nous vous répondrons rapidement.");
+    setSuccessMsg(t("tickets.schoolPage.successSent"));
     void loadTickets();
     setTimeout(() => setSuccessMsg(null), 5000);
   }
@@ -190,7 +192,9 @@ export default function SchoolTicketsPage() {
       {/* En-tête */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-text-primary">Assistance</h1>
+          <h1 className="text-lg font-bold text-text-primary">
+            {t("tickets.schoolPage.title")}
+          </h1>
           {schoolName && (
             <p className="text-xs text-text-secondary">{schoolName}</p>
           )}
@@ -203,7 +207,7 @@ export default function SchoolTicketsPage() {
             data-testid="new-ticket-btn"
           >
             <Bug className="h-4 w-4" />
-            Nouveau ticket
+            {t("tickets.schoolPage.newTicket")}
           </button>
         ) : null}
       </div>
@@ -278,7 +282,7 @@ export default function SchoolTicketsPage() {
               >
                 <Bug className="h-8 w-8 opacity-25" />
                 <p className="font-medium">
-                  Sélectionnez un ticket ou créez-en un nouveau
+                  {t("tickets.schoolPage.selectOrCreate")}
                 </p>
               </div>
             )}

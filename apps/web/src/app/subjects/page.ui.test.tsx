@@ -419,8 +419,7 @@ describe("Subjects page forms", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
 
     const saveButton = screen.getByRole("button", { name: "Enregistrer" });
-
-    fireEvent.change(screen.getByLabelText("Code type"), {
+    fireEvent.change(screen.getByLabelText("Code type evaluation"), {
       target: { value: "" },
     });
     expect(
@@ -428,10 +427,10 @@ describe("Subjects page forms", () => {
     ).toBeInTheDocument();
     expect(saveButton).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Code type"), {
+    fireEvent.change(screen.getByLabelText("Code type evaluation"), {
       target: { value: "INTERRO" },
     });
-    fireEvent.change(screen.getByLabelText("Libelle type"), {
+    fireEvent.change(screen.getByLabelText("Libelle type evaluation"), {
       target: { value: "Interrogation ecrite" },
     });
 
@@ -555,8 +554,10 @@ describe("Subjects page forms", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
 
     const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+    const getEditingAssignmentField = (label: string) =>
+      screen.getAllByLabelText(label).at(-1) as HTMLElement;
 
-    fireEvent.change(screen.getByLabelText("Enseignant edition"), {
+    fireEvent.change(getEditingAssignmentField("Enseignant"), {
       target: { value: "" },
     });
     expect(
@@ -564,16 +565,16 @@ describe("Subjects page forms", () => {
     ).toBeInTheDocument();
     expect(saveButton).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Annee scolaire edition"), {
+    fireEvent.change(getEditingAssignmentField("Annee scolaire"), {
       target: { value: "sy-2" },
     });
-    fireEvent.change(screen.getByLabelText("Enseignant edition"), {
+    fireEvent.change(getEditingAssignmentField("Enseignant"), {
       target: { value: "teacher-2" },
     });
-    fireEvent.change(screen.getByLabelText("Classe edition"), {
+    fireEvent.change(getEditingAssignmentField("Classe"), {
       target: { value: "class-2" },
     });
-    fireEvent.change(screen.getByLabelText("Matiere edition"), {
+    fireEvent.change(getEditingAssignmentField("Matiere"), {
       target: { value: "sub-1" },
     });
 

@@ -29,6 +29,7 @@ export type UploadKind =
   | "evaluation-attachment"
   | "homework-attachment"
   | "messaging-attachment"
+  | "test-execution-attachment"
   | "ticket-attachment";
 type UploadedMediaFile = {
   buffer: Buffer;
@@ -97,7 +98,11 @@ export class ImageStorageService {
       throw new BadRequestException("Fichier image manquant");
     }
 
-    if (kind === "evaluation-attachment" || kind === "messaging-attachment") {
+    if (
+      kind === "evaluation-attachment" ||
+      kind === "messaging-attachment" ||
+      kind === "test-execution-attachment"
+    ) {
       return this.storeAttachment(kind, file);
     }
 
@@ -156,6 +161,7 @@ export class ImageStorageService {
     kind:
       | "evaluation-attachment"
       | "messaging-attachment"
+      | "test-execution-attachment"
       | "homework-attachment",
     file?: UploadedMediaFile,
   ) {
@@ -178,9 +184,11 @@ export class ImageStorageService {
     const objectKey =
       kind === "messaging-attachment"
         ? `messaging/attachments/${fileName}`
-        : kind === "homework-attachment"
-          ? `homework/attachments/${fileName}`
-          : `evaluations/attachments/${fileName}`;
+        : kind === "test-execution-attachment"
+          ? `tests/executions/${fileName}`
+          : kind === "homework-attachment"
+            ? `homework/attachments/${fileName}`
+            : `evaluations/attachments/${fileName}`;
     await this.ensureBucket();
     await this.putObject(objectKey, file.buffer, file.mimetype);
 

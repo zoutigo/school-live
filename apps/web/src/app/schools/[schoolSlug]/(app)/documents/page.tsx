@@ -6,6 +6,10 @@ import { Download, FileBadge2, GraduationCap, ReceiptText } from "lucide-react";
 import { Button } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
 import { FormSelect } from "../../../../../components/ui/form-controls";
+import {
+  useTranslation,
+  type TranslateFn,
+} from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -121,12 +125,14 @@ function Section({
   icon,
   rows,
   dateLabel,
+  t,
 }: {
   title: string;
   subtitle: string;
   icon: ReactNode;
   rows: DocRow[];
   dateLabel: string;
+  t: TranslateFn;
 }) {
   return (
     <section className="rounded-card border border-border bg-background p-4">
@@ -147,10 +153,10 @@ function Section({
       {rows.length === 0 ? (
         <div className="rounded-card border border-dashed border-border px-4 py-8 text-center">
           <p className="text-sm font-semibold text-text-primary">
-            Aucun document disponible
+            {t("documents.section.empty.title")}
           </p>
           <p className="mt-1 text-xs text-text-secondary">
-            Les nouveaux documents apparaitront ici.
+            {t("documents.section.empty.subtitle")}
           </p>
         </div>
       ) : (
@@ -184,9 +190,13 @@ function Section({
             <table className="min-w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-background text-left text-text-secondary">
-                  <th className="px-3 py-2 font-semibold">Document</th>
+                  <th className="px-3 py-2 font-semibold">
+                    {t("documents.section.table.document")}
+                  </th>
                   <th className="px-3 py-2 font-semibold">{dateLabel}</th>
-                  <th className="px-3 py-2 font-semibold text-right">Action</th>
+                  <th className="px-3 py-2 font-semibold text-right">
+                    {t("documents.section.table.action")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -208,7 +218,7 @@ function Section({
                         className="px-2 py-1 text-xs"
                         iconLeft={<Download className="h-3.5 w-3.5" />}
                       >
-                        Telecharger
+                        {t("documents.section.download")}
                       </Button>
                     </td>
                   </tr>
@@ -225,6 +235,7 @@ function Section({
 export default function ParentDocumentsPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [tab, setTab] = useState<TabKey>("notes");
@@ -265,25 +276,36 @@ export default function ParentDocumentsPage() {
     return registrationByYear[archive];
   }, [tab, archive]);
 
+  const tabs = [
+    { key: "notes" as const, label: t("documents.tab.notes") },
+    { key: "factures" as const, label: t("documents.tab.invoices") },
+    {
+      key: "inscriptions" as const,
+      label: t("documents.tab.registrations"),
+    },
+  ];
+
+  const fullName = me ? `${me.firstName} ${me.lastName}` : "";
+
   return (
     <div className="grid gap-4">
       <Card
-        title="Documents"
+        title={t("documents.title")}
         subtitle={
           me
-            ? `${me.firstName} ${me.lastName} - centralisez vos documents scolaires`
-            : "Chargement..."
+            ? t("documents.subtitle").replace("{fullName}", fullName)
+            : t("common.loading")
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         ) : (
           <div className="grid gap-4">
             <div className="rounded-card border border-primary/25 bg-gradient-to-br from-[#E8F4FF] via-[#F4FAFF] to-surface p-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Archive selectionnee
+                    {t("documents.archive.label")}
                   </p>
                   <p className="mt-1 text-xl font-heading font-bold text-primary">
                     {archive}
@@ -291,7 +313,7 @@ export default function ParentDocumentsPage() {
                 </div>
                 <div className="sm:text-right">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Total documents visibles
+                    {t("documents.archive.total")}
                   </p>
                   <p className="mt-1 text-xl font-heading font-bold text-primary">
                     {currentRows.length}
@@ -302,16 +324,7 @@ export default function ParentDocumentsPage() {
 
             <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
               <div className="-mx-1 flex items-end gap-1 overflow-x-auto border-b border-border px-1 pb-1">
-                {(
-                  [
-                    { key: "notes", label: "Notes" },
-                    { key: "factures", label: "Factures" },
-                    {
-                      key: "inscriptions",
-                      label: "Inscription / Re-inscription",
-                    },
-                  ] as const
-                ).map((entry) => (
+                {tabs.map((entry) => (
                   <button
                     key={entry.key}
                     type="button"
@@ -329,7 +342,7 @@ export default function ParentDocumentsPage() {
 
               <label className="grid gap-1 text-sm">
                 <span className="text-xs text-text-secondary">
-                  Acces aux archives
+                  {t("documents.archive.access")}
                 </span>
                 <FormSelect
                   value={archive}
@@ -347,31 +360,34 @@ export default function ParentDocumentsPage() {
 
             {tab === "notes" ? (
               <Section
-                title="Notes et bulletins"
-                subtitle="Pour vos enfants scolarises"
+                title={t("documents.section.notes.title")}
+                subtitle={t("documents.section.notes.subtitle")}
                 icon={<FileBadge2 className="h-4 w-4" />}
                 rows={notesByYear[archive]}
-                dateLabel="Date de mise en ligne"
+                dateLabel={t("documents.section.notes.dateLabel")}
+                t={t}
               />
             ) : null}
 
             {tab === "factures" ? (
               <Section
-                title="Factures"
-                subtitle="Documents comptables de la famille"
+                title={t("documents.section.invoices.title")}
+                subtitle={t("documents.section.invoices.subtitle")}
                 icon={<ReceiptText className="h-4 w-4" />}
                 rows={invoicesByYear[archive]}
-                dateLabel="Date de mise en ligne"
+                dateLabel={t("documents.section.invoices.dateLabel")}
+                t={t}
               />
             ) : null}
 
             {tab === "inscriptions" ? (
               <Section
-                title="Inscription / Re-inscription"
-                subtitle="Formulaires administratifs et signatures"
+                title={t("documents.section.registrations.title")}
+                subtitle={t("documents.section.registrations.subtitle")}
                 icon={<GraduationCap className="h-4 w-4" />}
                 rows={registrationByYear[archive]}
-                dateLabel="Date de signature"
+                dateLabel={t("documents.section.registrations.dateLabel")}
+                t={t}
               />
             ) : null}
           </div>

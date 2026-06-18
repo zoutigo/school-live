@@ -2,7 +2,8 @@
 
 import { Bug, CheckCircle, Clock, Layers } from "lucide-react";
 import type { TicketFolder, TicketFolderKey } from "./types";
-import { TICKET_FOLDERS } from "./types";
+import { getTicketFolders } from "./types";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const FOLDER_ICONS: Record<
   TicketFolderKey,
@@ -29,18 +30,21 @@ export function TicketsTabPanel({
   onCompose,
   showCompose = true,
 }: Props) {
+  const { t } = useTranslation();
+  const folders = getTicketFolders(t);
+
   return (
     <aside
       data-testid="tickets-tab-panel"
       className="flex h-full min-h-0 min-w-0 flex-col rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.94)_100%)] p-2 shadow-[0_14px_30px_rgba(77,56,32,0.07)]"
     >
       <p className="mb-2 hidden px-2 text-xs font-semibold uppercase tracking-wide text-text-secondary sm:block">
-        Filtrer
+        {t("tickets.tabPanel.filter")}
       </p>
 
       <div className="min-h-0 overflow-x-auto overflow-y-hidden sm:overflow-y-auto">
         <div className="flex min-w-max gap-1 sm:grid sm:min-w-0">
-          {TICKET_FOLDERS.map((folder: TicketFolder) => {
+          {folders.map((folder: TicketFolder) => {
             const Icon = FOLDER_ICONS[folder.key];
             const active = activeFolder === folder.key;
             const count = counts[folder.key];
@@ -87,7 +91,7 @@ export function TicketsTabPanel({
         >
           <Bug className="h-4 w-4" />
           <span className="hidden min-[360px]:inline sm:inline">
-            Nouveau ticket
+            {t("tickets.tabPanel.newTicket")}
           </span>
         </button>
       ) : null}

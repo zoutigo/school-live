@@ -86,6 +86,7 @@ type UserRow = {
   mustChangePassword: boolean;
   createdAt: string;
   school: { slug: string; name: string } | null;
+  isTester: boolean;
 };
 
 type UsersListResponse = {
@@ -107,6 +108,7 @@ type UserDetails = {
   avatarUrl: string | null;
   mustChangePassword: boolean;
   profileCompleted: boolean;
+  isTester: boolean;
   createdAt: string;
   updatedAt: string;
   platformRoles: Array<"SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT">;
@@ -232,6 +234,7 @@ const createUserSchema = z
         "L'URL de l'avatar est invalide.",
       )
       .optional(),
+    isTester: z.boolean(),
   })
   .superRefine((value, ctx) => {
     if (value.platformRoles.length === 0 && value.schoolRoles.length === 0) {
@@ -274,6 +277,7 @@ const updateUserSchema = z.object({
       "STUDENT",
     ]),
   ),
+  isTester: z.boolean(),
 });
 
 export default function UsersPage() {
@@ -346,6 +350,7 @@ export default function UsersPage() {
       temporaryPassword: "",
       schoolSlug: "",
       avatarUrl: "",
+      isTester: false,
     },
   });
   const createValues = createUserForm.watch();
@@ -362,6 +367,7 @@ export default function UsersPage() {
       phone: "",
       platformRoles: [],
       schoolRoles: [],
+      isTester: false,
     },
   });
   const editUserValues = editUserForm.watch();
@@ -797,6 +803,7 @@ export default function UsersPage() {
         temporaryPassword: "",
         schoolSlug: "",
         avatarUrl: "",
+        isTester: false,
       });
       await loadUsers(page);
       setTab("list");
@@ -819,6 +826,7 @@ export default function UsersPage() {
         (entry) => entry !== "SUPER_ADMIN",
       ) as PlatformCreatableRole[],
       schoolRoles: user.schoolRoles as SchoolCreatableRole[],
+      isTester: user.isTester,
     });
   }
 
@@ -1418,6 +1426,24 @@ export default function UsersPage() {
                                       </span>
                                     ) : null}
                                   </label>
+
+                                  <label className="flex items-center gap-2 rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary">
+                                    <FormCheckbox
+                                      checked={editUserValues.isTester ?? false}
+                                      onChange={(event) =>
+                                        editUserForm.setValue(
+                                          "isTester",
+                                          event.target.checked,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        )
+                                      }
+                                    />
+                                    <span>Utilisateur testeur</span>
+                                  </label>
                                 </div>
                                 {editError ? (
                                   <p className="mt-2 text-sm text-notification">
@@ -1531,6 +1557,10 @@ export default function UsersPage() {
                         value={new Date(selectedUser.updatedAt).toLocaleString(
                           "fr-FR",
                         )}
+                      />
+                      <InfoLine
+                        label="Testeur"
+                        value={selectedUser.isTester ? "Oui" : "Non"}
                       />
                     </div>
                   </div>
@@ -1913,6 +1943,26 @@ export default function UsersPage() {
                     });
                   }}
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="flex items-center gap-2 rounded-card border border-border bg-surface px-3 py-3 text-sm text-text-primary">
+                  <FormCheckbox
+                    checked={createValues.isTester ?? false}
+                    onChange={(event) => {
+                      createUserForm.setValue(
+                        "isTester",
+                        event.target.checked,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      );
+                    }}
+                  />
+                  <span>Marquer cet utilisateur comme testeur</span>
+                </label>
               </div>
 
               <FormField

@@ -57,6 +57,7 @@ model School {
   tickets            Ticket[]
   helpGuides         HelpGuide[]
   helpFaqs           HelpFaq[]
+  testCampaigns      TestCampaign[]
   mobilePushTokens   MobilePushToken[]
 
   @@index([activeSchoolYearId])
@@ -81,6 +82,7 @@ model User {
   lastName           String                   @map("lastname")
   gender             Gender?
   preferredLocale    Locale                   @default(FR)
+  isTester           Boolean                  @default(false)
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   platformRoles      PlatformRoleAssignment[]
@@ -134,6 +136,11 @@ model User {
   helpFaqThemesUpdated  HelpFaqTheme[]          @relation("HelpFaqThemeUpdatedBy")
   helpFaqItemsCreated   HelpFaqItem[]           @relation("HelpFaqItemCreatedBy")
   helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
+  testCampaignsCreated  TestCampaign[]          @relation("TestCampaignCreatedBy")
+  testCampaignsUpdated  TestCampaign[]          @relation("TestCampaignUpdatedBy")
+  testCasesCreated      TestCase[]              @relation("TestCaseCreatedBy")
+  testCasesUpdated      TestCase[]              @relation("TestCaseUpdatedBy")
+  testExecutions        TestExecution[]         @relation("TestExecutionUser")
   mobilePushTokens      MobilePushToken[]
 }
 

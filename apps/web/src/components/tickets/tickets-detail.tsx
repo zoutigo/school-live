@@ -15,13 +15,14 @@ import { Button } from "../ui/button";
 import { FormField } from "../ui/form-field";
 import { FormTextarea } from "../ui/form-controls";
 import type { TicketDetail, TicketStatus } from "./types";
-import { TICKET_STATUS_LABELS, TICKET_TYPE_LABELS } from "./types";
+import { getTicketStatusLabels, getTicketTypeLabels } from "./types";
 import {
   addTicketResponse,
   deleteTicket,
   toggleTicketVote,
   updateTicketStatus,
 } from "./tickets-api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", {
@@ -60,6 +61,10 @@ export function TicketsDetail({
   onTicketDeleted,
   onError,
 }: Props) {
+  const { t } = useTranslation();
+  const statusLabels = getTicketStatusLabels(t);
+  const typeLabels = getTicketTypeLabels(t);
+
   const [replyBody, setReplyBody] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [replying, setReplying] = useState(false);
@@ -75,7 +80,9 @@ export function TicketsDetail({
       await updateTicketStatus(ticket.id, status);
       onTicketUpdated();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Erreur");
+      onError(
+        e instanceof Error ? e.message : t("tickets.detail.errorDefault"),
+      );
     } finally {
       setUpdatingStatus(false);
     }
@@ -86,7 +93,9 @@ export function TicketsDetail({
       await toggleTicketVote(ticket.id);
       onTicketUpdated();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Erreur");
+      onError(
+        e instanceof Error ? e.message : t("tickets.detail.errorDefault"),
+      );
     }
   }
 
@@ -99,27 +108,31 @@ export function TicketsDetail({
       setIsInternal(false);
       onTicketUpdated();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Erreur");
+      onError(
+        e instanceof Error ? e.message : t("tickets.detail.errorDefault"),
+      );
     } finally {
       setReplying(false);
     }
   }
 
   async function handleDelete() {
-    if (!confirm("Supprimer ce ticket ? Cette action est irréversible."))
-      return;
+    if (!confirm(t("tickets.detail.deleteConfirm"))) return;
     setDeleting(true);
     try {
       await deleteTicket(ticket.id);
       onTicketDeleted();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Erreur");
+      onError(
+        e instanceof Error ? e.message : t("tickets.detail.errorDefault"),
+      );
     } finally {
       setDeleting(false);
     }
   }
 
   const TypeIcon = ticket.type === "BUG" ? Bug : Lightbulb;
+  const responseCount = ticket.responses.length;
 
   return (
     <article
@@ -136,17 +149,17 @@ export function TicketsDetail({
           }`}
         >
           <TypeIcon className="h-3 w-3" />
-          {TICKET_TYPE_LABELS[ticket.type]}
+          {typeLabels[ticket.type]}
         </span>
 
         <span className="inline-flex items-center gap-1.5 rounded-full border border-warm-border bg-warm-surface px-2.5 py-1 text-xs font-semibold text-text-secondary">
-          {TICKET_STATUS_LABELS[ticket.status]}
+          {statusLabels[ticket.status]}
         </span>
 
         {canDelete && (
           <button
             type="button"
-            aria-label="Supprimer"
+            aria-label={t("tickets.detail.deleteAriaLabel")}
             data-testid="delete-ticket-btn"
             disabled={deleting}
             onClick={handleDelete}
@@ -196,7 +209,7 @@ export function TicketsDetail({
       {ticket.attachments.length > 0 && (
         <div>
           <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-            Pièces jointes
+            {t("tickets.detail.attachmentsLabel")}
           </p>
           <ul className="flex flex-col gap-1">
             {ticket.attachments.map((att) => (
@@ -252,7 +265,7 @@ export function TicketsDetail({
                     : "border-warm-border bg-warm-surface text-text-secondary hover:border-primary/30 hover:text-primary"
                 }`}
               >
-                {TICKET_STATUS_LABELS[s]}
+                {statusLabels[s]}
               </button>
             ))}
           </div>
@@ -260,11 +273,13 @@ export function TicketsDetail({
       </div>
 
       {/* Fil des réponses */}
-      {ticket.responses.length > 0 && (
+      {responseCount > 0 && (
         <section>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-            {ticket.responses.length} réponse
-            {ticket.responses.length > 1 ? "s" : ""}
+            {responseCount}{" "}
+            {responseCount > 1
+              ? t("tickets.detail.responsesWord")
+              : t("tickets.detail.responseWord")}
           </p>
           <ul className="flex flex-col gap-2">
             {ticket.responses.map((resp) => (
@@ -280,7 +295,7 @@ export function TicketsDetail({
                 {resp.isInternal && (
                   <div className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold text-warm-500">
                     <Lock className="h-2.5 w-2.5" />
-                    Note interne
+                    {t("tickets.detail.internalBadge")}
                   </div>
                 )}
                 <p className="mb-1 text-xs text-text-secondary">
@@ -300,13 +315,13 @@ export function TicketsDetail({
       {isPlatformStaff && (
         <section className="rounded-[16px] border border-warm-border bg-warm-surface/60 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-            Répondre
+            {t("tickets.detail.replyTitle")}
           </p>
-          <FormField label="Message">
+          <FormField label={t("tickets.detail.replyMessage")}>
             <FormTextarea
               value={replyBody}
               onChange={(e) => setReplyBody(e.target.value)}
-              placeholder="Votre réponse à l'utilisateur…"
+              placeholder={t("tickets.detail.replyPlaceholder")}
               rows={4}
               data-testid="reply-textarea"
             />
@@ -320,7 +335,7 @@ export function TicketsDetail({
                 onChange={(e) => setIsInternal(e.target.checked)}
                 data-testid="internal-checkbox"
               />
-              Note interne (invisible à l&apos;utilisateur)
+              {t("tickets.detail.internalCheckbox")}
             </label>
             <Button
               variant="primary"
@@ -329,7 +344,11 @@ export function TicketsDetail({
               className="ml-auto"
               data-testid="send-reply-btn"
             >
-              {replying ? "Envoi…" : isInternal ? "Ajouter note" : "Répondre"}
+              {replying
+                ? t("tickets.detail.replying")
+                : isInternal
+                  ? t("tickets.detail.replyAddNote")
+                  : t("tickets.detail.replySend")}
             </Button>
           </div>
         </section>

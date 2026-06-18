@@ -131,9 +131,9 @@ function formatDateLabel(value: string) {
   }).format(normalized);
 }
 
-function formatAverage(value: number | null) {
+function formatAverage(value: number | null, t: TranslateFn) {
   if (value === null) {
-    return "En attente";
+    return t("dashboard.notes.averagePending");
   }
   return `${value.toFixed(1).replace(".", ",")}/20`;
 }
@@ -204,6 +204,7 @@ export function buildDisciplineSummary(
 export function buildNotesSummary(
   child: ParentChild,
   snapshots: StudentNotesTermSnapshot[],
+  t: TranslateFn,
 ): ChildNotesSummary {
   const currentTerm = getCurrentTerm();
   const snapshot =
@@ -215,9 +216,9 @@ export function buildNotesSummary(
     return {
       childId: child.id,
       childName: formatStudentName(child),
-      averageLabel: "En attente",
-      termLabel: "Trimestre en cours",
-      trendLabel: "Aucune evaluation publiee",
+      averageLabel: t("dashboard.notes.averagePending"),
+      termLabel: t("dashboard.notes.termCurrent"),
+      trendLabel: t("dashboard.notes.nonePublished"),
       latestEvaluations: [],
     };
   }
@@ -255,20 +256,20 @@ export function buildNotesSummary(
     );
 
   const average = snapshot.generalAverage.student;
-  let trendLabel = "Progression a confirmer";
+  let trendLabel = t("dashboard.notes.trendConfirm");
   if (average !== null && average >= 14) {
-    trendLabel = "Dynamique tres encourageante";
+    trendLabel = t("dashboard.notes.trendVeryGood");
   } else if (average !== null && average >= 10) {
-    trendLabel = "Bases solides ce trimestre";
+    trendLabel = t("dashboard.notes.trendGood");
   } else if (average !== null) {
-    trendLabel = "Points de vigilance a suivre";
+    trendLabel = t("dashboard.notes.trendWatch");
   }
 
   return {
     childId: child.id,
     childName: formatStudentName(child),
-    averageLabel: formatAverage(average),
-    termLabel: snapshot.label || "Trimestre en cours",
+    averageLabel: formatAverage(average, t),
+    termLabel: snapshot.label || t("dashboard.notes.termCurrent"),
     trendLabel,
     latestEvaluations,
   };
@@ -291,27 +292,37 @@ export function buildAccountSummary(
   const latestDocumentLabel =
     payload.documents.latest[0]?.title ??
     (payload.documents.totalPublishedCount > 0
-      ? `${payload.documents.totalPublishedCount} document(s) publie(s)`
-      : "Aucun document publie");
+      ? t("dashboard.parent.documentsPublished").replace(
+          "{count}",
+          String(payload.documents.totalPublishedCount),
+        )
+      : t("dashboard.parent.documentsNone"));
 
   return {
     headline:
       pendingActions === 0
-        ? "Compte parent a jour"
-        : `${pendingActions} point${pendingActions > 1 ? "s" : ""} a traiter`,
+        ? t("dashboard.parent.accountHeadlineOk")
+        : t("dashboard.parent.accountHeadlinePending")
+            .replace("{count}", String(pendingActions))
+            .replace("{suffix}", pendingActions > 1 ? "s" : ""),
     detail:
       payload.payments.connected && latePayments > 0
-        ? "Un reglement reste en retard et merite une verification."
-        : "Retrouvez ici les elements administratifs et les echanges a suivre.",
+        ? t("dashboard.parent.accountDetailLate")
+        : t("dashboard.parent.accountDetailNeutral"),
     items: [
       {
         id: "payments",
-        label: "Paiements",
+        label: t("dashboard.parent.paymentsLabel"),
         value: payload.payments.connected ? String(pendingPayments) : "--",
         detail: payload.payments.connected
           ? pendingPayments > 0
-            ? `${latePayments} en retard, ${pendingPayments - latePayments} en attente`
-            : "Aucun paiement en attente"
+            ? t("dashboard.parent.paymentsDetail")
+                .replace("{lateCount}", String(latePayments))
+                .replace(
+                  "{pendingCount}",
+                  String(pendingPayments - latePayments),
+                )
+            : t("dashboard.parent.paymentsAllOk")
           : payload.payments.detail,
         tone:
           payload.payments.connected && latePayments > 0
@@ -332,7 +343,7 @@ export function buildAccountSummary(
       },
       {
         id: "documents",
-        label: "Documents recents",
+        label: t("dashboard.parent.documentsLabel"),
         value: String(recentDocuments),
         detail:
           recentDocuments > 0 ? latestDocumentLabel : payload.documents.detail,

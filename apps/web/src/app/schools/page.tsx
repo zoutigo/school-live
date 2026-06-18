@@ -20,6 +20,7 @@ import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
@@ -176,6 +177,7 @@ function toFileUrl(fileUrl: string | null) {
 
 export default function SchoolsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("list");
   const [schools, setSchools] = useState<SchoolRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -334,14 +336,14 @@ export default function SchoolsPage() {
       });
 
       if (!response.ok) {
-        setSubmitError("Impossible de charger les details de l ecole.");
+        setSubmitError(t("schools.error.loadDetails"));
         return;
       }
 
       setSelectedSchool((await response.json()) as SchoolDetails);
       setTab("details");
     } catch {
-      setSubmitError("Erreur reseau.");
+      setSubmitError(t("schools.error.network"));
     } finally {
       setLoadingDetails(false);
     }
@@ -408,7 +410,7 @@ export default function SchoolsPage() {
           baseSlug: null,
           suggestedSlug: null,
           baseExists: false,
-          error: "Verification du slug indisponible.",
+          error: t("schools.slug.error"),
         });
         return;
       }
@@ -432,7 +434,7 @@ export default function SchoolsPage() {
         baseSlug: null,
         suggestedSlug: null,
         baseExists: false,
-        error: "Verification du slug indisponible.",
+        error: t("schools.slug.error"),
       });
     }
   }
@@ -443,7 +445,7 @@ export default function SchoolsPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setSubmitError("Session CSRF invalide. Reconnectez-vous.");
+      setSubmitError(t("schools.error.csrf"));
       router.replace("/");
       return;
     }
@@ -467,7 +469,7 @@ export default function SchoolsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Creation impossible.");
+            : (payload?.message ?? t("schools.error.createFallback"));
         setSubmitError(String(message));
         return;
       }
@@ -480,13 +482,11 @@ export default function SchoolsPage() {
       if (payload.userExisted) {
         setSubmitSuccess(
           payload.setupCompleted
-            ? "Ecole creee et role SCHOOL_ADMIN assigne a un compte existant."
-            : "Ecole creee. Le compte existant SCHOOL_ADMIN doit finaliser son changement de mot de passe.",
+            ? t("schools.success.createExisting")
+            : t("schools.success.createExistingPending"),
         );
       } else {
-        setSubmitSuccess(
-          "Ecole creee. Un compte SCHOOL_ADMIN a ete cree avec mot de passe provisoire et doit changer son mot de passe pour finaliser.",
-        );
+        setSubmitSuccess(t("schools.success.createNew"));
       }
 
       createSchoolForm.reset({
@@ -509,7 +509,7 @@ export default function SchoolsPage() {
       await loadSchools();
       setTab("list");
     } catch {
-      setSubmitError("Erreur reseau.");
+      setSubmitError(t("schools.error.network"));
     } finally {
       setSubmitting(false);
     }
@@ -537,7 +537,7 @@ export default function SchoolsPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setEditError("Session CSRF invalide. Reconnectez-vous.");
+      setEditError(t("schools.error.csrf"));
       router.replace("/");
       return;
     }
@@ -567,7 +567,7 @@ export default function SchoolsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Modification impossible.");
+            : (payload?.message ?? t("schools.error.editFallback"));
         setEditError(String(message));
         return;
       }
@@ -578,7 +578,7 @@ export default function SchoolsPage() {
         await openSchoolDetails(schoolId);
       }
     } catch {
-      setEditError("Erreur reseau.");
+      setEditError(t("schools.error.network"));
     } finally {
       setSavingEdit(false);
     }
@@ -595,7 +595,7 @@ export default function SchoolsPage() {
   async function onDeleteSchool(schoolId: string) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setSubmitError("Session CSRF invalide. Reconnectez-vous.");
+      setSubmitError(t("schools.error.csrf"));
       router.replace("/");
       return;
     }
@@ -617,7 +617,7 @@ export default function SchoolsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Suppression impossible.");
+            : (payload?.message ?? t("schools.error.deleteFallback"));
         setSubmitError(String(message));
         return;
       }
@@ -632,7 +632,7 @@ export default function SchoolsPage() {
 
       await loadSchools();
     } catch {
-      setSubmitError("Erreur reseau.");
+      setSubmitError(t("schools.error.network"));
     } finally {
       setDeletingSchoolId(null);
       setDeleteTarget(null);
@@ -648,7 +648,7 @@ export default function SchoolsPage() {
     setSubmitSuccess(null);
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setSubmitError("Session CSRF invalide. Reconnectez-vous.");
+      setSubmitError(t("schools.error.csrf"));
       router.replace("/");
       return;
     }
@@ -673,18 +673,18 @@ export default function SchoolsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Envoi de l invitation impossible.");
+            : (payload?.message ?? t("schools.error.inviteFallback"));
         setSubmitError(String(message));
         return;
       }
 
       const payload = (await response.json()) as { email: string };
       setSubmitSuccess(
-        `Invitation renvoyee a ${payload.email}. Le school admin recevra un nouveau mot de passe provisoire.`,
+        t("schools.success.inviteSent").replace("{email}", payload.email),
       );
       await openSchoolDetails(selectedSchool.id);
     } catch {
-      setSubmitError("Erreur reseau.");
+      setSubmitError(t("schools.error.network"));
     } finally {
       setSendingInviteAdminId(null);
     }
@@ -698,7 +698,7 @@ export default function SchoolsPage() {
   return (
     <AppShell schoolName="Scolive Platform">
       <div className="grid gap-4">
-        <Card title="Ecoles" subtitle="Gestion des etablissements">
+        <Card title={t("schools.title")} subtitle={t("schools.subtitle")}>
           <div className="mb-4 flex items-end gap-2 border-b border-border">
             <button
               type="button"
@@ -709,7 +709,7 @@ export default function SchoolsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Liste des ecoles
+              {t("schools.tab.list")}
             </button>
             <button
               type="button"
@@ -720,7 +720,7 @@ export default function SchoolsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Creer une ecole
+              {t("schools.tab.create")}
             </button>
             {selectedSchool ? (
               <button
@@ -732,7 +732,7 @@ export default function SchoolsPage() {
                     : "text-text-secondary"
                 }`}
               >
-                Details
+                {t("schools.tab.details")}
               </button>
             ) : null}
             <button
@@ -744,7 +744,7 @@ export default function SchoolsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Aide
+              {t("schools.tab.help")}
             </button>
           </div>
 
@@ -753,15 +753,29 @@ export default function SchoolsPage() {
               <table className="min-w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-text-secondary">
-                    <th className="px-3 py-2 font-medium">Nom</th>
-                    <th className="px-3 py-2 font-medium">Slug</th>
-                    <th className="px-3 py-2 font-medium">Localisation</th>
-                    <th className="px-3 py-2 font-medium">Utilisateurs</th>
-                    <th className="px-3 py-2 font-medium">Classes</th>
-                    <th className="px-3 py-2 font-medium">Eleves</th>
-                    <th className="px-3 py-2 font-medium">Creee le</th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("schools.table.name")}
+                    </th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("schools.table.slug")}
+                    </th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("schools.table.location")}
+                    </th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("schools.table.users")}
+                    </th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("schools.table.classes")}
+                    </th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("schools.table.students")}
+                    </th>
+                    <th className="px-3 py-2 font-medium">
+                      {t("schools.table.createdAt")}
+                    </th>
                     <th className="px-3 py-2 font-medium text-right">
-                      Actions
+                      {t("schools.table.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -769,7 +783,7 @@ export default function SchoolsPage() {
                   {loading ? (
                     <tr>
                       <td className="px-3 py-6 text-text-secondary" colSpan={8}>
-                        Chargement des ecoles...
+                        {t("schools.table.loading")}
                       </td>
                     </tr>
                   ) : null}
@@ -813,7 +827,7 @@ export default function SchoolsPage() {
                           <td className="relative px-3 py-2 text-right">
                             <button
                               type="button"
-                              aria-label="Actions ecole"
+                              aria-label={t("schools.action.actionsAria")}
                               className="inline-flex h-8 w-8 items-center justify-center rounded-card border border-border bg-surface text-text-primary hover:bg-background"
                               onClick={() =>
                                 setOpenActionsSchoolId((current) =>
@@ -830,7 +844,7 @@ export default function SchoolsPage() {
                                   className="w-full rounded-card px-3 py-2 text-left text-sm text-text-primary hover:bg-background"
                                   onClick={() => startEditSchool(school)}
                                 >
-                                  Modifier
+                                  {t("schools.action.edit")}
                                 </button>
                                 <button
                                   type="button"
@@ -839,7 +853,7 @@ export default function SchoolsPage() {
                                     requestDeleteSchool(school);
                                   }}
                                 >
-                                  Supprimer
+                                  {t("schools.action.delete")}
                                 </button>
                               </div>
                             ) : null}
@@ -851,14 +865,14 @@ export default function SchoolsPage() {
                             <td className="px-3 py-3" colSpan={8}>
                               <div className="grid gap-3 md:grid-cols-2">
                                 <FormField
-                                  label="Nom de l ecole"
+                                  label={t("schools.form.fieldName")}
                                   error={
                                     editSchoolForm.formState.errors.name
                                       ?.message
                                   }
                                 >
                                   <FormTextInput
-                                    aria-label="Nom de l ecole"
+                                    aria-label={t("schools.form.fieldName")}
                                     value={editSchoolValues.name ?? ""}
                                     onChange={(event) => {
                                       editSchoolForm.setValue(
@@ -881,9 +895,11 @@ export default function SchoolsPage() {
                                     }
                                   />
                                 </FormField>
-                                <FormField label="Pays">
+                                <FormField
+                                  label={t("schools.form.fieldCountry")}
+                                >
                                   <FormTextInput
-                                    aria-label="Pays"
+                                    aria-label={t("schools.form.fieldCountry")}
                                     value={editSchoolValues.country ?? ""}
                                     onChange={(event) => {
                                       editSchoolForm.setValue(
@@ -901,9 +917,11 @@ export default function SchoolsPage() {
                                     )}
                                   />
                                 </FormField>
-                                <FormField label="Region">
+                                <FormField
+                                  label={t("schools.form.fieldRegion")}
+                                >
                                   <FormTextInput
-                                    aria-label="Region"
+                                    aria-label={t("schools.form.fieldRegion")}
                                     value={editSchoolValues.region ?? ""}
                                     onChange={(event) => {
                                       editSchoolForm.setValue(
@@ -921,9 +939,9 @@ export default function SchoolsPage() {
                                     )}
                                   />
                                 </FormField>
-                                <FormField label="Ville">
+                                <FormField label={t("schools.form.fieldCity")}>
                                   <FormTextInput
-                                    aria-label="Ville"
+                                    aria-label={t("schools.form.fieldCity")}
                                     value={editSchoolValues.city ?? ""}
                                     onChange={(event) => {
                                       editSchoolForm.setValue(
@@ -944,8 +962,8 @@ export default function SchoolsPage() {
 
                                 <ImageUploadField
                                   kind="school-logo"
-                                  label="Logo"
-                                  helperText="Image JPG/PNG/WEBP, maximum 5MB."
+                                  label={t("schools.form.fieldLogo")}
+                                  helperText={t("schools.form.logoHelper")}
                                   value={editSchoolValues.logoUrl ?? null}
                                   onChange={(value) => {
                                     editSchoolForm.setValue(
@@ -983,8 +1001,8 @@ export default function SchoolsPage() {
                                   }}
                                 >
                                   {savingEdit
-                                    ? "Enregistrement..."
-                                    : "Enregistrer"}
+                                    ? t("schools.action.saving")
+                                    : t("schools.action.save")}
                                 </Button>
                                 <Button
                                   type="button"
@@ -995,7 +1013,7 @@ export default function SchoolsPage() {
                                     editSchoolForm.reset();
                                   }}
                                 >
-                                  Annuler
+                                  {t("schools.action.cancel")}
                                 </Button>
                               </div>
                             </td>
@@ -1007,7 +1025,7 @@ export default function SchoolsPage() {
                   {!loading && orderedSchools.length === 0 ? (
                     <tr>
                       <td className="px-3 py-6 text-text-secondary" colSpan={8}>
-                        Aucune ecole trouvee.
+                        {t("schools.table.empty")}
                       </td>
                     </tr>
                   ) : null}
@@ -1020,7 +1038,7 @@ export default function SchoolsPage() {
             <div className="grid gap-4">
               {loadingDetails ? (
                 <p className="text-sm text-text-secondary">
-                  Chargement des details...
+                  {t("schools.details.loading")}
                 </p>
               ) : null}
               {!loadingDetails && selectedSchool ? (
@@ -1035,33 +1053,39 @@ export default function SchoolsPage() {
                         />
                       ) : (
                         <div className="flex h-36 items-center justify-center rounded-card border border-border text-sm text-text-secondary">
-                          Aucun logo
+                          {t("schools.details.noLogo")}
                         </div>
                       )}
                     </div>
                     <div className="grid gap-2">
-                      <InfoLine label="Nom" value={selectedSchool.name} />
-                      <InfoLine label="Slug" value={selectedSchool.slug} />
                       <InfoLine
-                        label="Pays"
+                        label={t("schools.details.labelName")}
+                        value={selectedSchool.name}
+                      />
+                      <InfoLine
+                        label={t("schools.details.labelSlug")}
+                        value={selectedSchool.slug}
+                      />
+                      <InfoLine
+                        label={t("schools.details.labelCountry")}
                         value={selectedSchool.country ?? "-"}
                       />
                       <InfoLine
-                        label="Region"
+                        label={t("schools.details.labelRegion")}
                         value={selectedSchool.region ?? "-"}
                       />
                       <InfoLine
-                        label="Ville"
+                        label={t("schools.details.labelCity")}
                         value={selectedSchool.city ?? "-"}
                       />
                       <InfoLine
-                        label="Creee le"
+                        label={t("schools.details.labelCreated")}
                         value={new Date(
                           selectedSchool.createdAt,
                         ).toLocaleString("fr-FR")}
                       />
                       <InfoLine
-                        label="Mise a jour"
+                        label={t("schools.details.labelUpdated")}
                         value={new Date(
                           selectedSchool.updatedAt,
                         ).toLocaleString("fr-FR")}
@@ -1071,34 +1095,34 @@ export default function SchoolsPage() {
 
                   <div className="grid gap-3 md:grid-cols-5">
                     <StatBox
-                      label="Utilisateurs"
+                      label={t("schools.details.statUsers")}
                       value={selectedSchool.stats.usersCount}
                     />
                     <StatBox
-                      label="Classes"
+                      label={t("schools.details.statClasses")}
                       value={selectedSchool.stats.classesCount}
                     />
                     <StatBox
-                      label="Eleves"
+                      label={t("schools.details.statStudents")}
                       value={selectedSchool.stats.studentsCount}
                     />
                     <StatBox
-                      label="Enseignants"
+                      label={t("schools.details.statTeachers")}
                       value={selectedSchool.stats.teachersCount}
                     />
                     <StatBox
-                      label="Notes"
+                      label={t("schools.details.statGrades")}
                       value={selectedSchool.stats.gradesCount}
                     />
                   </div>
 
                   <div className="rounded-card border border-border bg-background p-3">
                     <p className="mb-2 text-sm font-medium text-text-primary">
-                      School Admins
+                      {t("schools.details.adminsTitle")}
                     </p>
                     {selectedSchool.schoolAdmins.length === 0 ? (
                       <p className="text-sm text-text-secondary">
-                        Aucun school admin trouve.
+                        {t("schools.details.adminsEmpty")}
                       </p>
                     ) : (
                       <ul className="grid gap-1 text-sm text-text-primary">
@@ -1120,12 +1144,12 @@ export default function SchoolsPage() {
                                 }}
                               >
                                 {sendingInviteAdminId === admin.id
-                                  ? "Envoi..."
-                                  : "Renvoyer l invitation"}
+                                  ? t("schools.details.inviteSending")
+                                  : t("schools.details.inviteResend")}
                               </Button>
                             ) : (
                               <span className="text-xs text-text-secondary">
-                                Deja active
+                                {t("schools.details.adminActive")}
                               </span>
                             )}
                           </li>
@@ -1136,7 +1160,7 @@ export default function SchoolsPage() {
 
                   <div>
                     <BackButton onClick={() => setTab("list")}>
-                      Retour a la liste
+                      {t("schools.details.backToList")}
                     </BackButton>
                   </div>
                 </>
@@ -1150,23 +1174,31 @@ export default function SchoolsPage() {
               onSubmit={createSchoolForm.handleSubmit(onCreateSchool)}
             >
               <FormField
-                label="Nom de l ecole"
+                label={t("schools.form.fieldName")}
                 className="md:col-span-2"
                 error={createSchoolForm.formState.errors.name?.message}
                 hint={
                   slugPreview.loading
-                    ? "Generation/verifications du slug..."
+                    ? t("schools.slug.loading")
                     : !slugPreview.loading && slugPreview.error
                       ? slugPreview.error
                       : !slugPreview.loading && slugPreview.suggestedSlug
                         ? slugPreview.baseExists
-                          ? `Slug detecte deja pris (${slugPreview.baseSlug}). Le slug final sera ${slugPreview.suggestedSlug}.`
-                          : `Slug genere: ${slugPreview.suggestedSlug}.`
+                          ? t("schools.slug.taken")
+                              .replace("{baseSlug}", slugPreview.baseSlug ?? "")
+                              .replace(
+                                "{suggestedSlug}",
+                                slugPreview.suggestedSlug,
+                              )
+                          : t("schools.slug.available").replace(
+                              "{suggestedSlug}",
+                              slugPreview.suggestedSlug,
+                            )
                         : null
                 }
               >
                 <FormTextInput
-                  aria-label="Nom de l ecole"
+                  aria-label={t("schools.form.fieldName")}
                   value={createSchoolValues.name ?? ""}
                   onChange={(event) => {
                     createSchoolForm.setValue("name", event.target.value, {
@@ -1183,11 +1215,11 @@ export default function SchoolsPage() {
               </FormField>
 
               <FormField
-                label="Pays (optionnel)"
+                label={t("schools.form.fieldCountryOpt")}
                 error={createSchoolForm.formState.errors.country?.message}
               >
                 <FormTextInput
-                  aria-label="Pays"
+                  aria-label={t("schools.form.fieldCountry")}
                   value={createSchoolValues.country ?? ""}
                   onChange={(event) => {
                     createSchoolForm.setValue("country", event.target.value, {
@@ -1201,11 +1233,11 @@ export default function SchoolsPage() {
               </FormField>
 
               <FormField
-                label="Region (optionnel)"
+                label={t("schools.form.fieldRegionOpt")}
                 error={createSchoolForm.formState.errors.region?.message}
               >
                 <FormTextInput
-                  aria-label="Region"
+                  aria-label={t("schools.form.fieldRegion")}
                   value={createSchoolValues.region ?? ""}
                   onChange={(event) => {
                     createSchoolForm.setValue("region", event.target.value, {
@@ -1219,12 +1251,12 @@ export default function SchoolsPage() {
               </FormField>
 
               <FormField
-                label="Ville (optionnel)"
+                label={t("schools.form.fieldCityOpt")}
                 className="md:col-span-2"
                 error={createSchoolForm.formState.errors.city?.message}
               >
                 <FormTextInput
-                  aria-label="Ville"
+                  aria-label={t("schools.form.fieldCity")}
                   value={createSchoolValues.city ?? ""}
                   onChange={(event) => {
                     createSchoolForm.setValue("city", event.target.value, {
@@ -1238,27 +1270,30 @@ export default function SchoolsPage() {
               </FormField>
 
               <FormField
-                label="Email School Admin"
+                label={t("schools.form.fieldAdminEmail")}
                 className="md:col-span-2"
                 error={
                   createSchoolForm.formState.errors.schoolAdminEmail?.message
                 }
                 hint={
                   emailCheckState === "checking"
-                    ? "Verification de l email..."
+                    ? t("schools.email.checking")
                     : emailCheckState === "invalid"
-                      ? "Email invalide."
+                      ? t("schools.email.invalid")
                       : emailCheckState === "exists"
-                        ? `Compte existant detecte (${emailCheckName ?? "utilisateur"}). Il recevra le role SCHOOL_ADMIN pour cette ecole.`
+                        ? t("schools.email.exists").replace(
+                            "{name}",
+                            emailCheckName ?? "utilisateur",
+                          )
                         : emailCheckState === "not_found"
-                          ? "Aucun compte existant: un nouveau school admin sera cree et recevra un mot de passe provisoire genere automatiquement."
+                          ? t("schools.email.notFound")
                           : emailCheckState === "error"
-                            ? "Verification email indisponible."
+                            ? t("schools.email.error")
                             : null
                 }
               >
                 <EmailInput
-                  aria-label="Email School Admin"
+                  aria-label={t("schools.form.fieldAdminEmail")}
                   value={createSchoolValues.schoolAdminEmail ?? ""}
                   onChange={(event) => {
                     createSchoolForm.setValue(
@@ -1283,8 +1318,8 @@ export default function SchoolsPage() {
               <div className="md:col-span-2">
                 <ImageUploadField
                   kind="school-logo"
-                  label="Logo de l ecole (optionnel)"
-                  helperText="Image JPG/PNG/WEBP, maximum 5MB. Le logo est optimise automatiquement."
+                  label={t("schools.form.fieldLogoCreate")}
+                  helperText={t("schools.form.logoHelperFull")}
                   value={createSchoolValues.logoUrl || null}
                   onChange={(value) => {
                     createSchoolForm.setValue("logoUrl", value ?? "", {
@@ -1297,9 +1332,7 @@ export default function SchoolsPage() {
               </div>
 
               <p className="text-xs text-text-secondary md:col-span-2">
-                Si l email existe deja, ce compte sera reutilise. Sinon, un mot
-                de passe provisoire sera genere par le backend et envoye par
-                email.
+                {t("schools.form.emailNote")}
               </p>
 
               {submitError ? (
@@ -1320,7 +1353,9 @@ export default function SchoolsPage() {
                 <SubmitButton
                   disabled={submitting || !createSchoolForm.formState.isValid}
                 >
-                  {submitting ? "Creation..." : "Creer l ecole"}
+                  {submitting
+                    ? t("schools.action.creating")
+                    : t("schools.action.create")}
                 </SubmitButton>
               </div>
             </form>
@@ -1379,13 +1414,13 @@ export default function SchoolsPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Confirmer la suppression"
+        title={t("schools.delete.title")}
         message={
           deleteTarget
-            ? `Voulez-vous supprimer l'ecole ${deleteTarget.label} ? Cette action est irreversible.`
+            ? t("schools.delete.message").replace("{name}", deleteTarget.label)
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel={t("schools.delete.confirm")}
         loading={Boolean(deletingSchoolId)}
         onCancel={() => {
           if (!deletingSchoolId) {

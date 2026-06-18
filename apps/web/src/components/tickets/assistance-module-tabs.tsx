@@ -1,20 +1,21 @@
 "use client";
 
 import { BookOpen, Bug, CircleHelp, MessageCircle } from "lucide-react";
+import { useTranslation } from "../../i18n/useTranslation";
 
 export type AssistanceModuleTabKey = "guide" | "faq" | "bug" | "chat";
 
 type AssistanceModuleTab = {
   key: AssistanceModuleTabKey;
-  label: string;
+  labelKey: string;
   icon: React.ComponentType<{ className?: string }>;
 };
 
 const ASSISTANCE_MODULE_TABS: AssistanceModuleTab[] = [
-  { key: "guide", label: "Guide", icon: BookOpen },
-  { key: "faq", label: "FAQ", icon: CircleHelp },
-  { key: "bug", label: "Bug", icon: Bug },
-  { key: "chat", label: "Chat", icon: MessageCircle },
+  { key: "guide", labelKey: "assistance.tab.guide", icon: BookOpen },
+  { key: "faq", labelKey: "assistance.tab.faq", icon: CircleHelp },
+  { key: "bug", labelKey: "assistance.tab.bug", icon: Bug },
+  { key: "chat", labelKey: "assistance.tab.chat", icon: MessageCircle },
 ];
 
 type Props = {
@@ -23,6 +24,8 @@ type Props = {
 };
 
 export function AssistanceModuleTabs({ activeTab, onSelectTab }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div
       className="overflow-x-auto rounded-[16px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.94)_100%)] p-1 shadow-[0_10px_20px_rgba(77,56,32,0.06)]"
@@ -46,7 +49,7 @@ export function AssistanceModuleTabs({ activeTab, onSelectTab }: Props) {
               data-testid={`assistance-module-tab-${tab.key}`}
             >
               <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
+              <span>{t(tab.labelKey)}</span>
             </button>
           );
         })}

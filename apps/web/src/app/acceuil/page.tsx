@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -46,28 +47,28 @@ function formatCount(value: number) {
   return new Intl.NumberFormat("fr-FR").format(value);
 }
 
-function getRoleLabel(role: PlatformRole) {
+function getRoleLabel(role: PlatformRole, t: TranslateFn) {
   switch (role) {
     case "SUPER_ADMIN":
-      return "Super administration";
+      return t("accueil.hero.roleSuperAdmin");
     case "ADMIN":
-      return "Administration plateforme";
+      return t("accueil.hero.roleAdmin");
     case "SALES":
-      return "Developpement";
+      return t("accueil.hero.roleSales");
     case "SUPPORT":
-      return "Support";
+      return t("accueil.hero.roleSupport");
     default:
       return role;
   }
 }
 
-function PlatformHero({ me }: { me: MeResponse | null }) {
+function PlatformHero({ me, t }: { me: MeResponse | null; t: TranslateFn }) {
   const fullName = me
     ? `${me.firstName} ${me.lastName}`.trim()
-    : "Chargement du profil";
+    : t("accueil.hero.loadingProfile");
   const roleLabel = me?.role
-    ? getRoleLabel(me.role as PlatformRole)
-    : "Plateforme";
+    ? getRoleLabel(me.role as PlatformRole, t)
+    : t("accueil.hero.roleFallback");
 
   return (
     <section className="relative overflow-hidden rounded-[20px] border border-orange-100 bg-gradient-to-br from-[#fff7ed] via-[#fffaf4] to-[#fef3c7] p-4 shadow-[0_18px_55px_rgba(180,83,9,0.12)] min-[360px]:rounded-[24px] min-[360px]:p-5 md:p-7">
@@ -76,15 +77,14 @@ function PlatformHero({ me }: { me: MeResponse | null }) {
       <div className="relative space-y-4">
         <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-white/80 px-3 py-1 text-xs font-medium text-orange-900 backdrop-blur sm:text-sm">
           <Sparkles className="h-4 w-4" />
-          Accueil plateforme
+          {t("accueil.hero.badge")}
         </div>
         <div className="space-y-3">
           <h1 className="font-heading text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl">
-            Bienvenue, {fullName}
+            {t("accueil.hero.welcome").replace("{fullName}", fullName)}
           </h1>
           <p className="text-sm leading-6 text-slate-700 sm:text-base sm:leading-7 md:text-lg">
-            Gardez une lecture directe du reseau, des comptes et de l'activite
-            plateforme sans passer par plusieurs modules.
+            {t("accueil.hero.subtitle")}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -94,7 +94,9 @@ function PlatformHero({ me }: { me: MeResponse | null }) {
           </div>
           <div className="inline-flex items-center gap-2 rounded-2xl bg-white/88 px-3 py-2 text-xs text-slate-700 shadow-sm ring-1 ring-orange-100 sm:px-4 sm:py-2.5 sm:text-sm">
             <BarChart3 className="h-4 w-4 text-orange-600" />
-            <span className="font-medium text-slate-900">Pilotage global</span>
+            <span className="font-medium text-slate-900">
+              {t("accueil.hero.badgePilotage")}
+            </span>
           </div>
         </div>
       </div>
@@ -169,6 +171,7 @@ function PlatformLinkRow({
 
 export default function AcceuilPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [indicators, setIndicators] = useState<IndicatorsResponse | null>(null);
@@ -230,12 +233,12 @@ export default function AcceuilPage() {
         data-testid="platform-dashboard-root"
         className="grid w-full gap-4 min-[360px]:gap-6"
       >
-        <PlatformHero me={me} />
+        <PlatformHero me={me} t={t} />
 
         <div className="grid gap-3 min-[360px]:gap-4 xl:grid-cols-3">
           <PlatformCard
-            title="Reseau"
-            eyebrow="Etablissements"
+            title={t("accueil.network.title")}
+            eyebrow={t("accueil.network.eyebrow")}
             icon={Building2}
             accent="from-[#ffe2b8] via-[#fff2dc] to-white"
           >
@@ -245,23 +248,25 @@ export default function AcceuilPage() {
               <div className="space-y-3">
                 <PlatformLinkRow
                   href="/schools"
-                  label="Ecoles"
+                  label={t("sidebar.nav.schools")}
                   value={
-                    indicators ? formatCount(indicators.schoolsCount) : "Ouvrir"
+                    indicators
+                      ? formatCount(indicators.schoolsCount)
+                      : t("accueil.action.open")
                   }
                 />
                 <PlatformLinkRow
                   href="/classes"
-                  label="Classes"
-                  value="Gerer"
+                  label={t("sidebar.nav.classes")}
+                  value={t("accueil.action.manage")}
                 />
               </div>
             )}
           </PlatformCard>
 
           <PlatformCard
-            title="Comptes"
-            eyebrow="Utilisateurs"
+            title={t("accueil.accounts.title")}
+            eyebrow={t("accueil.accounts.eyebrow")}
             icon={Users}
             accent="from-[#ffd9cf] via-[#fff2e8] to-white"
           >
@@ -271,18 +276,20 @@ export default function AcceuilPage() {
               <div className="space-y-3">
                 <PlatformLinkRow
                   href="/users"
-                  label="Utilisateurs"
+                  label={t("sidebar.nav.users")}
                   value={
-                    indicators ? formatCount(indicators.usersCount) : "Ouvrir"
+                    indicators
+                      ? formatCount(indicators.usersCount)
+                      : t("accueil.action.open")
                   }
                 />
                 <PlatformLinkRow
                   href="/users"
-                  label="Admins ecole"
+                  label={t("accueil.accounts.schoolAdmins")}
                   value={
                     indicators
                       ? formatCount(indicators.schoolAdminsCount)
-                      : "Suivre"
+                      : t("accueil.action.track")
                   }
                 />
               </div>
@@ -290,8 +297,8 @@ export default function AcceuilPage() {
           </PlatformCard>
 
           <PlatformCard
-            title="Activite"
-            eyebrow="Pilotage"
+            title={t("accueil.activity.title")}
+            eyebrow={t("accueil.activity.eyebrow")}
             icon={BarChart3}
             accent="from-[#d6f2fb] via-[#edf9ff] to-white"
           >
@@ -301,18 +308,20 @@ export default function AcceuilPage() {
               <div className="space-y-3">
                 <PlatformLinkRow
                   href="/indicators"
-                  label="Indicateurs"
+                  label={t("sidebar.nav.indicators")}
                   value={
-                    indicators ? formatCount(indicators.gradesCount) : "Ouvrir"
+                    indicators
+                      ? formatCount(indicators.gradesCount)
+                      : t("accueil.action.open")
                   }
                 />
                 <PlatformLinkRow
                   href="/indicators"
-                  label="Eleves / enseignants"
+                  label={t("accueil.activity.studentsTeachers")}
                   value={
                     indicators
                       ? `${formatCount(indicators.studentsCount)} / ${formatCount(indicators.teachersCount)}`
-                      : "Vue"
+                      : t("accueil.action.view")
                   }
                 />
               </div>

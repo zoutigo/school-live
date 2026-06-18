@@ -106,10 +106,12 @@ type SchoolDashboardSummary = {
   unreadMessages: number;
 };
 
+type DashboardChip = { label: string; icon: "graduation" | "heart" };
+
 type DashboardHeroContent = {
   badge: string;
   lead: string;
-  chips: string[];
+  chips: DashboardChip[];
 };
 
 type DashboardQuickLink = {
@@ -119,30 +121,30 @@ type DashboardQuickLink = {
   href: string;
 };
 
-function getRoleLabel(role: MeResponse["role"]) {
+function getRoleLabel(role: MeResponse["role"], t: TranslateFn) {
   switch (role) {
     case "PARENT":
-      return "Parent";
+      return t("header.role.parent");
     case "STUDENT":
-      return "Élève";
+      return t("header.role.student");
     case "TEACHER":
-      return "Enseignant";
+      return t("header.role.teacher");
     case "SCHOOL_ADMIN":
-      return "Administration";
+      return t("header.role.schoolAdmin");
     case "SCHOOL_MANAGER":
-      return "Direction";
+      return t("header.role.schoolManager");
     case "SUPERVISOR":
-      return "Supervision";
+      return t("header.role.supervisor");
     case "SCHOOL_ACCOUNTANT":
-      return "Comptabilite";
+      return t("header.role.schoolAccountant");
     case "SUPPORT":
-      return "Support";
+      return t("header.role.support");
     case "ADMIN":
-      return "Administration plateforme";
+      return t("header.role.admin");
     case "SUPER_ADMIN":
-      return "Super administration";
+      return t("header.role.superAdmin");
     case "SALES":
-      return "Developpement";
+      return t("accueil.hero.roleSales");
     default:
       return role;
   }
@@ -161,34 +163,47 @@ function formatCount(value: number) {
   return new Intl.NumberFormat("fr-FR").format(value);
 }
 
-function getHeroContent(me: MeResponse | null): DashboardHeroContent {
+function getHeroContent(
+  me: MeResponse | null,
+  t: TranslateFn,
+): DashboardHeroContent {
   if (!me) {
     return {
-      badge: "Accueil",
-      lead: "Retrouvez ici vos priorites du moment et vos acces directs utiles.",
+      badge: t("dashboard.hero.badge.default"),
+      lead: t("dashboard.hero.lead.default"),
       chips: [],
     };
   }
 
   if (me.role === "PARENT") {
     const childrenCount = me.linkedStudents?.length ?? 0;
+    const suffix = childrenCount > 1 ? "s" : "";
     return {
-      badge: "Accueil famille",
-      lead: "Suivez en un coup d'oeil la situation scolaire de vos enfants, leurs resultats recents et les actions parent a traiter.",
+      badge: t("dashboard.hero.badge.family"),
+      lead: t("dashboard.hero.lead.family"),
       chips: [
-        "Parent",
-        childrenCount > 0
-          ? `${childrenCount} enfant${childrenCount > 1 ? "s" : ""} suivi${childrenCount > 1 ? "s" : ""}`
-          : "Acces famille",
+        { label: getRoleLabel(me.role, t), icon: "heart" },
+        {
+          label:
+            childrenCount > 0
+              ? t("dashboard.hero.chip.childrenCount")
+                  .replace("{count}", String(childrenCount))
+                  .replace(/{suffix}/g, suffix)
+              : t("dashboard.hero.chip.familyAccess"),
+          icon: "graduation",
+        },
       ],
     };
   }
 
   if (me.role === "TEACHER") {
     return {
-      badge: "Accueil enseignant",
-      lead: "Retrouvez vos classes, la saisie pedagogique et les echanges utiles sans passer par plusieurs modules.",
-      chips: ["Enseignant", "Pilotage quotidien"],
+      badge: t("dashboard.hero.badge.teacher"),
+      lead: t("dashboard.hero.lead.teacher"),
+      chips: [
+        { label: getRoleLabel(me.role, t), icon: "heart" },
+        { label: t("dashboard.hero.chip.dailyManagement"), icon: "heart" },
+      ],
     };
   }
 
@@ -196,25 +211,34 @@ function getHeroContent(me: MeResponse | null): DashboardHeroContent {
     return {
       badge:
         me.role === "SCHOOL_ADMIN"
-          ? "Accueil etablissement"
-          : "Coordination etablissement",
-      lead: "Gardez une lecture courte de la structure, de la scolarite et de la coordination de l'etablissement.",
-      chips: [getRoleLabel(me.role), "Lecture de pilotage"],
+          ? t("dashboard.hero.badge.schoolAdmin")
+          : t("dashboard.hero.badge.schoolCoord"),
+      lead: t("dashboard.hero.lead.school"),
+      chips: [
+        { label: getRoleLabel(me.role, t), icon: "heart" },
+        { label: t("dashboard.hero.chip.managementReading"), icon: "heart" },
+      ],
     };
   }
 
   return {
-    badge: "Accueil",
-    lead: "Retrouvez ici vos priorites du moment et vos acces directs utiles.",
-    chips: [getRoleLabel(me.role)],
+    badge: t("dashboard.hero.badge.default"),
+    lead: t("dashboard.hero.lead.default"),
+    chips: [{ label: getRoleLabel(me.role, t), icon: "heart" }],
   };
 }
 
-function WarmWelcomePanel({ me }: { me: MeResponse | null }) {
+function WarmWelcomePanel({
+  me,
+  t,
+}: {
+  me: MeResponse | null;
+  t: TranslateFn;
+}) {
   const fullName = me
     ? `${me.firstName} ${me.lastName}`
-    : "Chargement du profil";
-  const hero = getHeroContent(me);
+    : t("dashboard.hero.loadingProfile");
+  const hero = getHeroContent(me, t);
 
   return (
     <section className="relative w-full min-w-0 overflow-hidden rounded-[20px] border border-orange-100 bg-gradient-to-br from-[#fff7ed] via-[#fffaf4] to-[#fef3c7] p-3 shadow-[0_18px_55px_rgba(180,83,9,0.12)] min-[360px]:rounded-[24px] min-[360px]:p-4 md:p-7">
@@ -227,7 +251,7 @@ function WarmWelcomePanel({ me }: { me: MeResponse | null }) {
             {hero.badge}
           </div>
           <h1 className="font-heading text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl">
-            Bienvenue, {fullName}
+            {t("dashboard.hero.welcome").replace("{fullName}", fullName)}
           </h1>
           <p className="max-w-none text-sm leading-6 text-slate-700 sm:text-base sm:leading-7 md:text-lg">
             {hero.lead}
@@ -237,15 +261,15 @@ function WarmWelcomePanel({ me }: { me: MeResponse | null }) {
         <div className="flex flex-wrap gap-3">
           {hero.chips.map((chip) => (
             <div
-              key={chip}
+              key={chip.label}
               className="inline-flex items-center gap-2 rounded-2xl bg-white/88 px-3 py-2 text-xs text-slate-700 shadow-sm ring-1 ring-orange-100 sm:px-4 sm:py-2.5 sm:text-sm"
             >
-              {chip.includes("enfant") ? (
+              {chip.icon === "graduation" ? (
                 <GraduationCap className="h-4 w-4 text-orange-600" />
               ) : (
                 <HeartHandshake className="h-4 w-4 text-orange-600" />
               )}
-              <span className="font-medium text-slate-900">{chip}</span>
+              <span className="font-medium text-slate-900">{chip.label}</span>
             </div>
           ))}
         </div>
@@ -415,15 +439,17 @@ function ParentEvaluationsCard({
   summaries,
   loading,
   schoolSlug,
+  t,
 }: {
   summaries: ChildNotesSummary[];
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   return (
     <FamilyCardShell
-      title="Resultats recents"
-      eyebrow="Evaluations"
+      title={t("dashboard.parent.evaluationsTitle")}
+      eyebrow={t("dashboard.parent.evaluationsEyebrow")}
       icon={GraduationCap}
       accent="from-[#ffd9cf] via-[#fff2e8] to-white"
     >
@@ -442,7 +468,7 @@ function ParentEvaluationsCard({
           </div>
         ) : summaries.length === 0 ? (
           <div className="rounded-[16px] border border-dashed border-orange-200 bg-white/70 px-3 py-4 text-sm text-slate-600 min-[360px]:rounded-[18px] min-[360px]:py-5 md:rounded-[22px] md:px-4 md:py-6">
-            Les evaluations apparaitront ici des qu&apos;elles seront publiees.
+            {t("dashboard.parent.evaluationsEmpty")}
           </div>
         ) : (
           <div className="space-y-3">
@@ -494,12 +520,12 @@ function ParentEvaluationsCard({
                     ))
                   ) : (
                     <div className="rounded-lg bg-[#fffaf5] px-2 py-2 text-sm text-slate-600 min-[360px]:rounded-xl min-[360px]:px-2.5 min-[360px]:py-2.5 md:px-3 md:py-3">
-                      Aucune evaluation recente pour le moment.
+                      {t("dashboard.parent.evaluationsRecentNone")}
                     </div>
                   )}
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-orange-700 sm:text-sm">
-                  Ouvrir les evaluations
+                  {t("dashboard.parent.evaluationsOpenLink")}
                   <ChevronRight className="h-4 w-4" />
                 </div>
               </Link>
@@ -568,15 +594,17 @@ function ParentAccountCard({
   summary,
   loading,
   schoolSlug,
+  t,
 }: {
   summary: ParentAccountSummary;
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   return (
     <FamilyCardShell
-      title="Mon espace parent"
-      eyebrow="Compte"
+      title={t("dashboard.parent.accountTitle")}
+      eyebrow={t("dashboard.parent.accountEyebrow")}
       icon={CreditCard}
       accent="from-[#d6f2fb] via-[#edf9ff] to-white"
     >
@@ -585,13 +613,17 @@ function ParentAccountCard({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs text-slate-300 min-[360px]:text-sm">
-                Situation du compte
+                {t("dashboard.parent.accountStatusLabel")}
               </p>
               <p className="mt-1 font-heading text-xl font-semibold min-[360px]:text-2xl">
-                {loading ? "Chargement..." : summary.headline}
+                {loading
+                  ? t("dashboard.parent.accountLoadingHeadline")
+                  : summary.headline}
               </p>
               <p className="mt-2 text-xs text-slate-300 min-[360px]:text-sm">
-                {loading ? "Preparation de vos indicateurs." : summary.detail}
+                {loading
+                  ? t("dashboard.parent.accountLoadingDetail")
+                  : summary.detail}
               </p>
             </div>
             <CheckCircle2 className="mt-1 h-6 w-6 text-amber-300" />
@@ -976,19 +1008,21 @@ function TeacherEvalsSection({
   dashboard,
   loading,
   schoolSlug,
+  t,
 }: {
   dashboard: RichTeacherDashboard | null;
   loading: boolean;
   schoolSlug: string;
+  t: TranslateFn;
 }) {
   const accent = "#C84B11";
   return (
     <TeacherSectionCard
-      title="Evaluations a saisir"
+      title={t("dashboard.teacher.evalsTitle")}
       icon={ClipboardCheck}
       iconColor={accent}
       count={dashboard?.pendingEvals.length}
-      linkLabel="Cahier de notes"
+      linkLabel={t("dashboard.teacher.evalsLinkLabel")}
       linkHref={`/schools/${schoolSlug}/student-grades`}
       testId="section-teacher-evals"
     >
@@ -997,7 +1031,7 @@ function TeacherEvalsSection({
       ) : !dashboard || dashboard.pendingEvals.length === 0 ? (
         <TeacherEmptyRow
           icon={CheckCircle2}
-          text="Toutes les notes sont a jour"
+          text={t("dashboard.teacher.evalsAllDone")}
         />
       ) : (
         dashboard.pendingEvals.map((ev) => (
@@ -1161,8 +1195,8 @@ export default function DashboardPage() {
   >([]);
   const [notesSummaries, setNotesSummaries] = useState<ChildNotesSummary[]>([]);
   const [accountSummary, setAccountSummary] = useState<ParentAccountSummary>({
-    headline: "Compte parent",
-    detail: "Resume de vos actions administratives.",
+    headline: t("dashboard.parent.accountInitHeadline"),
+    detail: t("dashboard.parent.accountInitDetail"),
     items: [],
   });
   const [teacherCardsLoading, setTeacherCardsLoading] = useState(false);
@@ -1289,20 +1323,20 @@ export default function DashboardPage() {
       );
       setNotesSummaries(
         notesGroups.map(({ child, snapshots }) =>
-          buildNotesSummary(child, snapshots),
+          buildNotesSummary(child, snapshots, t),
         ),
       );
       setAccountSummary(buildAccountSummary(accountPayload, t));
     } catch {
       setAccountSummary({
-        headline: "Compte parent",
-        detail: "Les informations de compte sont temporairement indisponibles.",
+        headline: t("dashboard.parent.accountErrorHeadline"),
+        detail: t("dashboard.parent.accountErrorDetail"),
         items: [
           {
             id: "payments",
-            label: "Paiements",
+            label: t("dashboard.parent.paymentsLabel"),
             value: "--",
-            detail: "Resume comptable indisponible pour le moment.",
+            detail: t("dashboard.parent.paymentsErrorDetail"),
             tone: "neutral",
           },
           {
@@ -1314,9 +1348,9 @@ export default function DashboardPage() {
           },
           {
             id: "documents",
-            label: "Documents recents",
+            label: t("dashboard.parent.documentsLabel"),
             value: "--",
-            detail: "Le resume des documents n'a pas pu etre charge.",
+            detail: t("dashboard.parent.documentsErrorDetail"),
             tone: "watch",
           },
         ],
@@ -1537,19 +1571,19 @@ export default function DashboardPage() {
   const schoolStructureLinks: DashboardQuickLink[] = [
     {
       id: "classes",
-      label: "Classes",
+      label: t("sidebar.nav.classes"),
       value: formatCount(schoolSummary.classesCount),
       href: "/classes",
     },
     {
       id: "students",
-      label: "Eleves",
+      label: t("sidebar.nav.students"),
       value: formatCount(schoolSummary.studentsCount),
       href: "/eleves",
     },
     {
       id: "teachers",
-      label: "Enseignants",
+      label: t("sidebar.nav.teachers"),
       value: formatCount(schoolSummary.teachersCount),
       href: "/teachers",
     },
@@ -1558,20 +1592,20 @@ export default function DashboardPage() {
   const schoolAcademicLinks: DashboardQuickLink[] = [
     {
       id: "assignments",
-      label: "Affectations",
+      label: t("dashboard.school.assignmentsLabel"),
       value: formatCount(schoolSummary.assignmentsCount),
       href: "/teachers",
     },
     {
       id: "grades",
-      label: "Notes",
-      value: "Module",
+      label: t("sidebar.nav.grades"),
+      value: t("dashboard.school.moduleValue"),
       href: `/schools/${schoolSlug}/student-grades`,
     },
     {
       id: "curriculums",
-      label: "Curriculums",
-      value: "Module",
+      label: t("sidebar.nav.curriculums"),
+      value: t("dashboard.school.moduleValue"),
       href: "/curriculums",
     },
   ];
@@ -1585,14 +1619,14 @@ export default function DashboardPage() {
     },
     {
       id: "feed",
-      label: "Fil d'actualite",
-      value: "Suivre",
+      label: t("sidebar.nav.newsFeed"),
+      value: t("dashboard.school.feedFollowValue"),
       href: `/schools/${schoolSlug}/fil`,
     },
     {
       id: "settings",
-      label: "Parametres",
-      value: "Ouvrir",
+      label: t("sidebar.nav.settings"),
+      value: t("dashboard.school.openValue"),
       href: "/settings",
     },
   ];
@@ -1608,7 +1642,7 @@ export default function DashboardPage() {
       data-testid="dashboard-root"
       className="grid w-full min-w-0 gap-4 overflow-x-hidden min-[360px]:gap-6"
     >
-      <WarmWelcomePanel me={me} />
+      <WarmWelcomePanel me={me} t={t} />
 
       {me?.role === "PARENT" || me?.role === "STUDENT" ? (
         <>
@@ -1624,11 +1658,13 @@ export default function DashboardPage() {
                 summaries={notesSummaries}
                 loading={parentCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
               <ParentAccountCard
                 summary={accountSummary}
                 loading={parentCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
             </div>
           ) : null}
@@ -1676,6 +1712,7 @@ export default function DashboardPage() {
                 dashboard={richTeacher}
                 loading={teacherCardsLoading}
                 schoolSlug={schoolSlug}
+                t={t}
               />
               <TeacherHomeworkSection
                 dashboard={richTeacher}
@@ -1691,24 +1728,24 @@ export default function DashboardPage() {
       {isSchoolOperationsRole(me?.role) ? (
         <div className="grid gap-3 min-[360px]:gap-4 xl:grid-cols-3">
           <SchoolOperationsCard
-            title="Structure"
-            eyebrow="Etablissement"
+            title={t("dashboard.school.structureTitle")}
+            eyebrow={t("dashboard.school.structureEyebrow")}
             icon={Users}
             accent="from-[#ffe2b8] via-[#fff2dc] to-white"
             links={schoolStructureLinks}
             loading={schoolCardsLoading}
           />
           <SchoolOperationsCard
-            title="Scolarite"
-            eyebrow="Pedagogie"
+            title={t("dashboard.school.academicTitle")}
+            eyebrow={t("dashboard.school.academicEyebrow")}
             icon={ClipboardCheck}
             accent="from-[#ffd9cf] via-[#fff2e8] to-white"
             links={schoolAcademicLinks}
             loading={schoolCardsLoading}
           />
           <SchoolOperationsCard
-            title="Coordination"
-            eyebrow="Pilotage"
+            title={t("dashboard.school.coordTitle")}
+            eyebrow={t("dashboard.school.coordEyebrow")}
             icon={LayoutDashboard}
             accent="from-[#d6f2fb] via-[#edf9ff] to-white"
             links={schoolCoordinationLinks}

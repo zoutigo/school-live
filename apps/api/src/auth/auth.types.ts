@@ -17,6 +17,7 @@ export interface JwtPayload {
 export interface AuthenticatedUser {
   id: string;
   activeRole?: AppRole | null;
+  isTester?: boolean;
   platformRoles: PlatformRole[];
   activationStatus?: "PENDING" | "ACTIVE" | "SUSPENDED";
   memberships: Array<{

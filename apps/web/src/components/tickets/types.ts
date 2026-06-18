@@ -1,3 +1,5 @@
+import type { TranslateFn } from "../../i18n/useTranslation";
+
 export type TicketType = "BUG" | "FEATURE_REQUEST";
 
 export type TicketStatus =
@@ -7,18 +9,26 @@ export type TicketStatus =
   | "RESOLVED"
   | "CLOSED";
 
-export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
-  OPEN: "Ouvert",
-  IN_PROGRESS: "En cours",
-  ANSWERED: "Répondu",
-  RESOLVED: "Résolu",
-  CLOSED: "Fermé",
-};
+export function getTicketStatusLabels(
+  t: TranslateFn,
+): Record<TicketStatus, string> {
+  return {
+    OPEN: t("tickets.status.OPEN"),
+    IN_PROGRESS: t("tickets.status.IN_PROGRESS"),
+    ANSWERED: t("tickets.status.ANSWERED"),
+    RESOLVED: t("tickets.status.RESOLVED"),
+    CLOSED: t("tickets.status.CLOSED"),
+  };
+}
 
-export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
-  BUG: "Bug",
-  FEATURE_REQUEST: "Suggestion",
-};
+export function getTicketTypeLabels(
+  t: TranslateFn,
+): Record<TicketType, string> {
+  return {
+    BUG: t("tickets.type.BUG"),
+    FEATURE_REQUEST: t("tickets.type.FEATURE_REQUEST"),
+  };
+}
 
 export type TicketFolderKey = "open" | "answered" | "resolved" | "all";
 
@@ -28,12 +38,26 @@ export type TicketFolder = {
   statuses: TicketStatus[];
 };
 
-export const TICKET_FOLDERS: TicketFolder[] = [
-  { key: "open", label: "En cours", statuses: ["OPEN", "IN_PROGRESS"] },
-  { key: "answered", label: "Répondus", statuses: ["ANSWERED"] },
-  { key: "resolved", label: "Résolus", statuses: ["RESOLVED", "CLOSED"] },
-  { key: "all", label: "Tous", statuses: [] },
-];
+export function getTicketFolders(t: TranslateFn): TicketFolder[] {
+  return [
+    {
+      key: "open",
+      label: t("tickets.folder.open"),
+      statuses: ["OPEN", "IN_PROGRESS"],
+    },
+    {
+      key: "answered",
+      label: t("tickets.folder.answered"),
+      statuses: ["ANSWERED"],
+    },
+    {
+      key: "resolved",
+      label: t("tickets.folder.resolved"),
+      statuses: ["RESOLVED", "CLOSED"],
+    },
+    { key: "all", label: t("tickets.folder.all"), statuses: [] },
+  ];
+}
 
 export interface TicketAuthor {
   id: string;
