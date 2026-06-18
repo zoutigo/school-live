@@ -239,7 +239,7 @@ function ChildAccueilDashboard({
   }, [latestSnapshot]);
   const studentLabel = child
     ? `${child.lastName.toUpperCase()} ${child.firstName}`
-    : "Votre enfant";
+    : t("childAccueil.childFallback");
 
   return (
     <div className="grid gap-4">
@@ -248,7 +248,7 @@ function ChildAccueilDashboard({
           <div className="grid gap-2">
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-surface/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
               <BarChart3 className="h-3.5 w-3.5" />
-              Tableau de bord enfant
+              {t("childAccueil.badge")}
             </span>
             <div>
               <h2 className="font-heading text-2xl font-semibold text-text-primary">
@@ -256,17 +256,20 @@ function ChildAccueilDashboard({
               </h2>
               <p className="mt-1 text-sm text-text-secondary">
                 {child?.className
-                  ? `Vue synthese des modules de ${child.className}.`
-                  : "Vue synthese des modules de votre enfant."}
+                  ? t("childAccueil.subtitleWithClass").replace(
+                      "{className}",
+                      child.className,
+                    )
+                  : t("childAccueil.subtitleDefault")}
               </p>
             </div>
             <div className="grid gap-3 pt-2 sm:grid-cols-3">
               <SummaryStat
-                label="Moyenne generale"
+                label={t("childAccueil.stats.generalAverage")}
                 value={formatScore(
                   latestSnapshot?.generalAverage.student ?? null,
                 )}
-                hint={latestSnapshot?.label ?? "Aucune periode publiee"}
+                hint={latestSnapshot?.label ?? t("childAccueil.stats.noPeriod")}
                 accent="primary"
               />
               <SummaryStat
@@ -303,10 +306,12 @@ function ChildAccueilDashboard({
           <div className="rounded-[20px] border border-white/70 bg-white/80 p-4 shadow-[0_12px_28px_rgba(10,98,191,0.08)]">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">
               <Clock3 className="h-4 w-4 text-primary" />
-              Aujourd'hui
+              {t("childAccueil.today")}
             </div>
             {loading ? (
-              <p className="mt-4 text-sm text-text-secondary">Chargement...</p>
+              <p className="mt-4 text-sm text-text-secondary">
+                {t("common.loading")}
+              </p>
             ) : nextOccurrence ? (
               <div className="mt-4 grid gap-2">
                 <p className="font-heading text-lg font-semibold text-text-primary">
@@ -320,13 +325,16 @@ function ChildAccueilDashboard({
                 </p>
                 <p className="text-sm font-medium text-primary">
                   {nextOccurrence.room?.trim()
-                    ? `Salle ${nextOccurrence.room}`
-                    : "Salle a confirmer"}
+                    ? t("childAccueil.room").replace(
+                        "{room}",
+                        nextOccurrence.room,
+                      )
+                    : t("childAccueil.roomTBC")}
                 </p>
               </div>
             ) : (
               <p className="mt-4 text-sm text-text-secondary">
-                Aucun prochain cours identifiable pour le moment.
+                {t("childAccueil.noNextClass")}
               </p>
             )}
           </div>
@@ -337,26 +345,29 @@ function ChildAccueilDashboard({
         <div className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-2">
             <DashboardPanel
-              title="Suivi scolaire"
+              title={t("childAccueil.panel.grades.title")}
               icon={<BookOpen className="h-4 w-4" />}
               actionHref={`/schools/${schoolSlug}/children/${childId}/notes`}
-              actionLabel="Voir les notes"
+              actionLabel={t("childAccueil.panel.grades.action")}
             >
               <div className="grid gap-3">
                 <p className="text-sm text-text-secondary">
                   {latestSnapshot
-                    ? `Derniere periode publiee : ${latestSnapshot.label}`
-                    : "Aucune note publiee pour le moment."}
+                    ? t("childAccueil.panel.grades.period").replace(
+                        "{label}",
+                        latestSnapshot.label,
+                      )
+                    : t("childAccueil.panel.grades.empty")}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <MetricBadge
-                    label="Moyenne"
+                    label={t("childAccueil.metric.average")}
                     value={formatScore(
                       latestSnapshot?.generalAverage.student ?? null,
                     )}
                   />
                   <MetricBadge
-                    label="Matiere forte"
+                    label={t("childAccueil.metric.bestSubject")}
                     value={
                       bestSubject
                         ? `${bestSubject.subjectLabel} · ${formatScore(bestSubject.studentAverage)}`
@@ -394,14 +405,14 @@ function ChildAccueilDashboard({
           </div>
 
           <DashboardPanel
-            title="Acces rapides"
+            title={t("childAccueil.panel.quickAccess.title")}
             icon={<CalendarDays className="h-4 w-4" />}
           >
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {[
                 {
-                  label: "Notes",
-                  hint: "Evaluations et moyennes",
+                  label: t("childAccueil.quickLink.notes.label"),
+                  hint: t("childAccueil.quickLink.notes.hint"),
                   href: `/schools/${schoolSlug}/children/${childId}/notes`,
                 },
                 {
@@ -410,13 +421,13 @@ function ChildAccueilDashboard({
                   href: `/schools/${schoolSlug}/children/${childId}/vie-scolaire`,
                 },
                 {
-                  label: "Vie de classe",
-                  hint: "Fil et actualites de classe",
+                  label: t("childAccueil.quickLink.classFeed.label"),
+                  hint: t("childAccueil.quickLink.classFeed.hint"),
                   href: `/schools/${schoolSlug}/children/${childId}/vie-de-classe`,
                 },
                 {
-                  label: "Emploi du temps",
-                  hint: "Cours et prochains creneaux",
+                  label: t("childAccueil.quickLink.timetable.label"),
+                  hint: t("childAccueil.quickLink.timetable.hint"),
                   href: `/schools/${schoolSlug}/emploi-du-temps?childId=${encodeURIComponent(
                     childId,
                   )}`,
@@ -427,8 +438,8 @@ function ChildAccueilDashboard({
                   href: `/schools/${schoolSlug}/children/${childId}/messagerie`,
                 },
                 {
-                  label: "Cahier de texte",
-                  hint: "Travail et consignes",
+                  label: t("childAccueil.quickLink.homework.label"),
+                  hint: t("childAccueil.quickLink.homework.hint"),
                   href: `/schools/${schoolSlug}/children/${childId}/cahier-de-texte`,
                 },
               ].map((entry) => (
@@ -477,28 +488,27 @@ function ChildAccueilDashboard({
           </DashboardPanel>
 
           <DashboardPanel
-            title="Vie de classe"
+            title={t("childAccueil.panel.classFeed.title")}
             icon={<Users className="h-4 w-4" />}
             actionHref={`/schools/${schoolSlug}/children/${childId}/vie-de-classe`}
-            actionLabel="Voir la vie de classe"
+            actionLabel={t("childAccueil.panel.classFeed.action")}
           >
             <div className="grid gap-2 text-sm text-text-secondary">
+              <p>{t("childAccueil.panel.classFeed.desc1")}</p>
               <p>
-                L'accueil enfant regroupe maintenant les indicateurs utiles pour
-                eviter de dupliquer le fil dans plusieurs espaces.
-              </p>
-              <p>
-                Le fil d'actualite et les informations collectives de la classe
-                sont regroupes dans{" "}
+                {t("childAccueil.panel.classFeed.desc2")}{" "}
                 <span className="font-semibold text-text-primary">
-                  Vie de classe
+                  {t("childAccueil.panel.classFeed.title")}
                 </span>
                 .
               </p>
               <p>
                 {child?.className
-                  ? `Accedez aux publications, rappels et temps forts de ${child.className}.`
-                  : "Accedez aux publications, rappels et temps forts de la classe."}
+                  ? t("childAccueil.panel.classFeed.desc3WithClass").replace(
+                      "{className}",
+                      child.className,
+                    )
+                  : t("childAccueil.panel.classFeed.desc3Default")}
               </p>
             </div>
           </DashboardPanel>

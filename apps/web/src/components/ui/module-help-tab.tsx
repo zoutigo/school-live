@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslation } from "../../i18n/useTranslation";
+
 type ModuleHelpAction = {
   name: string;
   purpose: string;
@@ -19,11 +23,13 @@ export function ModuleHelpTab({
   actions,
   tips = [],
 }: ModuleHelpTabProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="grid gap-4">
       <div className="content-panel p-4">
         <p className="text-sm font-heading font-semibold text-text-primary">
-          A quoi sert ce module ?
+          {t("help.purpose")}
         </p>
         <p className="mt-2 text-sm text-text-secondary">
           <span className="font-medium text-text-primary">{moduleName}</span> :{" "}
@@ -38,22 +44,26 @@ export function ModuleHelpTab({
               {action.name}
             </p>
             <p className="mt-2 text-sm text-text-secondary">
-              <span className="font-medium text-text-primary">Pour quoi ?</span>{" "}
+              <span className="font-medium text-text-primary">
+                {t("help.why")}
+              </span>{" "}
               {action.purpose}
             </p>
             <p className="mt-1 text-sm text-text-secondary">
-              <span className="font-medium text-text-primary">Comment ?</span>{" "}
+              <span className="font-medium text-text-primary">
+                {t("help.how")}
+              </span>{" "}
               {action.howTo}
             </p>
             <p className="mt-1 text-sm text-text-secondary">
               <span className="font-medium text-text-primary">
-                Consequence dans le module :
+                {t("help.moduleImpact")}
               </span>{" "}
               {action.moduleImpact}
             </p>
             <p className="mt-1 text-sm text-text-secondary">
               <span className="font-medium text-text-primary">
-                Consequence sur les autres modules :
+                {t("help.crossModuleImpact")}
               </span>{" "}
               {action.crossModuleImpact}
             </p>
@@ -64,7 +74,7 @@ export function ModuleHelpTab({
       {tips.length > 0 ? (
         <div className="content-panel p-4">
           <p className="text-sm font-heading font-semibold text-text-primary">
-            Repere rapide
+            {t("help.tips")}
           </p>
           <ul className="mt-2 grid gap-1 text-sm text-text-secondary">
             {tips.map((tip) => (

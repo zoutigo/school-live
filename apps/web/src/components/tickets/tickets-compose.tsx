@@ -9,6 +9,7 @@ import { Button } from "../ui/button";
 import { FormField } from "../ui/form-field";
 import { FormTextInput, FormTextarea } from "../ui/form-controls";
 import { createTicket } from "./tickets-api";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const schema = z.object({
   type: z.enum(["BUG", "FEATURE_REQUEST"]),
@@ -37,6 +38,7 @@ export function TicketsCompose({
   onError,
   onCancel,
 }: Props) {
+  const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -81,7 +83,9 @@ export function TicketsCompose({
       });
       onSuccess();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Une erreur est survenue.");
+      onError(
+        e instanceof Error ? e.message : t("tickets.compose.errorDefault"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -95,11 +99,11 @@ export function TicketsCompose({
     >
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-text-primary">
-          Nouveau ticket
+          {t("tickets.compose.newTicket")}
         </h2>
         <button
           type="button"
-          aria-label="Annuler"
+          aria-label={t("tickets.compose.cancel")}
           onClick={onCancel}
           className="rounded-full p-1.5 text-text-secondary transition hover:bg-warm-highlight"
           data-testid="compose-cancel-btn"
@@ -111,7 +115,7 @@ export function TicketsCompose({
       {/* Type */}
       <div>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-          Type
+          {t("tickets.compose.typeLabel")}
         </p>
         <Controller
           control={control}
@@ -122,18 +126,18 @@ export function TicketsCompose({
                 [
                   {
                     value: "BUG",
-                    label: "Bug",
-                    desc: "Quelque chose ne fonctionne pas",
+                    labelKey: "tickets.compose.typeBugLabel",
+                    descKey: "tickets.compose.typeBugDesc",
                     Icon: Bug,
                   },
                   {
                     value: "FEATURE_REQUEST",
-                    label: "Suggestion",
-                    desc: "Une idée d'amélioration",
+                    labelKey: "tickets.compose.typeFeatureLabel",
+                    descKey: "tickets.compose.typeFeatureDesc",
                     Icon: Lightbulb,
                   },
                 ] as const
-              ).map(({ value, label, desc, Icon }) => (
+              ).map(({ value, labelKey, descKey, Icon }) => (
                 <button
                   key={value}
                   type="button"
@@ -146,9 +150,9 @@ export function TicketsCompose({
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="text-xs font-semibold">{label}</span>
+                  <span className="text-xs font-semibold">{t(labelKey)}</span>
                   <span className="text-[10px] leading-tight opacity-75">
-                    {desc}
+                    {t(descKey)}
                   </span>
                 </button>
               ))}
@@ -158,7 +162,10 @@ export function TicketsCompose({
       </div>
 
       {/* Titre */}
-      <FormField label="Titre" error={errors.title?.message}>
+      <FormField
+        label={t("tickets.compose.fieldTitle")}
+        error={errors.title?.message}
+      >
         <Controller
           control={control}
           name="title"
@@ -168,8 +175,8 @@ export function TicketsCompose({
               invalid={!!errors.title}
               placeholder={
                 selectedType === "BUG"
-                  ? "Ex : Impossible de sauvegarder une note"
-                  : "Ex : Ajouter un mode sombre"
+                  ? t("tickets.compose.placeholderBug")
+                  : t("tickets.compose.placeholderFeature")
               }
               data-testid="title-input"
             />
@@ -179,12 +186,12 @@ export function TicketsCompose({
 
       {/* Description */}
       <FormField
-        label="Description"
+        label={t("tickets.compose.fieldDesc")}
         error={errors.description?.message}
         hint={
           selectedType === "BUG"
-            ? "Étapes pour reproduire, comportement attendu vs observé."
-            : "En quoi cette fonctionnalité améliorerait votre usage ?"
+            ? t("tickets.compose.descHintBug")
+            : t("tickets.compose.descHintFeature")
         }
       >
         <Controller
@@ -195,7 +202,7 @@ export function TicketsCompose({
               {...field}
               invalid={!!errors.description}
               rows={5}
-              placeholder="Votre description…"
+              placeholder={t("tickets.compose.descPlaceholder")}
               data-testid="description-textarea"
             />
           )}
@@ -205,8 +212,10 @@ export function TicketsCompose({
       {/* Pièces jointes */}
       <div>
         <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-          Pièces jointes{" "}
-          <span className="font-normal lowercase">(optionnel, max 5)</span>
+          {t("tickets.compose.attachmentsLabel")}{" "}
+          <span className="font-normal lowercase">
+            {t("tickets.compose.attachmentsOpt")}
+          </span>
         </p>
         <input
           ref={fileRef}
@@ -224,7 +233,7 @@ export function TicketsCompose({
           data-testid="pick-file-btn"
         >
           <Paperclip className="h-3.5 w-3.5" />
-          Ajouter un fichier
+          {t("tickets.compose.addFile")}
         </button>
 
         {files.length > 0 && (
@@ -240,7 +249,7 @@ export function TicketsCompose({
                 </span>
                 <button
                   type="button"
-                  aria-label="Supprimer"
+                  aria-label={t("common.delete")}
                   onClick={() => removeFile(idx)}
                   data-testid={`remove-file-${idx}`}
                 >
@@ -259,7 +268,9 @@ export function TicketsCompose({
         iconLeft={<Send className="h-4 w-4" />}
         data-testid="submit-btn"
       >
-        {submitting ? "Envoi…" : "Envoyer le ticket"}
+        {submitting
+          ? t("tickets.compose.submitting")
+          : t("tickets.compose.submit")}
       </Button>
     </form>
   );

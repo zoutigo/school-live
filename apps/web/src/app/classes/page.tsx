@@ -19,6 +19,7 @@ import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -299,6 +300,7 @@ function fallbackSubjectColor(subjectId: string) {
 
 export default function ClassesPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("list");
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -505,7 +507,7 @@ export default function ClassesPage() {
 
       if (me.role === "SCHOOL_ADMIN") {
         if (!me.schoolSlug) {
-          setError("Aucune ecole rattachee a ce compte SCHOOL_ADMIN.");
+          setError(t("classes.error.noSchoolAdmin"));
           setLoading(false);
           return;
         }
@@ -527,9 +529,7 @@ export default function ClassesPage() {
       setSchoolSlug(schoolRows[0]?.slug ?? null);
       setLoading(false);
     } catch {
-      setError(
-        "API indisponible. Verifiez que le serveur backend est demarre.",
-      );
+      setError(t("classes.error.apiDown"));
       setLoading(false);
     }
   }
@@ -574,7 +574,7 @@ export default function ClassesPage() {
         !subjectsResponse.ok ||
         !studentsResponse.ok
       ) {
-        setError("Impossible de charger les donnees des classes.");
+        setError(t("classes.error.loadFailed"));
         return;
       }
 
@@ -629,7 +629,7 @@ export default function ClassesPage() {
         );
       }
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setLoadingData(false);
     }
@@ -698,7 +698,7 @@ export default function ClassesPage() {
         !studentsResponse.ok ||
         !overridesResponse.ok
       ) {
-        setError("Impossible de charger le detail de la classe.");
+        setError(t("classes.error.loadDetailFailed"));
         return;
       }
 
@@ -755,7 +755,7 @@ export default function ClassesPage() {
         });
       }
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setLoadingClassDetails(false);
     }
@@ -770,7 +770,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -807,10 +807,10 @@ export default function ClassesPage() {
         schoolYearId: createClassForm.getValues("schoolYearId") ?? "",
         curriculumId: "",
       });
-      setSuccess("Classe creee.");
+      setSuccess(t("classes.success.created"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setSubmittingClass(false);
     }
@@ -836,7 +836,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -872,10 +872,10 @@ export default function ClassesPage() {
       }
 
       setEditingClassId(null);
-      setSuccess("Classe modifiee.");
+      setSuccess(t("classes.success.edited"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setSavingClass(false);
     }
@@ -888,7 +888,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -920,10 +920,10 @@ export default function ClassesPage() {
       }
 
       setDeleteTarget(null);
-      setSuccess("Classe supprimee.");
+      setSuccess(t("classes.success.deleted"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setDeleting(false);
     }
@@ -941,7 +941,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -978,10 +978,10 @@ export default function ClassesPage() {
         return;
       }
 
-      setSuccess("Affectation enseignant creee.");
+      setSuccess(t("classes.success.teacherAssigned"));
       await loadClassDetails(schoolSlug, selectedClass);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setSubmittingTeacherAssignment(false);
     }
@@ -1005,7 +1005,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -1048,10 +1048,10 @@ export default function ClassesPage() {
         teacherUserId: "",
         subjectId: "",
       });
-      setSuccess("Affectation enseignant modifiee.");
+      setSuccess(t("classes.success.teacherAssignmentEdited"));
       await loadClassDetails(schoolSlug, selectedClass);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setSavingAssignment(false);
     }
@@ -1066,7 +1066,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -1099,18 +1099,18 @@ export default function ClassesPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Affectation eleve impossible.");
+            : (payload?.message ?? t("classes.error.studentAssignFailed"));
         setError(String(message));
         return;
       }
 
-      setSuccess("Eleve affecte a la classe.");
+      setSuccess(t("classes.success.studentAssigned"));
       await Promise.all([
         loadData(schoolSlug),
         loadClassDetails(schoolSlug, selectedClass),
       ]);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setAssigningStudent(false);
     }
@@ -1125,7 +1125,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -1157,15 +1157,15 @@ export default function ClassesPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Affectation du referent impossible.");
+            : (payload?.message ?? t("classes.error.referentAssignFailed"));
         setError(String(message));
         return;
       }
 
-      setSuccess("Enseignant referent affecte a la classe.");
+      setSuccess(t("classes.success.referentAssigned"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setSavingClassReferent(false);
     }
@@ -1186,7 +1186,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -1219,15 +1219,15 @@ export default function ClassesPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Mise a jour impossible.");
+            : (payload?.message ?? t("classes.error.updateFailed"));
         setError(String(message));
         return;
       }
 
-      setSuccess("Statut d'affectation eleve mis a jour.");
+      setSuccess(t("classes.success.enrollmentUpdated"));
       await loadClassDetails(schoolSlug, selectedClass);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setUpdatingEnrollmentId(null);
     }
@@ -1240,7 +1240,7 @@ export default function ClassesPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("classes.error.csrf"));
       router.replace("/");
       return;
     }
@@ -1272,7 +1272,7 @@ export default function ClassesPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Mise a jour couleur impossible.");
+            : (payload?.message ?? t("classes.error.colorUpdateFailed"));
         setError(String(message));
         return;
       }
@@ -1281,10 +1281,10 @@ export default function ClassesPage() {
         ...current,
         [subjectId]: colorHex.toUpperCase(),
       }));
-      setSuccess("Couleur de la matiere mise a jour.");
+      setSuccess(t("classes.success.colorUpdated"));
       setColorPickerSubject(null);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("classes.error.network"));
     } finally {
       setSavingSubjectColor(false);
     }
@@ -1417,61 +1417,60 @@ export default function ClassesPage() {
 
   if (loading) {
     return (
-      <AppShell schoolSlug={schoolSlug} schoolName="Gestion des classes">
-        <Card title="Classes" subtitle="Chargement...">
-          <p className="text-sm text-text-secondary">Chargement...</p>
+      <AppShell schoolSlug={schoolSlug} schoolName={t("classes.shellName")}>
+        <Card title={t("classes.title")} subtitle={t("common.loading")}>
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         </Card>
       </AppShell>
     );
   }
 
   return (
-    <AppShell schoolSlug={schoolSlug} schoolName="Gestion des classes">
+    <AppShell schoolSlug={schoolSlug} schoolName={t("classes.shellName")}>
       <div className="grid gap-4">
-        <Card
-          title="Classes"
-          subtitle="Structure des classes basee sur annee scolaire et curriculum"
-        >
+        <Card title={t("classes.title")} subtitle={t("classes.subtitle")}>
           <div className="section-tabs mb-4">
             <button
               type="button"
               onClick={() => setTab("list")}
               className={`section-tab ${tab === "list" ? "section-tab-active" : ""}`}
             >
-              Liste
+              {t("classes.tab.list")}
             </button>
             <button
               type="button"
               onClick={() => setTab("details")}
               className={`section-tab ${tab === "details" ? "section-tab-active" : ""}`}
             >
-              Voir
+              {t("classes.tab.details")}
             </button>
             <button
               type="button"
               onClick={() => setTab("assignments")}
               className={`section-tab ${tab === "assignments" ? "section-tab-active" : ""}`}
             >
-              Affectations
+              {t("classes.tab.assignments")}
             </button>
             <button
               type="button"
               onClick={() => setTab("help")}
               className={`section-tab ${tab === "help" ? "section-tab-active" : ""}`}
             >
-              Aide
+              {t("classes.tab.help")}
             </button>
 
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
-                <span className="text-text-secondary">Ecole</span>
+                <span className="text-text-secondary">
+                  {t("classes.schoolLabel")}
+                </span>
                 <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
                 >
-                  <option value="">Selectionner une ecole</option>
+                  <option value="">{t("classes.schoolPlaceholder")}</option>
                   {schools.map((school) => (
                     <option key={school.id} value={school.slug}>
                       {school.name}
@@ -1484,12 +1483,14 @@ export default function ClassesPage() {
 
           {tab !== "list" && tab !== "help" ? (
             <label className="mb-4 grid gap-1 text-sm md:max-w-[420px]">
-              <span className="text-text-secondary">Classe</span>
+              <span className="text-text-secondary">
+                {t("classes.classLabel")}
+              </span>
               <FormSelect
                 value={selectedClassId}
                 onChange={(event) => setSelectedClassId(event.target.value)}
               >
-                <option value="">Selectionner</option>
+                <option value="">{t("common.select")}</option>
                 {sortedClasses.map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {entry.name} ({entry.schoolYear.label})
@@ -1501,46 +1502,41 @@ export default function ClassesPage() {
 
           {tab === "help" ? (
             <ModuleHelpTab
-              moduleName="Classes"
-              moduleSummary="ce module centralise la liste des classes, leur detail pedagogique et les affectations eleves/enseignants."
+              moduleName={t("classes.help.moduleName")}
+              moduleSummary={t("classes.help.moduleSummary")}
               actions={[
                 {
-                  name: "Creer",
-                  purpose:
-                    "ajouter une classe avec annee scolaire et curriculum.",
-                  howTo:
-                    "dans l'onglet Liste, remplir le formulaire puis valider.",
-                  moduleImpact:
-                    "la classe devient visible et selectionnable dans les onglets Voir et Affectations.",
-                  crossModuleImpact:
-                    "les modules inscriptions, enseignants et notes utilisent cette classe.",
+                  name: t("classes.help.action1.name"),
+                  purpose: t("classes.help.action1.purpose"),
+                  howTo: t("classes.help.action1.howTo"),
+                  moduleImpact: t("classes.help.action1.moduleImpact"),
+                  crossModuleImpact: t(
+                    "classes.help.action1.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Voir",
-                  purpose: "consulter le detail complet d'une classe.",
-                  howTo:
-                    "cliquer sur le nom de la classe dans la liste ou selectionner une classe dans l'onglet Voir.",
-                  moduleImpact:
-                    "affiche niveau, curriculum, matieres, enseignants, eleves et parents lies.",
-                  crossModuleImpact:
-                    "permet de controler la coherence des donnees avant saisie des notes.",
+                  name: t("classes.help.action2.name"),
+                  purpose: t("classes.help.action2.purpose"),
+                  howTo: t("classes.help.action2.howTo"),
+                  moduleImpact: t("classes.help.action2.moduleImpact"),
+                  crossModuleImpact: t(
+                    "classes.help.action2.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Affecter / Modifier",
-                  purpose:
-                    "gerer les affectations eleves et enseignants de la classe.",
-                  howTo:
-                    "utiliser l'onglet Affectations pour ajouter ou mettre a jour les liaisons.",
-                  moduleImpact:
-                    "les tables d'affectations classe sont synchronisees.",
-                  crossModuleImpact:
-                    "les droits enseignants et les inscriptions eleves sont alignes pour les autres modules.",
+                  name: t("classes.help.action3.name"),
+                  purpose: t("classes.help.action3.purpose"),
+                  howTo: t("classes.help.action3.howTo"),
+                  moduleImpact: t("classes.help.action3.moduleImpact"),
+                  crossModuleImpact: t(
+                    "classes.help.action3.crossModuleImpact",
+                  ),
                 },
               ]}
             />
           ) : !schoolSlug ? (
             <p className="text-sm text-text-secondary">
-              Selectionnez une ecole pour gerer ses classes.
+              {t("classes.noSchool")}
             </p>
           ) : tab === "list" ? (
             <div className="grid gap-4">
@@ -1549,14 +1545,14 @@ export default function ClassesPage() {
                 onSubmit={createClassForm.handleSubmit(onCreateClass)}
               >
                 <FormField
-                  label="Nom de classe"
+                  label={t("classes.list.nameLabel")}
                   className="md:col-span-2"
                   error={createClassForm.formState.errors.name?.message}
                 >
                   <FormTextInput
-                    aria-label="Nom de classe"
+                    aria-label={t("classes.list.nameLabel")}
                     {...createClassForm.register("name")}
-                    placeholder="Ex: 6e A"
+                    placeholder={t("classes.list.namePlaceholder")}
                     invalid={
                       Boolean(createClassForm.formState.errors.name) ||
                       !String(createClassValues.name ?? "").trim()
@@ -1565,11 +1561,11 @@ export default function ClassesPage() {
                 </FormField>
 
                 <FormField
-                  label="Annee scolaire"
+                  label={t("classes.list.yearLabel")}
                   error={createClassForm.formState.errors.schoolYearId?.message}
                 >
                   <FormSelect
-                    aria-label="Annee scolaire"
+                    aria-label={t("classes.list.yearLabel")}
                     value={createClassValues.schoolYearId ?? ""}
                     onChange={(event) => {
                       createClassForm.setValue(
@@ -1586,7 +1582,7 @@ export default function ClassesPage() {
                       createClassForm.formState.errors.schoolYearId,
                     )}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {schoolYears.map((schoolYear) => (
                       <option key={schoolYear.id} value={schoolYear.id}>
                         {schoolYear.label}
@@ -1597,11 +1593,11 @@ export default function ClassesPage() {
                 </FormField>
 
                 <FormField
-                  label="Curriculum"
+                  label={t("classes.list.curriculumLabel")}
                   error={createClassForm.formState.errors.curriculumId?.message}
                 >
                   <FormSelect
-                    aria-label="Curriculum"
+                    aria-label={t("classes.list.curriculumLabel")}
                     value={createClassValues.curriculumId ?? ""}
                     onChange={(event) => {
                       createClassForm.setValue(
@@ -1619,7 +1615,7 @@ export default function ClassesPage() {
                       !(createClassValues.curriculumId ?? "")
                     }
                   >
-                    <option value="">Aucun</option>
+                    <option value="">{t("classes.list.curriculumNone")}</option>
                     {curriculums.map((entry) => (
                       <option key={entry.id} value={entry.id}>
                         {entry.name}
@@ -1637,7 +1633,9 @@ export default function ClassesPage() {
                       submittingClass || !createClassForm.formState.isValid
                     }
                   >
-                    {submittingClass ? "Creation..." : "Ajouter"}
+                    {submittingClass
+                      ? t("classes.list.creating")
+                      : t("classes.list.add")}
                   </SubmitButton>
                 </div>
               </form>
@@ -1646,14 +1644,26 @@ export default function ClassesPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Classe</th>
-                      <th className="px-3 py-2 font-medium">Niveau</th>
-                      <th className="px-3 py-2 font-medium">Filiere</th>
-                      <th className="px-3 py-2 font-medium">Curriculum</th>
-                      <th className="px-3 py-2 font-medium">Annee</th>
-                      <th className="px-3 py-2 font-medium">Eleves</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.list.colClass")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.list.colLevel")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.list.colTrack")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.list.colCurriculum")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.list.colYear")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.list.colStudents")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Actions
+                        {t("classes.list.colActions")}
                       </th>
                     </tr>
                   </thead>
@@ -1664,7 +1674,7 @@ export default function ClassesPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={7}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     )}
@@ -1712,7 +1722,7 @@ export default function ClassesPage() {
                                   variant="secondary"
                                   onClick={() => startEditClass(entry)}
                                 >
-                                  Modifier
+                                  {t("common.edit")}
                                 </Button>
                                 <Button
                                   type="button"
@@ -1724,7 +1734,7 @@ export default function ClassesPage() {
                                     })
                                   }
                                 >
-                                  Supprimer
+                                  {t("common.delete")}
                                 </Button>
                               </div>
                             </td>
@@ -1734,7 +1744,7 @@ export default function ClassesPage() {
                               <td className="px-3 py-3" colSpan={7}>
                                 <div className="grid gap-3 md:grid-cols-3">
                                   <FormField
-                                    label="Nom de classe"
+                                    label={t("classes.list.nameLabel")}
                                     error={
                                       editClassForm.formState.errors.name
                                         ?.message
@@ -1759,7 +1769,7 @@ export default function ClassesPage() {
                                     />
                                   </FormField>
                                   <FormField
-                                    label="Annee scolaire"
+                                    label={t("classes.list.yearLabel")}
                                     error={
                                       editClassForm.formState.errors
                                         .schoolYearId?.message
@@ -1784,7 +1794,7 @@ export default function ClassesPage() {
                                       }
                                     >
                                       <option value="">
-                                        Selectionner annee
+                                        {t("common.select")}
                                       </option>
                                       {schoolYears.map((schoolYear) => (
                                         <option
@@ -1797,7 +1807,7 @@ export default function ClassesPage() {
                                     </FormSelect>
                                   </FormField>
                                   <FormField
-                                    label="Curriculum"
+                                    label={t("classes.list.curriculumLabel")}
                                     error={
                                       editClassForm.formState.errors
                                         .curriculumId?.message
@@ -1821,7 +1831,9 @@ export default function ClassesPage() {
                                         )
                                       }
                                     >
-                                      <option value="">Aucun</option>
+                                      <option value="">
+                                        {t("classes.list.curriculumNone")}
+                                      </option>
                                       {curriculums.map((curriculum) => (
                                         <option
                                           key={curriculum.id}
@@ -1847,8 +1859,8 @@ export default function ClassesPage() {
                                       }}
                                     >
                                       {savingClass
-                                        ? "Enregistrement..."
-                                        : "Enregistrer"}
+                                        ? t("classes.list.saving")
+                                        : t("common.save")}
                                     </Button>
                                     <Button
                                       type="button"
@@ -1857,7 +1869,7 @@ export default function ClassesPage() {
                                         setEditingClassId(null);
                                       }}
                                     >
-                                      Annuler
+                                      {t("common.cancel")}
                                     </Button>
                                   </div>
                                 </div>
@@ -1873,7 +1885,7 @@ export default function ClassesPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={7}
                         >
-                          Aucune classe trouvee.
+                          {t("classes.list.empty")}
                         </td>
                       </tr>
                     ) : null}
@@ -1883,38 +1895,38 @@ export default function ClassesPage() {
             </div>
           ) : !selectedClass ? (
             <p className="text-sm text-text-secondary">
-              Selectionnez une classe pour voir ses details et gerer ses
-              affectations.
+              {t("classes.noClass")}
             </p>
           ) : tab === "details" ? (
             <div className="grid gap-4">
               <div className="rounded-card border border-border bg-background p-3 text-sm">
                 <p className="font-medium text-text-primary">
-                  Informations de la classe
+                  {t("classes.details.info")}
                 </p>
                 <p className="mt-1 text-text-secondary">
-                  Nom: {selectedClass.name}
+                  {t("classes.details.name")}: {selectedClass.name}
                 </p>
                 <p className="mt-1 text-text-secondary">
-                  Annee: {selectedClass.schoolYear.label}
+                  {t("classes.details.year")}: {selectedClass.schoolYear.label}
                 </p>
                 <p className="mt-1 text-text-secondary">
-                  Niveau:{" "}
+                  {t("classes.details.level")}:{" "}
                   {selectedClass.academicLevel
                     ? `${selectedClass.academicLevel.code} - ${selectedClass.academicLevel.label}`
                     : "-"}
                 </p>
                 <p className="mt-1 text-text-secondary">
-                  Filiere:{" "}
+                  {t("classes.details.track")}:{" "}
                   {selectedClass.track
                     ? `${selectedClass.track.code} - ${selectedClass.track.label}`
                     : "-"}
                 </p>
                 <p className="mt-1 text-text-secondary">
-                  Curriculum: {selectedClass.curriculum?.name ?? "-"}
+                  {t("classes.details.curriculum")}:{" "}
+                  {selectedClass.curriculum?.name ?? "-"}
                 </p>
                 <p className="mt-1 text-text-secondary">
-                  Enseignant referent:{" "}
+                  {t("classes.details.referent")}:{" "}
                   {selectedClass.referentTeacher
                     ? `${selectedClass.referentTeacher.lastName} ${selectedClass.referentTeacher.firstName}`
                     : "-"}
@@ -1925,7 +1937,7 @@ export default function ClassesPage() {
                       href={`/schools/${schoolSlug}/classes/${selectedClass.id}/fil`}
                       className="inline-flex h-9 items-center rounded-card border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition hover:bg-primary/15"
                     >
-                      Ouvrir le fil de classe
+                      {t("classes.details.openFeed")}
                     </Link>
                   </div>
                 ) : null}
@@ -1933,17 +1945,27 @@ export default function ClassesPage() {
 
               <div className="rounded-card border border-border bg-background p-3">
                 <p className="mb-2 text-sm font-medium text-text-primary">
-                  Matieres et enseignants
+                  {t("classes.details.subjectsTeachers")}
                 </p>
                 <div className="overflow-x-auto">
                   <table className="min-w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-text-secondary">
-                        <th className="px-3 py-2 font-medium">Matiere</th>
-                        <th className="px-3 py-2 font-medium">Couleur</th>
-                        <th className="px-3 py-2 font-medium">Coefficient</th>
-                        <th className="px-3 py-2 font-medium">Heures/sem.</th>
-                        <th className="px-3 py-2 font-medium">Enseignant(s)</th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("classes.details.colSubject")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("classes.details.colColor")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("classes.details.colCoefficient")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("classes.details.colWeeklyHours")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("classes.details.colTeachers")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1953,7 +1975,7 @@ export default function ClassesPage() {
                             className="px-3 py-6 text-text-secondary"
                             colSpan={5}
                           >
-                            Chargement...
+                            {t("common.loading")}
                           </td>
                         </tr>
                       ) : effectiveSubjects.length === 0 ? (
@@ -1962,7 +1984,7 @@ export default function ClassesPage() {
                             className="px-3 py-6 text-text-secondary"
                             colSpan={5}
                           >
-                            Aucune matiere definie pour cette classe.
+                            {t("classes.details.noSubjects")}
                           </td>
                         </tr>
                       ) : (
@@ -1988,11 +2010,15 @@ export default function ClassesPage() {
                                       subjectName: row.subjectName,
                                     })
                                   }
-                                  title={`Modifier couleur ${row.subjectName}`}
-                                  aria-label={`Modifier couleur ${row.subjectName}`}
+                                  title={t(
+                                    "classes.details.editColorTitle",
+                                  ).replace("{name}", row.subjectName)}
+                                  aria-label={t(
+                                    "classes.details.editColorTitle",
+                                  ).replace("{name}", row.subjectName)}
                                 >
                                   <span className="sr-only">
-                                    Modifier couleur
+                                    {t("classes.details.editColor")}
                                   </span>
                                 </button>
                               ) : (
@@ -2032,17 +2058,21 @@ export default function ClassesPage() {
 
               <div className="rounded-card border border-border bg-background p-3">
                 <p className="mb-2 text-sm font-medium text-text-primary">
-                  Eleves et parents
+                  {t("classes.details.studentsParents")}
                 </p>
                 <div className="overflow-x-auto">
                   <table className="min-w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-border text-left text-text-secondary">
-                        <th className="px-3 py-2 font-medium">Eleve</th>
                         <th className="px-3 py-2 font-medium">
-                          Statut inscription
+                          {t("classes.details.colStudent")}
                         </th>
-                        <th className="px-3 py-2 font-medium">Parents lies</th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("classes.details.colEnrollmentStatus")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("classes.details.colParents")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2052,7 +2082,7 @@ export default function ClassesPage() {
                             className="px-3 py-6 text-text-secondary"
                             colSpan={3}
                           >
-                            Chargement...
+                            {t("common.loading")}
                           </td>
                         </tr>
                       ) : classStudents.length === 0 ? (
@@ -2061,7 +2091,7 @@ export default function ClassesPage() {
                             className="px-3 py-6 text-text-secondary"
                             colSpan={3}
                           >
-                            Aucun eleve dans cette classe.
+                            {t("classes.details.noStudents")}
                           </td>
                         </tr>
                       ) : (
@@ -2102,7 +2132,7 @@ export default function ClassesPage() {
             <div className="grid gap-4">
               <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
                 <FormField
-                  label="Enseignant referent de la classe"
+                  label={t("classes.assignments.referentLabel")}
                   className="md:col-span-2"
                   error={referentForm.formState.errors.teacherUserId?.message}
                 >
@@ -2121,7 +2151,7 @@ export default function ClassesPage() {
                       )
                     }
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {sortedTeachers.map((teacher) => (
                       <option key={teacher.userId} value={teacher.userId}>
                         {teacher.lastName} {teacher.firstName}
@@ -2143,15 +2173,15 @@ export default function ClassesPage() {
                     }}
                   >
                     {savingClassReferent
-                      ? "Affectation..."
-                      : "Affecter referent"}
+                      ? t("classes.assignments.assigning")
+                      : t("classes.assignments.assignReferent")}
                   </Button>
                 </div>
               </div>
 
               <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
                 <FormField
-                  label="Eleve"
+                  label={t("classes.assignments.studentLabel")}
                   error={assignStudentForm.formState.errors.studentId?.message}
                 >
                   <FormSelect
@@ -2169,7 +2199,7 @@ export default function ClassesPage() {
                       )
                     }
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {allStudentsForAssignment.map((student) => (
                       <option key={student.id} value={student.id}>
                         {student.label}
@@ -2177,7 +2207,9 @@ export default function ClassesPage() {
                     ))}
                   </FormSelect>
                 </FormField>
-                <FormField label="Statut d'inscription">
+                <FormField
+                  label={t("classes.assignments.enrollmentStatusLabel")}
+                >
                   <FormSelect
                     value={assignStudentValues.status ?? "ACTIVE"}
                     onChange={(event) =>
@@ -2217,7 +2249,9 @@ export default function ClassesPage() {
                       )();
                     }}
                   >
-                    {assigningStudent ? "Affectation..." : "Affecter eleve"}
+                    {assigningStudent
+                      ? t("classes.assignments.assigning")
+                      : t("classes.assignments.assignStudent")}
                   </Button>
                 </div>
               </div>
@@ -2229,14 +2263,14 @@ export default function ClassesPage() {
                 )}
               >
                 <FormField
-                  label="Enseignant"
+                  label={t("classes.assignments.teacherLabel")}
                   error={
                     createTeacherAssignmentForm.formState.errors.teacherUserId
                       ?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Enseignant"
+                    aria-label={t("classes.assignments.teacherLabel")}
                     invalid={
                       !!createTeacherAssignmentForm.formState.errors
                         .teacherUserId
@@ -2254,7 +2288,7 @@ export default function ClassesPage() {
                       );
                     }}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {sortedTeachers.map((teacher) => (
                       <option key={teacher.userId} value={teacher.userId}>
                         {teacher.lastName} {teacher.firstName}
@@ -2263,14 +2297,14 @@ export default function ClassesPage() {
                   </FormSelect>
                 </FormField>
                 <FormField
-                  label="Matiere"
+                  label={t("classes.assignments.subjectLabel")}
                   error={
                     createTeacherAssignmentForm.formState.errors.subjectId
                       ?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Matiere"
+                    aria-label={t("classes.assignments.subjectLabel")}
                     invalid={
                       !!createTeacherAssignmentForm.formState.errors.subjectId
                     }
@@ -2287,7 +2321,7 @@ export default function ClassesPage() {
                       );
                     }}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {(effectiveSubjects.length > 0
                       ? effectiveSubjects.map((entry) => ({
                           id: entry.subjectId,
@@ -2312,24 +2346,30 @@ export default function ClassesPage() {
                     }
                   >
                     {submittingTeacherAssignment
-                      ? "Affectation..."
-                      : "Affecter enseignant"}
+                      ? t("classes.assignments.assigning")
+                      : t("classes.assignments.assignTeacher")}
                   </SubmitButton>
                 </div>
               </form>
 
               <div className="overflow-x-auto rounded-card border border-border bg-background p-3">
                 <p className="mb-2 text-sm font-medium text-text-primary">
-                  Affectations enseignants
+                  {t("classes.assignments.teacherAssignments")}
                 </p>
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Annee</th>
-                      <th className="px-3 py-2 font-medium">Enseignant</th>
-                      <th className="px-3 py-2 font-medium">Matiere</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.assignments.colYear")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.assignments.colTeacher")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.assignments.colSubject")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Action
+                        {t("classes.assignments.colAction")}
                       </th>
                     </tr>
                   </thead>
@@ -2340,7 +2380,7 @@ export default function ClassesPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={4}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     ) : classAssignments.length === 0 ? (
@@ -2349,7 +2389,7 @@ export default function ClassesPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={4}
                         >
-                          Aucune affectation enseignant.
+                          {t("classes.assignments.noTeacherAssignments")}
                         </td>
                       </tr>
                     ) : (
@@ -2372,7 +2412,7 @@ export default function ClassesPage() {
                                 variant="secondary"
                                 onClick={() => startEditAssignment(assignment)}
                               >
-                                Modifier
+                                {t("common.edit")}
                               </Button>
                             </td>
                           </tr>
@@ -2381,14 +2421,18 @@ export default function ClassesPage() {
                               <td className="px-3 py-3" colSpan={4}>
                                 <div className="grid gap-3 md:grid-cols-3">
                                   <FormField
-                                    label="Enseignant edition affectation"
+                                    label={t(
+                                      "classes.assignments.teacherLabel",
+                                    )}
                                     error={
                                       editTeacherAssignmentForm.formState.errors
                                         .teacherUserId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Enseignant edition affectation"
+                                      aria-label={t(
+                                        "classes.assignments.teacherLabel",
+                                      )}
                                       invalid={
                                         !!editTeacherAssignmentForm.formState
                                           .errors.teacherUserId
@@ -2409,7 +2453,9 @@ export default function ClassesPage() {
                                         )
                                       }
                                     >
-                                      <option value="">Selectionner</option>
+                                      <option value="">
+                                        {t("common.select")}
+                                      </option>
                                       {sortedTeachers.map((teacher) => (
                                         <option
                                           key={teacher.userId}
@@ -2421,14 +2467,18 @@ export default function ClassesPage() {
                                     </FormSelect>
                                   </FormField>
                                   <FormField
-                                    label="Matiere edition affectation"
+                                    label={t(
+                                      "classes.assignments.subjectLabel",
+                                    )}
                                     error={
                                       editTeacherAssignmentForm.formState.errors
                                         .subjectId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Matiere edition affectation"
+                                      aria-label={t(
+                                        "classes.assignments.subjectLabel",
+                                      )}
                                       invalid={
                                         !!editTeacherAssignmentForm.formState
                                           .errors.subjectId
@@ -2449,7 +2499,9 @@ export default function ClassesPage() {
                                         )
                                       }
                                     >
-                                      <option value="">Selectionner</option>
+                                      <option value="">
+                                        {t("common.select")}
+                                      </option>
                                       {(effectiveSubjects.length > 0
                                         ? effectiveSubjects.map((entry) => ({
                                             id: entry.subjectId,
@@ -2491,8 +2543,8 @@ export default function ClassesPage() {
                                       }
                                     >
                                       {savingAssignment
-                                        ? "Enregistrement..."
-                                        : "Enregistrer"}
+                                        ? t("classes.list.saving")
+                                        : t("common.save")}
                                     </Button>
                                     <Button
                                       type="button"
@@ -2505,7 +2557,7 @@ export default function ClassesPage() {
                                         });
                                       }}
                                     >
-                                      Annuler
+                                      {t("common.cancel")}
                                     </Button>
                                   </div>
                                 </div>
@@ -2521,16 +2573,22 @@ export default function ClassesPage() {
 
               <div className="overflow-x-auto rounded-card border border-border bg-background p-3">
                 <p className="mb-2 text-sm font-medium text-text-primary">
-                  Affectations eleves
+                  {t("classes.assignments.studentAssignments")}
                 </p>
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Eleve</th>
-                      <th className="px-3 py-2 font-medium">Parents</th>
-                      <th className="px-3 py-2 font-medium">Statut</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.details.colStudent")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.details.colParents")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.assignments.colStatus")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Action
+                        {t("classes.assignments.colAction")}
                       </th>
                     </tr>
                   </thead>
@@ -2541,7 +2599,7 @@ export default function ClassesPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={4}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     ) : classStudents.length === 0 ? (
@@ -2550,7 +2608,7 @@ export default function ClassesPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={4}
                         >
-                          Aucun eleve affecte.
+                          {t("classes.assignments.noStudents")}
                         </td>
                       </tr>
                     ) : (
@@ -2619,7 +2677,7 @@ export default function ClassesPage() {
                               >
                                 {updatingEnrollmentId === enrollment.id
                                   ? "..."
-                                  : "Maj"}
+                                  : t("classes.assignments.updateStatus")}
                               </Button>
                             </td>
                           </tr>
@@ -2643,13 +2701,13 @@ export default function ClassesPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Confirmer la suppression"
+        title={t("classes.delete.title")}
         message={
           deleteTarget
-            ? `Voulez-vous supprimer la classe ${deleteTarget.label} ?`
+            ? t("classes.delete.message").replace("{label}", deleteTarget.label)
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel={t("classes.delete.confirm")}
         loading={deleting}
         onCancel={() => {
           if (!deleting) {
@@ -2671,20 +2729,23 @@ export default function ClassesPage() {
                 setColorPickerSubject(null);
               }
             }}
-            aria-label="Fermer le selecteur de couleur"
+            aria-label={t("classes.colorPicker.closeAria")}
           />
           <div className="relative w-full max-w-md rounded-card border border-border bg-surface p-5 shadow-soft">
             <h2 className="font-heading text-lg font-semibold text-text-primary">
-              Couleur de {colorPickerSubject.subjectName}
+              {t("classes.colorPicker.title").replace(
+                "{name}",
+                colorPickerSubject.subjectName,
+              )}
             </h2>
             <p className="mt-1 text-sm text-text-secondary">
-              Choisissez une couleur non deja utilisee dans cette classe.
+              {t("classes.colorPicker.hint")}
             </p>
 
             <div className="mt-4 grid grid-cols-7 gap-2">
               {availableColorsForPicker.length === 0 ? (
                 <p className="col-span-7 text-sm text-text-secondary">
-                  Aucune couleur libre dans la palette actuelle.
+                  {t("classes.colorPicker.noColors")}
                 </p>
               ) : (
                 availableColorsForPicker.map((colorHex, index) =>
@@ -2711,7 +2772,10 @@ export default function ClassesPage() {
                           );
                         }}
                         title={colorHex}
-                        aria-label={`Choisir ${colorHex}`}
+                        aria-label={t("classes.colorPicker.chooseAria").replace(
+                          "{color}",
+                          colorHex,
+                        )}
                       >
                         {isCurrent ? (
                           <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-white">
@@ -2732,7 +2796,7 @@ export default function ClassesPage() {
                 disabled={savingSubjectColor}
                 onClick={() => setColorPickerSubject(null)}
               >
-                Fermer
+                {t("common.close")}
               </Button>
             </div>
           </div>

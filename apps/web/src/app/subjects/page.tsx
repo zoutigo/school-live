@@ -18,6 +18,7 @@ import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -134,6 +135,7 @@ const createAssignmentSchema = z.object({
 
 export default function SubjectsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [tab, setTab] = useState<Tab>("catalog");
   const [loading, setLoading] = useState(true);
@@ -983,12 +985,9 @@ export default function SubjectsPage() {
   );
 
   return (
-    <AppShell schoolSlug={schoolSlug} schoolName="Gestion des matieres">
+    <AppShell schoolSlug={schoolSlug} schoolName={t("subjects.shellName")}>
       <div className="grid gap-4">
-        <Card
-          title="Matieres"
-          subtitle="Catalogue, sous-branches, types d'evaluation et affectations"
-        >
+        <Card title={t("subjects.title")} subtitle={t("subjects.subtitle")}>
           <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
             <button
               type="button"
@@ -999,7 +998,7 @@ export default function SubjectsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Catalogue
+              {t("subjects.tab.catalog")}
             </button>
             <button
               type="button"
@@ -1010,7 +1009,7 @@ export default function SubjectsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Affectations
+              {t("subjects.tab.assignments")}
             </button>
             <button
               type="button"
@@ -1021,7 +1020,7 @@ export default function SubjectsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Types d'evaluation
+              {t("subjects.tab.evaluationTypes")}
             </button>
             <button
               type="button"
@@ -1032,19 +1031,21 @@ export default function SubjectsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Aide
+              {t("subjects.tab.help")}
             </button>
 
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
-                <span className="text-text-secondary">Ecole</span>
+                <span className="text-text-secondary">
+                  {t("subjects.schoolLabel")}
+                </span>
                 <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
                 >
-                  <option value="">Selectionner une ecole</option>
+                  <option value="">{t("subjects.schoolPlaceholder")}</option>
                   {schools.map((school) => (
                     <option key={school.id} value={school.slug}>
                       {school.name}
@@ -1057,61 +1058,51 @@ export default function SubjectsPage() {
 
           {tab === "help" ? (
             <ModuleHelpTab
-              moduleName="Matieres"
-              moduleSummary="ce module gere le catalogue des matieres, les sous-branches, les types d'evaluation et les affectations enseignants par classe."
+              moduleName={t("subjects.help.moduleName")}
+              moduleSummary={t("subjects.help.moduleSummary")}
               actions={[
                 {
-                  name: "Creer une matiere",
-                  purpose: "definir les disciplines disponibles dans l'ecole.",
-                  howTo:
-                    "ajouter la matiere dans Catalogue, puis l'utiliser dans les programmes et affectations.",
-                  moduleImpact:
-                    "la matiere devient selectionnable dans le module Matieres.",
-                  crossModuleImpact:
-                    "elle pourra etre rattachee aux curriculums, classes, sous-branches et evaluations.",
+                  name: t("subjects.help.action1.name"),
+                  purpose: t("subjects.help.action1.purpose"),
+                  howTo: t("subjects.help.action1.howTo"),
+                  moduleImpact: t("subjects.help.action1.moduleImpact"),
+                  crossModuleImpact: t(
+                    "subjects.help.action1.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Affecter un enseignant",
-                  purpose:
-                    "lier un prof a une matiere pour une classe et une annee precise.",
-                  howTo:
-                    "dans Affectations, choisir annee, enseignant, classe et matiere, puis enregistrer.",
-                  moduleImpact:
-                    "l'affectation apparait dans la liste operationnelle.",
-                  crossModuleImpact:
-                    "le professeur pourra saisir/consulter les notes sur son perimetre assigne.",
+                  name: t("subjects.help.action2.name"),
+                  purpose: t("subjects.help.action2.purpose"),
+                  howTo: t("subjects.help.action2.howTo"),
+                  moduleImpact: t("subjects.help.action2.moduleImpact"),
+                  crossModuleImpact: t(
+                    "subjects.help.action2.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Structurer les evaluations",
-                  purpose:
-                    "parametrer les sous-branches de matiere et les types d'evaluation.",
-                  howTo:
-                    "ajouter des sous-branches dans Catalogue et gerer les types dans l'onglet dedie.",
-                  moduleImpact:
-                    "les enseignants creent ensuite des evaluations mieux classees.",
-                  crossModuleImpact:
-                    "le module Notes parent/eleve restitue la matiere et la sous-branche correspondantes.",
+                  name: t("subjects.help.action3.name"),
+                  purpose: t("subjects.help.action3.purpose"),
+                  howTo: t("subjects.help.action3.howTo"),
+                  moduleImpact: t("subjects.help.action3.moduleImpact"),
+                  crossModuleImpact: t(
+                    "subjects.help.action3.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Modifier/Supprimer",
-                  purpose:
-                    "ajuster les erreurs d'affectation ou nettoyer les elements non utilises.",
-                  howTo:
-                    "utiliser les actions ligne par ligne dans les tableaux.",
-                  moduleImpact:
-                    "mise a jour immediate des donnees de matieres/affectations.",
-                  crossModuleImpact:
-                    "impacte directement les droits de saisie de notes et la coherence avec classes/inscriptions.",
+                  name: t("subjects.help.action4.name"),
+                  purpose: t("subjects.help.action4.purpose"),
+                  howTo: t("subjects.help.action4.howTo"),
+                  moduleImpact: t("subjects.help.action4.moduleImpact"),
+                  crossModuleImpact: t(
+                    "subjects.help.action4.crossModuleImpact",
+                  ),
                 },
               ]}
-              tips={[
-                "Toujours verifier que la classe et l'annee scolaire correspondent.",
-                "Si une classe a un curriculum, l'affectation respecte la liste des matieres autorisees (avec overrides).",
-              ]}
+              tips={[t("subjects.help.tip1"), t("subjects.help.tip2")]}
             />
           ) : !schoolSlug ? (
             <p className="text-sm text-text-secondary">
-              Selectionnez une ecole pour gerer les matieres.
+              {t("subjects.noSchool")}
             </p>
           ) : tab === "catalog" ? (
             <div className="grid gap-4">
@@ -1120,13 +1111,13 @@ export default function SubjectsPage() {
                 onSubmit={createSubjectForm.handleSubmit(onCreateSubject)}
               >
                 <FormField
-                  label="Nouvelle matiere"
+                  label={t("subjects.catalog.newSubjectLabel")}
                   error={createSubjectForm.formState.errors.name?.message}
                 >
                   <FormTextInput
-                    aria-label="Nouvelle matiere"
+                    aria-label={t("subjects.catalog.newSubjectLabel")}
                     {...createSubjectForm.register("name")}
-                    placeholder="Ex: Mathematiques"
+                    placeholder={t("subjects.catalog.newSubjectPlaceholder")}
                     invalid={
                       Boolean(createSubjectForm.formState.errors.name) ||
                       !String(createSubjectValues.name ?? "").trim()
@@ -1142,7 +1133,9 @@ export default function SubjectsPage() {
                       submittingSubject || !createSubjectForm.formState.isValid
                     }
                   >
-                    {submittingSubject ? "Creation..." : "Ajouter"}
+                    {submittingSubject
+                      ? t("subjects.catalog.creating")
+                      : t("subjects.catalog.add")}
                   </SubmitButton>
                 </div>
               </form>
@@ -1151,13 +1144,23 @@ export default function SubjectsPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Matiere</th>
-                      <th className="px-3 py-2 font-medium">Sous-branches</th>
-                      <th className="px-3 py-2 font-medium">Curriculums</th>
-                      <th className="px-3 py-2 font-medium">Affectations</th>
-                      <th className="px-3 py-2 font-medium">Notes</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.catalog.colSubject")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.catalog.colBranches")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.catalog.colCurriculums")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.catalog.colAssignments")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.catalog.colGrades")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Actions
+                        {t("subjects.catalog.colActions")}
                       </th>
                     </tr>
                   </thead>
@@ -1168,7 +1171,7 @@ export default function SubjectsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={6}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     )}
@@ -1183,7 +1186,7 @@ export default function SubjectsPage() {
                               <div className="flex flex-wrap gap-2">
                                 {subject.branches.length === 0 ? (
                                   <span className="text-text-secondary">
-                                    Aucune
+                                    {t("subjects.catalog.noBranches")}
                                   </span>
                                 ) : (
                                   subject.branches.map((branch) => (
@@ -1218,7 +1221,9 @@ export default function SubjectsPage() {
                                       [subject.id]: event.target.value,
                                     }))
                                   }
-                                  placeholder="Nouvelle sous-branche"
+                                  placeholder={t(
+                                    "subjects.catalog.newBranchPlaceholder",
+                                  )}
                                   className="min-w-[180px] text-xs"
                                 />
                                 <Button
@@ -1232,8 +1237,8 @@ export default function SubjectsPage() {
                                   }
                                 >
                                   {submittingBranchForSubjectId === subject.id
-                                    ? "Ajout..."
-                                    : "Ajouter"}
+                                    ? t("subjects.catalog.adding")
+                                    : t("subjects.catalog.add")}
                                 </Button>
                               </div>
                             </td>
@@ -1253,14 +1258,14 @@ export default function SubjectsPage() {
                                   variant="secondary"
                                   onClick={() => startEditSubject(subject)}
                                 >
-                                  Modifier
+                                  {t("common.edit")}
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="secondary"
                                   onClick={() => askDeleteSubject(subject)}
                                 >
-                                  Supprimer
+                                  {t("common.delete")}
                                 </Button>
                               </div>
                             </td>
@@ -1270,14 +1275,16 @@ export default function SubjectsPage() {
                               <td className="px-3 py-3" colSpan={6}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
                                   <FormField
-                                    label="Nom de la matiere"
+                                    label={t("subjects.catalog.editNameLabel")}
                                     error={
                                       editSubjectForm.formState.errors.name
                                         ?.message
                                     }
                                   >
                                     <FormTextInput
-                                      aria-label="Nom de la matiere"
+                                      aria-label={t(
+                                        "subjects.catalog.editNameLabel",
+                                      )}
                                       {...editSubjectForm.register("name")}
                                       invalid={Boolean(
                                         editSubjectForm.formState.errors.name,
@@ -1305,8 +1312,8 @@ export default function SubjectsPage() {
                                     }}
                                   >
                                     {savingSubject
-                                      ? "Enregistrement..."
-                                      : "Enregistrer"}
+                                      ? t("subjects.catalog.saving")
+                                      : t("common.save")}
                                   </Button>
                                   <Button
                                     type="button"
@@ -1316,7 +1323,7 @@ export default function SubjectsPage() {
                                       editSubjectForm.reset();
                                     }}
                                   >
-                                    Annuler
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </td>
@@ -1331,7 +1338,7 @@ export default function SubjectsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={6}
                         >
-                          Aucune matiere.
+                          {t("subjects.catalog.empty")}
                         </td>
                       </tr>
                     ) : null}
@@ -1348,15 +1355,15 @@ export default function SubjectsPage() {
                 )}
               >
                 <FormField
-                  label="Code"
+                  label={t("subjects.evalType.codeLabel")}
                   error={
                     createEvaluationTypeForm.formState.errors.code?.message
                   }
                 >
                   <FormTextInput
-                    aria-label="Code"
+                    aria-label={t("subjects.evalType.codeLabel")}
                     {...createEvaluationTypeForm.register("code")}
-                    placeholder="DEVOIR"
+                    placeholder={t("subjects.evalType.codePlaceholder")}
                     invalid={
                       Boolean(createEvaluationTypeForm.formState.errors.code) ||
                       !String(createEvaluationTypeValues.code ?? "").trim()
@@ -1364,15 +1371,15 @@ export default function SubjectsPage() {
                   />
                 </FormField>
                 <FormField
-                  label="Libelle"
+                  label={t("subjects.evalType.labelLabel")}
                   error={
                     createEvaluationTypeForm.formState.errors.label?.message
                   }
                 >
                   <FormTextInput
-                    aria-label="Libelle"
+                    aria-label={t("subjects.evalType.labelLabel")}
                     {...createEvaluationTypeForm.register("label")}
-                    placeholder="Devoir surveille"
+                    placeholder={t("subjects.evalType.labelPlaceholder")}
                     invalid={
                       Boolean(
                         createEvaluationTypeForm.formState.errors.label,
@@ -1391,7 +1398,9 @@ export default function SubjectsPage() {
                       !createEvaluationTypeForm.formState.isValid
                     }
                   >
-                    {submittingEvaluationType ? "Creation..." : "Ajouter"}
+                    {submittingEvaluationType
+                      ? t("subjects.catalog.creating")
+                      : t("subjects.catalog.add")}
                   </SubmitButton>
                 </div>
               </form>
@@ -1400,11 +1409,17 @@ export default function SubjectsPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Code</th>
-                      <th className="px-3 py-2 font-medium">Libelle</th>
-                      <th className="px-3 py-2 font-medium">Origine</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.evalType.colCode")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.evalType.colLabel")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.evalType.colOrigin")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Actions
+                        {t("subjects.catalog.colActions")}
                       </th>
                     </tr>
                   </thead>
@@ -1418,8 +1433,8 @@ export default function SubjectsPage() {
                           <td className="px-3 py-2">{evaluationType.label}</td>
                           <td className="px-3 py-2">
                             {evaluationType.isDefault
-                              ? "Defaut"
-                              : "Personnalise"}
+                              ? t("subjects.evalType.originDefault")
+                              : t("subjects.evalType.originCustom")}
                           </td>
                           <td className="px-3 py-2 text-right">
                             <div className="inline-flex gap-2">
@@ -1430,7 +1445,7 @@ export default function SubjectsPage() {
                                   startEditEvaluationType(evaluationType)
                                 }
                               >
-                                Modifier
+                                {t("common.edit")}
                               </Button>
                               <Button
                                 type="button"
@@ -1440,7 +1455,7 @@ export default function SubjectsPage() {
                                   askDeleteEvaluationType(evaluationType)
                                 }
                               >
-                                Supprimer
+                                {t("common.delete")}
                               </Button>
                             </div>
                           </td>
@@ -1450,14 +1465,16 @@ export default function SubjectsPage() {
                             <td className="px-3 py-3" colSpan={4}>
                               <div className="grid gap-3 md:grid-cols-[180px_1fr_auto_auto]">
                                 <FormField
-                                  label="Code"
+                                  label={t("subjects.evalType.codeLabel")}
                                   error={
                                     editEvaluationTypeForm.formState.errors.code
                                       ?.message
                                   }
                                 >
                                   <FormTextInput
-                                    aria-label="Code type"
+                                    aria-label={t(
+                                      "subjects.evalType.codeEditAria",
+                                    )}
                                     {...editEvaluationTypeForm.register("code")}
                                     invalid={Boolean(
                                       editEvaluationTypeForm.formState.errors
@@ -1466,14 +1483,16 @@ export default function SubjectsPage() {
                                   />
                                 </FormField>
                                 <FormField
-                                  label="Libelle"
+                                  label={t("subjects.evalType.labelLabel")}
                                   error={
                                     editEvaluationTypeForm.formState.errors
                                       .label?.message
                                   }
                                 >
                                   <FormTextInput
-                                    aria-label="Libelle type"
+                                    aria-label={t(
+                                      "subjects.evalType.labelEditAria",
+                                    )}
                                     {...editEvaluationTypeForm.register(
                                       "label",
                                     )}
@@ -1507,8 +1526,8 @@ export default function SubjectsPage() {
                                   }}
                                 >
                                   {savingEvaluationType
-                                    ? "Enregistrement..."
-                                    : "Enregistrer"}
+                                    ? t("subjects.catalog.saving")
+                                    : t("common.save")}
                                 </Button>
                                 <Button
                                   type="button"
@@ -1518,7 +1537,7 @@ export default function SubjectsPage() {
                                     editEvaluationTypeForm.reset();
                                   }}
                                 >
-                                  Annuler
+                                  {t("common.cancel")}
                                 </Button>
                               </div>
                             </td>
@@ -1532,9 +1551,7 @@ export default function SubjectsPage() {
 
               {!loading && !loadingData && evaluationTypes.length === 0 ? (
                 <p className="text-sm text-text-secondary">
-                  Les types par defaut seront initialises automatiquement des la
-                  premiere creation d'evaluation. Vous pouvez aussi preparer vos
-                  propres types ici.
+                  {t("subjects.evalType.emptyHint")}
                 </p>
               ) : null}
             </div>
@@ -1545,13 +1562,13 @@ export default function SubjectsPage() {
                 onSubmit={createAssignmentForm.handleSubmit(onCreateAssignment)}
               >
                 <FormField
-                  label="Annee scolaire"
+                  label={t("subjects.assignment.yearLabel")}
                   error={
                     createAssignmentForm.formState.errors.schoolYearId?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Annee scolaire"
+                    aria-label={t("subjects.assignment.yearLabel")}
                     invalid={
                       !!createAssignmentForm.formState.errors.schoolYearId
                     }
@@ -1573,7 +1590,7 @@ export default function SubjectsPage() {
                       });
                     }}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {schoolYears.map((entry) => (
                       <option key={entry.id} value={entry.id}>
                         {entry.label}
@@ -1584,13 +1601,13 @@ export default function SubjectsPage() {
                 </FormField>
 
                 <FormField
-                  label="Enseignant"
+                  label={t("subjects.assignment.teacherLabel")}
                   error={
                     createAssignmentForm.formState.errors.teacherUserId?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Enseignant"
+                    aria-label={t("subjects.assignment.teacherLabel")}
                     invalid={
                       !!createAssignmentForm.formState.errors.teacherUserId
                     }
@@ -1607,7 +1624,7 @@ export default function SubjectsPage() {
                       );
                     }}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {teachers.map((teacher) => (
                       <option key={teacher.userId} value={teacher.userId}>
                         {teacher.lastName} {teacher.firstName}
@@ -1617,11 +1634,11 @@ export default function SubjectsPage() {
                 </FormField>
 
                 <FormField
-                  label="Classe"
+                  label={t("subjects.assignment.classLabel")}
                   error={createAssignmentForm.formState.errors.classId?.message}
                 >
                   <FormSelect
-                    aria-label="Classe"
+                    aria-label={t("subjects.assignment.classLabel")}
                     invalid={!!createAssignmentForm.formState.errors.classId}
                     value={createAssignmentValues.classId ?? ""}
                     onChange={(event) => {
@@ -1636,7 +1653,7 @@ export default function SubjectsPage() {
                       );
                     }}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {filteredClassroomsForCreate.map((entry) => (
                       <option key={entry.id} value={entry.id}>
                         {entry.name}
@@ -1646,13 +1663,13 @@ export default function SubjectsPage() {
                 </FormField>
 
                 <FormField
-                  label="Matiere"
+                  label={t("subjects.assignment.subjectLabel")}
                   error={
                     createAssignmentForm.formState.errors.subjectId?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Matiere"
+                    aria-label={t("subjects.assignment.subjectLabel")}
                     invalid={!!createAssignmentForm.formState.errors.subjectId}
                     value={createAssignmentValues.subjectId ?? ""}
                     onChange={(event) => {
@@ -1667,7 +1684,7 @@ export default function SubjectsPage() {
                       );
                     }}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {sortedSubjects.map((subject) => (
                       <option key={subject.id} value={subject.id}>
                         {subject.name}
@@ -1684,8 +1701,8 @@ export default function SubjectsPage() {
                     }
                   >
                     {submittingAssignment
-                      ? "Creation..."
-                      : "Ajouter affectation"}
+                      ? t("subjects.catalog.creating")
+                      : t("subjects.assignment.add")}
                   </SubmitButton>
                 </div>
               </form>
@@ -1694,12 +1711,20 @@ export default function SubjectsPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Annee</th>
-                      <th className="px-3 py-2 font-medium">Enseignant</th>
-                      <th className="px-3 py-2 font-medium">Classe</th>
-                      <th className="px-3 py-2 font-medium">Matiere</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.assignment.colYear")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.assignment.colTeacher")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.assignment.colClass")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.assignment.colSubject")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Actions
+                        {t("subjects.catalog.colActions")}
                       </th>
                     </tr>
                   </thead>
@@ -1710,7 +1735,7 @@ export default function SubjectsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={5}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     )}
@@ -1742,7 +1767,7 @@ export default function SubjectsPage() {
                                     startEditAssignment(assignment)
                                   }
                                 >
-                                  Modifier
+                                  {t("common.edit")}
                                 </Button>
                                 <Button
                                   type="button"
@@ -1751,7 +1776,7 @@ export default function SubjectsPage() {
                                     askDeleteAssignment(assignment)
                                   }
                                 >
-                                  Supprimer
+                                  {t("common.delete")}
                                 </Button>
                               </div>
                             </td>
@@ -1762,14 +1787,16 @@ export default function SubjectsPage() {
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-4">
                                   <FormField
-                                    label="Annee scolaire"
+                                    label={t("subjects.assignment.yearLabel")}
                                     error={
                                       editAssignmentForm.formState.errors
                                         .schoolYearId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Annee scolaire edition"
+                                      aria-label={t(
+                                        "subjects.assignment.yearLabel",
+                                      )}
                                       invalid={
                                         !!editAssignmentForm.formState.errors
                                           .schoolYearId
@@ -1799,7 +1826,7 @@ export default function SubjectsPage() {
                                       }}
                                     >
                                       <option value="">
-                                        Selectionner annee
+                                        {t("common.select")}
                                       </option>
                                       {schoolYears.map((entry) => (
                                         <option key={entry.id} value={entry.id}>
@@ -1810,14 +1837,18 @@ export default function SubjectsPage() {
                                   </FormField>
 
                                   <FormField
-                                    label="Enseignant"
+                                    label={t(
+                                      "subjects.assignment.teacherLabel",
+                                    )}
                                     error={
                                       editAssignmentForm.formState.errors
                                         .teacherUserId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Enseignant edition"
+                                      aria-label={t(
+                                        "subjects.assignment.teacherLabel",
+                                      )}
                                       invalid={
                                         !!editAssignmentForm.formState.errors
                                           .teacherUserId
@@ -1838,7 +1869,7 @@ export default function SubjectsPage() {
                                       }}
                                     >
                                       <option value="">
-                                        Selectionner enseignant
+                                        {t("common.select")}
                                       </option>
                                       {teachers.map((teacher) => (
                                         <option
@@ -1852,14 +1883,16 @@ export default function SubjectsPage() {
                                   </FormField>
 
                                   <FormField
-                                    label="Classe"
+                                    label={t("subjects.assignment.classLabel")}
                                     error={
                                       editAssignmentForm.formState.errors
                                         .classId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Classe edition"
+                                      aria-label={t(
+                                        "subjects.assignment.classLabel",
+                                      )}
                                       invalid={
                                         !!editAssignmentForm.formState.errors
                                           .classId
@@ -1878,7 +1911,7 @@ export default function SubjectsPage() {
                                       }}
                                     >
                                       <option value="">
-                                        Selectionner classe
+                                        {t("common.select")}
                                       </option>
                                       {classrooms
                                         .filter(
@@ -1899,14 +1932,18 @@ export default function SubjectsPage() {
                                   </FormField>
 
                                   <FormField
-                                    label="Matiere"
+                                    label={t(
+                                      "subjects.assignment.subjectLabel",
+                                    )}
                                     error={
                                       editAssignmentForm.formState.errors
                                         .subjectId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Matiere edition"
+                                      aria-label={t(
+                                        "subjects.assignment.subjectLabel",
+                                      )}
                                       invalid={
                                         !!editAssignmentForm.formState.errors
                                           .subjectId
@@ -1927,7 +1964,7 @@ export default function SubjectsPage() {
                                       }}
                                     >
                                       <option value="">
-                                        Selectionner matiere
+                                        {t("common.select")}
                                       </option>
                                       {sortedSubjects.map((subject) => (
                                         <option
@@ -1963,8 +2000,8 @@ export default function SubjectsPage() {
                                     }}
                                   >
                                     {savingAssignment
-                                      ? "Enregistrement..."
-                                      : "Enregistrer"}
+                                      ? t("subjects.catalog.saving")
+                                      : t("common.save")}
                                   </Button>
                                   <Button
                                     type="button"
@@ -1974,7 +2011,7 @@ export default function SubjectsPage() {
                                       editAssignmentForm.reset();
                                     }}
                                   >
-                                    Annuler
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </td>
@@ -1991,7 +2028,7 @@ export default function SubjectsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={5}
                         >
-                          Aucune affectation.
+                          {t("subjects.assignment.empty")}
                         </td>
                       </tr>
                     ) : null}
@@ -2012,11 +2049,16 @@ export default function SubjectsPage() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title="Confirmer la suppression"
+        title={t("subjects.delete.title")}
         message={
-          deleteTarget ? `Voulez-vous supprimer ${deleteTarget.label} ?` : ""
+          deleteTarget
+            ? t("subjects.delete.message").replace(
+                "{label}",
+                deleteTarget.label,
+              )
+            : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel={t("subjects.delete.confirm")}
         loading={deleting}
         onCancel={() => {
           if (!deleting) {

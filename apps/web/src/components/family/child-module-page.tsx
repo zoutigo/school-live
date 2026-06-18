@@ -151,7 +151,7 @@ export function ChildModulePage({
         );
       }
     } catch {
-      setError("Impossible de charger le profil parent.");
+      setError(t("childModule.error.loadParent"));
     } finally {
       setLoading(false);
     }
@@ -211,13 +211,23 @@ export function ChildModulePage({
                 href={`/schools/${schoolSlug}/children/${childId}/${item.key}`}
                 className={`section-tab ${currentTab === item.key ? "section-tab-active" : ""}`}
               >
-                {item.key === "vie-scolaire"
-                  ? t("discipline.sidebar.vieScolaire")
-                  : item.key === "cahier-de-texte"
-                    ? t("homework.sidebar.cahierDeTexte")
-                    : item.key === "messagerie"
-                      ? t("messaging.nav.title")
-                      : item.label}
+                {item.key === "accueil"
+                  ? t("childModule.tab.home")
+                  : item.key === "vie-scolaire"
+                    ? t("discipline.sidebar.vieScolaire")
+                    : item.key === "vie-de-classe"
+                      ? t("childModule.tab.classFeed")
+                      : item.key === "notes"
+                        ? t("childModule.tab.grades")
+                        : item.key === "cahier-de-texte"
+                          ? t("homework.sidebar.cahierDeTexte")
+                          : item.key === "messagerie"
+                            ? t("messaging.nav.title")
+                            : item.key === "manuels-ressources"
+                              ? t("childModule.tab.manuels")
+                              : item.key === "formulaires-sondages"
+                                ? t("childModule.tab.formulaires")
+                                : item.label}
               </Link>
             ))}
           </div>
@@ -230,20 +240,20 @@ export function ChildModulePage({
               onClick={() => setTab("content")}
               className={`section-tab ${tab === "content" ? "section-tab-active" : ""}`}
             >
-              Vue
+              {t("childModule.tabContent")}
             </button>
             <button
               type="button"
               onClick={() => setTab("help")}
               className={`section-tab ${tab === "help" ? "section-tab-active" : ""}`}
             >
-              Aide
+              {t("childModule.tabHelp")}
             </button>
           </div>
         )}
 
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : tab === "help" ? (

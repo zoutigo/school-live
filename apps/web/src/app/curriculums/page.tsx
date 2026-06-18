@@ -19,6 +19,7 @@ import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -137,6 +138,7 @@ const curriculumSubjectFormSchema = z.object({
 
 export default function CurriculumsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [tab, setTab] = useState<Tab>("curriculums");
   const [loading, setLoading] = useState(true);
@@ -309,7 +311,7 @@ export default function CurriculumsPage() {
 
       if (me.role === "SCHOOL_ADMIN") {
         if (!me.schoolSlug) {
-          setError("Aucune ecole rattachee a ce compte SCHOOL_ADMIN.");
+          setError(t("curriculums.error.noSchoolAdmin"));
           setLoading(false);
           return;
         }
@@ -331,9 +333,7 @@ export default function CurriculumsPage() {
       setSchoolSlug(schoolRows[0]?.slug ?? null);
       setLoading(false);
     } catch {
-      setError(
-        "API indisponible. Verifiez que le serveur backend est demarre.",
-      );
+      setError(t("curriculums.error.apiDown"));
       setLoading(false);
     }
   }
@@ -366,7 +366,7 @@ export default function CurriculumsPage() {
         !subjectsRes.ok ||
         !curriculumsRes.ok
       ) {
-        setError("Impossible de charger les curriculums.");
+        setError(t("curriculums.error.loadFailed"));
         return;
       }
 
@@ -402,7 +402,7 @@ export default function CurriculumsPage() {
         });
       }
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setLoadingData(false);
     }
@@ -424,13 +424,13 @@ export default function CurriculumsPage() {
       );
 
       if (!response.ok) {
-        setError("Impossible de charger les matieres du curriculum.");
+        setError(t("curriculums.error.loadSubjectsFailed"));
         return;
       }
 
       setCurriculumSubjects((await response.json()) as CurriculumSubject[]);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     }
   }
 
@@ -443,7 +443,7 @@ export default function CurriculumsPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -472,16 +472,16 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Creation niveau impossible.");
+            : (payload?.message ?? t("curriculums.error.levelCreateFailed"));
         setError(String(message));
         return;
       }
 
       academicLevelForm.reset({ code: "", label: "" });
-      setSuccess("Niveau academique cree.");
+      setSuccess(t("curriculums.success.levelCreated"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setSubmittingAcademicLevel(false);
     }
@@ -505,7 +505,7 @@ export default function CurriculumsPage() {
     }
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -537,16 +537,16 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Mise a jour niveau impossible.");
+            : (payload?.message ?? t("curriculums.error.levelUpdateFailed"));
         setError(String(message));
         return;
       }
 
       setEditingAcademicLevelId(null);
-      setSuccess("Niveau academique modifie.");
+      setSuccess(t("curriculums.success.levelEdited"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setSavingAcademicLevel(false);
     }
@@ -558,7 +558,7 @@ export default function CurriculumsPage() {
     }
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -585,15 +585,15 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Suppression niveau impossible.");
+            : (payload?.message ?? t("curriculums.error.levelDeleteFailed"));
         setError(String(message));
         return;
       }
 
-      setSuccess("Niveau academique supprime.");
+      setSuccess(t("curriculums.success.levelDeleted"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setDeletingAcademicLevelId(null);
     }
@@ -606,7 +606,7 @@ export default function CurriculumsPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -632,16 +632,16 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Creation filiere impossible.");
+            : (payload?.message ?? t("curriculums.error.trackCreateFailed"));
         setError(String(message));
         return;
       }
 
       trackForm.reset({ code: "", label: "" });
-      setSuccess("Filiere creee.");
+      setSuccess(t("curriculums.success.trackCreated"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setSubmittingTrack(false);
     }
@@ -665,7 +665,7 @@ export default function CurriculumsPage() {
     }
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -697,16 +697,16 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Mise a jour filiere impossible.");
+            : (payload?.message ?? t("curriculums.error.trackUpdateFailed"));
         setError(String(message));
         return;
       }
 
       setEditingTrackId(null);
-      setSuccess("Filiere modifiee.");
+      setSuccess(t("curriculums.success.trackEdited"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setSavingTrack(false);
     }
@@ -718,7 +718,7 @@ export default function CurriculumsPage() {
     }
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -745,15 +745,15 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Suppression filiere impossible.");
+            : (payload?.message ?? t("curriculums.error.trackDeleteFailed"));
         setError(String(message));
         return;
       }
 
-      setSuccess("Filiere supprimee.");
+      setSuccess(t("curriculums.success.trackDeleted"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setDeletingTrackId(null);
     }
@@ -768,7 +768,7 @@ export default function CurriculumsPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -798,7 +798,8 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Creation impossible.");
+            : (payload?.message ??
+              t("curriculums.error.curriculumCreateFailed"));
         setError(String(message));
         return;
       }
@@ -807,10 +808,10 @@ export default function CurriculumsPage() {
         academicLevelId: values.academicLevelId,
         trackId: "",
       });
-      setSuccess("Curriculum cree.");
+      setSuccess(t("curriculums.success.curriculumCreated"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setSubmittingCurriculum(false);
     }
@@ -823,7 +824,7 @@ export default function CurriculumsPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -850,7 +851,7 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Suppression impossible.");
+            : (payload?.message ?? t("curriculums.error.deleteFailed"));
         setError(String(message));
         return;
       }
@@ -858,10 +859,10 @@ export default function CurriculumsPage() {
       if (selectedCurriculumId === curriculumId) {
         setSelectedCurriculumId("");
       }
-      setSuccess("Curriculum supprime.");
+      setSuccess(t("curriculums.success.curriculumDeleted"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setDeletingCurriculumId(null);
     }
@@ -876,7 +877,7 @@ export default function CurriculumsPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -920,12 +921,12 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Enregistrement impossible.");
+            : (payload?.message ?? t("curriculums.error.saveFailed"));
         setError(String(message));
         return;
       }
 
-      setSuccess("Matiere du curriculum enregistree.");
+      setSuccess(t("curriculums.success.subjectSaved"));
       curriculumSubjectForm.reset({
         subjectId: values.subjectId,
         coefficient: "",
@@ -935,7 +936,7 @@ export default function CurriculumsPage() {
       await loadCurriculumSubjects(schoolSlug, selectedCurriculumId);
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     } finally {
       setSubmittingCurriculumSubject(false);
     }
@@ -948,7 +949,7 @@ export default function CurriculumsPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("curriculums.error.csrf"));
       router.replace("/");
       return;
     }
@@ -978,16 +979,16 @@ export default function CurriculumsPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Suppression impossible.");
+            : (payload?.message ?? t("curriculums.error.deleteFailed"));
         setError(String(message));
         return;
       }
 
-      setSuccess("Matiere retiree du curriculum.");
+      setSuccess(t("curriculums.success.subjectRemoved"));
       await loadCurriculumSubjects(schoolSlug, selectedCurriculumId);
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("curriculums.error.network"));
     }
   }
 
@@ -1020,11 +1021,11 @@ export default function CurriculumsPage() {
   ]);
 
   return (
-    <AppShell schoolSlug={schoolSlug} schoolName="Gestion des curriculums">
+    <AppShell schoolSlug={schoolSlug} schoolName={t("curriculums.shellName")}>
       <div className="grid gap-4">
         <Card
-          title="Curriculums"
-          subtitle="Structure academique et coefficients de moyenne generale"
+          title={t("curriculums.title")}
+          subtitle={t("curriculums.subtitle")}
         >
           <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
             <button
@@ -1036,7 +1037,7 @@ export default function CurriculumsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Niveaux
+              {t("curriculums.tab.levels")}
             </button>
             <button
               type="button"
@@ -1047,7 +1048,7 @@ export default function CurriculumsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Filieres
+              {t("curriculums.tab.tracks")}
             </button>
             <button
               type="button"
@@ -1058,7 +1059,7 @@ export default function CurriculumsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Curriculums
+              {t("curriculums.tab.curriculums")}
             </button>
             <button
               type="button"
@@ -1069,7 +1070,7 @@ export default function CurriculumsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Matieres du curriculum
+              {t("curriculums.tab.subjects")}
             </button>
             <button
               type="button"
@@ -1080,19 +1081,21 @@ export default function CurriculumsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Aide
+              {t("curriculums.tab.help")}
             </button>
 
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
-                <span className="text-text-secondary">Ecole</span>
+                <span className="text-text-secondary">
+                  {t("curriculums.schoolLabel")}
+                </span>
                 <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
                 >
-                  <option value="">Selectionner une ecole</option>
+                  <option value="">{t("curriculums.schoolPlaceholder")}</option>
                   {schools.map((school) => (
                     <option key={school.id} value={school.slug}>
                       {school.name}
@@ -1105,35 +1108,32 @@ export default function CurriculumsPage() {
 
           {tab === "help" ? (
             <ModuleHelpTab
-              moduleName="Curriculums"
-              moduleSummary="ce module definit la structure academique (niveaux, filieres) puis les curriculums et coefficients officiels des matieres."
+              moduleName={t("curriculums.help.moduleName")}
+              moduleSummary={t("curriculums.help.moduleSummary")}
               actions={[
                 {
-                  name: "Niveaux et filieres",
-                  purpose: "poser la base academique de l'ecole.",
-                  howTo:
-                    "creer d'abord les niveaux puis les filieres si besoin dans leurs onglets dedies.",
-                  moduleImpact:
-                    "ces listes deviennent disponibles dans la creation des curriculums.",
-                  crossModuleImpact:
-                    "elles structurent classes, matieres et futurs calculs de moyenne generale.",
+                  name: t("curriculums.help.action1.name"),
+                  purpose: t("curriculums.help.action1.purpose"),
+                  howTo: t("curriculums.help.action1.howTo"),
+                  moduleImpact: t("curriculums.help.action1.moduleImpact"),
+                  crossModuleImpact: t(
+                    "curriculums.help.action1.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Curriculum",
-                  purpose:
-                    "composer le programme officiel d'un niveau/filiere.",
-                  howTo:
-                    "creer un curriculum puis ajouter les matieres avec leurs coefficients.",
-                  moduleImpact:
-                    "le coefficient est enregistre au niveau curriculum.",
-                  crossModuleImpact:
-                    "la moyenne generale depend de ces coefficients (sauf override de classe).",
+                  name: t("curriculums.help.action2.name"),
+                  purpose: t("curriculums.help.action2.purpose"),
+                  howTo: t("curriculums.help.action2.howTo"),
+                  moduleImpact: t("curriculums.help.action2.moduleImpact"),
+                  crossModuleImpact: t(
+                    "curriculums.help.action2.crossModuleImpact",
+                  ),
                 },
               ]}
             />
           ) : !schoolSlug ? (
             <p className="text-sm text-text-secondary">
-              Selectionnez une ecole.
+              {t("curriculums.noSchool")}
             </p>
           ) : tab === "levels" ? (
             <div className="grid gap-4">
@@ -1142,11 +1142,11 @@ export default function CurriculumsPage() {
                 onSubmit={academicLevelForm.handleSubmit(onCreateAcademicLevel)}
               >
                 <FormField
-                  label="Code"
+                  label={t("curriculums.level.codeLabel")}
                   error={academicLevelForm.formState.errors.code?.message}
                 >
                   <FormTextInput
-                    aria-label="Code"
+                    aria-label={t("curriculums.level.codeLabel")}
                     invalid={academicLevelCodeInvalid}
                     value={academicLevelValues.code ?? ""}
                     onChange={(event) => {
@@ -1156,15 +1156,15 @@ export default function CurriculumsPage() {
                         shouldValidate: true,
                       });
                     }}
-                    placeholder="Ex: 6EME"
+                    placeholder={t("curriculums.level.codePlaceholder")}
                   />
                 </FormField>
                 <FormField
-                  label="Libelle"
+                  label={t("curriculums.level.labelLabel")}
                   error={academicLevelForm.formState.errors.label?.message}
                 >
                   <FormTextInput
-                    aria-label="Libelle"
+                    aria-label={t("curriculums.level.labelLabel")}
                     invalid={academicLevelLabelInvalid}
                     value={academicLevelValues.label ?? ""}
                     onChange={(event) => {
@@ -1174,7 +1174,7 @@ export default function CurriculumsPage() {
                         shouldValidate: true,
                       });
                     }}
-                    placeholder="Ex: 6eme"
+                    placeholder={t("curriculums.level.labelPlaceholder")}
                   />
                 </FormField>
                 <div className="self-end">
@@ -1184,7 +1184,9 @@ export default function CurriculumsPage() {
                       !academicLevelForm.formState.isValid
                     }
                   >
-                    {submittingAcademicLevel ? "Creation..." : "Ajouter"}
+                    {submittingAcademicLevel
+                      ? t("curriculums.level.creating")
+                      : t("curriculums.level.add")}
                   </SubmitButton>
                 </div>
                 <FormSubmitHint
@@ -1197,12 +1199,20 @@ export default function CurriculumsPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Code</th>
-                      <th className="px-3 py-2 font-medium">Libelle</th>
-                      <th className="px-3 py-2 font-medium">Curriculums</th>
-                      <th className="px-3 py-2 font-medium">Classes</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.level.colCode")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.level.colLabel")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.level.colCurriculums")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.level.colClasses")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Actions
+                        {t("curriculums.level.colActions")}
                       </th>
                     </tr>
                   </thead>
@@ -1213,7 +1223,7 @@ export default function CurriculumsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={5}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     )}
@@ -1238,7 +1248,7 @@ export default function CurriculumsPage() {
                                   variant="secondary"
                                   onClick={() => startEditAcademicLevel(level)}
                                 >
-                                  Modifier
+                                  {t("common.edit")}
                                 </Button>
                                 <Button
                                   type="button"
@@ -1252,7 +1262,7 @@ export default function CurriculumsPage() {
                                 >
                                   {deletingAcademicLevelId === level.id
                                     ? "..."
-                                    : "Supprimer"}
+                                    : t("common.delete")}
                                 </Button>
                               </div>
                             </td>
@@ -1262,14 +1272,16 @@ export default function CurriculumsPage() {
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
                                   <FormField
-                                    label="Code"
+                                    label={t("curriculums.level.codeLabel")}
                                     error={
                                       editAcademicLevelForm.formState.errors
                                         .code?.message
                                     }
                                   >
                                     <FormTextInput
-                                      aria-label="Code niveau"
+                                      aria-label={t(
+                                        "curriculums.level.codeEditAria",
+                                      )}
                                       invalid={editAcademicLevelCodeInvalid}
                                       value={editAcademicLevelValues.code ?? ""}
                                       onChange={(event) => {
@@ -1286,14 +1298,16 @@ export default function CurriculumsPage() {
                                     />
                                   </FormField>
                                   <FormField
-                                    label="Libelle"
+                                    label={t("curriculums.level.labelLabel")}
                                     error={
                                       editAcademicLevelForm.formState.errors
                                         .label?.message
                                     }
                                   >
                                     <FormTextInput
-                                      aria-label="Libelle niveau"
+                                      aria-label={t(
+                                        "curriculums.level.labelEditAria",
+                                      )}
                                       invalid={editAcademicLevelLabelInvalid}
                                       value={
                                         editAcademicLevelValues.label ?? ""
@@ -1331,8 +1345,8 @@ export default function CurriculumsPage() {
                                     }}
                                   >
                                     {savingAcademicLevel
-                                      ? "Enregistrement..."
-                                      : "Enregistrer"}
+                                      ? t("curriculums.level.saving")
+                                      : t("common.save")}
                                   </Button>
                                   <Button
                                     type="button"
@@ -1342,7 +1356,7 @@ export default function CurriculumsPage() {
                                       editAcademicLevelForm.reset();
                                     }}
                                   >
-                                    Annuler
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </td>
@@ -1357,7 +1371,7 @@ export default function CurriculumsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={5}
                         >
-                          Aucun niveau academique.
+                          {t("curriculums.level.empty")}
                         </td>
                       </tr>
                     ) : null}
@@ -1372,11 +1386,11 @@ export default function CurriculumsPage() {
                 onSubmit={trackForm.handleSubmit(onCreateTrack)}
               >
                 <FormField
-                  label="Code"
+                  label={t("curriculums.track.codeLabel")}
                   error={trackForm.formState.errors.code?.message}
                 >
                   <FormTextInput
-                    aria-label="Code"
+                    aria-label={t("curriculums.track.codeLabel")}
                     invalid={trackCodeInvalid}
                     value={trackValues.code ?? ""}
                     onChange={(event) => {
@@ -1386,15 +1400,15 @@ export default function CurriculumsPage() {
                         shouldValidate: true,
                       });
                     }}
-                    placeholder="Ex: C"
+                    placeholder={t("curriculums.track.codePlaceholder")}
                   />
                 </FormField>
                 <FormField
-                  label="Libelle"
+                  label={t("curriculums.track.labelLabel")}
                   error={trackForm.formState.errors.label?.message}
                 >
                   <FormTextInput
-                    aria-label="Libelle"
+                    aria-label={t("curriculums.track.labelLabel")}
                     invalid={trackLabelInvalid}
                     value={trackValues.label ?? ""}
                     onChange={(event) => {
@@ -1404,14 +1418,16 @@ export default function CurriculumsPage() {
                         shouldValidate: true,
                       });
                     }}
-                    placeholder="Ex: Scientifique"
+                    placeholder={t("curriculums.track.labelPlaceholder")}
                   />
                 </FormField>
                 <div className="self-end">
                   <SubmitButton
                     disabled={submittingTrack || !trackForm.formState.isValid}
                   >
-                    {submittingTrack ? "Creation..." : "Ajouter"}
+                    {submittingTrack
+                      ? t("curriculums.track.creating")
+                      : t("curriculums.track.add")}
                   </SubmitButton>
                 </div>
                 <FormSubmitHint
@@ -1424,12 +1440,20 @@ export default function CurriculumsPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Code</th>
-                      <th className="px-3 py-2 font-medium">Libelle</th>
-                      <th className="px-3 py-2 font-medium">Curriculums</th>
-                      <th className="px-3 py-2 font-medium">Classes</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.track.colCode")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.track.colLabel")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.track.colCurriculums")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.track.colClasses")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Actions
+                        {t("curriculums.track.colActions")}
                       </th>
                     </tr>
                   </thead>
@@ -1440,7 +1464,7 @@ export default function CurriculumsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={5}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     )}
@@ -1465,7 +1489,7 @@ export default function CurriculumsPage() {
                                   variant="secondary"
                                   onClick={() => startEditTrack(track)}
                                 >
-                                  Modifier
+                                  {t("common.edit")}
                                 </Button>
                                 <Button
                                   type="button"
@@ -1477,7 +1501,7 @@ export default function CurriculumsPage() {
                                 >
                                   {deletingTrackId === track.id
                                     ? "..."
-                                    : "Supprimer"}
+                                    : t("common.delete")}
                                 </Button>
                               </div>
                             </td>
@@ -1487,14 +1511,16 @@ export default function CurriculumsPage() {
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto_auto]">
                                   <FormField
-                                    label="Code"
+                                    label={t("curriculums.track.codeLabel")}
                                     error={
                                       editTrackForm.formState.errors.code
                                         ?.message
                                     }
                                   >
                                     <FormTextInput
-                                      aria-label="Code filiere"
+                                      aria-label={t(
+                                        "curriculums.track.codeEditAria",
+                                      )}
                                       invalid={editTrackCodeInvalid}
                                       value={editTrackValues.code ?? ""}
                                       onChange={(event) => {
@@ -1511,14 +1537,16 @@ export default function CurriculumsPage() {
                                     />
                                   </FormField>
                                   <FormField
-                                    label="Libelle"
+                                    label={t("curriculums.track.labelLabel")}
                                     error={
                                       editTrackForm.formState.errors.label
                                         ?.message
                                     }
                                   >
                                     <FormTextInput
-                                      aria-label="Libelle filiere"
+                                      aria-label={t(
+                                        "curriculums.track.labelEditAria",
+                                      )}
                                       invalid={editTrackLabelInvalid}
                                       value={editTrackValues.label ?? ""}
                                       onChange={(event) => {
@@ -1551,8 +1579,8 @@ export default function CurriculumsPage() {
                                     }}
                                   >
                                     {savingTrack
-                                      ? "Enregistrement..."
-                                      : "Enregistrer"}
+                                      ? t("curriculums.track.saving")
+                                      : t("common.save")}
                                   </Button>
                                   <Button
                                     type="button"
@@ -1562,7 +1590,7 @@ export default function CurriculumsPage() {
                                       editTrackForm.reset();
                                     }}
                                   >
-                                    Annuler
+                                    {t("common.cancel")}
                                   </Button>
                                 </div>
                               </td>
@@ -1577,7 +1605,7 @@ export default function CurriculumsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={5}
                         >
-                          Aucune filiere.
+                          {t("curriculums.track.empty")}
                         </td>
                       </tr>
                     ) : null}
@@ -1592,13 +1620,13 @@ export default function CurriculumsPage() {
                 onSubmit={curriculumForm.handleSubmit(onCreateCurriculum)}
               >
                 <FormField
-                  label="Niveau academique"
+                  label={t("curriculums.curriculum.levelLabel")}
                   error={
                     curriculumForm.formState.errors.academicLevelId?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Niveau academique"
+                    aria-label={t("curriculums.curriculum.levelLabel")}
                     invalid={curriculumAcademicLevelInvalid}
                     value={curriculumValues.academicLevelId ?? ""}
                     onChange={(event) => {
@@ -1613,7 +1641,7 @@ export default function CurriculumsPage() {
                       );
                     }}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {academicLevels.map((level) => (
                       <option key={level.id} value={level.id}>
                         {level.code} - {level.label}
@@ -1622,9 +1650,9 @@ export default function CurriculumsPage() {
                   </FormSelect>
                 </FormField>
 
-                <FormField label="Filiere (optionnel)">
+                <FormField label={t("curriculums.curriculum.trackLabel")}>
                   <FormSelect
-                    aria-label="Filiere (optionnel)"
+                    aria-label={t("curriculums.curriculum.trackLabel")}
                     value={curriculumValues.trackId ?? ""}
                     onChange={(event) => {
                       curriculumForm.setValue("trackId", event.target.value, {
@@ -1634,7 +1662,9 @@ export default function CurriculumsPage() {
                       });
                     }}
                   >
-                    <option value="">Aucune</option>
+                    <option value="">
+                      {t("curriculums.curriculum.trackNone")}
+                    </option>
                     {tracks.map((track) => (
                       <option key={track.id} value={track.id}>
                         {track.code} - {track.label}
@@ -1649,7 +1679,9 @@ export default function CurriculumsPage() {
                       submittingCurriculum || !curriculumForm.formState.isValid
                     }
                   >
-                    {submittingCurriculum ? "Creation..." : "Creer"}
+                    {submittingCurriculum
+                      ? t("curriculums.curriculum.creating")
+                      : t("curriculums.curriculum.add")}
                   </SubmitButton>
                 </div>
                 <FormSubmitHint
@@ -1658,7 +1690,7 @@ export default function CurriculumsPage() {
                 />
               </form>
               <p className="text-xs text-text-secondary">
-                Nom genere automatiquement:{" "}
+                {t("curriculums.curriculum.generatedName")}{" "}
                 <span className="font-medium text-text-primary">
                   {generatedCurriculumName || "-"}
                 </span>
@@ -1668,13 +1700,23 @@ export default function CurriculumsPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Nom</th>
-                      <th className="px-3 py-2 font-medium">Niveau</th>
-                      <th className="px-3 py-2 font-medium">Filiere</th>
-                      <th className="px-3 py-2 font-medium">Matieres</th>
-                      <th className="px-3 py-2 font-medium">Classes</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.curriculum.colName")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.curriculum.colLevel")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.curriculum.colTrack")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.curriculum.colSubjects")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("curriculums.curriculum.colClasses")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Action
+                        {t("curriculums.curriculum.colAction")}
                       </th>
                     </tr>
                   </thead>
@@ -1685,7 +1727,7 @@ export default function CurriculumsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={6}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     )}
@@ -1723,7 +1765,7 @@ export default function CurriculumsPage() {
                                   setSelectedCurriculumId(curriculum.id);
                                 }}
                               >
-                                Ouvrir
+                                {t("curriculums.curriculum.open")}
                               </Button>
                               <Button
                                 type="button"
@@ -1737,7 +1779,7 @@ export default function CurriculumsPage() {
                               >
                                 {deletingCurriculumId === curriculum.id
                                   ? "..."
-                                  : "Supprimer"}
+                                  : t("common.delete")}
                               </Button>
                             </div>
                           </td>
@@ -1752,7 +1794,7 @@ export default function CurriculumsPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={6}
                         >
-                          Aucun curriculum.
+                          {t("curriculums.curriculum.empty")}
                         </td>
                       </tr>
                     ) : null}
@@ -1763,14 +1805,16 @@ export default function CurriculumsPage() {
           ) : (
             <div className="grid gap-4">
               <label className="grid max-w-md gap-1 text-sm">
-                <span className="text-text-secondary">Curriculum</span>
+                <span className="text-text-secondary">
+                  {t("curriculums.subject.curriculumLabel")}
+                </span>
                 <FormSelect
                   value={selectedCurriculumId}
                   onChange={(event) =>
                     setSelectedCurriculumId(event.target.value)
                   }
                 >
-                  <option value="">Selectionner</option>
+                  <option value="">{t("common.select")}</option>
                   {orderedCurriculums.map((curriculum) => (
                     <option key={curriculum.id} value={curriculum.id}>
                       {curriculum.name}
@@ -1788,14 +1832,14 @@ export default function CurriculumsPage() {
                     )}
                   >
                     <FormField
-                      label="Matiere"
+                      label={t("curriculums.subject.subjectLabel")}
                       error={
                         curriculumSubjectForm.formState.errors.subjectId
                           ?.message
                       }
                     >
                       <FormSelect
-                        aria-label="Matiere"
+                        aria-label={t("curriculums.subject.subjectLabel")}
                         invalid={curriculumSubjectIdInvalid}
                         value={curriculumSubjectValues.subjectId ?? ""}
                         onChange={(event) => {
@@ -1810,7 +1854,7 @@ export default function CurriculumsPage() {
                           );
                         }}
                       >
-                        <option value="">Selectionner</option>
+                        <option value="">{t("common.select")}</option>
                         {subjects.map((subject) => (
                           <option key={subject.id} value={subject.id}>
                             {subject.name}
@@ -1820,14 +1864,14 @@ export default function CurriculumsPage() {
                     </FormField>
 
                     <FormField
-                      label="Coefficient"
+                      label={t("curriculums.subject.coefficientLabel")}
                       error={
                         curriculumSubjectForm.formState.errors.coefficient
                           ?.message
                       }
                     >
                       <FormNumberInput
-                        aria-label="Coefficient"
+                        aria-label={t("curriculums.subject.coefficientLabel")}
                         invalid={curriculumCoefficientInvalid}
                         min={0}
                         step="0.1"
@@ -1843,19 +1887,21 @@ export default function CurriculumsPage() {
                             },
                           );
                         }}
-                        placeholder="Ex: 4"
+                        placeholder={t(
+                          "curriculums.subject.coefficientPlaceholder",
+                        )}
                       />
                     </FormField>
 
                     <FormField
-                      label="Heures/sem."
+                      label={t("curriculums.subject.weeklyHoursLabel")}
                       error={
                         curriculumSubjectForm.formState.errors.weeklyHours
                           ?.message
                       }
                     >
                       <FormNumberInput
-                        aria-label="Heures/sem."
+                        aria-label={t("curriculums.subject.weeklyHoursLabel")}
                         invalid={curriculumWeeklyHoursInvalid}
                         min={0}
                         step="0.5"
@@ -1871,7 +1917,9 @@ export default function CurriculumsPage() {
                             },
                           );
                         }}
-                        placeholder="Ex: 3"
+                        placeholder={t(
+                          "curriculums.subject.weeklyHoursPlaceholder",
+                        )}
                       />
                     </FormField>
 
@@ -1890,7 +1938,9 @@ export default function CurriculumsPage() {
                           );
                         }}
                       />
-                      <span className="text-text-secondary">Obligatoire</span>
+                      <span className="text-text-secondary">
+                        {t("curriculums.subject.mandatory")}
+                      </span>
                     </label>
 
                     <div className="self-end">
@@ -1906,8 +1956,8 @@ export default function CurriculumsPage() {
                         }
                       >
                         {submittingCurriculumSubject
-                          ? "Enregistrement..."
-                          : "Enregistrer"}
+                          ? t("curriculums.subject.saving")
+                          : t("common.save")}
                       </Button>
                     </div>
                   </form>
@@ -1916,12 +1966,20 @@ export default function CurriculumsPage() {
                     <table className="min-w-full border-collapse text-sm">
                       <thead>
                         <tr className="border-b border-border text-left text-text-secondary">
-                          <th className="px-3 py-2 font-medium">Matiere</th>
-                          <th className="px-3 py-2 font-medium">Coefficient</th>
-                          <th className="px-3 py-2 font-medium">Heures/sem.</th>
-                          <th className="px-3 py-2 font-medium">Obligatoire</th>
+                          <th className="px-3 py-2 font-medium">
+                            {t("curriculums.subject.colSubject")}
+                          </th>
+                          <th className="px-3 py-2 font-medium">
+                            {t("curriculums.subject.colCoefficient")}
+                          </th>
+                          <th className="px-3 py-2 font-medium">
+                            {t("curriculums.subject.colWeeklyHours")}
+                          </th>
+                          <th className="px-3 py-2 font-medium">
+                            {t("curriculums.subject.colMandatory")}
+                          </th>
                           <th className="px-3 py-2 font-medium text-right">
-                            Action
+                            {t("curriculums.subject.colAction")}
                           </th>
                         </tr>
                       </thead>
@@ -1939,7 +1997,9 @@ export default function CurriculumsPage() {
                               {entry.weeklyHours ?? "-"}
                             </td>
                             <td className="px-3 py-2">
-                              {entry.isMandatory ? "Oui" : "Non"}
+                              {entry.isMandatory
+                                ? t("curriculums.subject.yes")
+                                : t("curriculums.subject.no")}
                             </td>
                             <td className="px-3 py-2 text-right">
                               <Button
@@ -1951,7 +2011,7 @@ export default function CurriculumsPage() {
                                   );
                                 }}
                               >
-                                Retirer
+                                {t("curriculums.subject.remove")}
                               </Button>
                             </td>
                           </tr>
@@ -1963,7 +2023,7 @@ export default function CurriculumsPage() {
                               className="px-3 py-6 text-text-secondary"
                               colSpan={5}
                             >
-                              Aucune matiere dans ce curriculum.
+                              {t("curriculums.subject.empty")}
                             </td>
                           </tr>
                         ) : null}
@@ -1973,7 +2033,7 @@ export default function CurriculumsPage() {
                 </>
               ) : (
                 <p className="text-sm text-text-secondary">
-                  Selectionnez un curriculum pour configurer ses matieres.
+                  {t("curriculums.subject.selectHint")}
                 </p>
               )}
             </div>

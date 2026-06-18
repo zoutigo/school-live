@@ -2,13 +2,14 @@
 
 import { CheckCircle2, Hourglass } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type SuccessRedirectToastProps = {
   open: boolean;
   title: string;
   description: string;
   durationSeconds?: number;
-  countdownLabel?: string;
+  countdownLabel?: string | undefined;
   onComplete: () => void;
 };
 
@@ -17,9 +18,12 @@ export function SuccessRedirectToast({
   title,
   description,
   durationSeconds = 5,
-  countdownLabel = "Redirection vers l ecran de connexion dans",
+  countdownLabel,
   onComplete,
 }: SuccessRedirectToastProps) {
+  const { t } = useTranslation();
+  const resolvedCountdownLabel =
+    countdownLabel ?? t("successToast.countdownDefault");
   const [remainingSeconds, setRemainingSeconds] = useState(durationSeconds);
 
   useEffect(() => {
@@ -72,7 +76,7 @@ export function SuccessRedirectToast({
             </div>
             <div className="min-w-0 flex-1">
               <p className="inline-flex items-center gap-2 rounded-full border border-warm-border bg-surface px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                Procedure terminee
+                {t("successToast.badge")}
               </p>
               <h3 className="mt-3 font-heading text-2xl font-bold leading-tight text-text-primary">
                 {title}
@@ -85,7 +89,7 @@ export function SuccessRedirectToast({
                 <div className="flex items-center justify-between gap-3">
                   <p className="flex items-center gap-2 text-sm font-medium text-text-primary">
                     <Hourglass className="h-4 w-4 text-primary" />
-                    {countdownLabel}
+                    {resolvedCountdownLabel}
                   </p>
                   <span className="rounded-full bg-primary px-2.5 py-1 text-sm font-semibold text-surface">
                     {remainingSeconds}s

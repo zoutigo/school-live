@@ -19,7 +19,8 @@ import type {
   TicketStatus,
   TicketType,
 } from "../../components/tickets/types";
-import { TICKET_FOLDERS } from "../../components/tickets/types";
+import { getTicketFolders } from "../../components/tickets/types";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -31,6 +32,7 @@ type GlobalMe = {
 
 export default function AdminTicketsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,10 +52,11 @@ export default function AdminTicketsPage() {
     null,
   );
 
+  const folders = getTicketFolders(t);
   const folderStatuses: TicketStatus[] | undefined =
     activeFolder === "all"
       ? undefined
-      : TICKET_FOLDERS.find((f) => f.key === activeFolder)?.statuses;
+      : folders.find((f) => f.key === activeFolder)?.statuses;
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -111,11 +114,11 @@ export default function AdminTicketsPage() {
         setTotal(res.meta.total);
       }
     } catch {
-      setError("Impossible de charger les tickets.");
+      setError(t("tickets.page.loadError"));
     } finally {
       setTicketsLoading(false);
     }
-  }, [folderStatuses, typeFilter, search]);
+  }, [folderStatuses, typeFilter, search, t]);
 
   useEffect(() => {
     void loadProfile();
@@ -156,10 +159,10 @@ export default function AdminTicketsPage() {
       {/* En-tête */}
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-bold text-text-primary">
-          Tickets d&apos;assistance
+          {t("tickets.page.title")}
         </h1>
         <span className="rounded-full border border-warm-border bg-warm-surface px-2.5 py-0.5 text-xs font-semibold text-text-secondary">
-          {total} au total
+          {t("tickets.page.total").replace("{total}", String(total))}
         </span>
 
         {activeModuleTab === "bug" ? (
@@ -175,7 +178,7 @@ export default function AdminTicketsPage() {
               data-testid="filter-bug"
             >
               <Bug className="h-3.5 w-3.5" />
-              Bugs
+              {t("tickets.page.filterBugs")}
             </button>
             <button
               type="button"
@@ -192,7 +195,7 @@ export default function AdminTicketsPage() {
               data-testid="filter-feature"
             >
               <Lightbulb className="h-3.5 w-3.5" />
-              Suggestions
+              {t("tickets.page.filterSuggestions")}
             </button>
 
             <div className="flex items-center gap-2 rounded-[12px] border border-warm-border bg-warm-surface px-3 py-1.5">
@@ -201,7 +204,7 @@ export default function AdminTicketsPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher…"
+                placeholder={t("tickets.page.search")}
                 className="w-40 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-secondary"
                 data-testid="search-input"
               />
@@ -258,7 +261,7 @@ export default function AdminTicketsPage() {
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 rounded-[20px] border border-warm-border bg-surface p-5 text-center text-sm text-text-secondary shadow-card">
                 <Bug className="h-8 w-8 opacity-25" />
-                <p className="font-medium">Sélectionnez un ticket</p>
+                <p className="font-medium">{t("tickets.page.selectTicket")}</p>
               </div>
             )}
           </div>

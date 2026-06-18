@@ -8,7 +8,8 @@ import {
   ThumbsUp,
 } from "lucide-react";
 import type { TicketListItem, TicketStatus, TicketType } from "./types";
-import { TICKET_STATUS_LABELS, TICKET_TYPE_LABELS } from "./types";
+import { getTicketStatusLabels, getTicketTypeLabels } from "./types";
+import { useTranslation } from "../../i18n/useTranslation";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", {
@@ -54,13 +55,17 @@ export function TicketsList({
   onSelect,
   isLoading,
 }: Props) {
+  const { t } = useTranslation();
+  const statusLabels = getTicketStatusLabels(t);
+  const typeLabels = getTicketTypeLabels(t);
+
   if (isLoading) {
     return (
       <div
         className="flex h-full items-center justify-center text-sm text-text-secondary"
         data-testid="tickets-list-loading"
       >
-        Chargement…
+        {t("tickets.list.loading")}
       </div>
     );
   }
@@ -72,8 +77,8 @@ export function TicketsList({
         data-testid="tickets-list-empty"
       >
         <Bug className="h-8 w-8 opacity-30" />
-        <p className="font-medium">Aucun ticket</p>
-        <p className="text-xs">Signalez un bug ou proposez une amélioration</p>
+        <p className="font-medium">{t("tickets.list.empty.title")}</p>
+        <p className="text-xs">{t("tickets.list.empty.hint")}</p>
       </div>
     );
   }
@@ -105,12 +110,12 @@ export function TicketsList({
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${typePill}`}
                 >
                   <TypeIcon className="h-2.5 w-2.5" />
-                  {TICKET_TYPE_LABELS[ticket.type]}
+                  {typeLabels[ticket.type]}
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusPill}`}
                 >
-                  {TICKET_STATUS_LABELS[ticket.status]}
+                  {statusLabels[ticket.status]}
                 </span>
               </div>
 

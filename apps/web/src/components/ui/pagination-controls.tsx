@@ -1,6 +1,9 @@
+"use client";
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ActionIconButton } from "./action-icon-button";
 import { Button } from "./button";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   page: number;
@@ -25,11 +28,17 @@ export function PaginationControls({
   pageSizeOptions = [10, 20, 50],
   onPageSizeChange,
 }: Props) {
+  const { t } = useTranslation();
   const safeTotalPages = Math.max(1, totalPages);
   const safePage = Math.min(Math.max(1, page), safeTotalPages);
   const summary = compact
     ? `${safePage}/${safeTotalPages}`
-    : `${typeof totalItems === "number" ? `${totalItems} resultat(s) - ` : ""}page ${safePage}/${safeTotalPages}`;
+    : typeof totalItems === "number"
+      ? t("pagination.summary")
+          .replace("{total}", String(totalItems))
+          .replace("{page}", String(safePage))
+          .replace("{totalPages}", String(safeTotalPages))
+      : `page ${safePage}/${safeTotalPages}`;
 
   return (
     <div className="flex items-center justify-between gap-2 text-sm text-text-secondary">
@@ -37,7 +46,7 @@ export function PaginationControls({
         <div className="flex w-full items-center justify-center gap-3 rounded-[16px] border border-warm-border/70 bg-background/70 px-3 py-2">
           <ActionIconButton
             icon={ChevronLeft}
-            label="Page precedente"
+            label={t("pagination.prevPage")}
             variant="neutral"
             className="h-10 w-10 rounded-[12px]"
             disabled={disabled || safePage <= 1}
@@ -50,7 +59,7 @@ export function PaginationControls({
 
           <ActionIconButton
             icon={ChevronRight}
-            label="Page suivante"
+            label={t("pagination.nextPage")}
             variant="neutral"
             className="h-10 w-10 rounded-[12px]"
             disabled={disabled || safePage >= safeTotalPages}
@@ -66,7 +75,7 @@ export function PaginationControls({
       >
         {onPageSizeChange && typeof pageSize === "number" ? (
           <label className="inline-flex shrink-0 items-center gap-2">
-            <span>Par page</span>
+            <span>{t("pagination.perPage")}</span>
             <select
               value={pageSize}
               disabled={disabled}
@@ -91,7 +100,7 @@ export function PaginationControls({
           disabled={disabled || safePage <= 1}
           onClick={() => onPageChange(safePage - 1)}
         >
-          Precedent
+          {t("pagination.prev")}
         </Button>
         <Button
           type="button"
@@ -100,7 +109,7 @@ export function PaginationControls({
           disabled={disabled || safePage >= safeTotalPages}
           onClick={() => onPageChange(safePage + 1)}
         >
-          Suivant
+          {t("pagination.next")}
         </Button>
       </div>
     </div>

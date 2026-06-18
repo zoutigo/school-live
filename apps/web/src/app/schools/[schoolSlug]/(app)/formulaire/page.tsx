@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ClipboardList } from "lucide-react";
 import { Card } from "../../../../../components/ui/card";
+import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -29,6 +30,7 @@ type MeResponse = {
 export default function ParentFormulairePage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<MeResponse | null>(null);
 
@@ -60,26 +62,27 @@ export default function ParentFormulairePage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Formulaire"
+        title={t("formulaire.title")}
         subtitle={
           me
-            ? `${me.firstName} ${me.lastName} - suivi des formulaires`
-            : "Chargement..."
+            ? t("formulaire.subtitle")
+                .replace("{firstName}", me.firstName)
+                .replace("{lastName}", me.lastName)
+            : t("common.loading")
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         ) : (
           <div className="rounded-card border border-dashed border-border bg-background px-4 py-10 text-center">
             <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface text-primary">
               <ClipboardList className="h-5 w-5" />
             </span>
             <p className="text-base font-heading font-semibold text-text-primary">
-              Aucun formulaire a remplir pour l&apos;instant
+              {t("formulaire.empty.title")}
             </p>
             <p className="mt-1 text-sm text-text-secondary">
-              Lorsqu&apos;un nouveau formulaire sera publie par
-              l&apos;etablissement, il apparaitra ici.
+              {t("formulaire.empty.hint")}
             </p>
           </div>
         )}

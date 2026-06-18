@@ -125,7 +125,7 @@ describe("parent dashboard card logic", () => {
       },
     ];
 
-    const summary = buildNotesSummary(child, snapshots);
+    const summary = buildNotesSummary(child, snapshots, tFr);
 
     expect(summary.averageLabel).toMatch(/\/20$/);
     expect(summary.latestEvaluations).toHaveLength(2);

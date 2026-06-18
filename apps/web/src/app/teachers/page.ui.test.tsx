@@ -396,8 +396,10 @@ describe("Teachers page create modes", () => {
     const saveButton = await screen.findByRole("button", {
       name: "Enregistrer",
     });
+    const getEditingAssignmentField = (label: string) =>
+      screen.getAllByLabelText(label).at(-1) as HTMLElement;
 
-    fireEvent.change(screen.getByLabelText("Classe edition affectation"), {
+    fireEvent.change(getEditingAssignmentField("Classe affectation"), {
       target: { value: "" },
     });
 
@@ -411,18 +413,19 @@ describe("Teachers page create modes", () => {
       ).length,
     ).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByLabelText("Classe edition affectation"), {
+    fireEvent.change(getEditingAssignmentField("Classe affectation"), {
       target: { value: "class-2" },
     });
-    fireEvent.change(screen.getByLabelText("Matiere edition affectation"), {
+    fireEvent.change(getEditingAssignmentField("Matiere affectation"), {
       target: { value: "sub-2" },
     });
 
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
-      expect(
-        screen.getByLabelText("Classe edition affectation"),
-      ).toHaveAttribute("aria-invalid", "false");
+      expect(getEditingAssignmentField("Classe affectation")).toHaveAttribute(
+        "aria-invalid",
+        "false",
+      );
     });
 
     fireEvent.click(saveButton);

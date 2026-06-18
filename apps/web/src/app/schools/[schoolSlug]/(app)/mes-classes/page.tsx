@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
 import { FormSelect } from "../../../../../components/ui/form-controls";
 import { ModuleHelpTab } from "../../../../../components/ui/module-help-tab";
+import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -58,6 +59,7 @@ type ClassRow = {
 export default function TeacherClassesPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabKey>("list");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +98,7 @@ export default function TeacherClassesPage() {
       );
 
       if (!contextResponse.ok) {
-        setError("Impossible de charger vos classes.");
+        setError(t("mesClasses.error.loadFailed"));
         return;
       }
 
@@ -105,7 +107,7 @@ export default function TeacherClassesPage() {
       const defaultYearId = payload.selectedSchoolYearId ?? "";
       setSchoolYearFilter(defaultYearId);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("mesClasses.error.network"));
     } finally {
       setLoading(false);
     }
@@ -137,7 +139,8 @@ export default function TeacherClassesPage() {
           className: assignment.className,
           schoolYearId: assignment.schoolYearId,
           schoolYearLabel:
-            yearLabelById.get(assignment.schoolYearId) ?? "Annee non definie",
+            yearLabelById.get(assignment.schoolYearId) ??
+            t("mesClasses.schoolYear.unknown"),
           subjects: [assignment.subjectName],
           students: [],
         });
@@ -193,7 +196,7 @@ export default function TeacherClassesPage() {
 
   return (
     <div className="grid gap-4">
-      <Card title="Mes classes" subtitle="Suivi des classes enseignees">
+      <Card title={t("mesClasses.title")} subtitle={t("mesClasses.subtitle")}>
         <div className="mb-4 flex items-end gap-2 border-b border-border">
           <button
             type="button"
@@ -204,7 +207,7 @@ export default function TeacherClassesPage() {
                 : "text-text-secondary"
             }`}
           >
-            Liste
+            {t("mesClasses.tab.list")}
           </button>
           <button
             type="button"
@@ -215,7 +218,7 @@ export default function TeacherClassesPage() {
                 : "text-text-secondary"
             }`}
           >
-            Voir
+            {t("mesClasses.tab.view")}
           </button>
           <button
             type="button"
@@ -226,54 +229,46 @@ export default function TeacherClassesPage() {
                 : "text-text-secondary"
             }`}
           >
-            Aide
+            {t("mesClasses.tab.help")}
           </button>
         </div>
 
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : tab === "help" ? (
           <ModuleHelpTab
-            moduleName="Mes classes"
-            moduleSummary="ce module permet a l'enseignant de visualiser ses classes, les matieres associees et les eleves."
+            moduleName={t("mesClasses.title")}
+            moduleSummary={t("mesClasses.subtitle")}
             actions={[
               {
-                name: "Lister",
-                purpose:
-                  "voir toutes les classes affectees sur l'annee scolaire.",
-                howTo: "selectionner une annee, puis consulter la table Liste.",
-                moduleImpact: "vous avez une vision rapide de votre perimetre.",
-                crossModuleImpact:
-                  "sert de point d'entree pour la saisie de notes et les actions de vie scolaire.",
-              },
-              {
-                name: "Voir",
-                purpose: "ouvrir le detail d'une classe.",
-                howTo:
-                  "choisir une classe dans la liste deroulante de l'onglet Voir.",
-                moduleImpact:
-                  "affiche matieres enseignees et liste des eleves pour la classe.",
-                crossModuleImpact:
-                  "facilite l'alignement avec Notes, absences/retards et communication.",
+                name: t("mesClasses.tab.list"),
+                purpose: t("mesClasses.view.hint"),
+                howTo: t("mesClasses.schoolYear.label"),
+                moduleImpact: "",
+                crossModuleImpact: "",
               },
             ]}
           />
         ) : (
           <div className="grid gap-4">
             <label className="grid gap-1 text-sm md:max-w-[320px]">
-              <span className="text-text-secondary">Annee scolaire</span>
+              <span className="text-text-secondary">
+                {t("mesClasses.schoolYear.label")}
+              </span>
               <FormSelect
                 value={schoolYearFilter}
                 onChange={(event) => setSchoolYearFilter(event.target.value)}
                 className="bg-surface"
               >
-                <option value="">Toutes</option>
+                <option value="">{t("mesClasses.schoolYear.all")}</option>
                 {(context?.schoolYears ?? []).map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {entry.label}
-                    {entry.isActive ? " (active)" : ""}
+                    {entry.isActive
+                      ? ` ${t("mesClasses.schoolYear.active")}`
+                      : ""}
                   </option>
                 ))}
               </FormSelect>
@@ -284,10 +279,18 @@ export default function TeacherClassesPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Classe</th>
-                      <th className="px-3 py-2 font-medium">Annee</th>
-                      <th className="px-3 py-2 font-medium">Matieres</th>
-                      <th className="px-3 py-2 font-medium">Eleves</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("mesClasses.table.class")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("mesClasses.table.year")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("mesClasses.table.subjects")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("mesClasses.table.students")}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -297,7 +300,7 @@ export default function TeacherClassesPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={4}
                         >
-                          Aucune classe affectee.
+                          {t("mesClasses.table.empty")}
                         </td>
                       </tr>
                     ) : (
@@ -319,13 +322,17 @@ export default function TeacherClassesPage() {
             ) : (
               <div className="grid gap-3">
                 <label className="grid gap-1 text-sm md:max-w-[420px]">
-                  <span className="text-text-secondary">Classe</span>
+                  <span className="text-text-secondary">
+                    {t("mesClasses.view.selectLabel")}
+                  </span>
                   <FormSelect
                     value={selectedClassId}
                     onChange={(event) => setSelectedClassId(event.target.value)}
                     className="bg-surface"
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">
+                      {t("mesClasses.view.selectPlaceholder")}
+                    </option>
                     {classes.map((entry) => (
                       <option key={entry.classId} value={entry.classId}>
                         {entry.className} ({entry.schoolYearLabel})
@@ -336,7 +343,7 @@ export default function TeacherClassesPage() {
 
                 {!selectedClass ? (
                   <p className="text-sm text-text-secondary">
-                    Selectionnez une classe pour voir le detail.
+                    {t("mesClasses.view.hint")}
                   </p>
                 ) : (
                   <div className="grid gap-3 rounded-card border border-border bg-background p-3">
@@ -346,7 +353,7 @@ export default function TeacherClassesPage() {
                     </p>
                     <div>
                       <p className="text-sm font-medium text-text-primary">
-                        Matieres
+                        {t("mesClasses.view.subjectsTitle")}
                       </p>
                       <p className="mt-1 text-sm text-text-secondary">
                         {selectedClass.subjects.join(", ") || "-"}
@@ -354,11 +361,11 @@ export default function TeacherClassesPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-text-primary">
-                        Eleves
+                        {t("mesClasses.view.studentsTitle")}
                       </p>
                       {selectedClass.students.length === 0 ? (
                         <p className="mt-1 text-sm text-text-secondary">
-                          Aucun eleve dans cette classe.
+                          {t("mesClasses.view.noStudents")}
                         </p>
                       ) : (
                         <ul className="mt-1 grid gap-1 text-sm text-text-secondary">

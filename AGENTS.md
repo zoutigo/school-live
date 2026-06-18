@@ -1,4 +1,4 @@
-# agents.md — scolive-web
+# AGENTS.md — scolive-web
 
 ## Git
 

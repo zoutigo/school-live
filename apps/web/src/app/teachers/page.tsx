@@ -21,6 +21,7 @@ import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -181,6 +182,7 @@ const assignmentSchema = z.object({
 
 export default function TeachersPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [tab, setTab] = useState<Tab>("list");
   const [loading, setLoading] = useState(true);
@@ -340,7 +342,7 @@ export default function TeachersPage() {
 
       if (me.role === "SCHOOL_ADMIN") {
         if (!me.schoolSlug) {
-          setError("Aucune ecole rattachee a ce compte SCHOOL_ADMIN.");
+          setError(t("teachers.error.noSchoolAdmin"));
           setLoading(false);
           return;
         }
@@ -362,9 +364,7 @@ export default function TeachersPage() {
       setSchoolSlug(schoolRows[0]?.slug ?? null);
       setLoading(false);
     } catch {
-      setError(
-        "API indisponible. Verifiez que le serveur backend est demarre.",
-      );
+      setError(t("teachers.error.apiDown"));
       setLoading(false);
     }
   }
@@ -406,7 +406,7 @@ export default function TeachersPage() {
         !subjectsResponse.ok ||
         !assignmentsResponse.ok
       ) {
-        setError("Impossible de charger les enseignants.");
+        setError(t("teachers.error.loadFailed"));
         return;
       }
 
@@ -453,7 +453,7 @@ export default function TeachersPage() {
         });
       }
     } catch {
-      setError("Erreur reseau.");
+      setError(t("teachers.error.network"));
     } finally {
       setLoadingData(false);
     }
@@ -485,7 +485,7 @@ export default function TeachersPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("teachers.error.csrf"));
       router.replace("/");
       return;
     }
@@ -519,7 +519,7 @@ export default function TeachersPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Creation impossible.");
+            : (payload?.message ?? t("teachers.error.createFallback"));
         setError(String(message));
         return;
       }
@@ -533,12 +533,12 @@ export default function TeachersPage() {
       });
       setSuccess(
         values.mode === "phone"
-          ? "Enseignant cree/affecte. En cas de nouveau compte, utiliser le flux compte en attente pour activer le PIN."
-          : "Enseignant cree/affecte. Si nouveau compte, premiere connexion avec mot de passe initial puis changement obligatoire.",
+          ? t("teachers.success.createPhone")
+          : t("teachers.success.createEmail"),
       );
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("teachers.error.network"));
     } finally {
       setSubmittingTeacher(false);
     }
@@ -554,7 +554,7 @@ export default function TeachersPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("teachers.error.csrf"));
       router.replace("/");
       return;
     }
@@ -592,10 +592,10 @@ export default function TeachersPage() {
         classId: "",
         subjectId: values.subjectId,
       });
-      setSuccess("Affectation enseignant creee.");
+      setSuccess(t("teachers.success.assignmentCreated"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("teachers.error.network"));
     } finally {
       setSubmittingAssignment(false);
     }
@@ -623,7 +623,7 @@ export default function TeachersPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("teachers.error.csrf"));
       router.replace("/");
       return;
     }
@@ -662,10 +662,10 @@ export default function TeachersPage() {
         classId: "",
         subjectId: "",
       });
-      setSuccess("Affectation modifiee.");
+      setSuccess(t("teachers.success.assignmentEdited"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("teachers.error.network"));
     } finally {
       setSavingAssignment(false);
     }
@@ -678,7 +678,7 @@ export default function TeachersPage() {
 
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
+      setError(t("teachers.error.csrf"));
       router.replace("/");
       return;
     }
@@ -707,16 +707,16 @@ export default function TeachersPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? "Suppression impossible.");
+            : (payload?.message ?? t("teachers.error.createFallback"));
         setError(String(message));
         return;
       }
 
       setDeleteAssignment(null);
-      setSuccess("Affectation supprimee.");
+      setSuccess(t("teachers.success.assignmentDeleted"));
       await loadData(schoolSlug);
     } catch {
-      setError("Erreur reseau.");
+      setError(t("teachers.error.network"));
     } finally {
       setDeleting(false);
     }
@@ -769,21 +769,18 @@ export default function TeachersPage() {
 
   if (loading) {
     return (
-      <AppShell schoolSlug={schoolSlug} schoolName="Gestion des enseignants">
-        <Card title="Enseignants" subtitle="Chargement...">
-          <p className="text-sm text-text-secondary">Chargement...</p>
+      <AppShell schoolSlug={schoolSlug} schoolName={t("teachers.shellName")}>
+        <Card title={t("teachers.title")} subtitle={t("common.loading")}>
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         </Card>
       </AppShell>
     );
   }
 
   return (
-    <AppShell schoolSlug={schoolSlug} schoolName="Gestion des enseignants">
+    <AppShell schoolSlug={schoolSlug} schoolName={t("teachers.shellName")}>
       <div className="grid gap-4">
-        <Card
-          title="Enseignants"
-          subtitle="Gestion des comptes enseignants et de leurs affectations"
-        >
+        <Card title={t("teachers.title")} subtitle={t("teachers.subtitle")}>
           <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-border">
             <button
               type="button"
@@ -794,7 +791,7 @@ export default function TeachersPage() {
                   : "text-text-secondary"
               }`}
             >
-              Liste
+              {t("teachers.tab.list")}
             </button>
             <button
               type="button"
@@ -805,7 +802,7 @@ export default function TeachersPage() {
                   : "text-text-secondary"
               }`}
             >
-              Affectations
+              {t("teachers.tab.assignments")}
             </button>
             <button
               type="button"
@@ -816,19 +813,21 @@ export default function TeachersPage() {
                   : "text-text-secondary"
               }`}
             >
-              Aide
+              {t("teachers.tab.help")}
             </button>
 
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
-                <span className="text-text-secondary">Ecole</span>
+                <span className="text-text-secondary">
+                  {t("teachers.school.label")}
+                </span>
                 <FormSelect
                   value={schoolSlug ?? ""}
                   onChange={(event) =>
                     setSchoolSlug(event.target.value || null)
                   }
                 >
-                  <option value="">Selectionner une ecole</option>
+                  <option value="">{t("teachers.school.select")}</option>
                   {schools.map((school) => (
                     <option key={school.id} value={school.slug}>
                       {school.name}
@@ -841,54 +840,48 @@ export default function TeachersPage() {
 
           {tab === "help" ? (
             <ModuleHelpTab
-              moduleName="Enseignants"
-              moduleSummary="ce module centralise les comptes enseignants et les affectations annee/classe/matiere."
+              moduleName={t("teachers.help.moduleName")}
+              moduleSummary={t("teachers.help.moduleSummary")}
               actions={[
                 {
-                  name: "Creer",
-                  purpose:
-                    "ajouter un enseignant avec son compte de connexion.",
-                  howTo:
-                    "renseigner identite, email et mot de passe conforme puis valider.",
-                  moduleImpact:
-                    "l'enseignant devient disponible dans la liste locale.",
-                  crossModuleImpact:
-                    "il peut ensuite etre affecte a des classes/matieres pour la saisie des notes.",
+                  name: t("teachers.help.action1.name"),
+                  purpose: t("teachers.help.action1.purpose"),
+                  howTo: t("teachers.help.action1.howTo"),
+                  moduleImpact: t("teachers.help.action1.moduleImpact"),
+                  crossModuleImpact: t(
+                    "teachers.help.action1.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Affecter",
-                  purpose:
-                    "lier un enseignant a une classe et une matiere pour une annee scolaire.",
-                  howTo:
-                    "dans l'onglet Affectations, choisir annee, enseignant, classe et matiere puis ajouter.",
-                  moduleImpact:
-                    "l'affectation apparait dans la table et devient editable.",
-                  crossModuleImpact:
-                    "le module Notes s'appuie sur ces affectations pour autoriser la saisie.",
+                  name: t("teachers.help.action2.name"),
+                  purpose: t("teachers.help.action2.purpose"),
+                  howTo: t("teachers.help.action2.howTo"),
+                  moduleImpact: t("teachers.help.action2.moduleImpact"),
+                  crossModuleImpact: t(
+                    "teachers.help.action2.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Modifier/Supprimer",
-                  purpose: "corriger ou retirer une affectation erronee.",
-                  howTo: "utiliser Modifier/Supprimer sur la ligne concernee.",
-                  moduleImpact: "la table des affectations est synchronisee.",
-                  crossModuleImpact:
-                    "les droits de saisie notes de l'enseignant sont ajustes en consequence.",
+                  name: t("teachers.help.action3.name"),
+                  purpose: t("teachers.help.action3.purpose"),
+                  howTo: t("teachers.help.action3.howTo"),
+                  moduleImpact: t("teachers.help.action3.moduleImpact"),
+                  crossModuleImpact: t(
+                    "teachers.help.action3.crossModuleImpact",
+                  ),
                 },
               ]}
-              tips={[
-                "Verifier la coherence annee/classe avant d'enregistrer une affectation.",
-                "Une affectation en double est fusionnee (upsert) par le backend.",
-              ]}
+              tips={[t("teachers.help.tip1"), t("teachers.help.tip2")]}
             />
           ) : !schoolSlug ? (
             <p className="text-sm text-text-secondary">
-              Selectionnez une ecole pour gerer les enseignants.
+              {t("teachers.noSchool")}
             </p>
           ) : tab === "list" ? (
             <div className="grid gap-4">
               {role === "ADMIN" ? (
                 <p className="text-sm text-text-secondary">
-                  Creation enseignant reservee a SCHOOL_ADMIN / SUPER_ADMIN.
+                  {t("teachers.create.adminRestriction")}
                 </p>
               ) : (
                 <form
@@ -896,7 +889,7 @@ export default function TeachersPage() {
                   onSubmit={createTeacherForm.handleSubmit(onCreateTeacher)}
                 >
                   <FormField
-                    label="Mode creation"
+                    label={t("teachers.create.modeLabel")}
                     error={createTeacherForm.formState.errors.mode?.message}
                   >
                     <FormSelect
@@ -928,15 +921,19 @@ export default function TeachersPage() {
                         }
                       }}
                     >
-                      <option value="phone">Telephone + PIN</option>
-                      <option value="email">Email + mot de passe</option>
+                      <option value="phone">
+                        {t("teachers.create.modePhone")}
+                      </option>
+                      <option value="email">
+                        {t("teachers.create.modeEmail")}
+                      </option>
                     </FormSelect>
                   </FormField>
                   <FormField
                     label={
                       createTeacherMode === "email"
-                        ? "Email enseignant"
-                        : "Telephone enseignant"
+                        ? t("teachers.create.emailLabel")
+                        : t("teachers.create.phoneLabel")
                     }
                     error={
                       createTeacherMode === "email"
@@ -983,8 +980,8 @@ export default function TeachersPage() {
                   <FormField
                     label={
                       createTeacherMode === "email"
-                        ? "Mot de passe initial"
-                        : "PIN initial"
+                        ? t("teachers.create.passwordLabel")
+                        : t("teachers.create.pinLabel")
                     }
                     error={
                       createTeacherMode === "email"
@@ -1039,7 +1036,9 @@ export default function TeachersPage() {
                         !createTeacherForm.formState.isValid
                       }
                     >
-                      {submittingTeacher ? "Creation..." : "Ajouter"}
+                      {submittingTeacher
+                        ? t("teachers.create.submitting")
+                        : t("teachers.create.submit")}
                     </SubmitButton>
                   </div>
                   <FormSubmitHint
@@ -1063,11 +1062,17 @@ export default function TeachersPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Enseignant</th>
-                      <th className="px-3 py-2 font-medium">Email</th>
-                      <th className="px-3 py-2 font-medium">Telephone</th>
                       <th className="px-3 py-2 font-medium">
-                        Classes affectees
+                        {t("teachers.table.col.teacher")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("teachers.table.col.email")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("teachers.table.col.phone")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("teachers.table.col.assignedClasses")}
                       </th>
                     </tr>
                   </thead>
@@ -1078,7 +1083,7 @@ export default function TeachersPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={4}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     )}
@@ -1098,7 +1103,7 @@ export default function TeachersPage() {
                             {(assignmentsByTeacher.get(entry.userId) ?? [])
                               .length === 0 ? (
                               <span className="text-text-secondary">
-                                Aucune
+                                {t("teachers.table.noAssignment")}
                               </span>
                             ) : (
                               <div className="grid gap-1">
@@ -1126,7 +1131,7 @@ export default function TeachersPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={4}
                         >
-                          Aucun enseignant trouve.
+                          {t("teachers.table.empty")}
                         </td>
                       </tr>
                     ) : null}
@@ -1141,13 +1146,13 @@ export default function TeachersPage() {
                 onSubmit={createAssignmentForm.handleSubmit(onCreateAssignment)}
               >
                 <FormField
-                  label="Annee scolaire"
+                  label={t("teachers.assignment.yearLabel")}
                   error={
                     createAssignmentForm.formState.errors.schoolYearId?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Annee scolaire affectation"
+                    aria-label={t("teachers.assignment.yearAria")}
                     invalid={createAssignmentSchoolYearInvalid}
                     value={createAssignmentValues.schoolYearId ?? ""}
                     onChange={(event) => {
@@ -1167,7 +1172,7 @@ export default function TeachersPage() {
                       });
                     }}
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {schoolYears.map((entry) => (
                       <option key={entry.id} value={entry.id}>
                         {entry.label}
@@ -1178,13 +1183,13 @@ export default function TeachersPage() {
                 </FormField>
 
                 <FormField
-                  label="Enseignant"
+                  label={t("teachers.assignment.teacherLabel")}
                   error={
                     createAssignmentForm.formState.errors.teacherUserId?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Enseignant affectation"
+                    aria-label={t("teachers.assignment.teacherAria")}
                     invalid={createAssignmentTeacherInvalid}
                     value={createAssignmentValues.teacherUserId ?? ""}
                     onChange={(event) =>
@@ -1199,7 +1204,7 @@ export default function TeachersPage() {
                       )
                     }
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {sortedTeachers.map((entry) => (
                       <option key={entry.userId} value={entry.userId}>
                         {entry.lastName} {entry.firstName}
@@ -1209,11 +1214,11 @@ export default function TeachersPage() {
                 </FormField>
 
                 <FormField
-                  label="Classe"
+                  label={t("teachers.assignment.classLabel")}
                   error={createAssignmentForm.formState.errors.classId?.message}
                 >
                   <FormSelect
-                    aria-label="Classe affectation"
+                    aria-label={t("teachers.assignment.classAria")}
                     invalid={createAssignmentClassInvalid}
                     value={createAssignmentValues.classId ?? ""}
                     onChange={(event) =>
@@ -1228,7 +1233,7 @@ export default function TeachersPage() {
                       )
                     }
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {filteredClassesForCreate().map((entry) => (
                       <option key={entry.id} value={entry.id}>
                         {entry.name}
@@ -1238,13 +1243,13 @@ export default function TeachersPage() {
                 </FormField>
 
                 <FormField
-                  label="Matiere"
+                  label={t("teachers.assignment.subjectLabel")}
                   error={
                     createAssignmentForm.formState.errors.subjectId?.message
                   }
                 >
                   <FormSelect
-                    aria-label="Matiere affectation"
+                    aria-label={t("teachers.assignment.subjectAria")}
                     invalid={createAssignmentSubjectInvalid}
                     value={createAssignmentValues.subjectId ?? ""}
                     onChange={(event) =>
@@ -1259,7 +1264,7 @@ export default function TeachersPage() {
                       )
                     }
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">{t("common.select")}</option>
                     {subjects.map((entry) => (
                       <option key={entry.id} value={entry.id}>
                         {entry.name}
@@ -1275,7 +1280,9 @@ export default function TeachersPage() {
                       !createAssignmentForm.formState.isValid
                     }
                   >
-                    {submittingAssignment ? "Creation..." : "Ajouter"}
+                    {submittingAssignment
+                      ? t("teachers.assignment.submitting")
+                      : t("teachers.assignment.submit")}
                   </SubmitButton>
                 </div>
                 <FormSubmitHint
@@ -1288,12 +1295,20 @@ export default function TeachersPage() {
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">Annee</th>
-                      <th className="px-3 py-2 font-medium">Enseignant</th>
-                      <th className="px-3 py-2 font-medium">Classe</th>
-                      <th className="px-3 py-2 font-medium">Matiere</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("teachers.assignment.colYear")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("teachers.assignment.colTeacher")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("teachers.assignment.colClass")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("teachers.assignment.colSubject")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
-                        Actions
+                        {t("teachers.assignment.colActions")}
                       </th>
                     </tr>
                   </thead>
@@ -1304,7 +1319,7 @@ export default function TeachersPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={5}
                         >
-                          Chargement...
+                          {t("common.loading")}
                         </td>
                       </tr>
                     )}
@@ -1330,7 +1345,7 @@ export default function TeachersPage() {
                                   variant="secondary"
                                   onClick={() => startEditAssignment(entry)}
                                 >
-                                  Modifier
+                                  {t("teachers.assignment.edit")}
                                 </Button>
                                 <Button
                                   type="button"
@@ -1342,7 +1357,7 @@ export default function TeachersPage() {
                                     })
                                   }
                                 >
-                                  Supprimer
+                                  {t("teachers.assignment.delete")}
                                 </Button>
                               </div>
                             </td>
@@ -1352,14 +1367,16 @@ export default function TeachersPage() {
                               <td className="px-3 py-3" colSpan={5}>
                                 <div className="grid gap-3 md:grid-cols-4">
                                   <FormField
-                                    label="Annee"
+                                    label={t("teachers.assignment.yearLabel")}
                                     error={
                                       editAssignmentForm.formState.errors
                                         .schoolYearId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Annee edition affectation"
+                                      aria-label={t(
+                                        "teachers.assignment.yearAria",
+                                      )}
                                       invalid={editAssignmentSchoolYearInvalid}
                                       value={
                                         editAssignmentValues.schoolYearId ?? ""
@@ -1385,7 +1402,9 @@ export default function TeachersPage() {
                                         );
                                       }}
                                     >
-                                      <option value="">Selectionner</option>
+                                      <option value="">
+                                        {t("common.select")}
+                                      </option>
                                       {schoolYears.map((year) => (
                                         <option key={year.id} value={year.id}>
                                           {year.label}
@@ -1394,14 +1413,18 @@ export default function TeachersPage() {
                                     </FormSelect>
                                   </FormField>
                                   <FormField
-                                    label="Enseignant"
+                                    label={t(
+                                      "teachers.assignment.teacherLabel",
+                                    )}
                                     error={
                                       editAssignmentForm.formState.errors
                                         .teacherUserId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Enseignant edition affectation"
+                                      aria-label={t(
+                                        "teachers.assignment.teacherAria",
+                                      )}
                                       invalid={editAssignmentTeacherInvalid}
                                       value={
                                         editAssignmentValues.teacherUserId ?? ""
@@ -1418,7 +1441,9 @@ export default function TeachersPage() {
                                         )
                                       }
                                     >
-                                      <option value="">Selectionner</option>
+                                      <option value="">
+                                        {t("common.select")}
+                                      </option>
                                       {sortedTeachers.map((teacher) => (
                                         <option
                                           key={teacher.userId}
@@ -1430,14 +1455,16 @@ export default function TeachersPage() {
                                     </FormSelect>
                                   </FormField>
                                   <FormField
-                                    label="Classe"
+                                    label={t("teachers.assignment.classLabel")}
                                     error={
                                       editAssignmentForm.formState.errors
                                         .classId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Classe edition affectation"
+                                      aria-label={t(
+                                        "teachers.assignment.classAria",
+                                      )}
                                       invalid={editAssignmentClassInvalid}
                                       value={editAssignmentValues.classId ?? ""}
                                       onChange={(event) =>
@@ -1452,7 +1479,9 @@ export default function TeachersPage() {
                                         )
                                       }
                                     >
-                                      <option value="">Selectionner</option>
+                                      <option value="">
+                                        {t("common.select")}
+                                      </option>
                                       {filteredClassesForEdit().map((c) => (
                                         <option key={c.id} value={c.id}>
                                           {c.name}
@@ -1461,14 +1490,18 @@ export default function TeachersPage() {
                                     </FormSelect>
                                   </FormField>
                                   <FormField
-                                    label="Matiere"
+                                    label={t(
+                                      "teachers.assignment.subjectLabel",
+                                    )}
                                     error={
                                       editAssignmentForm.formState.errors
                                         .subjectId?.message
                                     }
                                   >
                                     <FormSelect
-                                      aria-label="Matiere edition affectation"
+                                      aria-label={t(
+                                        "teachers.assignment.subjectAria",
+                                      )}
                                       invalid={editAssignmentSubjectInvalid}
                                       value={
                                         editAssignmentValues.subjectId ?? ""
@@ -1485,7 +1518,9 @@ export default function TeachersPage() {
                                         )
                                       }
                                     >
-                                      <option value="">Selectionner</option>
+                                      <option value="">
+                                        {t("common.select")}
+                                      </option>
                                       {subjects.map((subject) => (
                                         <option
                                           key={subject.id}
@@ -1517,8 +1552,8 @@ export default function TeachersPage() {
                                       }
                                     >
                                       {savingAssignment
-                                        ? "Enregistrement..."
-                                        : "Enregistrer"}
+                                        ? t("teachers.assignment.saving")
+                                        : t("teachers.assignment.save")}
                                     </Button>
                                     <Button
                                       type="button"
@@ -1533,7 +1568,7 @@ export default function TeachersPage() {
                                         });
                                       }}
                                     >
-                                      Annuler
+                                      {t("common.cancel")}
                                     </Button>
                                   </div>
                                 </div>
@@ -1551,7 +1586,7 @@ export default function TeachersPage() {
                           className="px-3 py-6 text-text-secondary"
                           colSpan={5}
                         >
-                          Aucune affectation trouvee.
+                          {t("teachers.assignment.empty")}
                         </td>
                       </tr>
                     ) : null}
@@ -1572,13 +1607,16 @@ export default function TeachersPage() {
 
       <ConfirmDialog
         open={Boolean(deleteAssignment)}
-        title="Confirmer la suppression"
+        title={t("teachers.delete.title")}
         message={
           deleteAssignment
-            ? `Voulez-vous supprimer l'affectation ${deleteAssignment.label} ?`
+            ? t("teachers.delete.message").replace(
+                "{label}",
+                deleteAssignment.label,
+              )
             : ""
         }
-        confirmLabel="Supprimer"
+        confirmLabel={t("teachers.delete.confirm")}
         loading={deleting}
         onCancel={() => {
           if (!deleting) {

@@ -80,73 +80,73 @@ function buildItems(
   ) {
     return [
       {
-        label: "Mon compte",
+        label: t("sidebar.nav.myAccount"),
         href: "/account",
         icon: UserSquare2,
         matchPrefix: "/account",
       },
       {
-        label: "Accueil plateforme",
+        label: t("sidebar.nav.platformHome"),
         href: "/acceuil",
         icon: ShieldCheck,
         matchPrefix: "/acceuil",
       },
       {
-        label: "Ecoles",
+        label: t("sidebar.nav.schools"),
         href: "/schools",
         icon: School,
         matchPrefix: "/schools",
       },
       {
-        label: "Classes",
+        label: t("sidebar.nav.classes"),
         href: "/classes",
         icon: Building2,
         matchPrefix: "/classes",
       },
       {
-        label: "Matieres",
+        label: t("sidebar.nav.subjects"),
         href: "/subjects",
         icon: BookOpen,
         matchPrefix: "/subjects",
       },
       {
-        label: "Curriculums",
+        label: t("sidebar.nav.curriculums"),
         href: "/curriculums",
         icon: GraduationCap,
         matchPrefix: "/curriculums",
       },
       {
-        label: "Inscriptions",
+        label: t("sidebar.nav.enrollments"),
         href: "/enrollments",
         icon: BookOpen,
         matchPrefix: "/enrollments",
       },
       {
-        label: "Eleves",
+        label: t("sidebar.nav.students"),
         href: "/eleves",
         icon: UserSquare2,
         matchPrefix: "/eleves",
       },
       {
-        label: "Utilisateurs",
+        label: t("sidebar.nav.users"),
         href: "/users",
         icon: Users,
         matchPrefix: "/users",
       },
       {
-        label: "Indicateurs",
+        label: t("sidebar.nav.indicators"),
         href: "/indicators",
         icon: BarChart3,
         matchPrefix: "/indicators",
       },
       {
-        label: "Campagnes tests",
+        label: t("sidebar.nav.testCampaigns"),
         href: "/test-campaigns",
         icon: ClipboardList,
         matchPrefix: "/test-campaigns",
       },
       {
-        label: "Parametres",
+        label: t("sidebar.nav.settings"),
         href: "/settings",
         icon: Settings,
         matchPrefix: "/settings",
@@ -163,67 +163,67 @@ function buildItems(
   ) {
     return [
       {
-        label: "Mon compte",
+        label: t("sidebar.nav.myAccount"),
         href: "/account",
         icon: UserSquare2,
         matchPrefix: "/account",
       },
       {
-        label: "Accueil",
+        label: t("sidebar.nav.home"),
         href: `${schoolBase}/dashboard`,
         icon: LayoutDashboard,
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
-        label: "Fil d'actualite",
+        label: t("sidebar.nav.newsFeed"),
         href: `${schoolBase}/fil`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/fil`,
       },
       {
-        label: "Classes",
+        label: t("sidebar.nav.classes"),
         href: "/classes",
         icon: Building2,
         matchPrefix: "/classes",
       },
       {
-        label: "Matieres",
+        label: t("sidebar.nav.subjects"),
         href: "/subjects",
         icon: BookOpen,
         matchPrefix: "/subjects",
       },
       {
-        label: "Curriculums",
+        label: t("sidebar.nav.curriculums"),
         href: "/curriculums",
         icon: GraduationCap,
         matchPrefix: "/curriculums",
       },
       {
-        label: "Inscriptions",
+        label: t("sidebar.nav.enrollments"),
         href: "/enrollments",
         icon: BookOpen,
         matchPrefix: "/enrollments",
       },
       {
-        label: "Eleves",
+        label: t("sidebar.nav.students"),
         href: "/eleves",
         icon: UserSquare2,
         matchPrefix: "/eleves",
       },
       {
-        label: "Enseignants",
+        label: t("sidebar.nav.teachers"),
         href: "/teachers",
         icon: GraduationCap,
         matchPrefix: "/teachers",
       },
       {
-        label: "Parents-eleves",
+        label: t("sidebar.nav.parentsStudents"),
         href: `${schoolBase}/dashboard#parents`,
         icon: Users,
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
-        label: "Notes",
+        label: t("sidebar.nav.grades"),
         href: `${schoolBase}/student-grades`,
         icon: BookOpen,
         matchPrefix: `${schoolBase}/student-grades`,
@@ -235,7 +235,7 @@ function buildItems(
         matchPrefix: `${schoolBase}/messagerie`,
       },
       {
-        label: "Parametres",
+        label: t("sidebar.nav.settings"),
         href: "/settings",
         icon: Settings,
         matchPrefix: "/settings",
@@ -246,31 +246,31 @@ function buildItems(
   if (role === "TEACHER") {
     return [
       {
-        label: "Mon compte",
+        label: t("sidebar.nav.myAccount"),
         href: "/account",
         icon: UserSquare2,
         matchPrefix: "/account",
       },
       {
-        label: "Tableau de bord",
+        label: t("sidebar.nav.dashboard"),
         href: `${schoolBase}/dashboard`,
         icon: LayoutDashboard,
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
-        label: "Fil d'actualite",
+        label: t("sidebar.nav.newsFeed"),
         href: `${schoolBase}/fil`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/fil`,
       },
       {
-        label: "Mes classes",
+        label: t("sidebar.nav.myClasses"),
         href: `${schoolBase}/mes-classes`,
         icon: School,
         matchPrefix: `${schoolBase}/mes-classes`,
       },
       {
-        label: "Cahier de notes",
+        label: t("sidebar.nav.gradesNotebook"),
         href: `${schoolBase}/student-grades`,
         icon: BookOpen,
         matchPrefix: `${schoolBase}/student-grades`,
@@ -282,7 +282,7 @@ function buildItems(
         matchPrefix: `${schoolBase}/messagerie`,
       },
       {
-        label: "Parametres",
+        label: t("sidebar.nav.settings"),
         href: "/settings",
         icon: Settings,
         matchPrefix: "/settings",
@@ -293,31 +293,31 @@ function buildItems(
   if (role === "PARENT") {
     return [
       {
-        label: "Accueil",
+        label: t("sidebar.nav.home"),
         href: `${schoolBase}/dashboard`,
         icon: Home,
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
-        label: "Mon compte",
+        label: t("sidebar.nav.myAccount"),
         href: "/account",
         icon: UserSquare2,
         matchPrefix: "/account",
       },
       {
-        label: "Fil d'actualite",
+        label: t("sidebar.nav.newsFeed"),
         href: `${schoolBase}/fil`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/fil`,
       },
       {
-        label: "Situation financiere",
+        label: t("sidebar.nav.financialSituation"),
         href: `${schoolBase}/situation-financiere`,
         icon: Wallet,
         matchPrefix: `${schoolBase}/situation-financiere`,
       },
       {
-        label: "Boutique en ligne",
+        label: t("sidebar.nav.onlineShop"),
         href: `${schoolBase}/boutique-en-ligne`,
         icon: CreditCard,
         matchPrefix: `${schoolBase}/boutique-en-ligne`,
@@ -329,19 +329,19 @@ function buildItems(
         matchPrefix: `${schoolBase}/messagerie`,
       },
       {
-        label: "Documents",
+        label: t("sidebar.nav.documents"),
         href: `${schoolBase}/documents`,
         icon: FileText,
         matchPrefix: `${schoolBase}/documents`,
       },
       {
-        label: "Formulaire",
+        label: t("sidebar.nav.forms"),
         href: `${schoolBase}/formulaire`,
         icon: FileText,
         matchPrefix: `${schoolBase}/formulaire`,
       },
       {
-        label: "Parametres",
+        label: t("sidebar.nav.settings"),
         href: "/settings",
         icon: Settings,
         matchPrefix: "/settings",
@@ -351,37 +351,37 @@ function buildItems(
 
   return [
     {
-      label: "Mon compte",
+      label: t("sidebar.nav.myAccount"),
       href: "/account",
       icon: UserSquare2,
       matchPrefix: "/account",
     },
     {
-      label: "Accueil",
+      label: t("sidebar.nav.home"),
       href: `${schoolBase}/dashboard`,
       icon: Home,
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
-      label: "Vos informations",
+      label: t("sidebar.nav.yourInfo"),
       href: `${schoolBase}/dashboard#infos`,
       icon: UserSquare2,
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
-      label: "Situation financiere",
+      label: t("sidebar.nav.financialSituation"),
       href: `${schoolBase}/dashboard#finance`,
       icon: Wallet,
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
-      label: "Paiements en ligne",
+      label: t("sidebar.nav.onlinePayments"),
       href: `${schoolBase}/dashboard#payments`,
       icon: CreditCard,
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
-      label: "Parametres",
+      label: t("sidebar.nav.settings"),
       href: "/settings",
       icon: Settings,
       matchPrefix: "/settings",
@@ -393,13 +393,13 @@ function buildItems(
       matchPrefix: `${schoolBase}/messagerie`,
     },
     {
-      label: "Documents",
+      label: t("sidebar.nav.documents"),
       href: `${schoolBase}/dashboard#docs`,
       icon: FileText,
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
-      label: "Notes & devoirs",
+      label: t("sidebar.nav.gradesAndHomework"),
       href: `${schoolBase}/student-grades`,
       icon: BookOpen,
       matchPrefix: `${schoolBase}/student-grades`,
@@ -416,7 +416,7 @@ function buildParentChildItems(
 
   return [
     {
-      label: "Accueil",
+      label: t("sidebar.nav.home"),
       href: `${base}/accueil`,
       icon: Home,
       matchPrefix: `${base}/accueil`,
@@ -428,7 +428,7 @@ function buildParentChildItems(
       matchPrefix: `${base}/vie-scolaire`,
     },
     {
-      label: "Vie de classe",
+      label: t("feed.vieDeClasse.title"),
       href: `${base}/vie-de-classe`,
       icon: Users,
       matchPrefix: `${base}/vie-de-classe`,
@@ -442,7 +442,7 @@ function buildParentChildItems(
       matchPrefix: `/schools/${schoolSlug}/emploi-du-temps`,
     },
     {
-      label: "Notes",
+      label: t("sidebar.nav.grades"),
       href: `${base}/notes`,
       icon: BookOpen,
       matchPrefix: `${base}/notes`,
@@ -454,25 +454,25 @@ function buildParentChildItems(
       matchPrefix: `${base}/messagerie`,
     },
     {
-      label: "Cahier de texte",
+      label: t("homework.sidebar.cahierDeTexte"),
       href: `${base}/cahier-de-texte`,
       icon: FileText,
       matchPrefix: `${base}/cahier-de-texte`,
     },
     {
-      label: "Manuels & resources",
+      label: t("sidebar.nav.manuals"),
       href: `${base}/manuels-ressources`,
       icon: FileText,
       matchPrefix: `${base}/manuels-ressources`,
     },
     {
-      label: "Formulaires & sondages",
+      label: t("sidebar.nav.formsSurveys"),
       href: `${base}/formulaires-sondages`,
       icon: FileText,
       matchPrefix: `${base}/formulaires-sondages`,
     },
     {
-      label: "Cursus",
+      label: t("sidebar.nav.curriculum"),
       href: `${base}/cursus`,
       icon: GraduationCap,
       matchPrefix: `${base}/cursus`,
@@ -489,13 +489,13 @@ function buildTeacherClassItems(
 
   return [
     {
-      label: "Fil de classe",
+      label: t("sidebar.nav.classFeed"),
       href: `${base}/fil`,
       icon: MessageSquare,
       matchPrefix: `${base}/fil`,
     },
     {
-      label: "Notes",
+      label: t("sidebar.nav.grades"),
       href: `${base}/notes`,
       icon: BookOpen,
       matchPrefix: `${base}/notes`,
@@ -818,7 +818,7 @@ export function AppSidebar({
           <div className="flex items-center justify-center md:justify-start">
             <Home className="h-4 w-4 md:mx-auto md:group-hover:mx-0" />
             <span className="ml-2 md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[140px] md:group-hover:opacity-100">
-              MON ESPACE FAMILLE
+              {t("sidebar.familySpace")}
             </span>
           </div>
         </div>
@@ -843,14 +843,14 @@ export function AppSidebar({
                   <School className="h-4 w-4" />
                 </span>
                 <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                  Menu enseignant
+                  {t("sidebar.teacherMenu")}
                 </span>
               </button>
 
               {openTeacherSection === "classes" ? (
                 <nav
                   className="mt-2 grid gap-1"
-                  aria-label="Menu general enseignant"
+                  aria-label={t("sidebar.ariaTeacherGeneralMenu")}
                 >
                   {teacherGeneralItems.map((item) => {
                     const active = item.matchPrefix
@@ -924,7 +924,10 @@ export function AppSidebar({
                   {isOpen ? (
                     <nav
                       className="mt-2 grid gap-1"
-                      aria-label={`Menu classe ${entry.className}`}
+                      aria-label={t("sidebar.ariaClassMenu").replace(
+                        "{className}",
+                        entry.className,
+                      )}
                     >
                       {entry.items.map((item) => {
                         const active = item.matchPrefix
@@ -986,7 +989,7 @@ export function AppSidebar({
         ) : role !== "PARENT" ? (
           <nav
             className="flex flex-col gap-1"
-            aria-label="Navigation principale"
+            aria-label={t("sidebar.ariaMainNav")}
           >
             {items.map((item) => {
               const active = item.matchPrefix
@@ -1046,12 +1049,15 @@ export function AppSidebar({
                   <Home className="h-4 w-4" />
                 </span>
                 <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                  MON ESPACE FAMILLE
+                  {t("sidebar.familySpace")}
                 </span>
               </button>
 
               {openParentSection === "general" ? (
-                <nav className="mt-2 grid gap-1" aria-label="Menu parent">
+                <nav
+                  className="mt-2 grid gap-1"
+                  aria-label={t("sidebar.ariaParentMenu")}
+                >
                   {items.map((item) => {
                     const active = item.matchPrefix
                       ? pathname.startsWith(item.matchPrefix)
@@ -1133,7 +1139,10 @@ export function AppSidebar({
                   {isOpen ? (
                     <nav
                       className="mt-2 grid gap-1"
-                      aria-label={`Menu ${child.lastName} ${child.firstName}`}
+                      aria-label={t("sidebar.ariaChildMenu").replace(
+                        "{childName}",
+                        `${child.lastName} ${child.firstName}`,
+                      )}
                     >
                       {child.items.map((item) => {
                         const active = item.matchPrefix
@@ -1203,7 +1212,7 @@ export function AppSidebar({
             <HelpCircle className="h-4 w-4" />
           </span>
           <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-            Assistance
+            {t("sidebar.nav.assistance")}
           </span>
         </Link>
       </div>
@@ -1211,7 +1220,7 @@ export function AppSidebar({
       <div className="mt-2 border-t border-white/10 pt-2">
         <button
           type="button"
-          aria-label="Se deconnecter"
+          aria-label={t("sidebar.logout")}
           data-testid="sidebar-logout-button"
           onClick={onLogoutClick}
           className={`flex w-full items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
@@ -1227,7 +1236,7 @@ export function AppSidebar({
             <LogOut className="h-4 w-4" />
           </span>
           <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-            Se deconnecter
+            {t("sidebar.logout")}
           </span>
         </button>
       </div>

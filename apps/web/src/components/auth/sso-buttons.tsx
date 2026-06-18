@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "../ui/button";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   schoolSlug?: string | null;
@@ -55,6 +56,7 @@ function AppleLogo() {
 }
 
 export function SsoButtons({ schoolSlug }: Props) {
+  const { t } = useTranslation();
   const [loadingProvider, setLoadingProvider] = useState<
     "google" | "apple" | null
   >(null);
@@ -115,7 +117,7 @@ export function SsoButtons({ schoolSlug }: Props) {
 
   async function onProviderSignIn(provider: "google" | "apple") {
     if (provider === "apple" && !providers.apple) {
-      setError("Connexion Apple indisponible: configuration manquante.");
+      setError(t("sso.appleUnavailable"));
       return;
     }
     setError(null);
@@ -140,8 +142,8 @@ export function SsoButtons({ schoolSlug }: Props) {
         <span className="inline-flex items-center gap-2">
           <GoogleLogo />
           {loadingProvider === "google"
-            ? "Connexion Google..."
-            : "Continuer avec Google"}
+            ? t("sso.googleLoading")
+            : t("sso.googleContinue")}
         </span>
       </Button>
       <Button
@@ -155,15 +157,15 @@ export function SsoButtons({ schoolSlug }: Props) {
           appleEnabled
             ? undefined
             : APPLE_SSO_ENABLED
-              ? "Connexion Apple desactivee: provider non configure"
-              : "Connexion Apple desactivee temporairement"
+              ? t("sso.appleDisabledNoProvider")
+              : t("sso.appleDisabledTemp")
         }
       >
         <span className="inline-flex items-center gap-2">
           <AppleLogo />
           {loadingProvider === "apple"
-            ? "Connexion Apple..."
-            : "Continuer avec Apple"}
+            ? t("sso.appleLoading")
+            : t("sso.appleContinue")}
         </span>
       </Button>
       {error ? <p className="text-xs text-notification">{error}</p> : null}

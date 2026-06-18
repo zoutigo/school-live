@@ -3,6 +3,7 @@
 import React from "react";
 import { useEffect } from "react";
 import { Button } from "./button";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   open: boolean;
@@ -19,12 +20,16 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "Supprimer",
-  cancelLabel = "Annuler",
+  confirmLabel,
+  cancelLabel,
   loading = false,
   onConfirm,
   onCancel,
 }: Props) {
+  const { t } = useTranslation();
+  const resolvedConfirmLabel = confirmLabel ?? t("common.delete");
+  const resolvedCancelLabel = cancelLabel ?? t("common.cancel");
+
   useEffect(() => {
     if (!open) {
       return;
@@ -48,7 +53,7 @@ export function ConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        aria-label="Fermer la confirmation"
+        aria-label={t("common.closeConfirmation")}
         className="absolute inset-0 bg-[#2f2418]/40 backdrop-blur-[3px]"
         onClick={onCancel}
       />
@@ -59,7 +64,7 @@ export function ConfirmDialog({
         className="relative w-full max-w-md rounded-[24px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,1)_100%)] p-6 shadow-[0_24px_60px_rgba(47,36,24,0.18)]"
       >
         <div className="mb-4 inline-flex rounded-full border border-[#efcfaa] bg-[#fff3e4] px-3 py-1 text-xs font-heading font-semibold uppercase tracking-[0.18em] text-[#b7793a]">
-          Confirmation
+          {t("common.confirmation")}
         </div>
         <h2
           id="confirm-dialog-title"
@@ -75,7 +80,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             disabled={loading}
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </Button>
           <Button
             type="button"
@@ -83,7 +88,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? "Suppression..." : confirmLabel}
+            {loading ? t("common.deleting") : resolvedConfirmLabel}
           </Button>
         </div>
       </div>

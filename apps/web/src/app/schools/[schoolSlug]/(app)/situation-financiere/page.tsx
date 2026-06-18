@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
+import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -238,6 +239,7 @@ function Badge({
 export default function ParentFinancePage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("compte");
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -287,22 +289,25 @@ export default function ParentFinancePage() {
   return (
     <div className="grid gap-4">
       <Card
-        title="Situation financiere"
+        title={t("finSituation.title")}
         subtitle={
           me
-            ? `${me.firstName} ${me.lastName} - suivi des reglements et soldes`
-            : "Chargement du profil parent..."
+            ? t("finSituation.subtitle").replace(
+                "{fullName}",
+                `${me.firstName} ${me.lastName}`,
+              )
+            : t("common.loading")
         }
       >
         {loading ? (
-          <p className="text-sm text-text-secondary">Chargement...</p>
+          <p className="text-sm text-text-secondary">{t("common.loading")}</p>
         ) : (
           <div className="grid gap-4">
             <div className="rounded-card border border-primary/30 bg-gradient-to-br from-[#EAF4FF] via-[#F5FAFF] to-surface p-4">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Solde compte
+                    {t("finSituation.balance.account")}
                   </p>
                   <p className="mt-1 text-xl font-heading font-bold text-primary">
                     {formatXaf(currentBalance)}
@@ -310,7 +315,7 @@ export default function ParentFinancePage() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    A venir
+                    {t("finSituation.balance.upcoming")}
                   </p>
                   <p className="mt-1 text-xl font-heading font-bold text-amber-700">
                     {formatXaf(pendingAmount)}
@@ -318,7 +323,7 @@ export default function ParentFinancePage() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    Porte-monnaie total
+                    {t("finSituation.balance.wallet")}
                   </p>
                   <p className="mt-1 text-xl font-heading font-bold text-primary">
                     {formatXaf(walletTotal)}
@@ -330,10 +335,10 @@ export default function ParentFinancePage() {
             <div className="-mx-1 flex items-end gap-1 overflow-x-auto border-b border-border px-1 pb-1">
               {(
                 [
-                  { key: "compte", label: "Compte" },
-                  { key: "porte-monnaie", label: "Porte-monnaie" },
-                  { key: "factures", label: "Factures" },
-                  { key: "reglement", label: "Mode de reglement" },
+                  { key: "compte", label: t("finSituation.tab.account") },
+                  { key: "porte-monnaie", label: t("finSituation.tab.wallet") },
+                  { key: "factures", label: t("finSituation.tab.invoices") },
+                  { key: "reglement", label: t("finSituation.tab.payment") },
                 ] as const
               ).map((entry) => (
                 <button
@@ -367,10 +372,12 @@ export default function ParentFinancePage() {
                       </p>
                       <div className="mt-2 flex items-center justify-between">
                         <p className="text-sm text-text-secondary">
-                          Debit: {formatXaf(entry.debit)}
+                          {t("finSituation.mobile.debit")}{" "}
+                          {formatXaf(entry.debit)}
                         </p>
                         <p className="text-sm text-primary">
-                          Credit: {formatXaf(entry.credit)}
+                          {t("finSituation.mobile.credit")}{" "}
+                          {formatXaf(entry.credit)}
                         </p>
                       </div>
                     </article>
@@ -381,13 +388,17 @@ export default function ParentFinancePage() {
                   <table className="min-w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-background text-left text-text-secondary">
-                        <th className="px-3 py-2 font-semibold">Date</th>
-                        <th className="px-3 py-2 font-semibold">Libelle</th>
-                        <th className="px-3 py-2 font-semibold text-right">
-                          Debit
+                        <th className="px-3 py-2 font-semibold">
+                          {t("finSituation.table.date")}
+                        </th>
+                        <th className="px-3 py-2 font-semibold">
+                          {t("finSituation.table.label")}
                         </th>
                         <th className="px-3 py-2 font-semibold text-right">
-                          Credit
+                          {t("finSituation.table.debit")}
+                        </th>
+                        <th className="px-3 py-2 font-semibold text-right">
+                          {t("finSituation.table.credit")}
                         </th>
                       </tr>
                     </thead>
@@ -401,7 +412,9 @@ export default function ParentFinancePage() {
                             <div className="flex items-center gap-2">
                               <span>{entry.label}</span>
                               {entry.status === "a-venir" ? (
-                                <Badge tone="warn">A venir</Badge>
+                                <Badge tone="warn">
+                                  {t("finSituation.badge.upcoming")}
+                                </Badge>
                               ) : null}
                             </div>
                           </td>
@@ -455,7 +468,10 @@ export default function ParentFinancePage() {
                   })}
                 </div>
 
-                <Card title="Dernieres operations" className="bg-background">
+                <Card
+                  title={t("finSituation.walletHistory.title")}
+                  className="bg-background"
+                >
                   <div className="grid gap-2">
                     {walletHistory.map((entry) => (
                       <div
@@ -500,7 +516,10 @@ export default function ParentFinancePage() {
                           {invoice.document}
                         </p>
                         <p className="mt-1 text-xs text-text-secondary">
-                          Emise le {invoice.date}
+                          {t("finSituation.invoice.issuedOn").replace(
+                            "{date}",
+                            invoice.date,
+                          )}
                         </p>
                       </div>
                       <Badge
@@ -513,10 +532,10 @@ export default function ParentFinancePage() {
                         }
                       >
                         {invoice.status === "payee"
-                          ? "Payee"
+                          ? t("finSituation.invoice.status.paid")
                           : invoice.status === "retard"
-                            ? "Retard"
-                            : "En attente"}
+                            ? t("finSituation.invoice.status.late")
+                            : t("finSituation.invoice.status.pending")}
                       </Badge>
                     </div>
                     <div className="mt-3 flex items-center justify-between">
@@ -529,7 +548,7 @@ export default function ParentFinancePage() {
                         className="px-3 py-1.5 text-xs"
                         iconLeft={<FileText className="h-3.5 w-3.5" />}
                       >
-                        Telecharger PDF
+                        {t("finSituation.invoice.download")}
                       </Button>
                     </div>
                   </article>
@@ -566,11 +585,11 @@ export default function ParentFinancePage() {
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                       <p className="text-sm font-semibold text-text-primary">
-                        Prelevement automatique
+                        {t("finSituation.payment.autoDebit")}
                       </p>
                     </div>
                     <p className="mt-2 text-sm text-text-secondary">
-                      Canal principal: Orange Money (fin de mois).
+                      {t("finSituation.payment.autoDebitDetail")}
                     </p>
                   </article>
 
@@ -578,12 +597,11 @@ export default function ParentFinancePage() {
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-amber-600" />
                       <p className="text-sm font-semibold text-text-primary">
-                        Regle de securite
+                        {t("finSituation.payment.security")}
                       </p>
                     </div>
                     <p className="mt-2 text-sm text-text-secondary">
-                      Toute modification du mode de reglement est validee par
-                      SMS.
+                      {t("finSituation.payment.securityDetail")}
                     </p>
                   </article>
                 </div>
@@ -593,10 +611,10 @@ export default function ParentFinancePage() {
                     type="button"
                     iconLeft={<CreditCard className="h-4 w-4" />}
                   >
-                    Ajouter un mode
+                    {t("finSituation.payment.add")}
                   </Button>
                   <Button type="button" variant="secondary">
-                    Demander une modification
+                    {t("finSituation.payment.request")}
                   </Button>
                 </div>
               </div>

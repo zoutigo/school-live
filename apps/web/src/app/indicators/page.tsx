@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -39,6 +40,7 @@ type IndicatorsResponse = {
 
 export default function IndicatorsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
   const [indicators, setIndicators] = useState<IndicatorsResponse | null>(null);
@@ -82,7 +84,7 @@ export default function IndicatorsPage() {
   return (
     <AppShell schoolName="Scolive Platform">
       <div className="grid gap-4">
-        <Card title="Indicateurs" subtitle="Vue consolidée de la plateforme">
+        <Card title={t("indicators.title")} subtitle={t("indicators.subtitle")}>
           <div className="mb-4 flex items-end gap-2 border-b border-border">
             <button
               type="button"
@@ -93,7 +95,7 @@ export default function IndicatorsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Vue globale
+              {t("indicators.tab.overview")}
             </button>
             <button
               type="button"
@@ -104,7 +106,7 @@ export default function IndicatorsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Onglet suivant
+              {t("indicators.tab.future")}
             </button>
             <button
               type="button"
@@ -115,38 +117,38 @@ export default function IndicatorsPage() {
                   : "text-text-secondary"
               }`}
             >
-              Aide
+              {t("indicators.tab.help")}
             </button>
           </div>
 
           {tab === "overview" ? (
             <div className="grid gap-4 md:grid-cols-3">
-              <Card title="Ecoles">
+              <Card title={t("indicators.card.schools")}>
                 <p className="font-heading text-3xl font-bold text-primary">
                   {loading ? "..." : (indicators?.schoolsCount ?? 0)}
                 </p>
               </Card>
-              <Card title="Utilisateurs">
+              <Card title={t("indicators.card.users")}>
                 <p className="font-heading text-3xl font-bold text-primary">
                   {loading ? "..." : (indicators?.usersCount ?? 0)}
                 </p>
               </Card>
-              <Card title="Eleves">
+              <Card title={t("indicators.card.students")}>
                 <p className="font-heading text-3xl font-bold text-primary">
                   {loading ? "..." : (indicators?.studentsCount ?? 0)}
                 </p>
               </Card>
-              <Card title="Enseignants">
+              <Card title={t("indicators.card.teachers")}>
                 <p className="font-heading text-3xl font-bold text-primary">
                   {loading ? "..." : (indicators?.teachersCount ?? 0)}
                 </p>
               </Card>
-              <Card title="Notes">
+              <Card title={t("indicators.card.grades")}>
                 <p className="font-heading text-3xl font-bold text-primary">
                   {loading ? "..." : (indicators?.gradesCount ?? 0)}
                 </p>
               </Card>
-              <Card title="Admins">
+              <Card title={t("indicators.card.admins")}>
                 <p className="font-heading text-3xl font-bold text-primary">
                   {loading
                     ? "..."
@@ -157,39 +159,33 @@ export default function IndicatorsPage() {
             </div>
           ) : tab === "future" ? (
             <p className="text-sm text-text-secondary">
-              Cet onglet servira pour les graphiques temporels (croissance,
-              usage, performance).
+              {t("indicators.future.text")}
             </p>
           ) : (
             <ModuleHelpTab
-              moduleName="Indicateurs"
-              moduleSummary="ce module donne une vue synthetique de la sante de la plateforme et des volumes cles."
+              moduleName={t("indicators.help.moduleName")}
+              moduleSummary={t("indicators.help.moduleSummary")}
               actions={[
                 {
-                  name: "Consulter",
-                  purpose:
-                    "surveiller les volumes (ecoles, utilisateurs, eleves, enseignants, notes).",
-                  howTo:
-                    "ouvrir l'onglet Vue globale et lire les compteurs consolides.",
-                  moduleImpact: "aucune ecriture: lecture et suivi uniquement.",
-                  crossModuleImpact:
-                    "permet de prioriser les actions sur Ecoles, Utilisateurs, Classes ou Inscriptions.",
+                  name: t("indicators.help.action1.name"),
+                  purpose: t("indicators.help.action1.purpose"),
+                  howTo: t("indicators.help.action1.howTo"),
+                  moduleImpact: t("indicators.help.action1.moduleImpact"),
+                  crossModuleImpact: t(
+                    "indicators.help.action1.crossModuleImpact",
+                  ),
                 },
                 {
-                  name: "Comparer",
-                  purpose:
-                    "identifier les zones sous-utilisees ou en forte croissance.",
-                  howTo:
-                    "croiser les compteurs avec les resultats observes dans les modules operationnels.",
-                  moduleImpact:
-                    "ameliore la comprehension globale sans modifier les donnees.",
-                  crossModuleImpact:
-                    "oriente les decisions de creation, correction ou nettoyage dans les autres modules.",
+                  name: t("indicators.help.action2.name"),
+                  purpose: t("indicators.help.action2.purpose"),
+                  howTo: t("indicators.help.action2.howTo"),
+                  moduleImpact: t("indicators.help.action2.moduleImpact"),
+                  crossModuleImpact: t(
+                    "indicators.help.action2.crossModuleImpact",
+                  ),
                 },
               ]}
-              tips={[
-                "Utiliser cet onglet comme point de controle rapide avant d'intervenir sur les modules metiers.",
-              ]}
+              tips={[t("indicators.help.tip1")]}
             />
           )}
         </Card>

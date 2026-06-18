@@ -31,11 +31,12 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
   initialHtml?: string;
   minHeightClassName?: string;
-  hint?: string;
+  hint?: string | undefined;
   allowInlineImages?: boolean;
   allowInlineVideos?: boolean;
   onTextChange?: (text: string) => void;
@@ -56,7 +57,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     {
       initialHtml = "",
       minHeightClassName = "min-h-[220px]",
-      hint = "Astuce: utilisez les styles de titre et les listes pour une lecture plus claire.",
+      hint,
       allowInlineImages = true,
       allowInlineVideos = false,
       onTextChange,
@@ -66,6 +67,8 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     },
     ref,
   ) {
+    const { t } = useTranslation();
+    const resolvedHint = hint ?? t("editor.hint");
     const editorRef = useRef<HTMLDivElement | null>(null);
     const inlineImageInputRef = useRef<HTMLInputElement | null>(null);
     const inlineVideoInputRef = useRef<HTMLInputElement | null>(null);
@@ -122,17 +125,17 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
 
     async function handleInlineImageFile(file: File) {
       if (!file.type.startsWith("image/")) {
-        setError("Le fichier selectionne n'est pas une image.");
+        setError(t("editor.errorNotImage"));
         return;
       }
 
       if (file.size > 8 * 1024 * 1024) {
-        setError("Image trop lourde (max 8 Mo).");
+        setError(t("editor.errorImageSize"));
         return;
       }
 
       if (!onUploadInlineImage) {
-        setError("Upload image indisponible.");
+        setError(t("editor.errorImageUpload"));
         return;
       }
 
@@ -140,24 +143,26 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       try {
         const imageUrl = await onUploadInlineImage(file);
         insertImage(imageUrl, file.name);
-      } catch (error) {
-        setError(resolveUploadErrorMessage(error));
+      } catch (err) {
+        setError(
+          resolveUploadErrorMessage(err, t("editor.errorUploadFallback")),
+        );
       }
     }
 
     async function handleInlineVideoFile(file: File) {
       if (!file.type.startsWith("video/")) {
-        setError("Le fichier selectionne n'est pas une video.");
+        setError(t("editor.errorNotVideo"));
         return;
       }
 
       if (file.size > 80 * 1024 * 1024) {
-        setError("Video trop lourde (max 80 Mo).");
+        setError(t("editor.errorVideoSize"));
         return;
       }
 
       if (!onUploadInlineVideo) {
-        setError("Upload video indisponible.");
+        setError(t("editor.errorVideoUpload"));
         return;
       }
 
@@ -165,8 +170,10 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       try {
         const videoUrl = await onUploadInlineVideo(file);
         insertVideo(videoUrl, file.name);
-      } catch (error) {
-        setError(resolveUploadErrorMessage(error));
+      } catch (err) {
+        setError(
+          resolveUploadErrorMessage(err, t("editor.errorUploadFallback")),
+        );
       }
     }
 
@@ -272,7 +279,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
           <ToolbarDivider />
           <ToolbarBtn
             onClick={() => {
-              const url = window.prompt("Lien");
+              const url = window.prompt(t("editor.linkPrompt"));
               if (url) {
                 applyCommand("createLink", url);
               }
@@ -350,18 +357,18 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
               }
               className="bg-transparent text-xs text-text-secondary outline-none"
             >
-              <option value="P">Paragraphe</option>
-              <option value="H1">Titre 1</option>
-              <option value="H2">Titre 2</option>
-              <option value="H3">Titre 3</option>
-              <option value="BLOCKQUOTE">Citation</option>
+              <option value="P">{t("editor.blockParagraph")}</option>
+              <option value="H1">{t("editor.blockH1")}</option>
+              <option value="H2">{t("editor.blockH2")}</option>
+              <option value="H3">{t("editor.blockH3")}</option>
+              <option value="BLOCKQUOTE">{t("editor.blockQuote")}</option>
             </select>
           </label>
           <button
             type="button"
             onClick={() => textColorInputRef.current?.click()}
             className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-warm-border bg-warm-surface text-text-secondary transition hover:bg-warm-highlight hover:text-primary"
-            title="Couleur du texte"
+            title={t("editor.textColor")}
           >
             <Type className="h-4 w-4" />
           </button>
@@ -375,7 +382,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
             type="button"
             onClick={() => bgColorInputRef.current?.click()}
             className="inline-flex h-8 w-8 items-center justify-center rounded-[12px] border border-warm-border bg-warm-surface text-text-secondary transition hover:bg-warm-highlight hover:text-primary"
-            title="Surlignage"
+            title={t("editor.highlight")}
           >
             <Highlighter className="h-4 w-4" />
           </button>
@@ -400,7 +407,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
           className={`${minHeightClassName} p-4 text-sm text-text-primary outline-none`}
         />
         <p className="border-t border-border px-4 py-3 text-xs text-text-secondary">
-          {hint}
+          {resolvedHint}
         </p>
         {error ? (
           <p className="px-4 pb-4 text-sm text-notification">{error}</p>
@@ -428,11 +435,11 @@ function ToolbarBtn({
   );
 }
 
-function resolveUploadErrorMessage(error: unknown) {
+function resolveUploadErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }
-  return "Impossible d'uploader l'image.";
+  return fallback;
 }
 
 function ToolbarDivider() {
