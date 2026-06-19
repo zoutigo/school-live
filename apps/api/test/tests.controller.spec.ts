@@ -26,29 +26,20 @@ describe("TestsController", () => {
   });
 
   it("delegates campaign listing and detail retrieval to the service", async () => {
-    await controller.listCampaigns(user, "school-1");
-    expect(testsService.listCampaigns).toHaveBeenCalledWith(user, "school-1");
+    await controller.listCampaigns(user);
+    expect(testsService.listCampaigns).toHaveBeenCalledWith(user);
 
-    await controller.getCampaign(user, "school-1", "camp-1");
-    expect(testsService.getCampaign).toHaveBeenCalledWith(
-      user,
-      "school-1",
-      "camp-1",
-    );
+    await controller.getCampaign(user, "camp-1");
+    expect(testsService.getCampaign).toHaveBeenCalledWith(user, "camp-1");
 
-    await controller.getTestCase(user, "school-1", "case-1");
-    expect(testsService.getTestCase).toHaveBeenCalledWith(
-      user,
-      "school-1",
-      "case-1",
-    );
+    await controller.getTestCase(user, "case-1");
+    expect(testsService.getTestCase).toHaveBeenCalledWith(user, "case-1");
   });
 
   it("rejects invalid execution status values", async () => {
     expect(() =>
       controller.createExecution(
         user,
-        "school-1",
         "case-1",
         { status: "NOPE", resultText: "Observed" },
         [],
@@ -66,7 +57,6 @@ describe("TestsController", () => {
 
     await controller.createExecution(
       user,
-      "school-1",
       "case-1",
       {
         status: "FAILED",
@@ -80,7 +70,6 @@ describe("TestsController", () => {
 
     expect(testsService.createExecution).toHaveBeenCalledWith(
       user,
-      "school-1",
       "case-1",
       {
         status: "FAILED",

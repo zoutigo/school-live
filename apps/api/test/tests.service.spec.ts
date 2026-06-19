@@ -50,13 +50,10 @@ describe("TestsService", () => {
 
   it("blocks non-tester users from the module", async () => {
     await expect(
-      service.listCampaigns(
-        {
-          ...testerUser,
-          isTester: false,
-        },
-        "school-1",
-      ),
+      service.listCampaigns({
+        ...testerUser,
+        isTester: false,
+      }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -78,6 +75,7 @@ describe("TestsService", () => {
             priority: "HIGH",
             dueAt: null,
             evidenceRequired: false,
+            recycledAt: null,
             executions: [
               {
                 status: "PASSED",
@@ -93,6 +91,7 @@ describe("TestsService", () => {
             priority: "MEDIUM",
             dueAt: null,
             evidenceRequired: true,
+            recycledAt: null,
             executions: [],
             _count: { executions: 0 },
           },
@@ -100,12 +99,11 @@ describe("TestsService", () => {
       },
     ]);
 
-    const result = await service.listCampaigns(testerUser, "school-1");
+    const result = await service.listCampaigns(testerUser);
 
     expect(prisma.testCampaign.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          schoolId: "school-1",
           status: "ACTIVE",
         }),
       }),
@@ -131,7 +129,6 @@ describe("TestsService", () => {
     await expect(
       service.createExecution(
         testerUser,
-        "school-1",
         "case-1",
         {
           status: "FAILED",
@@ -180,7 +177,6 @@ describe("TestsService", () => {
 
     const result = await service.createExecution(
       testerUser,
-      "school-1",
       "case-1",
       {
         status: "FAILED",

@@ -86,7 +86,6 @@ describe("TestsService#createExecution", () => {
 
     await service.createExecution(
       makeUser(),
-      "school-1",
       "case-1",
       { status: "FAILED", resultText: "Le bouton ne repond pas" },
       [],
@@ -125,7 +124,6 @@ describe("TestsService#createExecution", () => {
 
     await service.createExecution(
       makeUser(),
-      "school-1",
       "case-1",
       { status: "PASSED", resultText: "Tout fonctionne" },
       [],
@@ -153,12 +151,227 @@ describe("TestsService#createExecution", () => {
 
     const result = await service.createExecution(
       makeUser(),
-      "school-1",
       "case-1",
       { status: "FAILED", resultText: "Crash au demarrage" },
       [],
     );
 
     expect(result.id).toBe("exec-3");
+  });
+});
+
+function makeFullPrismaMock() {
+  return {
+    testCase: { findFirst: jest.fn(), update: jest.fn() },
+    testCampaign: {
+      findFirst: jest.fn(),
+      groupBy: jest.fn(),
+    },
+    testCampaignAssignment: {
+      upsert: jest.fn(),
+      delete: jest.fn(),
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+    },
+    testExecution: { groupBy: jest.fn() },
+    user: { findUnique: jest.fn(), findMany: jest.fn(), count: jest.fn() },
+  };
+}
+
+async function makeService(prisma: ReturnType<typeof makeFullPrismaMock>) {
+  const module = await Test.createTestingModule({
+    providers: [
+      TestsService,
+      { provide: PrismaService, useValue: prisma },
+      { provide: MediaClientService, useValue: {} },
+      { provide: MailService, useValue: makeMailServiceMock() },
+    ],
+  }).compile();
+
+  return module.get(TestsService);
+}
+
+describe("TestsService#recycleTestCase", () => {
+  it("marks the test case as recycled without touching execution history", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findFirst.mockResolvedValue({ id: "case-1" });
+    prisma.testCase.update.mockImplementation(({ data }) =>
+      Promise.resolve({ id: "case-1", recycledAt: data.recycledAt }),
+    );
+    const service = await makeService(prisma);
+
+    const result = await service.recycleTestCase("case-1");
+
+    expect(prisma.testCase.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "case-1" },
+        data: expect.objectContaining({ recycledAt: expect.any(Date) }),
+      }),
+    );
+    expect(result.recycledAt).toBeInstanceOf(Date);
+  });
+
+  it("throws when the test case does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(service.recycleTestCase("missing")).rejects.toThrow(
+      "Test case not found",
+    );
+  });
+});
+
+describe("TestsService#assignCampaign / unassignCampaign", () => {
+  it("creates an assignment (upsert) for an existing campaign and tester", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue({ id: "campaign-1" });
+    prisma.user.findUnique.mockResolvedValue({
+      id: "tester-1",
+      isTester: true,
+    });
+    prisma.testCampaignAssignment.upsert.mockResolvedValue({
+      id: "assignment-1",
+      campaignId: "campaign-1",
+      userId: "tester-1",
+      note: "Prioritaire",
+      createdAt: new Date(),
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.assignCampaign(
+      makeUser({ id: "admin-1" }),
+      "campaign-1",
+      "tester-1",
+      "Prioritaire",
+    );
+
+    expect(prisma.testCampaignAssignment.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          campaignId_userId: { campaignId: "campaign-1", userId: "tester-1" },
+        },
+      }),
+    );
+    expect(result.userId).toBe("tester-1");
+  });
+
+  it("throws when the campaign does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.assignCampaign(makeUser(), "missing", "tester-1"),
+    ).rejects.toThrow("Test campaign not found");
+  });
+
+  it("throws when the tester does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue({ id: "campaign-1" });
+    prisma.user.findUnique.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.assignCampaign(makeUser(), "campaign-1", "missing"),
+    ).rejects.toThrow("Tester not found");
+  });
+
+  it("removes an existing assignment", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaignAssignment.findUnique.mockResolvedValue({
+      id: "assignment-1",
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.unassignCampaign("assignment-1");
+
+    expect(prisma.testCampaignAssignment.delete).toHaveBeenCalledWith({
+      where: { id: "assignment-1" },
+    });
+    expect(result).toEqual({ success: true });
+  });
+});
+
+describe("TestsService#listTesters", () => {
+  it("aggregates per-tester campaign/execution stats", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.user.findMany.mockResolvedValue([
+      {
+        id: "tester-1",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        email: "ada@scolive.test",
+        memberships: [{ school: { id: "school-1", name: "Ecole Vogt" } }],
+        testExecutions: [
+          {
+            status: "PASSED",
+            testCaseId: "case-1",
+            testCase: { campaignId: "campaign-1" },
+          },
+          {
+            status: "FAILED",
+            testCaseId: "case-2",
+            testCase: { campaignId: "campaign-1" },
+          },
+          {
+            status: "PASSED",
+            testCaseId: "case-3",
+            testCase: { campaignId: "campaign-2" },
+          },
+        ],
+      },
+    ]);
+    prisma.user.count.mockResolvedValue(1);
+    const service = await makeService(prisma);
+
+    const result = await service.listTesters();
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      fullName: "Ada Lovelace",
+      stats: {
+        campaignsCount: 2,
+        executionsCount: 3,
+        passedCount: 2,
+        failedCount: 1,
+      },
+    });
+  });
+});
+
+describe("TestsService#getSynthesis", () => {
+  it("rolls up campaign/case/execution counts globally", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.groupBy.mockResolvedValue([
+      { status: "DRAFT", _count: { _all: 1 } },
+      { status: "ACTIVE", _count: { _all: 3 } },
+    ]);
+    prisma.testExecution.groupBy.mockResolvedValue([
+      { status: "PASSED", _count: { _all: 8 } },
+      { status: "FAILED", _count: { _all: 2 } },
+    ]);
+    prisma.user.count.mockResolvedValue(5);
+    (prisma.testCase as { count?: jest.Mock }).count = jest
+      .fn()
+      .mockResolvedValue(12);
+    const service = await makeService(prisma);
+
+    const result = await service.getSynthesis();
+
+    expect(result.campaigns).toMatchObject({
+      draft: 1,
+      active: 3,
+      archived: 0,
+      total: 4,
+    });
+    expect(result.totalCases).toBe(12);
+    expect(result.executions).toMatchObject({
+      total: 10,
+      passed: 8,
+      failed: 2,
+      successRate: 0.8,
+    });
+    expect(result.testersCount).toBe(5);
   });
 });

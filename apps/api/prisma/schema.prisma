@@ -381,6 +381,8 @@ model User {
   testCasesCreated      TestCase[]              @relation("TestCaseCreatedBy")
   testCasesUpdated      TestCase[]              @relation("TestCaseUpdatedBy")
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
+  testCampaignAssignmentsAsTester TestCampaignAssignment[] @relation("TestCampaignAssignmentTester")
+  testCampaignAssignmentsAssigned TestCampaignAssignment[] @relation("TestCampaignAssignmentAssignedBy")
   mobilePushTokens      MobilePushToken[]
 }
 
@@ -1762,8 +1764,11 @@ enum TestExecutionStatus {
 
 model TestCampaign {
   id            String             @id @default(cuid())
-  schoolId      String
-  school        School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  reference     Int                @unique @default(autoincrement())
+  // Historique uniquement : les campagnes de test sont globales à l'application,
+  // ce champ n'est plus utilisé pour le scoping/filtrage (cf. TestsService).
+  schoolId      String?
+  school        School?            @relation(fields: [schoolId], references: [id], onDelete: SetNull)
   title         String
   description   String?
   targetVersion String?
@@ -1778,13 +1783,15 @@ model TestCampaign {
   updatedAt     DateTime           @updatedAt
 
   testCases     TestCase[]
+  assignments   TestCampaignAssignment[]
 
-  @@index([schoolId, status, dueAt])
-  @@index([schoolId, createdAt])
+  @@index([status, dueAt])
+  @@index([createdAt])
 }
 
 model TestCase {
   id               String                 @id @default(cuid())
+  reference        Int                    @unique @default(autoincrement())
   campaignId       String
   campaign         TestCampaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   title            String
@@ -1797,6 +1804,9 @@ model TestCase {
   priority         TestCasePriority       @default(MEDIUM)
   evidenceRequired Boolean                @default(false)
   dueAt            DateTime?
+  // Horodatage du dernier "recyclage" : les exécutions antérieures à cette date sont
+  // ignorées pour le calcul du statut courant, mais restent dans l'historique.
+  recycledAt       DateTime?
   createdById      String
   createdBy        User                   @relation("TestCaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   updatedById      String
@@ -1809,6 +1819,21 @@ model TestCase {
 
   @@index([campaignId, orderIndex])
   @@index([campaignId, priority])
+}
+
+model TestCampaignAssignment {
+  id           String       @id @default(cuid())
+  campaignId   String
+  campaign     TestCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User         @relation("TestCampaignAssignmentTester", fields: [userId], references: [id], onDelete: Cascade)
+  assignedById String
+  assignedBy   User         @relation("TestCampaignAssignmentAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+  note         String?
+  createdAt    DateTime     @default(now())
+
+  @@unique([campaignId, userId])
+  @@index([userId])
 }
 
 model TestCaseAudienceRole {
