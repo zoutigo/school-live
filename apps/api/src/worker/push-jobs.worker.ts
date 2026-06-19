@@ -10,8 +10,10 @@ import { Worker } from "bullmq";
 import { buildRedisConnection } from "../infrastructure/messaging/redis-connection.js";
 import { PUSH_PORT, type PushPort } from "../infrastructure/push/push.port.js";
 import {
+  PUSH_JOB_SEND_HOMEWORK_CREATED,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
+  type HomeworkCreatedPushPayload,
   type TimetableChangePushPayload,
 } from "../notifications/push.types.js";
 
@@ -32,6 +34,12 @@ export class PushJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === PUSH_JOB_SEND_TIMETABLE_CHANGE) {
           await this.pushPort.sendTimetableChangeNotification(
             job.data as TimetableChangePushPayload,
+          );
+          return;
+        }
+        if (job.name === PUSH_JOB_SEND_HOMEWORK_CREATED) {
+          await this.pushPort.sendHomeworkCreatedNotification(
+            job.data as HomeworkCreatedPushPayload,
           );
           return;
         }

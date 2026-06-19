@@ -116,6 +116,39 @@ describe("HomeworkService", () => {
     );
   });
 
+  it("enqueues a homework-created notification after creating a homework", async () => {
+    prisma.homework.create.mockResolvedValue({ id: "hw-1" });
+    const homeworkNotificationsService = {
+      enqueue: jest.fn().mockResolvedValue(undefined),
+    };
+    const svc = new HomeworkService(
+      prisma as never,
+      mediaClientService as never,
+      inlineMediaService as never,
+      homeworkNotificationsService as never,
+    );
+    (svc as any).ensureClassManageAccess = (
+      service as any
+    ).ensureClassManageAccess;
+    (svc as any).ensureSubjectAccessibleForCreation = (
+      service as any
+    ).ensureSubjectAccessibleForCreation;
+    (svc as any).loadMappedHomeworkRow = (service as any).loadMappedHomeworkRow;
+
+    await svc.createHomework(teacherUser as never, "school-1", "class-1", {
+      subjectId: "sub-1",
+      title: "Problemes sur les fractions",
+      contentHtml: "<p>Recopie les exercices 3 et 4</p>",
+      expectedAt: "2026-05-06T17:00:00.000Z",
+    });
+
+    expect(homeworkNotificationsService.enqueue).toHaveBeenCalledWith({
+      schoolId: "school-1",
+      classId: "class-1",
+      homeworkId: "hw-1",
+    });
+  });
+
   it("stores null when sanitized homework content becomes empty on update", async () => {
     prisma.homework.update.mockResolvedValue({ id: "hw-1" });
 

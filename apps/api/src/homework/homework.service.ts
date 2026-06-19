@@ -18,6 +18,7 @@ import {
 } from "../common/rich-text-sanitizer.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
 import { MediaClientService } from "../media-client/media-client.service.js";
+import { HomeworkNotificationsService } from "../notifications/homework-notifications.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AddHomeworkCommentDto } from "./dto/add-homework-comment.dto.js";
 import type {
@@ -99,12 +100,17 @@ const HOMEWORK_MANAGER_ROLES: SchoolRole[] = [
   "SUPERVISOR",
 ];
 
+const NOOP_HOMEWORK_NOTIFICATIONS = {
+  enqueue: async () => undefined,
+} as unknown as HomeworkNotificationsService;
+
 @Injectable()
 export class HomeworkService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mediaClientService: MediaClientService,
     private readonly inlineMediaService: InlineMediaService,
+    private readonly homeworkNotificationsService: HomeworkNotificationsService = NOOP_HOMEWORK_NOTIFICATIONS,
   ) {}
 
   async listClassHomework(
@@ -273,6 +279,12 @@ export class HomeworkService {
       entityId: created.id,
       nextBodyHtml: contentHtml ?? "",
       deleteRemovedPhysically: true,
+    });
+
+    await this.homeworkNotificationsService.enqueue({
+      schoolId,
+      classId,
+      homeworkId: created.id,
     });
 
     return this.loadMappedHomeworkRow(

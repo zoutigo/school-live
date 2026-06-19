@@ -10,6 +10,8 @@ export const MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION =
   "send-timetable-change-notification";
 export const MAIL_JOB_SEND_TEST_EXECUTION_FAILED_NOTIFICATION =
   "send-test-execution-failed-notification";
+export const MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION =
+  "send-homework-created-notification";
 
 export type TemporaryPasswordMailPayload = {
   to: string;
@@ -79,4 +81,16 @@ export type TestExecutionFailedNotificationPayload = {
   testerFullName: string;
   resultText: string;
   comment: string | null;
+};
+
+export type HomeworkCreatedMailPayload = {
+  to: string;
+  recipientFirstName: string;
+  schoolName: string;
+  schoolSlug: string | null;
+  className: string;
+  subjectName: string;
+  title: string;
+  expectedAtLabel: string;
+  authorFullName: string;
 };
