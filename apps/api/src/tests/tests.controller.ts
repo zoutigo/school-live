@@ -11,11 +11,10 @@ import {
 } from "@nestjs/common";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import { TestExecutionStatus } from "@prisma/client";
+import { AnyMembershipRolesGuard } from "../access/any-membership-roles.guard.js";
 import { Roles } from "../access/roles.decorator.js";
 import { RolesGuard } from "../access/roles.guard.js";
-import { SchoolScopeGuard } from "../access/school-scope.guard.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
-import { CurrentSchoolId } from "../auth/decorators/current-school-id.decorator.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import {
@@ -24,8 +23,10 @@ import {
 } from "./tests.translations.js";
 import { TestsService } from "./tests.service.js";
 
-@Controller("schools/:schoolSlug/tests")
-@UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+// Les tests (campagnes/cas) sont globaux à l'application : leur visibilité dépend du
+// rôle du testeur (audienceRoles), pas de l'école qu'il a active à l'instant T.
+@Controller("tests")
+@UseGuards(JwtAuthGuard, AnyMembershipRolesGuard, RolesGuard)
 @Roles(
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
@@ -42,29 +43,24 @@ export class TestsController {
   constructor(private readonly testsService: TestsService) {}
 
   @Get("campaigns")
-  listCampaigns(
-    @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
-  ) {
-    return this.testsService.listCampaigns(user, schoolId);
+  listCampaigns(@CurrentUser() user: AuthenticatedUser) {
+    return this.testsService.listCampaigns(user);
   }
 
   @Get("campaigns/:campaignId")
   getCampaign(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Param("campaignId") campaignId: string,
   ) {
-    return this.testsService.getCampaign(user, schoolId, campaignId);
+    return this.testsService.getCampaign(user, campaignId);
   }
 
   @Get("cases/:testCaseId")
   getTestCase(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Param("testCaseId") testCaseId: string,
   ) {
-    return this.testsService.getTestCase(user, schoolId, testCaseId);
+    return this.testsService.getTestCase(user, testCaseId);
   }
 
   @Post("cases/:testCaseId/executions")
@@ -77,7 +73,6 @@ export class TestsController {
   )
   createExecution(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Param("testCaseId") testCaseId: string,
     @Body() payload: Record<string, unknown>,
     @UploadedFiles()
@@ -107,7 +102,6 @@ export class TestsController {
 
     return this.testsService.createExecution(
       user,
-      schoolId,
       testCaseId,
       { status, resultText, comment, deviceInfo, appVersion },
       attachments ?? [],

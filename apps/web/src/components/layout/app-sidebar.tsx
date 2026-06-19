@@ -139,12 +139,16 @@ function buildItems(
         icon: BarChart3,
         matchPrefix: "/indicators",
       },
-      {
-        label: t("sidebar.nav.testCampaigns"),
-        href: "/test-campaigns",
-        icon: ClipboardList,
-        matchPrefix: "/test-campaigns",
-      },
+      ...(role === "SUPER_ADMIN" || role === "ADMIN"
+        ? [
+            {
+              label: t("sidebar.nav.testCampaigns"),
+              href: "/admin-tests",
+              icon: ClipboardList,
+              matchPrefix: "/admin-tests",
+            },
+          ]
+        : []),
       {
         label: t("sidebar.nav.settings"),
         href: "/settings",

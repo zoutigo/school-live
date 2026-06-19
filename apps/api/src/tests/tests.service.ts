@@ -31,6 +31,8 @@ type UploadedAttachment = {
   size: number;
 };
 
+type ExecutionLike = { status: TestExecutionStatus; executedAt: Date };
+
 const EXECUTION_COMPLETED_STATUSES = new Set<TestExecutionStatus>([
   "PASSED",
   "FAILED",
@@ -59,12 +61,11 @@ export class TestsService {
     }
   }
 
-  async listCampaigns(user: AuthenticatedUser, schoolId: string) {
+  async listCampaigns(user: AuthenticatedUser) {
     this.assertTester(user);
     const roles = this.resolveVisibleRoles(user);
     const campaigns = await this.prisma.testCampaign.findMany({
       where: {
-        schoolId,
         status: "ACTIVE",
         testCases: {
           some: this.buildCaseVisibilityWhere(roles),
@@ -89,10 +90,10 @@ export class TestsService {
             priority: true,
             dueAt: true,
             evidenceRequired: true,
+            recycledAt: true,
             executions: {
               where: { userId: user.id },
               orderBy: [{ executedAt: "desc" }],
-              take: 1,
               select: {
                 status: true,
                 executedAt: true,
@@ -110,7 +111,10 @@ export class TestsService {
 
     return campaigns.map((campaign) => {
       const completedCount = campaign.testCases.filter((testCase) => {
-        const latest = testCase.executions[0];
+        const latest = this.currentExecution(
+          testCase.executions,
+          testCase.recycledAt,
+        );
         return latest && EXECUTION_COMPLETED_STATUSES.has(latest.status);
       }).length;
 
@@ -134,17 +138,12 @@ export class TestsService {
     });
   }
 
-  async getCampaign(
-    user: AuthenticatedUser,
-    schoolId: string,
-    campaignId: string,
-  ) {
+  async getCampaign(user: AuthenticatedUser, campaignId: string) {
     this.assertTester(user);
     const roles = this.resolveVisibleRoles(user);
     const campaign = await this.prisma.testCampaign.findFirst({
       where: {
         id: campaignId,
-        schoolId,
         status: "ACTIVE",
         testCases: {
           some: this.buildCaseVisibilityWhere(roles),
@@ -169,10 +168,10 @@ export class TestsService {
             priority: true,
             dueAt: true,
             evidenceRequired: true,
+            recycledAt: true,
             executions: {
               where: { userId: user.id },
               orderBy: [{ executedAt: "desc" }],
-              take: 1,
               select: {
                 id: true,
                 status: true,
@@ -198,41 +197,48 @@ export class TestsService {
       );
     }
 
+    const testCases = campaign.testCases.map((testCase) => ({
+      id: testCase.id,
+      title: testCase.title,
+      module: testCase.module,
+      expectedResult: testCase.expectedResult,
+      priority: testCase.priority,
+      dueAt: testCase.dueAt,
+      evidenceRequired: testCase.evidenceRequired,
+      totalExecutions: testCase._count.executions,
+      latestExecution: this.currentExecution(
+        testCase.executions,
+        testCase.recycledAt,
+      ),
+    }));
+
     return {
-      ...campaign,
+      id: campaign.id,
+      title: campaign.title,
+      description: campaign.description,
+      targetVersion: campaign.targetVersion,
+      startsAt: campaign.startsAt,
+      dueAt: campaign.dueAt,
+      status: campaign.status,
       summary: {
-        totalCases: campaign.testCases.length,
-        completedCases: campaign.testCases.filter((testCase) => {
-          const latest = testCase.executions[0];
-          return latest && EXECUTION_COMPLETED_STATUSES.has(latest.status);
-        }).length,
+        totalCases: testCases.length,
+        completedCases: testCases.filter(
+          (testCase) =>
+            testCase.latestExecution &&
+            EXECUTION_COMPLETED_STATUSES.has(testCase.latestExecution.status),
+        ).length,
       },
-      testCases: campaign.testCases.map((testCase) => ({
-        id: testCase.id,
-        title: testCase.title,
-        module: testCase.module,
-        expectedResult: testCase.expectedResult,
-        priority: testCase.priority,
-        dueAt: testCase.dueAt,
-        evidenceRequired: testCase.evidenceRequired,
-        totalExecutions: testCase._count.executions,
-        latestExecution: testCase.executions[0] ?? null,
-      })),
+      testCases,
     };
   }
 
-  async getTestCase(
-    user: AuthenticatedUser,
-    schoolId: string,
-    testCaseId: string,
-  ) {
+  async getTestCase(user: AuthenticatedUser, testCaseId: string) {
     this.assertTester(user);
     const roles = this.resolveVisibleRoles(user);
     const testCase = await this.prisma.testCase.findFirst({
       where: {
         id: testCaseId,
         campaign: {
-          schoolId,
           status: "ACTIVE",
         },
         ...this.buildCaseVisibilityWhere(roles),
@@ -249,6 +255,7 @@ export class TestsService {
         priority: true,
         evidenceRequired: true,
         dueAt: true,
+        recycledAt: true,
         campaign: {
           select: {
             id: true,
@@ -305,6 +312,11 @@ export class TestsService {
       );
     }
 
+    const currentExecutions = this.currentExecutionsOnly(
+      testCase.executions,
+      testCase.recycledAt,
+    );
+
     const latestExecutionByUser = new Map<
       string,
       {
@@ -315,7 +327,7 @@ export class TestsService {
       }
     >();
 
-    for (const execution of testCase.executions) {
+    for (const execution of currentExecutions) {
       if (latestExecutionByUser.has(execution.user.id)) continue;
       latestExecutionByUser.set(execution.user.id, {
         userId: execution.user.id,
@@ -327,7 +339,7 @@ export class TestsService {
     }
 
     const latestOwnExecution =
-      testCase.executions.find((execution) => execution.user.id === user.id) ??
+      currentExecutions.find((execution) => execution.user.id === user.id) ??
       null;
 
     return {
@@ -346,14 +358,13 @@ export class TestsService {
       audienceRoles: testCase.audienceRoles.map((entry) => entry.role),
       latestOwnExecution,
       executionSummary: {
-        totalExecutions: testCase.executions.length,
-        passed: testCase.executions.filter((entry) => entry.status === "PASSED")
+        totalExecutions: currentExecutions.length,
+        passed: currentExecutions.filter((entry) => entry.status === "PASSED")
           .length,
-        failed: testCase.executions.filter((entry) => entry.status === "FAILED")
+        failed: currentExecutions.filter((entry) => entry.status === "FAILED")
           .length,
-        blocked: testCase.executions.filter(
-          (entry) => entry.status === "BLOCKED",
-        ).length,
+        blocked: currentExecutions.filter((entry) => entry.status === "BLOCKED")
+          .length,
       },
       completedByUsers: Array.from(latestExecutionByUser.values()),
       executions: testCase.executions.map((execution) => ({
@@ -383,7 +394,6 @@ export class TestsService {
 
   async createExecution(
     user: AuthenticatedUser,
-    schoolId: string,
     testCaseId: string,
     payload: {
       status: TestExecutionStatus;
@@ -401,7 +411,6 @@ export class TestsService {
       where: {
         id: testCaseId,
         campaign: {
-          schoolId,
           status: "ACTIVE",
         },
         ...this.buildCaseVisibilityWhere(roles),
@@ -504,55 +513,91 @@ export class TestsService {
     };
   }
 
-  async listAdminCampaigns(schoolId: string) {
-    const campaigns = await this.prisma.testCampaign.findMany({
-      where: { schoolId },
-      orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        targetVersion: true,
-        startsAt: true,
-        dueAt: true,
-        status: true,
-        _count: {
-          select: {
-            testCases: true,
+  async listAdminCampaigns(params?: {
+    search?: string;
+    status?: TestCampaignStatus;
+    page?: number;
+    limit?: number;
+  }) {
+    const where: Prisma.TestCampaignWhereInput = {};
+    if (params?.status) where.status = params.status;
+    const search = params?.search?.trim();
+    if (search) {
+      const referenceMatch = this.parseReference(search);
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        ...(referenceMatch !== null ? [{ reference: referenceMatch }] : []),
+      ];
+    }
+
+    const page = params?.page && params.page > 0 ? params.page : 1;
+    const limit =
+      params?.limit && params.limit > 0 ? Math.min(params.limit, 100) : 50;
+
+    const [campaigns, total] = await Promise.all([
+      this.prisma.testCampaign.findMany({
+        where,
+        orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          reference: true,
+          title: true,
+          description: true,
+          targetVersion: true,
+          startsAt: true,
+          dueAt: true,
+          status: true,
+          school: { select: { id: true, name: true, slug: true } },
+          _count: {
+            select: {
+              testCases: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.testCampaign.count({ where }),
+    ]);
 
-    return campaigns.map((campaign) => ({
-      ...campaign,
-      testCasesCount: campaign._count.testCases,
-    }));
+    return {
+      items: campaigns.map((campaign) => ({
+        ...campaign,
+        testCasesCount: campaign._count.testCases,
+      })),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
   }
 
-  async getAdminCampaign(schoolId: string, campaignId: string) {
+  async getAdminCampaign(campaignId: string) {
     const campaign = await this.prisma.testCampaign.findFirst({
-      where: {
-        id: campaignId,
-        schoolId,
-      },
+      where: { id: campaignId },
       select: {
         id: true,
+        reference: true,
         title: true,
         description: true,
         targetVersion: true,
         startsAt: true,
         dueAt: true,
         status: true,
+        school: { select: { id: true, name: true, slug: true } },
         testCases: {
           orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],
           select: {
             id: true,
+            reference: true,
             title: true,
             module: true,
             priority: true,
             dueAt: true,
             evidenceRequired: true,
+            recycledAt: true,
             audienceRoles: {
               orderBy: { role: "asc" },
               select: { role: true },
@@ -573,11 +618,13 @@ export class TestsService {
       ...campaign,
       testCases: campaign.testCases.map((testCase) => ({
         id: testCase.id,
+        reference: testCase.reference,
         title: testCase.title,
         module: testCase.module,
         priority: testCase.priority,
         dueAt: testCase.dueAt,
         evidenceRequired: testCase.evidenceRequired,
+        recycledAt: testCase.recycledAt,
         audienceRoles: testCase.audienceRoles.map((entry) => entry.role),
         executionsCount: testCase._count.executions,
       })),
@@ -586,12 +633,10 @@ export class TestsService {
 
   async createCampaign(
     user: AuthenticatedUser,
-    schoolId: string,
     payload: CreateTestCampaignDto,
   ) {
     return this.prisma.testCampaign.create({
       data: {
-        schoolId,
         title: payload.title.trim(),
         description: payload.description?.trim() || null,
         targetVersion: payload.targetVersion?.trim() || null,
@@ -606,11 +651,10 @@ export class TestsService {
 
   async updateCampaign(
     user: AuthenticatedUser,
-    schoolId: string,
     campaignId: string,
     payload: UpdateTestCampaignDto,
   ) {
-    await this.assertCampaignExists(schoolId, campaignId);
+    await this.assertCampaignExists(campaignId);
 
     return this.prisma.testCampaign.update({
       where: { id: campaignId },
@@ -634,8 +678,8 @@ export class TestsService {
     });
   }
 
-  async deleteCampaign(schoolId: string, campaignId: string) {
-    await this.assertCampaignExists(schoolId, campaignId);
+  async deleteCampaign(campaignId: string) {
+    await this.assertCampaignExists(campaignId);
     await this.prisma.testCampaign.delete({
       where: { id: campaignId },
     });
@@ -644,11 +688,10 @@ export class TestsService {
 
   async createTestCase(
     user: AuthenticatedUser,
-    schoolId: string,
     campaignId: string,
     payload: CreateTestCaseDto,
   ) {
-    await this.assertCampaignExists(schoolId, campaignId);
+    await this.assertCampaignExists(campaignId);
     this.assertArrayFields(payload.steps, payload.audienceRoles);
 
     return this.prisma.testCase.create({
@@ -689,15 +732,11 @@ export class TestsService {
 
   async updateTestCase(
     user: AuthenticatedUser,
-    schoolId: string,
     testCaseId: string,
     payload: UpdateTestCaseDto,
   ) {
     const current = await this.prisma.testCase.findFirst({
-      where: {
-        id: testCaseId,
-        campaign: { schoolId },
-      },
+      where: { id: testCaseId },
       select: { id: true },
     });
 
@@ -763,12 +802,9 @@ export class TestsService {
     });
   }
 
-  async deleteTestCase(schoolId: string, testCaseId: string) {
+  async deleteTestCase(testCaseId: string) {
     const current = await this.prisma.testCase.findFirst({
-      where: {
-        id: testCaseId,
-        campaign: { schoolId },
-      },
+      where: { id: testCaseId },
       select: { id: true },
     });
 
@@ -783,13 +819,238 @@ export class TestsService {
     return { success: true };
   }
 
+  async recycleTestCase(testCaseId: string) {
+    const current = await this.prisma.testCase.findFirst({
+      where: { id: testCaseId },
+      select: { id: true },
+    });
+
+    if (!current) {
+      throw new NotFoundException("Test case not found");
+    }
+
+    return this.prisma.testCase.update({
+      where: { id: testCaseId },
+      data: { recycledAt: new Date() },
+      select: { id: true, recycledAt: true },
+    });
+  }
+
+  async assignCampaign(
+    assignedBy: AuthenticatedUser,
+    campaignId: string,
+    testerId: string,
+    note?: string,
+  ) {
+    await this.assertCampaignExists(campaignId);
+
+    const tester = await this.prisma.user.findUnique({
+      where: { id: testerId },
+      select: { id: true, isTester: true },
+    });
+
+    if (!tester) {
+      throw new NotFoundException("Tester not found");
+    }
+
+    return this.prisma.testCampaignAssignment.upsert({
+      where: { campaignId_userId: { campaignId, userId: testerId } },
+      create: {
+        campaignId,
+        userId: testerId,
+        assignedById: assignedBy.id,
+        note: note?.trim() || null,
+      },
+      update: {
+        assignedById: assignedBy.id,
+        note: note?.trim() || null,
+      },
+      select: {
+        id: true,
+        campaignId: true,
+        userId: true,
+        note: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async unassignCampaign(assignmentId: string) {
+    const current = await this.prisma.testCampaignAssignment.findUnique({
+      where: { id: assignmentId },
+      select: { id: true },
+    });
+
+    if (!current) {
+      throw new NotFoundException("Assignment not found");
+    }
+
+    await this.prisma.testCampaignAssignment.delete({
+      where: { id: assignmentId },
+    });
+
+    return { success: true };
+  }
+
+  async listAssignments(campaignId: string) {
+    return this.prisma.testCampaignAssignment.findMany({
+      where: { campaignId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        note: true,
+        createdAt: true,
+        user: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        assignedBy: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+    });
+  }
+
+  async listTesters(params?: {
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const where: Prisma.UserWhereInput = { isTester: true };
+    const search = params?.search?.trim();
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const page = params?.page && params.page > 0 ? params.page : 1;
+    const limit =
+      params?.limit && params.limit > 0 ? Math.min(params.limit, 100) : 50;
+
+    const [testers, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          memberships: {
+            select: {
+              school: { select: { id: true, name: true, slug: true } },
+            },
+          },
+          testExecutions: {
+            select: {
+              status: true,
+              testCaseId: true,
+              testCase: { select: { campaignId: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      items: testers.map((tester) => {
+        const campaignsTouched = new Set(
+          tester.testExecutions.map(
+            (execution) => execution.testCase.campaignId,
+          ),
+        );
+        const passed = tester.testExecutions.filter(
+          (execution) => execution.status === "PASSED",
+        ).length;
+        const failed = tester.testExecutions.filter(
+          (execution) => execution.status === "FAILED",
+        ).length;
+
+        return {
+          id: tester.id,
+          fullName: `${tester.firstName} ${tester.lastName}`.trim(),
+          email: tester.email,
+          schools: tester.memberships.map((membership) => membership.school),
+          stats: {
+            campaignsCount: campaignsTouched.size,
+            executionsCount: tester.testExecutions.length,
+            passedCount: passed,
+            failedCount: failed,
+          },
+        };
+      }),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  async getSynthesis() {
+    const [campaignsByStatus, totalCases, executionsByStatus, testersCount] =
+      await Promise.all([
+        this.prisma.testCampaign.groupBy({
+          by: ["status"],
+          _count: { _all: true },
+        }),
+        this.prisma.testCase.count(),
+        this.prisma.testExecution.groupBy({
+          by: ["status"],
+          _count: { _all: true },
+        }),
+        this.prisma.user.count({ where: { isTester: true } }),
+      ]);
+
+    const campaignCounts = Object.fromEntries(
+      campaignsByStatus.map((entry) => [entry.status, entry._count._all]),
+    ) as Record<TestCampaignStatus, number | undefined>;
+
+    const executionCounts = Object.fromEntries(
+      executionsByStatus.map((entry) => [entry.status, entry._count._all]),
+    ) as Record<TestExecutionStatus, number | undefined>;
+
+    const totalExecutions = executionsByStatus.reduce(
+      (total, entry) => total + entry._count._all,
+      0,
+    );
+    const passed = executionCounts.PASSED ?? 0;
+
+    return {
+      campaigns: {
+        draft: campaignCounts.DRAFT ?? 0,
+        active: campaignCounts.ACTIVE ?? 0,
+        archived: campaignCounts.ARCHIVED ?? 0,
+        total: campaignsByStatus.reduce(
+          (total, entry) => total + entry._count._all,
+          0,
+        ),
+      },
+      totalCases,
+      executions: {
+        total: totalExecutions,
+        passed,
+        failed: executionCounts.FAILED ?? 0,
+        blocked: executionCounts.BLOCKED ?? 0,
+        successRate: totalExecutions > 0 ? passed / totalExecutions : 0,
+      },
+      testersCount,
+    };
+  }
+
   private async notifyTestExecutionFailed(
     user: AuthenticatedUser,
     testCase: {
       title: string;
       campaign: {
         title: string;
-        school: { name: string; slug: string };
+        school: { name: string; slug: string } | null;
       };
     },
     execution: { resultText: string | null; comment: string | null },
@@ -814,8 +1075,8 @@ export class TestsService {
             this.mailService.sendTestExecutionFailedNotification({
               to: admin.email as string,
               recipientFirstName: admin.firstName,
-              schoolName: testCase.campaign.school.name,
-              schoolSlug: testCase.campaign.school.slug,
+              schoolName: testCase.campaign.school?.name ?? "Plateforme",
+              schoolSlug: testCase.campaign.school?.slug ?? null,
               campaignTitle: testCase.campaign.title,
               testCaseTitle: testCase.title,
               testerFullName,
@@ -832,12 +1093,9 @@ export class TestsService {
     }
   }
 
-  private async assertCampaignExists(schoolId: string, campaignId: string) {
+  private async assertCampaignExists(campaignId: string) {
     const current = await this.prisma.testCampaign.findFirst({
-      where: {
-        id: campaignId,
-        schoolId,
-      },
+      where: { id: campaignId },
       select: { id: true },
     });
 
@@ -884,5 +1142,29 @@ export class TestsService {
     ) {
       throw new BadRequestException("Invalid audience roles payload");
     }
+  }
+
+  private parseReference(search: string): number | null {
+    const match = search.match(/^\D*(\d+)\D*$/);
+    if (!match) return null;
+    const value = Number.parseInt(match[1], 10);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  /** Dernière exécution de la liste (déjà triée desc) à considérer comme "courante",
+   * en ignorant celles antérieures au dernier recyclage du cas de test. */
+  private currentExecution<T extends ExecutionLike>(
+    executions: T[],
+    recycledAt: Date | null,
+  ): T | undefined {
+    return this.currentExecutionsOnly(executions, recycledAt)[0];
+  }
+
+  private currentExecutionsOnly<T extends ExecutionLike>(
+    executions: T[],
+    recycledAt: Date | null,
+  ): T[] {
+    if (!recycledAt) return executions;
+    return executions.filter((execution) => execution.executedAt > recycledAt);
   }
 }

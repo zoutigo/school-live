@@ -1,5 +1,6 @@
 import type {
   EmailVerificationMailPayload,
+  HomeworkCreatedMailPayload,
   InternalMessageNotificationPayload,
   PasswordResetMailPayload,
   StudentLifeEventNotificationPayload,
@@ -27,5 +28,8 @@ export type EmailPort = {
   ): Promise<void>;
   sendTestExecutionFailedNotification(
     payload: TestExecutionFailedNotificationPayload,
+  ): Promise<void>;
+  sendHomeworkCreatedNotification(
+    payload: HomeworkCreatedMailPayload,
   ): Promise<void>;
 };
