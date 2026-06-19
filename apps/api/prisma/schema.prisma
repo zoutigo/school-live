@@ -378,11 +378,11 @@ model User {
   helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
   testCampaignsCreated  TestCampaign[]          @relation("TestCampaignCreatedBy")
   testCampaignsUpdated  TestCampaign[]          @relation("TestCampaignUpdatedBy")
+  testCampaignAssignmentsAsTester TestCampaignAssignment[] @relation("TestCampaignAssignmentTester")
+  testCampaignAssignmentsAssigned TestCampaignAssignment[] @relation("TestCampaignAssignmentAssignedBy")
   testCasesCreated      TestCase[]              @relation("TestCaseCreatedBy")
   testCasesUpdated      TestCase[]              @relation("TestCaseUpdatedBy")
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
-  testCampaignAssignmentsAsTester TestCampaignAssignment[] @relation("TestCampaignAssignmentTester")
-  testCampaignAssignmentsAssigned TestCampaignAssignment[] @relation("TestCampaignAssignmentAssignedBy")
   mobilePushTokens      MobilePushToken[]
 }
 
@@ -1765,8 +1765,6 @@ enum TestExecutionStatus {
 model TestCampaign {
   id            String             @id @default(cuid())
   reference     Int                @unique @default(autoincrement())
-  // Historique uniquement : les campagnes de test sont globales à l'application,
-  // ce champ n'est plus utilisé pour le scoping/filtrage (cf. TestsService).
   schoolId      String?
   school        School?            @relation(fields: [schoolId], references: [id], onDelete: SetNull)
   title         String
@@ -1804,8 +1802,6 @@ model TestCase {
   priority         TestCasePriority       @default(MEDIUM)
   evidenceRequired Boolean                @default(false)
   dueAt            DateTime?
-  // Horodatage du dernier "recyclage" : les exécutions antérieures à cette date sont
-  // ignorées pour le calcul du statut courant, mais restent dans l'historique.
   recycledAt       DateTime?
   createdById      String
   createdBy        User                   @relation("TestCaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
@@ -1821,6 +1817,17 @@ model TestCase {
   @@index([campaignId, priority])
 }
 
+model TestCaseAudienceRole {
+  id         String   @id @default(cuid())
+  testCaseId String
+  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  role       AppRole
+  createdAt  DateTime @default(now())
+
+  @@unique([testCaseId, role])
+  @@index([role])
+}
+
 model TestCampaignAssignment {
   id           String       @id @default(cuid())
   campaignId   String
@@ -1834,17 +1841,6 @@ model TestCampaignAssignment {
 
   @@unique([campaignId, userId])
   @@index([userId])
-}
-
-model TestCaseAudienceRole {
-  id         String   @id @default(cuid())
-  testCaseId String
-  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
-  role       AppRole
-  createdAt  DateTime @default(now())
-
-  @@unique([testCaseId, role])
-  @@index([role])
 }
 
 model TestExecution {

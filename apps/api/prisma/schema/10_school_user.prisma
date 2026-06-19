@@ -138,6 +138,8 @@ model User {
   helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
   testCampaignsCreated  TestCampaign[]          @relation("TestCampaignCreatedBy")
   testCampaignsUpdated  TestCampaign[]          @relation("TestCampaignUpdatedBy")
+  testCampaignAssignmentsAsTester TestCampaignAssignment[] @relation("TestCampaignAssignmentTester")
+  testCampaignAssignmentsAssigned TestCampaignAssignment[] @relation("TestCampaignAssignmentAssignedBy")
   testCasesCreated      TestCase[]              @relation("TestCaseCreatedBy")
   testCasesUpdated      TestCase[]              @relation("TestCaseUpdatedBy")
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
