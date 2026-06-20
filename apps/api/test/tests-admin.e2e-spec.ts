@@ -354,4 +354,103 @@ describe("Tests admin API e2e", () => {
     );
     expect(response.status).toBe(404);
   });
+
+  it("lets SUPER_ADMIN update the campaign and the test case", async () => {
+    const updateCampaign = await apiJson(
+      `/api/admin/tests/campaigns/${campaignId}`,
+      {
+        method: "PATCH",
+        headers: authHeaders(superAdminToken),
+        body: JSON.stringify({
+          title: `Campagne e2e ${runId} modifiée`,
+          status: "ARCHIVED",
+        }),
+      },
+    );
+    expect(updateCampaign.response.status).toBe(200);
+    expect((updateCampaign.body as { status: string }).status).toBe("ARCHIVED");
+
+    const updateCase = await apiJson(`/api/admin/tests/cases/${testCaseId}`, {
+      method: "PATCH",
+      headers: authHeaders(superAdminToken),
+      body: JSON.stringify({
+        title: "Cas e2e modifié",
+        priority: "HIGH",
+        evidenceRequired: true,
+      }),
+    });
+    expect(updateCase.response.status).toBe(200);
+    expect((updateCase.body as { priority: string }).priority).toBe("HIGH");
+
+    const detail = await apiJson(`/api/admin/tests/campaigns/${campaignId}`, {
+      headers: authHeaders(superAdminToken),
+    });
+    expect(detail.response.status).toBe(200);
+    expect((detail.body as { title: string }).title).toBe(
+      `Campagne e2e ${runId} modifiée`,
+    );
+  });
+
+  it("returns 404 when updating a campaign or test case that does not exist", async () => {
+    const campaignResult = await apiJson(
+      "/api/admin/tests/campaigns/does-not-exist",
+      {
+        method: "PATCH",
+        headers: authHeaders(superAdminToken),
+        body: JSON.stringify({ title: "x" }),
+      },
+    );
+    expect(campaignResult.response.status).toBe(404);
+
+    const caseResult = await apiJson("/api/admin/tests/cases/does-not-exist", {
+      method: "PATCH",
+      headers: authHeaders(superAdminToken),
+      body: JSON.stringify({ title: "x" }),
+    });
+    expect(caseResult.response.status).toBe(404);
+  });
+
+  it("lets SUPER_ADMIN delete a test case it created", async () => {
+    const disposable = await apiJson(
+      `/api/admin/tests/campaigns/${campaignId}/cases`,
+      {
+        method: "POST",
+        headers: authHeaders(superAdminToken),
+        body: JSON.stringify({
+          title: "Cas jetable e2e",
+          expectedResult: "Peu importe",
+        }),
+      },
+    );
+    expect(disposable.response.status).toBe(201);
+    const disposableId = String((disposable.body as { id: string }).id);
+
+    const deleteResult = await apiJson(
+      `/api/admin/tests/cases/${disposableId}`,
+      { method: "DELETE", headers: authHeaders(superAdminToken) },
+    );
+    expect(deleteResult.response.status).toBe(200);
+
+    const detail = await apiJson(`/api/admin/tests/campaigns/${campaignId}`, {
+      headers: authHeaders(superAdminToken),
+    });
+    const cases = (detail.body as { testCases: Array<{ id: string }> })
+      .testCases;
+    expect(cases.some((item) => item.id === disposableId)).toBe(false);
+  });
+
+  it("lets SUPER_ADMIN delete the campaign, cascading its test cases", async () => {
+    const deleteResult = await apiJson(
+      `/api/admin/tests/campaigns/${campaignId}`,
+      { method: "DELETE", headers: authHeaders(superAdminToken) },
+    );
+    expect(deleteResult.response.status).toBe(200);
+
+    const detail = await apiJson(`/api/admin/tests/campaigns/${campaignId}`, {
+      headers: authHeaders(superAdminToken),
+    });
+    expect(detail.response.status).toBe(404);
+
+    campaignId = "";
+  });
 });

@@ -162,9 +162,17 @@ describe("TestsService#createExecution", () => {
 
 function makeFullPrismaMock() {
   return {
-    testCase: { findFirst: jest.fn(), update: jest.fn() },
+    testCase: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
     testCampaign: {
       findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
       groupBy: jest.fn(),
     },
     testCampaignAssignment: {
@@ -225,6 +233,195 @@ describe("TestsService#recycleTestCase", () => {
     await expect(service.recycleTestCase("missing")).rejects.toThrow(
       "Test case not found",
     );
+  });
+});
+
+describe("TestsService#createCampaign / updateCampaign / deleteCampaign", () => {
+  it("creates a campaign with trimmed fields and DRAFT default status", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.create.mockResolvedValue({
+      id: "campaign-1",
+      title: "Recette mobile v1",
+      status: "DRAFT",
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.createCampaign(makeUser({ id: "admin-1" }), {
+      title: "  Recette mobile v1  ",
+    });
+
+    expect(prisma.testCampaign.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: "Recette mobile v1",
+          status: "DRAFT",
+          createdById: "admin-1",
+          updatedById: "admin-1",
+        }),
+      }),
+    );
+    expect(result.id).toBe("campaign-1");
+  });
+
+  it("updates only the provided campaign fields", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue({ id: "campaign-1" });
+    prisma.testCampaign.update.mockResolvedValue({
+      id: "campaign-1",
+      status: "ARCHIVED",
+    });
+    const service = await makeService(prisma);
+
+    await service.updateCampaign(makeUser({ id: "admin-1" }), "campaign-1", {
+      status: "ARCHIVED",
+    });
+
+    expect(prisma.testCampaign.update).toHaveBeenCalledWith({
+      where: { id: "campaign-1" },
+      data: { status: "ARCHIVED", updatedById: "admin-1" },
+    });
+  });
+
+  it("throws when updating a campaign that does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.updateCampaign(makeUser(), "missing", { title: "x" }),
+    ).rejects.toThrow("Test campaign not found");
+    expect(prisma.testCampaign.update).not.toHaveBeenCalled();
+  });
+
+  it("deletes an existing campaign", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue({ id: "campaign-1" });
+    const service = await makeService(prisma);
+
+    const result = await service.deleteCampaign("campaign-1");
+
+    expect(prisma.testCampaign.delete).toHaveBeenCalledWith({
+      where: { id: "campaign-1" },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("throws when deleting a campaign that does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(service.deleteCampaign("missing")).rejects.toThrow(
+      "Test campaign not found",
+    );
+    expect(prisma.testCampaign.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("TestsService#createTestCase / updateTestCase / deleteTestCase", () => {
+  it("creates a test case scoped to an existing campaign with defaults", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue({ id: "campaign-1" });
+    prisma.testCase.create.mockResolvedValue({
+      id: "case-1",
+      title: "Connexion email",
+      priority: "MEDIUM",
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.createTestCase(
+      makeUser({ id: "admin-1" }),
+      "campaign-1",
+      { title: "  Connexion email  ", expectedResult: "  Connecté  " },
+    );
+
+    expect(prisma.testCase.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          campaignId: "campaign-1",
+          title: "Connexion email",
+          expectedResult: "Connecté",
+          priority: "MEDIUM",
+          evidenceRequired: false,
+        }),
+      }),
+    );
+    expect(result.id).toBe("case-1");
+  });
+
+  it("throws when creating a test case for a campaign that does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.createTestCase(makeUser(), "missing", {
+        title: "x",
+        expectedResult: "y",
+      }),
+    ).rejects.toThrow("Test campaign not found");
+    expect(prisma.testCase.create).not.toHaveBeenCalled();
+  });
+
+  it("updates only the provided test case fields", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findFirst.mockResolvedValue({ id: "case-1" });
+    prisma.testCase.update.mockResolvedValue({
+      id: "case-1",
+      priority: "HIGH",
+    });
+    const service = await makeService(prisma);
+
+    await service.updateTestCase(makeUser({ id: "admin-1" }), "case-1", {
+      priority: "HIGH",
+      evidenceRequired: true,
+    });
+
+    expect(prisma.testCase.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "case-1" },
+        data: expect.objectContaining({
+          priority: "HIGH",
+          evidenceRequired: true,
+          updatedById: "admin-1",
+        }),
+      }),
+    );
+  });
+
+  it("throws when updating a test case that does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.updateTestCase(makeUser(), "missing", { title: "x" }),
+    ).rejects.toThrow("Test case not found");
+    expect(prisma.testCase.update).not.toHaveBeenCalled();
+  });
+
+  it("deletes an existing test case", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findFirst.mockResolvedValue({ id: "case-1" });
+    const service = await makeService(prisma);
+
+    const result = await service.deleteTestCase("case-1");
+
+    expect(prisma.testCase.delete).toHaveBeenCalledWith({
+      where: { id: "case-1" },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("throws when deleting a test case that does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(service.deleteTestCase("missing")).rejects.toThrow(
+      "Test case not found",
+    );
+    expect(prisma.testCase.delete).not.toHaveBeenCalled();
   });
 });
 

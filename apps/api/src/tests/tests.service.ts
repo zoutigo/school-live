@@ -639,7 +639,10 @@ export class TestsService {
 
     if (!execution) {
       throw new NotFoundException(
-        translateTestsError(testsLocaleFromUser(null), "tests.errors.executionNotFound"),
+        translateTestsError(
+          testsLocaleFromUser(null),
+          "tests.errors.executionNotFound",
+        ),
       );
     }
 
@@ -1396,7 +1399,8 @@ export class TestsService {
       adminReviewNote: execution.adminReviewNote,
       user: {
         id: execution.user.id,
-        fullName: `${execution.user.firstName} ${execution.user.lastName}`.trim(),
+        fullName:
+          `${execution.user.firstName} ${execution.user.lastName}`.trim(),
       },
       adminReviewedBy: execution.adminReviewedBy
         ? {

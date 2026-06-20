@@ -382,19 +382,28 @@ describe("Enrollments page forms", () => {
     const schoolYearSelect = (await screen.findByLabelText(
       "Annee scolaire",
     )) as HTMLSelectElement;
-    const classSelect = screen.getByLabelText("Classe") as HTMLSelectElement;
+
+    await waitFor(() => {
+      const classSelect = screen.getByLabelText("Classe") as HTMLSelectElement;
+      const option = Array.from(classSelect.options).find(
+        (entry) => entry.value === "class-1",
+      );
+      expect(option).toBeTruthy();
+    });
 
     fireEvent.change(schoolYearSelect, {
       target: { value: "sy-2" },
     });
 
     await waitFor(() => {
+      const classSelect = screen.getByLabelText("Classe") as HTMLSelectElement;
       const option = Array.from(classSelect.options).find(
         (entry) => entry.value === "class-2",
       );
       expect(option).toBeTruthy();
     });
 
+    const classSelect = screen.getByLabelText("Classe") as HTMLSelectElement;
     fireEvent.change(classSelect, {
       target: { value: "class-2" },
     });

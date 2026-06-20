@@ -335,8 +335,16 @@ function SynthesisTab({
     value: string | number;
     filter?: ExecutionsFilter;
   }> = [
-    { key: "campaignsActive", label: "Campagnes actives", value: data.campaigns.active },
-    { key: "campaignsTotal", label: "Campagnes totales", value: data.campaigns.total },
+    {
+      key: "campaignsActive",
+      label: "Campagnes actives",
+      value: data.campaigns.active,
+    },
+    {
+      key: "campaignsTotal",
+      label: "Campagnes totales",
+      value: data.campaigns.total,
+    },
     { key: "totalCases", label: "Cas de test", value: data.totalCases },
     { key: "testersCount", label: "Testeurs actifs", value: data.testersCount },
     {
@@ -384,7 +392,11 @@ function SynthesisTab({
             </button>
           </Card>
         ) : (
-          <Card key={kpi.key} className="p-5" data-testid={`admin-tests-kpi-${kpi.key}`}>
+          <Card
+            key={kpi.key}
+            className="p-5"
+            data-testid={`admin-tests-kpi-${kpi.key}`}
+          >
             <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
             <p className="text-sm text-muted-foreground">{kpi.label}</p>
           </Card>

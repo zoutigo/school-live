@@ -505,7 +505,9 @@ describe("AdminTestsPage", () => {
     expect(screen.getByText("Connexion email")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("execution-row-exec-1"));
-    expect(await screen.findByText("Le bouton ne répond pas")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Le bouton ne répond pas"),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("execution-mark-reviewed"));
     fireEvent.change(screen.getByTestId("execution-review-note"), {
