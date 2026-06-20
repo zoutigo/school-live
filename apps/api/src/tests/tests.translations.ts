@@ -16,6 +16,7 @@ const fr = {
     "Les roles cibles doivent etre une liste de roles valides.",
   "tests.errors.attachmentsMissing":
     "Aucune capture n'a ete recue pour ce resultat de test.",
+  "tests.errors.executionNotFound": "Exécution de test introuvable.",
 };
 
 const en = {
@@ -29,6 +30,7 @@ const en = {
   "tests.errors.rolesInvalid": "Target roles must be a list of valid roles.",
   "tests.errors.attachmentsMissing":
     "No screenshot was received for this test result.",
+  "tests.errors.executionNotFound": "Test execution not found.",
 };
 
 export function testsLocaleFromUser(

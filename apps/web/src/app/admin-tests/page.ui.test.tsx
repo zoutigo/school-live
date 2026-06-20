@@ -33,7 +33,14 @@ const SUPER_ADMIN_ME = { platformRoles: ["SUPER_ADMIN"] };
 const SYNTHESIS = {
   campaigns: { draft: 1, active: 2, archived: 0, total: 3 },
   totalCases: 10,
-  executions: { total: 8, passed: 6, failed: 2, blocked: 0, successRate: 0.75 },
+  executions: {
+    total: 8,
+    passed: 6,
+    failed: 2,
+    blocked: 0,
+    successRate: 0.75,
+    pendingReview: 1,
+  },
   testersCount: 4,
 };
 
@@ -89,12 +96,35 @@ const ASSIGNMENT_1 = {
   assignedBy: { id: "admin-1", firstName: "Admin", lastName: "Scolive" },
 };
 
+const EXECUTION_1 = {
+  id: "exec-1",
+  status: "FAILED",
+  resultText: "Le bouton ne répond pas",
+  comment: "Reproduit sur Android",
+  executedAt: new Date().toISOString(),
+  adminReviewedAt: null,
+  adminReviewNote: null,
+  user: { id: "tester-1", fullName: "MBELE Valery" },
+  adminReviewedBy: null,
+  testCase: { id: "case-1", title: "Connexion email" },
+  campaign: { id: "camp-1", title: "Recette mobile v1" },
+};
+
+const EXECUTION_1_DETAIL = {
+  ...EXECUTION_1,
+  deviceInfo: "android",
+  appVersion: "1.0.0",
+  attachments: [],
+};
+
 function baseRouter({
   me = SUPER_ADMIN_ME,
   campaigns = [CAMPAIGN_1],
   testers = [TESTER_1],
   cases = [CASE_1],
   assignments = [ASSIGNMENT_1] as unknown[],
+  executions = [EXECUTION_1] as unknown[],
+  executionDetail = EXECUTION_1_DETAIL as unknown,
   extra,
 }: {
   me?: unknown;
@@ -102,6 +132,8 @@ function baseRouter({
   testers?: unknown[];
   cases?: unknown[];
   assignments?: unknown[];
+  executions?: unknown[];
+  executionDetail?: unknown;
   extra?: (url: string, method: string) => Promise<Response> | undefined;
 } = {}) {
   return (input: RequestInfo | URL, init?: RequestInit) => {
@@ -124,6 +156,15 @@ function baseRouter({
       return jsonResponse({ ...CAMPAIGN_1, testCases: cases });
     if (url.includes("/admin/tests/campaigns") && method === "GET")
       return jsonResponse({ items: campaigns });
+    if (url.match(/\/admin\/tests\/executions\/[^/?]+\/review/))
+      return jsonResponse({
+        ...EXECUTION_1,
+        adminReviewedAt: new Date().toISOString(),
+      });
+    if (url.match(/\/admin\/tests\/executions\/[^/?]+$/) && method === "GET")
+      return jsonResponse(executionDetail);
+    if (url.includes("/admin/tests/executions") && method === "GET")
+      return jsonResponse({ items: executions });
 
     return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
   };
@@ -450,5 +491,51 @@ describe("AdminTestsPage", () => {
       );
       expect(call).toBeDefined();
     });
+  });
+
+  it("lists executions, opens detail and marks one as reviewed", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(baseRouter());
+
+    render(<AdminTestsPage />);
+    fireEvent.click(await screen.findByTestId("admin-tests-tab-executions"));
+
+    expect(await screen.findByTestId("executions-table")).toBeInTheDocument();
+    expect(screen.getByText("Connexion email")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("execution-row-exec-1"));
+    expect(await screen.findByText("Le bouton ne répond pas")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("execution-mark-reviewed"));
+    fireEvent.change(screen.getByTestId("execution-review-note"), {
+      target: { value: "Corrigé en v1.3" },
+    });
+    fireEvent.click(screen.getByTestId("execution-review-submit"));
+
+    await waitFor(() => {
+      const reviewCall = fetchMock.mock.calls.find(
+        ([u, i]) =>
+          String(u).includes("/admin/tests/executions/exec-1/review") &&
+          (i as RequestInit | undefined)?.method === "PATCH",
+      );
+      expect(reviewCall).toBeDefined();
+      expect(String((reviewCall?.[1] as RequestInit)?.body)).toContain(
+        '"reviewed":true',
+      );
+    });
+  });
+
+  it("jumps to the executions tab pre-filtered when clicking the failed KPI", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(baseRouter());
+
+    render(<AdminTestsPage />);
+    fireEvent.click(await screen.findByTestId("admin-tests-kpi-failed"));
+
+    expect(await screen.findByTestId("executions-table")).toBeInTheDocument();
+    expect(
+      (screen.getByTestId("executions-status-filter") as HTMLSelectElement)
+        .value,
+    ).toBe("FAILED");
   });
 });

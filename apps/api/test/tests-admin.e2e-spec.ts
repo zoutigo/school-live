@@ -42,6 +42,7 @@ describe("Tests admin API e2e", () => {
   let campaignId = "";
   let campaignReference = 0;
   let testCaseId = "";
+  let executionId = "";
 
   async function api(path: string, init?: RequestInit) {
     return fetch(`${baseUrl}${path}`, init);
@@ -231,6 +232,7 @@ describe("Tests admin API e2e", () => {
       },
     );
     expect(execution.response.status).toBe(201);
+    executionId = String((execution.body as { id: string }).id);
 
     const recycle = await apiJson(
       `/api/admin/tests/cases/${testCaseId}/recycle`,
@@ -290,5 +292,66 @@ describe("Tests admin API e2e", () => {
     expect(
       (synthesis.body as { campaigns: { total: number } }).campaigns.total,
     ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("lets the tester list and open their own past executions", async () => {
+    const list = await apiJson("/api/tests/executions", {
+      headers: authHeaders(testerToken),
+    });
+    expect(list.response.status).toBe(200);
+    const items = (list.body as { items: Array<{ id: string }> }).items;
+    expect(items.some((item) => item.id === executionId)).toBe(true);
+
+    const detail = await apiJson(`/api/tests/executions/${executionId}`, {
+      headers: authHeaders(testerToken),
+    });
+    expect(detail.response.status).toBe(200);
+    expect((detail.body as { id: string }).id).toBe(executionId);
+  });
+
+  it("rejects SCHOOL_ADMIN from the admin executions routes (global pilotage, not school-scoped)", async () => {
+    const { response } = await apiJson("/api/admin/tests/executions", {
+      headers: authHeaders(schoolAdminToken),
+    });
+    expect(response.status).toBe(403);
+  });
+
+  it("lets SUPER_ADMIN list, open and review a tester's execution", async () => {
+    const list = await apiJson(
+      `/api/admin/tests/executions?campaignId=${campaignId}`,
+      { headers: authHeaders(superAdminToken) },
+    );
+    expect(list.response.status).toBe(200);
+    const items = (list.body as { items: Array<{ id: string }> }).items;
+    expect(items.some((item) => item.id === executionId)).toBe(true);
+
+    const detail = await apiJson(`/api/admin/tests/executions/${executionId}`, {
+      headers: authHeaders(superAdminToken),
+    });
+    expect(detail.response.status).toBe(200);
+
+    const review = await apiJson(
+      `/api/admin/tests/executions/${executionId}/review`,
+      {
+        method: "PATCH",
+        headers: authHeaders(superAdminToken),
+        body: JSON.stringify({ reviewed: true, note: "Vérifié, OK" }),
+      },
+    );
+    expect(review.response.status).toBe(200);
+    expect(
+      (review.body as { adminReviewedAt: string | null }).adminReviewedAt,
+    ).toBeTruthy();
+    expect((review.body as { adminReviewNote: string }).adminReviewNote).toBe(
+      "Vérifié, OK",
+    );
+  });
+
+  it("returns 404 for an unknown execution id", async () => {
+    const { response } = await apiJson(
+      "/api/admin/tests/executions/does-not-exist",
+      { headers: authHeaders(superAdminToken) },
+    );
+    expect(response.status).toBe(404);
   });
 });

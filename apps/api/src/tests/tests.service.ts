@@ -513,6 +513,182 @@ export class TestsService {
     };
   }
 
+  async listMyExecutions(
+    user: AuthenticatedUser,
+    params?: {
+      status?: TestExecutionStatus;
+      campaignId?: string;
+      page?: number;
+      limit?: number;
+    },
+  ) {
+    this.assertTester(user);
+    const where: Prisma.TestExecutionWhereInput = {
+      userId: user.id,
+      ...(params?.status ? { status: params.status } : {}),
+      ...(params?.campaignId
+        ? { testCase: { campaignId: params.campaignId } }
+        : {}),
+    };
+
+    const page = params?.page && params.page > 0 ? params.page : 1;
+    const limit =
+      params?.limit && params.limit > 0 ? Math.min(params.limit, 100) : 50;
+
+    const [executions, total] = await Promise.all([
+      this.prisma.testExecution.findMany({
+        where,
+        orderBy: [{ executedAt: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: this.executionRowSelect(),
+      }),
+      this.prisma.testExecution.count({ where }),
+    ]);
+
+    return {
+      items: executions.map((execution) => this.toExecutionRow(execution)),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  async getMyExecution(user: AuthenticatedUser, executionId: string) {
+    this.assertTester(user);
+    const execution = await this.prisma.testExecution.findFirst({
+      where: { id: executionId, userId: user.id },
+      select: this.executionDetailSelect(),
+    });
+
+    if (!execution) {
+      throw new NotFoundException(
+        translateTestsError(
+          testsLocaleFromUser(user),
+          "tests.errors.executionNotFound",
+        ),
+      );
+    }
+
+    return this.toExecutionDetail(execution);
+  }
+
+  async listAdminExecutions(params?: {
+    status?: TestExecutionStatus;
+    campaignId?: string;
+    testerId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    reviewed?: boolean;
+    page?: number;
+    limit?: number;
+  }) {
+    const where: Prisma.TestExecutionWhereInput = {
+      ...(params?.status ? { status: params.status } : {}),
+      ...(params?.campaignId
+        ? { testCase: { campaignId: params.campaignId } }
+        : {}),
+      ...(params?.testerId ? { userId: params.testerId } : {}),
+      ...(params?.dateFrom || params?.dateTo
+        ? {
+            executedAt: {
+              ...(params.dateFrom ? { gte: new Date(params.dateFrom) } : {}),
+              ...(params.dateTo ? { lte: new Date(params.dateTo) } : {}),
+            },
+          }
+        : {}),
+      ...(params?.reviewed !== undefined
+        ? { adminReviewedAt: params.reviewed ? { not: null } : null }
+        : {}),
+    };
+
+    const page = params?.page && params.page > 0 ? params.page : 1;
+    const limit =
+      params?.limit && params.limit > 0 ? Math.min(params.limit, 100) : 50;
+
+    const [executions, total] = await Promise.all([
+      this.prisma.testExecution.findMany({
+        where,
+        orderBy: [{ executedAt: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: this.executionRowSelect(),
+      }),
+      this.prisma.testExecution.count({ where }),
+    ]);
+
+    return {
+      items: executions.map((execution) => this.toExecutionRow(execution)),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  async getAdminExecution(executionId: string) {
+    const execution = await this.prisma.testExecution.findFirst({
+      where: { id: executionId },
+      select: this.executionDetailSelect(),
+    });
+
+    if (!execution) {
+      throw new NotFoundException(
+        translateTestsError(testsLocaleFromUser(null), "tests.errors.executionNotFound"),
+      );
+    }
+
+    return this.toExecutionDetail(execution);
+  }
+
+  async reviewExecution(
+    admin: AuthenticatedUser,
+    executionId: string,
+    payload: { reviewed: boolean; note?: string },
+  ) {
+    const current = await this.prisma.testExecution.findFirst({
+      where: { id: executionId },
+      select: { id: true },
+    });
+
+    if (!current) {
+      throw new NotFoundException(
+        translateTestsError(
+          testsLocaleFromUser(admin),
+          "tests.errors.executionNotFound",
+        ),
+      );
+    }
+
+    return this.prisma.testExecution.update({
+      where: { id: executionId },
+      data: payload.reviewed
+        ? {
+            adminReviewedAt: new Date(),
+            adminReviewedById: admin.id,
+            adminReviewNote: payload.note?.trim() || null,
+          }
+        : {
+            adminReviewedAt: null,
+            adminReviewedById: null,
+            adminReviewNote: null,
+          },
+      select: {
+        id: true,
+        adminReviewedAt: true,
+        adminReviewNote: true,
+        adminReviewedBy: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+    });
+  }
+
   async listAdminCampaigns(params?: {
     search?: string;
     status?: TestCampaignStatus;
@@ -994,19 +1170,30 @@ export class TestsService {
   }
 
   async getSynthesis() {
-    const [campaignsByStatus, totalCases, executionsByStatus, testersCount] =
-      await Promise.all([
-        this.prisma.testCampaign.groupBy({
-          by: ["status"],
-          _count: { _all: true },
-        }),
-        this.prisma.testCase.count(),
-        this.prisma.testExecution.groupBy({
-          by: ["status"],
-          _count: { _all: true },
-        }),
-        this.prisma.user.count({ where: { isTester: true } }),
-      ]);
+    const [
+      campaignsByStatus,
+      totalCases,
+      executionsByStatus,
+      testersCount,
+      pendingReview,
+    ] = await Promise.all([
+      this.prisma.testCampaign.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+      }),
+      this.prisma.testCase.count(),
+      this.prisma.testExecution.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+      }),
+      this.prisma.user.count({ where: { isTester: true } }),
+      this.prisma.testExecution.count({
+        where: {
+          status: { in: ["FAILED", "BLOCKED"] },
+          adminReviewedAt: null,
+        },
+      }),
+    ]);
 
     const campaignCounts = Object.fromEntries(
       campaignsByStatus.map((entry) => [entry.status, entry._count._all]),
@@ -1039,6 +1226,7 @@ export class TestsService {
         failed: executionCounts.FAILED ?? 0,
         blocked: executionCounts.BLOCKED ?? 0,
         successRate: totalExecutions > 0 ? passed / totalExecutions : 0,
+        pendingReview,
       },
       testersCount,
     };
@@ -1149,6 +1337,97 @@ export class TestsService {
     if (!match) return null;
     const value = Number.parseInt(match[1], 10);
     return Number.isFinite(value) ? value : null;
+  }
+
+  private executionRowSelect() {
+    return {
+      id: true,
+      status: true,
+      resultText: true,
+      comment: true,
+      executedAt: true,
+      adminReviewedAt: true,
+      adminReviewNote: true,
+      user: { select: { id: true, firstName: true, lastName: true } },
+      adminReviewedBy: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      testCase: {
+        select: {
+          id: true,
+          title: true,
+          campaign: { select: { id: true, title: true } },
+        },
+      },
+    } satisfies Prisma.TestExecutionSelect;
+  }
+
+  private executionDetailSelect() {
+    return {
+      ...this.executionRowSelect(),
+      deviceInfo: true,
+      appVersion: true,
+      createdAt: true,
+      attachments: {
+        orderBy: { createdAt: "asc" as const },
+        select: {
+          id: true,
+          fileName: true,
+          fileUrl: true,
+          mimeType: true,
+          sizeBytes: true,
+        },
+      },
+    } satisfies Prisma.TestExecutionSelect;
+  }
+
+  private toExecutionRow(
+    execution: Prisma.TestExecutionGetPayload<{
+      select: ReturnType<TestsService["executionRowSelect"]>;
+    }>,
+  ) {
+    return {
+      id: execution.id,
+      status: execution.status,
+      resultText: execution.resultText,
+      comment: execution.comment,
+      executedAt: execution.executedAt,
+      adminReviewedAt: execution.adminReviewedAt,
+      adminReviewNote: execution.adminReviewNote,
+      user: {
+        id: execution.user.id,
+        fullName: `${execution.user.firstName} ${execution.user.lastName}`.trim(),
+      },
+      adminReviewedBy: execution.adminReviewedBy
+        ? {
+            id: execution.adminReviewedBy.id,
+            fullName:
+              `${execution.adminReviewedBy.firstName} ${execution.adminReviewedBy.lastName}`.trim(),
+          }
+        : null,
+      testCase: { id: execution.testCase.id, title: execution.testCase.title },
+      campaign: execution.testCase.campaign,
+    };
+  }
+
+  private toExecutionDetail(
+    execution: Prisma.TestExecutionGetPayload<{
+      select: ReturnType<TestsService["executionDetailSelect"]>;
+    }>,
+  ) {
+    return {
+      ...this.toExecutionRow(execution),
+      deviceInfo: execution.deviceInfo,
+      appVersion: execution.appVersion,
+      createdAt: execution.createdAt,
+      attachments: execution.attachments.map((attachment) => ({
+        id: attachment.id,
+        fileName: attachment.fileName,
+        url: attachment.fileUrl,
+        mimeType: attachment.mimeType,
+        sizeBytes: attachment.sizeBytes,
+      })),
+    };
   }
 
   /** Dernière exécution de la liste (déjà triée desc) à considérer comme "courante",

@@ -18,7 +18,9 @@ import { AssignCampaignDto } from "./dto/assign-campaign.dto.js";
 import { CreateTestCampaignDto } from "./dto/create-test-campaign.dto.js";
 import { CreateTestCaseDto } from "./dto/create-test-case.dto.js";
 import { ListAdminCampaignsQueryDto } from "./dto/list-admin-campaigns-query.dto.js";
+import { ListAdminExecutionsQueryDto } from "./dto/list-admin-executions-query.dto.js";
 import { ListTestersQueryDto } from "./dto/list-testers-query.dto.js";
+import { ReviewExecutionDto } from "./dto/review-execution.dto.js";
 import { UpdateTestCampaignDto } from "./dto/update-test-campaign.dto.js";
 import { UpdateTestCaseDto } from "./dto/update-test-case.dto.js";
 import { TestsService } from "./tests.service.js";
@@ -44,6 +46,25 @@ export class TestsAdminController {
   @Get("campaigns")
   listCampaigns(@Query() query: ListAdminCampaignsQueryDto) {
     return this.testsService.listAdminCampaigns(query);
+  }
+
+  @Get("executions")
+  listExecutions(@Query() query: ListAdminExecutionsQueryDto) {
+    return this.testsService.listAdminExecutions(query);
+  }
+
+  @Get("executions/:executionId")
+  getExecution(@Param("executionId") executionId: string) {
+    return this.testsService.getAdminExecution(executionId);
+  }
+
+  @Patch("executions/:executionId/review")
+  reviewExecution(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("executionId") executionId: string,
+    @Body() payload: ReviewExecutionDto,
+  ) {
+    return this.testsService.reviewExecution(user, executionId, payload);
   }
 
   @Get("campaigns/:campaignId")

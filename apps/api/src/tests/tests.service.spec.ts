@@ -173,7 +173,13 @@ function makeFullPrismaMock() {
       findUnique: jest.fn(),
       findMany: jest.fn(),
     },
-    testExecution: { groupBy: jest.fn() },
+    testExecution: {
+      groupBy: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
     user: { findUnique: jest.fn(), findMany: jest.fn(), count: jest.fn() },
   };
 }
@@ -352,6 +358,7 @@ describe("TestsService#getSynthesis", () => {
       { status: "FAILED", _count: { _all: 2 } },
     ]);
     prisma.user.count.mockResolvedValue(5);
+    prisma.testExecution.count.mockResolvedValue(3);
     (prisma.testCase as { count?: jest.Mock }).count = jest
       .fn()
       .mockResolvedValue(12);
@@ -371,7 +378,212 @@ describe("TestsService#getSynthesis", () => {
       passed: 8,
       failed: 2,
       successRate: 0.8,
+      pendingReview: 3,
+    });
+    expect(prisma.testExecution.count).toHaveBeenCalledWith({
+      where: { status: { in: ["FAILED", "BLOCKED"] }, adminReviewedAt: null },
     });
     expect(result.testersCount).toBe(5);
+  });
+});
+
+const EXECUTION_ROW = {
+  id: "exec-1",
+  status: "FAILED",
+  resultText: "Le bouton plante",
+  comment: "Reproduit a chaque fois",
+  executedAt: new Date("2026-06-10T10:00:00Z"),
+  adminReviewedAt: null,
+  adminReviewNote: null,
+  user: { id: "tester-1", firstName: "Ada", lastName: "Lovelace" },
+  adminReviewedBy: null,
+  testCase: {
+    id: "case-1",
+    title: "Connexion email",
+    campaign: { id: "campaign-1", title: "Campagne v1.2" },
+  },
+};
+
+describe("TestsService#listMyExecutions / getMyExecution", () => {
+  it("lists only the current tester's executions", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findMany.mockResolvedValue([EXECUTION_ROW]);
+    prisma.testExecution.count.mockResolvedValue(1);
+    const service = await makeService(prisma);
+
+    const result = await service.listMyExecutions(makeUser({ id: "tester-1" }));
+
+    expect(prisma.testExecution.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ userId: "tester-1" }),
+      }),
+    );
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      id: "exec-1",
+      user: { fullName: "Ada Lovelace" },
+      campaign: { id: "campaign-1", title: "Campagne v1.2" },
+    });
+  });
+
+  it("rejects a non-tester user", async () => {
+    const prisma = makeFullPrismaMock();
+    const service = await makeService(prisma);
+
+    await expect(
+      service.listMyExecutions(makeUser({ isTester: false })),
+    ).rejects.toThrow(
+      "Ce module est reserve aux utilisateurs marques comme testeurs.",
+    );
+  });
+
+  it("returns the execution detail when it belongs to the tester", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValue({
+      ...EXECUTION_ROW,
+      deviceInfo: "android",
+      appVersion: "1.0.0",
+      createdAt: EXECUTION_ROW.executedAt,
+      attachments: [],
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.getMyExecution(
+      makeUser({ id: "tester-1" }),
+      "exec-1",
+    );
+
+    expect(prisma.testExecution.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "exec-1", userId: "tester-1" },
+      }),
+    );
+    expect(result.id).toBe("exec-1");
+  });
+
+  it("throws a localized not-found error (fr) when the execution does not belong to the tester", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.getMyExecution(makeUser({ id: "tester-1" }), "exec-other"),
+    ).rejects.toThrow("Exécution de test introuvable.");
+  });
+
+  it("throws a localized not-found error (en) when preferredLocale is EN", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.getMyExecution(
+        makeUser({ id: "tester-1", preferredLocale: "EN" }),
+        "exec-other",
+      ),
+    ).rejects.toThrow("Test execution not found.");
+  });
+});
+
+describe("TestsService#listAdminExecutions / getAdminExecution", () => {
+  it("lists executions across all testers with combinable filters", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findMany.mockResolvedValue([EXECUTION_ROW]);
+    prisma.testExecution.count.mockResolvedValue(1);
+    const service = await makeService(prisma);
+
+    const result = await service.listAdminExecutions({
+      status: "FAILED",
+      campaignId: "campaign-1",
+      reviewed: false,
+    });
+
+    expect(prisma.testExecution.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: "FAILED",
+          testCase: { campaignId: "campaign-1" },
+          adminReviewedAt: null,
+        },
+      }),
+    );
+    expect(result.items).toHaveLength(1);
+  });
+
+  it("throws when the execution does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(service.getAdminExecution("missing")).rejects.toThrow(
+      "Exécution de test introuvable.",
+    );
+  });
+});
+
+describe("TestsService#reviewExecution", () => {
+  it("marks an execution as reviewed with a note", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValue({ id: "exec-1" });
+    prisma.testExecution.update.mockResolvedValue({
+      id: "exec-1",
+      adminReviewedAt: new Date(),
+      adminReviewNote: "Corrige en v1.3",
+      adminReviewedBy: { id: "admin-1", firstName: "Admin", lastName: "Root" },
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.reviewExecution(
+      makeUser({ id: "admin-1" }),
+      "exec-1",
+      { reviewed: true, note: "Corrige en v1.3" },
+    );
+
+    expect(prisma.testExecution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "exec-1" },
+        data: expect.objectContaining({
+          adminReviewedById: "admin-1",
+          adminReviewNote: "Corrige en v1.3",
+        }),
+      }),
+    );
+    expect(result.adminReviewNote).toBe("Corrige en v1.3");
+  });
+
+  it("clears the review when reviewed is false", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValue({ id: "exec-1" });
+    prisma.testExecution.update.mockResolvedValue({
+      id: "exec-1",
+      adminReviewedAt: null,
+      adminReviewNote: null,
+      adminReviewedBy: null,
+    });
+    const service = await makeService(prisma);
+
+    await service.reviewExecution(makeUser({ id: "admin-1" }), "exec-1", {
+      reviewed: false,
+    });
+
+    expect(prisma.testExecution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          adminReviewedAt: null,
+          adminReviewedById: null,
+          adminReviewNote: null,
+        },
+      }),
+    );
+  });
+
+  it("throws when the execution does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.reviewExecution(makeUser(), "missing", { reviewed: true }),
+    ).rejects.toThrow("Exécution de test introuvable.");
   });
 });

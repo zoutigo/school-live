@@ -383,6 +383,7 @@ model User {
   testCasesCreated      TestCase[]              @relation("TestCaseCreatedBy")
   testCasesUpdated      TestCase[]              @relation("TestCaseUpdatedBy")
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
+  testExecutionsReviewed TestExecution[]        @relation("TestExecutionAdminReviewedBy")
   mobilePushTokens      MobilePushToken[]
 }
 
@@ -1857,6 +1858,11 @@ model TestExecution {
   executedAt  DateTime            @default(now())
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+
+  adminReviewedAt   DateTime?
+  adminReviewedById String?
+  adminReviewedBy   User?       @relation("TestExecutionAdminReviewedBy", fields: [adminReviewedById], references: [id], onDelete: SetNull)
+  adminReviewNote   String?
 
   attachments TestExecutionAttachment[]
 

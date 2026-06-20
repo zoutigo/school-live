@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -17,6 +18,7 @@ import { RolesGuard } from "../access/roles.guard.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { ListExecutionsQueryDto } from "./dto/list-executions-query.dto.js";
 import {
   testsLocaleFromUser,
   translateTestsError,
@@ -61,6 +63,22 @@ export class TestsController {
     @Param("testCaseId") testCaseId: string,
   ) {
     return this.testsService.getTestCase(user, testCaseId);
+  }
+
+  @Get("executions")
+  listMyExecutions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListExecutionsQueryDto,
+  ) {
+    return this.testsService.listMyExecutions(user, query);
+  }
+
+  @Get("executions/:executionId")
+  getMyExecution(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("executionId") executionId: string,
+  ) {
+    return this.testsService.getMyExecution(user, executionId);
   }
 
   @Post("cases/:testCaseId/executions")
