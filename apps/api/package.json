@@ -23,7 +23,7 @@
     "seed:help:faqs": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-help-faqs.mjs'",
     "seed:tests:college-vogt": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-test-campaigns-college-vogt.mjs'",
     "lint": "eslint \"src/**/*.ts\"",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "npm run prisma:generate && tsc -p tsconfig.json --noEmit",
     "test": "jest --config ./jest.config.cjs",
     "test:e2e": "bash ./scripts/run-e2e.sh"
   },

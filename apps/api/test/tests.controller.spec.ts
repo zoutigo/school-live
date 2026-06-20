@@ -7,6 +7,8 @@ describe("TestsController", () => {
     getCampaign: jest.fn(),
     getTestCase: jest.fn(),
     createExecution: jest.fn(),
+    listMyExecutions: jest.fn(),
+    getMyExecution: jest.fn(),
   };
 
   const controller = new TestsController(testsService as never);
@@ -34,6 +36,15 @@ describe("TestsController", () => {
 
     await controller.getTestCase(user, "case-1");
     expect(testsService.getTestCase).toHaveBeenCalledWith(user, "case-1");
+  });
+
+  it("delegates execution listing and detail retrieval to the service", async () => {
+    const query = { status: "FAILED" as const };
+    await controller.listMyExecutions(user, query);
+    expect(testsService.listMyExecutions).toHaveBeenCalledWith(user, query);
+
+    await controller.getMyExecution(user, "exec-1");
+    expect(testsService.getMyExecution).toHaveBeenCalledWith(user, "exec-1");
   });
 
   it("rejects invalid execution status values", async () => {

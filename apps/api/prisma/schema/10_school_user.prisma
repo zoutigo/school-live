@@ -143,6 +143,7 @@ model User {
   testCasesCreated      TestCase[]              @relation("TestCaseCreatedBy")
   testCasesUpdated      TestCase[]              @relation("TestCaseUpdatedBy")
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
+  testExecutionsReviewed TestExecution[]        @relation("TestExecutionAdminReviewedBy")
   mobilePushTokens      MobilePushToken[]
 }
 

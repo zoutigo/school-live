@@ -21,6 +21,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 type CampaignStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
 type CasePriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+type ExecutionStatus =
+  | "TODO"
+  | "IN_PROGRESS"
+  | "PASSED"
+  | "FAILED"
+  | "BLOCKED"
+  | "SKIPPED";
 
 type SchoolRef = { id: string; name: string; slug: string };
 
@@ -85,12 +92,61 @@ type Synthesis = {
     failed: number;
     blocked: number;
     successRate: number;
+    pendingReview: number;
   };
   testersCount: number;
 };
 
+type ExecutionRow = {
+  id: string;
+  status: ExecutionStatus;
+  resultText: string | null;
+  comment: string | null;
+  executedAt: string;
+  adminReviewedAt: string | null;
+  adminReviewNote: string | null;
+  user: { id: string; fullName: string };
+  adminReviewedBy: { id: string; fullName: string } | null;
+  testCase: { id: string; title: string };
+  campaign: { id: string; title: string };
+};
+
+type ExecutionDetail = ExecutionRow & {
+  deviceInfo: string | null;
+  appVersion: string | null;
+  attachments: Array<{
+    id: string;
+    fileName: string;
+    url: string;
+    mimeType: string;
+    sizeBytes: number;
+  }>;
+};
+
+type ExecutionsFilter = {
+  status: ExecutionStatus | "";
+  campaignId: string;
+  testerId: string;
+  reviewed: "" | "true" | "false";
+};
+
+const EMPTY_EXECUTIONS_FILTER: ExecutionsFilter = {
+  status: "",
+  campaignId: "",
+  testerId: "",
+  reviewed: "",
+};
+
 const CAMPAIGN_STATUSES: CampaignStatus[] = ["DRAFT", "ACTIVE", "ARCHIVED"];
 const PRIORITIES: CasePriority[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+const EXECUTION_STATUSES: ExecutionStatus[] = [
+  "PASSED",
+  "FAILED",
+  "BLOCKED",
+  "SKIPPED",
+  "IN_PROGRESS",
+  "TODO",
+];
 
 const campaignSchema = z.object({
   title: z.string().trim().min(1, "Le titre est obligatoire."),
@@ -130,12 +186,20 @@ type CaseFormValues = z.output<typeof caseSchema>;
 type AssignFormValues = z.output<typeof assignSchema>;
 type MessageFormValues = z.output<typeof messageSchema>;
 
-type Tab = "synthesis" | "campaigns" | "testers";
+type Tab = "synthesis" | "campaigns" | "testers" | "executions";
 
 export default function AdminTestsPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("synthesis");
+  const [executionsFilter, setExecutionsFilter] = useState<ExecutionsFilter>(
+    EMPTY_EXECUTIONS_FILTER,
+  );
+
+  function openExecutionsWithFilter(filter: ExecutionsFilter) {
+    setExecutionsFilter(filter);
+    setTab("executions");
+  }
 
   useEffect(() => {
     void boot();
@@ -189,6 +253,7 @@ export default function AdminTestsPage() {
               ["synthesis", "Synthèse"],
               ["campaigns", "Campagnes"],
               ["testers", "Testeurs"],
+              ["executions", "Tests réalisés"],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -207,15 +272,27 @@ export default function AdminTestsPage() {
           ))}
         </div>
 
-        {tab === "synthesis" && <SynthesisTab />}
+        {tab === "synthesis" && (
+          <SynthesisTab onKpiPress={openExecutionsWithFilter} />
+        )}
         {tab === "campaigns" && <CampaignsTab />}
         {tab === "testers" && <TestersTab />}
+        {tab === "executions" && (
+          <ExecutionsTab
+            filter={executionsFilter}
+            onFilterChange={setExecutionsFilter}
+          />
+        )}
       </div>
     </AppShell>
   );
 }
 
-function SynthesisTab() {
+function SynthesisTab({
+  onKpiPress,
+}: {
+  onKpiPress: (filter: ExecutionsFilter) => void;
+}) {
   const [data, setData] = useState<Synthesis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -252,15 +329,47 @@ function SynthesisTab() {
     return <p className="text-sm text-destructive">{error}</p>;
   }
 
-  const kpis = [
-    { label: "Campagnes actives", value: data.campaigns.active },
-    { label: "Campagnes totales", value: data.campaigns.total },
-    { label: "Cas de test", value: data.totalCases },
-    { label: "Testeurs actifs", value: data.testersCount },
-    { label: "Exécutions", value: data.executions.total },
+  const kpis: Array<{
+    key: string;
+    label: string;
+    value: string | number;
+    filter?: ExecutionsFilter;
+  }> = [
     {
+      key: "campaignsActive",
+      label: "Campagnes actives",
+      value: data.campaigns.active,
+    },
+    {
+      key: "campaignsTotal",
+      label: "Campagnes totales",
+      value: data.campaigns.total,
+    },
+    { key: "totalCases", label: "Cas de test", value: data.totalCases },
+    { key: "testersCount", label: "Testeurs actifs", value: data.testersCount },
+    {
+      key: "executions",
+      label: "Exécutions",
+      value: data.executions.total,
+      filter: EMPTY_EXECUTIONS_FILTER,
+    },
+    {
+      key: "successRate",
       label: "Taux de réussite",
       value: `${Math.round(data.executions.successRate * 100)}%`,
+      filter: { ...EMPTY_EXECUTIONS_FILTER, status: "PASSED" },
+    },
+    {
+      key: "failed",
+      label: "Échecs",
+      value: data.executions.failed,
+      filter: { ...EMPTY_EXECUTIONS_FILTER, status: "FAILED" },
+    },
+    {
+      key: "pendingReview",
+      label: "À traiter",
+      value: data.executions.pendingReview,
+      filter: { ...EMPTY_EXECUTIONS_FILTER, reviewed: "false" },
     },
   ];
 
@@ -269,12 +378,30 @@ function SynthesisTab() {
       data-testid="admin-tests-synthesis"
       className="grid grid-cols-2 gap-4 sm:grid-cols-3"
     >
-      {kpis.map((kpi) => (
-        <Card key={kpi.label} className="p-5">
-          <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
-          <p className="text-sm text-muted-foreground">{kpi.label}</p>
-        </Card>
-      ))}
+      {kpis.map((kpi) =>
+        kpi.filter ? (
+          <Card key={kpi.key} className="p-5 transition hover:border-primary">
+            <button
+              type="button"
+              className="w-full text-left"
+              onClick={() => onKpiPress(kpi.filter as ExecutionsFilter)}
+              data-testid={`admin-tests-kpi-${kpi.key}`}
+            >
+              <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
+              <p className="text-sm text-muted-foreground">{kpi.label}</p>
+            </button>
+          </Card>
+        ) : (
+          <Card
+            key={kpi.key}
+            className="p-5"
+            data-testid={`admin-tests-kpi-${kpi.key}`}
+          >
+            <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
+            <p className="text-sm text-muted-foreground">{kpi.label}</p>
+          </Card>
+        ),
+      )}
     </div>
   );
 }
@@ -1372,6 +1499,438 @@ function TestersTab() {
       )}
     </div>
   );
+}
+
+function ExecutionsTab({
+  filter,
+  onFilterChange,
+}: {
+  filter: ExecutionsFilter;
+  onFilterChange: (filter: ExecutionsFilter) => void;
+}) {
+  const [items, setItems] = useState<ExecutionRow[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+  const [testers, setTesters] = useState<TesterRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<ExecutionRow | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filter.status) params.set("status", filter.status);
+      if (filter.campaignId) params.set("campaignId", filter.campaignId);
+      if (filter.testerId) params.set("testerId", filter.testerId);
+      if (filter.reviewed) params.set("reviewed", filter.reviewed);
+      const res = await fetch(
+        `${API_URL}/admin/tests/executions?${params.toString()}`,
+        { credentials: "include" },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { items: ExecutionRow[] };
+        setItems(data.items ?? []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    void (async () => {
+      const [campaignsRes, testersRes] = await Promise.all([
+        fetch(`${API_URL}/admin/tests/campaigns?limit=100`, {
+          credentials: "include",
+        }),
+        fetch(`${API_URL}/admin/tests/testers?limit=100`, {
+          credentials: "include",
+        }),
+      ]);
+      if (campaignsRes.ok) {
+        const data = (await campaignsRes.json()) as { items: CampaignRow[] };
+        setCampaigns(data.items ?? []);
+      }
+      if (testersRes.ok) {
+        const data = (await testersRes.json()) as { items: TesterRow[] };
+        setTesters(data.items ?? []);
+      }
+    })();
+  }, []);
+
+  if (selected) {
+    return (
+      <ExecutionDetail
+        executionId={selected.id}
+        onBack={() => setSelected(null)}
+        onReviewed={load}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <FormSelect
+          value={filter.status}
+          onChange={(e) =>
+            onFilterChange({
+              ...filter,
+              status: e.target.value as ExecutionStatus | "",
+            })
+          }
+          data-testid="executions-status-filter"
+          className="max-w-[180px]"
+        >
+          <option value="">Tous statuts</option>
+          {EXECUTION_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {executionStatusLabel(s)}
+            </option>
+          ))}
+        </FormSelect>
+        <FormSelect
+          value={filter.campaignId}
+          onChange={(e) =>
+            onFilterChange({ ...filter, campaignId: e.target.value })
+          }
+          data-testid="executions-campaign-filter"
+          className="max-w-[220px]"
+        >
+          <option value="">Toutes campagnes</option>
+          {campaigns.map((campaign) => (
+            <option key={campaign.id} value={campaign.id}>
+              {campaign.title}
+            </option>
+          ))}
+        </FormSelect>
+        <FormSelect
+          value={filter.testerId}
+          onChange={(e) =>
+            onFilterChange({ ...filter, testerId: e.target.value })
+          }
+          data-testid="executions-tester-filter"
+          className="max-w-[200px]"
+        >
+          <option value="">Tous testeurs</option>
+          {testers.map((tester) => (
+            <option key={tester.id} value={tester.id}>
+              {tester.fullName}
+            </option>
+          ))}
+        </FormSelect>
+        <FormSelect
+          value={filter.reviewed}
+          onChange={(e) =>
+            onFilterChange({
+              ...filter,
+              reviewed: e.target.value as ExecutionsFilter["reviewed"],
+            })
+          }
+          data-testid="executions-reviewed-filter"
+          className="max-w-[160px]"
+        >
+          <option value="">Tous</option>
+          <option value="false">À traiter</option>
+          <option value="true">Traités</option>
+        </FormSelect>
+      </div>
+
+      {loading ? (
+        <div className="py-12 text-center text-sm text-muted-foreground">
+          Chargement…
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-xl border border-dashed p-12 text-center text-sm text-muted-foreground">
+          Aucune exécution ne correspond à ces filtres.
+        </div>
+      ) : (
+        <table
+          className="w-full text-left text-sm"
+          data-testid="executions-table"
+        >
+          <thead>
+            <tr className="text-xs uppercase text-muted-foreground">
+              <th className="py-2">Test</th>
+              <th className="py-2">Campagne</th>
+              <th className="py-2">Testeur</th>
+              <th className="py-2">Statut</th>
+              <th className="py-2">Date</th>
+              <th className="py-2">Traitement</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((execution) => (
+              <tr
+                key={execution.id}
+                className="cursor-pointer border-t border-warm-border hover:bg-warm-surface"
+                onClick={() => setSelected(execution)}
+                data-testid={`execution-row-${execution.id}`}
+              >
+                <td className="py-2 font-medium text-foreground">
+                  {execution.testCase.title}
+                </td>
+                <td className="py-2 text-muted-foreground">
+                  {execution.campaign.title}
+                </td>
+                <td className="py-2">{execution.user.fullName}</td>
+                <td className="py-2">
+                  <ExecutionStatusBadge status={execution.status} />
+                </td>
+                <td className="py-2 text-muted-foreground">
+                  {formatDateTime(execution.executedAt)}
+                </td>
+                <td className="py-2">
+                  {execution.adminReviewedAt ? (
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                      Traité
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      À traiter
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function ExecutionDetail({
+  executionId,
+  onBack,
+  onReviewed,
+}: {
+  executionId: string;
+  onBack: () => void;
+  onReviewed: () => void;
+}) {
+  const [detail, setDetail] = useState<ExecutionDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${API_URL}/admin/tests/executions/${executionId}`,
+        { credentials: "include" },
+      );
+      if (res.ok) {
+        setDetail(await res.json());
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [executionId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function submitReview(reviewed: boolean) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `${API_URL}/admin/tests/executions/${executionId}/review`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviewed, note: reviewed ? note : undefined }),
+        },
+      );
+      if (!res.ok) {
+        const err = (await res.json()) as { message?: string };
+        setError(err.message ?? "Erreur lors de l'enregistrement.");
+        return;
+      }
+      setShowReviewForm(false);
+      setNote("");
+      await load();
+      onReviewed();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading || !detail) {
+    return (
+      <div className="py-12 text-center text-sm text-muted-foreground">
+        Chargement…
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Button type="button" variant="secondary" onClick={onBack}>
+        ← Retour
+      </Button>
+
+      <Card className="space-y-3 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-foreground">
+            {detail.testCase.title}
+          </h2>
+          <ExecutionStatusBadge status={detail.status} />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {detail.campaign.title} · {detail.user.fullName} ·{" "}
+          {formatDateTime(detail.executedAt)}
+        </p>
+
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Résultat</h3>
+          <p className="text-sm text-muted-foreground">
+            {detail.resultText?.trim() || "—"}
+          </p>
+        </div>
+
+        {detail.comment && (
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">
+              Commentaire
+            </h3>
+            <p className="text-sm text-muted-foreground">{detail.comment}</p>
+          </div>
+        )}
+
+        {(detail.deviceInfo || detail.appVersion) && (
+          <div className="flex gap-4 text-xs text-muted-foreground">
+            {detail.deviceInfo && <span>Appareil : {detail.deviceInfo}</span>}
+            {detail.appVersion && <span>Version : {detail.appVersion}</span>}
+          </div>
+        )}
+
+        {detail.attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {detail.attachments.map((attachment) => (
+              <a
+                key={attachment.id}
+                href={attachment.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <img
+                  src={attachment.url}
+                  alt={attachment.fileName}
+                  className="h-20 w-20 rounded-lg border border-warm-border object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card className="space-y-3 p-5">
+        {detail.adminReviewedAt ? (
+          <>
+            <p className="text-sm font-semibold text-green-700">
+              Traité par {detail.adminReviewedBy?.fullName ?? "—"} le{" "}
+              {formatDateTime(detail.adminReviewedAt)}
+            </p>
+            {detail.adminReviewNote && (
+              <p className="text-sm text-muted-foreground">
+                {detail.adminReviewNote}
+              </p>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void submitReview(false)}
+              disabled={saving}
+            >
+              Annuler le traitement
+            </Button>
+          </>
+        ) : showReviewForm ? (
+          <div className="space-y-3">
+            <FormTextarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Note optionnelle, ex. Corrigé dans la version 1.3"
+              data-testid="execution-review-note"
+            />
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                onClick={() => void submitReview(true)}
+                disabled={saving}
+                data-testid="execution-review-submit"
+              >
+                {saving ? "Enregistrement…" : "Valider"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowReviewForm(false)}
+                disabled={saving}
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            onClick={() => setShowReviewForm(true)}
+            data-testid="execution-mark-reviewed"
+          >
+            Marquer traité
+          </Button>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+const EXECUTION_STATUS_DISPLAY: Record<
+  ExecutionStatus,
+  { label: string; className: string }
+> = {
+  PASSED: { label: "Validé", className: "bg-green-100 text-green-700" },
+  FAILED: { label: "Échoué", className: "bg-red-100 text-red-700" },
+  BLOCKED: { label: "Bloqué", className: "bg-amber-100 text-amber-700" },
+  SKIPPED: { label: "Ignoré", className: "bg-slate-100 text-slate-600" },
+  IN_PROGRESS: { label: "En cours", className: "bg-green-100 text-green-700" },
+  TODO: { label: "À faire", className: "bg-slate-100 text-slate-600" },
+};
+
+function ExecutionStatusBadge({ status }: { status: ExecutionStatus }) {
+  const { label, className } = EXECUTION_STATUS_DISPLAY[status];
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-medium ${className}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function executionStatusLabel(status: ExecutionStatus) {
+  return EXECUTION_STATUS_DISPLAY[status].label;
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function StatusBadge({ status }: { status: CampaignStatus }) {

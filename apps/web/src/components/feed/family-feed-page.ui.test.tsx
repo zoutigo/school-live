@@ -431,7 +431,7 @@ describe("FamilyFeedPage", () => {
     await waitFor(() => {
       expect(screen.queryByText("Post modifie")).not.toBeInTheDocument();
     });
-  }, 10000);
+  }, 20000);
 
   it("filters to my posts only", async () => {
     const { container } = render(

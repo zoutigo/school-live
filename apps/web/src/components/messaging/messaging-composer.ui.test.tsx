@@ -80,7 +80,9 @@ describe("MessagingComposer", () => {
       body: expect.stringContaining("Contenu du message"),
       attachments: [],
     });
-    expect(screen.getByText("Message envoye.")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Message envoye.")).toBeInTheDocument(),
+    );
   });
 
   it("prefills recipient and subject in reply mode inputs", () => {
@@ -161,7 +163,9 @@ describe("MessagingComposer", () => {
       body: expect.stringContaining("Corps brouillon"),
       attachments: [],
     });
-    expect(screen.getByText("Brouillon enregistre.")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Brouillon enregistre.")).toBeInTheDocument(),
+    );
   });
 
   it("calls back-to-list callback when cancel is clicked", () => {
