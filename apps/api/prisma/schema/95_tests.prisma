@@ -116,6 +116,11 @@ model TestExecution {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
+  adminReviewedAt   DateTime?
+  adminReviewedById String?
+  adminReviewedBy   User?              @relation("TestExecutionAdminReviewedBy", fields: [adminReviewedById], references: [id], onDelete: SetNull)
+  adminReviewNote   String?
+
   attachments TestExecutionAttachment[]
 
   @@index([testCaseId, executedAt])

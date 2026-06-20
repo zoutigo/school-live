@@ -1861,7 +1861,7 @@ model TestExecution {
 
   adminReviewedAt   DateTime?
   adminReviewedById String?
-  adminReviewedBy   User?       @relation("TestExecutionAdminReviewedBy", fields: [adminReviewedById], references: [id], onDelete: SetNull)
+  adminReviewedBy   User?              @relation("TestExecutionAdminReviewedBy", fields: [adminReviewedById], references: [id], onDelete: SetNull)
   adminReviewNote   String?
 
   attachments TestExecutionAttachment[]
