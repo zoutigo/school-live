@@ -127,6 +127,11 @@ export class TestsAdminController {
     return this.testsService.createTestCase(user, campaignId, payload);
   }
 
+  @Get("cases/:testCaseId")
+  getTestCase(@Param("testCaseId") testCaseId: string) {
+    return this.testsService.getAdminTestCase(testCaseId);
+  }
+
   @Patch("cases/:testCaseId")
   updateTestCase(
     @CurrentUser() user: AuthenticatedUser,

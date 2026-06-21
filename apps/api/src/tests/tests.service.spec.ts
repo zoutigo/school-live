@@ -236,6 +236,164 @@ describe("TestsService#recycleTestCase", () => {
   });
 });
 
+describe("TestsService#getAdminCampaign", () => {
+  it("maps each test case with its full content, recycled state and execution count", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue({
+      id: "camp-1",
+      reference: 4,
+      title: "Recette mobile v1",
+      description: null,
+      targetVersion: null,
+      startsAt: null,
+      dueAt: null,
+      status: "ACTIVE",
+      school: null,
+      testCases: [
+        {
+          id: "case-1",
+          reference: 1,
+          title: "Connexion email",
+          module: "Auth",
+          objective: "Vérifier la connexion",
+          preconditions: null,
+          expectedResult: "L'utilisateur est connecté",
+          priority: "MEDIUM",
+          dueAt: null,
+          evidenceRequired: false,
+          recycledAt: null,
+          audienceRoles: [],
+          _count: { executions: 0 },
+        },
+        {
+          id: "case-2",
+          reference: 2,
+          title: "Cas recyclé",
+          module: null,
+          objective: null,
+          preconditions: null,
+          expectedResult: "Toujours valable",
+          priority: "LOW",
+          dueAt: null,
+          evidenceRequired: false,
+          recycledAt: new Date("2026-01-01T00:00:00.000Z"),
+          audienceRoles: [{ role: "PARENT" }, { role: "TEACHER" }],
+          _count: { executions: 5 },
+        },
+      ],
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.getAdminCampaign("camp-1");
+
+    expect(result.testCases).toEqual([
+      expect.objectContaining({
+        id: "case-1",
+        objective: "Vérifier la connexion",
+        preconditions: null,
+        expectedResult: "L'utilisateur est connecté",
+        audienceRoles: [],
+        executionsCount: 0,
+        recycledAt: null,
+      }),
+      expect.objectContaining({
+        id: "case-2",
+        objective: null,
+        expectedResult: "Toujours valable",
+        audienceRoles: ["PARENT", "TEACHER"],
+        executionsCount: 5,
+        recycledAt: new Date("2026-01-01T00:00:00.000Z"),
+      }),
+    ]);
+  });
+
+  it("returns an empty testCases array when the campaign has no case yet", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue({
+      id: "camp-2",
+      reference: 5,
+      title: "Campagne vide",
+      description: null,
+      targetVersion: null,
+      startsAt: null,
+      dueAt: null,
+      status: "DRAFT",
+      school: null,
+      testCases: [],
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.getAdminCampaign("camp-2");
+
+    expect(result.testCases).toEqual([]);
+  });
+
+  it("throws when the campaign does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCampaign.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(service.getAdminCampaign("missing")).rejects.toThrow(
+      "Test campaign not found",
+    );
+  });
+});
+
+describe("TestsService#getAdminTestCase", () => {
+  it("returns the full case content with its parent campaign reference", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findFirst.mockResolvedValue({
+      id: "case-1",
+      reference: 7,
+      title: "Connexion email",
+      module: "Auth",
+      objective: "Vérifier la connexion",
+      preconditions: "Compte créé",
+      expectedResult: "L'utilisateur est connecté",
+      priority: "HIGH",
+      dueAt: null,
+      evidenceRequired: true,
+      recycledAt: null,
+      audienceRoles: [{ role: "PARENT" }],
+      _count: { executions: 3 },
+      campaign: { id: "camp-1", title: "Campagne v1.2" },
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.getAdminTestCase("case-1");
+
+    expect(prisma.testCase.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "case-1" } }),
+    );
+    expect(result).toEqual({
+      id: "case-1",
+      reference: 7,
+      title: "Connexion email",
+      module: "Auth",
+      objective: "Vérifier la connexion",
+      preconditions: "Compte créé",
+      expectedResult: "L'utilisateur est connecté",
+      priority: "HIGH",
+      dueAt: null,
+      evidenceRequired: true,
+      recycledAt: null,
+      audienceRoles: ["PARENT"],
+      executionsCount: 3,
+      campaign: { id: "camp-1", title: "Campagne v1.2" },
+    });
+  });
+
+  it("throws when the test case does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findFirst.mockResolvedValue(null);
+    const service = await makeService(prisma);
+
+    await expect(service.getAdminTestCase("missing")).rejects.toThrow(
+      "Test case not found",
+    );
+  });
+});
+
 describe("TestsService#createCampaign / updateCampaign / deleteCampaign", () => {
   it("creates a campaign with trimmed fields and DRAFT default status", async () => {
     const prisma = makeFullPrismaMock();
