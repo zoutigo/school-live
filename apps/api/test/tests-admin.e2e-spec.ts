@@ -247,9 +247,12 @@ describe("Tests admin API e2e", () => {
     );
     expect(schoolAdminAttempt.response.status).toBe(403);
 
-    const testerAttempt = await apiJson(`/api/admin/tests/cases/${testCaseId}`, {
-      headers: authHeaders(testerToken),
-    });
+    const testerAttempt = await apiJson(
+      `/api/admin/tests/cases/${testCaseId}`,
+      {
+        headers: authHeaders(testerToken),
+      },
+    );
     expect(testerAttempt.response.status).toBe(403);
   });
 

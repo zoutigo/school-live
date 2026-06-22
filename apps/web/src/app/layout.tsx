@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Scolive",
-  description: "Plateforme scolaire inspiree d EcoleDirecte",
+  description: "Plateforme scolaire moderne et collaborative",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
