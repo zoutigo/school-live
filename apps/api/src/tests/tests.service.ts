@@ -773,6 +773,9 @@ export class TestsService {
             reference: true,
             title: true,
             module: true,
+            objective: true,
+            preconditions: true,
+            expectedResult: true,
             priority: true,
             dueAt: true,
             evidenceRequired: true,
@@ -800,6 +803,9 @@ export class TestsService {
         reference: testCase.reference,
         title: testCase.title,
         module: testCase.module,
+        objective: testCase.objective,
+        preconditions: testCase.preconditions,
+        expectedResult: testCase.expectedResult,
         priority: testCase.priority,
         dueAt: testCase.dueAt,
         evidenceRequired: testCase.evidenceRequired,
@@ -807,6 +813,56 @@ export class TestsService {
         audienceRoles: testCase.audienceRoles.map((entry) => entry.role),
         executionsCount: testCase._count.executions,
       })),
+    };
+  }
+
+  async getAdminTestCase(testCaseId: string) {
+    const testCase = await this.prisma.testCase.findFirst({
+      where: { id: testCaseId },
+      select: {
+        id: true,
+        reference: true,
+        title: true,
+        module: true,
+        objective: true,
+        preconditions: true,
+        expectedResult: true,
+        priority: true,
+        dueAt: true,
+        evidenceRequired: true,
+        recycledAt: true,
+        audienceRoles: {
+          orderBy: { role: "asc" },
+          select: { role: true },
+        },
+        _count: {
+          select: { executions: true },
+        },
+        campaign: {
+          select: { id: true, title: true },
+        },
+      },
+    });
+
+    if (!testCase) {
+      throw new NotFoundException("Test case not found");
+    }
+
+    return {
+      id: testCase.id,
+      reference: testCase.reference,
+      title: testCase.title,
+      module: testCase.module,
+      objective: testCase.objective,
+      preconditions: testCase.preconditions,
+      expectedResult: testCase.expectedResult,
+      priority: testCase.priority,
+      dueAt: testCase.dueAt,
+      evidenceRequired: testCase.evidenceRequired,
+      recycledAt: testCase.recycledAt,
+      audienceRoles: testCase.audienceRoles.map((entry) => entry.role),
+      executionsCount: testCase._count.executions,
+      campaign: testCase.campaign,
     };
   }
 

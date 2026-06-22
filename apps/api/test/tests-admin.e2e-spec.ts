@@ -203,6 +203,67 @@ describe("Tests admin API e2e", () => {
     testCaseId = String((caseResult.body as { id: string }).id);
   });
 
+  it("lets SUPER_ADMIN fetch the campaign detail with the full content of each test case (objective/preconditions/expectedResult)", async () => {
+    const { response, body } = await apiJson(
+      `/api/admin/tests/campaigns/${campaignId}`,
+      { headers: authHeaders(superAdminToken) },
+    );
+    expect(response.status).toBe(200);
+    const detail = body as {
+      testCases: Array<{
+        id: string;
+        expectedResult: string;
+        objective: string | null;
+        preconditions: string | null;
+      }>;
+    };
+    const testCase = detail.testCases.find((item) => item.id === testCaseId);
+    expect(testCase).toBeTruthy();
+    expect(testCase?.expectedResult).toBe("Tout fonctionne");
+  });
+
+  it("lets SUPER_ADMIN fetch a single test case with its full content and parent campaign reference", async () => {
+    const { response, body } = await apiJson(
+      `/api/admin/tests/cases/${testCaseId}`,
+      { headers: authHeaders(superAdminToken) },
+    );
+    expect(response.status).toBe(200);
+    const detail = body as {
+      id: string;
+      title: string;
+      expectedResult: string;
+      campaign: { id: string; title: string };
+    };
+    expect(detail.id).toBe(testCaseId);
+    expect(detail.title).toBe("Cas e2e");
+    expect(detail.expectedResult).toBe("Tout fonctionne");
+    expect(detail.campaign.id).toBe(campaignId);
+  });
+
+  it("rejects SCHOOL_ADMIN and PARENT testers from the single test case admin route", async () => {
+    const schoolAdminAttempt = await apiJson(
+      `/api/admin/tests/cases/${testCaseId}`,
+      { headers: authHeaders(schoolAdminToken) },
+    );
+    expect(schoolAdminAttempt.response.status).toBe(403);
+
+    const testerAttempt = await apiJson(
+      `/api/admin/tests/cases/${testCaseId}`,
+      {
+        headers: authHeaders(testerToken),
+      },
+    );
+    expect(testerAttempt.response.status).toBe(403);
+  });
+
+  it("returns 404 for an unknown test case id on the admin route", async () => {
+    const { response } = await apiJson(
+      `/api/admin/tests/cases/00000000-0000-0000-0000-000000000000`,
+      { headers: authHeaders(superAdminToken) },
+    );
+    expect(response.status).toBe(404);
+  });
+
   it("shows the campaign to a PARENT tester through the global /tests routes, with no school scoping at all", async () => {
     const { response, body } = await apiJson("/api/tests/campaigns", {
       headers: authHeaders(testerToken),
