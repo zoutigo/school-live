@@ -11,6 +11,7 @@ import {
   CalendarDays,
   ClipboardList,
   CreditCard,
+  DoorOpen,
   FileText,
   GraduationCap,
   HelpCircle,
@@ -27,7 +28,13 @@ import {
   Wallet,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
-import { getSchoolMessagesUnreadCount } from "../messaging/messaging-api";
+import {
+  getUnreadSummary,
+  readCachedUnreadSummary,
+  type ChildBadgeSummary,
+  type TeacherClassBadgeSummary,
+  type UnreadSummary,
+} from "./badges-api";
 import type { Role } from "../../lib/role-view";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
@@ -65,12 +72,19 @@ type TeacherClassWithItems = TeacherClassNav & {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
+function toUnread(count: number | undefined): number | undefined {
+  return count && count > 0 ? count : undefined;
+}
+
 function buildItems(
   role: Role,
   schoolSlug: string | null | undefined,
   t: TranslateFn,
+  badges: UnreadSummary | null,
 ): NavItem[] {
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "/acceuil";
+  const messagesUnread = toUnread(badges?.messagesUnread);
+  const feedUnread = toUnread(badges?.feedUnread);
 
   if (
     role === "SUPER_ADMIN" ||
@@ -108,6 +122,12 @@ function buildItems(
         href: "/subjects",
         icon: BookOpen,
         matchPrefix: "/subjects",
+      },
+      {
+        label: t("sidebar.nav.rooms"),
+        href: "/salles",
+        icon: DoorOpen,
+        matchPrefix: "/salles",
       },
       {
         label: t("sidebar.nav.curriculums"),
@@ -183,6 +203,7 @@ function buildItems(
         href: `${schoolBase}/fil`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/fil`,
+        unread: feedUnread,
       },
       {
         label: t("sidebar.nav.classes"),
@@ -195,6 +216,12 @@ function buildItems(
         href: "/subjects",
         icon: BookOpen,
         matchPrefix: "/subjects",
+      },
+      {
+        label: t("sidebar.nav.rooms"),
+        href: "/salles",
+        icon: DoorOpen,
+        matchPrefix: "/salles",
       },
       {
         label: t("sidebar.nav.curriculums"),
@@ -237,6 +264,7 @@ function buildItems(
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
+        unread: messagesUnread,
       },
       {
         label: t("sidebar.nav.settings"),
@@ -266,6 +294,7 @@ function buildItems(
         href: `${schoolBase}/fil`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/fil`,
+        unread: feedUnread,
       },
       {
         label: t("sidebar.nav.myClasses"),
@@ -284,6 +313,7 @@ function buildItems(
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
+        unread: messagesUnread,
       },
       {
         label: t("sidebar.nav.settings"),
@@ -313,6 +343,7 @@ function buildItems(
         href: `${schoolBase}/fil`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/fil`,
+        unread: feedUnread,
       },
       {
         label: t("sidebar.nav.financialSituation"),
@@ -331,6 +362,7 @@ function buildItems(
         href: `${schoolBase}/messagerie`,
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
+        unread: messagesUnread,
       },
       {
         label: t("sidebar.nav.documents"),
@@ -395,6 +427,7 @@ function buildItems(
       href: `${schoolBase}/messagerie`,
       icon: MessageSquare,
       matchPrefix: `${schoolBase}/messagerie`,
+      unread: messagesUnread,
     },
     {
       label: t("sidebar.nav.documents"),
@@ -415,6 +448,7 @@ function buildParentChildItems(
   schoolSlug: string,
   childId: string,
   t: TranslateFn,
+  childBadge: ChildBadgeSummary | undefined,
 ): NavItem[] {
   const base = `/schools/${schoolSlug}/children/${childId}`;
 
@@ -430,6 +464,7 @@ function buildParentChildItems(
       href: `${base}/vie-scolaire`,
       icon: UserRound,
       matchPrefix: `${base}/vie-scolaire`,
+      unread: toUnread(childBadge?.disciplineUnread),
     },
     {
       label: t("feed.vieDeClasse.title"),
@@ -450,6 +485,7 @@ function buildParentChildItems(
       href: `${base}/notes`,
       icon: BookOpen,
       matchPrefix: `${base}/notes`,
+      unread: toUnread(childBadge?.notesUnread),
     },
     {
       label: t("messaging.nav.title"),
@@ -462,6 +498,7 @@ function buildParentChildItems(
       href: `${base}/cahier-de-texte`,
       icon: FileText,
       matchPrefix: `${base}/cahier-de-texte`,
+      unread: toUnread(childBadge?.homeworkPending),
     },
     {
       label: t("sidebar.nav.manuals"),
@@ -488,6 +525,7 @@ function buildTeacherClassItems(
   schoolSlug: string,
   classId: string,
   t: TranslateFn,
+  classBadge: TeacherClassBadgeSummary | undefined,
 ): NavItem[] {
   const base = `/schools/${schoolSlug}/classes/${classId}`;
 
@@ -503,6 +541,7 @@ function buildTeacherClassItems(
       href: `${base}/notes`,
       icon: BookOpen,
       matchPrefix: `${base}/notes`,
+      unread: toUnread(classBadge?.evaluationsToGrade),
     },
     {
       label: t("discipline.sidebar.discipline"),
@@ -534,14 +573,18 @@ export function AppSidebar({
   const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
-  const items = buildItems(role, schoolSlug, t);
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
   const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
   const [openParentSection, setOpenParentSection] = useState<string>("general");
   const [teacherClasses, setTeacherClasses] = useState<TeacherClassNav[]>([]);
   const [openTeacherSection, setOpenTeacherSection] =
     useState<string>("classes");
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+  const [badgeSummary, setBadgeSummary] = useState<UnreadSummary | null>(null);
+  const items = buildItems(role, schoolSlug, t, badgeSummary);
+  const ticketsUnread = toUnread(
+    (badgeSummary?.ticketsNeedingResponse ?? 0) +
+      (badgeSummary?.ticketsUnreadReplies ?? 0),
+  );
 
   useEffect(() => {
     if (role !== "PARENT" || !schoolSlug) {
@@ -563,7 +606,7 @@ export function AppSidebar({
 
   useEffect(() => {
     if (!schoolSlug) {
-      setUnreadMessagesCount(0);
+      setBadgeSummary(null);
       return;
     }
 
@@ -581,42 +624,42 @@ export function AppSidebar({
     ];
 
     if (!allowedRoles.includes(role)) {
-      setUnreadMessagesCount(0);
+      setBadgeSummary(null);
       return;
     }
 
-    void loadUnreadCount(schoolSlug);
+    // Show the last known counts immediately (useful offline / on a flaky
+    // connection), then refresh from the API.
+    setBadgeSummary(
+      (current) => current ?? readCachedUnreadSummary(schoolSlug),
+    );
+    void loadBadgeSummary(schoolSlug);
   }, [schoolSlug, role, pathname]);
 
   useEffect(() => {
     if (!schoolSlug) {
       return;
     }
-    const onMessagingUpdated = () => {
-      void loadUnreadCount(schoolSlug);
+    const reload = () => void loadBadgeSummary(schoolSlug);
+    window.addEventListener("messaging:updated", reload);
+    window.addEventListener("online", reload);
+    return () => {
+      window.removeEventListener("messaging:updated", reload);
+      window.removeEventListener("online", reload);
     };
-    window.addEventListener("messaging:updated", onMessagingUpdated);
-    return () =>
-      window.removeEventListener("messaging:updated", onMessagingUpdated);
   }, [schoolSlug]);
 
-  async function loadUnreadCount(currentSchoolSlug: string) {
+  async function loadBadgeSummary(currentSchoolSlug: string) {
     try {
-      const unread = await getSchoolMessagesUnreadCount(currentSchoolSlug);
-      setUnreadMessagesCount(unread);
+      const summary = await getUnreadSummary(currentSchoolSlug);
+      setBadgeSummary(summary);
     } catch {
-      setUnreadMessagesCount(0);
+      // Offline or transient failure: keep showing the last known counts
+      // (already in state, or from the cache) instead of resetting to zero.
+      setBadgeSummary(
+        (current) => current ?? readCachedUnreadSummary(currentSchoolSlug),
+      );
     }
-  }
-
-  function resolveUnread(item: NavItem) {
-    if (!item.href.includes("/messagerie")) {
-      return item.unread;
-    }
-    if (unreadMessagesCount <= 0) {
-      return undefined;
-    }
-    return unreadMessagesCount;
   }
 
   async function loadParentChildren(currentSchoolSlug: string) {
@@ -690,9 +733,14 @@ export function AppSidebar({
 
     return parentChildren.map((child) => ({
       ...child,
-      items: buildParentChildItems(schoolSlug, child.id, t),
+      items: buildParentChildItems(
+        schoolSlug,
+        child.id,
+        t,
+        badgeSummary?.children.find((entry) => entry.studentId === child.id),
+      ),
     }));
-  }, [parentChildren, schoolSlug, t]);
+  }, [parentChildren, schoolSlug, t, badgeSummary]);
 
   const teacherClassesWithItems = useMemo<TeacherClassWithItems[]>(() => {
     if (!schoolSlug) {
@@ -701,9 +749,16 @@ export function AppSidebar({
 
     return teacherClasses.map((entry) => ({
       ...entry,
-      items: buildTeacherClassItems(schoolSlug, entry.classId, t),
+      items: buildTeacherClassItems(
+        schoolSlug,
+        entry.classId,
+        t,
+        badgeSummary?.teacherClasses.find(
+          (classBadge) => classBadge.classId === entry.classId,
+        ),
+      ),
     }));
-  }, [teacherClasses, schoolSlug, t]);
+  }, [teacherClasses, schoolSlug, t, badgeSummary]);
 
   const teacherGeneralItems = useMemo(
     () => items.filter((item) => item.href !== "/settings"),
@@ -882,11 +937,9 @@ export function AppSidebar({
                         <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
                           {item.label}
                         </span>
-                        {typeof resolveUnread(item) === "number" ? (
+                        {typeof item.unread === "number" ? (
                           <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                            <Badge variant="notification">
-                              {resolveUnread(item)}
-                            </Badge>
+                            <Badge variant="notification">{item.unread}</Badge>
                           </span>
                         ) : null}
                       </Link>
@@ -959,6 +1012,13 @@ export function AppSidebar({
                             <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
                               {item.label}
                             </span>
+                            {typeof item.unread === "number" ? (
+                              <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                                <Badge variant="notification">
+                                  {item.unread}
+                                </Badge>
+                              </span>
+                            ) : null}
                           </Link>
                         );
                       })}
@@ -1023,11 +1083,9 @@ export function AppSidebar({
                       {item.label}
                     </span>
                   </span>
-                  {typeof resolveUnread(item) === "number" ? (
+                  {typeof item.unread === "number" ? (
                     <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                      <Badge variant="notification">
-                        {resolveUnread(item)}
-                      </Badge>
+                      <Badge variant="notification">{item.unread}</Badge>
                     </span>
                   ) : null}
                 </Link>
@@ -1088,11 +1146,9 @@ export function AppSidebar({
                         <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
                           {item.label}
                         </span>
-                        {typeof resolveUnread(item) === "number" ? (
+                        {typeof item.unread === "number" ? (
                           <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                            <Badge variant="notification">
-                              {resolveUnread(item)}
-                            </Badge>
+                            <Badge variant="notification">{item.unread}</Badge>
                           </span>
                         ) : null}
                       </Link>
@@ -1174,6 +1230,13 @@ export function AppSidebar({
                             <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
                               {item.label}
                             </span>
+                            {typeof item.unread === "number" ? (
+                              <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                                <Badge variant="notification">
+                                  {item.unread}
+                                </Badge>
+                              </span>
+                            ) : null}
                           </Link>
                         );
                       })}
@@ -1218,6 +1281,11 @@ export function AppSidebar({
           <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
             {t("sidebar.nav.assistance")}
           </span>
+          {typeof ticketsUnread === "number" ? (
+            <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+              <Badge variant="notification">{ticketsUnread}</Badge>
+            </span>
+          ) : null}
         </Link>
       </div>
 

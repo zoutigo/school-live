@@ -16,6 +16,7 @@
     "prisma:migrate:deploy": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; prisma migrate deploy --schema prisma/schema.prisma'",
     "prisma:studio": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; prisma studio --schema prisma/schema.prisma'",
     "seed:academic:backfill": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-academic-backfill.mjs'",
+    "seed:room:backfill": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-room-backfill.mjs'",
     "seed:feed:dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-feed-dev.mjs'",
     "seed:feed:class:dev": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-feed-class-dev.mjs'",
     "seed:homework:6eb6ec": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-homework-6eb-6ec.mjs'",

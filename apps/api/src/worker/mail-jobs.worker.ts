@@ -17,6 +17,7 @@ import {
   MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION,
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
+  MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEST_EXECUTION_FAILED_NOTIFICATION,
   MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
@@ -26,6 +27,7 @@ import {
   type HomeworkCreatedMailPayload,
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
+  type RoomStatusChangeMailPayload,
   type StudentLifeEventNotificationPayload,
   type TestExecutionFailedNotificationPayload,
   type TimetableChangeMailPayload,
@@ -91,6 +93,12 @@ export class MailJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION) {
           await this.emailPort.sendHomeworkCreatedNotification(
             job.data as HomeworkCreatedMailPayload,
+          );
+          return;
+        }
+        if (job.name === MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION) {
+          await this.emailPort.sendRoomStatusChangeNotification(
+            job.data as RoomStatusChangeMailPayload,
           );
           return;
         }

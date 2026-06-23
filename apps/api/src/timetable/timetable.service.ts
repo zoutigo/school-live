@@ -49,6 +49,7 @@ type ResolvedTimetableOccurrence = {
   startMinute: number;
   endMinute: number;
   room: string | null;
+  roomId: string | null;
   reason: string | null;
   subject: { id: string; name: string };
   teacherUser: {
@@ -438,6 +439,13 @@ export class TimetableService {
       locale,
     );
 
+    const roomReference = await this.resolveRoomReference(
+      effectiveSchoolId,
+      payload.roomId,
+      payload.room,
+      locale,
+    );
+
     await this.ensureNoSlotConflicts({
       schoolId: effectiveSchoolId,
       schoolYearId,
@@ -446,7 +454,7 @@ export class TimetableService {
       startMinute: payload.startMinute,
       endMinute: payload.endMinute,
       teacherUserId: payload.teacherUserId,
-      room: payload.room ?? null,
+      roomId: roomReference.roomId,
       activeFromDate,
       activeToDate,
       locale,
@@ -471,7 +479,8 @@ export class TimetableService {
         endMinute: payload.endMinute,
         activeFromDate,
         activeToDate,
-        room: payload.room?.trim() || null,
+        room: roomReference.room,
+        roomId: roomReference.roomId,
         createdByUserId: user.id,
       },
       include: {
@@ -533,6 +542,13 @@ export class TimetableService {
       locale,
     );
 
+    const roomReference = await this.resolveRoomReference(
+      effectiveSchoolId,
+      payload.roomId,
+      payload.room,
+      locale,
+    );
+
     await this.ensureNoOccurrenceConflicts({
       schoolId: effectiveSchoolId,
       schoolYearId,
@@ -541,7 +557,7 @@ export class TimetableService {
       startMinute: payload.startMinute,
       endMinute: payload.endMinute,
       teacherUserId: payload.teacherUserId,
-      room: payload.room ?? null,
+      roomId: roomReference.roomId,
       ignoreRecurringSlotId: payload.sourceSlotId ?? undefined,
       locale,
     });
@@ -563,7 +579,8 @@ export class TimetableService {
         teacherUserId: payload.teacherUserId,
         startMinute: payload.startMinute,
         endMinute: payload.endMinute,
-        room: payload.room?.trim() || null,
+        room: roomReference.room,
+        roomId: roomReference.roomId,
         status: payload.status ?? "PLANNED",
         sourceSlotId: payload.sourceSlotId ?? null,
         createdByUserId: user.id,
@@ -618,6 +635,7 @@ export class TimetableService {
       payload.subjectId === undefined &&
       payload.teacherUserId === undefined &&
       payload.room === undefined &&
+      payload.roomId === undefined &&
       payload.activeFromDate === undefined &&
       payload.activeToDate === undefined &&
       payload.effectiveFromDate === undefined
@@ -642,6 +660,7 @@ export class TimetableService {
         activeFromDate: true,
         activeToDate: true,
         room: true,
+        roomId: true,
       },
     });
     if (!existing) {
@@ -670,7 +689,18 @@ export class TimetableService {
     const nextEndMinute = payload.endMinute ?? existing.endMinute;
     const nextSubjectId = payload.subjectId ?? existing.subjectId;
     const nextTeacherUserId = payload.teacherUserId ?? existing.teacherUserId;
-    const nextRoom = payload.room === undefined ? existing.room : payload.room;
+    const roomChangeRequested =
+      payload.roomId !== undefined || payload.room !== undefined;
+    const roomReference = roomChangeRequested
+      ? await this.resolveRoomReference(
+          effectiveSchoolId,
+          payload.roomId,
+          payload.room,
+          locale,
+        )
+      : { roomId: existing.roomId, room: existing.room };
+    const nextRoom = roomReference.room;
+    const nextRoomId = roomReference.roomId;
     const todayDate = this.toDateOnly(new Date().toISOString(), locale);
     const nextActiveFromDate = payload.activeFromDate
       ? this.toDateOnly(payload.activeFromDate, locale)
@@ -716,6 +746,7 @@ export class TimetableService {
       nextEndMinute !== existing.endMinute ||
       nextSubjectId !== existing.subjectId ||
       nextTeacherUserId !== existing.teacherUserId ||
+      nextRoomId !== existing.roomId ||
       (nextRoom?.trim() || null) !== (existing.room?.trim() || null);
 
     if (!structuralChanges) {
@@ -727,7 +758,7 @@ export class TimetableService {
         startMinute: nextStartMinute,
         endMinute: nextEndMinute,
         teacherUserId: nextTeacherUserId,
-        room: nextRoom,
+        roomId: nextRoomId,
         exceptSlotId: existing.id,
         activeFromDate: nextActiveFromDate,
         activeToDate: nextActiveToDate,
@@ -741,7 +772,8 @@ export class TimetableService {
           endMinute: nextEndMinute,
           subjectId: nextSubjectId,
           teacherUserId: nextTeacherUserId,
-          room: nextRoom?.trim() || null,
+          room: nextRoom,
+          roomId: nextRoomId,
           activeFromDate: nextActiveFromDate,
           activeToDate: nextActiveToDate,
         },
@@ -771,7 +803,7 @@ export class TimetableService {
         startMinute: nextStartMinute,
         endMinute: nextEndMinute,
         teacherUserId: nextTeacherUserId,
-        room: nextRoom,
+        roomId: nextRoomId,
         exceptSlotId: existing.id,
         activeFromDate: nextActiveFromDate,
         activeToDate: nextActiveToDate,
@@ -785,7 +817,8 @@ export class TimetableService {
           endMinute: nextEndMinute,
           subjectId: nextSubjectId,
           teacherUserId: nextTeacherUserId,
-          room: nextRoom?.trim() || null,
+          room: nextRoom,
+          roomId: nextRoomId,
           activeFromDate: nextActiveFromDate,
           activeToDate: nextActiveToDate,
         },
@@ -819,7 +852,7 @@ export class TimetableService {
       startMinute: nextStartMinute,
       endMinute: nextEndMinute,
       teacherUserId: nextTeacherUserId,
-      room: nextRoom,
+      roomId: nextRoomId,
       exceptSlotId: existing.id,
       activeFromDate: newActiveFromDate,
       activeToDate: newActiveToDate,
@@ -845,7 +878,8 @@ export class TimetableService {
           endMinute: nextEndMinute,
           activeFromDate: newActiveFromDate,
           activeToDate: newActiveToDate,
-          room: nextRoom?.trim() || null,
+          room: nextRoom,
+          roomId: nextRoomId,
           createdByUserId: user.id,
         },
         include: {
@@ -875,6 +909,7 @@ export class TimetableService {
       payload.startMinute === undefined &&
       payload.endMinute === undefined &&
       payload.room === undefined &&
+      payload.roomId === undefined &&
       payload.status === undefined
     ) {
       throw new BadRequestException(
@@ -933,7 +968,18 @@ export class TimetableService {
     const nextTeacherUserId = payload.teacherUserId ?? existing.teacherUserId;
     const nextStartMinute = payload.startMinute ?? existing.startMinute;
     const nextEndMinute = payload.endMinute ?? existing.endMinute;
-    const nextRoom = payload.room === undefined ? existing.room : payload.room;
+    const oneOffRoomChangeRequested =
+      payload.roomId !== undefined || payload.room !== undefined;
+    const oneOffRoomReference = oneOffRoomChangeRequested
+      ? await this.resolveRoomReference(
+          effectiveSchoolId,
+          payload.roomId,
+          payload.room,
+          locale,
+        )
+      : { roomId: existing.roomId, room: existing.room };
+    const nextRoom = oneOffRoomReference.room;
+    const nextRoomId = oneOffRoomReference.roomId;
     this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
 
     await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
@@ -960,7 +1006,7 @@ export class TimetableService {
       startMinute: nextStartMinute,
       endMinute: nextEndMinute,
       teacherUserId: nextTeacherUserId,
-      room: nextRoom ?? null,
+      roomId: nextRoomId,
       exceptOneOffSlotId: existing.id,
       ignoreRecurringSlotId: existing.sourceSlotId ?? undefined,
       locale,
@@ -974,7 +1020,8 @@ export class TimetableService {
         teacherUserId: nextTeacherUserId,
         startMinute: nextStartMinute,
         endMinute: nextEndMinute,
-        room: nextRoom?.trim() || null,
+        room: nextRoom,
+        roomId: nextRoomId,
         status: payload.status ?? undefined,
       },
       include: {
@@ -1130,9 +1177,19 @@ export class TimetableService {
     const nextTeacherUserId = payload.teacherUserId ?? slot.teacherUserId;
     const nextStartMinute = payload.startMinute ?? slot.startMinute;
     const nextEndMinute = payload.endMinute ?? slot.endMinute;
-    const nextRoom = payload.room === undefined ? null : payload.room;
+    let nextRoom: string | null = null;
+    let nextRoomId: string | null = null;
 
     if (nextType === "OVERRIDE") {
+      const exceptionRoomReference = await this.resolveRoomReference(
+        effectiveSchoolId,
+        payload.roomId,
+        payload.room,
+        locale,
+      );
+      nextRoom = exceptionRoomReference.room;
+      nextRoomId = exceptionRoomReference.roomId;
+
       this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
       await this.ensureSubjectInSchool(
         nextSubjectId,
@@ -1161,7 +1218,7 @@ export class TimetableService {
         startMinute: nextStartMinute,
         endMinute: nextEndMinute,
         teacherUserId: nextTeacherUserId,
-        room: nextRoom,
+        roomId: nextRoomId,
         ignoreRecurringSlotId: slot.id,
         locale,
       });
@@ -1180,7 +1237,8 @@ export class TimetableService {
         teacherUserId: nextType === "OVERRIDE" ? nextTeacherUserId : null,
         startMinute: nextType === "OVERRIDE" ? nextStartMinute : null,
         endMinute: nextType === "OVERRIDE" ? nextEndMinute : null,
-        room: nextType === "OVERRIDE" ? nextRoom?.trim() || null : null,
+        room: nextType === "OVERRIDE" ? nextRoom : null,
+        roomId: nextType === "OVERRIDE" ? nextRoomId : null,
         reason: payload.reason?.trim() || null,
       },
       create: {
@@ -1194,7 +1252,8 @@ export class TimetableService {
         teacherUserId: nextType === "OVERRIDE" ? nextTeacherUserId : null,
         startMinute: nextType === "OVERRIDE" ? nextStartMinute : null,
         endMinute: nextType === "OVERRIDE" ? nextEndMinute : null,
-        room: nextType === "OVERRIDE" ? nextRoom?.trim() || null : null,
+        room: nextType === "OVERRIDE" ? nextRoom : null,
+        roomId: nextType === "OVERRIDE" ? nextRoomId : null,
         reason: payload.reason?.trim() || null,
         createdByUserId: user.id,
       },
@@ -1353,9 +1412,23 @@ export class TimetableService {
       payload.startMinute ?? existing.startMinute ?? existing.slot.startMinute;
     const nextEndMinute =
       payload.endMinute ?? existing.endMinute ?? existing.slot.endMinute;
-    const nextRoom = payload.room === undefined ? existing.room : payload.room;
+    const exceptionRoomChangeRequested =
+      payload.roomId !== undefined || payload.room !== undefined;
+    let nextRoom = existing.room;
+    let nextRoomId = existing.roomId;
 
     if (nextType === "OVERRIDE") {
+      if (exceptionRoomChangeRequested) {
+        const exceptionRoomReference = await this.resolveRoomReference(
+          effectiveSchoolId,
+          payload.roomId,
+          payload.room,
+          locale,
+        );
+        nextRoom = exceptionRoomReference.room;
+        nextRoomId = exceptionRoomReference.roomId;
+      }
+
       this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
       await this.ensureSubjectInSchool(
         nextSubjectId,
@@ -1384,7 +1457,7 @@ export class TimetableService {
         startMinute: nextStartMinute,
         endMinute: nextEndMinute,
         teacherUserId: nextTeacherUserId,
-        room: nextRoom,
+        roomId: nextRoomId,
         ignoreRecurringSlotId: existing.slotId,
         exceptExceptionId: existing.id,
         locale,
@@ -1400,7 +1473,8 @@ export class TimetableService {
         teacherUserId: nextType === "OVERRIDE" ? nextTeacherUserId : null,
         startMinute: nextType === "OVERRIDE" ? nextStartMinute : null,
         endMinute: nextType === "OVERRIDE" ? nextEndMinute : null,
-        room: nextType === "OVERRIDE" ? nextRoom?.trim() || null : null,
+        room: nextType === "OVERRIDE" ? nextRoom : null,
+        roomId: nextType === "OVERRIDE" ? nextRoomId : null,
         reason:
           payload.reason === undefined
             ? existing.reason
@@ -2469,18 +2543,19 @@ export class TimetableService {
     startMinute: number;
     endMinute: number;
     teacherUserId: string;
-    room: string | null;
+    roomId: string | null;
     exceptSlotId?: string;
     activeFromDate: Date | null;
     activeToDate: Date | null;
     locale?: TimetableLocale;
   }) {
+    const locale = input.locale ?? "fr";
     const overlapWindow: Prisma.IntFilter = {
       lt: input.endMinute,
     };
 
-    const [classConflicts, teacherConflicts, roomConflicts] = await Promise.all(
-      [
+    const [classConflicts, teacherConflicts, roomEntity, roomConflicts] =
+      await Promise.all([
         this.prisma.classTimetableSlot.findMany({
           where: {
             schoolId: input.schoolId,
@@ -2505,12 +2580,18 @@ export class TimetableService {
           },
           select: { id: true, activeFromDate: true, activeToDate: true },
         }),
-        input.room
+        input.roomId
+          ? this.prisma.room.findUnique({
+              where: { id: input.roomId },
+              select: { id: true, status: true, maxConcurrentSlots: true },
+            })
+          : Promise.resolve(null),
+        input.roomId
           ? this.prisma.classTimetableSlot.findMany({
               where: {
                 schoolId: input.schoolId,
                 schoolYearId: input.schoolYearId,
-                room: input.room,
+                roomId: input.roomId,
                 weekday: input.weekday,
                 startMinute: overlapWindow,
                 endMinute: { gt: input.startMinute },
@@ -2521,8 +2602,7 @@ export class TimetableService {
               select: { id: true, activeFromDate: true, activeToDate: true },
             })
           : Promise.resolve([]),
-      ],
-    );
+      ]);
 
     const hasClassConflict = classConflicts.some((entry) =>
       this.dateRangesOverlap({
@@ -2535,7 +2615,7 @@ export class TimetableService {
     if (hasClassConflict) {
       throw new BadRequestException(
         translateTimetableError(
-          input.locale ?? "fr",
+          locale,
           "timetable.errors.conflictingSlotForClass",
         ),
       );
@@ -2551,23 +2631,35 @@ export class TimetableService {
     if (hasTeacherConflict) {
       throw new BadRequestException(
         translateTimetableError(
-          input.locale ?? "fr",
+          locale,
           "timetable.errors.conflictingSlotForTeacher",
         ),
       );
     }
-    const hasRoomConflict = roomConflicts.some((entry) =>
+
+    if (!input.roomId) {
+      return;
+    }
+
+    if (roomEntity && roomEntity.status !== "AVAILABLE") {
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.roomUnavailable"),
+      );
+    }
+
+    const overlappingRoomCount = roomConflicts.filter((entry) =>
       this.dateRangesOverlap({
         leftFrom: input.activeFromDate,
         leftTo: input.activeToDate,
         rightFrom: entry.activeFromDate,
         rightTo: entry.activeToDate,
       }),
-    );
-    if (hasRoomConflict) {
+    ).length;
+    const maxConcurrentSlots = roomEntity?.maxConcurrentSlots ?? 1;
+    if (overlappingRoomCount >= maxConcurrentSlots) {
       throw new BadRequestException(
         translateTimetableError(
-          input.locale ?? "fr",
+          locale,
           "timetable.errors.conflictingSlotForRoom",
         ),
       );
@@ -2582,7 +2674,7 @@ export class TimetableService {
     startMinute: number;
     endMinute: number;
     teacherUserId: string;
-    room: string | null;
+    roomId: string | null;
     ignoreRecurringSlotId?: string;
     exceptOneOffSlotId?: string;
     exceptExceptionId?: string;
@@ -2666,7 +2758,7 @@ export class TimetableService {
             endMinute: { gt: input.startMinute },
             OR: [
               { teacherUserId: input.teacherUserId },
-              ...(input.room ? [{ room: input.room }] : []),
+              ...(input.roomId ? [{ roomId: input.roomId }] : []),
             ],
             AND: [
               {
@@ -2690,7 +2782,7 @@ export class TimetableService {
             id: true,
             classId: true,
             teacherUserId: true,
-            room: true,
+            roomId: true,
           },
         }),
         this.prisma.classTimetableOneOffSlot.findMany({
@@ -2703,7 +2795,7 @@ export class TimetableService {
             endMinute: { gt: input.startMinute },
             OR: [
               { teacherUserId: input.teacherUserId },
-              ...(input.room ? [{ room: input.room }] : []),
+              ...(input.roomId ? [{ roomId: input.roomId }] : []),
             ],
             ...(input.exceptOneOffSlotId
               ? { id: { not: input.exceptOneOffSlotId } }
@@ -2713,7 +2805,7 @@ export class TimetableService {
             id: true,
             classId: true,
             teacherUserId: true,
-            room: true,
+            roomId: true,
           },
         }),
         this.prisma.classTimetableSlotException.findMany({
@@ -2724,9 +2816,9 @@ export class TimetableService {
             type: "OVERRIDE",
             OR: [
               { teacherUserId: input.teacherUserId },
-              ...(input.room ? [{ room: input.room }] : []),
+              ...(input.roomId ? [{ roomId: input.roomId }] : []),
               { slot: { teacherUserId: input.teacherUserId } },
-              ...(input.room ? [{ slot: { room: input.room } }] : []),
+              ...(input.roomId ? [{ slot: { roomId: input.roomId } }] : []),
             ],
           },
           select: {
@@ -2736,14 +2828,14 @@ export class TimetableService {
             startMinute: true,
             endMinute: true,
             teacherUserId: true,
-            room: true,
+            roomId: true,
             slot: {
               select: {
                 classId: true,
                 startMinute: true,
                 endMinute: true,
                 teacherUserId: true,
-                room: true,
+                roomId: true,
               },
             },
           },
@@ -2796,17 +2888,27 @@ export class TimetableService {
       );
     }
 
-    if (!input.room) {
+    if (!input.roomId) {
       return;
     }
 
-    const recurringRoomConflict = recurringRows.some(
-      (row) => !suppressedRecurring.has(row.id) && row.room === input.room,
-    );
-    const oneOffRoomConflict = oneOffRows.some(
-      (row) => row.room === input.room,
-    );
-    const overrideRoomConflict = overrideRows.some((row) => {
+    const roomEntity = await this.prisma.room.findUnique({
+      where: { id: input.roomId },
+      select: { status: true, maxConcurrentSlots: true },
+    });
+    if (roomEntity && roomEntity.status !== "AVAILABLE") {
+      throw new BadRequestException(
+        translateTimetableError(locale, "timetable.errors.roomUnavailable"),
+      );
+    }
+
+    const recurringRoomOverlap = recurringRows.filter(
+      (row) => !suppressedRecurring.has(row.id) && row.roomId === input.roomId,
+    ).length;
+    const oneOffRoomOverlap = oneOffRows.filter(
+      (row) => row.roomId === input.roomId,
+    ).length;
+    const overrideRoomOverlap = overrideRows.filter((row) => {
       if (input.exceptExceptionId && row.id === input.exceptExceptionId) {
         return false;
       }
@@ -2823,11 +2925,14 @@ export class TimetableService {
       if (!isOverlapping) {
         return false;
       }
-      const effectiveRoom = row.room ?? row.slot.room;
-      return effectiveRoom === input.room;
-    });
+      const effectiveRoomId = row.roomId ?? row.slot.roomId;
+      return effectiveRoomId === input.roomId;
+    }).length;
 
-    if (recurringRoomConflict || oneOffRoomConflict || overrideRoomConflict) {
+    const totalRoomOverlap =
+      recurringRoomOverlap + oneOffRoomOverlap + overrideRoomOverlap;
+    const maxConcurrentSlots = roomEntity?.maxConcurrentSlots ?? 1;
+    if (totalRoomOverlap >= maxConcurrentSlots) {
       throw new BadRequestException(
         translateTimetableError(
           locale,
@@ -2848,6 +2953,7 @@ export class TimetableService {
       activeFromDate: Date | null;
       activeToDate: Date | null;
       room: string | null;
+      roomId: string | null;
       subject: { id: string; name: string };
       teacherUser: {
         id: string;
@@ -2862,6 +2968,7 @@ export class TimetableService {
       startMinute: number;
       endMinute: number;
       room: string | null;
+      roomId: string | null;
       status: "PLANNED" | "CANCELLED";
       sourceSlotId: string | null;
       subject: { id: string; name: string };
@@ -2882,6 +2989,7 @@ export class TimetableService {
       startMinute: number | null;
       endMinute: number | null;
       room: string | null;
+      roomId: string | null;
       reason: string | null;
       slot: {
         id: string;
@@ -2889,6 +2997,7 @@ export class TimetableService {
         startMinute: number;
         endMinute: number;
         room: string | null;
+        roomId: string | null;
         subject: { id: string; name: string };
         teacherUser: {
           id: string;
@@ -2976,6 +3085,7 @@ export class TimetableService {
               startMinute: slot.startMinute,
               endMinute: slot.endMinute,
               room: slot.room,
+              roomId: slot.roomId,
               reason: exception.reason ?? null,
               subject: slot.subject,
               teacherUser: slot.teacherUser,
@@ -2995,6 +3105,7 @@ export class TimetableService {
               startMinute: exception.startMinute ?? slot.startMinute,
               endMinute: exception.endMinute ?? slot.endMinute,
               room: exception.room ?? slot.room,
+              roomId: exception.roomId ?? slot.roomId,
               reason: exception.reason ?? null,
               subject: exception.subject ?? slot.subject,
               teacherUser: exception.teacherUser ?? slot.teacherUser,
@@ -3013,6 +3124,7 @@ export class TimetableService {
             startMinute: slot.startMinute,
             endMinute: slot.endMinute,
             room: slot.room,
+            roomId: slot.roomId,
             reason: null,
             subject: slot.subject,
             teacherUser: slot.teacherUser,
@@ -3032,6 +3144,7 @@ export class TimetableService {
         startMinute: slot.startMinute,
         endMinute: slot.endMinute,
         room: slot.room,
+        roomId: slot.roomId,
         reason: null,
         subject: slot.subject,
         teacherUser: slot.teacherUser,
@@ -3303,6 +3416,37 @@ export class TimetableService {
     }
 
     return classEntity;
+  }
+
+  private async resolveRoomReference(
+    schoolId: string,
+    payloadRoomId: string | null | undefined,
+    payloadRoom: string | null | undefined,
+    locale: TimetableLocale = "fr",
+  ): Promise<{ roomId: string | null; room: string | null }> {
+    if (payloadRoomId) {
+      const room = await this.prisma.room.findFirst({
+        where: { id: payloadRoomId, schoolId },
+        select: { id: true, name: true },
+      });
+      if (!room) {
+        throw new NotFoundException(
+          translateTimetableError(locale, "timetable.errors.roomNotFound"),
+        );
+      }
+      return { roomId: room.id, room: room.name };
+    }
+
+    const trimmedRoom = payloadRoom?.trim() || null;
+    if (!trimmedRoom) {
+      return { roomId: null, room: null };
+    }
+
+    const matchedRoom = await this.prisma.room.findFirst({
+      where: { schoolId, name: trimmedRoom },
+      select: { id: true },
+    });
+    return { roomId: matchedRoom?.id ?? null, room: trimmedRoom };
   }
 
   private async getActiveSchoolYearIdOrThrow(

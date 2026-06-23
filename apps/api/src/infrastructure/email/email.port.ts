@@ -3,6 +3,7 @@ import type {
   HomeworkCreatedMailPayload,
   InternalMessageNotificationPayload,
   PasswordResetMailPayload,
+  RoomStatusChangeMailPayload,
   StudentLifeEventNotificationPayload,
   TestExecutionFailedNotificationPayload,
   TimetableChangeMailPayload,
@@ -31,5 +32,8 @@ export type EmailPort = {
   ): Promise<void>;
   sendHomeworkCreatedNotification(
     payload: HomeworkCreatedMailPayload,
+  ): Promise<void>;
+  sendRoomStatusChangeNotification(
+    payload: RoomStatusChangeMailPayload,
   ): Promise<void>;
 };

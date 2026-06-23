@@ -1,0 +1,20 @@
+enum BadgeScope {
+  NOTES
+  FEED
+  TICKETS
+  DISCIPLINE
+}
+
+model UserReadMarker {
+  id         String     @id @default(cuid())
+  userId     String
+  scope      BadgeScope
+  scopeRefId String
+  lastReadAt DateTime   @default(now())
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scope, scopeRefId])
+  @@index([userId])
+}

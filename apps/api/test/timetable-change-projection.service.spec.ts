@@ -41,7 +41,7 @@ describe("TimetableChangeProjectionService", () => {
     pushService.sendTimetableChangeNotification.mockReset();
   });
 
-  it("creates a class feed post, pushes to students, and emails students plus parents", async () => {
+  it("creates a class feed post, pushes to students and parents, and emails students plus parents excluding auto-generated addresses", async () => {
     prisma.school.findUnique.mockResolvedValue({
       name: "College Vogt",
       slug: "college-vogt",
@@ -71,6 +71,14 @@ describe("TimetableChangeProjectionService", () => {
                 id: "parent-2",
                 email: "family@example.test",
                 firstName: "Parent 2",
+                activationStatus: "ACTIVE",
+              },
+            },
+            {
+              parent: {
+                id: "parent-3",
+                email: "parent-655112233-ab12cd34@noemail.scolive.local",
+                firstName: "Parent 3",
                 activationStatus: "ACTIVE",
               },
             },
@@ -142,7 +150,15 @@ describe("TimetableChangeProjectionService", () => {
 
     expect(prisma.mobilePushToken.findMany).toHaveBeenCalledWith({
       where: {
-        userId: { in: ["student-user-1", "student-user-2"] },
+        userId: {
+          in: [
+            "student-user-1",
+            "parent-1",
+            "parent-2",
+            "parent-3",
+            "student-user-2",
+          ],
+        },
         isActive: true,
         OR: [{ schoolId: "school-1" }, { schoolId: null }],
       },
@@ -176,6 +192,13 @@ describe("TimetableChangeProjectionService", () => {
       expect.objectContaining({
         to: "family@example.test",
         recipientFirstName: "Parent 2",
+      }),
+    );
+    expect(
+      mailService.sendTimetableChangeNotification,
+    ).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: expect.stringContaining("@noemail.scolive.local"),
       }),
     );
   });

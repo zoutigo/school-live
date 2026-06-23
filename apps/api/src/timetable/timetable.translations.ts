@@ -78,6 +78,8 @@ const fr: TranslationDict = {
     "Seul l'enseignant référent de la classe peut gérer l'emploi du temps de cette classe.",
   "timetable.errors.teacherOnlyManagesAssignedOneOffSlots":
     "L'enseignant ne peut gérer que les créneaux ponctuels qui lui sont affectés.",
+  "timetable.errors.roomNotFound": "Salle introuvable.",
+  "timetable.errors.roomUnavailable": "Cette salle est indisponible.",
 };
 
 const en: TranslationDict = {
@@ -149,6 +151,8 @@ const en: TranslationDict = {
     "Only the class's referent teacher can manage the timetable for this class.",
   "timetable.errors.teacherOnlyManagesAssignedOneOffSlots":
     "Teacher can only manage one-off slots they are assigned to.",
+  "timetable.errors.roomNotFound": "Room not found.",
+  "timetable.errors.roomUnavailable": "This room is unavailable.",
 };
 
 const translations: Record<TimetableLocale, TranslationDict> = {

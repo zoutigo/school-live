@@ -54,6 +54,7 @@ model School {
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
+  rooms              Room[]
   tickets            Ticket[]
   helpGuides         HelpGuide[]
   helpFaqs           HelpFaq[]
@@ -145,6 +146,7 @@ model User {
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
   testExecutionsReviewed TestExecution[]        @relation("TestExecutionAdminReviewedBy")
   mobilePushTokens      MobilePushToken[]
+  readMarkers           UserReadMarker[]
 }
 
 model UserAuthIdentity {

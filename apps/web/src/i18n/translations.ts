@@ -729,6 +729,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.schools": "Ecoles",
     "sidebar.nav.classes": "Classes",
     "sidebar.nav.subjects": "Matieres",
+    "sidebar.nav.rooms": "Salles",
     "sidebar.nav.curriculums": "Curriculums",
     "sidebar.nav.enrollments": "Inscriptions",
     "sidebar.nav.students": "Eleves",
@@ -2457,6 +2458,87 @@ export const translations: Record<Locale, Record<string, string>> = {
     "subjects.help.tip2":
       "Si une classe a un curriculum, l'affectation respecte la liste des matieres autorisees (avec overrides).",
 
+    // Salles page
+    "salles.shellName": "Gestion des salles",
+    "salles.title": "Salles",
+    "salles.subtitle":
+      "Creez les salles de l'ecole et definissez leur capacite et leur disponibilite",
+    "salles.tab.list": "Liste",
+    "salles.tab.calendar": "Calendrier",
+    "salles.tab.help": "Aide",
+    "salles.calendar.roomLabel": "Salle",
+    "salles.calendar.fromLabel": "Du",
+    "salles.calendar.toLabel": "Au",
+    "salles.calendar.colDate": "Date",
+    "salles.calendar.colTime": "Horaire",
+    "salles.calendar.colClass": "Classe",
+    "salles.calendar.colSubject": "Matiere",
+    "salles.calendar.colTeacher": "Enseignant",
+    "salles.calendar.empty":
+      "Aucun cours prevu pour cette salle sur la periode.",
+    "salles.schoolLabel": "Ecole",
+    "salles.schoolPlaceholder": "Selectionner une ecole",
+    "salles.noSchool": "Selectionnez une ecole pour gerer ses salles.",
+    "salles.form.nameLabel": "Nom de la salle",
+    "salles.form.namePlaceholder": "Ex: B14, Gymnase",
+    "salles.form.descriptionLabel": "Description",
+    "salles.form.descriptionPlaceholder": "Ex: Batiment B, 1er etage",
+    "salles.form.capacityLabel": "Capacite (nombre de personnes)",
+    "salles.form.maxConcurrentSlotsLabel": "Cours simultanes autorises",
+    "salles.form.maxConcurrentSlotsHint":
+      "1 = salle mono-cours. Plus de 1 pour une salle polyvalente (ex: gymnase).",
+    "salles.form.statusLabel": "Statut",
+    "salles.status.AVAILABLE": "Disponible",
+    "salles.status.UNAVAILABLE": "Indisponible",
+    "salles.status.MAINTENANCE": "En maintenance",
+    "salles.list.add": "Ajouter",
+    "salles.list.creating": "Creation...",
+    "salles.list.saving": "Enregistrement...",
+    "salles.list.colName": "Salle",
+    "salles.list.colDescription": "Description",
+    "salles.list.colCapacity": "Capacite",
+    "salles.list.colConcurrentSlots": "Cours simultanes",
+    "salles.list.colStatus": "Statut",
+    "salles.list.colActions": "Actions",
+    "salles.list.empty": "Aucune salle trouvee.",
+    "salles.delete.title": "Confirmer la suppression",
+    "salles.delete.message": "Voulez-vous supprimer la salle {label} ?",
+    "salles.delete.confirm": "Supprimer",
+    "salles.help.moduleName": "Salles",
+    "salles.help.moduleSummary":
+      "ce module gere les salles physiques de l'ecole : nom, capacite, disponibilite et polyvalence (cours simultanes).",
+    "salles.help.action1.name": "Creer une salle",
+    "salles.help.action1.purpose":
+      "definir les salles disponibles pour les emplois du temps.",
+    "salles.help.action1.howTo":
+      "renseigner le nom, la capacite et le nombre de cours simultanes autorises, puis ajouter.",
+    "salles.help.action1.moduleImpact":
+      "la salle devient selectionnable lors de la creation/modification d'un creneau.",
+    "salles.help.action1.crossModuleImpact":
+      "les enseignants pourront choisir cette salle dans l'application mobile, avec verification de disponibilite.",
+    "salles.help.action2.name": "Definir la polyvalence",
+    "salles.help.action2.purpose":
+      "autoriser plusieurs cours simultanes dans une meme salle (ex: gymnase).",
+    "salles.help.action2.howTo":
+      "augmenter le nombre de cours simultanes autorises au-dela de 1.",
+    "salles.help.action2.moduleImpact":
+      "la salle peut etre reservee plusieurs fois sur le meme creneau, jusqu'a la limite definie.",
+    "salles.help.action2.crossModuleImpact":
+      "la verification de conflit d'emploi du temps tient compte de cette limite.",
+    "salles.help.action3.name": "Changer le statut",
+    "salles.help.action3.purpose":
+      "indiquer qu'une salle est temporairement indisponible (travaux, maintenance).",
+    "salles.help.action3.howTo":
+      "passer le statut a Indisponible ou En maintenance.",
+    "salles.help.action3.moduleImpact":
+      "la salle n'apparait plus comme disponible pour de nouveaux creneaux.",
+    "salles.help.action3.crossModuleImpact":
+      "les enseignants sont avertis si la salle qu'ils utilisaient devient indisponible.",
+    "salles.help.tip1":
+      "Utilisez des noms courts et clairs (ex: B14) pour faciliter la selection.",
+    "salles.help.tip2":
+      "La plupart des salles restent mono-cours ; reservez la polyvalence aux espaces partages (gymnase, salle polyvalente).",
+
     // Classes page
     "classes.shellName": "Gestion des classes",
     "classes.title": "Classes",
@@ -3515,6 +3597,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.schools": "Schools",
     "sidebar.nav.classes": "Classes",
     "sidebar.nav.subjects": "Subjects",
+    "sidebar.nav.rooms": "Rooms",
     "sidebar.nav.curriculums": "Curricula",
     "sidebar.nav.enrollments": "Enrollments",
     "sidebar.nav.students": "Students",
@@ -5158,6 +5241,86 @@ export const translations: Record<Locale, Record<string, string>> = {
     "subjects.help.tip1": "Always verify that the class and school year match.",
     "subjects.help.tip2":
       "If a class has a curriculum, the assignment respects the list of authorised subjects (with overrides).",
+
+    // Rooms page
+    "salles.shellName": "Room Management",
+    "salles.title": "Rooms",
+    "salles.subtitle":
+      "Create the school's rooms and set their capacity and availability",
+    "salles.tab.list": "List",
+    "salles.tab.calendar": "Calendar",
+    "salles.tab.help": "Help",
+    "salles.calendar.roomLabel": "Room",
+    "salles.calendar.fromLabel": "From",
+    "salles.calendar.toLabel": "To",
+    "salles.calendar.colDate": "Date",
+    "salles.calendar.colTime": "Time",
+    "salles.calendar.colClass": "Class",
+    "salles.calendar.colSubject": "Subject",
+    "salles.calendar.colTeacher": "Teacher",
+    "salles.calendar.empty":
+      "No classes scheduled for this room in this period.",
+    "salles.schoolLabel": "School",
+    "salles.schoolPlaceholder": "Select a school",
+    "salles.noSchool": "Select a school to manage its rooms.",
+    "salles.form.nameLabel": "Room name",
+    "salles.form.namePlaceholder": "E.g. B14, Gym",
+    "salles.form.descriptionLabel": "Description",
+    "salles.form.descriptionPlaceholder": "E.g. Building B, 1st floor",
+    "salles.form.capacityLabel": "Capacity (number of people)",
+    "salles.form.maxConcurrentSlotsLabel": "Concurrent classes allowed",
+    "salles.form.maxConcurrentSlotsHint":
+      "1 = single-class room. More than 1 for a multipurpose room (e.g. gym).",
+    "salles.form.statusLabel": "Status",
+    "salles.status.AVAILABLE": "Available",
+    "salles.status.UNAVAILABLE": "Unavailable",
+    "salles.status.MAINTENANCE": "Under maintenance",
+    "salles.list.add": "Add",
+    "salles.list.creating": "Creating...",
+    "salles.list.saving": "Saving...",
+    "salles.list.colName": "Room",
+    "salles.list.colDescription": "Description",
+    "salles.list.colCapacity": "Capacity",
+    "salles.list.colConcurrentSlots": "Concurrent classes",
+    "salles.list.colStatus": "Status",
+    "salles.list.colActions": "Actions",
+    "salles.list.empty": "No rooms found.",
+    "salles.delete.title": "Confirm deletion",
+    "salles.delete.message": "Do you want to delete the room {label}?",
+    "salles.delete.confirm": "Delete",
+    "salles.help.moduleName": "Rooms",
+    "salles.help.moduleSummary":
+      "this module manages the school's physical rooms: name, capacity, availability, and concurrency (simultaneous classes).",
+    "salles.help.action1.name": "Create a room",
+    "salles.help.action1.purpose": "define the rooms available for timetables.",
+    "salles.help.action1.howTo":
+      "enter the name, capacity and number of concurrent classes allowed, then add.",
+    "salles.help.action1.moduleImpact":
+      "the room becomes selectable when creating/editing a timetable slot.",
+    "salles.help.action1.crossModuleImpact":
+      "teachers can pick this room in the mobile app, with availability checked.",
+    "salles.help.action2.name": "Set concurrency",
+    "salles.help.action2.purpose":
+      "allow several concurrent classes in the same room (e.g. gym).",
+    "salles.help.action2.howTo":
+      "increase the number of concurrent classes allowed above 1.",
+    "salles.help.action2.moduleImpact":
+      "the room can be booked several times on the same slot, up to the defined limit.",
+    "salles.help.action2.crossModuleImpact":
+      "timetable conflict checks take this limit into account.",
+    "salles.help.action3.name": "Change status",
+    "salles.help.action3.purpose":
+      "mark a room as temporarily unavailable (works, maintenance).",
+    "salles.help.action3.howTo":
+      "switch the status to Unavailable or Under maintenance.",
+    "salles.help.action3.moduleImpact":
+      "the room no longer appears as available for new slots.",
+    "salles.help.action3.crossModuleImpact":
+      "teachers are warned if the room they used becomes unavailable.",
+    "salles.help.tip1":
+      "Use short, clear names (e.g. B14) to make selection easier.",
+    "salles.help.tip2":
+      "Most rooms remain single-class; reserve concurrency for shared spaces (gym, multipurpose room).",
 
     // Classes page
     "classes.shellName": "Class Management",

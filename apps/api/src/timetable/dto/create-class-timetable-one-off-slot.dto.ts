@@ -37,6 +37,10 @@ export class CreateClassTimetableOneOffSlotDto {
   room?: string;
 
   @IsOptional()
+  @IsString()
+  roomId?: string;
+
+  @IsOptional()
   @IsIn(["PLANNED", "CANCELLED"])
   status?: "PLANNED" | "CANCELLED";
 

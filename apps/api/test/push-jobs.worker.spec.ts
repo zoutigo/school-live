@@ -1,5 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import {
+  PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
 } from "../src/notifications/push.types";
@@ -56,6 +57,7 @@ jest.mock("../src/infrastructure/messaging/redis-connection.js", () => ({
 describe("PushJobsWorker", () => {
   const pushPort = {
     sendTimetableChangeNotification: jest.fn(),
+    sendRoomStatusChangeNotification: jest.fn(),
   };
 
   const config = {} as ConfigService;
@@ -66,6 +68,7 @@ describe("PushJobsWorker", () => {
     };
     globalScope.__pushWorkerInstances = [];
     pushPort.sendTimetableChangeNotification.mockReset();
+    pushPort.sendRoomStatusChangeNotification.mockReset();
   });
 
   it("creates a worker on init and routes jobs to push port", async () => {
@@ -82,6 +85,20 @@ describe("PushJobsWorker", () => {
     });
     expect(pushPort.sendTimetableChangeNotification).toHaveBeenCalledWith({
       tokens: ["ExponentPushToken[a]"],
+    });
+  });
+
+  it("routes room status change jobs to push port", async () => {
+    const worker = new PushJobsWorker(config, pushPort as never);
+    worker.onModuleInit();
+
+    const instances = getWorkerInstances();
+    await instances[0]?.processor({
+      name: PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
+      data: { tokens: ["ExponentPushToken[b]"] },
+    });
+    expect(pushPort.sendRoomStatusChangeNotification).toHaveBeenCalledWith({
+      tokens: ["ExponentPushToken[b]"],
     });
   });
 

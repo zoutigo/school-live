@@ -38,6 +38,10 @@ export class CreateClassTimetableSlotDto {
   room?: string;
 
   @IsOptional()
+  @IsString()
+  roomId?: string;
+
+  @IsOptional()
   @IsDateString()
   activeFromDate?: string;
 

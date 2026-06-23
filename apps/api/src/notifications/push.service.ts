@@ -6,9 +6,11 @@ import {
 import { PUSH_PORT, type PushPort } from "../infrastructure/push/push.port.js";
 import {
   PUSH_JOB_SEND_HOMEWORK_CREATED,
+  PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
   type HomeworkCreatedPushPayload,
+  type RoomStatusChangePushPayload,
   type TimetableChangePushPayload,
 } from "./push.types.js";
 
@@ -58,6 +60,26 @@ export class PushService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.pushPort.sendHomeworkCreatedNotification(payload);
+    }
+  }
+
+  async sendRoomStatusChangeNotification(payload: RoomStatusChangePushPayload) {
+    if (payload.tokens.length === 0) {
+      return;
+    }
+
+    try {
+      await this.queue.add(
+        PUSH_QUEUE_NAME,
+        PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous push sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.pushPort.sendRoomStatusChangeNotification(payload);
     }
   }
 }

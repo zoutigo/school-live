@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./app-sidebar";
 import { useLocaleStore } from "../../i18n/locale-store";
@@ -12,10 +12,6 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: mockPush,
   }),
-}));
-
-vi.mock("../messaging/messaging-api", () => ({
-  getSchoolMessagesUnreadCount: vi.fn(async () => 0),
 }));
 
 describe("AppSidebar teacher class links", () => {
@@ -184,7 +180,7 @@ describe("AppSidebar parent child links", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
-      if (url.includes("/schools/college-vogt/me")) {
+      if (url.endsWith("/schools/college-vogt/me")) {
         return new Response(
           JSON.stringify({
             linkedStudents: [
@@ -230,7 +226,7 @@ describe("AppSidebar parent child links", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
-      if (url.includes("/schools/college-vogt/me")) {
+      if (url.endsWith("/schools/college-vogt/me")) {
         return new Response(
           JSON.stringify({
             linkedStudents: [
@@ -273,7 +269,7 @@ describe("AppSidebar parent child links", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
-      if (url.includes("/schools/college-vogt/me")) {
+      if (url.endsWith("/schools/college-vogt/me")) {
         return new Response(
           JSON.stringify({
             linkedStudents: [
@@ -339,7 +335,7 @@ describe("AppSidebar parent child links", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
-      if (url.includes("/schools/college-vogt/me")) {
+      if (url.endsWith("/schools/college-vogt/me")) {
         return new Response(
           JSON.stringify({
             linkedStudents: [
@@ -393,7 +389,7 @@ describe("AppSidebar parent child links", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
-      if (url.includes("/schools/college-vogt/me")) {
+      if (url.endsWith("/schools/college-vogt/me")) {
         return new Response(
           JSON.stringify({
             linkedStudents: [
@@ -430,7 +426,7 @@ describe("AppSidebar parent child links", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
-      if (url.includes("/schools/college-vogt/me")) {
+      if (url.endsWith("/schools/college-vogt/me")) {
         return new Response(
           JSON.stringify({
             linkedStudents: [],
@@ -461,5 +457,228 @@ describe("AppSidebar parent child links", () => {
     fireEvent.click(await screen.findByTestId("sidebar-logout-button"));
 
     expect(onLogoutClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AppSidebar badges", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockPush.mockReset();
+    mockPathname = "/schools/college-vogt/dashboard";
+    window.localStorage.clear();
+    document.cookie = "";
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+  });
+
+  function mockFetchWith(unreadSummary: unknown, meBody: unknown = {}) {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/me/unread-summary")) {
+        return new Response(JSON.stringify(unreadSummary), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return new Response(JSON.stringify(meBody), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+  }
+
+  it("shows the feed and messaging badges for a parent with no linked children", async () => {
+    mockFetchWith(
+      {
+        messagesUnread: 5,
+        feedUnread: 2,
+        ticketsNeedingResponse: 0,
+        ticketsUnreadReplies: 0,
+        children: [],
+        teacherClasses: [],
+        total: 7,
+      },
+      { linkedStudents: [] },
+    );
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    const feedLink = await screen.findByRole("link", {
+      name: /Fil d'actualite/,
+    });
+    expect(feedLink).toHaveTextContent("2");
+
+    const messagingLink = await screen.findByRole("link", {
+      name: /Messagerie/,
+    });
+    expect(messagingLink).toHaveTextContent("5");
+  });
+
+  it("does not render a badge when a count is zero", async () => {
+    mockFetchWith(
+      {
+        messagesUnread: 0,
+        feedUnread: 0,
+        ticketsNeedingResponse: 0,
+        ticketsUnreadReplies: 0,
+        children: [],
+        teacherClasses: [],
+        total: 0,
+      },
+      { linkedStudents: [] },
+    );
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    const feedLink = await screen.findByRole("link", {
+      name: /Fil d'actualite/,
+    });
+    expect(feedLink.textContent).toBe("Fil d'actualite");
+  });
+
+  it("shows per-child homework, notes and discipline badges for a parent", async () => {
+    mockFetchWith(
+      {
+        messagesUnread: 0,
+        feedUnread: 0,
+        ticketsNeedingResponse: 0,
+        ticketsUnreadReplies: 0,
+        children: [
+          {
+            studentId: "child-1",
+            firstName: "Lisa",
+            lastName: "MBELE",
+            homeworkPending: 3,
+            notesUnread: 4,
+            disciplineUnread: 1,
+          },
+        ],
+        teacherClasses: [],
+        total: 8,
+      },
+      {
+        linkedStudents: [
+          { id: "child-1", firstName: "Lisa", lastName: "MBELE" },
+        ],
+      },
+    );
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "MBELE Lisa" }));
+
+    const vieScolaireLink = await screen.findByRole("link", {
+      name: /Vie scolaire/,
+    });
+    await waitFor(() => expect(vieScolaireLink).toHaveTextContent("1"));
+
+    const notesLink = screen.getByRole("link", { name: /Notes/ });
+    await waitFor(() => expect(notesLink).toHaveTextContent("4"));
+
+    const cahierLink = screen.getByRole("link", { name: /Cahier de texte/ });
+    await waitFor(() => expect(cahierLink).toHaveTextContent("3"));
+  });
+
+  it("shows the evaluations-to-grade badge per class for a teacher", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/me/unread-summary")) {
+        return new Response(
+          JSON.stringify({
+            messagesUnread: 0,
+            feedUnread: 0,
+            ticketsNeedingResponse: 0,
+            ticketsUnreadReplies: 0,
+            children: [],
+            teacherClasses: [
+              { classId: "class-1", className: "6eC", evaluationsToGrade: 6 },
+            ],
+            total: 6,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      if (url.includes("/schools/college-vogt/student-grades/context")) {
+        return new Response(
+          JSON.stringify({
+            assignments: [
+              { classId: "class-1", className: "6eC", schoolYearId: "sy-1" },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="TEACHER" schoolSlug="college-vogt" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "6eC" }));
+
+    const notesLink = await screen.findByRole("link", { name: /Notes/ });
+    await waitFor(() => expect(notesLink).toHaveTextContent("6"));
+  });
+
+  it("shows the combined tickets badge at the bottom of the sidebar", async () => {
+    mockFetchWith(
+      {
+        messagesUnread: 0,
+        feedUnread: 0,
+        ticketsNeedingResponse: 2,
+        ticketsUnreadReplies: 3,
+        children: [],
+        teacherClasses: [],
+        total: 5,
+      },
+      { linkedStudents: [] },
+    );
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    const ticketsLink = await screen.findByTestId("sidebar-tickets-link");
+    expect(ticketsLink).toHaveTextContent("5");
+  });
+
+  it("falls back to the last cached summary when the network request fails", async () => {
+    window.localStorage.setItem(
+      "scolive:badges:college-vogt",
+      JSON.stringify({
+        messagesUnread: 9,
+        feedUnread: 0,
+        ticketsNeedingResponse: 0,
+        ticketsUnreadReplies: 0,
+        children: [],
+        teacherClasses: [],
+        total: 9,
+      }),
+    );
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    const messagingLink = await screen.findByRole("link", {
+      name: /Messagerie/,
+    });
+    expect(messagingLink).toHaveTextContent("9");
   });
 });
