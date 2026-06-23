@@ -243,13 +243,6 @@ enum HelpChapterContentType {
   VIDEO
 }
 
-enum BadgeScope {
-  NOTES
-  FEED
-  TICKETS
-  DISCIPLINE
-}
-
 
 model School {
   id                 String                @id @default(cuid())
@@ -1781,6 +1774,14 @@ model MobilePushToken {
   @@index([userId])
   @@index([schoolId])
   @@index([userId, isActive])
+}
+
+
+enum BadgeScope {
+  NOTES
+  FEED
+  TICKETS
+  DISCIPLINE
 }
 
 model UserReadMarker {

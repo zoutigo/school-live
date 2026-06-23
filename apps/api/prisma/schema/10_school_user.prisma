@@ -146,6 +146,7 @@ model User {
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
   testExecutionsReviewed TestExecution[]        @relation("TestExecutionAdminReviewedBy")
   mobilePushTokens      MobilePushToken[]
+  readMarkers           UserReadMarker[]
 }
 
 model UserAuthIdentity {
