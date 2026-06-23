@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { BadgesModule } from "./badges/badges.module.js";
 import { EvaluationsModule } from "./evaluations/evaluations.module.js";
 import { FeedModule } from "./feed/feed.module.js";
 import { HelpFaqsModule } from "./help-faqs/help-faqs.module.js";
@@ -32,6 +33,7 @@ import { TestsModule } from "./tests/tests.module.js";
     }),
     PrismaModule,
     AuthModule,
+    BadgesModule,
     EvaluationsModule,
     FeedModule,
     HelpFaqsModule,
