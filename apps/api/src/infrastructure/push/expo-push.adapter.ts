@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import type { PushPort } from "./push.port.js";
 import type {
   HomeworkCreatedPushPayload,
+  RoomStatusChangePushPayload,
   TimetableChangePushPayload,
 } from "../../notifications/push.types.js";
 
@@ -23,55 +24,46 @@ export class ExpoPushAdapter implements PushPort {
   async sendTimetableChangeNotification(
     payload: TimetableChangePushPayload,
   ): Promise<void> {
-    const tokens = payload.tokens.filter((token) =>
-      /^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(token),
+    await this.dispatch(
+      payload.tokens,
+      payload.title,
+      payload.body,
+      payload.data,
     );
-    if (tokens.length === 0) {
-      return;
-    }
-
-    const endpoint =
-      this.configService.get<string>("EXPO_PUSH_ENDPOINT") ??
-      "https://exp.host/--/api/v2/push/send";
-    const accessToken = this.configService.get<string>(
-      "EXPO_PUSH_ACCESS_TOKEN",
-    );
-
-    for (const batch of this.chunk(tokens, 100)) {
-      const messages: ExpoPushMessage[] = batch.map((token) => ({
-        to: token,
-        title: payload.title,
-        body: payload.body,
-        sound: "default",
-        data: payload.data,
-      }));
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify(messages),
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        this.logger.error(
-          `Expo push request failed with status ${response.status}: ${text}`,
-        );
-      }
-    }
   }
 
   async sendHomeworkCreatedNotification(
     payload: HomeworkCreatedPushPayload,
   ): Promise<void> {
-    const tokens = payload.tokens.filter((token) =>
+    await this.dispatch(
+      payload.tokens,
+      payload.title,
+      payload.body,
+      payload.data,
+    );
+  }
+
+  async sendRoomStatusChangeNotification(
+    payload: RoomStatusChangePushPayload,
+  ): Promise<void> {
+    await this.dispatch(
+      payload.tokens,
+      payload.title,
+      payload.body,
+      payload.data,
+    );
+  }
+
+  private async dispatch(
+    tokens: string[],
+    title: string,
+    body: string,
+    data: Record<string, string>,
+  ): Promise<void> {
+    const validTokens = tokens.filter((token) =>
       /^(Expo|Exponent)PushToken\[[^\]]+\]$/.test(token),
     );
-    if (tokens.length === 0) {
+    if (validTokens.length === 0) {
       return;
     }
 
@@ -82,13 +74,13 @@ export class ExpoPushAdapter implements PushPort {
       "EXPO_PUSH_ACCESS_TOKEN",
     );
 
-    for (const batch of this.chunk(tokens, 100)) {
+    for (const batch of this.chunk(validTokens, 100)) {
       const messages: ExpoPushMessage[] = batch.map((token) => ({
         to: token,
-        title: payload.title,
-        body: payload.body,
+        title,
+        body,
         sound: "default",
-        data: payload.data,
+        data,
       }));
 
       const response = await fetch(endpoint, {

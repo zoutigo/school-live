@@ -13,7 +13,12 @@ import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import {
+  AUTO_GENERATED_EMAIL_DOMAIN,
+  publicEmailOrNull,
+} from "../common/email.util.js";
 import { MailService } from "../mail/mail.service.js";
+import { RoomStatusChangeNotificationsService } from "../notifications/room-status-change-notifications.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { CreateAdminDto } from "./dto/create-admin.dto.js";
 import type { CreateAcademicLevelDto } from "./dto/create-academic-level.dto.js";
@@ -429,11 +434,16 @@ const updateTeacherAssignmentSchema = z.object({
   subjectId: z.string().trim().min(1).optional(),
 });
 
+const NOOP_ROOM_STATUS_CHANGE_NOTIFICATIONS = {
+  enqueue: async () => undefined,
+} as unknown as RoomStatusChangeNotificationsService;
+
 @Injectable()
 export class ManagementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly roomStatusChangeNotificationsService: RoomStatusChangeNotificationsService = NOOP_ROOM_STATUS_CHANGE_NOTIFICATIONS,
   ) {}
 
   async createUser(currentUser: AuthenticatedUser, payload: CreateUserDto) {
@@ -1899,7 +1909,12 @@ export class ManagementService {
     });
   }
 
-  async updateRoom(schoolId: string, roomId: string, payload: UpdateRoomDto) {
+  async updateRoom(
+    schoolId: string,
+    roomId: string,
+    payload: UpdateRoomDto,
+    currentUser?: AuthenticatedUser,
+  ) {
     const parsedResult = updateRoomSchema.safeParse(payload);
     if (!parsedResult.success) {
       throw new BadRequestException(
@@ -1919,7 +1934,7 @@ export class ManagementService {
 
     const existing = await this.prisma.room.findFirst({
       where: { id: roomId, schoolId },
-      select: { id: true },
+      select: { id: true, name: true, status: true },
     });
     if (!existing) {
       throw new NotFoundException("Room not found");
@@ -1935,7 +1950,7 @@ export class ManagementService {
       }
     }
 
-    return this.prisma.room.update({
+    const updated = await this.prisma.room.update({
       where: { id: roomId },
       data: {
         name: parsed.name,
@@ -1945,6 +1960,25 @@ export class ManagementService {
         status: parsed.status,
       },
     });
+
+    if (
+      currentUser &&
+      parsed.status !== undefined &&
+      parsed.status !== existing.status
+    ) {
+      await this.roomStatusChangeNotificationsService.enqueue({
+        schoolId,
+        roomId,
+        roomName: updated.name,
+        previousStatus: existing.status,
+        newStatus: updated.status,
+        actorUserId: currentUser.id,
+        actorFullName:
+          `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+      });
+    }
+
+    return updated;
   }
 
   async deleteRoom(schoolId: string, roomId: string) {
@@ -2152,7 +2186,8 @@ export class ManagementService {
 
     const suppressedRecurring = new Set(
       cancelExceptions.map(
-        (entry) => `${entry.slotId}-${entry.occurrenceDate.toISOString().slice(0, 10)}`,
+        (entry) =>
+          `${entry.slotId}-${entry.occurrenceDate.toISOString().slice(0, 10)}`,
       ),
     );
 
@@ -2211,8 +2246,7 @@ export class ManagementService {
         startMinute: exception.startMinute ?? exception.slot.startMinute,
         endMinute: exception.endMinute ?? exception.slot.endMinute,
         className: exception.class.name,
-        subjectName:
-          exception.subject?.name ?? exception.slot.subject.name,
+        subjectName: exception.subject?.name ?? exception.slot.subject.name,
         teacherName: exception.teacherUser
           ? `${exception.teacherUser.firstName} ${exception.teacherUser.lastName}`
           : `${exception.slot.teacherUser.firstName} ${exception.slot.teacherUser.lastName}`,
@@ -3724,7 +3758,7 @@ export class ManagementService {
         userId: entry.userId,
         firstName: entry.user.firstName,
         lastName: entry.user.lastName,
-        email: this.publicEmailOrNull(entry.user.email),
+        email: publicEmailOrNull(entry.user.email),
         phone: entry.user.phone,
       }))
       .sort((a, b) =>
@@ -4440,7 +4474,7 @@ export class ManagementService {
           ...link,
           parent: {
             ...link.parent,
-            email: this.publicEmailOrNull(link.parent.email),
+            email: publicEmailOrNull(link.parent.email),
           },
         })),
         currentEnrollment:
@@ -5257,7 +5291,7 @@ export class ManagementService {
     scope: "teacher" | "parent",
   ) {
     const compact = normalizedPhone.replace(/\D/g, "");
-    return `${scope}-${compact}-${this.generateShortToken()}@noemail.scolive.local`;
+    return `${scope}-${compact}-${this.generateShortToken()}${AUTO_GENERATED_EMAIL_DOMAIN}`;
   }
 
   private generateShortToken() {
@@ -5289,16 +5323,6 @@ export class ManagementService {
     }
 
     return `+${compact}`;
-  }
-
-  private publicEmailOrNull(email: string | null | undefined) {
-    if (!email) {
-      return null;
-    }
-    if (email.endsWith("@noemail.scolive.local")) {
-      return null;
-    }
-    return email;
   }
 
   private async ensureExistingParentMembership(

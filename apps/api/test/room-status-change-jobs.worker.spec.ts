@@ -1,10 +1,9 @@
 import { ConfigService } from "@nestjs/config";
 import {
-  PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
-  PUSH_JOB_SEND_TIMETABLE_CHANGE,
-  PUSH_QUEUE_NAME,
-} from "../src/notifications/push.types";
-import { PushJobsWorker } from "../src/worker/push-jobs.worker";
+  ROOM_STATUS_CHANGE_JOB_DISPATCH,
+  ROOM_STATUS_CHANGE_QUEUE_NAME,
+} from "../src/notifications/room-status-change.types";
+import { RoomStatusChangeJobsWorker } from "../src/worker/room-status-change-jobs.worker";
 
 type WorkerProcessor = (job: { name: string; data: unknown }) => Promise<void>;
 
@@ -16,8 +15,8 @@ type WorkerMockInstance = {
 };
 
 const getWorkerInstances = () =>
-  (globalThis as { __pushWorkerInstances?: WorkerMockInstance[] })
-    .__pushWorkerInstances ?? [];
+  (globalThis as { __roomStatusWorkerInstances?: WorkerMockInstance[] })
+    .__roomStatusWorkerInstances ?? [];
 
 jest.mock("bullmq", () => {
   class Worker {
@@ -29,12 +28,12 @@ jest.mock("bullmq", () => {
       readonly processor: WorkerProcessor,
     ) {
       const globalScope = globalThis as {
-        __pushWorkerInstances?: WorkerMockInstance[];
+        __roomStatusWorkerInstances?: WorkerMockInstance[];
       };
-      if (!globalScope.__pushWorkerInstances) {
-        globalScope.__pushWorkerInstances = [];
+      if (!globalScope.__roomStatusWorkerInstances) {
+        globalScope.__roomStatusWorkerInstances = [];
       }
-      globalScope.__pushWorkerInstances.push({
+      globalScope.__roomStatusWorkerInstances.push({
         queueName,
         processor,
         onHandlers: this.onHandlers,
@@ -54,56 +53,59 @@ jest.mock("../src/infrastructure/messaging/redis-connection.js", () => ({
   buildRedisConnection: jest.fn(() => ({ host: "redis", port: 6379 })),
 }));
 
-describe("PushJobsWorker", () => {
-  const pushPort = {
-    sendTimetableChangeNotification: jest.fn(),
-    sendRoomStatusChangeNotification: jest.fn(),
+describe("RoomStatusChangeJobsWorker", () => {
+  const projectionService = {
+    project: jest.fn(),
   };
 
   const config = {} as ConfigService;
 
   beforeEach(() => {
     const globalScope = globalThis as {
-      __pushWorkerInstances?: WorkerMockInstance[];
+      __roomStatusWorkerInstances?: WorkerMockInstance[];
     };
-    globalScope.__pushWorkerInstances = [];
-    pushPort.sendTimetableChangeNotification.mockReset();
-    pushPort.sendRoomStatusChangeNotification.mockReset();
+    globalScope.__roomStatusWorkerInstances = [];
+    projectionService.project.mockReset();
   });
 
-  it("creates a worker on init and routes jobs to push port", async () => {
-    const worker = new PushJobsWorker(config, pushPort as never);
+  it("creates a worker on init and routes jobs to the projection service", async () => {
+    const worker = new RoomStatusChangeJobsWorker(
+      config,
+      projectionService as never,
+    );
     worker.onModuleInit();
 
     const instances = getWorkerInstances();
     expect(instances).toHaveLength(1);
-    expect(instances[0]?.queueName).toBe(PUSH_QUEUE_NAME);
+    expect(instances[0]?.queueName).toBe(ROOM_STATUS_CHANGE_QUEUE_NAME);
 
     await instances[0]?.processor({
-      name: PUSH_JOB_SEND_TIMETABLE_CHANGE,
-      data: { tokens: ["ExponentPushToken[a]"] },
+      name: ROOM_STATUS_CHANGE_JOB_DISPATCH,
+      data: { roomId: "room-1" },
     });
-    expect(pushPort.sendTimetableChangeNotification).toHaveBeenCalledWith({
-      tokens: ["ExponentPushToken[a]"],
+    expect(projectionService.project).toHaveBeenCalledWith({
+      roomId: "room-1",
     });
   });
 
-  it("routes room status change jobs to push port", async () => {
-    const worker = new PushJobsWorker(config, pushPort as never);
+  it("logs a warning and does not call the projection service for unknown jobs", async () => {
+    const worker = new RoomStatusChangeJobsWorker(
+      config,
+      projectionService as never,
+    );
     worker.onModuleInit();
 
     const instances = getWorkerInstances();
-    await instances[0]?.processor({
-      name: PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
-      data: { tokens: ["ExponentPushToken[b]"] },
-    });
-    expect(pushPort.sendRoomStatusChangeNotification).toHaveBeenCalledWith({
-      tokens: ["ExponentPushToken[b]"],
-    });
+    await instances[0]?.processor({ name: "unknown-job", data: {} });
+
+    expect(projectionService.project).not.toHaveBeenCalled();
   });
 
   it("closes worker on destroy", async () => {
-    const worker = new PushJobsWorker(config, pushPort as never);
+    const worker = new RoomStatusChangeJobsWorker(
+      config,
+      projectionService as never,
+    );
     worker.onModuleInit();
 
     const instances = getWorkerInstances();

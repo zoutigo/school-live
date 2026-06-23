@@ -25,3 +25,17 @@ export type HomeworkCreatedPushPayload = {
     homeworkId: string;
   };
 };
+
+export const PUSH_JOB_SEND_ROOM_STATUS_CHANGE = "send-room-status-change-push";
+
+export type RoomStatusChangePushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "ROOM_STATUS_CHANGE";
+    schoolSlug: string;
+    classId: string;
+    roomId: string;
+  };
+};

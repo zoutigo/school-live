@@ -12,6 +12,7 @@ import {
   MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION,
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
+  MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEST_EXECUTION_FAILED_NOTIFICATION,
   MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
@@ -21,6 +22,7 @@ import {
   type HomeworkCreatedMailPayload,
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
+  type RoomStatusChangeMailPayload,
   type StudentLifeEventNotificationPayload,
   type TestExecutionFailedNotificationPayload,
   type TimetableChangeMailPayload,
@@ -167,6 +169,22 @@ export class MailService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.emailPort.sendHomeworkCreatedNotification(payload);
+    }
+  }
+
+  async sendRoomStatusChangeNotification(payload: RoomStatusChangeMailPayload) {
+    try {
+      await this.queue.add(
+        MAIL_QUEUE_NAME,
+        MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous email sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.emailPort.sendRoomStatusChangeNotification(payload);
     }
   }
 }

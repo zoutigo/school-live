@@ -17,7 +17,21 @@ const prisma = {
 
 const mailService = {};
 
-const service = new ManagementService(prisma as never, mailService as never);
+const roomStatusChangeNotificationsService = {
+  enqueue: jest.fn(),
+};
+
+const service = new ManagementService(
+  prisma as never,
+  mailService as never,
+  roomStatusChangeNotificationsService as never,
+);
+
+const currentUser = {
+  id: "admin-1",
+  firstName: "Aline",
+  lastName: "Admin",
+} as never;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -61,15 +75,20 @@ describe("ManagementService — Room CRUD", () => {
   });
 
   it("rejette la création si le nom est vide", async () => {
-    await expect(
-      service.createRoom("school-1", { name: "" }),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.createRoom("school-1", { name: "" })).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
-  it("met à jour une salle existante", async () => {
-    prisma.room.findFirst.mockResolvedValue({ id: "room-1" });
+  it("met à jour une salle existante sans déclencher de notification quand aucun acteur n'est fourni", async () => {
+    prisma.room.findFirst.mockResolvedValue({
+      id: "room-1",
+      name: "B14",
+      status: "AVAILABLE",
+    });
     prisma.room.update.mockResolvedValue({
       id: "room-1",
+      name: "B14",
       status: "MAINTENANCE",
     });
 
@@ -88,6 +107,85 @@ describe("ManagementService — Room CRUD", () => {
       },
     });
     expect(result.status).toBe("MAINTENANCE");
+    expect(roomStatusChangeNotificationsService.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("déclenche une notification de changement de statut de salle quand le statut change et qu'un acteur est fourni", async () => {
+    prisma.room.findFirst.mockResolvedValue({
+      id: "room-1",
+      name: "B14",
+      status: "AVAILABLE",
+    });
+    prisma.room.update.mockResolvedValue({
+      id: "room-1",
+      name: "B14",
+      status: "MAINTENANCE",
+    });
+
+    await service.updateRoom(
+      "school-1",
+      "room-1",
+      { status: "MAINTENANCE" },
+      currentUser,
+    );
+
+    expect(roomStatusChangeNotificationsService.enqueue).toHaveBeenCalledWith({
+      schoolId: "school-1",
+      roomId: "room-1",
+      roomName: "B14",
+      previousStatus: "AVAILABLE",
+      newStatus: "MAINTENANCE",
+      actorUserId: "admin-1",
+      actorFullName: "Aline Admin",
+    });
+  });
+
+  it("ne déclenche pas de notification quand le statut ne change pas, même avec un acteur fourni", async () => {
+    prisma.room.findFirst.mockResolvedValue({
+      id: "room-1",
+      name: "B14",
+      status: "AVAILABLE",
+    });
+    prisma.room.findUnique.mockResolvedValue(null);
+    prisma.room.update.mockResolvedValue({
+      id: "room-1",
+      name: "Salle B",
+      status: "AVAILABLE",
+    });
+
+    await service.updateRoom(
+      "school-1",
+      "room-1",
+      { name: "Salle B" },
+      currentUser,
+    );
+
+    expect(roomStatusChangeNotificationsService.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("propage l'erreur si l'enqueue de la notification de statut échoue", async () => {
+    prisma.room.findFirst.mockResolvedValue({
+      id: "room-1",
+      name: "B14",
+      status: "AVAILABLE",
+    });
+    prisma.room.update.mockResolvedValue({
+      id: "room-1",
+      name: "B14",
+      status: "UNAVAILABLE",
+    });
+    roomStatusChangeNotificationsService.enqueue.mockRejectedValue(
+      new Error("redis down"),
+    );
+
+    await expect(
+      service.updateRoom(
+        "school-1",
+        "room-1",
+        { status: "UNAVAILABLE" },
+        currentUser,
+      ),
+    ).rejects.toThrow("redis down");
   });
 
   it("lève NotFoundException si la salle à mettre à jour n'existe pas dans l'école", async () => {
@@ -101,9 +199,9 @@ describe("ManagementService — Room CRUD", () => {
   it("lève BadRequestException si aucun champ n'est fourni à la mise à jour", async () => {
     prisma.room.findFirst.mockResolvedValue({ id: "room-1" });
 
-    await expect(
-      service.updateRoom("school-1", "room-1", {}),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.updateRoom("school-1", "room-1", {})).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it("rejette la mise à jour si le nouveau nom est déjà utilisé par une autre salle", async () => {
@@ -121,7 +219,9 @@ describe("ManagementService — Room CRUD", () => {
 
     const result = await service.deleteRoom("school-1", "room-1");
 
-    expect(prisma.room.delete).toHaveBeenCalledWith({ where: { id: "room-1" } });
+    expect(prisma.room.delete).toHaveBeenCalledWith({
+      where: { id: "room-1" },
+    });
     expect(result).toEqual({ success: true });
   });
 
@@ -291,7 +391,10 @@ describe("ManagementService — getRoomCalendar", () => {
     prisma.classTimetableSlotException.findMany
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
-        { slotId: "slot-1", occurrenceDate: new Date("2026-01-05T00:00:00.000Z") },
+        {
+          slotId: "slot-1",
+          occurrenceDate: new Date("2026-01-05T00:00:00.000Z"),
+        },
       ]);
 
     const result = await service.getRoomCalendar(

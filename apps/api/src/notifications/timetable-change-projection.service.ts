@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { publicEmailOrNull } from "../common/email.util.js";
 import { FeedService } from "../feed/feed.service.js";
 import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -71,7 +72,7 @@ export class TimetableChangeProjectionService {
       },
     });
 
-    const studentUserIds = new Set<string>();
+    const recipientUserIds = new Set<string>();
     const emailRecipients = new Map<
       string,
       { firstName: string; email: string }
@@ -80,30 +81,35 @@ export class TimetableChangeProjectionService {
     for (const row of enrollments) {
       const studentUser = row.student.user;
       if (studentUser?.id && studentUser.activationStatus === "ACTIVE") {
-        studentUserIds.add(studentUser.id);
-        if (studentUser.email) {
-          emailRecipients.set(studentUser.email, {
+        recipientUserIds.add(studentUser.id);
+        const studentEmail = publicEmailOrNull(studentUser.email);
+        if (studentEmail) {
+          emailRecipients.set(studentEmail, {
             firstName: studentUser.firstName,
-            email: studentUser.email,
+            email: studentEmail,
           });
         }
       }
 
       for (const link of row.student.parentLinks) {
         const parentUser = link.parent;
-        if (parentUser.activationStatus === "ACTIVE" && parentUser.email) {
-          emailRecipients.set(parentUser.email, {
-            firstName: parentUser.firstName,
-            email: parentUser.email,
-          });
+        if (parentUser.activationStatus === "ACTIVE") {
+          recipientUserIds.add(parentUser.id);
+          const parentEmail = publicEmailOrNull(parentUser.email);
+          if (parentEmail) {
+            emailRecipients.set(parentEmail, {
+              firstName: parentUser.firstName,
+              email: parentEmail,
+            });
+          }
         }
       }
     }
 
-    const pushTokens = studentUserIds.size
+    const pushTokens = recipientUserIds.size
       ? await this.prisma.mobilePushToken.findMany({
           where: {
-            userId: { in: Array.from(studentUserIds) },
+            userId: { in: Array.from(recipientUserIds) },
             isActive: true,
             OR: [{ schoolId: event.schoolId }, { schoolId: null }],
           },

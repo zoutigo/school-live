@@ -274,14 +274,28 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/rooms")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN", "TEACHER")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "ADMIN",
+    "SUPER_ADMIN",
+    "TEACHER",
+  )
   listRooms(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listRooms(schoolId);
   }
 
   @Get("schools/:schoolSlug/admin/rooms/available")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN", "TEACHER")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "ADMIN",
+    "SUPER_ADMIN",
+    "TEACHER",
+  )
   listAvailableRooms(
     @CurrentSchoolId() schoolId: string,
     @Query() query: ListAvailableRoomsQueryDto,
@@ -312,8 +326,14 @@ export class ManagementController {
     @CurrentSchoolId() schoolId: string,
     @Param("roomId") roomId: string,
     @Body() payload: UpdateRoomDto,
+    @CurrentUser() currentUser: AuthenticatedUser,
   ) {
-    return this.managementService.updateRoom(schoolId, roomId, payload);
+    return this.managementService.updateRoom(
+      schoolId,
+      roomId,
+      payload,
+      currentUser,
+    );
   }
 
   @Delete("schools/:schoolSlug/admin/rooms/:roomId")

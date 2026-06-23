@@ -3,6 +3,7 @@ import { MailService } from "../src/mail/mail.service";
 import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
+  MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
@@ -20,6 +21,7 @@ describe("MailService", () => {
     sendPasswordResetEmail: jest.fn(),
     sendInternalMessageNotification: jest.fn(),
     sendTimetableChangeNotification: jest.fn(),
+    sendRoomStatusChangeNotification: jest.fn(),
   };
 
   const service = new MailService(queue as never, emailPort as never);
@@ -31,6 +33,7 @@ describe("MailService", () => {
     emailPort.sendPasswordResetEmail.mockReset();
     emailPort.sendInternalMessageNotification.mockReset();
     emailPort.sendTimetableChangeNotification.mockReset();
+    emailPort.sendRoomStatusChangeNotification.mockReset();
   });
 
   it("queues temporary password emails", async () => {
@@ -153,5 +156,58 @@ describe("MailService", () => {
       payload,
     );
     expect(emailPort.sendTimetableChangeNotification).not.toHaveBeenCalled();
+  });
+
+  it("queues room status change emails", async () => {
+    const payload = {
+      to: "parent@example.test",
+      recipientFirstName: "Parent",
+      schoolName: "Scolive",
+      schoolSlug: "college-vogt",
+      className: "6e C",
+      roomName: "B14",
+      title: "Changement de statut de salle",
+      summary: "La salle B14 est maintenant en maintenance (était disponible).",
+      details: [
+        "La salle B14 est maintenant en maintenance (était disponible).",
+      ],
+    };
+
+    await service.sendRoomStatusChangeNotification(payload);
+
+    expect(queue.add).toHaveBeenCalledWith(
+      MAIL_QUEUE_NAME,
+      MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION,
+      payload,
+    );
+    expect(emailPort.sendRoomStatusChangeNotification).not.toHaveBeenCalled();
+  });
+
+  it("falls back to synchronous send for room status change emails when queue is unavailable", async () => {
+    const loggerSpy = jest
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    queue.add.mockRejectedValue(new Error("redis down"));
+    const payload = {
+      to: "parent@example.test",
+      recipientFirstName: "Parent",
+      schoolName: "Scolive",
+      schoolSlug: "college-vogt",
+      className: "6e C",
+      roomName: "B14",
+      title: "Changement de statut de salle",
+      summary: "La salle B14 est maintenant en maintenance (était disponible).",
+      details: [
+        "La salle B14 est maintenant en maintenance (était disponible).",
+      ],
+    };
+
+    await service.sendRoomStatusChangeNotification(payload);
+
+    expect(emailPort.sendRoomStatusChangeNotification).toHaveBeenCalledWith(
+      payload,
+    );
+    expect(loggerSpy).toHaveBeenCalled();
+    loggerSpy.mockRestore();
   });
 });

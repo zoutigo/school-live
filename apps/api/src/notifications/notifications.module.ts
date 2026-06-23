@@ -8,6 +8,8 @@ import { HomeworkNotificationsProjectionService } from "./homework-notifications
 import { HomeworkNotificationsService } from "./homework-notifications.service.js";
 import { MobilePushTokensService } from "./mobile-push-tokens.service.js";
 import { PushService } from "./push.service.js";
+import { RoomStatusChangeNotificationsService } from "./room-status-change-notifications.service.js";
+import { RoomStatusChangeProjectionService } from "./room-status-change-projection.service.js";
 import { TimetableChangeNotificationsService } from "./timetable-change-notifications.service.js";
 import { TimetableChangeProjectionService } from "./timetable-change-projection.service.js";
 
@@ -26,6 +28,8 @@ import { TimetableChangeProjectionService } from "./timetable-change-projection.
     TimetableChangeProjectionService,
     HomeworkNotificationsService,
     HomeworkNotificationsProjectionService,
+    RoomStatusChangeNotificationsService,
+    RoomStatusChangeProjectionService,
   ],
   exports: [
     MobilePushTokensService,
@@ -34,6 +38,8 @@ import { TimetableChangeProjectionService } from "./timetable-change-projection.
     TimetableChangeProjectionService,
     HomeworkNotificationsService,
     HomeworkNotificationsProjectionService,
+    RoomStatusChangeNotificationsService,
+    RoomStatusChangeProjectionService,
   ],
 })
 export class NotificationsModule {}

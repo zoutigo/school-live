@@ -1,5 +1,6 @@
 import type {
   HomeworkCreatedPushPayload,
+  RoomStatusChangePushPayload,
   TimetableChangePushPayload,
 } from "../../notifications/push.types.js";
 
@@ -11,5 +12,8 @@ export type PushPort = {
   ): Promise<void>;
   sendHomeworkCreatedNotification(
     payload: HomeworkCreatedPushPayload,
+  ): Promise<void>;
+  sendRoomStatusChangeNotification(
+    payload: RoomStatusChangePushPayload,
   ): Promise<void>;
 };

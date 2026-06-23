@@ -5,6 +5,7 @@ import { NotificationsModule } from "../notifications/notifications.module.js";
 import { HomeworkNotificationJobsWorker } from "./homework-notification-jobs.worker.js";
 import { MailJobsWorker } from "./mail-jobs.worker.js";
 import { PushJobsWorker } from "./push-jobs.worker.js";
+import { RoomStatusChangeJobsWorker } from "./room-status-change-jobs.worker.js";
 import { TimetableChangeJobsWorker } from "./timetable-change-jobs.worker.js";
 
 @Module({
@@ -21,6 +22,7 @@ import { TimetableChangeJobsWorker } from "./timetable-change-jobs.worker.js";
     PushJobsWorker,
     TimetableChangeJobsWorker,
     HomeworkNotificationJobsWorker,
+    RoomStatusChangeJobsWorker,
   ],
 })
 export class WorkerModule {}

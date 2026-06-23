@@ -11,9 +11,11 @@ import { buildRedisConnection } from "../infrastructure/messaging/redis-connecti
 import { PUSH_PORT, type PushPort } from "../infrastructure/push/push.port.js";
 import {
   PUSH_JOB_SEND_HOMEWORK_CREATED,
+  PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
   type HomeworkCreatedPushPayload,
+  type RoomStatusChangePushPayload,
   type TimetableChangePushPayload,
 } from "../notifications/push.types.js";
 
@@ -40,6 +42,12 @@ export class PushJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === PUSH_JOB_SEND_HOMEWORK_CREATED) {
           await this.pushPort.sendHomeworkCreatedNotification(
             job.data as HomeworkCreatedPushPayload,
+          );
+          return;
+        }
+        if (job.name === PUSH_JOB_SEND_ROOM_STATUS_CHANGE) {
+          await this.pushPort.sendRoomStatusChangeNotification(
+            job.data as RoomStatusChangePushPayload,
           );
           return;
         }
