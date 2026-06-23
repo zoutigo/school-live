@@ -27,6 +27,10 @@ import { CreateAcademicLevelDto } from "./dto/create-academic-level.dto.js";
 import { CheckSchoolSlugDto } from "./dto/check-school-slug.dto.js";
 import { CheckUserEmailDto } from "./dto/check-user-email.dto.js";
 import { CreateClassroomDto } from "./dto/create-classroom.dto.js";
+import { CreateRoomDto } from "./dto/create-room.dto.js";
+import { UpdateRoomDto } from "./dto/update-room.dto.js";
+import { ListAvailableRoomsQueryDto } from "./dto/list-available-rooms-query.dto.js";
+import { GetRoomCalendarQueryDto } from "./dto/get-room-calendar-query.dto.js";
 import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
 import { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
@@ -256,6 +260,70 @@ export class ManagementController {
     @Param("classId") classId: string,
   ) {
     return this.managementService.deleteClassroom(schoolId, classId);
+  }
+
+  @Post("schools/:schoolSlug/admin/rooms")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  createRoom(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: CreateRoomDto,
+  ) {
+    return this.managementService.createRoom(schoolId, payload);
+  }
+
+  @Get("schools/:schoolSlug/admin/rooms")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN", "TEACHER")
+  listRooms(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listRooms(schoolId);
+  }
+
+  @Get("schools/:schoolSlug/admin/rooms/available")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN", "TEACHER")
+  listAvailableRooms(
+    @CurrentSchoolId() schoolId: string,
+    @Query() query: ListAvailableRoomsQueryDto,
+  ) {
+    return this.managementService.listAvailableRooms(schoolId, query);
+  }
+
+  @Get("schools/:schoolSlug/admin/rooms/:roomId/calendar")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  getRoomCalendar(
+    @CurrentSchoolId() schoolId: string,
+    @Param("roomId") roomId: string,
+    @Query() query: GetRoomCalendarQueryDto,
+  ) {
+    return this.managementService.getRoomCalendar(
+      schoolId,
+      roomId,
+      query.fromDate,
+      query.toDate,
+    );
+  }
+
+  @Patch("schools/:schoolSlug/admin/rooms/:roomId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  updateRoom(
+    @CurrentSchoolId() schoolId: string,
+    @Param("roomId") roomId: string,
+    @Body() payload: UpdateRoomDto,
+  ) {
+    return this.managementService.updateRoom(schoolId, roomId, payload);
+  }
+
+  @Delete("schools/:schoolSlug/admin/rooms/:roomId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  deleteRoom(
+    @CurrentSchoolId() schoolId: string,
+    @Param("roomId") roomId: string,
+  ) {
+    return this.managementService.deleteRoom(schoolId, roomId);
   }
 
   @Get("schools/:schoolSlug/admin/classrooms/:classId/subject-overrides")

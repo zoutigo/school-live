@@ -35,6 +35,7 @@ const prisma = {
   classTimetableSubjectStyle: { findFirst: jest.fn(), upsert: jest.fn() },
   schoolMembership: { findFirst: jest.fn() },
   teacherClassSubject: { findFirst: jest.fn() },
+  room: { findFirst: jest.fn(), findUnique: jest.fn() },
 };
 
 const service = new TimetableService(prisma as never);

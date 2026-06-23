@@ -38,6 +38,10 @@ export class UpdateClassTimetableOneOffSlotDto {
   room?: string;
 
   @IsOptional()
+  @IsString()
+  roomId?: string;
+
+  @IsOptional()
   @IsIn(["PLANNED", "CANCELLED"])
   status?: "PLANNED" | "CANCELLED";
 }

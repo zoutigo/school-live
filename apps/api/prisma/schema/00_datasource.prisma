@@ -144,6 +144,12 @@ enum TimetableOccurrenceStatus {
   CANCELLED
 }
 
+enum RoomStatus {
+  AVAILABLE
+  UNAVAILABLE
+  MAINTENANCE
+}
+
 enum InternalMessageStatus {
   DRAFT
   SENT

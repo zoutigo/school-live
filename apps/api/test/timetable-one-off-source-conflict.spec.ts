@@ -63,6 +63,7 @@ const prisma = {
   schoolYear: { findFirst: jest.fn() },
   subject: { findFirst: jest.fn() },
   classCurriculum: { findFirst: jest.fn() },
+  room: { findFirst: jest.fn(), findUnique: jest.fn() },
 };
 
 const service = new TimetableService(prisma as never);

@@ -11,6 +11,7 @@ import {
   CalendarDays,
   ClipboardList,
   CreditCard,
+  DoorOpen,
   FileText,
   GraduationCap,
   HelpCircle,
@@ -110,6 +111,12 @@ function buildItems(
         matchPrefix: "/subjects",
       },
       {
+        label: t("sidebar.nav.rooms"),
+        href: "/salles",
+        icon: DoorOpen,
+        matchPrefix: "/salles",
+      },
+      {
         label: t("sidebar.nav.curriculums"),
         href: "/curriculums",
         icon: GraduationCap,
@@ -195,6 +202,12 @@ function buildItems(
         href: "/subjects",
         icon: BookOpen,
         matchPrefix: "/subjects",
+      },
+      {
+        label: t("sidebar.nav.rooms"),
+        href: "/salles",
+        icon: DoorOpen,
+        matchPrefix: "/salles",
       },
       {
         label: t("sidebar.nav.curriculums"),

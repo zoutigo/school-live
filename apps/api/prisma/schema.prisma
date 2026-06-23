@@ -144,6 +144,12 @@ enum TimetableOccurrenceStatus {
   CANCELLED
 }
 
+enum RoomStatus {
+  AVAILABLE
+  UNAVAILABLE
+  MAINTENANCE
+}
+
 enum InternalMessageStatus {
   DRAFT
   SENT
@@ -294,6 +300,7 @@ model School {
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents     SchoolCalendarEvent[]
+  rooms              Room[]
   tickets            Ticket[]
   helpGuides         HelpGuide[]
   helpFaqs           HelpFaq[]
@@ -890,6 +897,7 @@ model ClassTimetableSlot {
   activeFromDate  DateTime?
   activeToDate    DateTime?
   room            String?
+  roomId          String?
   createdByUserId String
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -899,6 +907,7 @@ model ClassTimetableSlot {
   subject         Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   teacherUser     User      @relation("ClassTimetableSlotTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
   createdByUser   User      @relation("ClassTimetableSlotCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  roomRef         Room?     @relation("ClassTimetableSlotRoom", fields: [roomId], references: [id], onDelete: SetNull)
   exceptions      ClassTimetableSlotException[]
   oneOffSlots     ClassTimetableOneOffSlot[] @relation("ClassTimetableOneOffSourceSlot")
 
@@ -907,6 +916,7 @@ model ClassTimetableSlot {
   @@index([classId, weekday, startMinute, activeFromDate, activeToDate])
   @@index([teacherUserId, weekday, startMinute, activeFromDate, activeToDate])
   @@index([room, weekday, startMinute, activeFromDate, activeToDate])
+  @@index([roomId, weekday, startMinute, activeFromDate, activeToDate])
 }
 
 model ClassTimetableOneOffSlot {
@@ -920,6 +930,7 @@ model ClassTimetableOneOffSlot {
   startMinute     Int
   endMinute       Int
   room            String?
+  roomId          String?
   status          TimetableOccurrenceStatus @default(PLANNED)
   sourceSlotId    String?
   createdByUserId String
@@ -932,12 +943,14 @@ model ClassTimetableOneOffSlot {
   teacherUser     User                     @relation("ClassTimetableOneOffSlotTeacher", fields: [teacherUserId], references: [id], onDelete: Cascade)
   sourceSlot      ClassTimetableSlot?      @relation("ClassTimetableOneOffSourceSlot", fields: [sourceSlotId], references: [id], onDelete: SetNull)
   createdByUser   User                     @relation("ClassTimetableOneOffSlotCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  roomRef         Room?                    @relation("ClassTimetableOneOffSlotRoom", fields: [roomId], references: [id], onDelete: SetNull)
 
   @@index([schoolId])
   @@index([schoolYearId])
   @@index([classId, occurrenceDate, startMinute])
   @@index([teacherUserId, occurrenceDate, startMinute])
   @@index([room, occurrenceDate, startMinute])
+  @@index([roomId, occurrenceDate, startMinute])
 }
 
 model ClassTimetableSlotException {
@@ -953,6 +966,7 @@ model ClassTimetableSlotException {
   startMinute     Int?
   endMinute       Int?
   room            String?
+  roomId          String?
   reason          String?
   createdByUserId String
   createdAt       DateTime                        @default(now())
@@ -964,6 +978,7 @@ model ClassTimetableSlotException {
   subject         Subject?                        @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   teacherUser     User?                           @relation("ClassTimetableSlotExceptionTeacher", fields: [teacherUserId], references: [id], onDelete: SetNull)
   createdByUser   User                            @relation("ClassTimetableSlotExceptionCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  roomRef         Room?                           @relation("ClassTimetableSlotExceptionRoom", fields: [roomId], references: [id], onDelete: SetNull)
 
   @@unique([slotId, occurrenceDate])
   @@index([schoolId])
@@ -971,6 +986,7 @@ model ClassTimetableSlotException {
   @@index([classId, occurrenceDate])
   @@index([teacherUserId, occurrenceDate, startMinute])
   @@index([room, occurrenceDate, startMinute])
+  @@index([roomId, occurrenceDate, startMinute])
 }
 
 model ClassTimetableSubjectStyle {
@@ -1016,6 +1032,25 @@ model SchoolCalendarEvent {
   @@index([schoolYearId])
   @@index([scope, classId, academicLevelId])
   @@index([startDate, endDate])
+}
+
+model Room {
+  id                 String     @id @default(cuid())
+  schoolId           String
+  name               String
+  description        String?
+  capacity           Int?
+  maxConcurrentSlots Int        @default(1)
+  status             RoomStatus @default(AVAILABLE)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  school             School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  slots              ClassTimetableSlot[] @relation("ClassTimetableSlotRoom")
+  oneOffSlots        ClassTimetableOneOffSlot[] @relation("ClassTimetableOneOffSlotRoom")
+  slotExceptions     ClassTimetableSlotException[] @relation("ClassTimetableSlotExceptionRoom")
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
 }
 
 

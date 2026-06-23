@@ -19,6 +19,9 @@ import type { CreateAdminDto } from "./dto/create-admin.dto.js";
 import type { CreateAcademicLevelDto } from "./dto/create-academic-level.dto.js";
 import type { BulkUpdateEnrollmentStatusDto } from "./dto/bulk-update-enrollment-status.dto.js";
 import type { CreateClassroomDto } from "./dto/create-classroom.dto.js";
+import type { CreateRoomDto } from "./dto/create-room.dto.js";
+import type { UpdateRoomDto } from "./dto/update-room.dto.js";
+import type { ListAvailableRoomsQueryDto } from "./dto/list-available-rooms-query.dto.js";
 import type { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import type { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
 import type { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
@@ -203,6 +206,32 @@ const updateClassroomSchema = z.object({
   trackId: z.string().trim().min(1).optional(),
   referentTeacherUserId: z.string().trim().min(1).optional(),
   curriculumId: z.string().trim().min(1).optional(),
+});
+
+const roomStatusEnum = z.enum(["AVAILABLE", "UNAVAILABLE", "MAINTENANCE"]);
+
+const createRoomSchema = z.object({
+  name: z.string().trim().min(1),
+  description: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value === "" ? undefined : value)),
+  capacity: z.number().int().min(1).optional(),
+  maxConcurrentSlots: z.number().int().min(1).optional(),
+  status: roomStatusEnum.optional(),
+});
+
+const updateRoomSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  description: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value === "" ? undefined : value)),
+  capacity: z.number().int().min(1).optional(),
+  maxConcurrentSlots: z.number().int().min(1).optional(),
+  status: roomStatusEnum.optional(),
 });
 
 const createStudentEnrollmentSchema = z.object({
@@ -1832,6 +1861,370 @@ export class ManagementService {
     });
 
     return { success: true };
+  }
+
+  async listRooms(schoolId: string) {
+    return this.prisma.room.findMany({
+      where: { schoolId },
+      orderBy: [{ name: "asc" }],
+    });
+  }
+
+  async createRoom(schoolId: string, payload: CreateRoomDto) {
+    const parsedResult = createRoomSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+
+    const existing = await this.prisma.room.findUnique({
+      where: { schoolId_name: { schoolId, name: parsed.name } },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new BadRequestException("A room with this name already exists");
+    }
+
+    return this.prisma.room.create({
+      data: {
+        schoolId,
+        name: parsed.name,
+        description: parsed.description,
+        capacity: parsed.capacity,
+        maxConcurrentSlots: parsed.maxConcurrentSlots ?? 1,
+        status: parsed.status ?? "AVAILABLE",
+      },
+    });
+  }
+
+  async updateRoom(schoolId: string, roomId: string, payload: UpdateRoomDto) {
+    const parsedResult = updateRoomSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+    const parsed = parsedResult.data;
+    if (
+      parsed.name === undefined &&
+      parsed.description === undefined &&
+      parsed.capacity === undefined &&
+      parsed.maxConcurrentSlots === undefined &&
+      parsed.status === undefined
+    ) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.room.findFirst({
+      where: { id: roomId, schoolId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Room not found");
+    }
+
+    if (parsed.name) {
+      const duplicate = await this.prisma.room.findUnique({
+        where: { schoolId_name: { schoolId, name: parsed.name } },
+        select: { id: true },
+      });
+      if (duplicate && duplicate.id !== roomId) {
+        throw new BadRequestException("A room with this name already exists");
+      }
+    }
+
+    return this.prisma.room.update({
+      where: { id: roomId },
+      data: {
+        name: parsed.name,
+        description: parsed.description,
+        capacity: parsed.capacity,
+        maxConcurrentSlots: parsed.maxConcurrentSlots,
+        status: parsed.status,
+      },
+    });
+  }
+
+  async deleteRoom(schoolId: string, roomId: string) {
+    const existing = await this.prisma.room.findFirst({
+      where: { id: roomId, schoolId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Room not found");
+    }
+
+    await this.prisma.room.delete({
+      where: { id: roomId },
+    });
+
+    return { success: true };
+  }
+
+  async listAvailableRooms(
+    schoolId: string,
+    query: ListAvailableRoomsQueryDto,
+  ) {
+    const weekday = query.weekday;
+    const startMinute = query.startMinute;
+    const endMinute = query.endMinute;
+    const occurrenceDate = query.occurrenceDate
+      ? new Date(query.occurrenceDate)
+      : null;
+
+    const rooms = await this.prisma.room.findMany({
+      where: { schoolId },
+      orderBy: [{ name: "asc" }],
+    });
+
+    const overlapRecurringWhere = {
+      schoolId,
+      weekday,
+      startMinute: { lt: endMinute },
+      endMinute: { gt: startMinute },
+      roomId: { not: null },
+      ...(query.excludeSlotId ? { id: { not: query.excludeSlotId } } : {}),
+    };
+
+    const overlapOneOffWhere = occurrenceDate
+      ? {
+          schoolId,
+          occurrenceDate,
+          status: "PLANNED" as const,
+          startMinute: { lt: endMinute },
+          endMinute: { gt: startMinute },
+          roomId: { not: null },
+          ...(query.excludeOneOffSlotId
+            ? { id: { not: query.excludeOneOffSlotId } }
+            : {}),
+        }
+      : null;
+
+    const overlapExceptionWhere = occurrenceDate
+      ? {
+          schoolId,
+          occurrenceDate,
+          type: "OVERRIDE" as const,
+          startMinute: { lt: endMinute, not: null },
+          endMinute: { gt: startMinute, not: null },
+          roomId: { not: null },
+          ...(query.excludeExceptionId
+            ? { id: { not: query.excludeExceptionId } }
+            : {}),
+        }
+      : null;
+
+    const [recurringBookings, oneOffBookings, exceptionBookings] =
+      await Promise.all([
+        this.prisma.classTimetableSlot.findMany({
+          where: overlapRecurringWhere,
+          select: { roomId: true },
+        }),
+        overlapOneOffWhere
+          ? this.prisma.classTimetableOneOffSlot.findMany({
+              where: overlapOneOffWhere,
+              select: { roomId: true },
+            })
+          : Promise.resolve([]),
+        overlapExceptionWhere
+          ? this.prisma.classTimetableSlotException.findMany({
+              where: overlapExceptionWhere,
+              select: { roomId: true },
+            })
+          : Promise.resolve([]),
+      ]);
+
+    const occupancyByRoomId = new Map<string, number>();
+    for (const booking of [
+      ...recurringBookings,
+      ...oneOffBookings,
+      ...exceptionBookings,
+    ]) {
+      if (!booking.roomId) continue;
+      occupancyByRoomId.set(
+        booking.roomId,
+        (occupancyByRoomId.get(booking.roomId) ?? 0) + 1,
+      );
+    }
+
+    return rooms.map((room) => {
+      const occupied = occupancyByRoomId.get(room.id) ?? 0;
+      const isAvailable =
+        room.status === "AVAILABLE" && occupied < room.maxConcurrentSlots;
+      return {
+        ...room,
+        occupiedSlots: occupied,
+        isAvailable,
+      };
+    });
+  }
+
+  async getRoomCalendar(
+    schoolId: string,
+    roomId: string,
+    fromDateIso: string,
+    toDateIso: string,
+  ) {
+    const room = await this.prisma.room.findFirst({
+      where: { id: roomId, schoolId },
+      select: { id: true },
+    });
+    if (!room) {
+      throw new NotFoundException("Room not found");
+    }
+
+    const fromDate = new Date(`${fromDateIso}T00:00:00.000Z`);
+    const toDate = new Date(`${toDateIso}T00:00:00.000Z`);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      throw new BadRequestException("Invalid date range");
+    }
+
+    const [recurringSlots, oneOffSlots, exceptions, cancelExceptions] =
+      await Promise.all([
+        this.prisma.classTimetableSlot.findMany({
+          where: { schoolId, roomId },
+          select: {
+            id: true,
+            weekday: true,
+            startMinute: true,
+            endMinute: true,
+            activeFromDate: true,
+            activeToDate: true,
+            class: { select: { id: true, name: true } },
+            subject: { select: { id: true, name: true } },
+            teacherUser: { select: { firstName: true, lastName: true } },
+          },
+        }),
+        this.prisma.classTimetableOneOffSlot.findMany({
+          where: {
+            schoolId,
+            roomId,
+            status: "PLANNED",
+            occurrenceDate: { gte: fromDate, lte: toDate },
+          },
+          select: {
+            id: true,
+            occurrenceDate: true,
+            startMinute: true,
+            endMinute: true,
+            class: { select: { id: true, name: true } },
+            subject: { select: { id: true, name: true } },
+            teacherUser: { select: { firstName: true, lastName: true } },
+          },
+        }),
+        this.prisma.classTimetableSlotException.findMany({
+          where: {
+            schoolId,
+            roomId,
+            type: "OVERRIDE",
+            occurrenceDate: { gte: fromDate, lte: toDate },
+          },
+          select: {
+            id: true,
+            slotId: true,
+            occurrenceDate: true,
+            startMinute: true,
+            endMinute: true,
+            class: { select: { id: true, name: true } },
+            subject: { select: { id: true, name: true } },
+            teacherUser: { select: { firstName: true, lastName: true } },
+            slot: {
+              select: {
+                startMinute: true,
+                endMinute: true,
+                subject: { select: { id: true, name: true } },
+                teacherUser: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        }),
+        this.prisma.classTimetableSlotException.findMany({
+          where: {
+            schoolId,
+            type: { in: ["CANCEL", "OVERRIDE"] },
+            occurrenceDate: { gte: fromDate, lte: toDate },
+          },
+          select: { slotId: true, occurrenceDate: true },
+        }),
+      ]);
+
+    const suppressedRecurring = new Set(
+      cancelExceptions.map(
+        (entry) => `${entry.slotId}-${entry.occurrenceDate.toISOString().slice(0, 10)}`,
+      ),
+    );
+
+    const occurrences: Array<{
+      id: string;
+      occurrenceDate: string;
+      startMinute: number;
+      endMinute: number;
+      className: string;
+      subjectName: string;
+      teacherName: string;
+    }> = [];
+
+    for (
+      let cursor = new Date(fromDate);
+      cursor <= toDate;
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000)
+    ) {
+      const weekday = cursor.getUTCDay() === 0 ? 7 : cursor.getUTCDay();
+      const dateKey = cursor.toISOString().slice(0, 10);
+
+      for (const slot of recurringSlots) {
+        if (slot.weekday !== weekday) continue;
+        if (slot.activeFromDate && cursor < slot.activeFromDate) continue;
+        if (slot.activeToDate && cursor > slot.activeToDate) continue;
+        if (suppressedRecurring.has(`${slot.id}-${dateKey}`)) continue;
+
+        occurrences.push({
+          id: `rec-${slot.id}-${dateKey}`,
+          occurrenceDate: dateKey,
+          startMinute: slot.startMinute,
+          endMinute: slot.endMinute,
+          className: slot.class.name,
+          subjectName: slot.subject.name,
+          teacherName: `${slot.teacherUser.firstName} ${slot.teacherUser.lastName}`,
+        });
+      }
+    }
+
+    for (const slot of oneOffSlots) {
+      occurrences.push({
+        id: `oneoff-${slot.id}`,
+        occurrenceDate: slot.occurrenceDate.toISOString().slice(0, 10),
+        startMinute: slot.startMinute,
+        endMinute: slot.endMinute,
+        className: slot.class.name,
+        subjectName: slot.subject.name,
+        teacherName: `${slot.teacherUser.firstName} ${slot.teacherUser.lastName}`,
+      });
+    }
+
+    for (const exception of exceptions) {
+      occurrences.push({
+        id: `override-${exception.id}`,
+        occurrenceDate: exception.occurrenceDate.toISOString().slice(0, 10),
+        startMinute: exception.startMinute ?? exception.slot.startMinute,
+        endMinute: exception.endMinute ?? exception.slot.endMinute,
+        className: exception.class.name,
+        subjectName:
+          exception.subject?.name ?? exception.slot.subject.name,
+        teacherName: exception.teacherUser
+          ? `${exception.teacherUser.firstName} ${exception.teacherUser.lastName}`
+          : `${exception.slot.teacherUser.firstName} ${exception.slot.teacherUser.lastName}`,
+      });
+    }
+
+    return occurrences.sort((a, b) => {
+      if (a.occurrenceDate !== b.occurrenceDate) {
+        return a.occurrenceDate.localeCompare(b.occurrenceDate);
+      }
+      return a.startMinute - b.startMinute;
+    });
   }
 
   async listClassSubjectOverrides(schoolId: string, classId: string) {

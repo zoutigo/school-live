@@ -41,5 +41,9 @@ export class CreateClassTimetableSlotExceptionDto {
 
   @IsOptional()
   @IsString()
+  roomId?: string;
+
+  @IsOptional()
+  @IsString()
   reason?: string;
 }

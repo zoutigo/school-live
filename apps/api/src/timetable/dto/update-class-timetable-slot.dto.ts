@@ -39,6 +39,10 @@ export class UpdateClassTimetableSlotDto {
   room?: string | null;
 
   @IsOptional()
+  @IsString()
+  roomId?: string | null;
+
+  @IsOptional()
   @IsDateString()
   activeFromDate?: string;
 

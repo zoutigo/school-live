@@ -70,6 +70,7 @@ const prisma = {
   subject: { findFirst: jest.fn() },
   classCurriculum: { findFirst: jest.fn() },
   classTimetableSubjectStyle: { findFirst: jest.fn(), upsert: jest.fn() },
+  room: { findFirst: jest.fn(), findUnique: jest.fn() },
 };
 
 const service = new TimetableService(prisma as never);
