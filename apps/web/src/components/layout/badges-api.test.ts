@@ -65,10 +65,7 @@ describe("badges-api", () => {
     });
 
     it("returns null when the cached value is corrupted JSON", () => {
-      window.localStorage.setItem(
-        "scolive:badges:college-vogt",
-        "{not-json",
-      );
+      window.localStorage.setItem("scolive:badges:college-vogt", "{not-json");
       expect(readCachedUnreadSummary("college-vogt")).toBeNull();
     });
 
@@ -94,7 +91,9 @@ describe("badges-api", () => {
       document.cookie = "school_live_csrf_token=csrf-123";
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
-        .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+        .mockResolvedValue(
+          new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
 
       await markBadgeRead("college-vogt", "DISCIPLINE", "child-1");
 
@@ -118,9 +117,9 @@ describe("badges-api", () => {
         new Response(JSON.stringify({ message: "bad" }), { status: 400 }),
       );
 
-      await expect(
-        markBadgeRead("college-vogt", "FEED"),
-      ).rejects.toThrow("MARK_BADGE_READ_FAILED");
+      await expect(markBadgeRead("college-vogt", "FEED")).rejects.toThrow(
+        "MARK_BADGE_READ_FAILED",
+      );
     });
   });
 });

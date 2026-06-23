@@ -59,11 +59,7 @@ describe("BadgesController", () => {
 
     const result = await controller.markRead(user, "school-1", dto);
 
-    expect(service.markRead).toHaveBeenCalledWith(
-      user,
-      "NOTES",
-      "student-1",
-    );
+    expect(service.markRead).toHaveBeenCalledWith(user, "NOTES", "student-1");
     expect(result).toEqual({ ok: true });
   });
 

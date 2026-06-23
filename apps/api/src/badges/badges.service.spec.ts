@@ -3,7 +3,9 @@ import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { BadgesService } from "./badges.service.js";
 
-function makeUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
+function makeUser(
+  overrides: Partial<AuthenticatedUser> = {},
+): AuthenticatedUser {
   return {
     id: "user-1",
     firstName: "Ada",
@@ -60,10 +62,7 @@ describe("BadgesService", () => {
     prisma.studentLifeEvent.count.mockResolvedValue(0);
 
     const module = await Test.createTestingModule({
-      providers: [
-        BadgesService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [BadgesService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get(BadgesService);

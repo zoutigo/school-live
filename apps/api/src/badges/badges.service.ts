@@ -32,7 +32,10 @@ export class BadgesService {
 
     const childrenTotal = children.reduce(
       (sum, child) =>
-        sum + child.homeworkPending + child.notesUnread + child.disciplineUnread,
+        sum +
+        child.homeworkPending +
+        child.notesUnread +
+        child.disciplineUnread,
       0,
     );
     const teacherTotal = teacherClasses.reduce(
@@ -158,9 +161,7 @@ export class BadgesService {
   ): Promise<ChildBadgeSummary[]> {
     const students = await this.resolveChildStudents(user, schoolId);
     return Promise.all(
-      students.map((student) =>
-        this.getChildBadge(user.id, schoolId, student),
-      ),
+      students.map((student) => this.getChildBadge(user.id, schoolId, student)),
     );
   }
 

@@ -1,20 +1,6 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { TimetableService } from "../src/timetable/timetable.service.js";
 
-type Role = "SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT";
-type SchoolRole = "SCHOOL_ADMIN" | "SCHOOL_MANAGER" | "SUPERVISOR" | "TEACHER";
-
-function makeUser(id: string, schoolRole: SchoolRole, platformRoles: Role[] = []) {
-  return {
-    id,
-    platformRoles,
-    memberships: [{ schoolId: "school-1", role: schoolRole }],
-    profileCompleted: true,
-    firstName: "User",
-    lastName: id,
-  };
-}
-
 const prisma = {
   $transaction: jest.fn(),
   room: {
@@ -58,9 +44,11 @@ beforeEach(() => {
 });
 
 function callEnsureNoSlotConflicts(input: Record<string, unknown>) {
-  return (service as unknown as {
-    ensureNoSlotConflicts: (input: Record<string, unknown>) => Promise<void>;
-  }).ensureNoSlotConflicts(input);
+  return (
+    service as unknown as {
+      ensureNoSlotConflicts: (input: Record<string, unknown>) => Promise<void>;
+    }
+  ).ensureNoSlotConflicts(input);
 }
 
 describe("ensureNoSlotConflicts — capacité et statut de salle", () => {
@@ -163,20 +151,26 @@ describe("resolveRoomReference", () => {
     roomId: string | null | undefined,
     room: string | null | undefined,
   ) {
-    return (service as unknown as {
-      resolveRoomReference: (
-        schoolId: string,
-        roomId: string | null | undefined,
-        room: string | null | undefined,
-        locale?: "fr" | "en",
-      ) => Promise<{ roomId: string | null; room: string | null }>;
-    }).resolveRoomReference(schoolId, roomId, room);
+    return (
+      service as unknown as {
+        resolveRoomReference: (
+          schoolId: string,
+          roomId: string | null | undefined,
+          room: string | null | undefined,
+          locale?: "fr" | "en",
+        ) => Promise<{ roomId: string | null; room: string | null }>;
+      }
+    ).resolveRoomReference(schoolId, roomId, room);
   }
 
   it("résout via roomId si fourni et que la salle existe dans l'école", async () => {
     prisma.room.findFirst.mockResolvedValue({ id: "room-1", name: "B14" });
 
-    const result = await callResolveRoomReference("school-1", "room-1", undefined);
+    const result = await callResolveRoomReference(
+      "school-1",
+      "room-1",
+      undefined,
+    );
 
     expect(result).toEqual({ roomId: "room-1", room: "B14" });
   });
@@ -192,7 +186,11 @@ describe("resolveRoomReference", () => {
   it("retombe sur le texte libre et tente une correspondance par nom si roomId est absent", async () => {
     prisma.room.findFirst.mockResolvedValue({ id: "room-2" });
 
-    const result = await callResolveRoomReference("school-1", undefined, "Gymnase");
+    const result = await callResolveRoomReference(
+      "school-1",
+      undefined,
+      "Gymnase",
+    );
 
     expect(result).toEqual({ roomId: "room-2", room: "Gymnase" });
   });
@@ -200,13 +198,21 @@ describe("resolveRoomReference", () => {
   it("retourne roomId null si le texte libre ne correspond à aucune salle connue", async () => {
     prisma.room.findFirst.mockResolvedValue(null);
 
-    const result = await callResolveRoomReference("school-1", undefined, "Salle inconnue");
+    const result = await callResolveRoomReference(
+      "school-1",
+      undefined,
+      "Salle inconnue",
+    );
 
     expect(result).toEqual({ roomId: null, room: "Salle inconnue" });
   });
 
   it("retourne tout à null si ni roomId ni room ne sont fournis", async () => {
-    const result = await callResolveRoomReference("school-1", undefined, undefined);
+    const result = await callResolveRoomReference(
+      "school-1",
+      undefined,
+      undefined,
+    );
 
     expect(result).toEqual({ roomId: null, room: null });
     expect(prisma.room.findFirst).not.toHaveBeenCalled();

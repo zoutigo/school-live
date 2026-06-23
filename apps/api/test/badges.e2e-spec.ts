@@ -33,7 +33,6 @@ describe("Badges API e2e", () => {
   let parentUserId = "";
   let teacherUserId = "";
   let studentId = "";
-  let homeworkId = "";
   let evaluationId = "";
 
   let parentToken = "";
@@ -161,7 +160,7 @@ describe("Badges API e2e", () => {
       data: { schoolId, schoolYearId, teacherUserId, classId, subjectId },
     });
 
-    const homework = await prisma.homework.create({
+    await prisma.homework.create({
       data: {
         schoolId,
         schoolYearId,
@@ -173,8 +172,6 @@ describe("Badges API e2e", () => {
       },
       select: { id: true },
     });
-    homeworkId = homework.id;
-
     const evaluation = await prisma.evaluation.create({
       data: {
         schoolId,
@@ -262,14 +259,17 @@ describe("Badges API e2e", () => {
   });
 
   it("clears the feed badge after marking it read, ignoring the client-provided scopeRefId", async () => {
-    const markRead = await apiJson(`/api/schools/${schoolSlug}/me/read-markers`, {
-      method: "PATCH",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${parentToken}`,
+    const markRead = await apiJson(
+      `/api/schools/${schoolSlug}/me/read-markers`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${parentToken}`,
+        },
+        body: JSON.stringify({ scope: "FEED", scopeRefId: "some-other-id" }),
       },
-      body: JSON.stringify({ scope: "FEED", scopeRefId: "some-other-id" }),
-    });
+    );
     expect(markRead.response.status).toBe(200);
     expect(markRead.body).toEqual({ ok: true });
 
@@ -281,14 +281,17 @@ describe("Badges API e2e", () => {
   });
 
   it("clears the notes badge after marking it read, without affecting discipline", async () => {
-    const markRead = await apiJson(`/api/schools/${schoolSlug}/me/read-markers`, {
-      method: "PATCH",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${parentToken}`,
+    const markRead = await apiJson(
+      `/api/schools/${schoolSlug}/me/read-markers`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${parentToken}`,
+        },
+        body: JSON.stringify({ scope: "NOTES", scopeRefId: studentId }),
       },
-      body: JSON.stringify({ scope: "NOTES", scopeRefId: studentId }),
-    });
+    );
     expect(markRead.response.status).toBe(200);
     expect(markRead.body).toEqual({ ok: true });
 

@@ -579,9 +579,7 @@ export function AppSidebar({
   const [teacherClasses, setTeacherClasses] = useState<TeacherClassNav[]>([]);
   const [openTeacherSection, setOpenTeacherSection] =
     useState<string>("classes");
-  const [badgeSummary, setBadgeSummary] = useState<UnreadSummary | null>(
-    null,
-  );
+  const [badgeSummary, setBadgeSummary] = useState<UnreadSummary | null>(null);
   const items = buildItems(role, schoolSlug, t, badgeSummary);
   const ticketsUnread = toUnread(
     (badgeSummary?.ticketsNeedingResponse ?? 0) +
@@ -632,7 +630,9 @@ export function AppSidebar({
 
     // Show the last known counts immediately (useful offline / on a flaky
     // connection), then refresh from the API.
-    setBadgeSummary((current) => current ?? readCachedUnreadSummary(schoolSlug));
+    setBadgeSummary(
+      (current) => current ?? readCachedUnreadSummary(schoolSlug),
+    );
     void loadBadgeSummary(schoolSlug);
   }, [schoolSlug, role, pathname]);
 
@@ -939,9 +939,7 @@ export function AppSidebar({
                         </span>
                         {typeof item.unread === "number" ? (
                           <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                            <Badge variant="notification">
-                              {item.unread}
-                            </Badge>
+                            <Badge variant="notification">{item.unread}</Badge>
                           </span>
                         ) : null}
                       </Link>
@@ -1087,9 +1085,7 @@ export function AppSidebar({
                   </span>
                   {typeof item.unread === "number" ? (
                     <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                      <Badge variant="notification">
-                        {item.unread}
-                      </Badge>
+                      <Badge variant="notification">{item.unread}</Badge>
                     </span>
                   ) : null}
                 </Link>
@@ -1152,9 +1148,7 @@ export function AppSidebar({
                         </span>
                         {typeof item.unread === "number" ? (
                           <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                            <Badge variant="notification">
-                              {item.unread}
-                            </Badge>
+                            <Badge variant="notification">{item.unread}</Badge>
                           </span>
                         ) : null}
                       </Link>

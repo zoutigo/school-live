@@ -15,7 +15,10 @@ const POLYVALENT_NAME_HINTS = ["gymnase", "gym", "polyvalente", "polyvalent"];
 const MODELS = [
   { delegate: "classTimetableSlot", label: "ClassTimetableSlot" },
   { delegate: "classTimetableOneOffSlot", label: "ClassTimetableOneOffSlot" },
-  { delegate: "classTimetableSlotException", label: "ClassTimetableSlotException" },
+  {
+    delegate: "classTimetableSlotException",
+    label: "ClassTimetableSlotException",
+  },
 ];
 
 function normalizeKey(room) {
@@ -28,12 +31,18 @@ function looksPolyvalent(name) {
 }
 
 async function main() {
-  const schools = await prisma.school.findMany({ select: { id: true, slug: true } });
+  const schools = await prisma.school.findMany({
+    select: { id: true, slug: true },
+  });
 
   const summary = {
     schoolsProcessed: schools.length,
     roomsCreated: 0,
-    rowsLinked: { ClassTimetableSlot: 0, ClassTimetableOneOffSlot: 0, ClassTimetableSlotException: 0 },
+    rowsLinked: {
+      ClassTimetableSlot: 0,
+      ClassTimetableOneOffSlot: 0,
+      ClassTimetableSlotException: 0,
+    },
     unresolvedRows: [],
   };
 
@@ -91,7 +100,11 @@ async function main() {
         const key = normalizeKey(trimmed);
         const match = roomsByKey.get(key);
         if (!match?.roomId) {
-          summary.unresolvedRows.push({ model: label, id: row.id, room: row.room });
+          summary.unresolvedRows.push({
+            model: label,
+            id: row.id,
+            room: row.room,
+          });
           continue;
         }
         await prisma[delegate].update({

@@ -142,9 +142,10 @@ export default function RoomsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<
-    { id: string; label: string } | null
-  >(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -217,7 +218,12 @@ export default function RoomsPage() {
     ) {
       return;
     }
-    void loadRoomCalendar(schoolSlug, calendarRoomId, calendarFromDate, calendarToDate);
+    void loadRoomCalendar(
+      schoolSlug,
+      calendarRoomId,
+      calendarFromDate,
+      calendarToDate,
+    );
   }, [tab, schoolSlug, calendarRoomId, calendarFromDate, calendarToDate]);
 
   function buildAdminPath(currentSchoolSlug: string, segment: string) {
@@ -671,13 +677,19 @@ export default function RoomsPage() {
                   <tbody>
                     {calendarLoading ? (
                       <tr>
-                        <td className="px-3 py-6 text-text-secondary" colSpan={5}>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={5}
+                        >
                           {t("common.loading")}
                         </td>
                       </tr>
                     ) : calendarEntries.length === 0 ? (
                       <tr>
-                        <td className="px-3 py-6 text-text-secondary" colSpan={5}>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={5}
+                        >
                           {t("salles.calendar.empty")}
                         </td>
                       </tr>
@@ -742,7 +754,9 @@ export default function RoomsPage() {
                 </FormField>
                 <FormField
                   label={t("salles.form.maxConcurrentSlotsLabel")}
-                  error={createForm.formState.errors.maxConcurrentSlots?.message}
+                  error={
+                    createForm.formState.errors.maxConcurrentSlots?.message
+                  }
                 >
                   <FormTextInput
                     aria-label={t("salles.form.maxConcurrentSlotsLabel")}
@@ -827,7 +841,10 @@ export default function RoomsPage() {
                   <tbody>
                     {(loading || loadingData) && (
                       <tr>
-                        <td className="px-3 py-6 text-text-secondary" colSpan={6}>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={6}
+                        >
                           {t("common.loading")}
                         </td>
                       </tr>
@@ -876,7 +893,9 @@ export default function RoomsPage() {
                                 <div className="grid gap-3 md:grid-cols-5">
                                   <FormField
                                     label={t("salles.form.nameLabel")}
-                                    error={editForm.formState.errors.name?.message}
+                                    error={
+                                      editForm.formState.errors.name?.message
+                                    }
                                   >
                                     <FormTextInput
                                       aria-label={t("salles.form.nameLabel")}
@@ -1017,7 +1036,10 @@ export default function RoomsPage() {
 
                     {!loading && !loadingData && sortedRooms.length === 0 ? (
                       <tr>
-                        <td className="px-3 py-6 text-text-secondary" colSpan={6}>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={6}
+                        >
                           {t("salles.list.empty")}
                         </td>
                       </tr>

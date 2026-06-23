@@ -573,9 +573,7 @@ describe("AppSidebar badges", () => {
 
     render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "MBELE Lisa" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "MBELE Lisa" }));
 
     const vieScolaireLink = await screen.findByRole("link", {
       name: /Vie scolaire/,

@@ -2474,7 +2474,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "salles.calendar.colClass": "Classe",
     "salles.calendar.colSubject": "Matiere",
     "salles.calendar.colTeacher": "Enseignant",
-    "salles.calendar.empty": "Aucun cours prevu pour cette salle sur la periode.",
+    "salles.calendar.empty":
+      "Aucun cours prevu pour cette salle sur la periode.",
     "salles.schoolLabel": "Ecole",
     "salles.schoolPlaceholder": "Selectionner une ecole",
     "salles.noSchool": "Selectionnez une ecole pour gerer ses salles.",
@@ -5257,7 +5258,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "salles.calendar.colClass": "Class",
     "salles.calendar.colSubject": "Subject",
     "salles.calendar.colTeacher": "Teacher",
-    "salles.calendar.empty": "No classes scheduled for this room in this period.",
+    "salles.calendar.empty":
+      "No classes scheduled for this room in this period.",
     "salles.schoolLabel": "School",
     "salles.schoolPlaceholder": "Select a school",
     "salles.noSchool": "Select a school to manage its rooms.",
@@ -5290,8 +5292,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "salles.help.moduleSummary":
       "this module manages the school's physical rooms: name, capacity, availability, and concurrency (simultaneous classes).",
     "salles.help.action1.name": "Create a room",
-    "salles.help.action1.purpose":
-      "define the rooms available for timetables.",
+    "salles.help.action1.purpose": "define the rooms available for timetables.",
     "salles.help.action1.howTo":
       "enter the name, capacity and number of concurrent classes allowed, then add.",
     "salles.help.action1.moduleImpact":

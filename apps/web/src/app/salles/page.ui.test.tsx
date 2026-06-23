@@ -95,7 +95,10 @@ describe("Rooms page forms", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.endsWith("/api/me")) {
-        return jsonResponse({ role: "SCHOOL_ADMIN", schoolSlug: "college-vogt" });
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
       }
       if (url.includes("/admin/rooms")) {
         return jsonResponse([]);
