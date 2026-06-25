@@ -29,4 +29,11 @@ export class CreateMessageDto {
   @IsOptional()
   @IsBoolean()
   isDraft?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  forwardAttachmentIds?: string[];
 }

@@ -17,6 +17,10 @@ const fr: TranslationDict = {
   "messaging.errors.recipientsNotInSchool":
     "Certains destinataires ne sont pas membres de l'ecole.",
   "messaging.errors.insufficientRole": "Role insuffisant.",
+  "messaging.errors.invalidForwardAttachmentIds":
+    "Liste de pieces jointes a transferer invalide.",
+  "messaging.errors.forwardAttachmentNotFound":
+    "Une piece jointe a transferer est introuvable ou inaccessible.",
 };
 
 const en: TranslationDict = {
@@ -33,6 +37,10 @@ const en: TranslationDict = {
   "messaging.errors.recipientsNotInSchool":
     "Some recipients are not members of the school.",
   "messaging.errors.insufficientRole": "Insufficient role.",
+  "messaging.errors.invalidForwardAttachmentIds":
+    "Invalid list of attachments to forward.",
+  "messaging.errors.forwardAttachmentNotFound":
+    "A forwarded attachment could not be found or accessed.",
 };
 
 const translations: Record<MessagingLocale, TranslationDict> = {

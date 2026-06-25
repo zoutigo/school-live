@@ -402,6 +402,15 @@ export class MessagingService {
     const uploadedAttachments = attachments.length
       ? await this.uploadMessageAttachments(attachments)
       : [];
+    const forwardedAttachments = payload.forwardAttachmentIds?.length
+      ? await this.resolveForwardedAttachments(
+          user,
+          effectiveSchoolId,
+          payload.forwardAttachmentIds,
+          locale,
+        )
+      : [];
+    const allAttachments = [...uploadedAttachments, ...forwardedAttachments];
 
     let created: { id: string };
     try {
@@ -423,10 +432,10 @@ export class MessagingService {
                 },
               }
             : undefined,
-          attachments: uploadedAttachments.length
+          attachments: allAttachments.length
             ? {
                 createMany: {
-                  data: uploadedAttachments.map((attachment) => ({
+                  data: allAttachments.map((attachment) => ({
                     schoolId: effectiveSchoolId,
                     fileName: attachment.fileName,
                     fileUrl: attachment.fileUrl,
@@ -1107,6 +1116,66 @@ export class MessagingService {
     );
 
     return uploads;
+  }
+
+  private async resolveForwardedAttachments(
+    user: AuthenticatedUser,
+    schoolId: string,
+    attachmentIds: string[],
+    locale: MessagingLocale,
+  ) {
+    const uniqueIds = Array.from(new Set(attachmentIds));
+
+    const rows = await this.prisma.internalMessageAttachment.findMany({
+      where: {
+        id: { in: uniqueIds },
+        schoolId,
+      },
+      select: {
+        id: true,
+        fileName: true,
+        fileUrl: true,
+        mimeType: true,
+        sizeBytes: true,
+        message: {
+          select: {
+            senderUserId: true,
+            recipients: {
+              select: {
+                recipientUserId: true,
+                deletedAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const accessible = rows.filter((row) => {
+      if (row.message.senderUserId === user.id) {
+        return true;
+      }
+      return row.message.recipients.some(
+        (recipient) =>
+          recipient.recipientUserId === user.id && !recipient.deletedAt,
+      );
+    });
+
+    if (accessible.length !== uniqueIds.length) {
+      throw new BadRequestException(
+        translateMessagingError(
+          locale,
+          "messaging.errors.forwardAttachmentNotFound",
+        ),
+      );
+    }
+
+    return accessible.map((row) => ({
+      fileName: row.fileName,
+      fileUrl: row.fileUrl,
+      mimeType: row.mimeType,
+      sizeBytes: row.sizeBytes,
+    }));
   }
 
   private normalizeAttachmentFileName(fileName?: string) {
