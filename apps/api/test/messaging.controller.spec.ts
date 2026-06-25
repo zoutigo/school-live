@@ -176,4 +176,66 @@ describe("MessagingController", () => {
       [],
     );
   });
+
+  it("normalizes forwardAttachmentIds sent as a JSON string", async () => {
+    await controller.create(
+      user,
+      "school-1",
+      {
+        subject: "Tr: Sujet",
+        body: "<p>Bonjour</p>",
+        forwardAttachmentIds: '["att-1","att-2"]',
+      },
+      [],
+    );
+
+    expect(messagingService.createMessage).toHaveBeenCalledWith(
+      user,
+      "school-1",
+      {
+        subject: "Tr: Sujet",
+        body: "<p>Bonjour</p>",
+        recipientUserIds: undefined,
+        forwardAttachmentIds: ["att-1", "att-2"],
+      },
+      [],
+    );
+  });
+
+  it("normalizes forwardAttachmentIds sent as a comma separated string", async () => {
+    await controller.create(
+      user,
+      "school-1",
+      {
+        subject: "Tr: Sujet",
+        body: "<p>Bonjour</p>",
+        forwardAttachmentIds: "att-1,att-2",
+      },
+      [],
+    );
+
+    expect(messagingService.createMessage).toHaveBeenCalledWith(
+      user,
+      "school-1",
+      expect.objectContaining({
+        forwardAttachmentIds: ["att-1", "att-2"],
+      }),
+      [],
+    );
+  });
+
+  it("rejects an invalid forwardAttachmentIds payload", () => {
+    expect(() =>
+      controller.create(
+        user,
+        "school-1",
+        {
+          subject: "Sujet",
+          body: "<p>Bonjour</p>",
+          forwardAttachmentIds: { not: "an array" },
+        },
+        [],
+      ),
+    ).toThrow(BadRequestException);
+  });
 });

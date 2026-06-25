@@ -10,6 +10,12 @@ describe("MessagingService", () => {
       create: jest.fn(),
       findFirst: jest.fn(),
     },
+    internalMessageAttachment: {
+      findMany: jest.fn(),
+    },
+    schoolMembership: {
+      findMany: jest.fn(),
+    },
   };
 
   const mailService = {
@@ -44,6 +50,8 @@ describe("MessagingService", () => {
     prisma.internalMessageRecipient.count.mockReset();
     prisma.internalMessage.create.mockReset();
     prisma.internalMessage.findFirst.mockReset();
+    prisma.internalMessageAttachment.findMany.mockReset();
+    prisma.schoolMembership.findMany.mockReset();
     mailService.sendInternalMessageNotification.mockReset();
     mediaClientService.uploadImage.mockReset();
     mediaClientService.deleteImageByUrl.mockReset();
@@ -236,5 +244,122 @@ describe("MessagingService", () => {
         }),
       }),
     );
+  });
+
+  it("forwards an existing attachment by reference without re-uploading it", async () => {
+    prisma.schoolMembership.findMany.mockResolvedValue([{ userId: "user-2" }]);
+    prisma.internalMessageAttachment.findMany.mockResolvedValue([
+      {
+        id: "att-1",
+        fileName: "bulletin.pdf",
+        fileUrl: "https://cdn.example.com/bulletin.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 2048,
+        message: {
+          senderUserId: "other-user",
+          recipients: [{ recipientUserId: "user-1", deletedAt: null }],
+        },
+      },
+    ]);
+    prisma.internalMessage.create.mockResolvedValue({ id: "msg-fwd" });
+    prisma.internalMessage.findFirst.mockResolvedValue({
+      id: "msg-fwd",
+      schoolId: "school-1",
+      senderUserId: "user-1",
+      status: "SENT",
+      subject: "Tr: Sujet",
+      body: "<p>Bonjour</p>",
+      createdAt: new Date("2026-03-15T10:00:00.000Z"),
+      sentAt: new Date("2026-03-15T10:01:00.000Z"),
+      senderArchivedAt: null,
+      senderUser: {
+        id: "user-1",
+        firstName: "Valery",
+        lastName: "MBELE",
+        email: "valery@example.com",
+      },
+      attachments: [],
+      recipients: [],
+    });
+
+    await service.createMessage(baseUser, "school-1", {
+      recipientUserIds: ["user-2"],
+      subject: "Tr: Sujet",
+      body: "<p>Bonjour</p>",
+      isDraft: false,
+      forwardAttachmentIds: ["att-1"],
+    });
+
+    expect(mediaClientService.uploadImage).not.toHaveBeenCalled();
+    expect(prisma.internalMessageAttachment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ["att-1"] }, schoolId: "school-1" },
+      }),
+    );
+    expect(prisma.internalMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          attachments: {
+            createMany: {
+              data: [
+                {
+                  schoolId: "school-1",
+                  fileName: "bulletin.pdf",
+                  fileUrl: "https://cdn.example.com/bulletin.pdf",
+                  mimeType: "application/pdf",
+                  sizeBytes: 2048,
+                },
+              ],
+            },
+          },
+        }),
+      }),
+    );
+  });
+
+  it("rejects forwarding an attachment the user cannot access", async () => {
+    prisma.schoolMembership.findMany.mockResolvedValue([{ userId: "user-2" }]);
+    prisma.internalMessageAttachment.findMany.mockResolvedValue([
+      {
+        id: "att-1",
+        fileName: "bulletin.pdf",
+        fileUrl: "https://cdn.example.com/bulletin.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 2048,
+        message: {
+          senderUserId: "other-user",
+          recipients: [],
+        },
+      },
+    ]);
+
+    await expect(
+      service.createMessage(baseUser, "school-1", {
+        recipientUserIds: ["user-2"],
+        subject: "Tr: Sujet",
+        body: "<p>Bonjour</p>",
+        isDraft: false,
+        forwardAttachmentIds: ["att-1"],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.internalMessage.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects forwarding an attachment id that does not exist", async () => {
+    prisma.schoolMembership.findMany.mockResolvedValue([{ userId: "user-2" }]);
+    prisma.internalMessageAttachment.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.createMessage(baseUser, "school-1", {
+        recipientUserIds: ["user-2"],
+        subject: "Tr: Sujet",
+        body: "<p>Bonjour</p>",
+        isDraft: false,
+        forwardAttachmentIds: ["att-missing"],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.internalMessage.create).not.toHaveBeenCalled();
   });
 });

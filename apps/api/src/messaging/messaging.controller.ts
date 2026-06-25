@@ -221,17 +221,24 @@ export class MessagingController {
       "messaging.errors.invalidBody",
       locale,
     );
-    const recipientUserIds = this.normalizeRecipientIds(
+    const recipientUserIds = this.normalizeStringArrayField(
       payload.recipientUserIds,
+      "messaging.errors.invalidRecipientUserIds",
       locale,
     );
     const isDraft = this.normalizeBoolean(payload.isDraft, locale);
+    const forwardAttachmentIds = this.normalizeStringArrayField(
+      payload.forwardAttachmentIds,
+      "messaging.errors.invalidForwardAttachmentIds",
+      locale,
+    );
 
     return {
       subject,
       body,
       recipientUserIds,
       ...(isDraft === undefined ? {} : { isDraft }),
+      ...(forwardAttachmentIds === undefined ? {} : { forwardAttachmentIds }),
     } satisfies CreateMessageDto;
   }
 
@@ -247,7 +254,11 @@ export class MessagingController {
     return value;
   }
 
-  private normalizeRecipientIds(value: unknown, locale: MessagingLocale) {
+  private normalizeStringArrayField(
+    value: unknown,
+    errorKey: string,
+    locale: MessagingLocale,
+  ) {
     if (value === undefined || value === null || value === "") {
       return undefined;
     }
@@ -257,12 +268,7 @@ export class MessagingController {
     }
 
     if (typeof value !== "string") {
-      throw new BadRequestException(
-        translateMessagingError(
-          locale,
-          "messaging.errors.invalidRecipientUserIds",
-        ),
-      );
+      throw new BadRequestException(translateMessagingError(locale, errorKey));
     }
 
     const normalized = value.trim();
@@ -278,10 +284,7 @@ export class MessagingController {
         }
       } catch {
         throw new BadRequestException(
-          translateMessagingError(
-            locale,
-            "messaging.errors.invalidRecipientUserIds",
-          ),
+          translateMessagingError(locale, errorKey),
         );
       }
     }
