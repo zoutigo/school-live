@@ -526,7 +526,8 @@ describe("TeacherClassNotesPage evaluations tab", () => {
         description: "<p>Consignes <strong>riches</strong>.</p>",
         coefficient: 1.5,
         maxScore: 20,
-        term: "TERM_1",
+        sequence: "SEQ_1",
+        isFinalExam: false,
         scheduledAt: CREATED_EVALUATION_ISO,
         status: "DRAFT",
         attachments: [],
@@ -597,7 +598,8 @@ describe("TeacherClassNotesPage evaluations tab", () => {
         description: "<p>Resoudre les exercices <em>1 a 6</em>.</p>",
         coefficient: 2,
         maxScore: 20,
-        term: "TERM_1",
+        sequence: "SEQ_1",
+        isFinalExam: false,
         status: "PUBLISHED",
         attachments: [
           {
