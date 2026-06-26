@@ -30,6 +30,14 @@ type EvaluationRow = {
   _count: { scores: number };
 };
 
+export type Sequence =
+  | "SEQ_1"
+  | "SEQ_2"
+  | "SEQ_3"
+  | "SEQ_4"
+  | "SEQ_5"
+  | "SEQ_6";
+
 export type CreateEvaluationFormValues = {
   subjectId: string;
   subjectBranchId: string;
@@ -38,7 +46,8 @@ export type CreateEvaluationFormValues = {
   description: string;
   coefficient: number;
   maxScore: number;
-  term: "TERM_1" | "TERM_2" | "TERM_3";
+  sequence: Sequence;
+  isFinalExam: boolean;
   scheduledAt: string;
   status: "DRAFT" | "PUBLISHED";
 };
@@ -62,7 +71,8 @@ export function getCreateEvaluationDefaults(
     description: overrides.description ?? "",
     coefficient: overrides.coefficient ?? 1,
     maxScore: overrides.maxScore ?? 20,
-    term: overrides.term ?? "TERM_1",
+    sequence: overrides.sequence ?? "SEQ_1",
+    isFinalExam: overrides.isFinalExam ?? false,
     scheduledAt: overrides.scheduledAt ?? "",
     status: overrides.status ?? "DRAFT",
   };

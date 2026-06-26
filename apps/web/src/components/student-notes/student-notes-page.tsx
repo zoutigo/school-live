@@ -7,6 +7,7 @@ import {
   Medal,
   Sparkles,
   TrendingUp,
+  FlaskConical,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ChildModulePage } from "../family/child-module-page";
@@ -18,6 +19,7 @@ import type {
   StudentEvaluation,
   StudentNotesTerm,
   StudentNotesTermSnapshot,
+  StudentNotesSequenceSnapshot,
   StudentNotesView,
   StudentSubjectNotes,
 } from "./student-notes.types";
@@ -33,7 +35,6 @@ function formatScore(value: number | null) {
   if (value === null) {
     return "-";
   }
-
   return value % 1 === 0 ? `${value}` : value.toFixed(2).replace(".", ",");
 }
 
@@ -45,12 +46,10 @@ function formatDelta(
   if (studentValue === null || classValue === null) {
     return null;
   }
-
   const delta = studentValue - classValue;
   if (Math.abs(delta) < 0.01) {
     return t("notes.student.hero.levelWithClass");
   }
-
   const prefix = delta > 0 ? "+" : "";
   return t("notes.student.hero.deltaVsClass").replace(
     "{value}",
@@ -88,7 +87,10 @@ function formatPlainEvaluationScore(
   };
 }
 
-function buildRadarPoints(snapshot: StudentNotesTermSnapshot) {
+function buildRadarPoints(snapshot: {
+  subjects: StudentSubjectNotes[];
+  generalAverage: StudentNotesTermSnapshot["generalAverage"];
+}) {
   const eligibleSubjects = snapshot.subjects.filter(
     (subject) =>
       subject.studentAverage !== null && subject.classAverage !== null,
@@ -120,33 +122,41 @@ function buildRadarPoints(snapshot: StudentNotesTermSnapshot) {
   };
 }
 
-function PeriodHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
+function PeriodHero({
+  generalAverage,
+  label,
+  councilLabel,
+  generatedAtLabel,
+  subjects,
+}: {
+  generalAverage: StudentNotesTermSnapshot["generalAverage"];
+  label: string;
+  councilLabel: string;
+  generatedAtLabel: string;
+  subjects: StudentSubjectNotes[];
+}) {
   const { t } = useTranslation();
-  const bestSubject = [...snapshot.subjects]
+  const bestSubject = [...subjects]
     .filter((subject) => subject.studentAverage !== null)
     .sort((a, b) => (b.studentAverage ?? 0) - (a.studentAverage ?? 0))[0];
 
-  const watchSubject = [...snapshot.subjects]
+  const watchSubject = [...subjects]
     .filter((subject) => subject.studentAverage !== null)
     .sort((a, b) => (a.studentAverage ?? 99) - (b.studentAverage ?? 99))[0];
 
   const stats = [
     {
       label: t("notes.student.hero.studentAverage"),
-      value: formatScore(snapshot.generalAverage.student),
-      hint: formatDelta(
-        t,
-        snapshot.generalAverage.student,
-        snapshot.generalAverage.class,
-      ),
+      value: formatScore(generalAverage.student),
+      hint: formatDelta(t, generalAverage.student, generalAverage.class),
       icon: Medal,
     },
     {
       label: t("notes.student.hero.classAverage"),
-      value: formatScore(snapshot.generalAverage.class),
+      value: formatScore(generalAverage.class),
       hint: t("notes.student.hero.classAverageHint")
-        .replace("{min}", formatScore(snapshot.generalAverage.min))
-        .replace("{max}", formatScore(snapshot.generalAverage.max)),
+        .replace("{min}", formatScore(generalAverage.min))
+        .replace("{max}", formatScore(generalAverage.max)),
       icon: TrendingUp,
     },
     {
@@ -182,10 +192,10 @@ function PeriodHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
             </div>
             <div>
               <h3 className="font-heading text-lg font-semibold text-text-primary min-[360px]:text-xl sm:text-2xl">
-                {snapshot.label}
+                {label}
               </h3>
               <p className="mt-1 max-w-3xl text-[11px] text-text-secondary min-[360px]:text-xs sm:text-sm">
-                {snapshot.councilLabel}
+                {councilLabel}
               </p>
             </div>
           </div>
@@ -195,7 +205,7 @@ function PeriodHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
               {t("notes.student.hero.publishedData")}
             </p>
             <p className="mt-1 text-[11px] font-semibold text-text-primary min-[360px]:text-xs sm:text-sm">
-              {snapshot.generatedAtLabel}
+              {generatedAtLabel}
             </p>
           </div>
         </div>
@@ -309,6 +319,36 @@ function ViewTabs({
   );
 }
 
+/** Chip badge "Examen" ou "Formative" si l'éval ne compte pas */
+function EvalTypeBadge({
+  isFinalExam,
+  countsForAverage,
+}: {
+  isFinalExam: boolean;
+  countsForAverage: boolean;
+}) {
+  const { t } = useTranslation();
+  if (isFinalExam) {
+    return (
+      <span className="ml-1 inline-flex items-center rounded-full border border-primary/25 bg-primary/8 px-1.5 py-px text-[9px] font-semibold uppercase tracking-[0.1em] text-primary">
+        {t("notes.student.evaluation.examBadge")}
+      </span>
+    );
+  }
+  if (!countsForAverage) {
+    return (
+      <span
+        className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-px text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-700"
+        title={t("notes.student.evaluation.legendFormative")}
+      >
+        <FlaskConical className="h-2.5 w-2.5" />
+        <span>{t("notes.student.evaluation.formativeBadge")}</span>
+      </span>
+    );
+  }
+  return null;
+}
+
 function EvaluationChip({
   evaluation,
   onOpen,
@@ -326,8 +366,9 @@ function EvaluationChip({
     evaluation.status === "ABSENT" ||
     evaluation.status === "EXCUSED" ||
     evaluation.status === "NOT_GRADED";
-  const tone =
-    evaluation.status === "ABSENT"
+  const tone = !evaluation.countsForAverage
+    ? "text-amber-600"
+    : evaluation.status === "ABSENT"
       ? "text-sky-600"
       : evaluation.status === "EXCUSED"
         ? "text-emerald-600"
@@ -352,7 +393,9 @@ function EvaluationChip({
                   ? "border-emerald-300 bg-emerald-50"
                   : "border-slate-300 bg-slate-100"
             }`
-          : `inline-flex items-baseline border-b border-transparent px-0 py-0 text-[11px] font-semibold leading-6 transition hover:border-current min-[360px]:text-[13px] sm:text-[15px] ${tone}`
+          : !evaluation.countsForAverage
+            ? `inline-flex items-baseline border-b border-dashed border-amber-400 px-0 py-0 text-[11px] font-semibold leading-6 transition hover:opacity-85 min-[360px]:text-[13px] sm:text-[15px] ${tone}`
+            : `inline-flex items-baseline border-b border-transparent px-0 py-0 text-[11px] font-semibold leading-6 transition hover:border-current min-[360px]:text-[13px] sm:text-[15px] ${tone}`
       }
       title={formatEvaluationLabel(evaluation)}
     >
@@ -382,13 +425,11 @@ function EvaluationDetailModal({
     if (!open) {
       return;
     }
-
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
       }
     }
-
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
@@ -418,9 +459,13 @@ function EvaluationDetailModal({
             <h3 className="mt-1 font-heading text-xl font-semibold text-text-primary">
               {subject.subjectLabel}
             </h3>
-            <p className="mt-1 text-sm text-text-secondary">
-              {evaluation.label}
-            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <p className="text-sm text-text-secondary">{evaluation.label}</p>
+              <EvalTypeBadge
+                isFinalExam={evaluation.isFinalExam}
+                countsForAverage={evaluation.countsForAverage}
+              />
+            </div>
           </div>
           <button
             type="button"
@@ -430,6 +475,15 @@ function EvaluationDetailModal({
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {!evaluation.countsForAverage ? (
+          <div className="mt-3 rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+            <strong>
+              {t("notes.student.evaluation.formativeWarningTitle")}
+            </strong>{" "}
+            — {t("notes.student.evaluation.formativeWarningBody")}
+          </div>
+        ) : null}
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="rounded-card border border-border bg-background px-4 py-3">
@@ -522,13 +576,11 @@ function SubjectAverageDetailModal({
     if (!open) {
       return;
     }
-
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
       }
     }
-
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
@@ -681,7 +733,6 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
                       {subject.subjectLabel}
                     </p>
                   </div>
-
                   <div className="flex shrink-0 items-center justify-center">
                     <button
                       type="button"
@@ -695,7 +746,6 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
                       {formatScore(subject.studentAverage)}
                     </button>
                   </div>
-
                   <div className="shrink-0 text-right text-[11px] font-semibold text-text-primary min-[360px]:text-xs sm:text-sm">
                     <span className="mr-1 text-[8px] uppercase tracking-[0.08em] text-text-secondary min-[360px]:text-[9px] min-[360px]:tracking-[0.1em] sm:text-[10px] sm:tracking-[0.12em]">
                       {t("notes.student.table.coefficient")}
@@ -758,9 +808,12 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
                 </div>
 
                 <div className="min-w-0">
-                  <div className="max-w-full text-[15px] leading-7">
-                    {subject.evaluations.map((evaluation, index) => (
-                      <span key={evaluation.id} className="inline">
+                  <div className="flex max-w-full flex-wrap gap-x-4 gap-y-1 text-[15px] leading-7">
+                    {subject.evaluations.map((evaluation) => (
+                      <span
+                        key={evaluation.id}
+                        className="inline-flex items-center gap-1"
+                      >
                         <EvaluationChip
                           evaluation={evaluation}
                           onOpen={(entry) => {
@@ -768,9 +821,10 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
                             setSelectedEvaluation(entry);
                           }}
                         />
-                        {index < subject.evaluations.length - 1 ? (
-                          <span className="mx-2 text-border">•</span>
-                        ) : null}
+                        <EvalTypeBadge
+                          isFinalExam={evaluation.isFinalExam}
+                          countsForAverage={evaluation.countsForAverage}
+                        />
                       </span>
                     ))}
                   </div>
@@ -791,7 +845,11 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
                 subjects.reduce(
                   (sum, subject) => sum + (subject.studentAverage ?? 0),
                   0,
-                ) / Math.max(subjects.length, 1),
+                ) /
+                  Math.max(
+                    subjects.filter((s) => s.studentAverage !== null).length,
+                    1,
+                  ),
               )}
             </div>
             <div className="text-[10px] text-text-secondary min-[360px]:text-[11px] sm:text-xs">
@@ -820,6 +878,12 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
           </span>{" "}
           {t("notes.student.evaluation.legendNotGraded")}
         </span>
+        <span>
+          <span className="font-semibold text-amber-600">
+            {t("notes.student.evaluation.legendFormativeLabel")}
+          </span>{" "}
+          {t("notes.student.evaluation.legendFormative")}
+        </span>
       </div>
 
       <EvaluationDetailModal
@@ -841,10 +905,10 @@ function EvaluationsTable({ subjects }: { subjects: StudentSubjectNotes[] }) {
 }
 
 function AveragesTable({
-  snapshot,
+  generalAverage,
   subjects,
 }: {
-  snapshot: StudentNotesTermSnapshot;
+  generalAverage: StudentNotesTermSnapshot["generalAverage"];
   subjects: StudentSubjectNotes[];
 }) {
   const { t } = useTranslation();
@@ -932,15 +996,9 @@ function AveragesTable({
                 </div>
               </div>
               <div className="hidden text-center text-sm font-semibold text-text-primary lg:block">
-                <span className="mr-2 text-[10px] uppercase tracking-[0.12em] text-text-secondary lg:hidden">
-                  {t("notes.student.averagesTable.coefficient")}
-                </span>
                 {subject.coefficient}
               </div>
               <div className="hidden text-center font-heading text-lg font-semibold text-primary lg:block">
-                <span className="mr-2 align-middle font-body text-[10px] uppercase tracking-[0.12em] text-text-secondary lg:hidden">
-                  {t("notes.student.averagesTable.student")}
-                </span>
                 {formatScore(subject.studentAverage)}
               </div>
               <div className="hidden lg:contents">
@@ -978,42 +1036,42 @@ function AveragesTable({
                 {t("notes.student.averagesTable.generalAverage")}
               </p>
               <span className="font-heading text-lg font-semibold text-primary lg:hidden">
-                {formatScore(snapshot.generalAverage.student)}
+                {formatScore(generalAverage.student)}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-text-secondary lg:hidden">
               <span>
                 {t("notes.student.averagesTable.classPrefix")}{" "}
                 <span className="font-medium text-text-primary">
-                  {formatScore(snapshot.generalAverage.class)}
+                  {formatScore(generalAverage.class)}
                 </span>
               </span>
               <span>
                 {t("notes.student.averagesTable.minPrefix")}{" "}
                 <span className="font-medium text-text-primary">
-                  {formatScore(snapshot.generalAverage.min)}
+                  {formatScore(generalAverage.min)}
                 </span>
               </span>
               <span>
                 {t("notes.student.averagesTable.maxPrefix")}{" "}
                 <span className="font-medium text-text-primary">
-                  {formatScore(snapshot.generalAverage.max)}
+                  {formatScore(generalAverage.max)}
                 </span>
               </span>
             </div>
           </div>
           <div className="hidden text-center lg:block">-</div>
           <div className="hidden text-center font-heading text-xl font-semibold text-primary lg:block">
-            {formatScore(snapshot.generalAverage.student)}
+            {formatScore(generalAverage.student)}
           </div>
           <div className="hidden text-center lg:block">
-            {formatScore(snapshot.generalAverage.class)}
+            {formatScore(generalAverage.class)}
           </div>
           <div className="hidden text-center lg:block">
-            {formatScore(snapshot.generalAverage.min)}
+            {formatScore(generalAverage.min)}
           </div>
           <div className="hidden text-center lg:block">
-            {formatScore(snapshot.generalAverage.max)}
+            {formatScore(generalAverage.max)}
           </div>
           <div className="text-sm text-text-secondary">
             {t("notes.student.averagesTable.globalPositioning")}
@@ -1025,14 +1083,19 @@ function AveragesTable({
 }
 
 function ChartsPanel({
-  snapshot,
-  radar,
+  subjects,
+  generalAverage,
 }: {
-  snapshot: StudentNotesTermSnapshot;
-  radar: ReturnType<typeof buildRadarPoints>;
+  subjects: StudentSubjectNotes[];
+  generalAverage: StudentNotesTermSnapshot["generalAverage"];
 }) {
   const { t } = useTranslation();
-  if (snapshot.subjects.length === 0) {
+  const radar = useMemo(
+    () => buildRadarPoints({ subjects, generalAverage }),
+    [subjects, generalAverage],
+  );
+
+  if (subjects.length === 0) {
     return (
       <div className="rounded-card border border-dashed border-border bg-background p-8 text-sm text-text-secondary">
         {t("notes.student.charts.empty")}
@@ -1048,7 +1111,7 @@ function ChartsPanel({
         className="overflow-hidden border-primary/10 bg-[linear-gradient(180deg,rgba(10,98,191,0.05),#FFFFFF_20%,rgba(28,154,138,0.03))]"
       >
         <div className="grid gap-5">
-          {snapshot.subjects.map((subject) => (
+          {subjects.map((subject) => (
             <div key={subject.id} className="grid gap-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1216,33 +1279,170 @@ function ChartsPanel({
   );
 }
 
-function StudentNotesContent({
+/** Onglets Séquence 1 / Séquence 2 à l'intérieur d'un trimestre */
+function SequenceTabs({
+  sequences,
+  activeSequence,
+  onSelect,
+}: {
+  sequences: StudentNotesSequenceSnapshot[];
+  activeSequence: string;
+  onSelect: (seq: string) => void;
+}) {
+  const { t } = useTranslation();
+  if (sequences.length <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {sequences.map((seq) => (
+        <button
+          key={seq.sequence}
+          type="button"
+          onClick={() => onSelect(seq.sequence)}
+          className={`rounded-[10px] border px-4 py-2 text-sm font-semibold transition ${
+            activeSequence === seq.sequence
+              ? "border-accent-teal bg-[linear-gradient(90deg,#1C9A8A,#239e91)] text-white shadow-[0_8px_18px_rgba(28,154,138,0.28)]"
+              : "border-border bg-surface text-text-secondary hover:border-accent-teal/40 hover:text-accent-teal-dark"
+          }`}
+        >
+          {seq.sequenceLabel}
+          {!seq.isFirstSeq ? (
+            <span className="ml-1.5 inline-block rounded-full bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-700">
+              {t("notes.student.sequence.examFinalBadge")}
+            </span>
+          ) : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Vue séquence : affiche les évals + résumé */
+function SequenceView({
   snapshot,
 }: {
-  snapshot: StudentNotesTermSnapshot;
+  snapshot: StudentNotesSequenceSnapshot;
 }) {
+  const { t } = useTranslation();
   const [view, setView] = useState<StudentNotesView>("evaluations");
-  const radar = useMemo(() => buildRadarPoints(snapshot), [snapshot]);
 
   return (
     <div className="grid gap-5">
-      <div className="order-1 lg:order-2">
+      {!snapshot.isFirstSeq ? (
+        <div className="flex items-start gap-3 rounded-[14px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <FlaskConical className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-semibold">
+              {t("notes.student.sequence.validationTitle")}
+            </p>
+            <p className="mt-0.5">
+              {t("notes.student.sequence.validationText")}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="order-1">
         <ViewTabs view={view} setView={setView} />
       </div>
-      <div className="order-2 lg:order-3">
+      <div className="order-2">
         {view === "evaluations" ? (
           <EvaluationsTable subjects={snapshot.subjects} />
         ) : null}
         {view === "averages" ? (
-          <AveragesTable snapshot={snapshot} subjects={snapshot.subjects} />
+          <AveragesTable
+            generalAverage={snapshot.generalAverage}
+            subjects={snapshot.subjects}
+          />
         ) : null}
         {view === "charts" ? (
-          <ChartsPanel snapshot={snapshot} radar={radar} />
+          <ChartsPanel
+            subjects={snapshot.subjects}
+            generalAverage={snapshot.generalAverage}
+          />
         ) : null}
       </div>
-      <div className="order-3 lg:order-1">
-        <PeriodHero snapshot={snapshot} />
+      <div className="order-3">
+        <PeriodHero
+          generalAverage={snapshot.generalAverage}
+          label={snapshot.sequenceLabel}
+          councilLabel=""
+          generatedAtLabel=""
+          subjects={snapshot.subjects}
+        />
       </div>
+    </div>
+  );
+}
+
+/** Vue trimestre : résumé général + sous-onglets séquence */
+function TermView({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
+  const { t } = useTranslation();
+  const [activeSequence, setActiveSequence] = useState<string>(
+    snapshot.sequences[0]?.sequence ?? "",
+  );
+  const [termView, setTermView] = useState<StudentNotesView>("evaluations");
+
+  const activeSeqSnapshot =
+    snapshot.sequences.find((s) => s.sequence === activeSequence) ??
+    snapshot.sequences[0] ??
+    null;
+
+  const hasSequences = snapshot.sequences.length > 0;
+
+  return (
+    <div className="grid gap-5">
+      {hasSequences ? (
+        <div className="grid gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="font-heading text-base font-semibold text-text-primary">
+              {t("notes.student.sequence.detailBySequence")}
+            </h4>
+            <SequenceTabs
+              sequences={snapshot.sequences}
+              activeSequence={activeSequence}
+              onSelect={setActiveSequence}
+            />
+          </div>
+
+          {activeSeqSnapshot ? (
+            <SequenceView snapshot={activeSeqSnapshot} />
+          ) : null}
+        </div>
+      ) : (
+        <div className="grid gap-5">
+          <div className="order-1">
+            <ViewTabs view={termView} setView={setTermView} />
+          </div>
+          <div className="order-2">
+            {termView === "evaluations" ? (
+              <EvaluationsTable subjects={snapshot.subjects} />
+            ) : null}
+            {termView === "averages" ? (
+              <AveragesTable
+                generalAverage={snapshot.generalAverage}
+                subjects={snapshot.subjects}
+              />
+            ) : null}
+            {termView === "charts" ? (
+              <ChartsPanel
+                subjects={snapshot.subjects}
+                generalAverage={snapshot.generalAverage}
+              />
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      <PeriodHero
+        generalAverage={snapshot.generalAverage}
+        label={snapshot.label}
+        councilLabel={snapshot.councilLabel}
+        generatedAtLabel={snapshot.generatedAtLabel}
+        subjects={snapshot.subjects}
+      />
     </div>
   );
 }
@@ -1260,9 +1460,7 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
       try {
         const response = await fetch(
           `${API_URL}/schools/${schoolSlug}/students/${childId}/notes`,
-          {
-            credentials: "include",
-          },
+          { credentials: "include" },
         );
 
         if (!response.ok) {
@@ -1289,7 +1487,7 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
     return () => {
       active = false;
     };
-  }, [schoolSlug, childId]);
+  }, [schoolSlug, childId, t]);
 
   const snapshot =
     snapshots.find((entry) => entry.term === selectedTerm) ?? snapshots[0];
@@ -1365,6 +1563,7 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
               {warning}
             </div>
           ) : null}
+
           <div className="hidden min-[360px]:flex min-[360px]:flex-wrap min-[360px]:gap-2">
             {snapshots.map((term) => (
               <button
@@ -1382,7 +1581,7 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
             ))}
           </div>
 
-          <StudentNotesContent snapshot={snapshot} />
+          {snapshot ? <TermView snapshot={snapshot} /> : null}
         </div>
       )}
     />

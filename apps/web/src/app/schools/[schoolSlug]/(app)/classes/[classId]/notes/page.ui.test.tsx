@@ -41,6 +41,8 @@ const EVALUATIONS = [
     description: "<p>Resoudre les exercices <strong>1 a 4</strong>.</p>",
     coefficient: 2,
     maxScore: 20,
+    sequence: "SEQ_1",
+    isFinalExam: false,
     term: "TERM_1",
     status: "PUBLISHED",
     scheduledAt: "2026-03-11T08:00:00.000Z",
@@ -524,7 +526,8 @@ describe("TeacherClassNotesPage evaluations tab", () => {
         description: "<p>Consignes <strong>riches</strong>.</p>",
         coefficient: 1.5,
         maxScore: 20,
-        term: "TERM_1",
+        sequence: "SEQ_1",
+        isFinalExam: false,
         scheduledAt: CREATED_EVALUATION_ISO,
         status: "DRAFT",
         attachments: [],
@@ -595,7 +598,8 @@ describe("TeacherClassNotesPage evaluations tab", () => {
         description: "<p>Resoudre les exercices <em>1 a 6</em>.</p>",
         coefficient: 2,
         maxScore: 20,
-        term: "TERM_1",
+        sequence: "SEQ_1",
+        isFinalExam: false,
         status: "PUBLISHED",
         attachments: [
           {

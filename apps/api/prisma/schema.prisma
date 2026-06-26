@@ -105,6 +105,15 @@ enum Term {
   TERM_3
 }
 
+enum Sequence {
+  SEQ_1
+  SEQ_2
+  SEQ_3
+  SEQ_4
+  SEQ_5
+  SEQ_6
+}
+
 enum EnrollmentStatus {
   ACTIVE
   TRANSFERRED
@@ -1162,7 +1171,8 @@ model Evaluation {
   description      String?
   coefficient      Float             @default(1)
   maxScore         Float
-  term             Term
+  sequence         Sequence
+  isFinalExam      Boolean           @default(false)
   status           EvaluationStatus  @default(DRAFT)
   scheduledAt      DateTime?
   publishedAt      DateTime?
@@ -1181,7 +1191,7 @@ model Evaluation {
 
   @@index([schoolId])
   @@index([schoolYearId])
-  @@index([classId, subjectId, term, createdAt])
+  @@index([classId, subjectId, sequence, createdAt])
   @@index([subjectBranchId])
   @@index([evaluationTypeId])
   @@index([authorUserId])
@@ -1271,6 +1281,9 @@ model StudentTermReportEntry {
   reportId          String
   subjectId         String
   appreciation      String
+  seq1Average       Float?
+  seq2Average       Float?
+  termAverage       Float?
   updatedByUserId   String
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt

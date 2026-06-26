@@ -77,6 +77,8 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
             weight: 1,
             recordedAt: "10/09",
             status: "ENTERED",
+            countsForAverage: true,
+            isFinalExam: false,
           },
           {
             id: "ang-abs",
@@ -86,6 +88,8 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
             weight: 1,
             recordedAt: "15/10",
             status: "ABSENT",
+            countsForAverage: true,
+            isFinalExam: false,
           },
         ],
       },
@@ -109,6 +113,8 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
             weight: 1,
             recordedAt: "07/11",
             status: "EXCUSED",
+            countsForAverage: true,
+            isFinalExam: false,
           },
           {
             id: "geo-ne",
@@ -118,10 +124,13 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
             weight: 1,
             recordedAt: "28/11",
             status: "NOT_GRADED",
+            countsForAverage: true,
+            isFinalExam: false,
           },
         ],
       },
     ],
+    sequences: [],
   },
   {
     term: "TERM_2",
@@ -154,10 +163,13 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
             weight: 1.5,
             recordedAt: "11/02",
             status: "ENTERED",
+            countsForAverage: true,
+            isFinalExam: false,
           },
         ],
       },
     ],
+    sequences: [],
   },
   {
     term: "TERM_3",
@@ -171,6 +183,7 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
       max: null,
     },
     subjects: [],
+    sequences: [],
   },
 ];
 
@@ -270,13 +283,9 @@ describe("StudentNotesPage UI", () => {
   it("switches to averages and shows the published appreciation and summary values", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
-    fireEvent.click(
-      (
-        await screen.findByText(
-          translate("fr", "notes.student.tabs.averages.description"),
-        )
-      ).closest("button")!,
-    );
+    // Wait for API data (evaluations-subject-row-anglais only in API payload)
+    await screen.findByTestId("evaluations-subject-row-anglais");
+    fireEvent.click(screen.getByTestId("notes-view-tab-averages"));
 
     expect(
       screen.getByText("Bonne participation et expression ecrite soignee."),
@@ -299,13 +308,9 @@ describe("StudentNotesPage UI", () => {
   it("keeps the mobile averages block compact while preserving all values", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
-    fireEvent.click(
-      (
-        await screen.findByText(
-          translate("fr", "notes.student.tabs.averages.description"),
-        )
-      ).closest("button")!,
-    );
+    // Wait for API data (evaluations-subject-row-anglais only in API payload)
+    await screen.findByTestId("evaluations-subject-row-anglais");
+    fireEvent.click(screen.getByTestId("notes-view-tab-averages"));
 
     const rowScope = within(screen.getByTestId("averages-subject-row-anglais"));
     const coefficientPrefix = translate(
@@ -472,7 +477,9 @@ describe("StudentNotesPage UI", () => {
   it("switches smartphone sub-tabs with their short labels", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
-    const averagesTab = await screen.findByTestId("notes-view-tab-averages");
+    // Wait for API data (evaluations-subject-row-anglais only in API payload)
+    await screen.findByTestId("evaluations-subject-row-anglais");
+    const averagesTab = screen.getByTestId("notes-view-tab-averages");
     fireEvent.click(averagesTab);
 
     expect(

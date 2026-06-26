@@ -105,6 +105,15 @@ enum Term {
   TERM_3
 }
 
+enum Sequence {
+  SEQ_1
+  SEQ_2
+  SEQ_3
+  SEQ_4
+  SEQ_5
+  SEQ_6
+}
+
 enum EnrollmentStatus {
   ACTIVE
   TRANSFERRED

@@ -379,6 +379,189 @@ export class TimetableService {
     };
   }
 
+  async myTeacherTimetable(
+    user: AuthenticatedUser,
+    schoolId: string,
+    query: ListMyTimetableQueryDto,
+  ) {
+    const locale = timetableLocaleFromUser(user);
+    const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
+    const teacherUserId = this.resolveTeacherTargetForMyTimetable({
+      user,
+      schoolId: effectiveSchoolId,
+      requestedTeacherUserId: query.teacherUserId,
+      locale,
+    });
+
+    const teacherMembership = await this.prisma.schoolMembership.findFirst({
+      where: {
+        schoolId: effectiveSchoolId,
+        userId: teacherUserId,
+        role: "TEACHER",
+      },
+      select: { id: true },
+    });
+    if (!teacherMembership) {
+      throw new ForbiddenException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.userNotTeacherInSchool",
+        ),
+      );
+    }
+
+    const teacher = await this.prisma.user.findUnique({
+      where: { id: teacherUserId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+      },
+    });
+    if (!teacher) {
+      throw new ForbiddenException(
+        translateTimetableError(
+          locale,
+          "timetable.errors.userNotTeacherInSchool",
+        ),
+      );
+    }
+
+    const schoolYearId =
+      query.schoolYearId ??
+      (await this.getActiveSchoolYearIdOrThrow(effectiveSchoolId, locale));
+    await this.ensureSchoolYearInSchool(
+      schoolYearId,
+      effectiveSchoolId,
+      locale,
+    );
+
+    const assignments = await this.prisma.teacherClassSubject.findMany({
+      where: {
+        schoolId: effectiveSchoolId,
+        schoolYearId,
+        teacherUserId,
+      },
+      select: {
+        classId: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+            schoolId: true,
+            schoolYearId: true,
+            academicLevelId: true,
+            curriculumId: true,
+            referentTeacherUserId: true,
+          },
+        },
+      },
+      orderBy: [{ class: { name: "asc" } }],
+    });
+
+    const uniqueClasses = Array.from(
+      new Map(assignments.map((row) => [row.classId, row.class])).values(),
+    );
+
+    const dateRange = this.parseDateRange(query.fromDate, query.toDate, locale);
+    const perClassResults = await Promise.all(
+      uniqueClasses.map(async (classEntity) => ({
+        classEntity,
+        data: await this.fetchClassTimetableData({
+          schoolId: effectiveSchoolId,
+          schoolYearId,
+          classEntity,
+          fromDate: dateRange.fromDate,
+          toDate: dateRange.toDate,
+        }),
+      })),
+    );
+
+    const styleMap = new Map<string, { subjectId: string; colorHex: string }>();
+    const calendarEventMap = new Map<
+      string,
+      (typeof perClassResults)[number]["data"]["calendarEvents"][number]
+    >();
+    const contextRows: Array<{
+      occurrenceId: string;
+      classId: string;
+      className: string;
+      schoolYearId: string;
+    }> = [];
+    const slots: (typeof perClassResults)[number]["data"]["slots"] = [];
+    const oneOffSlots: (typeof perClassResults)[number]["data"]["oneOffSlots"] =
+      [];
+    const slotExceptions: (typeof perClassResults)[number]["data"]["slotExceptions"] =
+      [];
+    const occurrences: Array<
+      ResolvedTimetableOccurrence & {
+        classId: string;
+        className: string;
+        schoolYearId: string;
+      }
+    > = [];
+
+    for (const { classEntity, data } of perClassResults) {
+      data.subjectStyles.forEach((style) => {
+        styleMap.set(style.subjectId, style);
+      });
+      data.calendarEvents.forEach((event) => {
+        calendarEventMap.set(event.id, event);
+      });
+      slots.push(
+        ...data.slots.filter((slot) => slot.teacherUser.id === teacherUserId),
+      );
+      oneOffSlots.push(
+        ...data.oneOffSlots.filter(
+          (slot) => slot.teacherUser.id === teacherUserId,
+        ),
+      );
+      slotExceptions.push(
+        ...data.slotExceptions.filter((slotException) => {
+          const effectiveTeacherId =
+            slotException.teacherUser?.id ?? slotException.slot.teacherUser.id;
+          return effectiveTeacherId === teacherUserId;
+        }),
+      );
+      data.occurrences.forEach((occurrence) => {
+        if (occurrence.teacherUser.id !== teacherUserId) {
+          return;
+        }
+        const occurrenceWithContext = {
+          ...occurrence,
+          classId: classEntity.id,
+          className: classEntity.name,
+          schoolYearId: classEntity.schoolYearId,
+        };
+        occurrences.push(occurrenceWithContext);
+        contextRows.push({
+          occurrenceId: occurrence.id,
+          classId: classEntity.id,
+          className: classEntity.name,
+          schoolYearId: classEntity.schoolYearId,
+        });
+      });
+    }
+
+    return {
+      teacher,
+      classes: uniqueClasses.map((classEntity) => ({
+        id: classEntity.id,
+        name: classEntity.name,
+        schoolYearId: classEntity.schoolYearId,
+        academicLevelId: classEntity.academicLevelId,
+      })),
+      slots,
+      oneOffSlots,
+      slotExceptions,
+      occurrences,
+      occurrenceContexts: contextRows,
+      calendarEvents: Array.from(calendarEventMap.values()),
+      subjectStyles: Array.from(styleMap.values()),
+    };
+  }
+
   async createSlot(
     user: AuthenticatedUser,
     schoolId: string,
@@ -394,10 +577,11 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageAssignedRecurringSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      payload.teacherUserId,
       locale,
     );
 
@@ -677,10 +861,11 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageAssignedRecurringSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      existing.teacherUserId,
       locale,
     );
 
@@ -1164,10 +1349,11 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageAssignedRecurringSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      slot.teacherUserId,
       locale,
     );
 
@@ -1375,10 +1561,11 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageAssignedRecurringSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      existing.slot.teacherUserId,
       locale,
     );
 
@@ -1536,7 +1723,7 @@ export class TimetableService {
 
     const existing = await this.prisma.classTimetableSlot.findFirst({
       where: { id: slotId, schoolId: effectiveSchoolId },
-      select: { id: true, classId: true },
+      select: { id: true, classId: true, teacherUserId: true },
     });
     if (!existing) {
       throw new NotFoundException(
@@ -1552,10 +1739,11 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageAssignedRecurringSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      existing.teacherUserId,
       locale,
     );
 
@@ -1673,10 +1861,11 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanManageAssignedRecurringSlot(
       user,
       effectiveSchoolId,
       classEntity,
+      existing.slot.teacherUserId,
       locale,
     );
 
@@ -3628,6 +3817,53 @@ export class TimetableService {
     );
   }
 
+  private async assertCanManageAssignedRecurringSlot(
+    user: AuthenticatedUser,
+    schoolId: string,
+    classEntity: ClassContext,
+    teacherUserId: string,
+    locale: TimetableLocale = "fr",
+  ) {
+    if (
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      this.hasPlatformRole(user, "ADMIN")
+    ) {
+      return;
+    }
+
+    if (
+      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(user, schoolId, "SUPERVISOR")
+    ) {
+      return;
+    }
+
+    if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
+      throw new ForbiddenException(
+        translateTimetableError(locale, "timetable.errors.insufficientRole"),
+      );
+    }
+
+    if (
+      classEntity.referentTeacherUserId &&
+      classEntity.referentTeacherUserId === user.id
+    ) {
+      return;
+    }
+
+    if (user.id === teacherUserId) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      translateTimetableError(
+        locale,
+        "timetable.errors.teacherOnlyManagesAssignedRecurringSlots",
+      ),
+    );
+  }
+
   private async assertCanReadCalendarEvents(
     user: AuthenticatedUser,
     schoolId: string,
@@ -3740,6 +3976,42 @@ export class TimetableService {
       return "PARENT";
     }
     return null;
+  }
+
+  private resolveTeacherTargetForMyTimetable(input: {
+    user: AuthenticatedUser;
+    schoolId: string;
+    requestedTeacherUserId?: string;
+    locale?: TimetableLocale;
+  }) {
+    const locale = input.locale ?? "fr";
+    const requestedTeacherUserId = input.requestedTeacherUserId?.trim();
+    const canReadOtherTeacherAgenda =
+      this.hasPlatformRole(input.user, "SUPER_ADMIN") ||
+      this.hasPlatformRole(input.user, "ADMIN") ||
+      this.hasSchoolRole(input.user, input.schoolId, "SCHOOL_ADMIN") ||
+      this.hasSchoolRole(input.user, input.schoolId, "SCHOOL_MANAGER") ||
+      this.hasSchoolRole(input.user, input.schoolId, "SUPERVISOR");
+
+    if (requestedTeacherUserId) {
+      if (
+        requestedTeacherUserId === input.user.id ||
+        canReadOtherTeacherAgenda
+      ) {
+        return requestedTeacherUserId;
+      }
+      throw new ForbiddenException(
+        translateTimetableError(locale, "timetable.errors.insufficientRole"),
+      );
+    }
+
+    if (this.hasSchoolRole(input.user, input.schoolId, "TEACHER")) {
+      return input.user.id;
+    }
+
+    throw new ForbiddenException(
+      translateTimetableError(locale, "timetable.errors.insufficientRole"),
+    );
   }
 
   private async emitTimetableChange(event: TimetableChangeEventPayload) {

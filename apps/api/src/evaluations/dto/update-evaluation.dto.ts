@@ -1,7 +1,8 @@
-import { Term } from "@prisma/client";
+import { Sequence } from "@prisma/client";
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsIn,
@@ -48,8 +49,12 @@ export class UpdateEvaluationDto {
   maxScore?: number;
 
   @IsOptional()
-  @IsEnum(Term)
-  term?: Term;
+  @IsEnum(Sequence)
+  sequence?: Sequence;
+
+  @IsOptional()
+  @IsBoolean()
+  isFinalExam?: boolean;
 
   @IsOptional()
   @IsDateString()

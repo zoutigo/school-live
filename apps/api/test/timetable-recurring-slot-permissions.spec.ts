@@ -218,14 +218,25 @@ describe("updateSlot (série récurrente) — referent seulement", () => {
     ).resolves.toBeDefined();
   });
 
-  it("refuse un enseignant non référent même s'il est désigné sur le créneau", async () => {
+  it("autorise un enseignant désigné sur le créneau même s'il n'est pas référent", async () => {
+    prisma.classTimetableSlot.update.mockResolvedValue({
+      ...EXISTING_SLOT,
+      room: "C99",
+      subject: { id: "sub-1", name: "Maths" },
+      teacherUser: {
+        id: "teacher-albert",
+        firstName: "Albert",
+        lastName: "Teacher",
+        email: "albert@example.test",
+      },
+    });
     const user = makeUser("teacher-albert", "TEACHER");
     await expect(
       service.updateSlot(user, "school-1", "slot-1", { room: "C99" }),
-    ).rejects.toThrow(ForbiddenException);
+    ).resolves.toBeDefined();
   });
 
-  it("refuse un enseignant non référent quelconque", async () => {
+  it("refuse un enseignant non référent non désigné sur le créneau", async () => {
     const user = makeUser("other-teacher", "TEACHER");
     await expect(
       service.updateSlot(user, "school-1", "slot-1", { room: "Z01" }),
@@ -377,7 +388,7 @@ describe("createSlotException — referent seulement", () => {
     ).resolves.toBeDefined();
   });
 
-  it("refuse un enseignant non référent même s'il est désigné sur le créneau", async () => {
+  it("autorise un enseignant désigné sur le créneau même s'il n'est pas référent", async () => {
     const user = makeUser("teacher-albert", "TEACHER");
     await expect(
       service.createSlotException(
@@ -386,10 +397,10 @@ describe("createSlotException — referent seulement", () => {
         "slot-1",
         CANCELLED_PAYLOAD,
       ),
-    ).rejects.toThrow(ForbiddenException);
+    ).resolves.toBeDefined();
   });
 
-  it("refuse un enseignant non référent quelconque", async () => {
+  it("refuse un enseignant non référent non désigné sur le créneau", async () => {
     const user = makeUser("other-teacher", "TEACHER");
     await expect(
       service.createSlotException(

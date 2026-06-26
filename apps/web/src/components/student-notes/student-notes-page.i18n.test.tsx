@@ -73,6 +73,8 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
             weight: 1,
             recordedAt: "10/09",
             status: "ENTERED",
+            countsForAverage: true,
+            isFinalExam: false,
           },
           {
             id: "ang-abs",
@@ -82,10 +84,13 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
             weight: 1,
             recordedAt: "15/10",
             status: "ABSENT",
+            countsForAverage: true,
+            isFinalExam: false,
           },
         ],
       },
     ],
+    sequences: [],
   },
 ];
 

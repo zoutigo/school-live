@@ -2,7 +2,7 @@
  * Tests unitaires pour les règles de permission des créneaux isolés (one-off slots).
  *
  * Règle métier :
- * - Séries récurrentes : referent teacher ou admin seulement
+ * - Séries récurrentes : enseignant affecté, referent teacher ou admin
  * - Créneaux isolés (one-off) : l'enseignant désigné sur le créneau OU le referent OU un admin
  */
 import { ForbiddenException } from "@nestjs/common";
@@ -322,9 +322,9 @@ describe("deleteOneOffSlot — permissions", () => {
   });
 });
 
-// ─── createSlot (série) — referent seulement ─────────────────────────────────
+// ─── createSlot (série) — enseignant affecté / referent / admin ─────────────
 
-describe("createSlot (série récurrente) — referent seulement", () => {
+describe("createSlot (série récurrente) — permissions", () => {
   beforeEach(() => {
     (service as any).ensureNoSlotConflicts = jest
       .fn()
@@ -350,8 +350,15 @@ describe("createSlot (série récurrente) — referent seulement", () => {
     ).resolves.toBeDefined();
   });
 
-  it("refuse l'enseignant du créneau s'il n'est pas referent", async () => {
+  it("autorise l'enseignant du créneau même s'il n'est pas referent", async () => {
     const user = makeUser("teacher-albert", "TEACHER");
+    await expect(
+      service.createSlot(user, "school-1", "class-1", SLOT_PAYLOAD as never),
+    ).resolves.toBeDefined();
+  });
+
+  it("refuse un autre enseignant non référent et non affecté", async () => {
+    const user = makeUser("teacher-brice", "TEACHER");
     await expect(
       service.createSlot(user, "school-1", "class-1", SLOT_PAYLOAD as never),
     ).rejects.toThrow(ForbiddenException);

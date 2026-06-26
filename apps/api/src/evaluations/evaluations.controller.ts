@@ -252,6 +252,7 @@ export class EvaluationsController {
       schoolId,
       studentId,
       query.term,
+      query.sequence,
     );
   }
 }

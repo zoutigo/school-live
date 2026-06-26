@@ -1,4 +1,5 @@
 import type {
+  GradePublishedPushPayload,
   HomeworkCreatedPushPayload,
   RoomStatusChangePushPayload,
   TimetableChangePushPayload,
@@ -15,5 +16,8 @@ export type PushPort = {
   ): Promise<void>;
   sendRoomStatusChangeNotification(
     payload: RoomStatusChangePushPayload,
+  ): Promise<void>;
+  sendGradePublishedNotification(
+    payload: GradePublishedPushPayload,
   ): Promise<void>;
 };

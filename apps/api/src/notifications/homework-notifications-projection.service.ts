@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { publicEmailOrNull } from "../common/email.util.js";
 import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { PushService } from "./push.service.js";
@@ -85,10 +86,11 @@ export class HomeworkNotificationsProjectionService {
       const studentUser = row.student.user;
       if (studentUser?.id && studentUser.activationStatus === "ACTIVE") {
         recipientUserIds.add(studentUser.id);
-        if (studentUser.email) {
-          emailRecipients.set(studentUser.email, {
+        const studentPublicEmail = publicEmailOrNull(studentUser.email);
+        if (studentPublicEmail) {
+          emailRecipients.set(studentPublicEmail, {
             firstName: studentUser.firstName,
-            email: studentUser.email,
+            email: studentPublicEmail,
           });
         }
       }
@@ -97,10 +99,11 @@ export class HomeworkNotificationsProjectionService {
         const parentUser = link.parent;
         if (parentUser.activationStatus === "ACTIVE") {
           recipientUserIds.add(parentUser.id);
-          if (parentUser.email) {
-            emailRecipients.set(parentUser.email, {
+          const parentPublicEmail = publicEmailOrNull(parentUser.email);
+          if (parentPublicEmail) {
+            emailRecipients.set(parentPublicEmail, {
               firstName: parentUser.firstName,
-              email: parentUser.email,
+              email: parentPublicEmail,
             });
           }
         }

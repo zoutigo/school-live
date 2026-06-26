@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useLocaleStore } from "./locale-store";
 import { DEFAULT_LOCALE, translations, type Locale } from "./translations";
 
@@ -15,9 +16,11 @@ export function useTranslation() {
   const locale = useLocaleStore((state) => state.locale);
   const setLocale = useLocaleStore((state) => state.setLocale);
 
+  const t = useCallback((key: string) => translate(locale, key), [locale]);
+
   return {
     locale,
     setLocale,
-    t: (key: string) => translate(locale, key),
+    t,
   };
 }

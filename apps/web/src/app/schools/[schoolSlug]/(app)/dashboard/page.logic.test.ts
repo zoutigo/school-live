@@ -88,10 +88,10 @@ describe("parent dashboard card logic", () => {
   it("builds a compact notes summary from the latest numeric evaluations only", () => {
     const snapshots = [
       {
-        ...STUDENT_NOTES_DEMO_DATA[1],
+        ...STUDENT_NOTES_DEMO_DATA[0],
         subjects: [
           {
-            ...STUDENT_NOTES_DEMO_DATA[1].subjects[0],
+            ...STUDENT_NOTES_DEMO_DATA[0].subjects[0],
             evaluations: [
               {
                 id: "valid-1",
@@ -99,6 +99,8 @@ describe("parent dashboard card logic", () => {
                 score: 14,
                 maxScore: 20,
                 recordedAt: "2026-03-10T08:00:00.000Z",
+                countsForAverage: true,
+                isFinalExam: false,
               },
               {
                 id: "invalid-1",
@@ -106,11 +108,13 @@ describe("parent dashboard card logic", () => {
                 score: undefined as unknown as number,
                 maxScore: 20,
                 recordedAt: "2026-03-11T08:00:00.000Z",
+                countsForAverage: true,
+                isFinalExam: false,
               },
             ],
           },
           {
-            ...STUDENT_NOTES_DEMO_DATA[1].subjects[1],
+            ...STUDENT_NOTES_DEMO_DATA[0].subjects[1],
             evaluations: [
               {
                 id: "valid-2",
@@ -118,6 +122,8 @@ describe("parent dashboard card logic", () => {
                 score: 11.5,
                 maxScore: 20,
                 recordedAt: "2026-03-12T08:00:00.000Z",
+                countsForAverage: true,
+                isFinalExam: false,
               },
             ],
           },

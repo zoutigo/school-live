@@ -55,7 +55,8 @@ describe("TeacherClassNotesPage evaluations list logic", () => {
       description: "",
       coefficient: 1,
       maxScore: 20,
-      term: "TERM_1",
+      sequence: "SEQ_1",
+      isFinalExam: false,
       scheduledAt: "",
       status: "DRAFT",
     });
