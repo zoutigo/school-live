@@ -431,7 +431,11 @@ export class TimetableService {
     const schoolYearId =
       query.schoolYearId ??
       (await this.getActiveSchoolYearIdOrThrow(effectiveSchoolId, locale));
-    await this.ensureSchoolYearInSchool(schoolYearId, effectiveSchoolId, locale);
+    await this.ensureSchoolYearInSchool(
+      schoolYearId,
+      effectiveSchoolId,
+      locale,
+    );
 
     const assignments = await this.prisma.teacherClassSubject.findMany({
       where: {
@@ -475,7 +479,10 @@ export class TimetableService {
     );
 
     const styleMap = new Map<string, { subjectId: string; colorHex: string }>();
-    const calendarEventMap = new Map<string, (typeof perClassResults)[number]["data"]["calendarEvents"][number]>();
+    const calendarEventMap = new Map<
+      string,
+      (typeof perClassResults)[number]["data"]["calendarEvents"][number]
+    >();
     const contextRows: Array<{
       occurrenceId: string;
       classId: string;
@@ -485,8 +492,8 @@ export class TimetableService {
     const slots: (typeof perClassResults)[number]["data"]["slots"] = [];
     const oneOffSlots: (typeof perClassResults)[number]["data"]["oneOffSlots"] =
       [];
-    const slotExceptions:
-      (typeof perClassResults)[number]["data"]["slotExceptions"] = [];
+    const slotExceptions: (typeof perClassResults)[number]["data"]["slotExceptions"] =
+      [];
     const occurrences: Array<
       ResolvedTimetableOccurrence & {
         classId: string;
@@ -3987,7 +3994,10 @@ export class TimetableService {
       this.hasSchoolRole(input.user, input.schoolId, "SUPERVISOR");
 
     if (requestedTeacherUserId) {
-      if (requestedTeacherUserId === input.user.id || canReadOtherTeacherAgenda) {
+      if (
+        requestedTeacherUserId === input.user.id ||
+        canReadOtherTeacherAgenda
+      ) {
         return requestedTeacherUserId;
       }
       throw new ForbiddenException(

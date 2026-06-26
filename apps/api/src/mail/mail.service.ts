@@ -9,6 +9,7 @@ import {
 } from "../infrastructure/messaging/queue.port.js";
 import {
   MAIL_JOB_SEND_EMAIL_VERIFICATION,
+  MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION,
   MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION,
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
@@ -19,6 +20,7 @@ import {
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
   type EmailVerificationMailPayload,
+  type GradePublishedMailPayload,
   type HomeworkCreatedMailPayload,
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
@@ -185,6 +187,22 @@ export class MailService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.emailPort.sendRoomStatusChangeNotification(payload);
+    }
+  }
+
+  async sendGradePublishedNotification(payload: GradePublishedMailPayload) {
+    try {
+      await this.queue.add(
+        MAIL_QUEUE_NAME,
+        MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous email sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.emailPort.sendGradePublishedNotification(payload);
     }
   }
 }

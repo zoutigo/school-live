@@ -1,6 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { GradePublishedNotificationsService } from "../notifications/grade-published-notifications.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { EvaluationsService } from "./evaluations.service.js";
 import {
@@ -47,17 +48,69 @@ const makePrismaMock = () => ({
   $transaction: jest.fn(),
 });
 
+const makeGradeNotificationsMock = () => ({
+  enqueue: jest.fn().mockResolvedValue(undefined),
+});
+
+function makeEvaluation(
+  overrides: Partial<{
+    id: string;
+    subjectId: string;
+    sequence: string;
+    isFinalExam: boolean;
+    maxScore: number;
+    coefficient: number;
+    status: string;
+    title: string;
+    createdAt: Date;
+    updatedAt: Date;
+    scheduledAt: Date | null;
+    scores: Array<{ studentId: string; score: number | null; status: string }>;
+    subject: { id: string; name: string };
+    subjectBranch: null;
+    evaluationType: { id: string; code: string; label: string };
+    attachments: never[];
+    _count: { scores: number };
+  }> = {},
+) {
+  return {
+    id: "eval-1",
+    subjectId: "subject-1",
+    sequence: "SEQ_1",
+    isFinalExam: false,
+    maxScore: 20,
+    coefficient: 1,
+    status: "PUBLISHED",
+    title: "Devoir 1",
+    createdAt: new Date("2024-01-10"),
+    updatedAt: new Date("2024-01-10"),
+    scheduledAt: null,
+    scores: [],
+    subject: { id: "subject-1", name: "Maths" },
+    subjectBranch: null,
+    evaluationType: { id: "type-1", code: "DEVOIR", label: "Devoir" },
+    attachments: [],
+    _count: { scores: 0 },
+    ...overrides,
+  };
+}
+
 describe("EvaluationsService", () => {
   let service: EvaluationsService;
   let prisma: ReturnType<typeof makePrismaMock>;
 
   beforeEach(async () => {
     prisma = makePrismaMock();
+    const gradeNotifications = makeGradeNotificationsMock();
 
     const module = await Test.createTestingModule({
       providers: [
         EvaluationsService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: GradePublishedNotificationsService,
+          useValue: gradeNotifications,
+        },
       ],
     }).compile();
 
@@ -119,5 +172,174 @@ describe("EvaluationsService", () => {
     for (const message of messages) {
       expect(message.trim().length).toBeGreaterThan(0);
     }
+  });
+
+  describe("listClassEvaluations — sequence fields", () => {
+    const classEntity = {
+      id: "class-1",
+      name: "6ème A",
+      schoolYearId: "year-1",
+    };
+
+    beforeEach(() => {
+      prisma.class.findFirst.mockResolvedValue(classEntity);
+      prisma.teacherClassSubject.findMany.mockResolvedValue([]);
+    });
+
+    it("derives term from sequence (SEQ_1 → TERM_1)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ sequence: "SEQ_1" }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].term).toBe("TERM_1");
+    });
+
+    it("derives term from sequence (SEQ_3 → TERM_2)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ sequence: "SEQ_3" }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].term).toBe("TERM_2");
+    });
+
+    it("derives term from sequence (SEQ_5 → TERM_3)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ sequence: "SEQ_5" }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].term).toBe("TERM_3");
+    });
+
+    it("countsForAverage=true for odd sequence + formative (SEQ_1, isFinalExam=false)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ sequence: "SEQ_1", isFinalExam: false }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].countsForAverage).toBe(true);
+    });
+
+    it("countsForAverage=true for odd sequence + final exam (SEQ_3, isFinalExam=true)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ sequence: "SEQ_3", isFinalExam: true }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].countsForAverage).toBe(true);
+    });
+
+    it("countsForAverage=false for even sequence + formative (SEQ_2, isFinalExam=false)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ sequence: "SEQ_2", isFinalExam: false }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].countsForAverage).toBe(false);
+    });
+
+    it("countsForAverage=true for even sequence + final exam (SEQ_4, isFinalExam=true)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ sequence: "SEQ_4", isFinalExam: true }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].countsForAverage).toBe(true);
+    });
+
+    it("countsForAverage=false for even sequence + formative (SEQ_6, isFinalExam=false)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({ sequence: "SEQ_6", isFinalExam: false }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].countsForAverage).toBe(false);
+    });
+
+    it("returns correct term and countsForAverage for all 6 sequences", async () => {
+      const expectations = [
+        { sequence: "SEQ_1", isFinalExam: false, term: "TERM_1", counts: true },
+        {
+          sequence: "SEQ_2",
+          isFinalExam: false,
+          term: "TERM_1",
+          counts: false,
+        },
+        { sequence: "SEQ_2", isFinalExam: true, term: "TERM_1", counts: true },
+        { sequence: "SEQ_3", isFinalExam: false, term: "TERM_2", counts: true },
+        {
+          sequence: "SEQ_4",
+          isFinalExam: false,
+          term: "TERM_2",
+          counts: false,
+        },
+        { sequence: "SEQ_4", isFinalExam: true, term: "TERM_2", counts: true },
+        { sequence: "SEQ_5", isFinalExam: false, term: "TERM_3", counts: true },
+        {
+          sequence: "SEQ_6",
+          isFinalExam: false,
+          term: "TERM_3",
+          counts: false,
+        },
+        { sequence: "SEQ_6", isFinalExam: true, term: "TERM_3", counts: true },
+      ];
+
+      for (const { sequence, isFinalExam, term, counts } of expectations) {
+        prisma.evaluation.findMany.mockResolvedValue([
+          makeEvaluation({ sequence: sequence as never, isFinalExam }),
+        ]);
+
+        const result = await service.listClassEvaluations(
+          makeUser(),
+          "school-1",
+          "class-1",
+        );
+
+        expect(result[0].term).toBe(term);
+        expect(result[0].countsForAverage).toBe(counts);
+      }
+    });
   });
 });

@@ -14,6 +14,8 @@ export const MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION =
   "send-homework-created-notification";
 export const MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION =
   "send-room-status-change-notification";
+export const MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION =
+  "send-grade-published-notification";
 
 export type TemporaryPasswordMailPayload = {
   to: string;
@@ -107,4 +109,19 @@ export type RoomStatusChangeMailPayload = {
   title: string;
   summary: string;
   details: string[];
+};
+
+export type GradePublishedMailPayload = {
+  to: string;
+  recipientFirstName: string;
+  schoolName: string;
+  schoolSlug: string | null;
+  studentFirstName: string;
+  studentLastName: string;
+  className: string;
+  subjectName: string;
+  evaluationTitle: string;
+  sequenceLabel: string;
+  isFinalExam: boolean;
+  countsForAverage: boolean;
 };

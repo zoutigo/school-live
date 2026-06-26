@@ -1,4 +1,5 @@
 import { EvaluationsService } from "../src/evaluations/evaluations.service";
+import { GradePublishedNotificationsService } from "../src/notifications/grade-published-notifications.service";
 
 describe("EvaluationsService", () => {
   const prisma = {
@@ -11,7 +12,11 @@ describe("EvaluationsService", () => {
     },
   };
 
-  const service = new EvaluationsService(prisma as never);
+  const gradeNotifications = {
+    enqueue: jest.fn().mockResolvedValue(undefined),
+  } as unknown as GradePublishedNotificationsService;
+
+  const service = new EvaluationsService(prisma as never, gradeNotifications);
 
   const baseUser = {
     id: "teacher-1",
@@ -63,7 +68,8 @@ describe("EvaluationsService", () => {
         '<p onclick="alert(1)">Consigne</p><script>alert(1)</script><img src="https://cdn/image.png" />',
       coefficient: 2,
       maxScore: 20,
-      term: "TERM_1",
+      sequence: "SEQ_1",
+      isFinalExam: false,
       status: "DRAFT",
     });
 

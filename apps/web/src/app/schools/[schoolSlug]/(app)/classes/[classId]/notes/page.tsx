@@ -71,13 +71,28 @@ type TeacherContext = {
   }>;
 };
 
+type Sequence = "SEQ_1" | "SEQ_2" | "SEQ_3" | "SEQ_4" | "SEQ_5" | "SEQ_6";
+
+type SequenceKey = "seq1" | "seq2" | "seq3" | "seq4" | "seq5" | "seq6";
+
+const SEQUENCE_KEY_MAP: Record<Sequence, SequenceKey> = {
+  SEQ_1: "seq1",
+  SEQ_2: "seq2",
+  SEQ_3: "seq3",
+  SEQ_4: "seq4",
+  SEQ_5: "seq5",
+  SEQ_6: "seq6",
+};
+
 type EvaluationRow = {
   id: string;
   title: string;
   description?: string | null;
   coefficient: number;
   maxScore: number;
-  term: string;
+  sequence: Sequence;
+  isFinalExam: boolean;
+  countsForAverage: boolean;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   scheduledAt?: string | null;
   createdAt: string;
@@ -145,7 +160,8 @@ function createEvaluationSchema(t: TranslateFn) {
       .number()
       .gt(0, t("notes.teacher.validation.coefficientPositive")),
     maxScore: z.number().gt(0, t("notes.teacher.validation.maxScorePositive")),
-    term: z.enum(["TERM_1", "TERM_2", "TERM_3"]),
+    sequence: z.enum(["SEQ_1", "SEQ_2", "SEQ_3", "SEQ_4", "SEQ_5", "SEQ_6"]),
+    isFinalExam: z.boolean(),
     scheduledAt: z
       .string()
       .min(1, t("notes.teacher.validation.scheduledAtRequired")),
@@ -533,7 +549,8 @@ export default function TeacherClassNotesPage() {
             description: normalizeOptionalRichTextHtml(values.description),
             coefficient: values.coefficient,
             maxScore: values.maxScore,
-            term: values.term,
+            sequence: values.sequence,
+            isFinalExam: values.isFinalExam,
             scheduledAt: values.scheduledAt
               ? new Date(values.scheduledAt).toISOString()
               : undefined,
@@ -562,7 +579,8 @@ export default function TeacherClassNotesPage() {
           subjectId: values.subjectId,
           subjectBranchId: values.subjectBranchId,
           evaluationTypeId: values.evaluationTypeId,
-          term: values.term,
+          sequence: values.sequence,
+          isFinalExam: values.isFinalExam,
         }),
       );
       resetDescriptionEditor("");
@@ -609,7 +627,8 @@ export default function TeacherClassNotesPage() {
             description: normalizeOptionalRichTextHtml(values.description),
             coefficient: values.coefficient,
             maxScore: values.maxScore,
-            term: values.term,
+            sequence: values.sequence,
+            isFinalExam: values.isFinalExam,
             scheduledAt: values.scheduledAt
               ? new Date(values.scheduledAt).toISOString()
               : null,
@@ -796,7 +815,9 @@ export default function TeacherClassNotesPage() {
         description: selectedEvaluation.description ?? "",
         coefficient: selectedEvaluation.coefficient,
         maxScore: selectedEvaluation.maxScore,
-        term: selectedEvaluation.term as CreateEvaluationFormValues["term"],
+        sequence:
+          selectedEvaluation.sequence as CreateEvaluationFormValues["sequence"],
+        isFinalExam: selectedEvaluation.isFinalExam,
         scheduledAt: new Date(
           selectedEvaluation.scheduledAt ?? selectedEvaluation.createdAt,
         )
@@ -1101,25 +1122,44 @@ export default function TeacherClassNotesPage() {
                       </FormField>
 
                       <FormField
-                        label={t("notes.teacher.form.term")}
-                        htmlFor="evaluation-term"
-                        error={createEvaluationErrors.term?.message}
+                        label={t("notes.teacher.form.sequence")}
+                        htmlFor="evaluation-sequence"
+                        error={createEvaluationErrors.sequence?.message}
                       >
                         <FormSelect
-                          id="evaluation-term"
-                          {...register("term")}
-                          invalid={Boolean(createEvaluationErrors.term)}
+                          id="evaluation-sequence"
+                          {...register("sequence")}
+                          invalid={Boolean(createEvaluationErrors.sequence)}
                         >
-                          <option value="TERM_1">
-                            {t("notes.teacher.terms.term1")}
-                          </option>
-                          <option value="TERM_2">
-                            {t("notes.teacher.terms.term2")}
-                          </option>
-                          <option value="TERM_3">
-                            {t("notes.teacher.terms.term3")}
-                          </option>
+                          {(Object.keys(SEQUENCE_KEY_MAP) as Sequence[]).map(
+                            (seq) => (
+                              <option key={seq} value={seq}>
+                                {t(
+                                  `notes.teacher.sequences.${SEQUENCE_KEY_MAP[seq]}`,
+                                )}
+                              </option>
+                            ),
+                          )}
                         </FormSelect>
+                      </FormField>
+
+                      <FormField
+                        label={t("notes.teacher.form.isFinalExam")}
+                        htmlFor="evaluation-is-final-exam"
+                        error={createEvaluationErrors.isFinalExam?.message}
+                        hint={t("notes.teacher.form.isFinalExamHint")}
+                      >
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            id="evaluation-is-final-exam"
+                            type="checkbox"
+                            {...register("isFinalExam")}
+                            className="h-4 w-4 rounded border-border accent-primary"
+                          />
+                          <span className="text-sm text-text-primary">
+                            {t("notes.teacher.form.isFinalExamLabel")}
+                          </span>
+                        </label>
                       </FormField>
 
                       <FormField
@@ -1393,14 +1433,32 @@ export default function TeacherClassNotesPage() {
                     <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
                       <p className="flex items-center justify-between gap-3 text-sm leading-tight">
                         <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
-                          {t("notes.teacher.detail.period")}
+                          {t("notes.teacher.form.sequence")}
                         </span>
                         <span className="font-semibold text-text-primary">
-                          {selectedEvaluation.term === "TERM_1"
-                            ? t("notes.teacher.terms.term1")
-                            : selectedEvaluation.term === "TERM_2"
-                              ? t("notes.teacher.terms.term2")
-                              : t("notes.teacher.terms.term3")}
+                          {t(
+                            `notes.teacher.sequences.${SEQUENCE_KEY_MAP[selectedEvaluation.sequence]}`,
+                          )}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="rounded-[10px] border border-warm-border bg-background/80 px-4 py-2.5">
+                      <p className="flex items-center justify-between gap-3 text-sm leading-tight">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-text-secondary">
+                          {t("notes.teacher.detail.sequenceType")}
+                        </span>
+                        <span
+                          className={`font-semibold ${selectedEvaluation.countsForAverage ? "text-accent-teal-dark" : "text-amber-700"}`}
+                        >
+                          {selectedEvaluation.isFinalExam
+                            ? t("notes.teacher.detail.sequenceTypeFinalExam")
+                            : selectedEvaluation.countsForAverage
+                              ? t(
+                                  "notes.teacher.detail.sequenceTypeFormativeCounts",
+                                )
+                              : t(
+                                  "notes.teacher.detail.sequenceTypeFormativeInfo",
+                                )}
                         </span>
                       </p>
                     </div>

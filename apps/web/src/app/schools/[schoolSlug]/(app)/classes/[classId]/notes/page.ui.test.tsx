@@ -41,6 +41,8 @@ const EVALUATIONS = [
     description: "<p>Resoudre les exercices <strong>1 a 4</strong>.</p>",
     coefficient: 2,
     maxScore: 20,
+    sequence: "SEQ_1",
+    isFinalExam: false,
     term: "TERM_1",
     status: "PUBLISHED",
     scheduledAt: "2026-03-11T08:00:00.000Z",

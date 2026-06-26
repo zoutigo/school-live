@@ -961,6 +961,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.terms.term1": "1er trimestre",
     "notes.teacher.terms.term2": "2eme trimestre",
     "notes.teacher.terms.term3": "3eme trimestre",
+    "notes.teacher.sequences.seq1": "T1 — Sequence 1",
+    "notes.teacher.sequences.seq2": "T1 — Sequence 2 (examen)",
+    "notes.teacher.sequences.seq3": "T2 — Sequence 3",
+    "notes.teacher.sequences.seq4": "T2 — Sequence 4 (examen)",
+    "notes.teacher.sequences.seq5": "T3 — Sequence 5",
+    "notes.teacher.sequences.seq6": "T3 — Sequence 6 (examen)",
+    "notes.teacher.detail.sequenceType": "Type",
+    "notes.teacher.detail.sequenceTypeFinalExam": "Examen final",
+    "notes.teacher.detail.sequenceTypeFormativeCounts": "Formative (compte)",
+    "notes.teacher.detail.sequenceTypeFormativeInfo": "Formative (info)",
 
     "notes.teacher.form.editTitle": "Editer l'evaluation",
     "notes.teacher.form.createTitle": "Nouvelle evaluation",
@@ -973,6 +983,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.form.noSubjectBranch": "Aucune sous-branche",
     "notes.teacher.form.evaluationType": "Type d'evaluation",
     "notes.teacher.form.term": "Periode",
+    "notes.teacher.form.sequence": "Sequence",
+    "notes.teacher.form.isFinalExam": "Type d'evaluation",
+    "notes.teacher.form.isFinalExamLabel": "Examen final de sequence",
+    "notes.teacher.form.isFinalExamHint":
+      "Cochez si c'est l'examen final de la sequence (compte dans la moyenne meme en sequence paire)",
     "notes.teacher.form.title": "Titre",
     "notes.teacher.form.titlePlaceholder": "Ex. Composition sur les fractions",
     "notes.teacher.form.content": "Contenu / consignes",
@@ -1140,6 +1155,20 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.student.evaluation.legendAbsent": "Absent",
     "notes.student.evaluation.legendExcused": "Dispense",
     "notes.student.evaluation.legendNotGraded": "Non evalue",
+    "notes.student.evaluation.legendFormative":
+      "(affichees a titre indicatif, ne comptent pas dans la moyenne)",
+    "notes.student.evaluation.legendFormativeLabel": "Notes formatives",
+    "notes.student.evaluation.examBadge": "Exam",
+    "notes.student.evaluation.formativeBadge": "formative",
+    "notes.student.evaluation.formativeWarningTitle": "Note formative",
+    "notes.student.evaluation.formativeWarningBody":
+      "Cette evaluation formative est affichee a titre indicatif et ne compte pas dans la moyenne de sequence. Elle peut guider les ajustements du trimestre suivant.",
+
+    "notes.student.sequence.detailBySequence": "Detail par sequence",
+    "notes.student.sequence.examFinalBadge": "Exam final",
+    "notes.student.sequence.validationTitle": "Sequence de validation",
+    "notes.student.sequence.validationText":
+      "Lors de cette sequence, seul l'examen final compte dans la moyenne. Les evaluations formatives sont affichees mais n'entrent pas dans le calcul.",
 
     "notes.student.average.detailTitle": "Detail de la moyenne",
     "notes.student.average.closeAria": "Fermer le detail de la moyenne",
@@ -3822,6 +3851,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.terms.term1": "1st term",
     "notes.teacher.terms.term2": "2nd term",
     "notes.teacher.terms.term3": "3rd term",
+    "notes.teacher.sequences.seq1": "T1 — Sequence 1",
+    "notes.teacher.sequences.seq2": "T1 — Sequence 2 (exam)",
+    "notes.teacher.sequences.seq3": "T2 — Sequence 3",
+    "notes.teacher.sequences.seq4": "T2 — Sequence 4 (exam)",
+    "notes.teacher.sequences.seq5": "T3 — Sequence 5",
+    "notes.teacher.sequences.seq6": "T3 — Sequence 6 (exam)",
+    "notes.teacher.detail.sequenceType": "Type",
+    "notes.teacher.detail.sequenceTypeFinalExam": "Final exam",
+    "notes.teacher.detail.sequenceTypeFormativeCounts": "Formative (counts)",
+    "notes.teacher.detail.sequenceTypeFormativeInfo": "Formative (info)",
 
     "notes.teacher.form.editTitle": "Edit evaluation",
     "notes.teacher.form.createTitle": "New evaluation",
@@ -3834,6 +3873,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.form.noSubjectBranch": "No sub-branch",
     "notes.teacher.form.evaluationType": "Evaluation type",
     "notes.teacher.form.term": "Term",
+    "notes.teacher.form.sequence": "Sequence",
+    "notes.teacher.form.isFinalExam": "Evaluation type",
+    "notes.teacher.form.isFinalExamLabel": "Final sequence exam",
+    "notes.teacher.form.isFinalExamHint":
+      "Check if this is the final exam of the sequence (counts toward the average even in even sequences)",
     "notes.teacher.form.title": "Title",
     "notes.teacher.form.titlePlaceholder": "E.g. Test on fractions",
     "notes.teacher.form.content": "Content / instructions",
@@ -3996,6 +4040,20 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.student.evaluation.legendAbsent": "Absent",
     "notes.student.evaluation.legendExcused": "Exempted",
     "notes.student.evaluation.legendNotGraded": "Not graded",
+    "notes.student.evaluation.legendFormative":
+      "(displayed for reference, do not count toward the average)",
+    "notes.student.evaluation.legendFormativeLabel": "Formative grades",
+    "notes.student.evaluation.examBadge": "Exam",
+    "notes.student.evaluation.formativeBadge": "formative",
+    "notes.student.evaluation.formativeWarningTitle": "Formative grade",
+    "notes.student.evaluation.formativeWarningBody":
+      "This formative evaluation is shown for reference only and does not count toward the sequence average. It may guide adjustments in the following term.",
+
+    "notes.student.sequence.detailBySequence": "Detail by sequence",
+    "notes.student.sequence.examFinalBadge": "Final exam",
+    "notes.student.sequence.validationTitle": "Validation sequence",
+    "notes.student.sequence.validationText":
+      "In this sequence, only the final exam counts toward the average. Formative evaluations are shown but do not factor into the calculation.",
 
     "notes.student.average.detailTitle": "Average detail",
     "notes.student.average.closeAria": "Close the average detail",

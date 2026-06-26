@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { PushPort } from "./push.port.js";
 import type {
+  GradePublishedPushPayload,
   HomeworkCreatedPushPayload,
   RoomStatusChangePushPayload,
   TimetableChangePushPayload,
@@ -45,6 +46,17 @@ export class ExpoPushAdapter implements PushPort {
 
   async sendRoomStatusChangeNotification(
     payload: RoomStatusChangePushPayload,
+  ): Promise<void> {
+    await this.dispatch(
+      payload.tokens,
+      payload.title,
+      payload.body,
+      payload.data,
+    );
+  }
+
+  async sendGradePublishedNotification(
+    payload: GradePublishedPushPayload,
   ): Promise<void> {
     await this.dispatch(
       payload.tokens,

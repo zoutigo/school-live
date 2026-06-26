@@ -44,7 +44,8 @@ model Evaluation {
   description      String?
   coefficient      Float             @default(1)
   maxScore         Float
-  term             Term
+  sequence         Sequence
+  isFinalExam      Boolean           @default(false)
   status           EvaluationStatus  @default(DRAFT)
   scheduledAt      DateTime?
   publishedAt      DateTime?
@@ -63,7 +64,7 @@ model Evaluation {
 
   @@index([schoolId])
   @@index([schoolYearId])
-  @@index([classId, subjectId, term, createdAt])
+  @@index([classId, subjectId, sequence, createdAt])
   @@index([subjectBranchId])
   @@index([evaluationTypeId])
   @@index([authorUserId])
@@ -153,6 +154,9 @@ model StudentTermReportEntry {
   reportId          String
   subjectId         String
   appreciation      String
+  seq1Average       Float?
+  seq2Average       Float?
+  termAverage       Float?
   updatedByUserId   String
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt

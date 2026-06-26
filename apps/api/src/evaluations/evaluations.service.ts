@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import {
   EvaluationStatus,
+  Sequence,
   Term,
   TermReportStatus,
   type Prisma,
@@ -14,8 +15,17 @@ import {
   hasMeaningfulRichTextContent,
   sanitizeRichTextHtml,
 } from "../common/rich-text-sanitizer.js";
+import {
+  evaluationCountsForAverage,
+  isFirstSequenceOfTerm,
+  sequenceLabel,
+  TERM_TO_SEQUENCES,
+  termFromSequence,
+  termLabel,
+} from "../common/sequence.util.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { GradePublishedNotificationsService } from "../notifications/grade-published-notifications.service.js";
 import {
   evaluationsLocaleFromUser,
   translateEvaluationsError,
@@ -36,7 +46,10 @@ const DEFAULT_EVALUATION_TYPES = [
 
 @Injectable()
 export class EvaluationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gradeNotifications: GradePublishedNotificationsService,
+  ) {}
 
   async ensureDefaultEvaluationTypes(schoolId: string) {
     await Promise.all(
@@ -162,7 +175,14 @@ export class EvaluationsService {
       ],
     });
 
-    return evaluations;
+    return evaluations.map((evaluation) => ({
+      ...evaluation,
+      term: termFromSequence(evaluation.sequence),
+      countsForAverage: evaluationCountsForAverage(
+        evaluation.sequence,
+        evaluation.isFinalExam,
+      ),
+    }));
   }
 
   async createEvaluation(
@@ -220,7 +240,8 @@ export class EvaluationsService {
           : null,
         coefficient: payload.coefficient,
         maxScore: payload.maxScore,
-        term: payload.term,
+        sequence: payload.sequence,
+        isFinalExam: payload.isFinalExam ?? false,
         status,
         scheduledAt: payload.scheduledAt ? new Date(payload.scheduledAt) : null,
         publishedAt: status === EvaluationStatus.PUBLISHED ? new Date() : null,
@@ -249,7 +270,22 @@ export class EvaluationsService {
       status === EvaluationStatus.PUBLISHED ? "PUBLISHED" : "CREATED",
       this.toAuditJson(payload),
     );
-    return evaluation;
+
+    if (status === EvaluationStatus.PUBLISHED) {
+      await this.gradeNotifications.enqueue({
+        schoolId,
+        evaluationId: evaluation.id,
+      });
+    }
+
+    return {
+      ...evaluation,
+      term: termFromSequence(evaluation.sequence),
+      countsForAverage: evaluationCountsForAverage(
+        evaluation.sequence,
+        evaluation.isFinalExam,
+      ),
+    };
   }
 
   async getEvaluation(
@@ -284,6 +320,11 @@ export class EvaluationsService {
 
     return {
       ...evaluation,
+      term: termFromSequence(evaluation.sequence),
+      countsForAverage: evaluationCountsForAverage(
+        evaluation.sequence,
+        evaluation.isFinalExam,
+      ),
       students: students.map((row) => {
         const score = evaluation.scores.find(
           (entry) => entry.studentId === row.student.id,
@@ -348,6 +389,10 @@ export class EvaluationsService {
             allowImages: false,
           });
 
+    const isBeingPublished =
+      nextStatus === EvaluationStatus.PUBLISHED &&
+      existing.status !== EvaluationStatus.PUBLISHED;
+
     const updated = await this.prisma.evaluation.update({
       where: { id: existing.id },
       data: {
@@ -366,7 +411,8 @@ export class EvaluationsService {
               : null,
         coefficient: payload.coefficient,
         maxScore: payload.maxScore,
-        term: payload.term,
+        sequence: payload.sequence,
+        isFinalExam: payload.isFinalExam,
         status: nextStatus,
         scheduledAt:
           payload.scheduledAt === undefined
@@ -374,11 +420,7 @@ export class EvaluationsService {
             : payload.scheduledAt
               ? new Date(payload.scheduledAt)
               : null,
-        publishedAt:
-          nextStatus === EvaluationStatus.PUBLISHED &&
-          existing.status !== EvaluationStatus.PUBLISHED
-            ? new Date()
-            : undefined,
+        publishedAt: isBeingPublished ? new Date() : undefined,
         attachments:
           payload.attachments === undefined
             ? undefined
@@ -405,14 +447,25 @@ export class EvaluationsService {
       schoolId,
       existing.id,
       user.id,
-      nextStatus === EvaluationStatus.PUBLISHED &&
-        existing.status !== EvaluationStatus.PUBLISHED
-        ? "PUBLISHED"
-        : "UPDATED",
+      isBeingPublished ? "PUBLISHED" : "UPDATED",
       this.toAuditJson(payload),
     );
 
-    return updated;
+    if (isBeingPublished) {
+      await this.gradeNotifications.enqueue({
+        schoolId,
+        evaluationId: updated.id,
+      });
+    }
+
+    return {
+      ...updated,
+      term: termFromSequence(updated.sequence),
+      countsForAverage: evaluationCountsForAverage(
+        updated.sequence,
+        updated.isFinalExam,
+      ),
+    };
   }
 
   async upsertScores(
@@ -596,6 +649,9 @@ export class EvaluationsService {
             ).map((entry) => ({
               subjectId: entry.subjectId,
               appreciation: entry.appreciation,
+              seq1Average: entry.seq1Average ?? null,
+              seq2Average: entry.seq2Average ?? null,
+              termAverage: entry.termAverage ?? null,
             })),
           };
         }),
@@ -671,6 +727,17 @@ export class EvaluationsService {
       }
     }
 
+    // Calculer les moyennes de séquence pour chaque élève/matière
+    const [seq1, seq2] = TERM_TO_SEQUENCES[term];
+    const sequenceAverages = await this.computeTermSequenceAverages(
+      schoolId,
+      classId,
+      classEntity.schoolYearId,
+      seq1,
+      seq2,
+      Array.from(enrolledStudentIds),
+    );
+
     for (const report of payload.reports) {
       const existing = await this.prisma.studentTermReport.findUnique({
         where: {
@@ -690,6 +757,22 @@ export class EvaluationsService {
           : payload.status === "DRAFT"
             ? TermReportStatus.DRAFT
             : (existing?.status ?? TermReportStatus.DRAFT);
+
+      const subjectEntriesWithAverages = report.subjects
+        .map((subject) => {
+          const key = `${report.studentId}::${subject.subjectId}`;
+          const avg = sequenceAverages.get(key);
+          return {
+            schoolId,
+            subjectId: subject.subjectId,
+            appreciation: subject.appreciation?.trim() || "",
+            seq1Average: avg?.seq1 ?? null,
+            seq2Average: avg?.seq2 ?? null,
+            termAverage: avg?.term ?? null,
+            updatedByUserId: user.id,
+          };
+        })
+        .filter((subject) => subject.appreciation.length > 0);
 
       await this.prisma.studentTermReport.upsert({
         where: {
@@ -722,14 +805,7 @@ export class EvaluationsService {
             deleteMany: {
               subjectId: { in: Array.from(allowedSubjectIds) },
             },
-            create: report.subjects
-              .map((subject) => ({
-                schoolId,
-                subjectId: subject.subjectId,
-                appreciation: subject.appreciation?.trim() || "",
-                updatedByUserId: user.id,
-              }))
-              .filter((subject) => subject.appreciation.length > 0),
+            create: subjectEntriesWithAverages,
           },
         },
         create: {
@@ -747,14 +823,7 @@ export class EvaluationsService {
             nextStatus === TermReportStatus.PUBLISHED ? new Date() : null,
           updatedByUserId: user.id,
           subjectEntries: {
-            create: report.subjects
-              .map((subject) => ({
-                schoolId,
-                subjectId: subject.subjectId,
-                appreciation: subject.appreciation?.trim() || "",
-                updatedByUserId: user.id,
-              }))
-              .filter((subject) => subject.appreciation.length > 0),
+            create: subjectEntriesWithAverages,
           },
         },
       });
@@ -768,6 +837,7 @@ export class EvaluationsService {
     schoolId: string,
     studentId: string,
     term?: Term,
+    sequence?: Sequence,
   ) {
     const locale = evaluationsLocaleFromUser(user);
     await this.ensureStudentNotesAccess(user, schoolId, studentId);
@@ -797,6 +867,14 @@ export class EvaluationsService {
       },
     });
     const currentEnrollment = enrollments[0] ?? null;
+
+    // Filtre: si séquence précise → juste cette séquence, sinon toutes les séquences du trimestre
+    const sequenceFilter = sequence
+      ? [sequence]
+      : term
+        ? ([...TERM_TO_SEQUENCES[term]] as Sequence[])
+        : Object.values(Sequence);
+
     const publishedReports = await this.prisma.studentTermReport.findMany({
       where: {
         schoolId,
@@ -819,7 +897,7 @@ export class EvaluationsService {
       where: {
         schoolId,
         status: "PUBLISHED",
-        ...(term ? { term } : {}),
+        sequence: { in: sequenceFilter },
         scores: {
           some: {
             studentId,
@@ -838,33 +916,52 @@ export class EvaluationsService {
       ],
     });
 
-    const terms = term ? [term] : [Term.TERM_1, Term.TERM_2, Term.TERM_3];
     const subjectWeights = await this.loadSubjectWeights(
       schoolId,
       currentEnrollment?.class.curriculumId ?? null,
       currentEnrollment?.classId ?? null,
     );
 
+    // Grouper par trimestre → séquences
+    const terms = term ? [term] : [Term.TERM_1, Term.TERM_2, Term.TERM_3];
     return terms.map((currentTerm) => {
-      const termEvaluations = evaluations.filter(
-        (evaluation) => evaluation.term === currentTerm,
-      );
+      const [seq1, seq2] = TERM_TO_SEQUENCES[currentTerm];
+      const termSequences = sequence
+        ? [sequence]
+        : ([seq1, seq2] as Sequence[]);
+
       const publishedReport =
         publishedReports.find((report) => report.term === currentTerm) ?? null;
-      const grouped = this.groupStudentNotesBySubject(
-        studentId,
-        termEvaluations,
-        subjectWeights,
-        new Map(
-          (publishedReport?.subjectEntries ?? []).map((entry) => [
-            entry.subjectId,
-            entry.appreciation,
-          ]),
-        ),
+      const subjectAppreciations = new Map(
+        (publishedReport?.subjectEntries ?? []).map((entry) => [
+          entry.subjectId,
+          entry.appreciation,
+        ]),
       );
+
+      const sequenceSnapshots = termSequences.map((seq) => {
+        const seqEvals = evaluations.filter((e) => e.sequence === seq);
+        const grouped = this.groupStudentNotesBySubject(
+          studentId,
+          seqEvals,
+          subjectWeights,
+          subjectAppreciations,
+        );
+        return {
+          sequence: seq,
+          sequenceLabel: sequenceLabel(seq),
+          isFirstSeq: isFirstSequenceOfTerm(seq),
+          generalAverage: this.computeGeneralAverage(grouped),
+          subjects: grouped,
+        };
+      });
+
       const publishedAt =
         publishedReport?.publishedAt ?? publishedReport?.updatedAt ?? null;
-      const latestEvaluationUpdate = termEvaluations[0]?.updatedAt ?? null;
+      const allEvals = evaluations.filter((e) =>
+        termSequences.includes(e.sequence),
+      );
+      const latestEvaluationUpdate = allEvals[0]?.updatedAt ?? null;
       const generatedAtSource =
         publishedAt && latestEvaluationUpdate
           ? publishedAt > latestEvaluationUpdate
@@ -872,21 +969,139 @@ export class EvaluationsService {
             : latestEvaluationUpdate
           : (publishedAt ?? latestEvaluationUpdate);
 
+      // Moyenne générale trimestrielle (seq1 + seq2) / 2
+      const allSubjects = sequenceSnapshots.flatMap((s) => s.subjects);
+      const termGeneralAverage =
+        sequenceSnapshots.length >= 2
+          ? this.computeTermGeneralAverage(sequenceSnapshots)
+          : (sequenceSnapshots[0]?.generalAverage ?? {
+              student: null,
+              class: null,
+              min: null,
+              max: null,
+            });
+
       return {
         term: currentTerm,
-        label: this.termLabel(currentTerm),
+        label: termLabel(currentTerm),
         councilLabel: this.buildCouncilLabel(
           currentEnrollment?.class.name ?? null,
           currentTerm,
           publishedReport?.councilHeldAt ?? null,
         ),
         generatedAtLabel: generatedAtSource
-          ? `Donnees publiees le ${this.formatFrDateTime(generatedAtSource)}`
-          : "Aucune evaluation publiee pour cette periode",
-        generalAverage: this.computeGeneralAverage(grouped),
-        subjects: grouped,
+          ? `Données publiées le ${this.formatFrDateTime(generatedAtSource)}`
+          : "Aucune évaluation publiée pour cette période",
+        generalAverage: termGeneralAverage,
+        sequences: sequenceSnapshots,
+        // Compatibilité descendante : vue à plat de toutes les évals
+        subjects: allSubjects,
       };
     });
+  }
+
+  /** Calcule les moyennes SEQ1, SEQ2, Trimestre pour chaque élève×matière */
+  private async computeTermSequenceAverages(
+    schoolId: string,
+    classId: string,
+    schoolYearId: string,
+    seq1: Sequence,
+    seq2: Sequence,
+    studentIds: string[],
+  ): Promise<
+    Map<
+      string,
+      { seq1: number | null; seq2: number | null; term: number | null }
+    >
+  > {
+    if (studentIds.length === 0) return new Map();
+
+    const evaluations = await this.prisma.evaluation.findMany({
+      where: {
+        schoolId,
+        classId,
+        schoolYearId,
+        status: "PUBLISHED",
+        sequence: { in: [seq1, seq2] },
+      },
+      include: {
+        scores: {
+          where: { studentId: { in: studentIds } },
+        },
+      },
+    });
+
+    const result = new Map<
+      string,
+      { seq1: number | null; seq2: number | null; term: number | null }
+    >();
+
+    const subjectIds = [...new Set(evaluations.map((e) => e.subjectId))];
+
+    for (const studentId of studentIds) {
+      for (const subjectId of subjectIds) {
+        const key = `${studentId}::${subjectId}`;
+
+        const seq1Avg = this.computeSequenceAverage(
+          studentId,
+          evaluations.filter(
+            (e) => e.sequence === seq1 && e.subjectId === subjectId,
+          ),
+        );
+        const seq2Avg = this.computeSequenceAverage(
+          studentId,
+          evaluations.filter(
+            (e) => e.sequence === seq2 && e.subjectId === subjectId,
+          ),
+        );
+
+        const termAvg =
+          seq1Avg !== null && seq2Avg !== null
+            ? Number(((seq1Avg + seq2Avg) / 2).toFixed(2))
+            : (seq1Avg ?? seq2Avg);
+
+        result.set(key, { seq1: seq1Avg, seq2: seq2Avg, term: termAvg });
+      }
+    }
+
+    return result;
+  }
+
+  private computeSequenceAverage(
+    studentId: string,
+    evaluations: Array<{
+      maxScore: number;
+      coefficient: number;
+      isFinalExam: boolean;
+      sequence: Sequence;
+      scores: Array<{
+        studentId: string;
+        score: number | null;
+        status: string;
+      }>;
+    }>,
+  ): number | null {
+    let weightedSum = 0;
+    let totalCoeff = 0;
+
+    for (const evaluation of evaluations) {
+      if (
+        !evaluationCountsForAverage(evaluation.sequence, evaluation.isFinalExam)
+      ) {
+        continue;
+      }
+      const score = evaluation.scores.find((s) => s.studentId === studentId);
+      if (!score || score.status !== "ENTERED" || score.score === null) {
+        continue;
+      }
+      const normalized = (score.score / evaluation.maxScore) * 20;
+      weightedSum += normalized * evaluation.coefficient;
+      totalCoeff += evaluation.coefficient;
+    }
+
+    return totalCoeff > 0
+      ? Number((weightedSum / totalCoeff).toFixed(2))
+      : null;
   }
 
   private groupStudentNotesBySubject(
@@ -923,6 +1138,8 @@ export class EvaluationsService {
           weight?: number;
           recordedAt: string;
           status: "ENTERED" | "ABSENT" | "EXCUSED" | "NOT_GRADED";
+          countsForAverage: boolean;
+          isFinalExam: boolean;
         }>;
         weightedStudentSum: number;
         weightedStudentCoeff: number;
@@ -932,6 +1149,10 @@ export class EvaluationsService {
 
     for (const evaluation of evaluations) {
       const key = evaluation.subjectId;
+      const counts = evaluationCountsForAverage(
+        evaluation.sequence,
+        evaluation.isFinalExam,
+      );
       const studentScore = evaluation.scores.find(
         (entry) => entry.studentId === studentId,
       );
@@ -966,46 +1187,53 @@ export class EvaluationsService {
         classStudentAverages: [],
       };
 
-      if (studentScore) {
-        subjectEntry.evaluations.push({
-          id: evaluation.id,
-          label: evaluation.subjectBranch?.name
-            ? `${evaluation.title} - ${evaluation.subjectBranch.name}`
-            : evaluation.title,
-          score:
-            studentStatus === "ENTERED" ? (studentScore?.score ?? null) : null,
-          maxScore: evaluation.maxScore,
-          weight: evaluation.coefficient,
-          recordedAt: this.formatShortDate(
-            evaluation.scheduledAt ?? evaluation.createdAt,
-          ),
-          status: studentStatus,
-        });
-      }
+      subjectEntry.evaluations.push({
+        id: evaluation.id,
+        label: evaluation.subjectBranch?.name
+          ? `${evaluation.title} - ${evaluation.subjectBranch.name}`
+          : evaluation.title,
+        score:
+          studentStatus === "ENTERED" ? (studentScore?.score ?? null) : null,
+        maxScore: evaluation.maxScore,
+        weight: evaluation.coefficient,
+        recordedAt: this.formatShortDate(
+          evaluation.scheduledAt ?? evaluation.createdAt,
+        ),
+        status: studentStatus,
+        countsForAverage: counts,
+        isFinalExam: evaluation.isFinalExam,
+      });
 
-      if (studentNormalized !== null) {
+      // Ne compter dans la moyenne que les évals qui comptent
+      if (counts && studentNormalized !== null) {
         subjectEntry.weightedStudentSum +=
           studentNormalized * evaluation.coefficient;
         subjectEntry.weightedStudentCoeff += evaluation.coefficient;
       }
 
-      const byStudent = new Map<string, { sum: number; coeff: number }>();
-      for (const score of evaluation.scores) {
-        if (score.status !== "ENTERED" || score.score === null) {
-          continue;
+      if (counts) {
+        const byStudent = new Map<string, { sum: number; coeff: number }>();
+        for (const score of evaluation.scores) {
+          if (score.status !== "ENTERED" || score.score === null) {
+            continue;
+          }
+          const current = byStudent.get(score.studentId) ?? {
+            sum: 0,
+            coeff: 0,
+          };
+          current.sum +=
+            (score.score / evaluation.maxScore) * 20 * evaluation.coefficient;
+          current.coeff += evaluation.coefficient;
+          byStudent.set(score.studentId, current);
         }
-        const current = byStudent.get(score.studentId) ?? { sum: 0, coeff: 0 };
-        current.sum +=
-          (score.score / evaluation.maxScore) * 20 * evaluation.coefficient;
-        current.coeff += evaluation.coefficient;
-        byStudent.set(score.studentId, current);
+
+        const allAverages = Array.from(byStudent.values())
+          .filter((entry) => entry.coeff > 0)
+          .map((entry) => entry.sum / entry.coeff);
+
+        subjectEntry.classStudentAverages.push(...allAverages);
       }
 
-      const allAverages = Array.from(byStudent.values())
-        .filter((entry) => entry.coeff > 0)
-        .map((entry) => entry.sum / entry.coeff);
-
-      subjectEntry.classStudentAverages.push(...allAverages);
       bySubject.set(key, subjectEntry);
     }
 
@@ -1116,6 +1344,53 @@ export class EvaluationsService {
               ).toFixed(2),
             )
           : null,
+    };
+  }
+
+  private computeTermGeneralAverage(
+    sequenceSnapshots: Array<{
+      generalAverage: {
+        student: number | null;
+        class: number | null;
+        min: number | null;
+        max: number | null;
+      };
+    }>,
+  ) {
+    const validStudentAvgs = sequenceSnapshots
+      .map((s) => s.generalAverage.student)
+      .filter((v): v is number => v !== null);
+    const validClassAvgs = sequenceSnapshots
+      .map((s) => s.generalAverage.class)
+      .filter((v): v is number => v !== null);
+    const allMins = sequenceSnapshots
+      .map((s) => s.generalAverage.min)
+      .filter((v): v is number => v !== null);
+    const allMaxs = sequenceSnapshots
+      .map((s) => s.generalAverage.max)
+      .filter((v): v is number => v !== null);
+
+    return {
+      student:
+        validStudentAvgs.length > 0
+          ? Number(
+              (
+                validStudentAvgs.reduce((a, b) => a + b, 0) /
+                validStudentAvgs.length
+              ).toFixed(2),
+            )
+          : null,
+      class:
+        validClassAvgs.length > 0
+          ? Number(
+              (
+                validClassAvgs.reduce((a, b) => a + b, 0) /
+                validClassAvgs.length
+              ).toFixed(2),
+            )
+          : null,
+      min: allMins.length > 0 ? Number(Math.min(...allMins).toFixed(2)) : null,
+      max: allMaxs.length > 0 ? Number(Math.max(...allMaxs).toFixed(2)) : null,
     };
   }
 
@@ -1479,12 +1754,6 @@ export class EvaluationsService {
     return user.platformRoles.includes(role as never);
   }
 
-  private termLabel(term: Term) {
-    if (term === Term.TERM_1) return "1er Trimestre";
-    if (term === Term.TERM_2) return "2eme Trimestre";
-    return "3eme Trimestre";
-  }
-
   private buildCouncilLabel(
     className: string | null,
     term: Term,
@@ -1496,8 +1765,8 @@ export class EvaluationsService {
         : `Conseil de classe le ${this.formatFrDateTime(councilHeldAt)}`;
     }
     return className
-      ? `Conseil de classe ${className} - publication ${this.termLabel(term).toLowerCase()}`
-      : `Conseil de classe - ${this.termLabel(term).toLowerCase()}`;
+      ? `Conseil de classe ${className} - publication ${termLabel(term).toLowerCase()}`
+      : `Conseil de classe - ${termLabel(term).toLowerCase()}`;
   }
 
   private formatFrDateTime(value: Date) {

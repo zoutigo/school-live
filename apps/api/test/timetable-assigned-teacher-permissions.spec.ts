@@ -109,7 +109,9 @@ beforeEach(() => {
     startsAt: new Date("2099-01-01T00:00:00.000Z"),
     endsAt: new Date("2099-12-31T00:00:00.000Z"),
   });
-  (service as any).ensureSubjectInSchool = jest.fn().mockResolvedValue(undefined);
+  (service as any).ensureSubjectInSchool = jest
+    .fn()
+    .mockResolvedValue(undefined);
   (service as any).ensureSubjectAllowedForClass = jest
     .fn()
     .mockResolvedValue(undefined);
@@ -119,7 +121,9 @@ beforeEach(() => {
   (service as any).ensureAutoSubjectStyleExists = jest
     .fn()
     .mockResolvedValue(undefined);
-  (service as any).ensureNoSlotConflicts = jest.fn().mockResolvedValue(undefined);
+  (service as any).ensureNoSlotConflicts = jest
+    .fn()
+    .mockResolvedValue(undefined);
   (service as any).ensureNoOccurrenceConflicts = jest
     .fn()
     .mockResolvedValue(undefined);
@@ -131,7 +135,8 @@ beforeEach(() => {
   (service as any).assertActiveDateRange = jest.fn();
   (service as any).toDateOnly = (value: string) =>
     new Date(value.includes("T") ? value : `${value}T00:00:00.000Z`);
-  (service as any).dateToYmd = (value: Date) => value.toISOString().slice(0, 10);
+  (service as any).dateToYmd = (value: Date) =>
+    value.toISOString().slice(0, 10);
   (service as any).emitTimetableChange = jest.fn().mockResolvedValue(undefined);
 
   prisma.classTimetableSlot.findFirst.mockResolvedValue(makeSlot());
@@ -145,7 +150,9 @@ beforeEach(() => {
   prisma.classTimetableSlot.update.mockResolvedValue(makeSlot());
   prisma.classTimetableSlot.delete.mockResolvedValue(undefined);
 
-  prisma.classTimetableSlotException.findFirst.mockResolvedValue(makeException());
+  prisma.classTimetableSlotException.findFirst.mockResolvedValue(
+    makeException(),
+  );
   prisma.classTimetableSlotException.upsert.mockResolvedValue(makeException());
   prisma.classTimetableSlotException.update.mockResolvedValue(makeException());
   prisma.classTimetableSlotException.delete.mockResolvedValue(undefined);

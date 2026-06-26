@@ -27,6 +27,7 @@ export type HomeworkCreatedPushPayload = {
 };
 
 export const PUSH_JOB_SEND_ROOM_STATUS_CHANGE = "send-room-status-change-push";
+export const PUSH_JOB_SEND_GRADE_PUBLISHED = "send-grade-published-push";
 
 export type RoomStatusChangePushPayload = {
   tokens: string[];
@@ -37,5 +38,17 @@ export type RoomStatusChangePushPayload = {
     schoolSlug: string;
     classId: string;
     roomId: string;
+  };
+};
+
+export type GradePublishedPushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "GRADE_PUBLISHED";
+    schoolSlug: string;
+    classId: string;
+    evaluationId: string;
   };
 };

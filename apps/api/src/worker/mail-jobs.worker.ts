@@ -14,6 +14,7 @@ import {
 import { buildRedisConnection } from "../infrastructure/messaging/redis-connection.js";
 import {
   MAIL_JOB_SEND_EMAIL_VERIFICATION,
+  MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION,
   MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION,
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
@@ -24,6 +25,7 @@ import {
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
   type EmailVerificationMailPayload,
+  type GradePublishedMailPayload,
   type HomeworkCreatedMailPayload,
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
@@ -99,6 +101,12 @@ export class MailJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION) {
           await this.emailPort.sendRoomStatusChangeNotification(
             job.data as RoomStatusChangeMailPayload,
+          );
+          return;
+        }
+        if (job.name === MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION) {
+          await this.emailPort.sendGradePublishedNotification(
+            job.data as GradePublishedMailPayload,
           );
           return;
         }
