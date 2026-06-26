@@ -7,6 +7,10 @@ export class ListMyTimetableQueryDto {
 
   @IsOptional()
   @IsString()
+  teacherUserId?: string;
+
+  @IsOptional()
+  @IsString()
   schoolYearId?: string;
 
   @IsOptional()

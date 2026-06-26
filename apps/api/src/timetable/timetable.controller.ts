@@ -41,7 +41,6 @@ export class TimetableController {
     "SCHOOL_ADMIN",
     "SCHOOL_MANAGER",
     "SUPERVISOR",
-    "TEACHER",
     "PARENT",
     "STUDENT",
     "SUPER_ADMIN",
@@ -52,6 +51,22 @@ export class TimetableController {
     @Query() query: ListMyTimetableQueryDto,
   ) {
     return this.timetableService.myTimetable(user, schoolId, query);
+  }
+
+  @Get("me/teacher")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "SUPER_ADMIN",
+  )
+  myTeacherTimetable(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Query() query: ListMyTimetableQueryDto,
+  ) {
+    return this.timetableService.myTeacherTimetable(user, schoolId, query);
   }
 
   @Get("classes")

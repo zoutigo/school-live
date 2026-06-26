@@ -76,6 +76,8 @@ const fr: TranslationDict = {
     "La portée CLASS ne doit pas inclure d'identifiant de niveau scolaire.",
   "timetable.errors.onlyReferentTeacherCanManage":
     "Seul l'enseignant référent de la classe peut gérer l'emploi du temps de cette classe.",
+  "timetable.errors.teacherOnlyManagesAssignedRecurringSlots":
+    "L'enseignant ne peut gérer que les séries de créneaux qui lui sont affectées.",
   "timetable.errors.teacherOnlyManagesAssignedOneOffSlots":
     "L'enseignant ne peut gérer que les créneaux ponctuels qui lui sont affectés.",
   "timetable.errors.roomNotFound": "Salle introuvable.",
@@ -149,6 +151,8 @@ const en: TranslationDict = {
     "CLASS scope must not include an academicLevelId.",
   "timetable.errors.onlyReferentTeacherCanManage":
     "Only the class's referent teacher can manage the timetable for this class.",
+  "timetable.errors.teacherOnlyManagesAssignedRecurringSlots":
+    "Teacher can only manage recurring slot series they are assigned to.",
   "timetable.errors.teacherOnlyManagesAssignedOneOffSlots":
     "Teacher can only manage one-off slots they are assigned to.",
   "timetable.errors.roomNotFound": "Room not found.",
