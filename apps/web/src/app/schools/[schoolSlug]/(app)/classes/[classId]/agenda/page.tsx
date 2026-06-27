@@ -158,6 +158,13 @@ type TimetableResponse = {
   }>;
 };
 
+type AvailableRoom = {
+  id: string;
+  name: string;
+  status: "AVAILABLE" | "UNAVAILABLE" | "MAINTENANCE";
+  isAvailable: boolean;
+};
+
 const ALLOWED_ROLES: AllowedRole[] = [
   "SUPER_ADMIN",
   "ADMIN",
@@ -594,6 +601,11 @@ export default function TeacherClassAgendaPage() {
   >(null);
 
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [slotFormAvailableRooms, setSlotFormAvailableRooms] = useState<
+    AvailableRoom[]
+  >([]);
+  const [occurrenceFormAvailableRooms, setOccurrenceFormAvailableRooms] =
+    useState<AvailableRoom[]>([]);
   const [slotDrafts, setSlotDrafts] = useState<
     Array<{
       weekday: number;
@@ -827,6 +839,88 @@ export default function TeacherClassAgendaPage() {
       });
     }
   }, [slotForm, slotValues.teacherUserId, teacherChoices]);
+
+  // Load available rooms for slot form (weekday + start/end from form)
+  useEffect(() => {
+    const startMinute = timeValueToMinutes(slotValues.start);
+    const endMinute = timeValueToMinutes(slotValues.end);
+    const weekday = Number.parseInt(slotValues.weekday ?? "1", 10);
+    if (
+      !schoolSlug ||
+      !Number.isFinite(startMinute) ||
+      !Number.isFinite(endMinute) ||
+      !Number.isFinite(weekday)
+    ) {
+      return;
+    }
+    const params = new URLSearchParams({
+      weekday: String(weekday),
+      startMinute: String(startMinute),
+      endMinute: String(endMinute),
+      ...(editingSlotId ? { excludeSlotId: editingSlotId } : {}),
+    });
+    let cancelled = false;
+    fetch(
+      `${API_URL}/schools/${schoolSlug}/admin/rooms/available?${params.toString()}`,
+      { credentials: "include" },
+    )
+      .then((r) => (r.ok ? (r.json() as Promise<AvailableRoom[]>) : []))
+      .then((data) => {
+        if (!cancelled) setSlotFormAvailableRooms(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug, slotValues.weekday, slotValues.start, slotValues.end, editingSlotId]);
+
+  // Load available rooms for occurrence form (occurrenceDate + start/end from form)
+  useEffect(() => {
+    const startMinute = timeValueToMinutes(occurrenceValues.start);
+    const endMinute = timeValueToMinutes(occurrenceValues.end);
+    const occurrenceDate = occurrenceValues.occurrenceDateInput;
+    if (
+      !schoolSlug ||
+      !Number.isFinite(startMinute) ||
+      !Number.isFinite(endMinute) ||
+      !occurrenceDate?.trim()
+    ) {
+      return;
+    }
+    const dateObj = new Date(`${occurrenceDate}T00:00:00`);
+    const weekday = dateObj.getDay() || 7;
+    const params = new URLSearchParams({
+      weekday: String(weekday),
+      startMinute: String(startMinute),
+      endMinute: String(endMinute),
+      occurrenceDate,
+      ...(occurrenceModalSlot?.slotId
+        ? { excludeSlotId: occurrenceModalSlot.slotId }
+        : {}),
+      ...(occurrenceModalSlot?.oneOffSlotId
+        ? { excludeOneOffSlotId: occurrenceModalSlot.oneOffSlotId }
+        : {}),
+    });
+    let cancelled = false;
+    fetch(
+      `${API_URL}/schools/${schoolSlug}/admin/rooms/available?${params.toString()}`,
+      { credentials: "include" },
+    )
+      .then((r) => (r.ok ? (r.json() as Promise<AvailableRoom[]>) : []))
+      .then((data) => {
+        if (!cancelled) setOccurrenceFormAvailableRooms(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    schoolSlug,
+    occurrenceValues.start,
+    occurrenceValues.end,
+    occurrenceValues.occurrenceDateInput,
+    occurrenceModalSlot,
+  ]);
 
   useEffect(() => {
     if (!context?.allowedSubjects.length) {
@@ -2160,7 +2254,7 @@ export default function TeacherClassAgendaPage() {
                           label={t("timetable.agenda.slotForm.room")}
                           htmlFor="slot-room"
                         >
-                          <FormTextInput
+                          <FormSelect
                             id="slot-room"
                             value={slotValues.room}
                             onChange={(event) =>
@@ -2170,11 +2264,22 @@ export default function TeacherClassAgendaPage() {
                                 shouldValidate: true,
                               })
                             }
-                            placeholder={t(
-                              "timetable.agenda.slotForm.roomPlaceholder",
-                            )}
                             className="text-sm"
-                          />
+                          >
+                            <option value="">
+                              {t("timetable.agenda.slotForm.roomNone")}
+                            </option>
+                            {slotFormAvailableRooms
+                              .filter(
+                                (r) =>
+                                  r.isAvailable && r.status === "AVAILABLE",
+                              )
+                              .map((r) => (
+                                <option key={r.id} value={r.name}>
+                                  {r.name}
+                                </option>
+                              ))}
+                          </FormSelect>
                         </FormField>
 
                         <FormField
@@ -3020,7 +3125,7 @@ export default function TeacherClassAgendaPage() {
                       htmlFor="occurrence-room"
                       className="md:col-span-2"
                     >
-                      <FormTextInput
+                      <FormSelect
                         id="occurrence-room"
                         value={occurrenceValues.room}
                         onChange={(event) =>
@@ -3031,7 +3136,20 @@ export default function TeacherClassAgendaPage() {
                           })
                         }
                         className="text-sm"
-                      />
+                      >
+                        <option value="">
+                          {t("timetable.agenda.slotForm.roomNone")}
+                        </option>
+                        {occurrenceFormAvailableRooms
+                          .filter(
+                            (r) => r.isAvailable && r.status === "AVAILABLE",
+                          )
+                          .map((r) => (
+                            <option key={r.id} value={r.name}>
+                              {r.name}
+                            </option>
+                          ))}
+                      </FormSelect>
                     </FormField>
                   </div>
                 ) : null}
