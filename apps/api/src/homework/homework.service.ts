@@ -646,17 +646,13 @@ export class HomeworkService {
     const locale = homeworkLocaleFromUser(user);
     const classEntity = await this.ensureClassExists(schoolId, classId, locale);
 
-    // A user can hold multiple school roles (e.g. teacher AND parent).
-    // When they explicitly chose "PARENT" or "STUDENT" as their active role,
-    // skip the teacher/manager branches so the correct viewer context is used.
-    const activeRole = user.activeRole as string | null | undefined;
-    const actingAsConsumer =
-      activeRole === "PARENT" || activeRole === "STUDENT";
+    const activeRole = user.activeRole;
 
     if (
-      !actingAsConsumer &&
-      (this.hasAnySchoolRole(user, schoolId, HOMEWORK_MANAGER_ROLES) ||
-        this.hasPlatformRole(user, "SUPER_ADMIN"))
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       return {
         classEntity,
@@ -665,10 +661,7 @@ export class HomeworkService {
       };
     }
 
-    if (
-      !actingAsConsumer &&
-      this.hasAnySchoolRole(user, schoolId, ["TEACHER"])
-    ) {
+    if (activeRole === "TEACHER") {
       const assignment = await this.prisma.teacherClassSubject.findFirst({
         where: {
           schoolId,
@@ -690,7 +683,7 @@ export class HomeworkService {
       };
     }
 
-    if (this.hasAnySchoolRole(user, schoolId, ["STUDENT"])) {
+    if (activeRole === "STUDENT") {
       const viewerStudent = await this.prisma.student.findFirst({
         where: {
           schoolId,
@@ -718,7 +711,7 @@ export class HomeworkService {
       };
     }
 
-    if (this.hasAnySchoolRole(user, schoolId, ["PARENT"])) {
+    if (activeRole === "PARENT") {
       const linkedStudents = await this.prisma.parentStudent.findMany({
         where: {
           schoolId,
@@ -772,11 +765,13 @@ export class HomeworkService {
     classId: string,
   ) {
     const access = await this.ensureViewerAccess(user, schoolId, classId);
+    const activeRole = user.activeRole;
     if (
-      !this.hasAnySchoolRole(user, schoolId, [
-        "TEACHER",
-        ...HOMEWORK_MANAGER_ROLES,
-      ])
+      activeRole !== "TEACHER" &&
+      activeRole !== "SCHOOL_ADMIN" &&
+      activeRole !== "SCHOOL_MANAGER" &&
+      activeRole !== "SUPERVISOR" &&
+      !this.hasPlatformRole(user, "SUPER_ADMIN")
     ) {
       throw new ForbiddenException(
         translateHomeworkError(
@@ -824,9 +819,12 @@ export class HomeworkService {
         ),
       );
     }
+    const activeRole = user.activeRole;
     if (
-      this.hasAnySchoolRole(user, schoolId, HOMEWORK_MANAGER_ROLES) ||
-      this.hasPlatformRole(user, "SUPER_ADMIN")
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       return;
     }
@@ -857,9 +855,12 @@ export class HomeworkService {
     homework: HomeworkWithRelations,
   ) {
     await this.ensureClassManageAccess(user, schoolId, classId);
+    const activeRole = user.activeRole;
     if (
-      this.hasAnySchoolRole(user, schoolId, HOMEWORK_MANAGER_ROLES) ||
-      this.hasPlatformRole(user, "SUPER_ADMIN")
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       return;
     }

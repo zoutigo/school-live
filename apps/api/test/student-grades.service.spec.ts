@@ -51,6 +51,7 @@ describe("StudentGradesService access rules", () => {
       service.create(
         {
           id: "teacher-1",
+          activeRole: "TEACHER",
           platformRoles: [],
           memberships: [{ schoolId: "school-1", role: "TEACHER" }],
           profileCompleted: true,
@@ -96,6 +97,7 @@ describe("StudentGradesService access rules", () => {
     await service.list(
       {
         id: "user-student",
+        activeRole: "STUDENT",
         platformRoles: [],
         memberships: [{ schoolId: "school-1", role: "STUDENT" }],
         profileCompleted: true,

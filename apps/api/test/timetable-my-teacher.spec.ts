@@ -1,4 +1,5 @@
 import { ForbiddenException } from "@nestjs/common";
+import type { AppRole } from "../src/auth/auth.types.js";
 import { TimetableService } from "../src/timetable/timetable.service.js";
 
 type SchoolRole =
@@ -18,6 +19,7 @@ function makeUser(
     id,
     firstName: "User",
     lastName: id,
+    activeRole: schoolRole as AppRole,
     platformRoles,
     memberships: [{ schoolId: "school-1", role: schoolRole }],
     profileCompleted: true,
@@ -222,6 +224,94 @@ describe("myTeacherTimetable", () => {
     await expect(
       service.myTeacherTimetable(user as never, "school-1", {
         teacherUserId: "teacher-404",
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("activeRole=TEACHER avec membership SCHOOL_ADMIN+TEACHER → scope teacher (propre agenda)", async () => {
+    const user = {
+      id: "dual-user",
+      firstName: "User",
+      lastName: "Dual",
+      activeRole: "TEACHER" as AppRole,
+      platformRoles: [],
+      memberships: [
+        { schoolId: "school-1", role: "SCHOOL_ADMIN" as const },
+        { schoolId: "school-1", role: "TEACHER" as const },
+      ],
+      profileCompleted: true,
+    };
+    (service as any).fetchClassTimetableData.mockResolvedValue({
+      slots: [],
+      oneOffSlots: [],
+      slotExceptions: [],
+      occurrences: [],
+      calendarEvents: [],
+      subjectStyles: [],
+    });
+
+    await service.myTeacherTimetable(user as never, "school-1", {});
+
+    expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ teacherUserId: "dual-user" }),
+      }),
+    );
+  });
+
+  it("activeRole=TEACHER mais aucun membership TEACHER en DB → ForbiddenException via le vrai check schoolMembership", async () => {
+    const user = {
+      id: "dual-user",
+      firstName: "User",
+      lastName: "Dual",
+      activeRole: "TEACHER" as AppRole,
+      platformRoles: [],
+      memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" as const }],
+      profileCompleted: true,
+    };
+    prisma.schoolMembership.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.myTeacherTimetable(user as never, "school-1", {}),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("activeRole=SCHOOL_ADMIN sans teacherUserId → ForbiddenException (pas d'auto-résolution en teacher)", async () => {
+    const user = {
+      id: "admin-who-is-also-teacher",
+      firstName: "Admin",
+      lastName: "Teacher",
+      activeRole: "SCHOOL_ADMIN" as AppRole,
+      platformRoles: [],
+      memberships: [
+        { schoolId: "school-1", role: "SCHOOL_ADMIN" as const },
+        { schoolId: "school-1", role: "TEACHER" as const },
+      ],
+      profileCompleted: true,
+    };
+
+    await expect(
+      service.myTeacherTimetable(user as never, "school-1", {}),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("enseignant ne peut pas lire l'agenda d'un autre même avec dual-role", async () => {
+    const user = {
+      id: "teacher-1",
+      firstName: "Teacher",
+      lastName: "One",
+      activeRole: "TEACHER" as AppRole,
+      platformRoles: [],
+      memberships: [
+        { schoolId: "school-1", role: "TEACHER" as const },
+        { schoolId: "school-1", role: "PARENT" as const },
+      ],
+      profileCompleted: true,
+    };
+
+    await expect(
+      service.myTeacherTimetable(user as never, "school-1", {
+        teacherUserId: "teacher-2",
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });

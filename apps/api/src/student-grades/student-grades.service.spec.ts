@@ -131,6 +131,153 @@ describe("StudentGradesService", () => {
     });
   });
 
+  describe("activeRole branching — context()", () => {
+    const schoolYear = { id: "sy-1", label: "2025-2026" };
+    const school = { activeSchoolYearId: "sy-1" };
+    const teacherClassSubjectRow = {
+      classId: "class-1",
+      subjectId: "sub-1",
+      schoolYearId: "sy-1",
+      class: { name: "6e A" },
+      subject: { name: "Maths" },
+    };
+
+    beforeEach(() => {
+      prisma.school.findUnique.mockResolvedValue(school);
+      prisma.schoolYear.findMany.mockResolvedValue([schoolYear]);
+      prisma.enrollment.findMany.mockResolvedValue([]);
+    });
+
+    it("SCHOOL_ADMIN activeRole → returns all TeacherClassSubject (admin branch)", async () => {
+      prisma.teacherClassSubject.findMany.mockResolvedValue([
+        teacherClassSubjectRow,
+      ]);
+      const user = makeUser({
+        activeRole: "SCHOOL_ADMIN",
+        memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" }],
+      });
+
+      const result = await service.context(user, "school-1");
+
+      expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.not.objectContaining({ teacherUserId: expect.anything() }) }),
+      );
+      expect(result.assignments).toHaveLength(1);
+    });
+
+    it("TEACHER activeRole with SCHOOL_ADMIN membership → teacher branch (only own assignments)", async () => {
+      prisma.teacherClassSubject.findMany.mockResolvedValue([
+        teacherClassSubjectRow,
+      ]);
+      const user = makeUser({
+        id: "teacher-user-1",
+        activeRole: "TEACHER",
+        memberships: [
+          { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+          { schoolId: "school-1", role: "TEACHER" },
+        ],
+      });
+
+      await service.context(user, "school-1");
+
+      expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ teacherUserId: "teacher-user-1" }),
+        }),
+      );
+    });
+
+    it("PARENT activeRole → returns empty assignments", async () => {
+      const user = makeUser({
+        activeRole: "PARENT",
+        memberships: [
+          { schoolId: "school-1", role: "PARENT" },
+          { schoolId: "school-1", role: "TEACHER" },
+        ],
+      });
+
+      const result = await service.context(user, "school-1");
+
+      expect(prisma.teacherClassSubject.findMany).not.toHaveBeenCalled();
+      expect(result.assignments).toHaveLength(0);
+    });
+
+    it("SCHOOL_MANAGER activeRole → admin branch", async () => {
+      prisma.teacherClassSubject.findMany.mockResolvedValue([
+        teacherClassSubjectRow,
+      ]);
+      const user = makeUser({
+        activeRole: "SCHOOL_MANAGER",
+        memberships: [{ schoolId: "school-1", role: "SCHOOL_MANAGER" }],
+      });
+
+      const result = await service.context(user, "school-1");
+
+      expect(result.assignments).toHaveLength(1);
+      expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.not.objectContaining({ teacherUserId: expect.anything() }) }),
+      );
+    });
+  });
+
+  describe("activeRole branching — list()", () => {
+    const grade = {
+      id: "grade-1",
+      subject: { id: "sub-1", name: "Maths" },
+      class: { id: "class-1", name: "6e A" },
+      student: { id: "stu-1", firstName: "Bob", lastName: "Smith" },
+    };
+
+    it("SCHOOL_ADMIN activeRole → returns all grades", async () => {
+      prisma.studentGrade.findMany.mockResolvedValue([grade]);
+      const user = makeUser({
+        activeRole: "SCHOOL_ADMIN",
+        memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" }],
+      });
+
+      const result = await service.list(user, "school-1", {});
+
+      expect(result).toHaveLength(1);
+      expect(prisma.teacherClassSubject.findMany).not.toHaveBeenCalled();
+    });
+
+    it("TEACHER activeRole with dual SCHOOL_ADMIN+TEACHER memberships → scoped to teacher assignments", async () => {
+      prisma.teacherClassSubject.findMany.mockResolvedValue([]);
+      const user = makeUser({
+        id: "teacher-user-1",
+        activeRole: "TEACHER",
+        memberships: [
+          { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+          { schoolId: "school-1", role: "TEACHER" },
+        ],
+      });
+
+      const result = await service.list(user, "school-1", {});
+
+      expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ teacherUserId: "teacher-user-1" }),
+        }),
+      );
+      expect(result).toEqual([]);
+    });
+
+    it("no matching activeRole → throws ForbiddenException", async () => {
+      const user = makeUser({
+        activeRole: "PARENT",
+        memberships: [
+          { schoolId: "school-1", role: "PARENT" },
+          { schoolId: "school-1", role: "TEACHER" },
+          { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+        ],
+      });
+
+      await expect(service.list(user, "school-1", {})).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
   it("each translated locale produces a distinct, non-empty message", () => {
     const locales: StudentGradesLocale[] = ["fr", "en"];
     const messages = locales.map((locale) =>

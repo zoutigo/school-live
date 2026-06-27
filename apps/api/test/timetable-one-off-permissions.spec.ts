@@ -6,6 +6,7 @@
  * - Créneaux isolés (one-off) : l'enseignant désigné sur le créneau OU le referent OU un admin
  */
 import { ForbiddenException } from "@nestjs/common";
+import type { AppRole } from "../src/auth/auth.types.js";
 import { TimetableService } from "../src/timetable/timetable.service.js";
 import { translateTimetableError } from "../src/timetable/timetable.translations.js";
 
@@ -27,6 +28,7 @@ function makeUser(
 ) {
   return {
     id,
+    activeRole: schoolRole as AppRole,
     platformRoles,
     memberships: [{ schoolId: "school-1", role: schoolRole }],
     profileCompleted: true,
