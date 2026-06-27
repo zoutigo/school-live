@@ -143,7 +143,7 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanReadClassContext(
       user,
       effectiveSchoolId,
       classEntity,
@@ -240,7 +240,7 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.assertCanManageClassTimetable(
+    await this.assertCanReadClassContext(
       user,
       effectiveSchoolId,
       classEntity,
@@ -3721,6 +3721,50 @@ export class TimetableService {
     }
 
     await this.ensureClassInSchool(input.classId, input.schoolId, locale);
+  }
+
+  private async assertCanReadClassContext(
+    user: AuthenticatedUser,
+    schoolId: string,
+    classEntity: ClassContext,
+    locale: TimetableLocale = "fr",
+  ) {
+    if (
+      this.hasPlatformRole(user, "SUPER_ADMIN") ||
+      this.hasPlatformRole(user, "ADMIN")
+    ) {
+      return;
+    }
+
+    const activeRole = user.activeRole;
+    if (
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
+    ) {
+      return;
+    }
+
+    if (activeRole !== "TEACHER") {
+      throw new ForbiddenException(
+        translateTimetableError(locale, "timetable.errors.insufficientRole"),
+      );
+    }
+
+    if (classEntity.referentTeacherUserId === user.id) {
+      return;
+    }
+
+    const hasAssignment = await this.prisma.teacherClassSubject.findFirst({
+      where: { schoolId, classId: classEntity.id, teacherUserId: user.id },
+      select: { teacherUserId: true },
+    });
+
+    if (!hasAssignment) {
+      throw new ForbiddenException(
+        translateTimetableError(locale, "timetable.errors.insufficientRole"),
+      );
+    }
   }
 
   private async assertCanManageClassTimetable(
