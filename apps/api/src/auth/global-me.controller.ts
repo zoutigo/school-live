@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Put, UseGuards } from "@nestjs/common";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { AuthenticatedUser } from "./auth.types.js";
+import { LinkSsoDto } from "./dto/link-sso.dto.js";
+import { RequestEmailChangeDto } from "./dto/request-email-change.dto.js";
 import { SetActiveRoleDto } from "./dto/set-active-role.dto.js";
 import { UpdatePersonalProfileDto } from "./dto/update-personal-profile.dto.js";
 import { UpdatePreferredLocaleDto } from "./dto/update-preferred-locale.dto.js";
@@ -45,5 +47,23 @@ export class GlobalMeController {
       user.id,
       payload.preferredLocale,
     );
+  }
+
+  @Post("me/request-email-change")
+  @UseGuards(JwtAuthGuard)
+  requestEmailChange(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: RequestEmailChangeDto,
+  ) {
+    return this.authService.requestEmailChange(user.id, payload.email);
+  }
+
+  @Post("me/link-sso")
+  @UseGuards(JwtAuthGuard)
+  linkSsoAccount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: LinkSsoDto,
+  ) {
+    return this.authService.linkSsoAccount(user.id, payload);
   }
 }

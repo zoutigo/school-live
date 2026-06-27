@@ -244,6 +244,11 @@ export class PublicAuthController {
     return this.authService.verifyEmailToken(token ?? "");
   }
 
+  @Get("confirm-email-change")
+  confirmEmailChange(@Query("token") token: string) {
+    return this.authService.confirmEmailChange(token ?? "");
+  }
+
   @Post("create-password")
   @UseGuards(JwtAuthGuard)
   createPassword(

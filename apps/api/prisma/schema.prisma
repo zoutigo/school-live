@@ -81,6 +81,13 @@ enum AuthAuditEvent {
   ADD_EMAIL
   VERIFY_EMAIL
   ADD_PHONE_CREDENTIAL
+  CHANGE_EMAIL
+  LINK_SSO
+}
+
+enum EmailVerificationPurpose {
+  ADD_EMAIL
+  CHANGE_EMAIL
 }
 
 enum AuthAuditStatus {
@@ -573,14 +580,15 @@ model PasswordResetToken {
 }
 
 model EmailVerificationToken {
-  id        String    @id @default(cuid())
+  id        String                   @id @default(cuid())
   userId    String
   email     String
-  tokenHash String    @unique
+  tokenHash String                   @unique
+  purpose   EmailVerificationPurpose @default(ADD_EMAIL)
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime                 @default(now())
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])

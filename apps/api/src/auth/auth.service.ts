@@ -943,6 +943,11 @@ export class AuthService {
           email: normalizedEmail,
         },
       });
+    } else if (identity.email !== normalizedEmail) {
+      await this.prisma.userAuthIdentity.update({
+        where: { id: identity.id },
+        data: { email: normalizedEmail },
+      });
     }
 
     if (input.avatarUrl && !user.avatarUrl) {
@@ -1806,6 +1811,166 @@ export class AuthService {
       userId,
       context,
     });
+    return { success: true };
+  }
+
+  async requestEmailChange(userId: string, email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+    if (!user.email) {
+      throw new ForbiddenException(
+        "Ce compte n'a pas encore d'email. Utilisez l'ajout d'email.",
+      );
+    }
+    if (user.email === normalizedEmail) {
+      throw new ForbiddenException(
+        "Le nouvel email est identique a l'email actuel.",
+      );
+    }
+
+    const existing = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (existing) {
+      throw new ForbiddenException("Cette adresse email est deja utilisee.");
+    }
+
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.emailVerificationToken.deleteMany({
+      where: { userId, purpose: "CHANGE_EMAIL" },
+    });
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId,
+        email: normalizedEmail,
+        tokenHash,
+        expiresAt,
+        purpose: "CHANGE_EMAIL",
+      },
+    });
+
+    const webUrl =
+      this.configService.get<string>("WEB_URL") ?? "http://localhost:3000";
+    const verificationUrl = `${webUrl}/auth/confirmer-changement-email?token=${rawToken}`;
+    await this.mailService.sendEmailVerification({
+      to: normalizedEmail,
+      firstName: user.firstName,
+      verificationUrl,
+    });
+
+    await this.auditAuth({ event: "CHANGE_EMAIL", status: "SUCCESS", userId });
+    return {
+      success: true,
+      message: "Un lien de verification a ete envoye a la nouvelle adresse email.",
+    };
+  }
+
+  async confirmEmailChange(rawToken: string) {
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const token = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      include: { user: { select: { id: true, email: true } } },
+    });
+
+    if (
+      !token ||
+      token.usedAt ||
+      token.expiresAt < new Date() ||
+      token.purpose !== "CHANGE_EMAIL"
+    ) {
+      throw new ForbiddenException(
+        "Lien de confirmation invalide ou expire. Veuillez faire une nouvelle demande.",
+      );
+    }
+
+    const already = await this.prisma.user.findUnique({
+      where: { email: token.email },
+      select: { id: true },
+    });
+    if (already && already.id !== token.userId) {
+      throw new ForbiddenException(
+        "Cette adresse email est deja utilisee par un autre compte.",
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: token.userId },
+        data: { email: token.email },
+      });
+      await tx.userAuthIdentity.updateMany({
+        where: { userId: token.userId },
+        data: { email: token.email },
+      });
+      await tx.emailVerificationToken.update({
+        where: { id: token.id },
+        data: { usedAt: new Date() },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId: token.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    await this.auditAuth({
+      event: "CHANGE_EMAIL",
+      status: "SUCCESS",
+      userId: token.userId,
+    });
+    return { success: true };
+  }
+
+  async linkSsoAccount(
+    userId: string,
+    input: {
+      provider: "GOOGLE" | "APPLE";
+      providerAccountId: string;
+      email: string;
+    },
+  ) {
+    const provider = input.provider as import("@prisma/client").AuthProvider;
+    const normalizedEmail = input.email.toLowerCase().trim();
+    const providerAccountId = input.providerAccountId.trim();
+
+    if (!providerAccountId) {
+      throw new ForbiddenException("Identifiant de compte SSO invalide.");
+    }
+
+    const existing = await this.prisma.userAuthIdentity.findUnique({
+      where: {
+        provider_providerAccountId: { provider, providerAccountId },
+      },
+      select: { id: true, userId: true },
+    });
+
+    if (existing && existing.userId !== userId) {
+      throw new ForbiddenException(
+        "Ce compte SSO est deja lie a un autre utilisateur.",
+      );
+    }
+
+    if (!existing) {
+      await this.prisma.userAuthIdentity.create({
+        data: { userId, provider, providerAccountId, email: normalizedEmail },
+      });
+    } else {
+      await this.prisma.userAuthIdentity.update({
+        where: { id: existing.id },
+        data: { email: normalizedEmail },
+      });
+    }
+
+    await this.auditAuth({ event: "LINK_SSO", status: "SUCCESS", userId });
     return { success: true };
   }
 
