@@ -216,8 +216,19 @@ describe("TimetableViews", () => {
 
   it("nav-next depuis vendredi atteint le samedi avec un cours one-off", () => {
     const slots = [
-      buildSlot({ id: "slot-fri", occurrenceDate: "2026-03-13", weekday: 5, subjectName: "Physique" }),
-      buildSlot({ id: "slot-sat", occurrenceDate: "2026-03-14", weekday: 6, subjectName: "Sport", source: "ONE_OFF" }),
+      buildSlot({
+        id: "slot-fri",
+        occurrenceDate: "2026-03-13",
+        weekday: 5,
+        subjectName: "Physique",
+      }),
+      buildSlot({
+        id: "slot-sat",
+        occurrenceDate: "2026-03-14",
+        weekday: 6,
+        subjectName: "Sport",
+        source: "ONE_OFF",
+      }),
     ];
 
     render(

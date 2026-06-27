@@ -164,7 +164,12 @@ describe("Agenda page forms", () => {
         }
         if (url.includes("/admin/rooms/available")) {
           return jsonResponse([
-            { id: "r-b14", name: "B14", status: "AVAILABLE", isAvailable: true },
+            {
+              id: "r-b14",
+              name: "B14",
+              status: "AVAILABLE",
+              isAvailable: true,
+            },
           ]);
         }
         if (

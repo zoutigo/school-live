@@ -42,7 +42,8 @@ function mockMeWithEmail(email = "alice@example.com") {
 function mockFetchForAccount(overrides: Record<string, Response> = {}) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = String(input);
-    if (url.endsWith("/me")) return Promise.resolve(overrides["/me"] ?? mockMeWithEmail());
+    if (url.endsWith("/me"))
+      return Promise.resolve(overrides["/me"] ?? mockMeWithEmail());
     if (url.endsWith("/auth/recovery/options"))
       return Promise.resolve(
         new Response(
@@ -109,7 +110,9 @@ describe("AccountPage — changement d'email", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /modifier l.email/i }));
-    expect(screen.getByPlaceholderText("nouveau@email.com")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("nouveau@email.com"),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /annuler/i }));
 
@@ -121,7 +124,7 @@ describe("AccountPage — changement d'email", () => {
   it("appelle POST /me/request-email-change avec le bon email", async () => {
     const fetchSpy = mockFetchForAccount();
 
-    fetchSpy.mockImplementation((input, init) => {
+    fetchSpy.mockImplementation((input) => {
       const url = String(input);
       if (url.endsWith("/me")) return Promise.resolve(mockMeWithEmail());
       if (url.includes("/me/request-email-change")) {
@@ -134,7 +137,19 @@ describe("AccountPage — changement d'email", () => {
       }
       if (url.endsWith("/auth/recovery/options"))
         return Promise.resolve(
-          new Response(JSON.stringify({ questions: [], classes: [], students: [], selectedQuestions: [], birthDate: "", parentClassId: null, parentStudentId: null, schoolRoles: [] }), { status: 200 }),
+          new Response(
+            JSON.stringify({
+              questions: [],
+              classes: [],
+              students: [],
+              selectedQuestions: [],
+              birthDate: "",
+              parentClassId: null,
+              parentStudentId: null,
+              schoolRoles: [],
+            }),
+            { status: 200 },
+          ),
         );
       return Promise.resolve(new Response("{}", { status: 200 }));
     });
@@ -162,7 +177,9 @@ describe("AccountPage — changement d'email", () => {
       String(url).includes("/me/request-email-change"),
     );
     expect(changeCalls).toHaveLength(1);
-    const body = JSON.parse(String((changeCalls[0][1] as RequestInit)?.body ?? "{}")) as { email: string };
+    const body = JSON.parse(
+      String((changeCalls[0][1] as RequestInit)?.body ?? "{}"),
+    ) as { email: string };
     expect(body.email).toBe("nouvelle@example.com");
   });
 
@@ -175,12 +192,28 @@ describe("AccountPage — changement d'email", () => {
       if (url.includes("/me/request-email-change"))
         return Promise.resolve(
           new Response(
-            JSON.stringify({ message: "Cette adresse email est deja utilisee." }),
+            JSON.stringify({
+              message: "Cette adresse email est deja utilisee.",
+            }),
             { status: 403, headers: { "Content-Type": "application/json" } },
           ),
         );
       if (url.endsWith("/auth/recovery/options"))
-        return Promise.resolve(new Response(JSON.stringify({ questions: [], classes: [], students: [], selectedQuestions: [], birthDate: "", parentClassId: null, parentStudentId: null, schoolRoles: [] }), { status: 200 }));
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              questions: [],
+              classes: [],
+              students: [],
+              selectedQuestions: [],
+              birthDate: "",
+              parentClassId: null,
+              parentStudentId: null,
+              schoolRoles: [],
+            }),
+            { status: 200 },
+          ),
+        );
       return Promise.resolve(new Response("{}", { status: 200 }));
     });
 
@@ -197,9 +230,7 @@ describe("AccountPage — changement d'email", () => {
     fireEvent.click(screen.getByRole("button", { name: /envoyer le lien/i }));
 
     await waitFor(() =>
-      expect(
-        screen.getByText(/deja utilisee/i),
-      ).toBeInTheDocument(),
+      expect(screen.getByText(/deja utilisee/i)).toBeInTheDocument(),
     );
   });
 

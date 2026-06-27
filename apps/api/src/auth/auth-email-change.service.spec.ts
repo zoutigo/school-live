@@ -6,8 +6,6 @@ import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test, type TestingModule } from "@nestjs/testing";
-import { createHash, randomBytes } from "crypto";
-import bcrypt from "bcryptjs";
 import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AuthService } from "./auth.service.js";
@@ -120,7 +118,9 @@ describe("AuthService — requestEmailChange", () => {
         },
         {
           provide: MailService,
-          useValue: { sendEmailVerification: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            sendEmailVerification: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -213,9 +213,9 @@ describe("AuthService — confirmEmailChange", () => {
 
   it("throws 403 for unknown token", async () => {
     prisma.emailVerificationToken.findUnique.mockResolvedValue(null);
-    await expect(service.confirmEmailChange("bad-token")).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      service.confirmEmailChange("bad-token"),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it("throws 403 for already-used token", async () => {
@@ -282,7 +282,9 @@ describe("AuthService — confirmEmailChange", () => {
       expect.objectContaining({ data: { email: NEW_EMAIL } }),
     );
     expect(txTokenUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ usedAt: expect.any(Date) }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ usedAt: expect.any(Date) }),
+      }),
     );
     expect(txRefreshRevoke).toHaveBeenCalled();
   });

@@ -872,7 +872,13 @@ export default function TeacherClassAgendaPage() {
     return () => {
       cancelled = true;
     };
-  }, [schoolSlug, slotValues.weekday, slotValues.start, slotValues.end, editingSlotId]);
+  }, [
+    schoolSlug,
+    slotValues.weekday,
+    slotValues.start,
+    slotValues.end,
+    editingSlotId,
+  ]);
 
   // Load available rooms for occurrence form (occurrenceDate + start/end from form)
   useEffect(() => {

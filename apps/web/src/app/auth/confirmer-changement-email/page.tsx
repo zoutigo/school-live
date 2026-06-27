@@ -32,7 +32,8 @@ export default async function ConfirmerChangementEmailPage({
 
   let result: ConfirmResult = {
     success: false,
-    message: "Lien manquant. Veuillez relancer la procedure depuis votre compte.",
+    message:
+      "Lien manquant. Veuillez relancer la procedure depuis votre compte.",
   };
 
   if (token) {
@@ -64,7 +65,8 @@ export default async function ConfirmerChangementEmailPage({
         </p>
         {result.success ? (
           <p className="mt-3 text-sm text-text-secondary">
-            Vos sessions actives ont ete revoquees. Reconnectez-vous avec votre nouvelle adresse email.
+            Vos sessions actives ont ete revoquees. Reconnectez-vous avec votre
+            nouvelle adresse email.
           </p>
         ) : null}
         <Link

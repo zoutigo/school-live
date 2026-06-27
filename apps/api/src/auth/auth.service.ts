@@ -1871,7 +1871,8 @@ export class AuthService {
     await this.auditAuth({ event: "CHANGE_EMAIL", status: "SUCCESS", userId });
     return {
       success: true,
-      message: "Un lien de verification a ete envoye a la nouvelle adresse email.",
+      message:
+        "Un lien de verification a ete envoye a la nouvelle adresse email.",
     };
   }
 

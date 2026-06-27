@@ -56,7 +56,11 @@ describe("Email change & link-sso API e2e", () => {
     app.setGlobalPrefix("api");
     app.use(cookieParser());
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
     );
     await app.listen(0);
 
@@ -213,7 +217,9 @@ describe("Email change & link-sso API e2e", () => {
         `/api/auth/confirm-email-change?token=${encodeURIComponent(wrongRaw)}`,
       );
       expect(response.status).toBe(403);
-      await prisma.emailVerificationToken.deleteMany({ where: { tokenHash: wrongHash } });
+      await prisma.emailVerificationToken.deleteMany({
+        where: { tokenHash: wrongHash },
+      });
     });
 
     it("confirms email change and updates User.email + UserAuthIdentity.email", async () => {
@@ -256,7 +262,10 @@ describe("Email change & link-sso API e2e", () => {
 
     afterAll(async () => {
       // Restore original email for other tests
-      await prisma.user.update({ where: { id: userId }, data: { email: userEmail } });
+      await prisma.user.update({
+        where: { id: userId },
+        data: { email: userEmail },
+      });
     });
   });
 
@@ -273,7 +282,11 @@ describe("Email change & link-sso API e2e", () => {
       const { response } = await api("/api/me/link-sso", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: "GOOGLE", providerAccountId, email: userEmail }),
+        body: JSON.stringify({
+          provider: "GOOGLE",
+          providerAccountId,
+          email: userEmail,
+        }),
       });
       expect(response.status).toBe(401);
     });
@@ -297,7 +310,9 @@ describe("Email change & link-sso API e2e", () => {
       expect(body?.success).toBe(true);
 
       const identity = await prisma.userAuthIdentity.findUnique({
-        where: { provider_providerAccountId: { provider: "GOOGLE", providerAccountId } },
+        where: {
+          provider_providerAccountId: { provider: "GOOGLE", providerAccountId },
+        },
       });
       expect(identity?.userId).toBe(userId);
     });

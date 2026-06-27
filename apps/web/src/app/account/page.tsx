@@ -277,7 +277,9 @@ export default function AccountPage() {
   const [addingEmail, setAddingEmail] = useState(false);
   const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [changeEmailError, setChangeEmailError] = useState<string | null>(null);
-  const [changeEmailSuccess, setChangeEmailSuccess] = useState<string | null>(null);
+  const [changeEmailSuccess, setChangeEmailSuccess] = useState<string | null>(
+    null,
+  );
   const [changingEmail, setChangingEmail] = useState(false);
   const [createPasswordError, setCreatePasswordError] = useState<string | null>(
     null,
@@ -618,7 +620,9 @@ export default function AccountPage() {
     }
   }
 
-  async function onRequestEmailChange(values: z.output<typeof changeEmailSchema>) {
+  async function onRequestEmailChange(
+    values: z.output<typeof changeEmailSchema>,
+  ) {
     setChangeEmailError(null);
     setChangeEmailSuccess(null);
     const csrfToken = getCsrfTokenCookie();
@@ -644,7 +648,8 @@ export default function AccountPage() {
         } | null;
         const message = Array.isArray(payload?.message)
           ? payload.message.join(", ")
-          : (payload?.message ?? "Impossible d'envoyer le lien de changement d'email.");
+          : (payload?.message ??
+            "Impossible d'envoyer le lien de changement d'email.");
         setChangeEmailError(String(message));
         return;
       }
@@ -1256,7 +1261,9 @@ export default function AccountPage() {
                       ) : (
                         <form
                           className="mt-3 grid gap-2"
-                          onSubmit={changeEmailForm.handleSubmit(onRequestEmailChange)}
+                          onSubmit={changeEmailForm.handleSubmit(
+                            onRequestEmailChange,
+                          )}
                           noValidate
                         >
                           <Controller
@@ -1272,12 +1279,18 @@ export default function AccountPage() {
                                   changeEmailForm.setValue(
                                     "email",
                                     event.target.value,
-                                    { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
                                   )
                                 }
                                 onBlur={field.onBlur}
                                 placeholder="nouveau@email.com"
-                                invalid={Boolean(changeEmailForm.formState.errors.email)}
+                                invalid={Boolean(
+                                  changeEmailForm.formState.errors.email,
+                                )}
                               />
                             )}
                           />
@@ -1287,15 +1300,17 @@ export default function AccountPage() {
                             </p>
                           ) : null}
                           {changeEmailError ? (
-                            <p className="text-xs text-notification">{changeEmailError}</p>
+                            <p className="text-xs text-notification">
+                              {changeEmailError}
+                            </p>
                           ) : null}
                           {changeEmailSuccess ? (
-                            <p className="text-xs text-primary">{changeEmailSuccess}</p>
+                            <p className="text-xs text-primary">
+                              {changeEmailSuccess}
+                            </p>
                           ) : null}
                           <div className="flex gap-2">
-                            <SubmitButton
-                              disabled={changingEmail}
-                            >
+                            <SubmitButton disabled={changingEmail}>
                               {changingEmail ? "Envoi..." : "Envoyer le lien"}
                             </SubmitButton>
                             <button
