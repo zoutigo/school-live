@@ -3736,15 +3736,16 @@ export class TimetableService {
       return;
     }
 
+    const activeRole = user.activeRole;
     if (
-      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
-      this.hasSchoolRole(user, schoolId, "SUPERVISOR")
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       return;
     }
 
-    if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
+    if (activeRole !== "TEACHER") {
       throw new ForbiddenException(
         translateTimetableError(locale, "timetable.errors.insufficientRole"),
       );
@@ -3782,15 +3783,16 @@ export class TimetableService {
       return;
     }
 
+    const activeRole = user.activeRole;
     if (
-      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
-      this.hasSchoolRole(user, schoolId, "SUPERVISOR")
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       return;
     }
 
-    if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
+    if (activeRole !== "TEACHER") {
       throw new ForbiddenException(
         translateTimetableError(locale, "timetable.errors.insufficientRole"),
       );
@@ -3831,15 +3833,16 @@ export class TimetableService {
       return;
     }
 
+    const activeRole = user.activeRole;
     if (
-      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
-      this.hasSchoolRole(user, schoolId, "SUPERVISOR")
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       return;
     }
 
-    if (!this.hasSchoolRole(user, schoolId, "TEACHER")) {
+    if (activeRole !== "TEACHER") {
       throw new ForbiddenException(
         translateTimetableError(locale, "timetable.errors.insufficientRole"),
       );
@@ -3876,11 +3879,12 @@ export class TimetableService {
       return;
     }
 
+    const activeRole = user.activeRole;
     if (
-      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
-      this.hasSchoolRole(user, schoolId, "SUPERVISOR") ||
-      this.hasSchoolRole(user, schoolId, "TEACHER")
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR" ||
+      activeRole === "TEACHER"
     ) {
       return;
     }
@@ -3902,10 +3906,11 @@ export class TimetableService {
       return;
     }
 
+    const activeRole = user.activeRole;
     if (
-      this.hasSchoolRole(user, schoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, schoolId, "SCHOOL_MANAGER") ||
-      this.hasSchoolRole(user, schoolId, "SUPERVISOR")
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       return;
     }
@@ -3933,48 +3938,20 @@ export class TimetableService {
     return user.platformRoles.includes(role);
   }
 
-  private hasSchoolRole(
-    user: AuthenticatedUser,
-    schoolId: string,
-    role: SchoolRole,
-  ) {
-    return user.memberships.some(
-      (membership) =>
-        membership.schoolId === schoolId && membership.role === role,
-    );
-  }
-
-  private getHighestSchoolRole(
-    user: AuthenticatedUser,
-    schoolId: string,
-  ): SchoolRole | null {
-    const membership = user.memberships.find(
-      (entry) => entry.schoolId === schoolId,
-    );
-    return membership?.role ?? null;
-  }
-
   private resolveRoleForMyTimetable(
     user: AuthenticatedUser,
     schoolId: string,
     childId?: string,
   ): "STUDENT" | "PARENT" | null {
-    const hasStudentRole = this.hasSchoolRole(user, schoolId, "STUDENT");
-    const hasParentRole = this.hasSchoolRole(user, schoolId, "PARENT");
+    const activeRole = user.activeRole;
 
     if (childId?.trim()) {
-      if (hasParentRole) {
-        return "PARENT";
-      }
-      return hasStudentRole ? "STUDENT" : null;
+      if (activeRole === "PARENT") return "PARENT";
+      return activeRole === "STUDENT" ? "STUDENT" : null;
     }
 
-    if (hasStudentRole) {
-      return "STUDENT";
-    }
-    if (hasParentRole) {
-      return "PARENT";
-    }
+    if (activeRole === "STUDENT") return "STUDENT";
+    if (activeRole === "PARENT") return "PARENT";
     return null;
   }
 
@@ -3986,12 +3963,13 @@ export class TimetableService {
   }) {
     const locale = input.locale ?? "fr";
     const requestedTeacherUserId = input.requestedTeacherUserId?.trim();
+    const activeRole = input.user.activeRole;
     const canReadOtherTeacherAgenda =
       this.hasPlatformRole(input.user, "SUPER_ADMIN") ||
       this.hasPlatformRole(input.user, "ADMIN") ||
-      this.hasSchoolRole(input.user, input.schoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(input.user, input.schoolId, "SCHOOL_MANAGER") ||
-      this.hasSchoolRole(input.user, input.schoolId, "SUPERVISOR");
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR";
 
     if (requestedTeacherUserId) {
       if (
@@ -4005,7 +3983,7 @@ export class TimetableService {
       );
     }
 
-    if (this.hasSchoolRole(input.user, input.schoolId, "TEACHER")) {
+    if (activeRole === "TEACHER") {
       return input.user.id;
     }
 

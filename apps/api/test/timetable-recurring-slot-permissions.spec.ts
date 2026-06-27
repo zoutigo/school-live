@@ -6,6 +6,7 @@
  * - Exceptions de slot (create/update/delete) : referent teacher ou admin seulement
  */
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import type { AppRole } from "../src/auth/auth.types.js";
 import { TimetableService } from "../src/timetable/timetable.service.js";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ function makeUser(
 ) {
   return {
     id,
+    activeRole: schoolRole as AppRole,
     platformRoles,
     memberships: [{ schoolId: "school-1", role: schoolRole }],
     profileCompleted: true,
@@ -582,5 +584,76 @@ describe("deleteSlotException — referent seulement", () => {
     await expect(
       service.deleteSlotException(user, "school-1", "exc-missing"),
     ).rejects.toThrow(NotFoundException);
+  });
+});
+
+// ─── Cohérence activeRole — scénarios dual-role ───────────────────────────────
+
+describe("activeRole est la source de vérité (pas les memberships)", () => {
+  beforeEach(() => {
+    prisma.classTimetableSlot.findFirst.mockResolvedValue(makeSlotEntity());
+    prisma.classTimetableSlot.update.mockResolvedValue({ id: "slot-1" });
+    prisma.classTimetableSlot.delete.mockResolvedValue({ id: "slot-1" });
+    prisma.schoolYear.findFirst.mockResolvedValue({ id: "sy-1" });
+    prisma.subject.findFirst.mockResolvedValue({ id: "sub-1" });
+    prisma.classCurriculum.findFirst.mockResolvedValue(null);
+    prisma.classTimetableSubjectStyle.findFirst.mockResolvedValue(null);
+    prisma.classTimetableSubjectStyle.upsert.mockResolvedValue({});
+    prisma.room.findFirst.mockResolvedValue(null);
+    prisma.teacherClassSubject.findFirst.mockResolvedValue({ id: "tcs-1" });
+  });
+
+  it("SCHOOL_ADMIN membership + activeRole=TEACHER → refuse updateSlot si pas referent", async () => {
+    const user = {
+      id: "admin-teacher",
+      firstName: "A",
+      lastName: "B",
+      activeRole: "TEACHER" as AppRole,
+      platformRoles: [],
+      memberships: [
+        { schoolId: "school-1", role: "SCHOOL_ADMIN" as const },
+        { schoolId: "school-1", role: "TEACHER" as const },
+      ],
+      profileCompleted: true,
+    };
+    await expect(
+      service.updateSlot(user, "school-1", "slot-1", { weekday: 3 }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it("SCHOOL_ADMIN membership + activeRole=SCHOOL_ADMIN → autorise updateSlot même sans referent", async () => {
+    const user = {
+      id: "admin-teacher",
+      firstName: "A",
+      lastName: "B",
+      activeRole: "SCHOOL_ADMIN" as AppRole,
+      platformRoles: [],
+      memberships: [
+        { schoolId: "school-1", role: "SCHOOL_ADMIN" as const },
+        { schoolId: "school-1", role: "TEACHER" as const },
+      ],
+      profileCompleted: true,
+    };
+    await expect(
+      service.updateSlot(user, "school-1", "slot-1", { weekday: 3 }),
+    ).resolves.toBeDefined();
+  });
+
+  it("PARENT membership + activeRole=TEACHER → refuse (activeRole prévaut, pas le membership TEACHER)", async () => {
+    const user = {
+      id: "parent-teacher",
+      firstName: "A",
+      lastName: "B",
+      activeRole: "PARENT" as AppRole,
+      platformRoles: [],
+      memberships: [
+        { schoolId: "school-1", role: "TEACHER" as const },
+        { schoolId: "school-1", role: "PARENT" as const },
+      ],
+      profileCompleted: true,
+    };
+    await expect(
+      service.updateSlot(user, "school-1", "slot-1", { weekday: 3 }),
+    ).rejects.toThrow(ForbiddenException);
   });
 });

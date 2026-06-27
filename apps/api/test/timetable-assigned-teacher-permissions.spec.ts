@@ -1,4 +1,5 @@
 import { ForbiddenException } from "@nestjs/common";
+import type { AppRole } from "../src/auth/auth.types.js";
 import { TimetableService } from "../src/timetable/timetable.service.js";
 
 type SchoolRole =
@@ -14,6 +15,7 @@ function makeUser(id: string, schoolRole: SchoolRole) {
     id,
     firstName: "User",
     lastName: id,
+    activeRole: schoolRole as AppRole,
     platformRoles: [],
     memberships: [{ schoolId: "school-1", role: schoolRole }],
     profileCompleted: true,

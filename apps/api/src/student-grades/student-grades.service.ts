@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import type { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
-import type { AuthenticatedUser, SchoolRole } from "../auth/auth.types.js";
+import type { AuthenticatedUser } from "../auth/auth.types.js";
 import {
   studentGradesLocaleFromUser,
   translateStudentGradesError,
@@ -56,7 +56,7 @@ export class StudentGradesService {
       locale,
     );
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
+    if (user.activeRole === "TEACHER") {
       await this.ensureTeacherAssignment(
         user.id,
         effectiveSchoolId,
@@ -110,11 +110,13 @@ export class StudentGradesService {
       where.subjectId = filters.subjectId;
     }
 
+    const activeRole = user.activeRole;
+
     if (
       this.hasPlatformRole(user, "SUPER_ADMIN") ||
-      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER") ||
-      this.hasSchoolRole(user, effectiveSchoolId, "SUPERVISOR")
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       return this.prisma.studentGrade.findMany({
         where,
@@ -133,7 +135,7 @@ export class StudentGradesService {
       });
     }
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
+    if (activeRole === "TEACHER") {
       const assignments = await this.prisma.teacherClassSubject.findMany({
         where: {
           schoolId: effectiveSchoolId,
@@ -174,7 +176,7 @@ export class StudentGradesService {
       });
     }
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, "STUDENT")) {
+    if (activeRole === "STUDENT") {
       const student = await this.prisma.student.findFirst({
         where: {
           schoolId: effectiveSchoolId,
@@ -234,7 +236,7 @@ export class StudentGradesService {
       );
     }
 
-    if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
+    if (user.activeRole === "TEACHER") {
       await this.ensureTeacherAssignment(
         user.id,
         effectiveSchoolId,
@@ -290,11 +292,13 @@ export class StudentGradesService {
       schoolYearId: string;
     }> = [];
 
+    const activeRole = user.activeRole;
+
     if (
       this.hasPlatformRole(user, "SUPER_ADMIN") ||
-      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_ADMIN") ||
-      this.hasSchoolRole(user, effectiveSchoolId, "SCHOOL_MANAGER") ||
-      this.hasSchoolRole(user, effectiveSchoolId, "SUPERVISOR")
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR"
     ) {
       const rows = await this.prisma.teacherClassSubject.findMany({
         where: {
@@ -327,7 +331,7 @@ export class StudentGradesService {
         subjectName: row.subject.name,
         schoolYearId: row.schoolYearId,
       }));
-    } else if (this.hasSchoolRole(user, effectiveSchoolId, "TEACHER")) {
+    } else if (activeRole === "TEACHER") {
       const rows = await this.prisma.teacherClassSubject.findMany({
         where: {
           schoolId: effectiveSchoolId,
@@ -667,16 +671,5 @@ export class StudentGradesService {
     role: AuthenticatedUser["platformRoles"][number],
   ) {
     return user.platformRoles.includes(role);
-  }
-
-  private hasSchoolRole(
-    user: AuthenticatedUser,
-    schoolId: string,
-    role: SchoolRole,
-  ) {
-    return user.memberships.some(
-      (membership) =>
-        membership.schoolId === schoolId && membership.role === role,
-    );
   }
 }
