@@ -162,6 +162,16 @@ describe("Agenda page forms", () => {
         ) {
           return jsonResponse(timetablePayload);
         }
+        if (url.includes("/admin/rooms/available")) {
+          return jsonResponse([
+            {
+              id: "r-b14",
+              name: "B14",
+              status: "AVAILABLE",
+              isAvailable: true,
+            },
+          ]);
+        }
         if (
           url.endsWith(
             "/schools/college-vogt/timetable/classes/class-1/slots",
@@ -183,9 +193,12 @@ describe("Agenda page forms", () => {
     });
     expect(submitButton).toBeEnabled();
 
-    fireEvent.change(screen.getByPlaceholderText("ex: B14"), {
-      target: { value: "B14" },
-    });
+    // Sélectionner la salle B14 dans le dropdown (select)
+    const roomSelect = document.getElementById(
+      "slot-room",
+    ) as HTMLSelectElement;
+    await waitFor(() => expect(roomSelect).not.toBeNull());
+    fireEvent.change(roomSelect, { target: { value: "B14" } });
 
     const slotTimeInputs = document.querySelectorAll('input[type="time"]');
     fireEvent.change(slotTimeInputs[1] as HTMLInputElement, {

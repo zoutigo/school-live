@@ -1413,6 +1413,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.slotForm.noTeacherAssigned":
       "Aucun enseignant affecte a cette matiere",
     "timetable.agenda.slotForm.room": "Salle (optionnel)",
+    "timetable.agenda.slotForm.roomNone": "Aucune salle",
     "timetable.agenda.slotForm.roomPlaceholder": "ex: B14",
     "timetable.agenda.slotForm.activeFromDate": "Debut occurrences (optionnel)",
     "timetable.agenda.slotForm.activeToDate": "Fin occurrences (optionnel)",
@@ -4285,6 +4286,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.slotForm.noTeacherAssigned":
       "No teacher assigned to this subject",
     "timetable.agenda.slotForm.room": "Room (optional)",
+    "timetable.agenda.slotForm.roomNone": "No room",
     "timetable.agenda.slotForm.roomPlaceholder": "e.g. B14",
     "timetable.agenda.slotForm.activeFromDate": "Occurrences start (optional)",
     "timetable.agenda.slotForm.activeToDate": "Occurrences end (optional)",

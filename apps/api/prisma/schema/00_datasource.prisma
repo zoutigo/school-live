@@ -81,6 +81,13 @@ enum AuthAuditEvent {
   ADD_EMAIL
   VERIFY_EMAIL
   ADD_PHONE_CREDENTIAL
+  CHANGE_EMAIL
+  LINK_SSO
+}
+
+enum EmailVerificationPurpose {
+  ADD_EMAIL
+  CHANGE_EMAIL
 }
 
 enum AuthAuditStatus {

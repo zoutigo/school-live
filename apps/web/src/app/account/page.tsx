@@ -71,6 +71,10 @@ const addEmailSchema = z.object({
   email: z.string().email("Adresse email invalide."),
 });
 
+const changeEmailSchema = z.object({
+  email: z.string().email("Adresse email invalide."),
+});
+
 function createAddPhoneCredentialSchema(t: (key: string) => string) {
   return z
     .object({
@@ -271,6 +275,12 @@ export default function AccountPage() {
   const [addEmailError, setAddEmailError] = useState<string | null>(null);
   const [addEmailSuccess, setAddEmailSuccess] = useState<string | null>(null);
   const [addingEmail, setAddingEmail] = useState(false);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
+  const [changeEmailError, setChangeEmailError] = useState<string | null>(null);
+  const [changeEmailSuccess, setChangeEmailSuccess] = useState<string | null>(
+    null,
+  );
+  const [changingEmail, setChangingEmail] = useState(false);
   const [createPasswordError, setCreatePasswordError] = useState<string | null>(
     null,
   );
@@ -334,6 +344,15 @@ export default function AccountPage() {
     resolver: zodResolver(createPasswordSchema),
     mode: "onChange",
     defaultValues: { newPassword: "", confirmNewPassword: "" },
+  });
+  const changeEmailForm = useForm<
+    z.input<typeof changeEmailSchema>,
+    unknown,
+    z.output<typeof changeEmailSchema>
+  >({
+    resolver: zodResolver(changeEmailSchema),
+    mode: "onChange",
+    defaultValues: { email: "" },
   });
   const addEmailForm = useForm<
     z.input<typeof addEmailSchema>,
@@ -598,6 +617,50 @@ export default function AccountPage() {
       setAddEmailError("Erreur reseau.");
     } finally {
       setAddingEmail(false);
+    }
+  }
+
+  async function onRequestEmailChange(
+    values: z.output<typeof changeEmailSchema>,
+  ) {
+    setChangeEmailError(null);
+    setChangeEmailSuccess(null);
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setChangeEmailError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+    setChangingEmail(true);
+    try {
+      const response = await fetch(`${API_URL}/me/request-email-change`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ email: values.email }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message = Array.isArray(payload?.message)
+          ? payload.message.join(", ")
+          : (payload?.message ??
+            "Impossible d'envoyer le lien de changement d'email.");
+        setChangeEmailError(String(message));
+        return;
+      }
+      setChangeEmailSuccess(
+        "Un lien de confirmation a ete envoye a la nouvelle adresse. Verifiez votre boite mail.",
+      );
+      changeEmailForm.reset();
+    } catch {
+      setChangeEmailError("Erreur reseau.");
+    } finally {
+      setChangingEmail(false);
     }
   }
 
@@ -1175,7 +1238,92 @@ export default function AccountPage() {
                   <InfoBlock label="Prenom" value={me?.firstName ?? "-"} />
                   <InfoBlock label="Nom" value={me?.lastName ?? "-"} />
                   {me?.email ? (
-                    <InfoBlock label="Email" value={me.email} />
+                    <div className="rounded-card border border-border bg-background px-4 py-3">
+                      <p className="text-xs uppercase tracking-wide text-text-secondary">
+                        Email
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-text-primary break-all">
+                        {me.email}
+                      </p>
+                      {!changeEmailOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setChangeEmailOpen(true);
+                            setChangeEmailError(null);
+                            setChangeEmailSuccess(null);
+                            changeEmailForm.reset();
+                          }}
+                          className="mt-2 text-xs text-primary underline hover:opacity-80"
+                        >
+                          Modifier l&apos;email
+                        </button>
+                      ) : (
+                        <form
+                          className="mt-3 grid gap-2"
+                          onSubmit={changeEmailForm.handleSubmit(
+                            onRequestEmailChange,
+                          )}
+                          noValidate
+                        >
+                          <Controller
+                            control={changeEmailForm.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormTextInput
+                                name={field.name}
+                                ref={field.ref}
+                                type="email"
+                                value={field.value}
+                                onChange={(event) =>
+                                  changeEmailForm.setValue(
+                                    "email",
+                                    event.target.value,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  )
+                                }
+                                onBlur={field.onBlur}
+                                placeholder="nouveau@email.com"
+                                invalid={Boolean(
+                                  changeEmailForm.formState.errors.email,
+                                )}
+                              />
+                            )}
+                          />
+                          {changeEmailForm.formState.errors.email ? (
+                            <p className="text-xs text-notification">
+                              {changeEmailForm.formState.errors.email.message}
+                            </p>
+                          ) : null}
+                          {changeEmailError ? (
+                            <p className="text-xs text-notification">
+                              {changeEmailError}
+                            </p>
+                          ) : null}
+                          {changeEmailSuccess ? (
+                            <p className="text-xs text-primary">
+                              {changeEmailSuccess}
+                            </p>
+                          ) : null}
+                          <div className="flex gap-2">
+                            <SubmitButton disabled={changingEmail}>
+                              {changingEmail ? "Envoi..." : "Envoyer le lien"}
+                            </SubmitButton>
+                            <button
+                              type="button"
+                              onClick={() => setChangeEmailOpen(false)}
+                              className="rounded-lg border border-border px-3 py-2 text-xs text-text-secondary hover:bg-background"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
                   ) : (
                     <div className="rounded-card border border-border bg-background px-4 py-3">
                       <p className="text-xs uppercase tracking-wide text-text-secondary">

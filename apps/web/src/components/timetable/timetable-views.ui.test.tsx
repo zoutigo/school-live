@@ -178,7 +178,7 @@ describe("TimetableViews", () => {
     expect(weekendButtons.length).toBe(0);
   });
 
-  it("skips weekend in compact day navigation when no weekend slots", () => {
+  it("nav-next depuis vendredi atterrit sur le samedi (la navigation journalière ne saute plus le week-end)", () => {
     const slots = [
       buildSlot({
         id: "slot-fri",
@@ -203,9 +203,45 @@ describe("TimetableViews", () => {
     );
 
     expect(screen.getByText(/Physique/i)).toBeInTheDocument();
+    // vendredi → samedi (plus de saut)
     fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
     expect(screen.queryByText(/Physique/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Technologie/i)).not.toBeInTheDocument();
+    // samedi → dimanche
+    fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
+    // dimanche → lundi
+    fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
     expect(screen.getByText(/Technologie/i)).toBeInTheDocument();
+  });
+
+  it("nav-next depuis vendredi atteint le samedi avec un cours one-off", () => {
+    const slots = [
+      buildSlot({
+        id: "slot-fri",
+        occurrenceDate: "2026-03-13",
+        weekday: 5,
+        subjectName: "Physique",
+      }),
+      buildSlot({
+        id: "slot-sat",
+        occurrenceDate: "2026-03-14",
+        weekday: 6,
+        subjectName: "Sport",
+        source: "ONE_OFF",
+      }),
+    ];
+
+    render(
+      <Harness
+        compact
+        slots={slots}
+        initialCursorDate={new Date("2026-03-13T09:00:00")}
+      />,
+    );
+
+    expect(screen.getByText(/Physique/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Jour suivant" }));
+    expect(screen.getByText(/Sport/i)).toBeInTheDocument();
   });
 
   it("affiche la colonne Sam dans la grille mensuelle desktop si des cours ont lieu le samedi", () => {

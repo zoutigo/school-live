@@ -589,17 +589,7 @@ export function TimetableViews({
 
   function moveCursorForMode(mode: TimetableViewMode, direction: -1 | 1) {
     if (mode === "day") {
-      let next = addDays(cursorDate, direction);
-      const hiddenWeekdays = [
-        ...(!showSaturday ? [6] : []),
-        ...(!showSunday ? [7] : []),
-      ];
-      if (hiddenWeekdays.length > 0) {
-        while (hiddenWeekdays.includes(toWeekdayMondayFirst(next))) {
-          next = addDays(next, direction);
-        }
-      }
-      onCursorDateChange(next);
+      onCursorDateChange(addDays(cursorDate, direction));
       return;
     }
     if (mode === "week") {
@@ -658,21 +648,6 @@ export function TimetableViews({
             <button
               type="button"
               onClick={() => {
-                if (viewMode === "day") {
-                  const hiddenWeekdays = [
-                    ...(!showSaturday ? [6] : []),
-                    ...(!showSunday ? [7] : []),
-                  ];
-                  let next = today;
-                  while (
-                    hiddenWeekdays.length > 0 &&
-                    hiddenWeekdays.includes(toWeekdayMondayFirst(next))
-                  ) {
-                    next = addDays(next, 1);
-                  }
-                  onCursorDateChange(next);
-                  return;
-                }
                 onCursorDateChange(today);
               }}
               className="min-w-0 rounded-[6px] bg-white px-2 py-1 text-center text-[13px] font-semibold text-[#163158]"
