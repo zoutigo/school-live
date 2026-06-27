@@ -160,7 +160,11 @@ describe("StudentGradesService", () => {
       const result = await service.context(user, "school-1");
 
       expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.not.objectContaining({ teacherUserId: expect.anything() }) }),
+        expect.objectContaining({
+          where: expect.not.objectContaining({
+            teacherUserId: expect.anything(),
+          }),
+        }),
       );
       expect(result.assignments).toHaveLength(1);
     });
@@ -215,7 +219,11 @@ describe("StudentGradesService", () => {
 
       expect(result.assignments).toHaveLength(1);
       expect(prisma.teacherClassSubject.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.not.objectContaining({ teacherUserId: expect.anything() }) }),
+        expect.objectContaining({
+          where: expect.not.objectContaining({
+            teacherUserId: expect.anything(),
+          }),
+        }),
       );
     });
   });

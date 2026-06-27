@@ -94,12 +94,6 @@ type HomeworkWithRelations = Prisma.HomeworkGetPayload<{
   };
 }>;
 
-const HOMEWORK_MANAGER_ROLES: SchoolRole[] = [
-  "SCHOOL_ADMIN",
-  "SCHOOL_MANAGER",
-  "SUPERVISOR",
-];
-
 const NOOP_HOMEWORK_NOTIFICATIONS = {
   enqueue: async () => undefined,
 } as unknown as HomeworkNotificationsService;
