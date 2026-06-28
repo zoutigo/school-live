@@ -14,6 +14,7 @@ import {
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
+import { DateInput } from "../../components/ui/date-input";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
@@ -631,9 +632,8 @@ export default function RoomsPage() {
                   <span className="font-medium text-text-secondary">
                     {t("salles.calendar.fromLabel")}
                   </span>
-                  <FormTextInput
+                  <DateInput
                     aria-label={t("salles.calendar.fromLabel")}
-                    type="date"
                     value={calendarFromDate}
                     onChange={(event) =>
                       setCalendarFromDate(event.target.value)
@@ -644,9 +644,8 @@ export default function RoomsPage() {
                   <span className="font-medium text-text-secondary">
                     {t("salles.calendar.toLabel")}
                   </span>
-                  <FormTextInput
+                  <DateInput
                     aria-label={t("salles.calendar.toLabel")}
-                    type="date"
                     value={calendarToDate}
                     onChange={(event) => setCalendarToDate(event.target.value)}
                   />

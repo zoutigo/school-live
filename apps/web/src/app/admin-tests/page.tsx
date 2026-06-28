@@ -15,6 +15,7 @@ import {
   FormTextarea,
   FormTextInput,
 } from "../../components/ui/form-controls";
+import { DateInput } from "../../components/ui/date-input";
 import { FormField } from "../../components/ui/form-field";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -726,18 +727,10 @@ function CampaignFormCard({
         </FormField>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Début" error={errors.startsAt?.message}>
-            <FormTextInput
-              {...register("startsAt")}
-              type="date"
-              invalid={!!errors.startsAt}
-            />
+            <DateInput {...register("startsAt")} invalid={!!errors.startsAt} />
           </FormField>
           <FormField label="Échéance" error={errors.dueAt?.message}>
-            <FormTextInput
-              {...register("dueAt")}
-              type="date"
-              invalid={!!errors.dueAt}
-            />
+            <DateInput {...register("dueAt")} invalid={!!errors.dueAt} />
           </FormField>
         </div>
         <FormField label="Statut" error={errors.status?.message}>
@@ -1184,7 +1177,7 @@ function CampaignDetail({
                   label="Échéance"
                   error={caseForm.formState.errors.dueAt?.message}
                 >
-                  <FormTextInput {...caseForm.register("dueAt")} type="date" />
+                  <DateInput {...caseForm.register("dueAt")} />
                 </FormField>
               </div>
               <div className="flex items-center gap-3">
