@@ -727,16 +727,10 @@ function CampaignFormCard({
         </FormField>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Début" error={errors.startsAt?.message}>
-            <DateInput
-              {...register("startsAt")}
-              invalid={!!errors.startsAt}
-            />
+            <DateInput {...register("startsAt")} invalid={!!errors.startsAt} />
           </FormField>
           <FormField label="Échéance" error={errors.dueAt?.message}>
-            <DateInput
-              {...register("dueAt")}
-              invalid={!!errors.dueAt}
-            />
+            <DateInput {...register("dueAt")} invalid={!!errors.dueAt} />
           </FormField>
         </div>
         <FormField label="Statut" error={errors.status?.message}>
