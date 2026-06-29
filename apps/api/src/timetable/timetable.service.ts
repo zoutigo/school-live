@@ -1076,6 +1076,16 @@ export class TimetableService {
       }),
     ]);
 
+    // Migrate one-off slots (exceptions ponctuelles) du slot original vers le nouveau
+    // pour les dates couvertes par le nouveau slot (>= effectiveFromDate)
+    await this.prisma.classTimetableOneOffSlot.updateMany({
+      where: {
+        sourceSlotId: existing.id,
+        occurrenceDate: { gte: splitStartDate },
+      },
+      data: { sourceSlotId: created.id },
+    });
+
     return created;
   }
 
@@ -1747,7 +1757,12 @@ export class TimetableService {
       locale,
     );
 
-    await this.prisma.classTimetableSlot.delete({ where: { id: existing.id } });
+    await this.prisma.$transaction([
+      this.prisma.classTimetableOneOffSlot.deleteMany({
+        where: { sourceSlotId: existing.id },
+      }),
+      this.prisma.classTimetableSlot.delete({ where: { id: existing.id } }),
+    ]);
     return { id: existing.id, deleted: true };
   }
 

@@ -355,6 +355,59 @@ describe("Agenda page forms", () => {
     });
   });
 
+  it("DELETE_SERIES envoie DELETE sur /timetable/slots/:slotId (cascade API)", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/schools/college-vogt/me")) {
+          return jsonResponse({ role: "SCHOOL_ADMIN" });
+        }
+        if (url.includes("/timetable/classes/class-1/context")) {
+          return jsonResponse(contextPayload);
+        }
+        if (
+          url.includes("/timetable/classes/class-1?") &&
+          !url.includes("/context")
+        ) {
+          return jsonResponse(timetablePayload);
+        }
+        if (url.endsWith("/schools/college-vogt/timetable/slots/slot-1") && method === "DELETE") {
+          return jsonResponse({ id: "slot-1", deleted: true }, 200);
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<TeacherClassAgendaPage />);
+
+    // Ouvre le modal d'occurrence en cliquant sur le slot
+    fireEvent.click(await screen.findByRole("button", { name: "Anglais" }));
+
+    // Sélectionne "Supprimer toute la série" dans l'étape "action"
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Supprimer toute la serie" }),
+    );
+
+    // Passe à l'étape "details" en cliquant Continuer
+    fireEvent.click(await screen.findByRole("button", { name: "Continuer" }));
+
+    // Confirme la suppression
+    const submitButton = await screen.findByRole("button", {
+      name: "Appliquer l'action",
+    });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/schools/college-vogt/timetable/slots/slot-1"),
+        expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+  });
+
   it("renders the agenda page in English when the locale is set to en", async () => {
     useLocaleStore.setState({ locale: "en" });
 
