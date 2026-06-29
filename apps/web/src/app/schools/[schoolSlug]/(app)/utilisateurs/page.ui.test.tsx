@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../../../../i18n/useTranslation";
 import UtilisateursPage from "./page";
@@ -108,7 +114,12 @@ const PARENT_DETAIL = {
   updatedAt: "2024-02-15T10:00:00.000Z",
   enrollments: [],
   children: [
-    { id: "student-user-1", firstName: "Paul", lastName: "Owona", className: "6ème C" },
+    {
+      id: "student-user-1",
+      firstName: "Paul",
+      lastName: "Owona",
+      className: "6ème C",
+    },
   ],
   teachingClasses: [],
   studentParents: [],
@@ -120,12 +131,22 @@ const STUDENT_DETAIL = {
   lastLoginAt: null,
   updatedAt: "2024-03-01T10:00:00.000Z",
   enrollments: [
-    { id: "enr-1", classId: "class-6c", className: "6ème C", schoolYear: "2025-2026" },
+    {
+      id: "enr-1",
+      classId: "class-6c",
+      className: "6ème C",
+      schoolYear: "2025-2026",
+    },
   ],
   children: [],
   teachingClasses: [],
   studentParents: [
-    { id: "parent-1", firstName: "Bernard", lastName: "Owona", phone: "+237600000002" },
+    {
+      id: "parent-1",
+      firstName: "Bernard",
+      lastName: "Owona",
+      phone: "+237600000002",
+    },
   ],
   staffFunctions: [],
 };
@@ -136,7 +157,12 @@ const STUDENT_ONLY_DETAIL = {
   firstName: "Chloe",
   lastName: "Mbida",
   enrollments: [
-    { id: "enr-2", classId: "class-4a", className: "4ème A", schoolYear: "2025-2026" },
+    {
+      id: "enr-2",
+      classId: "class-4a",
+      className: "4ème A",
+      schoolYear: "2025-2026",
+    },
   ],
   studentParents: [],
 };
@@ -154,11 +180,7 @@ function jsonRes(payload: unknown, status = 200) {
   );
 }
 
-function makeListResponse(
-  data: unknown[],
-  total?: number,
-  hasMore?: boolean,
-) {
+function makeListResponse(data: unknown[], total?: number, hasMore?: boolean) {
   return { data, total: total ?? data.length, hasMore: hasMore ?? false };
 }
 
@@ -177,7 +199,14 @@ describe("UtilisateursPage", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.includes("/schools/college-vogt/users")) {
-        return jsonRes(makeListResponse([TEACHER_USER, PARENT_USER, STUDENT_USER, STUDENT_ONLY]));
+        return jsonRes(
+          makeListResponse([
+            TEACHER_USER,
+            PARENT_USER,
+            STUDENT_USER,
+            STUDENT_ONLY,
+          ]),
+        );
       }
       return jsonRes({}, 404);
     });
@@ -186,10 +215,18 @@ describe("UtilisateursPage", () => {
 
     expect(await screen.findByTestId("utilisateurs-page")).toBeInTheDocument();
     expect(screen.getByText(t("users.title"))).toBeInTheDocument();
-    expect(await screen.findByTestId(`user-card-${TEACHER_USER.id}`)).toBeInTheDocument();
-    expect(screen.getByTestId(`user-card-${PARENT_USER.id}`)).toBeInTheDocument();
-    expect(screen.getByTestId(`user-card-${STUDENT_USER.id}`)).toBeInTheDocument();
-    expect(screen.getByTestId(`user-card-${STUDENT_ONLY.id}`)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(`user-card-${TEACHER_USER.id}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`user-card-${PARENT_USER.id}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`user-card-${STUDENT_USER.id}`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`user-card-${STUDENT_ONLY.id}`),
+    ).toBeInTheDocument();
   });
 
   it("affiche le total d'utilisateurs", async () => {
@@ -214,7 +251,9 @@ describe("UtilisateursPage", () => {
 
   it("affiche une erreur si le fetch échoue", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ message: "Unauthorized" }), { status: 401 }),
+      new Response(JSON.stringify({ message: "Unauthorized" }), {
+        status: 401,
+      }),
     );
     render(<UtilisateursPage />);
     expect(await screen.findByTestId("users-error")).toBeInTheDocument();
@@ -234,37 +273,38 @@ describe("UtilisateursPage", () => {
   // ── Search ────────────────────────────────────────────────────────────────
 
   it("effectue une recherche après debounce", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
     render(<UtilisateursPage />);
 
     const searchInput = await screen.findByTestId("users-search-input");
     fireEvent.change(searchInput, { target: { value: "Marie" } });
 
-    await waitFor(() => {
-      const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
-      expect(String(lastCall[0])).toContain("search=Marie");
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+        expect(String(lastCall[0])).toContain("search=Marie");
+      },
+      { timeout: 1000 },
+    );
   });
 
   it("efface la recherche avec la croix", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
     render(<UtilisateursPage />);
     await screen.findByTestId("users-search-input");
-    fireEvent.change(screen.getByTestId("users-search-input"), { target: { value: "test" } });
+    fireEvent.change(screen.getByTestId("users-search-input"), {
+      target: { value: "test" },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("users-search-clear")).toBeInTheDocument();
@@ -272,7 +312,9 @@ describe("UtilisateursPage", () => {
     fireEvent.click(screen.getByTestId("users-search-clear"));
 
     await waitFor(() => {
-      expect(screen.queryByTestId("users-search-clear")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("users-search-clear"),
+      ).not.toBeInTheDocument();
     });
     const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
     expect(String(lastCall[0])).not.toContain("search=");
@@ -281,13 +323,11 @@ describe("UtilisateursPage", () => {
   // ── Role filter ───────────────────────────────────────────────────────────
 
   it("filtre par rôle en cliquant sur un chip", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
     render(<UtilisateursPage />);
     await screen.findByTestId("users-role-filter");
@@ -318,8 +358,10 @@ describe("UtilisateursPage", () => {
   it("ouvre le panneau de détail au clic sur une carte", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -327,14 +369,18 @@ describe("UtilisateursPage", () => {
     fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
 
     expect(await screen.findByTestId("user-detail-panel")).toBeInTheDocument();
-    expect(await screen.findByTestId("user-detail-name")).toHaveTextContent("Ekani Marie");
+    expect(await screen.findByTestId("user-detail-name")).toHaveTextContent(
+      "Ekani Marie",
+    );
   });
 
   it("ferme le panneau en cliquant sur la flèche retour", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -353,8 +399,10 @@ describe("UtilisateursPage", () => {
   it("affiche les classes et matières d'un enseignant", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -371,23 +419,29 @@ describe("UtilisateursPage", () => {
   it("affiche les enfants d'un parent", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([PARENT_USER]));
-      if (url.includes(`/users/${PARENT_USER.id}`)) return jsonRes(PARENT_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([PARENT_USER]));
+      if (url.includes(`/users/${PARENT_USER.id}`))
+        return jsonRes(PARENT_DETAIL);
       return jsonRes({}, 404);
     });
 
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${PARENT_USER.id}`));
 
-    expect(await screen.findByTestId(`parent-child-${STUDENT_USER.id}`)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(`parent-child-${STUDENT_USER.id}`),
+    ).toBeInTheDocument();
     expect(screen.getByText("Owona Paul")).toBeInTheDocument();
   });
 
   it("ouvre le modal d'affectation enfant depuis la section parent", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([PARENT_USER]));
-      if (url.includes(`/users/${PARENT_USER.id}`)) return jsonRes(PARENT_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([PARENT_USER]));
+      if (url.includes(`/users/${PARENT_USER.id}`))
+        return jsonRes(PARENT_DETAIL);
       if (url.includes("/admin/students")) return jsonRes({ students: [] });
       return jsonRes({}, 404);
     });
@@ -399,45 +453,55 @@ describe("UtilisateursPage", () => {
 
     expect(await screen.findByTestId("assign-child-modal")).toBeInTheDocument();
     const modal = screen.getByTestId("assign-child-modal");
-    expect(within(modal).getByTestId("assign-child-search")).toBeInTheDocument();
+    expect(
+      within(modal).getByTestId("assign-child-search"),
+    ).toBeInTheDocument();
   });
 
   it("affecte un enfant à un parent", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([PARENT_USER]));
-      if (url.includes(`/users/${PARENT_USER.id}`)) return jsonRes(PARENT_DETAIL);
-      if (url.includes("/admin/students")) {
-        return jsonRes({
-          students: [
-            {
-              id: "stu-only-1",
-              firstName: "Chloe",
-              lastName: "Mbida",
-              currentEnrollment: {
-                id: "enr-2",
-                class: { id: "class-4a", name: "4ème A" },
-                schoolYear: { id: "sy-1", label: "2025-2026" },
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/users?"))
+          return jsonRes(makeListResponse([PARENT_USER]));
+        if (url.includes(`/users/${PARENT_USER.id}`))
+          return jsonRes(PARENT_DETAIL);
+        if (url.includes("/admin/students")) {
+          return jsonRes({
+            students: [
+              {
+                id: "stu-only-1",
+                firstName: "Chloe",
+                lastName: "Mbida",
+                currentEnrollment: {
+                  id: "enr-2",
+                  class: { id: "class-4a", name: "4ème A" },
+                  schoolYear: { id: "sy-1", label: "2025-2026" },
+                },
               },
-            },
-          ],
-        });
-      }
-      if (url.includes("/admin/parent-students")) return jsonRes({}, 201);
-      return jsonRes({}, 404);
-    });
+            ],
+          });
+        }
+        if (url.includes("/admin/parent-students")) return jsonRes({}, 201);
+        return jsonRes({}, 404);
+      });
 
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${PARENT_USER.id}`));
     fireEvent.click(await screen.findByTestId("action-assign-child"));
     await screen.findByTestId("assign-child-modal");
 
-    fireEvent.click(await screen.findByTestId("assign-child-student-stu-only-1"));
+    fireEvent.click(
+      await screen.findByTestId("assign-child-student-stu-only-1"),
+    );
     fireEvent.click(screen.getByTestId("assign-child-submit"));
 
     await waitFor(() => {
       const calls = fetchMock.mock.calls.map((c) => String(c[0]));
-      expect(calls.some((u) => u.includes("/admin/parent-students"))).toBe(true);
+      expect(calls.some((u) => u.includes("/admin/parent-students"))).toBe(
+        true,
+      );
     });
   });
 
@@ -446,8 +510,10 @@ describe("UtilisateursPage", () => {
   it("affiche les parents d'un élève dans la section élève", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([STUDENT_USER]));
-      if (url.includes(`/users/${STUDENT_USER.id}`)) return jsonRes(STUDENT_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([STUDENT_USER]));
+      if (url.includes(`/users/${STUDENT_USER.id}`))
+        return jsonRes(STUDENT_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -463,14 +529,18 @@ describe("UtilisateursPage", () => {
   it("affiche le bouton 'Associer un parent' dans la section élève", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([STUDENT_USER]));
-      if (url.includes(`/users/${STUDENT_USER.id}`)) return jsonRes(STUDENT_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([STUDENT_USER]));
+      if (url.includes(`/users/${STUDENT_USER.id}`))
+        return jsonRes(STUDENT_DETAIL);
       return jsonRes({}, 404);
     });
 
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
-    expect(await screen.findByTestId("action-assign-parent")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("action-assign-parent"),
+    ).toBeInTheDocument();
   });
 
   it("ouvre le modal d'association parent au clic", async () => {
@@ -482,7 +552,8 @@ describe("UtilisateursPage", () => {
         }
         return jsonRes(makeListResponse([STUDENT_USER]));
       }
-      if (url.includes(`/users/${STUDENT_USER.id}`)) return jsonRes(STUDENT_DETAIL);
+      if (url.includes(`/users/${STUDENT_USER.id}`))
+        return jsonRes(STUDENT_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -491,36 +562,47 @@ describe("UtilisateursPage", () => {
     await screen.findByTestId("action-assign-parent");
     fireEvent.click(screen.getByTestId("action-assign-parent"));
 
-    expect(await screen.findByTestId("assign-parent-modal")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("assign-parent-modal"),
+    ).toBeInTheDocument();
     const modal = screen.getByTestId("assign-parent-modal");
-    expect(within(modal).getByTestId("assign-parent-search")).toBeInTheDocument();
+    expect(
+      within(modal).getByTestId("assign-parent-search"),
+    ).toBeInTheDocument();
   });
 
   it("liste et sélectionne un parent dans le modal, appelle linkExistingParent", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const url = String(input);
-      if (url.includes("/users?")) {
-        if (url.includes("role=PARENT")) {
-          return jsonRes(makeListResponse([PARENT_USER]));
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/users?")) {
+          if (url.includes("role=PARENT")) {
+            return jsonRes(makeListResponse([PARENT_USER]));
+          }
+          return jsonRes(makeListResponse([STUDENT_USER]));
         }
-        return jsonRes(makeListResponse([STUDENT_USER]));
-      }
-      if (url.includes(`/users/${STUDENT_USER.id}`)) return jsonRes(STUDENT_DETAIL);
-      if (url.includes("/admin/parent-students")) return jsonRes({}, 201);
-      return jsonRes({}, 404);
-    });
+        if (url.includes(`/users/${STUDENT_USER.id}`))
+          return jsonRes(STUDENT_DETAIL);
+        if (url.includes("/admin/parent-students")) return jsonRes({}, 201);
+        return jsonRes({}, 404);
+      });
 
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
     fireEvent.click(await screen.findByTestId("action-assign-parent"));
 
     await screen.findByTestId("assign-parent-modal");
-    fireEvent.click(await screen.findByTestId(`assign-parent-user-${PARENT_USER.id}`));
+    fireEvent.click(
+      await screen.findByTestId(`assign-parent-user-${PARENT_USER.id}`),
+    );
     fireEvent.click(screen.getByTestId("assign-parent-submit"));
 
     await waitFor(() => {
       const postCalls = fetchMock.mock.calls.filter(
-        (c) => String(c[0]).includes("/admin/parent-students") && c[1]?.method === "POST",
+        (c) =>
+          String(c[0]).includes("/admin/parent-students") &&
+          c[1]?.method === "POST",
       );
       expect(postCalls).toHaveLength(1);
       const body = JSON.parse(postCalls[0][1]?.body as string) as {
@@ -536,10 +618,12 @@ describe("UtilisateursPage", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
       if (url.includes("/users?")) {
-        if (url.includes("role=PARENT")) return jsonRes(makeListResponse([PARENT_USER]));
+        if (url.includes("role=PARENT"))
+          return jsonRes(makeListResponse([PARENT_USER]));
         return jsonRes(makeListResponse([STUDENT_USER]));
       }
-      if (url.includes(`/users/${STUDENT_USER.id}`)) return jsonRes(STUDENT_DETAIL);
+      if (url.includes(`/users/${STUDENT_USER.id}`))
+        return jsonRes(STUDENT_DETAIL);
       if (url.includes("/admin/parent-students")) return jsonRes({}, 201);
       return jsonRes({}, 404);
     });
@@ -548,11 +632,15 @@ describe("UtilisateursPage", () => {
     fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
     fireEvent.click(await screen.findByTestId("action-assign-parent"));
     await screen.findByTestId("assign-parent-modal");
-    fireEvent.click(await screen.findByTestId(`assign-parent-user-${PARENT_USER.id}`));
+    fireEvent.click(
+      await screen.findByTestId(`assign-parent-user-${PARENT_USER.id}`),
+    );
     fireEvent.click(screen.getByTestId("assign-parent-submit"));
 
     expect(await screen.findByTestId("toast-success")).toBeInTheDocument();
-    expect(screen.getByText(t("users.assignParent.success"))).toBeInTheDocument();
+    expect(
+      screen.getByText(t("users.assignParent.success")),
+    ).toBeInTheDocument();
   });
 
   // ── Student-only (sans compte) ────────────────────────────────────────────
@@ -560,7 +648,8 @@ describe("UtilisateursPage", () => {
   it("affiche 'Créer un accès' pour un élève sans compte", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([STUDENT_ONLY]));
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([STUDENT_ONLY]));
       if (url.includes(`/students/${STUDENT_ONLY.studentId}/profile`)) {
         return jsonRes(STUDENT_ONLY_DETAIL);
       }
@@ -570,20 +659,26 @@ describe("UtilisateursPage", () => {
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_ONLY.id}`));
 
-    expect(await screen.findByTestId("action-create-access")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("action-create-access"),
+    ).toBeInTheDocument();
   });
 
   it("le bouton 'Réinitialiser MDP' apparaît pour un élève avec compte", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([STUDENT_USER]));
-      if (url.includes(`/users/${STUDENT_USER.id}`)) return jsonRes(STUDENT_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([STUDENT_USER]));
+      if (url.includes(`/users/${STUDENT_USER.id}`))
+        return jsonRes(STUDENT_DETAIL);
       return jsonRes({}, 404);
     });
 
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
-    expect(await screen.findByTestId("action-reset-password")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("action-reset-password"),
+    ).toBeInTheDocument();
   });
 
   // ── Edit roles modal ──────────────────────────────────────────────────────
@@ -591,8 +686,10 @@ describe("UtilisateursPage", () => {
   it("ouvre le modal de modification des rôles", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -609,8 +706,10 @@ describe("UtilisateursPage", () => {
   it("le rôle actuel est pré-coché dans le modal", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -620,22 +719,33 @@ describe("UtilisateursPage", () => {
 
     await screen.findByTestId("edit-roles-modal");
     const teacherCheckbox = screen.getByTestId("role-check-teacher");
-    expect(teacherCheckbox).toHaveStyle({ backgroundColor: TEACHER_USER.roles ? undefined : undefined });
+    expect(teacherCheckbox).toHaveStyle({
+      backgroundColor: TEACHER_USER.roles ? undefined : undefined,
+    });
     // vérifie juste que la case enseignant est présente et affiche le bon label
-    expect(within(teacherCheckbox).getByText(t("users.roles.teacher"))).toBeInTheDocument();
+    expect(
+      within(teacherCheckbox).getByText(t("users.roles.teacher")),
+    ).toBeInTheDocument();
   });
 
   it("modifie les rôles et soumet la requête PATCH", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      const url = String(input);
-      const method = (init?.method ?? "GET").toUpperCase();
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}/roles`) && method === "PATCH") {
-        return jsonRes({ ok: true });
-      }
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
-      return jsonRes({}, 404);
-    });
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = (init?.method ?? "GET").toUpperCase();
+        if (url.includes("/users?"))
+          return jsonRes(makeListResponse([TEACHER_USER]));
+        if (
+          url.includes(`/users/${TEACHER_USER.id}/roles`) &&
+          method === "PATCH"
+        ) {
+          return jsonRes({ ok: true });
+        }
+        if (url.includes(`/users/${TEACHER_USER.id}`))
+          return jsonRes(TEACHER_DETAIL);
+        return jsonRes({}, 404);
+      });
 
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
@@ -653,7 +763,9 @@ describe("UtilisateursPage", () => {
           (c[1]?.method ?? "").toUpperCase() === "PATCH",
       );
       expect(patchCalls).toHaveLength(1);
-      const body = JSON.parse(patchCalls[0][1]?.body as string) as { roles: string[] };
+      const body = JSON.parse(patchCalls[0][1]?.body as string) as {
+        roles: string[];
+      };
       expect(body.roles).toContain("TEACHER");
       expect(body.roles).toContain("PARENT");
     });
@@ -663,11 +775,16 @@ describe("UtilisateursPage", () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       const url = String(input);
       const method = (init?.method ?? "GET").toUpperCase();
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}/roles`) && method === "PATCH") {
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (
+        url.includes(`/users/${TEACHER_USER.id}/roles`) &&
+        method === "PATCH"
+      ) {
         return jsonRes({ ok: true });
       }
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -686,8 +803,10 @@ describe("UtilisateursPage", () => {
   it("affiche les informations de contact", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -702,8 +821,10 @@ describe("UtilisateursPage", () => {
   it("affiche la section d'activité avec la dernière connexion", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -711,14 +832,18 @@ describe("UtilisateursPage", () => {
     fireEvent.click(await screen.findByTestId(`user-card-${TEACHER_USER.id}`));
 
     const activity = await screen.findByTestId("user-detail-activity");
-    expect(within(activity).getByText(t("users.detail.lastLogin"))).toBeInTheDocument();
+    expect(
+      within(activity).getByText(t("users.detail.lastLogin")),
+    ).toBeInTheDocument();
   });
 
   it("affiche 'Jamais connecté' si lastLoginAt est null", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([PARENT_USER]));
-      if (url.includes(`/users/${PARENT_USER.id}`)) return jsonRes(PARENT_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([PARENT_USER]));
+      if (url.includes(`/users/${PARENT_USER.id}`))
+        return jsonRes(PARENT_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -726,7 +851,9 @@ describe("UtilisateursPage", () => {
     fireEvent.click(await screen.findByTestId(`user-card-${PARENT_USER.id}`));
 
     const activity = await screen.findByTestId("user-detail-activity");
-    expect(within(activity).getByText(t("users.detail.neverLoggedIn"))).toBeInTheDocument();
+    expect(
+      within(activity).getByText(t("users.detail.neverLoggedIn")),
+    ).toBeInTheDocument();
   });
 
   // ── Message action ────────────────────────────────────────────────────────
@@ -734,8 +861,10 @@ describe("UtilisateursPage", () => {
   it("navigue vers la messagerie au clic sur 'Message'", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.includes("/users?")) return jsonRes(makeListResponse([TEACHER_USER]));
-      if (url.includes(`/users/${TEACHER_USER.id}`)) return jsonRes(TEACHER_DETAIL);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([TEACHER_USER]));
+      if (url.includes(`/users/${TEACHER_USER.id}`))
+        return jsonRes(TEACHER_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -761,7 +890,9 @@ describe("UtilisateursPage", () => {
     );
     render(<UtilisateursPage />);
     expect(await screen.findByText(t("users.title"))).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(t("users.search.placeholder"))).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(t("users.search.placeholder")),
+    ).toBeInTheDocument();
   });
 
   it("le bouton 'Charger plus' effectue une requête page=2", async () => {
@@ -771,9 +902,7 @@ describe("UtilisateursPage", () => {
         const url = String(input);
         if (url.includes("/users?")) {
           const hasPage2 = url.includes("page=2");
-          return jsonRes(
-            makeListResponse([TEACHER_USER], 25, !hasPage2),
-          );
+          return jsonRes(makeListResponse([TEACHER_USER], 25, !hasPage2));
         }
         return jsonRes({}, 404);
       });
@@ -804,7 +933,8 @@ describe("UtilisateursPage", () => {
         if (url.includes("role=PARENT")) return jsonRes(makeListResponse([]));
         return jsonRes(makeListResponse([STUDENT_USER]));
       }
-      if (url.includes(`/users/${STUDENT_USER.id}`)) return jsonRes(STUDENT_DETAIL);
+      if (url.includes(`/users/${STUDENT_USER.id}`))
+        return jsonRes(STUDENT_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -815,7 +945,9 @@ describe("UtilisateursPage", () => {
     fireEvent.click(screen.getByTestId("assign-parent-cancel"));
 
     await waitFor(() => {
-      expect(screen.queryByTestId("assign-parent-modal")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("assign-parent-modal"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -826,7 +958,8 @@ describe("UtilisateursPage", () => {
         if (url.includes("role=PARENT")) return jsonRes(makeListResponse([]));
         return jsonRes(makeListResponse([STUDENT_USER]));
       }
-      if (url.includes(`/users/${STUDENT_USER.id}`)) return jsonRes(STUDENT_DETAIL);
+      if (url.includes(`/users/${STUDENT_USER.id}`))
+        return jsonRes(STUDENT_DETAIL);
       return jsonRes({}, 404);
     });
 
@@ -838,7 +971,9 @@ describe("UtilisateursPage", () => {
     fireEvent.keyDown(document, { key: "Escape" });
 
     await waitFor(() => {
-      expect(screen.queryByTestId("assign-parent-modal")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("assign-parent-modal"),
+      ).not.toBeInTheDocument();
     });
   });
 });

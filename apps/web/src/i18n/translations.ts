@@ -2956,7 +2956,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.empty.title": "Aucun résultat",
     "users.empty.message": "Modifiez vos critères de recherche.",
     "users.empty.noUsers": "Aucun utilisateur",
-    "users.empty.noUsersMsg": "Aucun utilisateur enregistré dans l'établissement.",
+    "users.empty.noUsersMsg":
+      "Aucun utilisateur enregistré dans l'établissement.",
     "users.loading": "Chargement des utilisateurs…",
     "users.error": "Impossible de charger les utilisateurs.",
     "users.loadMore": "Charger plus",
@@ -2965,7 +2966,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.selectHint": "Sélectionnez un utilisateur pour voir son profil",
     "users.detail.title": "Utilisateurs",
     "users.detail.loadingProfile": "Chargement du profil…",
-    "users.detail.error": "Impossible de charger les détails de cet utilisateur.",
+    "users.detail.error":
+      "Impossible de charger les détails de cet utilisateur.",
     "users.detail.retry": "Réessayer",
     "users.detail.contact": "Contact",
     "users.detail.activity": "Activité",
@@ -3006,7 +3008,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.roles.noFunction": "Aucune fonction assignée",
     "users.editRoles.eyebrow": "Gestion des accès",
     "users.editRoles.title": "Modifier les rôles",
-    "users.editRoles.subtitle": "Cochez les rôles à attribuer à cet utilisateur.",
+    "users.editRoles.subtitle":
+      "Cochez les rôles à attribuer à cet utilisateur.",
     "users.editRoles.submit": "Enregistrer les rôles",
     "users.editRoles.minOneRole": "Au moins un rôle est requis.",
     "users.editRoles.success": "Rôles mis à jour avec succès.",
@@ -3019,13 +3022,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.assignChild.success": "Enfant affecté avec succès.",
     "users.assignParent.eyebrow": "Gestion de la famille",
     "users.assignParent.title": "Associer un parent",
-    "users.assignParent.subtitle": "Recherchez le parent à rattacher à cet élève.",
+    "users.assignParent.subtitle":
+      "Recherchez le parent à rattacher à cet élève.",
     "users.assignParent.search": "Nom ou prénom du parent…",
     "users.assignParent.noResult": "Aucun parent trouvé.",
     "users.assignParent.submit": "Associer le parent",
     "users.assignParent.success": "Parent associé avec succès.",
     "users.promote.title": "Créer un accès",
-    "users.promote.success": "Accès créé. L'élève peut maintenant se connecter.",
+    "users.promote.success":
+      "Accès créé. L'élève peut maintenant se connecter.",
     "users.resetPwd.title": "Réinitialiser le mot de passe",
     "users.resetPwd.success": "Mot de passe temporaire généré.",
     "users.status.active": "Actif",

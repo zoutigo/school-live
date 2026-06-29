@@ -76,10 +76,29 @@ type SchoolMember = SchoolUserItem | StudentOnlyItem;
 type SchoolUserDetail = SchoolUserItem & {
   lastLoginAt: string | null;
   updatedAt: string;
-  enrollments: { id: string; classId: string; className: string; schoolYear: string }[];
-  children: { id: string; firstName: string; lastName: string; className?: string | null }[];
-  teachingClasses: { classId: string; className: string; subjects: { id: string; name: string }[] }[];
-  studentParents: { id: string; firstName: string; lastName: string; phone: string | null }[];
+  enrollments: {
+    id: string;
+    classId: string;
+    className: string;
+    schoolYear: string;
+  }[];
+  children: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    className?: string | null;
+  }[];
+  teachingClasses: {
+    classId: string;
+    className: string;
+    subjects: { id: string; name: string }[];
+  }[];
+  studentParents: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+  }[];
   staffFunctions: { id: string; name: string }[];
 };
 
@@ -88,8 +107,18 @@ type StudentOnlyDetail = {
   studentId: string;
   firstName: string;
   lastName: string;
-  enrollments: { id: string; classId: string; className: string; schoolYear: string }[];
-  studentParents: { id: string; firstName: string; lastName: string; phone: string | null }[];
+  enrollments: {
+    id: string;
+    classId: string;
+    className: string;
+    schoolYear: string;
+  }[];
+  studentParents: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+  }[];
 };
 
 type AdminStudentRow = {
@@ -105,7 +134,10 @@ type AdminStudentRow = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ROLE_COLORS: Record<SchoolRole, { bg: string; text: string; border: string }> = {
+const ROLE_COLORS: Record<
+  SchoolRole,
+  { bg: string; text: string; border: string }
+> = {
   TEACHER: { bg: "#E8F5F3", text: "#247C72", border: "#247C72" },
   PARENT: { bg: "#FDF3E7", text: "#D89B5B", border: "#D89B5B" },
   STUDENT: { bg: "#FEF0EB", text: "#B85C2E", border: "#B85C2E" },
@@ -117,9 +149,18 @@ const ROLE_COLORS: Record<SchoolRole, { bg: string; text: string; border: string
 };
 
 const STATUS_COLORS: Record<ActivationStatus, { tKey: string; cls: string }> = {
-  ACTIVE: { tKey: "users.status.active", cls: "text-teal-700 bg-teal-50 border border-teal-200" },
-  PENDING: { tKey: "users.status.pending", cls: "text-amber-700 bg-amber-50 border border-amber-200" },
-  SUSPENDED: { tKey: "users.status.suspended", cls: "text-red-700 bg-red-50 border border-red-200" },
+  ACTIVE: {
+    tKey: "users.status.active",
+    cls: "text-teal-700 bg-teal-50 border border-teal-200",
+  },
+  PENDING: {
+    tKey: "users.status.pending",
+    cls: "text-amber-700 bg-amber-50 border border-amber-200",
+  },
+  SUSPENDED: {
+    tKey: "users.status.suspended",
+    cls: "text-red-700 bg-red-50 border border-red-200",
+  },
 };
 
 const ROLE_FILTER_KEYS: { value: RoleFilter; tKey: string }[] = [
@@ -163,8 +204,12 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { "Content-Type": "application/json", ...init.headers },
   });
   if (!resp.ok) {
-    const body = await resp.json().catch(() => ({})) as { message?: string | string[] };
-    const msg = Array.isArray(body.message) ? body.message.join(", ") : (body.message ?? "Erreur");
+    const body = (await resp.json().catch(() => ({}))) as {
+      message?: string | string[];
+    };
+    const msg = Array.isArray(body.message)
+      ? body.message.join(", ")
+      : (body.message ?? "Erreur");
     throw new Error(msg);
   }
   return resp.json() as Promise<T>;
@@ -176,22 +221,40 @@ function extractError(err: unknown): string {
 
 // ── Small UI atoms ────────────────────────────────────────────────────────────
 
-function RoleBadge({ role, t }: { role: SchoolRole; t: (k: string) => string }) {
+function RoleBadge({
+  role,
+  t,
+}: {
+  role: SchoolRole;
+  t: (k: string) => string;
+}) {
   const c = ROLE_COLORS[role];
   return (
     <span
       className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-      style={{ backgroundColor: c.bg, color: c.text, border: `1px solid ${c.border}` }}
+      style={{
+        backgroundColor: c.bg,
+        color: c.text,
+        border: `1px solid ${c.border}`,
+      }}
     >
       {t(ROLE_TRANSLATION_KEYS[role])}
     </span>
   );
 }
 
-function StatusChip({ status, t }: { status: ActivationStatus; t: (k: string) => string }) {
+function StatusChip({
+  status,
+  t,
+}: {
+  status: ActivationStatus;
+  t: (k: string) => string;
+}) {
   const s = STATUS_COLORS[status];
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.cls}`}>
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.cls}`}
+    >
       {t(s.tKey)}
     </span>
   );
@@ -290,7 +353,11 @@ function Toast({
       className={`fixed bottom-6 left-1/2 z-[200] flex -translate-x-1/2 items-center gap-3 rounded-2xl px-5 py-3 text-sm font-semibold shadow-2xl ${type === "success" ? "bg-teal-700 text-white" : "bg-red-600 text-white"}`}
     >
       {message}
-      <button type="button" onClick={onClose} className="ml-1 rounded p-0.5 text-white/70 hover:text-white">
+      <button
+        type="button"
+        onClick={onClose}
+        className="ml-1 rounded p-0.5 text-white/70 hover:text-white"
+      >
         <X size={15} />
       </button>
     </div>
@@ -353,8 +420,12 @@ function ModalHeader({
         <span className="mb-2 inline-flex rounded-full border border-[#efcfaa] bg-[#fff3e4] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b7793a]">
           {eyebrow}
         </span>
-        <h2 className="font-heading text-lg font-bold leading-snug text-text-primary">{title}</h2>
-        {subtitle ? <p className="mt-0.5 text-xs text-text-secondary">{subtitle}</p> : null}
+        <h2 className="font-heading text-lg font-bold leading-snug text-text-primary">
+          {title}
+        </h2>
+        {subtitle ? (
+          <p className="mt-0.5 text-xs text-text-secondary">{subtitle}</p>
+        ) : null}
       </div>
       <button
         type="button"
@@ -380,14 +451,16 @@ function ModalSearchInput({
 }) {
   return (
     <div className="relative">
-      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+      <Search
+        size={15}
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
+      />
       <input
         data-testid={testId}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        // eslint-disable-next-line jsx-a11y/no-autofocus
         autoFocus
         className="w-full rounded-xl border border-warm-border bg-white py-2.5 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-primary/60"
       />
@@ -460,11 +533,18 @@ function AssignParentToStudentModal({
     async (search: string) => {
       setLoading(true);
       try {
-        const q = new URLSearchParams({ search, role: "PARENT", page: "1", limit: "20" });
+        const q = new URLSearchParams({
+          search,
+          role: "PARENT",
+          page: "1",
+          limit: "20",
+        });
         const res = await apiFetch<{ data: SchoolMember[] }>(
           `/schools/${schoolSlug}/users?${q.toString()}`,
         );
-        setParents((res.data ?? []).filter((u): u is SchoolUserItem => u.hasAccount));
+        setParents(
+          (res.data ?? []).filter((u): u is SchoolUserItem => u.hasAccount),
+        );
       } catch {
         setParents([]);
       } finally {
@@ -474,7 +554,9 @@ function AssignParentToStudentModal({
     [schoolSlug],
   );
 
-  useEffect(() => { void load(""); }, [load]);
+  useEffect(() => {
+    void load("");
+  }, [load]);
   useEffect(() => {
     const timer = setTimeout(() => void load(query), 300);
     return () => clearTimeout(timer);
@@ -514,11 +596,18 @@ function AssignParentToStudentModal({
         placeholder={t("users.assignParent.search")}
         testId="assign-parent-search"
       />
-      <div className="mt-3 max-h-56 space-y-1.5 overflow-y-auto pr-1" data-testid="assign-parent-list">
+      <div
+        className="mt-3 max-h-56 space-y-1.5 overflow-y-auto pr-1"
+        data-testid="assign-parent-list"
+      >
         {loading ? (
-          <p className="py-4 text-center text-sm text-text-secondary">Chargement…</p>
+          <p className="py-4 text-center text-sm text-text-secondary">
+            Chargement…
+          </p>
         ) : parents.length === 0 ? (
-          <p className="py-4 text-center text-sm text-text-secondary">{t("users.assignParent.noResult")}</p>
+          <p className="py-4 text-center text-sm text-text-secondary">
+            {t("users.assignParent.noResult")}
+          </p>
         ) : (
           parents.map((p) => {
             const isSelected = selected?.id === p.id;
@@ -530,13 +619,19 @@ function AssignParentToStudentModal({
                 onClick={() => setSelected(isSelected ? null : p)}
                 className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${isSelected ? "border-primary bg-blue-50" : "border-warm-border bg-warm-surface hover:bg-warm-highlight"}`}
               >
-                <p className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}>
+                <p
+                  className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}
+                >
                   {p.lastName} {p.firstName}
                 </p>
                 {p.phone ? (
-                  <p className="mt-0.5 text-xs text-text-secondary">{p.phone}</p>
+                  <p className="mt-0.5 text-xs text-text-secondary">
+                    {p.phone}
+                  </p>
                 ) : p.email ? (
-                  <p className="mt-0.5 text-xs text-text-secondary">{p.email}</p>
+                  <p className="mt-0.5 text-xs text-text-secondary">
+                    {p.email}
+                  </p>
                 ) : null}
               </button>
             );
@@ -596,7 +691,9 @@ function AssignChildToParentModal({
     [schoolSlug],
   );
 
-  useEffect(() => { void load(""); }, [load]);
+  useEffect(() => {
+    void load("");
+  }, [load]);
   useEffect(() => {
     const timer = setTimeout(() => void load(query), 300);
     return () => clearTimeout(timer);
@@ -636,11 +733,18 @@ function AssignChildToParentModal({
         placeholder={t("users.assignChild.search")}
         testId="assign-child-search"
       />
-      <div className="mt-3 max-h-56 space-y-1.5 overflow-y-auto pr-1" data-testid="assign-child-list">
+      <div
+        className="mt-3 max-h-56 space-y-1.5 overflow-y-auto pr-1"
+        data-testid="assign-child-list"
+      >
         {loading ? (
-          <p className="py-4 text-center text-sm text-text-secondary">Chargement…</p>
+          <p className="py-4 text-center text-sm text-text-secondary">
+            Chargement…
+          </p>
         ) : students.length === 0 ? (
-          <p className="py-4 text-center text-sm text-text-secondary">{t("users.assignChild.noResult")}</p>
+          <p className="py-4 text-center text-sm text-text-secondary">
+            {t("users.assignChild.noResult")}
+          </p>
         ) : (
           students.map((s) => {
             const isSelected = selected?.id === s.id;
@@ -652,12 +756,15 @@ function AssignChildToParentModal({
                 onClick={() => setSelected(isSelected ? null : s)}
                 className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${isSelected ? "border-primary bg-blue-50" : "border-warm-border bg-warm-surface hover:bg-warm-highlight"}`}
               >
-                <p className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}>
+                <p
+                  className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}
+                >
                   {s.lastName} {s.firstName}
                 </p>
                 {s.currentEnrollment ? (
                   <p className="mt-0.5 text-xs text-text-secondary">
-                    {s.currentEnrollment.class.name} · {s.currentEnrollment.schoolYear.label}
+                    {s.currentEnrollment.class.name} ·{" "}
+                    {s.currentEnrollment.schoolYear.label}
                   </p>
                 ) : null}
               </button>
@@ -756,15 +863,27 @@ function EditRolesModal({
                 style={
                   checked
                     ? { backgroundColor: c.border, borderColor: c.border }
-                    : { backgroundColor: "white", borderColor: "#c8b89e", color: "transparent" }
+                    : {
+                        backgroundColor: "white",
+                        borderColor: "#c8b89e",
+                        color: "transparent",
+                      }
                 }
               >
                 {checked ? "✓" : ""}
               </span>
-              <span className="flex-1 text-sm font-semibold" style={{ color: checked ? c.text : "#5a5048" }}>
+              <span
+                className="flex-1 text-sm font-semibold"
+                style={{ color: checked ? c.text : "#5a5048" }}
+              >
                 {t(ROLE_TRANSLATION_KEYS[role])}
               </span>
-              <input type="checkbox" className="sr-only" checked={checked} onChange={() => toggle(role)} />
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={checked}
+                onChange={() => toggle(role)}
+              />
             </label>
           );
         })}
@@ -793,21 +912,38 @@ function TeacherRoleSection({
 }) {
   const c = ROLE_COLORS.TEACHER;
   return (
-    <SectionCard color={c} icon={<BookOpen size={14} />} title={t("users.roles.teacher")}>
+    <SectionCard
+      color={c}
+      icon={<BookOpen size={14} />}
+      title={t("users.roles.teacher")}
+    >
       {classes.length === 0 ? (
-        <p className="text-sm italic text-text-secondary">{t("users.roles.noClass")}</p>
+        <p className="text-sm italic text-text-secondary">
+          {t("users.roles.noClass")}
+        </p>
       ) : (
         <div className="space-y-2">
           {classes.map((cls) => (
-            <div key={cls.classId} className="flex flex-wrap items-center gap-2">
+            <div
+              key={cls.classId}
+              className="flex flex-wrap items-center gap-2"
+            >
               <span
                 className="rounded border px-2 py-0.5 text-xs font-bold"
-                style={{ borderColor: `${c.border}60`, color: c.text, backgroundColor: "#fff" }}
+                style={{
+                  borderColor: `${c.border}60`,
+                  color: c.text,
+                  backgroundColor: "#fff",
+                }}
               >
                 {cls.className}
               </span>
               {cls.subjects.map((s) => (
-                <span key={s.id} className="rounded-full px-2 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: c.border }}>
+                <span
+                  key={s.id}
+                  className="rounded-full px-2 py-0.5 text-xs font-semibold text-white"
+                  style={{ backgroundColor: c.border }}
+                >
                   {s.name}
                 </span>
               ))}
@@ -830,18 +966,31 @@ function ParentRoleSection({
 }) {
   const c = ROLE_COLORS.PARENT;
   return (
-    <SectionCard color={c} icon={<Heart size={14} />} title={t("users.roles.parent")}>
+    <SectionCard
+      color={c}
+      icon={<Heart size={14} />}
+      title={t("users.roles.parent")}
+    >
       {children.length === 0 ? (
-        <p className="mb-3 text-sm italic text-text-secondary">{t("users.roles.noChildren")}</p>
+        <p className="mb-3 text-sm italic text-text-secondary">
+          {t("users.roles.noChildren")}
+        </p>
       ) : (
         <div className="mb-3 space-y-1.5">
           {children.map((child) => (
-            <div key={child.id} className="flex items-center gap-2" data-testid={`parent-child-${child.id}`}>
+            <div
+              key={child.id}
+              className="flex items-center gap-2"
+              data-testid={`parent-child-${child.id}`}
+            >
               <span className="text-sm font-semibold text-text-primary">
                 {child.lastName} {child.firstName}
               </span>
               {child.className ? (
-                <span className="rounded border px-1.5 py-0.5 text-[10px] font-bold" style={{ borderColor: `${c.border}60`, color: c.text }}>
+                <span
+                  className="rounded border px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{ borderColor: `${c.border}60`, color: c.text }}
+                >
                   {child.className}
                 </span>
               ) : null}
@@ -872,8 +1021,18 @@ function StudentRoleSection({
   onResetPasswordClick,
   t,
 }: {
-  enrollments: { id: string; classId: string; className: string; schoolYear: string }[];
-  parents: { id: string; firstName: string; lastName: string; phone: string | null }[];
+  enrollments: {
+    id: string;
+    classId: string;
+    className: string;
+    schoolYear: string;
+  }[];
+  parents: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+  }[];
   hasAccount: boolean;
   onDisciplineClick: () => void;
   onAssignParentClick: () => void;
@@ -883,32 +1042,61 @@ function StudentRoleSection({
 }) {
   const c = ROLE_COLORS.STUDENT;
   return (
-    <SectionCard color={c} icon={<BookOpen size={14} />} title={t("users.roles.student")}>
+    <SectionCard
+      color={c}
+      icon={<BookOpen size={14} />}
+      title={t("users.roles.student")}
+    >
       {enrollments.length > 0 ? (
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-text-primary">{enrollments[0].className}</span>
-          <span className="text-xs" style={{ color: c.text }}>{enrollments[0].schoolYear}</span>
+          <span className="text-sm font-semibold text-text-primary">
+            {enrollments[0].className}
+          </span>
+          <span className="text-xs" style={{ color: c.text }}>
+            {enrollments[0].schoolYear}
+          </span>
         </div>
       ) : (
-        <p className="mb-2 text-sm italic text-text-secondary">{t("users.roles.noEnrollment")}</p>
+        <p className="mb-2 text-sm italic text-text-secondary">
+          {t("users.roles.noEnrollment")}
+        </p>
       )}
 
       {parents.length > 0 ? (
-        <div className="mb-3 space-y-1.5 border-t pt-2" style={{ borderColor: `${c.border}25` }} data-testid="student-parents">
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.13em]" style={{ color: c.text }}>
+        <div
+          className="mb-3 space-y-1.5 border-t pt-2"
+          style={{ borderColor: `${c.border}25` }}
+          data-testid="student-parents"
+        >
+          <p
+            className="mb-1 text-[10px] font-bold uppercase tracking-[0.13em]"
+            style={{ color: c.text }}
+          >
             {t("users.roles.parents")}
           </p>
           {parents.map((p) => (
-            <div key={p.id} className="flex items-center gap-2" data-testid={`student-parent-${p.id}`}>
+            <div
+              key={p.id}
+              className="flex items-center gap-2"
+              data-testid={`student-parent-${p.id}`}
+            >
               <UserCircle2 size={13} style={{ color: c.border }} />
-              <span className="text-sm font-semibold text-text-primary">{p.lastName} {p.firstName}</span>
-              {p.phone ? <span className="text-xs text-text-secondary">{p.phone}</span> : null}
+              <span className="text-sm font-semibold text-text-primary">
+                {p.lastName} {p.firstName}
+              </span>
+              {p.phone ? (
+                <span className="text-xs text-text-secondary">{p.phone}</span>
+              ) : null}
             </div>
           ))}
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2 border-t pt-3" style={{ borderColor: `${c.border}25` }} data-testid="student-actions">
+      <div
+        className="flex flex-wrap gap-2 border-t pt-3"
+        style={{ borderColor: `${c.border}25` }}
+        data-testid="student-actions"
+      >
         <ActionBtn
           icon={<Calendar size={12} />}
           label={t("users.actions.discipline")}
@@ -954,13 +1142,23 @@ function StaffRoleSection({
 }) {
   const c = ROLE_COLORS.SCHOOL_STAFF;
   return (
-    <SectionCard color={c} icon={<Briefcase size={14} />} title={t("users.roles.staff")}>
+    <SectionCard
+      color={c}
+      icon={<Briefcase size={14} />}
+      title={t("users.roles.staff")}
+    >
       {functions.length === 0 ? (
-        <p className="text-sm italic text-text-secondary">{t("users.roles.noFunction")}</p>
+        <p className="text-sm italic text-text-secondary">
+          {t("users.roles.noFunction")}
+        </p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {functions.map((fn) => (
-            <span key={fn.id} className="rounded-full px-3 py-1 text-xs font-semibold text-white" style={{ backgroundColor: c.border }}>
+            <span
+              key={fn.id}
+              className="rounded-full px-3 py-1 text-xs font-semibold text-white"
+              style={{ backgroundColor: c.border }}
+            >
               {fn.name}
             </span>
           ))}
@@ -970,7 +1168,13 @@ function StaffRoleSection({
   );
 }
 
-function AdminRoleSection({ role, t }: { role: SchoolRole; t: (k: string) => string }) {
+function AdminRoleSection({
+  role,
+  t,
+}: {
+  role: SchoolRole;
+  t: (k: string) => string;
+}) {
   const c = ROLE_COLORS[role];
   const iconMap: Partial<Record<SchoolRole, React.ReactNode>> = {
     SCHOOL_ADMIN: <Shield size={14} />,
@@ -979,8 +1183,14 @@ function AdminRoleSection({ role, t }: { role: SchoolRole; t: (k: string) => str
     SCHOOL_ACCOUNTANT: <PenLine size={14} />,
   };
   return (
-    <SectionCard color={c} icon={iconMap[role] ?? <Shield size={14} />} title={t(ROLE_TRANSLATION_KEYS[role])}>
-      <p className="text-sm italic text-text-secondary">{t("users.roles.adminRole")}</p>
+    <SectionCard
+      color={c}
+      icon={iconMap[role] ?? <Shield size={14} />}
+      title={t(ROLE_TRANSLATION_KEYS[role])}
+    >
+      <p className="text-sm italic text-text-secondary">
+        {t("users.roles.adminRole")}
+      </p>
     </SectionCard>
   );
 }
@@ -1003,7 +1213,9 @@ function UserDetailPanel({
   t: (k: string) => string;
 }) {
   const router = useRouter();
-  const [detail, setDetail] = useState<SchoolUserDetail | StudentOnlyDetail | null>(null);
+  const [detail, setDetail] = useState<
+    SchoolUserDetail | StudentOnlyDetail | null
+  >(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editRolesOpen, setEditRolesOpen] = useState(false);
@@ -1018,7 +1230,11 @@ function UserDetailPanel({
         const data = await apiFetch<StudentOnlyDetail>(
           `/schools/${schoolSlug}/students/${member.studentId}/profile`,
         );
-        setDetail({ ...data, enrollments: data.enrollments ?? [], studentParents: data.studentParents ?? [] });
+        setDetail({
+          ...data,
+          enrollments: data.enrollments ?? [],
+          studentParents: data.studentParents ?? [],
+        });
       } else {
         const data = await apiFetch<SchoolUserDetail>(
           `/schools/${schoolSlug}/users/${member.id}`,
@@ -1032,11 +1248,15 @@ function UserDetailPanel({
     }
   }, [member, schoolSlug, t]);
 
-  useEffect(() => { void loadDetail(); }, [loadDetail]);
+  useEffect(() => {
+    void loadDetail();
+  }, [loadDetail]);
 
   const fullName = `${member.lastName} ${member.firstName}`.trim();
   const studentId =
-    member.type === "student-only" ? member.studentId : (member.studentId ?? member.id);
+    member.type === "student-only"
+      ? member.studentId
+      : (member.studentId ?? member.id);
 
   const studentParents =
     detail && "studentParents" in detail ? detail.studentParents : [];
@@ -1052,10 +1272,13 @@ function UserDetailPanel({
     onCreateAccessClick: async () => {
       const csrf = getCsrfTokenCookie();
       try {
-        await apiFetch(`/schools/${schoolSlug}/admin/students/${studentId}/create-account`, {
-          method: "POST",
-          headers: { "X-CSRF-Token": csrf ?? "" },
-        });
+        await apiFetch(
+          `/schools/${schoolSlug}/admin/students/${studentId}/create-account`,
+          {
+            method: "POST",
+            headers: { "X-CSRF-Token": csrf ?? "" },
+          },
+        );
         await loadDetail();
         onRefreshList();
         onShowToast(t("users.promote.success"), "success");
@@ -1067,10 +1290,13 @@ function UserDetailPanel({
       if (member.type !== "user") return;
       const csrf = getCsrfTokenCookie();
       try {
-        await apiFetch(`/schools/${schoolSlug}/admin/users/${member.id}/reset-password`, {
-          method: "POST",
-          headers: { "X-CSRF-Token": csrf ?? "" },
-        });
+        await apiFetch(
+          `/schools/${schoolSlug}/admin/users/${member.id}/reset-password`,
+          {
+            method: "POST",
+            headers: { "X-CSRF-Token": csrf ?? "" },
+          },
+        );
         onShowToast(t("users.resetPwd.success"), "success");
       } catch (err) {
         onShowToast(extractError(err), "error");
@@ -1086,30 +1312,56 @@ function UserDetailPanel({
     }
     const d = detail as SchoolUserDetail;
     return member.roles.map((role) => {
-      if (role === "TEACHER") return <TeacherRoleSection key={role} classes={d.teachingClasses ?? []} t={t} />;
-      if (role === "PARENT") return (
-        <ParentRoleSection key={role} children={d.children ?? []} onAssignChildClick={() => setAssignChildOpen(true)} t={t} />
-      );
-      if (role === "STUDENT") return (
-        <StudentRoleSection
-          key={role}
-          {...studentSectionProps}
-          enrollments={d.enrollments ?? []}
-          parents={d.studentParents ?? []}
-          hasAccount={true}
-        />
-      );
-      if (role === "SCHOOL_STAFF") return <StaffRoleSection key={role} functions={d.staffFunctions ?? []} t={t} />;
+      if (role === "TEACHER")
+        return (
+          <TeacherRoleSection
+            key={role}
+            classes={d.teachingClasses ?? []}
+            t={t}
+          />
+        );
+      if (role === "PARENT")
+        return (
+          <ParentRoleSection
+            key={role}
+            children={d.children ?? []}
+            onAssignChildClick={() => setAssignChildOpen(true)}
+            t={t}
+          />
+        );
+      if (role === "STUDENT")
+        return (
+          <StudentRoleSection
+            key={role}
+            {...studentSectionProps}
+            enrollments={d.enrollments ?? []}
+            parents={d.studentParents ?? []}
+            hasAccount={true}
+          />
+        );
+      if (role === "SCHOOL_STAFF")
+        return (
+          <StaffRoleSection
+            key={role}
+            functions={d.staffFunctions ?? []}
+            t={t}
+          />
+        );
       return <AdminRoleSection key={role} role={role} t={t} />;
     });
   }
 
   const genderKey =
-    member.type === "user" && member.gender ? `users.gender.${member.gender}` : null;
+    member.type === "user" && member.gender
+      ? `users.gender.${member.gender}`
+      : null;
 
   return (
     <>
-      <div className="flex h-full flex-col overflow-hidden" data-testid="user-detail-panel">
+      <div
+        className="flex h-full flex-col overflow-hidden"
+        data-testid="user-detail-panel"
+      >
         {/* Header */}
         <div className="flex shrink-0 items-center gap-3 border-b border-warm-border bg-warm-surface px-5 py-3">
           <button
@@ -1124,21 +1376,35 @@ function UserDetailPanel({
             <p className="text-[10px] uppercase tracking-widest text-text-secondary">
               {t("users.detail.title")}
             </p>
-            <p className="truncate font-bold text-text-primary" data-testid="user-detail-name">
+            <p
+              className="truncate font-bold text-text-primary"
+              data-testid="user-detail-name"
+            >
               {fullName}
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-1">
-            {member.roles.map((r) => <RoleBadge key={r} role={r as SchoolRole} t={t} />)}
+            {member.roles.map((r) => (
+              <RoleBadge key={r} role={r as SchoolRole} t={t} />
+            ))}
           </div>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4" data-testid="user-detail-body">
+        <div
+          className="flex-1 overflow-y-auto p-5 space-y-4"
+          data-testid="user-detail-body"
+        >
           {/* Profile banner */}
-          <div className="rounded-2xl border border-warm-border bg-white p-4" data-testid="user-detail-profile">
+          <div
+            className="rounded-2xl border border-warm-border bg-white p-4"
+            data-testid="user-detail-profile"
+          >
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="text-base font-bold text-text-primary" data-testid="user-detail-fullname">
+              <p
+                className="text-base font-bold text-text-primary"
+                data-testid="user-detail-fullname"
+              >
                 {fullName}
               </p>
               {member.hasAccount && member.activationStatus ? (
@@ -1177,11 +1443,17 @@ function UserDetailPanel({
 
           {/* Role sections */}
           {loading ? (
-            <p className="py-8 text-center text-sm text-text-secondary" data-testid="user-detail-loading">
+            <p
+              className="py-8 text-center text-sm text-text-secondary"
+              data-testid="user-detail-loading"
+            >
               {t("users.detail.loadingProfile")}
             </p>
           ) : error ? (
-            <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" data-testid="user-detail-error">
+            <div
+              className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+              data-testid="user-detail-error"
+            >
               <span className="flex-1">{error}</span>
               <button
                 type="button"
@@ -1199,23 +1471,40 @@ function UserDetailPanel({
 
           {/* Contact */}
           {member.hasAccount ? (
-            <div className="overflow-hidden rounded-2xl border border-warm-border bg-white" data-testid="user-detail-contact">
+            <div
+              className="overflow-hidden rounded-2xl border border-warm-border bg-white"
+              data-testid="user-detail-contact"
+            >
               <div className="border-b border-warm-border bg-warm-surface px-4 py-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                   {t("users.detail.contact")}
                 </p>
               </div>
               <div className="px-4">
-                <InfoRow label={t("users.detail.email")} value={member.email ?? ""} />
-                <InfoRow label={t("users.detail.phone")} value={member.phone ?? ""} />
-                {genderKey ? <InfoRow label={t("users.detail.gender")} value={t(genderKey)} /> : null}
+                <InfoRow
+                  label={t("users.detail.email")}
+                  value={member.email ?? ""}
+                />
+                <InfoRow
+                  label={t("users.detail.phone")}
+                  value={member.phone ?? ""}
+                />
+                {genderKey ? (
+                  <InfoRow
+                    label={t("users.detail.gender")}
+                    value={t(genderKey)}
+                  />
+                ) : null}
               </div>
             </div>
           ) : null}
 
           {/* Activity */}
           {member.hasAccount ? (
-            <div className="overflow-hidden rounded-2xl border border-warm-border bg-white" data-testid="user-detail-activity">
+            <div
+              className="overflow-hidden rounded-2xl border border-warm-border bg-white"
+              data-testid="user-detail-activity"
+            >
               <div className="border-b border-warm-border bg-warm-surface px-4 py-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                   {t("users.detail.activity")}
@@ -1224,11 +1513,14 @@ function UserDetailPanel({
               <div className="px-4">
                 <InfoRow
                   label={t("users.detail.createdAt")}
-                  value={new Date(member.createdAt).toLocaleDateString("fr-CM", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  value={new Date(member.createdAt).toLocaleDateString(
+                    "fr-CM",
+                    {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    },
+                  )}
                 />
                 {detail && "lastLoginAt" in detail ? (
                   <InfoRow
@@ -1242,7 +1534,11 @@ function UserDetailPanel({
                 ) : null}
                 <InfoRow
                   label={t("users.detail.profileCompleted")}
-                  value={member.profileCompleted ? t("users.detail.yes") : t("users.detail.no")}
+                  value={
+                    member.profileCompleted
+                      ? t("users.detail.yes")
+                      : t("users.detail.no")
+                  }
                 />
               </div>
             </div>
@@ -1310,11 +1606,16 @@ export default function UtilisateursPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
   const [selected, setSelected] = useState<SchoolMember | null>(null);
-  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    msg: string;
+    type: "success" | "error";
+  } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadUsers = useCallback(
-    async (opts: { reset?: boolean; searchVal?: string; pageNum?: number } = {}) => {
+    async (
+      opts: { reset?: boolean; searchVal?: string; pageNum?: number } = {},
+    ) => {
       const effectiveSearch = opts.searchVal ?? search;
       const effectivePage = opts.pageNum ?? 1;
       const isReset = opts.reset !== false && effectivePage === 1;
@@ -1324,13 +1625,18 @@ export default function UtilisateursPage() {
       setError(null);
 
       try {
-        const q = new URLSearchParams({ page: String(effectivePage), limit: "20" });
+        const q = new URLSearchParams({
+          page: String(effectivePage),
+          limit: "20",
+        });
         if (effectiveSearch.trim()) q.set("search", effectiveSearch.trim());
         if (roleFilter !== "ALL") q.set("role", roleFilter);
 
-        const res = await apiFetch<{ data: SchoolMember[]; total: number; hasMore: boolean }>(
-          `/schools/${schoolSlug}/users?${q.toString()}`,
-        );
+        const res = await apiFetch<{
+          data: SchoolMember[];
+          total: number;
+          hasMore: boolean;
+        }>(`/schools/${schoolSlug}/users?${q.toString()}`);
         if (isReset) {
           setUsers(res.data);
         } else {
@@ -1346,13 +1652,11 @@ export default function UtilisateursPage() {
         setLoadingMore(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [schoolSlug, roleFilter, search, t],
   );
 
   useEffect(() => {
     void loadUsers({ reset: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roleFilter]);
 
   function handleSearchChange(val: string) {
@@ -1374,13 +1678,20 @@ export default function UtilisateursPage() {
   }
 
   return (
-    <div className="flex h-full min-h-screen flex-col bg-background" data-testid="utilisateurs-page">
+    <div
+      className="flex h-full min-h-screen flex-col bg-background"
+      data-testid="utilisateurs-page"
+    >
       {/* Top bar */}
       <div className="shrink-0 border-b border-warm-border bg-surface px-6 py-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="font-heading text-xl font-bold text-text-primary">{t("users.title")}</h1>
-            <p className="mt-0.5 text-sm text-text-secondary">{t("users.subtitle")}</p>
+            <h1 className="font-heading text-xl font-bold text-text-primary">
+              {t("users.title")}
+            </h1>
+            <p className="mt-0.5 text-sm text-text-secondary">
+              {t("users.subtitle")}
+            </p>
           </div>
           {total > 0 ? (
             <span
@@ -1402,7 +1713,10 @@ export default function UtilisateursPage() {
           {/* Search + filter chips */}
           <div className="shrink-0 border-b border-warm-border bg-surface px-4 py-3 space-y-3">
             <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
+              />
               <input
                 data-testid="users-search-input"
                 type="text"
@@ -1424,7 +1738,10 @@ export default function UtilisateursPage() {
               ) : null}
             </div>
 
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5" data-testid="users-role-filter">
+            <div
+              className="flex gap-1.5 overflow-x-auto pb-0.5"
+              data-testid="users-role-filter"
+            >
               {ROLE_FILTER_KEYS.map((f) => (
                 <button
                   key={f.value}
@@ -1440,7 +1757,10 @@ export default function UtilisateursPage() {
           </div>
 
           {error ? (
-            <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700" data-testid="users-error">
+            <div
+              className="mx-4 mt-3 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+              data-testid="users-error"
+            >
               {error}
             </div>
           ) : null}
@@ -1448,15 +1768,24 @@ export default function UtilisateursPage() {
           {/* List */}
           <div className="flex-1 overflow-y-auto" data-testid="users-list">
             {loading ? (
-              <p className="py-16 text-center text-sm text-text-secondary">{t("users.loading")}</p>
+              <p className="py-16 text-center text-sm text-text-secondary">
+                {t("users.loading")}
+              </p>
             ) : users.length === 0 ? (
-              <div className="flex flex-col items-center py-16 text-center" data-testid="users-empty">
+              <div
+                className="flex flex-col items-center py-16 text-center"
+                data-testid="users-empty"
+              >
                 <Users size={40} className="mb-3 text-text-secondary/30" />
                 <p className="text-sm font-semibold text-text-secondary">
-                  {search || roleFilter !== "ALL" ? t("users.empty.title") : t("users.empty.noUsers")}
+                  {search || roleFilter !== "ALL"
+                    ? t("users.empty.title")
+                    : t("users.empty.noUsers")}
                 </p>
                 <p className="mt-1 text-xs text-text-secondary/60">
-                  {search || roleFilter !== "ALL" ? t("users.empty.message") : t("users.empty.noUsersMsg")}
+                  {search || roleFilter !== "ALL"
+                    ? t("users.empty.message")
+                    : t("users.empty.noUsersMsg")}
                 </p>
               </div>
             ) : (
@@ -1469,16 +1798,22 @@ export default function UtilisateursPage() {
                       key={u.id}
                       type="button"
                       data-testid={`user-card-${u.id}`}
-                      onClick={() => setSelected((prev) => (prev?.id === u.id ? null : u))}
+                      onClick={() =>
+                        setSelected((prev) => (prev?.id === u.id ? null : u))
+                      }
                       className={`w-full border-b border-warm-border/50 px-4 py-3 text-left transition-colors ${isActive ? "border-l-2 border-l-primary bg-[#EEF4FB]" : "hover:bg-warm-highlight"}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className={`truncate text-sm font-semibold ${isActive ? "text-primary" : "text-text-primary"}`}>
+                          <p
+                            className={`truncate text-sm font-semibold ${isActive ? "text-primary" : "text-text-primary"}`}
+                          >
                             {name}
                           </p>
                           <div className="mt-1 flex flex-wrap gap-1">
-                            {u.roles.map((r) => <RoleBadge key={r} role={r as SchoolRole} t={t} />)}
+                            {u.roles.map((r) => (
+                              <RoleBadge key={r} role={r as SchoolRole} t={t} />
+                            ))}
                           </div>
                         </div>
                         {u.hasAccount && u.activationStatus ? (
@@ -1505,7 +1840,9 @@ export default function UtilisateursPage() {
                     </button>
                   </div>
                 ) : users.length > 0 ? (
-                  <p className="py-4 text-center text-xs text-text-secondary/60">{t("users.allLoaded")}</p>
+                  <p className="py-4 text-center text-xs text-text-secondary/60">
+                    {t("users.allLoaded")}
+                  </p>
                 ) : null}
               </>
             )}
@@ -1527,15 +1864,24 @@ export default function UtilisateursPage() {
         ) : (
           <div className="hidden flex-1 items-center justify-center lg:flex">
             <div className="text-center">
-              <Users size={52} className="mx-auto mb-4 text-text-secondary/20" />
-              <p className="text-sm text-text-secondary">{t("users.selectHint")}</p>
+              <Users
+                size={52}
+                className="mx-auto mb-4 text-text-secondary/20"
+              />
+              <p className="text-sm text-text-secondary">
+                {t("users.selectHint")}
+              </p>
             </div>
           </div>
         )}
       </div>
 
       {toast ? (
-        <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />
+        <Toast
+          message={toast.msg}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       ) : null}
     </div>
   );
