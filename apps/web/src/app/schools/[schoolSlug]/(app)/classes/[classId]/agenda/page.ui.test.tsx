@@ -374,7 +374,10 @@ describe("Agenda page forms", () => {
         ) {
           return jsonResponse(timetablePayload);
         }
-        if (url.endsWith("/schools/college-vogt/timetable/slots/slot-1") && method === "DELETE") {
+        if (
+          url.endsWith("/schools/college-vogt/timetable/slots/slot-1") &&
+          method === "DELETE"
+        ) {
           return jsonResponse({ id: "slot-1", deleted: true }, 200);
         }
 

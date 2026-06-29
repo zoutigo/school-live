@@ -9,7 +9,11 @@
  */
 
 import { NotFoundException } from "@nestjs/common";
-import type { AppRole, PlatformRole, SchoolRole } from "../src/auth/auth.types.js";
+import type {
+  AppRole,
+  PlatformRole,
+  SchoolRole,
+} from "../src/auth/auth.types.js";
 import { TimetableService } from "../src/timetable/timetable.service.js";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -117,14 +121,18 @@ beforeEach(() => {
   (service as any).ensureSchoolYearInSchool = jest
     .fn()
     .mockResolvedValue({ startsAt: null, endsAt: null });
-  (service as any).ensureSubjectInSchool = jest.fn().mockResolvedValue(undefined);
+  (service as any).ensureSubjectInSchool = jest
+    .fn()
+    .mockResolvedValue(undefined);
   (service as any).ensureSubjectAllowedForClass = jest
     .fn()
     .mockResolvedValue(undefined);
   (service as any).ensureTeacherAssignedToClassSubject = jest
     .fn()
     .mockResolvedValue(undefined);
-  (service as any).ensureNoSlotConflicts = jest.fn().mockResolvedValue(undefined);
+  (service as any).ensureNoSlotConflicts = jest
+    .fn()
+    .mockResolvedValue(undefined);
   (service as any).ensureAutoSubjectStyleExists = jest
     .fn()
     .mockResolvedValue(undefined);
@@ -225,7 +233,7 @@ describe("updateSlot (split structurel) — migration des OneOffSlots vers le no
 
   const SPLIT_PAYLOAD = {
     weekday: 1,
-    startMinute: 540,  // changement structurel (horaire)
+    startMinute: 540, // changement structurel (horaire)
     endMinute: 630,
     subjectId: "sub-1",
     teacherUserId: "teacher-1",
@@ -293,7 +301,7 @@ describe("updateSlot (split structurel) — migration des OneOffSlots vers le no
     // Payload identique sans changement structurel => branche non-split
     const noChangePayload = {
       weekday: 1,
-      startMinute: 480,   // même que le slot existant
+      startMinute: 480, // même que le slot existant
       endMinute: 570,
       subjectId: "sub-1",
       teacherUserId: "teacher-1",

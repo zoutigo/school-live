@@ -150,8 +150,8 @@ beforeEach(() => {
     value.toISOString().slice(0, 10);
   (service as any).emitTimetableChange = jest.fn().mockResolvedValue(undefined);
 
-  prisma.$transaction.mockImplementation(
-    async (ops: Promise<unknown>[]) => Promise.all(ops),
+  prisma.$transaction.mockImplementation(async (ops: Promise<unknown>[]) =>
+    Promise.all(ops),
   );
   prisma.classTimetableSlot.findFirst.mockResolvedValue(makeSlot());
   prisma.classTimetableSlot.create.mockImplementation(
