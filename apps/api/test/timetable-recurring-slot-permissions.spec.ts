@@ -58,7 +58,9 @@ const prisma = {
     findFirst: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
     delete: jest.fn(),
+    deleteMany: jest.fn(),
   },
   classTimetableSlotException: {
     findFirst: jest.fn(),
@@ -276,7 +278,9 @@ describe("deleteSlot (série récurrente) — referent seulement", () => {
     prisma.classTimetableSlot.findFirst.mockResolvedValue({
       id: "slot-1",
       classId: "class-1",
+      teacherUserId: "teacher-albert",
     });
+    prisma.classTimetableOneOffSlot.deleteMany.mockResolvedValue({ count: 0 });
     prisma.classTimetableSlot.delete.mockResolvedValue({ id: "slot-1" });
   });
 

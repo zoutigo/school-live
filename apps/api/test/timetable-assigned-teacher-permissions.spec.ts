@@ -23,11 +23,20 @@ function makeUser(id: string, schoolRole: SchoolRole) {
 }
 
 const prisma = {
+  $transaction: jest.fn(),
   classTimetableSlot: {
     create: jest.fn(),
     findFirst: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+  },
+  classTimetableOneOffSlot: {
+    findFirst: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    updateMany: jest.fn(),
+    delete: jest.fn(),
+    deleteMany: jest.fn(),
   },
   classTimetableSlotException: {
     findFirst: jest.fn(),
@@ -141,6 +150,9 @@ beforeEach(() => {
     value.toISOString().slice(0, 10);
   (service as any).emitTimetableChange = jest.fn().mockResolvedValue(undefined);
 
+  prisma.$transaction.mockImplementation(async (ops: Promise<unknown>[]) =>
+    Promise.all(ops),
+  );
   prisma.classTimetableSlot.findFirst.mockResolvedValue(makeSlot());
   prisma.classTimetableSlot.create.mockImplementation(
     async ({ data }: { data: Record<string, unknown> }) => ({
@@ -151,6 +163,7 @@ beforeEach(() => {
   );
   prisma.classTimetableSlot.update.mockResolvedValue(makeSlot());
   prisma.classTimetableSlot.delete.mockResolvedValue(undefined);
+  prisma.classTimetableOneOffSlot.deleteMany.mockResolvedValue({ count: 0 });
 
   prisma.classTimetableSlotException.findFirst.mockResolvedValue(
     makeException(),
