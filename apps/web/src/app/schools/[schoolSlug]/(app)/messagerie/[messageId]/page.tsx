@@ -100,13 +100,17 @@ export default function SchoolMessagerieMessagePage() {
     setActionBusy(true);
     setError(null);
     try {
-      await archiveSchoolMessage(
-        schoolSlug,
-        messageId,
-        folderParam !== "archive",
-      );
+      const isCurrentlyArchived = folderParam === "archive";
+      await archiveSchoolMessage(schoolSlug, messageId, !isCurrentlyArchived);
       window.dispatchEvent(new Event("messaging:updated"));
-      router.push(backUrl);
+      if (isCurrentlyArchived) {
+        // Désarchivage : redirige vers le dossier d'origine du message
+        // (sender null = message reçu → inbox ; sender présent → envoyé → sent)
+        const targetFolder = message?.sender ? "inbox" : "sent";
+        router.push(`/schools/${schoolSlug}/messagerie?folder=${targetFolder}`);
+      } else {
+        router.push(backUrl);
+      }
     } catch {
       setError(t("messaging.page.archiveError"));
     } finally {

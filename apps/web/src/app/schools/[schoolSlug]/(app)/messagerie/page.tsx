@@ -286,7 +286,8 @@ export default function SchoolMessageriePage() {
     setActionBusy(true);
     setError(null);
     try {
-      const archiveFlag = folder !== "archive";
+      const isCurrentlyArchived = folder === "archive";
+      const archiveFlag = !isCurrentlyArchived;
       await archiveSchoolMessage(schoolSlug, selectedMessageId, archiveFlag);
       setMessages((prev) =>
         prev.filter((entry) => entry.id !== selectedMessageId),
@@ -294,7 +295,16 @@ export default function SchoolMessageriePage() {
       setSelectedMessageId(null);
       setSelectedMessage(null);
       window.dispatchEvent(new Event("messaging:updated"));
-      await loadMessages(schoolSlug, folder, search);
+      if (isCurrentlyArchived) {
+        // Désarchivage : bascule sur le dossier d'origine du message.
+        // mapDetailToUi hardcode folder:"inbox", on lit donc le folder depuis la liste.
+        const listEntry = messages.find((m) => m.id === selectedMessageId);
+        const targetFolder = listEntry?.folder === "sent" ? "sent" : "inbox";
+        setFolder(targetFolder);
+        await loadMessages(schoolSlug, targetFolder, search);
+      } else {
+        await loadMessages(schoolSlug, folder, search);
+      }
     } catch {
       setError(t("messaging.page.archiveError"));
     } finally {
@@ -352,6 +362,7 @@ export default function SchoolMessageriePage() {
       return;
     }
     try {
+      const messageInList = messages.find((m) => m.id === messageId);
       await archiveSchoolMessage(schoolSlug, messageId, false);
       setMessages((prev) => prev.filter((entry) => entry.id !== messageId));
       if (selectedMessageId === messageId) {
@@ -359,6 +370,11 @@ export default function SchoolMessageriePage() {
         setSelectedMessage(null);
       }
       window.dispatchEvent(new Event("messaging:updated"));
+      // Bascule sur le dossier d'origine et recharge
+      const targetFolder =
+        messageInList?.folder === "sent" ? "sent" : "inbox";
+      setFolder(targetFolder);
+      await loadMessages(schoolSlug, targetFolder, search);
     } catch {
       setError(t("messaging.page.restoreError"));
     }
