@@ -371,8 +371,7 @@ export default function SchoolMessageriePage() {
       }
       window.dispatchEvent(new Event("messaging:updated"));
       // Bascule sur le dossier d'origine et recharge
-      const targetFolder =
-        messageInList?.folder === "sent" ? "sent" : "inbox";
+      const targetFolder = messageInList?.folder === "sent" ? "sent" : "inbox";
       setFolder(targetFolder);
       await loadMessages(schoolSlug, targetFolder, search);
     } catch {

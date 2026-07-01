@@ -1,9 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MessagingPage from "./page";
 
@@ -36,7 +31,12 @@ const INBOX_MESSAGE = {
   createdAt: "2026-01-10T10:00:00Z",
   sentAt: "2026-01-10T10:00:00Z",
   unread: true,
-  sender: { id: "u-1", firstName: "Alice", lastName: "Martin", email: "alice@school.cm" },
+  sender: {
+    id: "u-1",
+    firstName: "Alice",
+    lastName: "Martin",
+    email: "alice@school.cm",
+  },
   recipientsCount: 1,
   mailboxEntryId: "me-1",
   attachments: [],
@@ -64,7 +64,16 @@ const ARCHIVE_SENT_MSG = {
 };
 
 // Detail-level fixtures (from getSchoolMessage — shape expected by mapDetailToUi)
-const makeDetail = (id: string, subject: string, sender: { id: string; firstName: string; lastName: string; email: string } | null = null) => ({
+const makeDetail = (
+  id: string,
+  subject: string,
+  sender: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null = null,
+) => ({
   id,
   subject,
   body: `<p>Corps du message ${subject}</p>`,
@@ -75,11 +84,23 @@ const makeDetail = (id: string, subject: string, sender: { id: string; firstName
   attachments: [],
 });
 
-const ALICE = { id: "u-1", firstName: "Alice", lastName: "Martin", email: "alice@school.cm" };
+const ALICE = {
+  id: "u-1",
+  firstName: "Alice",
+  lastName: "Martin",
+  email: "alice@school.cm",
+};
 
 const DETAIL_INBOX = makeDetail("msg-inbox-1", "Réunion parents", ALICE);
-const DETAIL_ARCHIVE_INBOX = makeDetail("msg-arch-inbox-1", "Message archivé reçu", ALICE);
-const DETAIL_ARCHIVE_SENT = makeDetail("msg-arch-sent-1", "Message archivé envoyé");
+const DETAIL_ARCHIVE_INBOX = makeDetail(
+  "msg-arch-inbox-1",
+  "Message archivé reçu",
+  ALICE,
+);
+const DETAIL_ARCHIVE_SENT = makeDetail(
+  "msg-arch-sent-1",
+  "Message archivé envoyé",
+);
 
 function jsonResponse(payload: unknown, status = 200) {
   return Promise.resolve(
@@ -107,7 +128,12 @@ function makeFetchMock(options: {
   archiveSuccess?: boolean;
   details?: Record<string, unknown>;
 }) {
-  const { folder = "inbox", messages, archiveSuccess = true, details = {} } = options;
+  const {
+    folder = "inbox",
+    messages,
+    archiveSuccess = true,
+    details = {},
+  } = options;
 
   const defaultMessages =
     folder === "inbox"
@@ -153,13 +179,18 @@ function makeFetchMock(options: {
     const detailMatch = url.match(/\/messages\/([^/?]+)$/);
     if (detailMatch) {
       const detail = defaultDetails[detailMatch[1]];
-      return detail ? jsonResponse(detail) : jsonResponse({ message: "Not found" }, 404);
+      return detail
+        ? jsonResponse(detail)
+        : jsonResponse({ message: "Not found" }, 404);
     }
 
     // Message list: /messages?folder=… or /messages&…
     if (url.includes("/messages?") || url.includes("/messages&")) {
       if (url.includes("folder=drafts")) {
-        return jsonResponse({ items: [], meta: { total: 0, page: 1, limit: 1, totalPages: 1 } });
+        return jsonResponse({
+          items: [],
+          meta: { total: 0, page: 1, limit: 1, totalPages: 1 },
+        });
       }
       if (url.includes("folder=archive")) {
         return jsonResponse({
@@ -183,7 +214,15 @@ function makeFetchMock(options: {
           },
         });
       }
-      return jsonResponse({ items: resolvedMessages, meta: { page: 1, limit: 50, total: resolvedMessages.length, totalPages: 1 } });
+      return jsonResponse({
+        items: resolvedMessages,
+        meta: {
+          page: 1,
+          limit: 50,
+          total: resolvedMessages.length,
+          totalPages: 1,
+        },
+      });
     }
 
     return jsonResponse({});
@@ -247,8 +286,10 @@ describe("MessagingPage — désarchivage", () => {
     });
 
     await waitFor(() => {
-      const inboxReloads = fetchSpy.mock.calls.filter(([url]) =>
-        String(url).includes("folder=inbox") && String(url).includes("limit=50"),
+      const inboxReloads = fetchSpy.mock.calls.filter(
+        ([url]) =>
+          String(url).includes("folder=inbox") &&
+          String(url).includes("limit=50"),
       );
       expect(inboxReloads.length).toBeGreaterThan(0);
     });
@@ -293,7 +334,9 @@ describe("MessagingPage — désarchivage", () => {
     render(<MessagingPage />);
     await screen.findByText("Message archivé reçu");
 
-    const restoreBtn = await screen.findByLabelText("Restaurer depuis archives");
+    const restoreBtn = await screen.findByLabelText(
+      "Restaurer depuis archives",
+    );
     fireEvent.click(restoreBtn);
 
     await waitFor(() => {
@@ -306,8 +349,10 @@ describe("MessagingPage — désarchivage", () => {
     });
 
     await waitFor(() => {
-      const inboxReloads = fetchSpy.mock.calls.filter(([url]) =>
-        String(url).includes("folder=inbox") && String(url).includes("limit=50"),
+      const inboxReloads = fetchSpy.mock.calls.filter(
+        ([url]) =>
+          String(url).includes("folder=inbox") &&
+          String(url).includes("limit=50"),
       );
       expect(inboxReloads.length).toBeGreaterThan(0);
     });
@@ -331,7 +376,9 @@ describe("MessagingPage — désarchivage", () => {
     });
 
     const inboxReloads = fetchSpy.mock.calls.filter(
-      ([url]) => String(url).includes("folder=inbox") && String(url).includes("limit=50"),
+      ([url]) =>
+        String(url).includes("folder=inbox") &&
+        String(url).includes("limit=50"),
     );
     expect(inboxReloads.length).toBe(0);
   });
@@ -356,33 +403,46 @@ describe("MessagingPage — types d'utilisateurs", () => {
 
   for (const role of roles) {
     it(`un ${role} peut désarchiver un message reçu et revenir sur inbox`, async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-        const url = String(input);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation((input) => {
+          const url = String(input);
 
-        if (url.endsWith("/me")) return jsonResponse({ role, schoolName: "Collège" });
-        if (url.includes("/messages/unread-count")) return jsonResponse({ unread: 0 });
+          if (url.endsWith("/me"))
+            return jsonResponse({ role, schoolName: "Collège" });
+          if (url.includes("/messages/unread-count"))
+            return jsonResponse({ unread: 0 });
 
-        if (/\/messages\/[^/?]+\/archive$/.test(url)) return jsonResponse({ success: true });
-        if (/\/messages\/[^/?]+\/read$/.test(url)) return jsonResponse({ success: true });
+          if (/\/messages\/[^/?]+\/archive$/.test(url))
+            return jsonResponse({ success: true });
+          if (/\/messages\/[^/?]+\/read$/.test(url))
+            return jsonResponse({ success: true });
 
-        const detailMatch = url.match(/\/messages\/([^/?]+)$/);
-        if (detailMatch) return jsonResponse(DETAIL_ARCHIVE_INBOX);
+          const detailMatch = url.match(/\/messages\/([^/?]+)$/);
+          if (detailMatch) return jsonResponse(DETAIL_ARCHIVE_INBOX);
 
-        if (url.includes("folder=drafts")) return jsonResponse({ items: [], meta: { total: 0, page: 1, limit: 1, totalPages: 1 } });
-        if (url.includes("folder=archive")) {
+          if (url.includes("folder=drafts"))
+            return jsonResponse({
+              items: [],
+              meta: { total: 0, page: 1, limit: 1, totalPages: 1 },
+            });
+          if (url.includes("folder=archive")) {
+            return jsonResponse({
+              items: [ARCHIVE_INBOX_MSG],
+              meta: { page: 1, limit: 50, total: 1, totalPages: 1 },
+            });
+          }
+          if (url.includes("folder=inbox")) {
+            return jsonResponse({
+              items: [INBOX_MESSAGE],
+              meta: { page: 1, limit: 50, total: 1, totalPages: 1 },
+            });
+          }
           return jsonResponse({
-            items: [ARCHIVE_INBOX_MSG],
-            meta: { page: 1, limit: 50, total: 1, totalPages: 1 },
+            items: [],
+            meta: { total: 0, page: 1, limit: 50, totalPages: 1 },
           });
-        }
-        if (url.includes("folder=inbox")) {
-          return jsonResponse({
-            items: [INBOX_MESSAGE],
-            meta: { page: 1, limit: 50, total: 1, totalPages: 1 },
-          });
-        }
-        return jsonResponse({ items: [], meta: { total: 0, page: 1, limit: 50, totalPages: 1 } });
-      });
+        });
 
       render(<MessagingPage />);
       await screen.findByText("Message archivé reçu");
@@ -391,8 +451,10 @@ describe("MessagingPage — types d'utilisateurs", () => {
       fireEvent.click(unarchiveBtn);
 
       await waitFor(() => {
-        const inboxReloads = fetchSpy.mock.calls.filter(([url]) =>
-          String(url).includes("folder=inbox") && String(url).includes("limit=50"),
+        const inboxReloads = fetchSpy.mock.calls.filter(
+          ([url]) =>
+            String(url).includes("folder=inbox") &&
+            String(url).includes("limit=50"),
         );
         expect(inboxReloads.length).toBeGreaterThan(0);
       });

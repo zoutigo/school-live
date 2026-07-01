@@ -6,7 +6,7 @@ import {
   waitFor,
   act,
 } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { RichTextEditor, type RichTextEditorRef } from "./rich-text-editor";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -62,7 +62,9 @@ describe("RichTextEditor — rendu", () => {
         onUploadInlineImage={noopUpload}
       />,
     );
-    expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeTruthy();
+    expect(
+      document.querySelector('input[type="file"][accept="image/*"]'),
+    ).toBeTruthy();
   });
 
   it("n'affiche pas d'input image quand allowInlineImages=false", () => {
@@ -118,7 +120,10 @@ describe("RichTextEditor — toolbar image flottant", () => {
 
   it("affiche le toolbar quand on clique sur une image dans l'éditeur", () => {
     const { container } = render(
-      <RichTextEditor allowInlineImages={true} onUploadInlineImage={noopUpload} />,
+      <RichTextEditor
+        allowInlineImages={true}
+        onUploadInlineImage={noopUpload}
+      />,
     );
     const editor = getEditor(container);
     const img = injectImg(editor);
@@ -129,7 +134,10 @@ describe("RichTextEditor — toolbar image flottant", () => {
 
   it("cache le toolbar quand on clique en dehors d'une image", () => {
     const { container } = render(
-      <RichTextEditor allowInlineImages={true} onUploadInlineImage={noopUpload} />,
+      <RichTextEditor
+        allowInlineImages={true}
+        onUploadInlineImage={noopUpload}
+      />,
     );
     const editor = getEditor(container);
     const img = injectImg(editor);
@@ -143,7 +151,10 @@ describe("RichTextEditor — toolbar image flottant", () => {
 
   it("applique outline de sélection sur l'image cliquée", () => {
     const { container } = render(
-      <RichTextEditor allowInlineImages={true} onUploadInlineImage={noopUpload} />,
+      <RichTextEditor
+        allowInlineImages={true}
+        onUploadInlineImage={noopUpload}
+      />,
     );
     const editor = getEditor(container);
     const img = injectImg(editor);
@@ -154,7 +165,10 @@ describe("RichTextEditor — toolbar image flottant", () => {
 
   it("retire l'outline de sélection après fermeture du toolbar", () => {
     const { container } = render(
-      <RichTextEditor allowInlineImages={true} onUploadInlineImage={noopUpload} />,
+      <RichTextEditor
+        allowInlineImages={true}
+        onUploadInlineImage={noopUpload}
+      />,
     );
     const editor = getEditor(container);
     const img = injectImg(editor);
@@ -168,7 +182,10 @@ describe("RichTextEditor — toolbar image flottant", () => {
 
   it("affiche les boutons de taille 25%, 50%, 75%, 100%", () => {
     const { container } = render(
-      <RichTextEditor allowInlineImages={true} onUploadInlineImage={noopUpload} />,
+      <RichTextEditor
+        allowInlineImages={true}
+        onUploadInlineImage={noopUpload}
+      />,
     );
     const editor = getEditor(container);
     const img = injectImg(editor);
@@ -232,7 +249,10 @@ describe("RichTextEditor — toolbar image flottant", () => {
 
   it("applique float:left après clic alignement gauche", () => {
     const { container } = render(
-      <RichTextEditor allowInlineImages={true} onUploadInlineImage={noopUpload} />,
+      <RichTextEditor
+        allowInlineImages={true}
+        onUploadInlineImage={noopUpload}
+      />,
     );
     const editor = getEditor(container);
     const img = injectImg(editor);
@@ -277,7 +297,10 @@ describe("RichTextEditor — toolbar image flottant", () => {
 
   it("ferme le toolbar via le bouton Fermer sans supprimer l'image", () => {
     const { container } = render(
-      <RichTextEditor allowInlineImages={true} onUploadInlineImage={noopUpload} />,
+      <RichTextEditor
+        allowInlineImages={true}
+        onUploadInlineImage={noopUpload}
+      />,
     );
     const editor = getEditor(container);
     const img = injectImg(editor);

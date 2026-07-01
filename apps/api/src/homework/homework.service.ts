@@ -331,7 +331,6 @@ export class HomeworkService {
 
     await this.cleanupMediaUrls(
       existingAttachmentUrls.filter((url) => !nextAttachmentUrls.includes(url)),
-      locale,
     );
 
     const nextContentHtml =
@@ -403,7 +402,6 @@ export class HomeworkService {
       existing.attachments
         .map((attachment) => attachment.fileUrl)
         .filter((url): url is string => Boolean(url)),
-      locale,
     );
     await this.inlineMediaService.removeEntityImages({
       entityType: InlineMediaEntityType.HOMEWORK,
@@ -1075,7 +1073,7 @@ export class HomeworkService {
     return `${firstName} ${lastName}`.trim();
   }
 
-  private async cleanupMediaUrls(urls: string[], _locale: HomeworkLocale) {
+  private async cleanupMediaUrls(urls: string[]) {
     for (const url of urls) {
       try {
         await this.mediaClientService.deleteImageByUrl(url);

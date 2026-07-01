@@ -13,7 +13,9 @@ import { MessagingService } from "./messaging.service.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
+function makeUser(
+  overrides: Partial<AuthenticatedUser> = {},
+): AuthenticatedUser {
   return {
     id: "user-1",
     firstName: "Alice",
@@ -54,18 +56,27 @@ describe("MessagingService", () => {
   let service: MessagingService;
   let prisma: ReturnType<typeof makePrismaMock>;
   let mediaClient: { uploadImage: jest.Mock; deleteImageByUrl: jest.Mock };
-  let inlineMedia: { syncEntityImages: jest.Mock; removeEntityImages: jest.Mock };
+  let inlineMedia: {
+    syncEntityImages: jest.Mock;
+    removeEntityImages: jest.Mock;
+  };
 
   beforeEach(async () => {
     prisma = makePrismaMock();
     mediaClient = { uploadImage: jest.fn(), deleteImageByUrl: jest.fn() };
-    inlineMedia = { syncEntityImages: jest.fn(), removeEntityImages: jest.fn() };
+    inlineMedia = {
+      syncEntityImages: jest.fn(),
+      removeEntityImages: jest.fn(),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
         MessagingService,
         { provide: PrismaService, useValue: prisma },
-        { provide: MailService, useValue: { sendInternalMessageNotification: jest.fn() } },
+        {
+          provide: MailService,
+          useValue: { sendInternalMessageNotification: jest.fn() },
+        },
         { provide: MediaClientService, useValue: mediaClient },
         { provide: InlineMediaService, useValue: inlineMedia },
       ],
@@ -224,10 +235,17 @@ describe("MessagingService", () => {
         const recipientRow = { id: "rec-1" };
 
         prisma.internalMessage.findFirst.mockResolvedValue(message);
-        prisma.internalMessageRecipient.findFirst.mockResolvedValue(recipientRow);
+        prisma.internalMessageRecipient.findFirst.mockResolvedValue(
+          recipientRow,
+        );
         prisma.internalMessageRecipient.update.mockResolvedValue({});
 
-        const result = await service.archiveMessage(user, "school-1", "msg-1", false);
+        const result = await service.archiveMessage(
+          user,
+          "school-1",
+          "msg-1",
+          false,
+        );
 
         expect(prisma.internalMessageRecipient.update).toHaveBeenCalledWith({
           where: { id: "rec-1" },
@@ -245,10 +263,17 @@ describe("MessagingService", () => {
         const recipientRow = { id: "rec-1" };
 
         prisma.internalMessage.findFirst.mockResolvedValue(message);
-        prisma.internalMessageRecipient.findFirst.mockResolvedValue(recipientRow);
+        prisma.internalMessageRecipient.findFirst.mockResolvedValue(
+          recipientRow,
+        );
         prisma.internalMessageRecipient.update.mockResolvedValue({});
 
-        const result = await service.archiveMessage(user, "school-1", "msg-1", true);
+        const result = await service.archiveMessage(
+          user,
+          "school-1",
+          "msg-1",
+          true,
+        );
 
         expect(prisma.internalMessageRecipient.update).toHaveBeenCalledWith({
           where: { id: "rec-1" },
@@ -388,7 +413,9 @@ describe("MessagingService", () => {
   describe("markRead()", () => {
     it("marque le message comme lu", async () => {
       const user = makeUser();
-      prisma.internalMessageRecipient.findFirst.mockResolvedValue({ id: "rec-1" });
+      prisma.internalMessageRecipient.findFirst.mockResolvedValue({
+        id: "rec-1",
+      });
       prisma.internalMessageRecipient.update.mockResolvedValue({});
 
       await service.markRead(user, "school-1", "msg-1", true);
@@ -401,7 +428,9 @@ describe("MessagingService", () => {
 
     it("marque le message comme non lu (readAt=null)", async () => {
       const user = makeUser();
-      prisma.internalMessageRecipient.findFirst.mockResolvedValue({ id: "rec-1" });
+      prisma.internalMessageRecipient.findFirst.mockResolvedValue({
+        id: "rec-1",
+      });
       prisma.internalMessageRecipient.update.mockResolvedValue({});
 
       await service.markRead(user, "school-1", "msg-1", false);
@@ -480,7 +509,12 @@ describe("MessagingService", () => {
     createdAt: new Date(),
     sentAt: null,
     senderArchivedAt: null,
-    senderUser: { id: "user-1", firstName: "Alice", lastName: "Martin", email: null },
+    senderUser: {
+      id: "user-1",
+      firstName: "Alice",
+      lastName: "Martin",
+      email: null,
+    },
     attachments: [],
     recipients: [],
     ...overrides,
@@ -507,34 +541,63 @@ describe("MessagingService", () => {
       const files = [
         makeFile("doc1.pdf", "application/pdf"),
         makeFile("doc2.png", "image/png"),
-        makeFile("doc3.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        makeFile(
+          "doc3.xlsx",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
       ];
 
       mediaClient.uploadImage
-        .mockResolvedValueOnce(makeUploadResult("https://cdn/1.pdf", "application/pdf"))
-        .mockResolvedValueOnce(makeUploadResult("https://cdn/2.png", "image/png"))
-        .mockResolvedValueOnce(makeUploadResult("https://cdn/3.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        .mockResolvedValueOnce(
+          makeUploadResult("https://cdn/1.pdf", "application/pdf"),
+        )
+        .mockResolvedValueOnce(
+          makeUploadResult("https://cdn/2.png", "image/png"),
+        )
+        .mockResolvedValueOnce(
+          makeUploadResult(
+            "https://cdn/3.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          ),
+        );
 
       prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
       inlineMedia.syncEntityImages.mockResolvedValue(undefined);
-      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+      prisma.internalMessage.findFirst.mockResolvedValue(
+        makeGetMessageResponse(),
+      );
 
       await service.createMessage(
         user,
         "school-1",
-        { subject: "Sujet test", body: "<p>Bonjour</p>", recipientUserIds: [], isDraft: true },
+        {
+          subject: "Sujet test",
+          body: "<p>Bonjour</p>",
+          recipientUserIds: [],
+          isDraft: true,
+        },
         files,
       );
 
       expect(mediaClient.uploadImage).toHaveBeenCalledTimes(3);
 
       const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
-        data: { attachments: { createMany: { data: Array<{ fileUrl: string; mimeType: string }> } } };
+        data: {
+          attachments: {
+            createMany: { data: Array<{ fileUrl: string; mimeType: string }> };
+          };
+        };
       };
       expect(createCall.data.attachments.createMany.data).toHaveLength(3);
-      expect(createCall.data.attachments.createMany.data[0].fileUrl).toBe("https://cdn/1.pdf");
-      expect(createCall.data.attachments.createMany.data[1].fileUrl).toBe("https://cdn/2.png");
-      expect(createCall.data.attachments.createMany.data[2].fileUrl).toBe("https://cdn/3.xlsx");
+      expect(createCall.data.attachments.createMany.data[0].fileUrl).toBe(
+        "https://cdn/1.pdf",
+      );
+      expect(createCall.data.attachments.createMany.data[1].fileUrl).toBe(
+        "https://cdn/2.png",
+      );
+      expect(createCall.data.attachments.createMany.data[2].fileUrl).toBe(
+        "https://cdn/3.xlsx",
+      );
     });
 
     it("préserve le nom de fichier original dans la base de données", async () => {
@@ -546,33 +609,44 @@ describe("MessagingService", () => {
 
       mediaClient.uploadImage
         .mockResolvedValueOnce(makeUploadResult("https://cdn/1.pdf"))
-        .mockResolvedValueOnce(makeUploadResult("https://cdn/2.jpg", "image/jpeg"));
+        .mockResolvedValueOnce(
+          makeUploadResult("https://cdn/2.jpg", "image/jpeg"),
+        );
 
       prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
       inlineMedia.syncEntityImages.mockResolvedValue(undefined);
-      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+      prisma.internalMessage.findFirst.mockResolvedValue(
+        makeGetMessageResponse(),
+      );
 
       await service.createMessage(
         user,
         "school-1",
-        { subject: "Sujet", body: "<p>Bonjour</p>", recipientUserIds: [], isDraft: true },
+        {
+          subject: "Sujet",
+          body: "<p>Bonjour</p>",
+          recipientUserIds: [],
+          isDraft: true,
+        },
         files,
       );
 
       const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
-        data: { attachments: { createMany: { data: Array<{ fileName: string }> } } };
+        data: {
+          attachments: { createMany: { data: Array<{ fileName: string }> } };
+        };
       };
-      expect(createCall.data.attachments.createMany.data[0].fileName).toBe("bulletin-scolaire.pdf");
-      expect(createCall.data.attachments.createMany.data[1].fileName).toBe("photo.jpg");
+      expect(createCall.data.attachments.createMany.data[0].fileName).toBe(
+        "bulletin-scolaire.pdf",
+      );
+      expect(createCall.data.attachments.createMany.data[1].fileName).toBe(
+        "photo.jpg",
+      );
     });
 
     it("supprime tous les fichiers uploadés si la création DB échoue", async () => {
       const user = makeUser({ id: "user-1" });
-      const files = [
-        makeFile("a.pdf"),
-        makeFile("b.pdf"),
-        makeFile("c.pdf"),
-      ];
+      const files = [makeFile("a.pdf"), makeFile("b.pdf"), makeFile("c.pdf")];
 
       mediaClient.uploadImage
         .mockResolvedValueOnce(makeUploadResult("https://cdn/a.pdf"))
@@ -585,14 +659,25 @@ describe("MessagingService", () => {
         service.createMessage(
           user,
           "school-1",
-          { subject: "Sujet", body: "<p>Bonjour</p>", recipientUserIds: [], isDraft: true },
+          {
+            subject: "Sujet",
+            body: "<p>Bonjour</p>",
+            recipientUserIds: [],
+            isDraft: true,
+          },
           files,
         ),
       ).rejects.toThrow("DB failure");
 
-      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith("https://cdn/a.pdf");
-      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith("https://cdn/b.pdf");
-      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith("https://cdn/c.pdf");
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith(
+        "https://cdn/a.pdf",
+      );
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith(
+        "https://cdn/b.pdf",
+      );
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith(
+        "https://cdn/c.pdf",
+      );
       expect(mediaClient.deleteImageByUrl).toHaveBeenCalledTimes(3);
     });
 
@@ -601,12 +686,19 @@ describe("MessagingService", () => {
 
       prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
       inlineMedia.syncEntityImages.mockResolvedValue(undefined);
-      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+      prisma.internalMessage.findFirst.mockResolvedValue(
+        makeGetMessageResponse(),
+      );
 
       await service.createMessage(
         user,
         "school-1",
-        { subject: "Sujet", body: "<p>Bonjour</p>", recipientUserIds: [], isDraft: true },
+        {
+          subject: "Sujet",
+          body: "<p>Bonjour</p>",
+          recipientUserIds: [],
+          isDraft: true,
+        },
         [],
       );
 
@@ -627,7 +719,10 @@ describe("MessagingService", () => {
           fileUrl: "https://cdn/original1.pdf",
           mimeType: "application/pdf",
           sizeBytes: 500,
-          message: { senderUserId: "other-user", recipients: [{ recipientUserId: "user-1", deletedAt: null }] },
+          message: {
+            senderUserId: "other-user",
+            recipients: [{ recipientUserId: "user-1", deletedAt: null }],
+          },
         },
         {
           id: "att-2",
@@ -635,13 +730,18 @@ describe("MessagingService", () => {
           fileUrl: "https://cdn/original2.png",
           mimeType: "image/png",
           sizeBytes: 300,
-          message: { senderUserId: "other-user", recipients: [{ recipientUserId: "user-1", deletedAt: null }] },
+          message: {
+            senderUserId: "other-user",
+            recipients: [{ recipientUserId: "user-1", deletedAt: null }],
+          },
         },
       ];
       prisma.internalMessageAttachment.findMany.mockResolvedValue(forwardRows);
       prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
       inlineMedia.syncEntityImages.mockResolvedValue(undefined);
-      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+      prisma.internalMessage.findFirst.mockResolvedValue(
+        makeGetMessageResponse(),
+      );
 
       await service.createMessage(
         user,
@@ -658,11 +758,17 @@ describe("MessagingService", () => {
 
       expect(mediaClient.uploadImage).not.toHaveBeenCalled();
       const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
-        data: { attachments: { createMany: { data: Array<{ fileUrl: string }> } } };
+        data: {
+          attachments: { createMany: { data: Array<{ fileUrl: string }> } };
+        };
       };
       expect(createCall.data.attachments.createMany.data).toHaveLength(2);
-      expect(createCall.data.attachments.createMany.data[0].fileUrl).toBe("https://cdn/original1.pdf");
-      expect(createCall.data.attachments.createMany.data[1].fileUrl).toBe("https://cdn/original2.png");
+      expect(createCall.data.attachments.createMany.data[0].fileUrl).toBe(
+        "https://cdn/original1.pdf",
+      );
+      expect(createCall.data.attachments.createMany.data[1].fileUrl).toBe(
+        "https://cdn/original2.png",
+      );
     });
 
     it("lance BadRequestException lors du forward si l'utilisateur n'a pas accès à une PJ", async () => {
@@ -702,7 +808,9 @@ describe("MessagingService", () => {
       const user = makeUser({ id: "user-1" });
       const files = [makeFile("nouveau.pdf")];
 
-      mediaClient.uploadImage.mockResolvedValue(makeUploadResult("https://cdn/nouveau.pdf"));
+      mediaClient.uploadImage.mockResolvedValue(
+        makeUploadResult("https://cdn/nouveau.pdf"),
+      );
 
       prisma.internalMessageAttachment.findMany.mockResolvedValue([
         {
@@ -717,7 +825,9 @@ describe("MessagingService", () => {
 
       prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
       inlineMedia.syncEntityImages.mockResolvedValue(undefined);
-      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+      prisma.internalMessage.findFirst.mockResolvedValue(
+        makeGetMessageResponse(),
+      );
 
       await service.createMessage(
         user,
@@ -733,10 +843,14 @@ describe("MessagingService", () => {
       );
 
       const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
-        data: { attachments: { createMany: { data: Array<{ fileUrl: string }> } } };
+        data: {
+          attachments: { createMany: { data: Array<{ fileUrl: string }> } };
+        };
       };
       expect(createCall.data.attachments.createMany.data).toHaveLength(2);
-      const urls = createCall.data.attachments.createMany.data.map((d) => d.fileUrl);
+      const urls = createCall.data.attachments.createMany.data.map(
+        (d) => d.fileUrl,
+      );
       expect(urls).toContain("https://cdn/nouveau.pdf");
       expect(urls).toContain("https://cdn/existant.pdf");
     });
