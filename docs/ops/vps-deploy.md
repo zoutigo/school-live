@@ -103,14 +103,15 @@ Observed flow:
 3. Tarball uploaded to VPS under `~/apps`.
 4. Remote deploy script:
    - preserves existing `~/apps/scolive/docker/.env`,
-   - wipes app directory content,
-   - extracts new release,
+   - extracts the new release into a fresh staging directory,
+   - swaps the staging directory into `~/apps/scolive`,
    - restores `docker/.env`,
    - ensures `db` and `proxy` docker networks,
    - runs:
      - `docker compose -f docker/docker-compose.vps.yml --env-file docker/.env up -d --build`
    - runs Prisma migrations inside API container:
      - `npm run db:schema:gen && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma`
+   - removes the previous release directory after restart via a transient Docker container so root-owned files from prior builds do not block future deploys
 
 Important:
 

@@ -129,29 +129,38 @@ jobs:
             set -euo pipefail
 
             echo "==> Prepare deploy directory"
-            APP_DIR=~/apps/scolive
-            ARCHIVE_PATH=~/apps/scolive-release.tar.gz
+            APPS_ROOT=~/apps
+            APP_DIR="${APPS_ROOT}/scolive"
+            STAGING_DIR="${APPS_ROOT}/scolive-next"
+            PREVIOUS_APP_DIR="${APPS_ROOT}/scolive-prev-$(date +%s)"
+            ARCHIVE_PATH="${APPS_ROOT}/scolive-release.tar.gz"
             ENV_BACKUP=/tmp/scolive.env.backup
-            MOBILE_BUILD_ENV_FILE="${APP_DIR}/docker/.env.mobile-build"
+            STAGING_ENV_FILE="${STAGING_DIR}/docker/.env.mobile-build"
             mkdir -p "${APP_DIR}/docker"
             if [ -f "${APP_DIR}/docker/.env" ]; then
               cp "${APP_DIR}/docker/.env" "${ENV_BACKUP}"
             fi
 
             echo "==> Replace application code from CI archive"
-            find "${APP_DIR}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-            tar -xzf "${ARCHIVE_PATH}" -C "${APP_DIR}"
+            rm -rf "${STAGING_DIR}"
+            mkdir -p "${STAGING_DIR}"
+            tar -xzf "${ARCHIVE_PATH}" -C "${STAGING_DIR}"
             rm -f "${ARCHIVE_PATH}"
             if [ -f "${ENV_BACKUP}" ]; then
-              mkdir -p "${APP_DIR}/docker"
-              mv "${ENV_BACKUP}" "${APP_DIR}/docker/.env"
+              mkdir -p "${STAGING_DIR}/docker"
+              mv "${ENV_BACKUP}" "${STAGING_DIR}/docker/.env"
             fi
 
             if [ -n "${MOBILE_BUILD_UPLOAD_TOKEN:-}" ]; then
-              printf 'MOBILE_BUILD_UPLOAD_TOKEN=%s\n' "${MOBILE_BUILD_UPLOAD_TOKEN}" > "${MOBILE_BUILD_ENV_FILE}"
+              printf 'MOBILE_BUILD_UPLOAD_TOKEN=%s\n' "${MOBILE_BUILD_UPLOAD_TOKEN}" > "${STAGING_ENV_FILE}"
             else
-              : > "${MOBILE_BUILD_ENV_FILE}"
+              : > "${STAGING_ENV_FILE}"
             fi
+
+            if [ -d "${APP_DIR}" ]; then
+              mv "${APP_DIR}" "${PREVIOUS_APP_DIR}"
+            fi
+            mv "${STAGING_DIR}" "${APP_DIR}"
 
             echo "==> Ensure persistent data directories"
             UPLOADS_ROOT=/home/ubuntu/uploads/scolive
@@ -167,6 +176,11 @@ jobs:
 
             echo "==> Run Prisma migrations in API container"
             UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env --env-file docker/.env.mobile-build exec -T api sh -lc "npm run db:schema:gen && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma"
+
+            if [ -d "${PREVIOUS_APP_DIR}" ]; then
+              echo "==> Cleanup previous release"
+              docker run --rm -v "${APPS_ROOT}:/workspace" alpine:3.20 sh -lc "rm -rf /workspace/$(basename "${PREVIOUS_APP_DIR}")"
+            fi
 
             echo "==> Status"
             UPLOADS_ROOT="${UPLOADS_ROOT}" NGINX_NETWORK="${NGINX_NETWORK}" docker compose -f docker/docker-compose.vps.yml --env-file docker/.env --env-file docker/.env.mobile-build ps
