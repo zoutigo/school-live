@@ -1,5 +1,4 @@
 import {
-  BadGatewayException,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -332,7 +331,6 @@ export class HomeworkService {
 
     await this.cleanupMediaUrls(
       existingAttachmentUrls.filter((url) => !nextAttachmentUrls.includes(url)),
-      locale,
     );
 
     const nextContentHtml =
@@ -404,7 +402,6 @@ export class HomeworkService {
       existing.attachments
         .map((attachment) => attachment.fileUrl)
         .filter((url): url is string => Boolean(url)),
-      locale,
     );
     await this.inlineMediaService.removeEntityImages({
       entityType: InlineMediaEntityType.HOMEWORK,
@@ -1076,19 +1073,14 @@ export class HomeworkService {
     return `${firstName} ${lastName}`.trim();
   }
 
-  private async cleanupMediaUrls(urls: string[], locale: HomeworkLocale) {
+  private async cleanupMediaUrls(urls: string[]) {
     for (const url of urls) {
       try {
         await this.mediaClientService.deleteImageByUrl(url);
       } catch (error) {
-        const message =
-          error instanceof Error && error.message.trim()
-            ? error.message
-            : "media cleanup failed";
-        throw new BadGatewayException(
-          translateHomeworkError(locale, "homework.errors.mediaCleanupFailed", {
-            message,
-          }),
+        console.warn(
+          `[homework] media cleanup failed for ${url}:`,
+          error instanceof Error ? error.message : error,
         );
       }
     }

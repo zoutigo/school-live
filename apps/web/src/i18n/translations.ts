@@ -2896,6 +2896,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "editor.errorVideoSize": "Video trop lourde (max 80 Mo).",
     "editor.errorVideoUpload": "Upload video indisponible.",
     "editor.errorUploadFallback": "Impossible d'uploader l'image.",
+    "editor.imageToolbar.size": "Taille",
+    "editor.imageToolbar.alignLeft": "Aligner à gauche",
+    "editor.imageToolbar.alignCenter": "Centrer",
+    "editor.imageToolbar.alignRight": "Aligner à droite",
+    "editor.imageToolbar.delete": "Supprimer l'image",
+    "editor.imageToolbar.close": "Fermer",
 
     // SsoButtons
     "sso.googleContinue": "Continuer avec Google",
@@ -5803,6 +5809,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "editor.errorVideoSize": "Video too large (max 80 MB).",
     "editor.errorVideoUpload": "Video upload unavailable.",
     "editor.errorUploadFallback": "Unable to upload the file.",
+    "editor.imageToolbar.size": "Size",
+    "editor.imageToolbar.alignLeft": "Align left",
+    "editor.imageToolbar.alignCenter": "Center",
+    "editor.imageToolbar.alignRight": "Align right",
+    "editor.imageToolbar.delete": "Delete image",
+    "editor.imageToolbar.close": "Close",
 
     // SsoButtons
     "sso.googleContinue": "Continue with Google",

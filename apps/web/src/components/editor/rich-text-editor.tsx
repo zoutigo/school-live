@@ -22,9 +22,11 @@ import {
   Strikethrough,
   Trash2,
   Type,
+  X,
 } from "lucide-react";
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -69,6 +71,7 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
   ) {
     const { t } = useTranslation();
     const resolvedHint = hint ?? t("editor.hint");
+    const wrapperRef = useRef<HTMLDivElement | null>(null);
     const editorRef = useRef<HTMLDivElement | null>(null);
     const inlineImageInputRef = useRef<HTMLInputElement | null>(null);
     const inlineVideoInputRef = useRef<HTMLInputElement | null>(null);
@@ -78,6 +81,13 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     const onHtmlChangeRef = useRef(onHtmlChange);
 
     const [error, setError] = useState<string | null>(null);
+    const [selectedImg, setSelectedImg] = useState<HTMLImageElement | null>(
+      null,
+    );
+    const [imgToolbarPos, setImgToolbarPos] = useState<{
+      top: number;
+      left: number;
+    } | null>(null);
 
     useEffect(() => {
       onTextChangeRef.current = onTextChange;
@@ -115,6 +125,79 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     function syncEditorState() {
       onTextChangeRef.current?.(editorRef.current?.innerText ?? "");
       onHtmlChangeRef.current?.(editorRef.current?.innerHTML ?? "");
+    }
+
+    const dismissImageToolbar = useCallback(() => {
+      if (selectedImg) {
+        selectedImg.style.outline = "";
+      }
+      setSelectedImg(null);
+      setImgToolbarPos(null);
+    }, [selectedImg]);
+
+    function selectImage(img: HTMLImageElement) {
+      if (selectedImg && selectedImg !== img) {
+        selectedImg.style.outline = "";
+      }
+      img.style.outline = "2px solid #0C5FA8";
+      img.style.outlineOffset = "2px";
+      setSelectedImg(img);
+
+      const wrapper = wrapperRef.current;
+      if (!wrapper) return;
+      const wrapRect = wrapper.getBoundingClientRect();
+      const imgRect = img.getBoundingClientRect();
+      const TOOLBAR_HEIGHT = 44;
+      let top = imgRect.top - wrapRect.top - TOOLBAR_HEIGHT - 4;
+      if (top < 0) top = imgRect.bottom - wrapRect.top + 4;
+      const left = Math.max(0, imgRect.left - wrapRect.left);
+      setImgToolbarPos({ top, left });
+    }
+
+    function handleEditorClick(event: React.MouseEvent<HTMLDivElement>) {
+      const target = event.target as HTMLElement;
+      if (target.tagName === "IMG") {
+        event.stopPropagation();
+        selectImage(target as HTMLImageElement);
+      } else {
+        dismissImageToolbar();
+      }
+    }
+
+    function applyImageWidth(percent: number) {
+      if (!selectedImg) return;
+      selectedImg.style.width = `${percent}%`;
+      selectedImg.style.maxWidth = `${percent}%`;
+      selectedImg.style.height = "auto";
+      selectedImg.style.display = "block";
+      syncEditorState();
+    }
+
+    function applyImageAlign(align: "left" | "center" | "right") {
+      if (!selectedImg) return;
+      selectedImg.style.display = "block";
+      if (align === "left") {
+        selectedImg.style.float = "left";
+        selectedImg.style.marginLeft = "0";
+        selectedImg.style.marginRight = "12px";
+      } else if (align === "right") {
+        selectedImg.style.float = "right";
+        selectedImg.style.marginRight = "0";
+        selectedImg.style.marginLeft = "12px";
+      } else {
+        selectedImg.style.float = "none";
+        selectedImg.style.marginLeft = "auto";
+        selectedImg.style.marginRight = "auto";
+      }
+      syncEditorState();
+    }
+
+    function deleteSelectedImage() {
+      if (!selectedImg) return;
+      selectedImg.remove();
+      setSelectedImg(null);
+      setImgToolbarPos(null);
+      syncEditorState();
     }
 
     function applyCommand(command: string, value?: string) {
@@ -199,6 +282,9 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       img.src = src;
       img.alt = alt;
       img.style.maxWidth = "100%";
+      img.style.width = "100%";
+      img.style.height = "auto";
+      img.style.display = "block";
       img.style.borderRadius = "8px";
       img.style.margin = "8px 0";
 
@@ -247,7 +333,73 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     }
 
     return (
-      <div className="grid gap-0 rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.96)_100%)] shadow-[0_14px_30px_rgba(77,56,32,0.07)]">
+      <div
+        ref={wrapperRef}
+        className="relative grid gap-0 rounded-[20px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,0.96)_100%)] shadow-[0_14px_30px_rgba(77,56,32,0.07)]"
+      >
+        {selectedImg && imgToolbarPos ? (
+          <div
+            data-testid="image-toolbar"
+            style={{ top: imgToolbarPos.top, left: imgToolbarPos.left }}
+            className="absolute z-50 flex items-center gap-1 rounded-[12px] border border-warm-border bg-surface px-2 py-1 shadow-[0_4px_16px_rgba(47,36,24,0.15)]"
+          >
+            <span className="mr-1 text-xs font-semibold text-text-secondary">
+              {t("editor.imageToolbar.size")}
+            </span>
+            {([25, 50, 75, 100] as const).map((pct) => (
+              <button
+                key={pct}
+                type="button"
+                onClick={() => applyImageWidth(pct)}
+                className="rounded-[8px] border border-warm-border bg-warm-surface px-1.5 py-0.5 text-xs text-text-primary transition hover:bg-primary hover:text-white"
+              >
+                {pct}%
+              </button>
+            ))}
+            <span className="mx-1 h-4 w-px bg-warm-border" />
+            <button
+              type="button"
+              onClick={() => applyImageAlign("left")}
+              title={t("editor.imageToolbar.alignLeft")}
+              className="rounded-[8px] border border-warm-border bg-warm-surface px-1.5 py-0.5 text-xs text-text-primary transition hover:bg-primary hover:text-white"
+            >
+              ⇤
+            </button>
+            <button
+              type="button"
+              onClick={() => applyImageAlign("center")}
+              title={t("editor.imageToolbar.alignCenter")}
+              className="rounded-[8px] border border-warm-border bg-warm-surface px-1.5 py-0.5 text-xs text-text-primary transition hover:bg-primary hover:text-white"
+            >
+              ⇔
+            </button>
+            <button
+              type="button"
+              onClick={() => applyImageAlign("right")}
+              title={t("editor.imageToolbar.alignRight")}
+              className="rounded-[8px] border border-warm-border bg-warm-surface px-1.5 py-0.5 text-xs text-text-primary transition hover:bg-primary hover:text-white"
+            >
+              ⇥
+            </button>
+            <span className="mx-1 h-4 w-px bg-warm-border" />
+            <button
+              type="button"
+              onClick={deleteSelectedImage}
+              title={t("editor.imageToolbar.delete")}
+              className="rounded-[8px] border border-notification/30 bg-notification/5 px-1.5 py-0.5 text-xs text-notification transition hover:bg-notification hover:text-white"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onClick={dismissImageToolbar}
+              title={t("editor.imageToolbar.close")}
+              className="rounded-[8px] border border-warm-border bg-warm-surface px-1 py-0.5 text-xs text-text-secondary transition hover:bg-warm-highlight"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-1 border-b border-border p-2">
           <ToolbarBtn onClick={() => applyCommand("undo")} icon={ArrowLeft} />
           <ToolbarBtn onClick={() => applyCommand("redo")} icon={ArrowRight} />
@@ -404,7 +556,8 @@ export const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
           ref={editorRef}
           contentEditable
           onInput={syncEditorState}
-          className={`${minHeightClassName} p-4 text-sm text-text-primary outline-none`}
+          onClick={handleEditorClick}
+          className={`${minHeightClassName} overflow-x-hidden p-4 text-sm text-text-primary outline-none`}
         />
         <p className="border-t border-border px-4 py-3 text-xs text-text-secondary">
           {resolvedHint}
