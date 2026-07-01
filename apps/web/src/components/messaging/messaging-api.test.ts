@@ -53,6 +53,43 @@ describe("messaging-api", () => {
     expect(formData.getAll("attachments")).toHaveLength(1);
   });
 
+  it("serializes multiple attachments as separate FormData entries under the same key", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: "msg-1",
+        subject: "Sujet",
+        body: "<p>Bonjour</p>",
+        status: "SENT",
+        createdAt: "2026-04-04T10:00:00.000Z",
+        sentAt: "2026-04-04T10:00:00.000Z",
+        sender: null,
+        attachments: [],
+      }),
+    });
+
+    const file1 = new File(["a"], "rapport.pdf", { type: "application/pdf" });
+    const file2 = new File(["b"], "photo.png", { type: "image/png" });
+    const file3 = new File(["c"], "tableau.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    await createSchoolMessage("college-vogt", {
+      subject: "Sujet",
+      body: "<p>Bonjour</p>",
+      recipientUserIds: ["u-1"],
+      attachments: [file1, file2, file3],
+    });
+
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const formData = options.body as FormData;
+    const attachments = formData.getAll("attachments");
+    expect(attachments).toHaveLength(3);
+    expect((attachments[0] as File).name).toBe("rapport.pdf");
+    expect((attachments[1] as File).name).toBe("photo.png");
+    expect((attachments[2] as File).name).toBe("tableau.xlsx");
+  });
+
   it("maps attachments from the messages list response", async () => {
     fetchMock.mockResolvedValue({
       ok: true,

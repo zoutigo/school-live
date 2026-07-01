@@ -220,7 +220,7 @@ export default function SchoolNewMessagePage() {
       body: payload.body,
       recipientUserIds: payload.recipientUserIds,
       isDraft: true,
-      attachments: [],
+      attachments: payload.attachments,
     });
   }
 

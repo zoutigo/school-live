@@ -53,17 +53,21 @@ const makePrismaMock = () => ({
 describe("MessagingService", () => {
   let service: MessagingService;
   let prisma: ReturnType<typeof makePrismaMock>;
+  let mediaClient: { uploadImage: jest.Mock; deleteImageByUrl: jest.Mock };
+  let inlineMedia: { syncEntityImages: jest.Mock; removeEntityImages: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrismaMock();
+    mediaClient = { uploadImage: jest.fn(), deleteImageByUrl: jest.fn() };
+    inlineMedia = { syncEntityImages: jest.fn(), removeEntityImages: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
         MessagingService,
         { provide: PrismaService, useValue: prisma },
         { provide: MailService, useValue: { sendInternalMessageNotification: jest.fn() } },
-        { provide: MediaClientService, useValue: { uploadImage: jest.fn(), deleteImageByUrl: jest.fn() } },
-        { provide: InlineMediaService, useValue: { syncEntityImages: jest.fn(), removeEntityImages: jest.fn() } },
+        { provide: MediaClientService, useValue: mediaClient },
+        { provide: InlineMediaService, useValue: inlineMedia },
       ],
     }).compile();
 
@@ -461,6 +465,280 @@ describe("MessagingService", () => {
       await expect(
         service.deleteFromMailbox(user, "school-1", "msg-missing"),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── createMessage — pièces jointes multiples ───────────────────────────────
+
+  const makeGetMessageResponse = (overrides: Record<string, unknown> = {}) => ({
+    id: "msg-new",
+    schoolId: "school-1",
+    senderUserId: "user-1",
+    status: "DRAFT",
+    subject: "Sujet test",
+    body: "<p>Bonjour</p>",
+    createdAt: new Date(),
+    sentAt: null,
+    senderArchivedAt: null,
+    senderUser: { id: "user-1", firstName: "Alice", lastName: "Martin", email: null },
+    attachments: [],
+    recipients: [],
+    ...overrides,
+  });
+
+  const makeUploadResult = (url: string, mimeType = "application/pdf") => ({
+    url,
+    size: 1024,
+    width: null,
+    height: null,
+    mimeType,
+  });
+
+  const makeFile = (name: string, mimeType = "application/pdf") => ({
+    originalname: name,
+    buffer: Buffer.from("content"),
+    mimetype: mimeType,
+    size: 1024,
+  });
+
+  describe("createMessage() — pièces jointes multiples", () => {
+    it("uploade chaque pièce jointe et les persiste toutes via createMany", async () => {
+      const user = makeUser({ id: "user-1" });
+      const files = [
+        makeFile("doc1.pdf", "application/pdf"),
+        makeFile("doc2.png", "image/png"),
+        makeFile("doc3.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+      ];
+
+      mediaClient.uploadImage
+        .mockResolvedValueOnce(makeUploadResult("https://cdn/1.pdf", "application/pdf"))
+        .mockResolvedValueOnce(makeUploadResult("https://cdn/2.png", "image/png"))
+        .mockResolvedValueOnce(makeUploadResult("https://cdn/3.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+
+      prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+
+      await service.createMessage(
+        user,
+        "school-1",
+        { subject: "Sujet test", body: "<p>Bonjour</p>", recipientUserIds: [], isDraft: true },
+        files,
+      );
+
+      expect(mediaClient.uploadImage).toHaveBeenCalledTimes(3);
+
+      const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
+        data: { attachments: { createMany: { data: Array<{ fileUrl: string; mimeType: string }> } } };
+      };
+      expect(createCall.data.attachments.createMany.data).toHaveLength(3);
+      expect(createCall.data.attachments.createMany.data[0].fileUrl).toBe("https://cdn/1.pdf");
+      expect(createCall.data.attachments.createMany.data[1].fileUrl).toBe("https://cdn/2.png");
+      expect(createCall.data.attachments.createMany.data[2].fileUrl).toBe("https://cdn/3.xlsx");
+    });
+
+    it("préserve le nom de fichier original dans la base de données", async () => {
+      const user = makeUser({ id: "user-1" });
+      const files = [
+        makeFile("bulletin-scolaire.pdf"),
+        makeFile("photo.jpg", "image/jpeg"),
+      ];
+
+      mediaClient.uploadImage
+        .mockResolvedValueOnce(makeUploadResult("https://cdn/1.pdf"))
+        .mockResolvedValueOnce(makeUploadResult("https://cdn/2.jpg", "image/jpeg"));
+
+      prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+
+      await service.createMessage(
+        user,
+        "school-1",
+        { subject: "Sujet", body: "<p>Bonjour</p>", recipientUserIds: [], isDraft: true },
+        files,
+      );
+
+      const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
+        data: { attachments: { createMany: { data: Array<{ fileName: string }> } } };
+      };
+      expect(createCall.data.attachments.createMany.data[0].fileName).toBe("bulletin-scolaire.pdf");
+      expect(createCall.data.attachments.createMany.data[1].fileName).toBe("photo.jpg");
+    });
+
+    it("supprime tous les fichiers uploadés si la création DB échoue", async () => {
+      const user = makeUser({ id: "user-1" });
+      const files = [
+        makeFile("a.pdf"),
+        makeFile("b.pdf"),
+        makeFile("c.pdf"),
+      ];
+
+      mediaClient.uploadImage
+        .mockResolvedValueOnce(makeUploadResult("https://cdn/a.pdf"))
+        .mockResolvedValueOnce(makeUploadResult("https://cdn/b.pdf"))
+        .mockResolvedValueOnce(makeUploadResult("https://cdn/c.pdf"));
+
+      prisma.internalMessage.create.mockRejectedValue(new Error("DB failure"));
+
+      await expect(
+        service.createMessage(
+          user,
+          "school-1",
+          { subject: "Sujet", body: "<p>Bonjour</p>", recipientUserIds: [], isDraft: true },
+          files,
+        ),
+      ).rejects.toThrow("DB failure");
+
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith("https://cdn/a.pdf");
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith("https://cdn/b.pdf");
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith("https://cdn/c.pdf");
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledTimes(3);
+    });
+
+    it("crée le message sans attachments si aucune pièce jointe n'est fournie", async () => {
+      const user = makeUser({ id: "user-1" });
+
+      prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+
+      await service.createMessage(
+        user,
+        "school-1",
+        { subject: "Sujet", body: "<p>Bonjour</p>", recipientUserIds: [], isDraft: true },
+        [],
+      );
+
+      expect(mediaClient.uploadImage).not.toHaveBeenCalled();
+      const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
+        data: { attachments: undefined | { createMany: unknown } };
+      };
+      expect(createCall.data.attachments).toBeUndefined();
+    });
+
+    it("forward de plusieurs pièces jointes existantes sans nouvel upload", async () => {
+      const user = makeUser({ id: "user-1" });
+
+      const forwardRows = [
+        {
+          id: "att-1",
+          fileName: "original1.pdf",
+          fileUrl: "https://cdn/original1.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 500,
+          message: { senderUserId: "other-user", recipients: [{ recipientUserId: "user-1", deletedAt: null }] },
+        },
+        {
+          id: "att-2",
+          fileName: "original2.png",
+          fileUrl: "https://cdn/original2.png",
+          mimeType: "image/png",
+          sizeBytes: 300,
+          message: { senderUserId: "other-user", recipients: [{ recipientUserId: "user-1", deletedAt: null }] },
+        },
+      ];
+      prisma.internalMessageAttachment.findMany.mockResolvedValue(forwardRows);
+      prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+
+      await service.createMessage(
+        user,
+        "school-1",
+        {
+          subject: "FW: Sujet",
+          body: "<p>Bonjour</p>",
+          recipientUserIds: [],
+          isDraft: true,
+          forwardAttachmentIds: ["att-1", "att-2"],
+        },
+        [],
+      );
+
+      expect(mediaClient.uploadImage).not.toHaveBeenCalled();
+      const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
+        data: { attachments: { createMany: { data: Array<{ fileUrl: string }> } } };
+      };
+      expect(createCall.data.attachments.createMany.data).toHaveLength(2);
+      expect(createCall.data.attachments.createMany.data[0].fileUrl).toBe("https://cdn/original1.pdf");
+      expect(createCall.data.attachments.createMany.data[1].fileUrl).toBe("https://cdn/original2.png");
+    });
+
+    it("lance BadRequestException lors du forward si l'utilisateur n'a pas accès à une PJ", async () => {
+      const user = makeUser({ id: "user-1" });
+
+      prisma.internalMessageAttachment.findMany.mockResolvedValue([
+        {
+          id: "att-1",
+          fileName: "secret.pdf",
+          fileUrl: "https://cdn/secret.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 500,
+          message: { senderUserId: "other-user", recipients: [] },
+        },
+      ]);
+
+      await expect(
+        service.createMessage(
+          user,
+          "school-1",
+          {
+            subject: "FW: Sujet",
+            body: "<p>Bonjour</p>",
+            recipientUserIds: [],
+            isDraft: true,
+            forwardAttachmentIds: ["att-1"],
+          },
+          [],
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mediaClient.uploadImage).not.toHaveBeenCalled();
+      expect(prisma.internalMessage.create).not.toHaveBeenCalled();
+    });
+
+    it("combine nouvelles PJ uploadées et PJ forwardées dans un seul createMany", async () => {
+      const user = makeUser({ id: "user-1" });
+      const files = [makeFile("nouveau.pdf")];
+
+      mediaClient.uploadImage.mockResolvedValue(makeUploadResult("https://cdn/nouveau.pdf"));
+
+      prisma.internalMessageAttachment.findMany.mockResolvedValue([
+        {
+          id: "att-fwd",
+          fileName: "existant.pdf",
+          fileUrl: "https://cdn/existant.pdf",
+          mimeType: "application/pdf",
+          sizeBytes: 300,
+          message: { senderUserId: "user-1", recipients: [] },
+        },
+      ]);
+
+      prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+      prisma.internalMessage.findFirst.mockResolvedValue(makeGetMessageResponse());
+
+      await service.createMessage(
+        user,
+        "school-1",
+        {
+          subject: "Sujet",
+          body: "<p>Bonjour</p>",
+          recipientUserIds: [],
+          isDraft: true,
+          forwardAttachmentIds: ["att-fwd"],
+        },
+        files,
+      );
+
+      const createCall = prisma.internalMessage.create.mock.calls[0][0] as {
+        data: { attachments: { createMany: { data: Array<{ fileUrl: string }> } } };
+      };
+      expect(createCall.data.attachments.createMany.data).toHaveLength(2);
+      const urls = createCall.data.attachments.createMany.data.map((d) => d.fileUrl);
+      expect(urls).toContain("https://cdn/nouveau.pdf");
+      expect(urls).toContain("https://cdn/existant.pdf");
     });
   });
 });
