@@ -17,6 +17,8 @@ const fr = {
   "tests.errors.attachmentsMissing":
     "Aucune capture n'a ete recue pour ce resultat de test.",
   "tests.errors.executionNotFound": "Exécution de test introuvable.",
+  "tests.errors.executionForbidden":
+    "Vous n'êtes pas autorisé à modifier cette exécution.",
 };
 
 const en = {
@@ -31,6 +33,8 @@ const en = {
   "tests.errors.attachmentsMissing":
     "No screenshot was received for this test result.",
   "tests.errors.executionNotFound": "Test execution not found.",
+  "tests.errors.executionForbidden":
+    "You are not allowed to modify this execution.",
 };
 
 export function testsLocaleFromUser(

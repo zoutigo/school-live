@@ -9,6 +9,7 @@ describe("TestsController", () => {
     createExecution: jest.fn(),
     listMyExecutions: jest.fn(),
     getMyExecution: jest.fn(),
+    updateMyExecution: jest.fn(),
   };
 
   const controller = new TestsController(testsService as never);
@@ -90,6 +91,50 @@ describe("TestsController", () => {
         appVersion: "1.0.0",
       },
       [attachment],
+    );
+  });
+
+  it("rejects invalid status in updateMyExecution", () => {
+    expect(() =>
+      controller.updateMyExecution(user, "exec-1", {
+        status: "INVALID",
+        resultText: "Result",
+      }),
+    ).toThrow(BadRequestException);
+  });
+
+  it("delegates updateMyExecution to service with normalized payload", async () => {
+    await controller.updateMyExecution(user, "exec-1", {
+      status: "PASSED",
+      resultText: "  Scenario OK  ",
+      comment: "All good",
+    });
+
+    expect(testsService.updateMyExecution).toHaveBeenCalledWith(
+      user,
+      "exec-1",
+      {
+        status: "PASSED",
+        resultText: "  Scenario OK  ",
+        comment: "All good",
+      },
+    );
+  });
+
+  it("handles missing comment in updateMyExecution", async () => {
+    await controller.updateMyExecution(user, "exec-1", {
+      status: "FAILED",
+      resultText: "Broken",
+    });
+
+    expect(testsService.updateMyExecution).toHaveBeenCalledWith(
+      user,
+      "exec-1",
+      {
+        status: "FAILED",
+        resultText: "Broken",
+        comment: undefined,
+      },
     );
   });
 });
