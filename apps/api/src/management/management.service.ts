@@ -4827,20 +4827,14 @@ export class ManagementService {
       select: {
         id: true,
         authorUserId: true,
+        schoolYearId: true,
       },
     });
 
     if (!existing) {
-      throw new NotFoundException("Life event not found");
-    }
-
-    const canWrite = await this.canWriteStudentLifeEvents(
-      schoolId,
-      currentUser,
-      studentId,
-    );
-    if (!canWrite) {
-      throw new ForbiddenException("Insufficient role");
+      throw new NotFoundException(
+        "Cet événement est introuvable ou a déjà été supprimé.",
+      );
     }
 
     const isPowerRole =
@@ -4849,11 +4843,28 @@ export class ManagementService {
       this.hasSchoolRole(currentUser, schoolId, "SCHOOL_ADMIN") ||
       this.hasSchoolRole(currentUser, schoolId, "SCHOOL_MANAGER") ||
       this.hasSchoolRole(currentUser, schoolId, "SUPERVISOR");
+
     const isTeacher = this.hasSchoolRole(currentUser, schoolId, "TEACHER");
-    if (!isPowerRole && isTeacher && existing.authorUserId !== currentUser.id) {
+
+    if (!isPowerRole && !isTeacher) {
       throw new ForbiddenException(
-        "Teachers can only delete events they have created",
+        "Vous n'avez pas les droits pour supprimer cet événement.",
       );
+    }
+
+    if (!isPowerRole && isTeacher) {
+      if (existing.authorUserId !== currentUser.id) {
+        throw new ForbiddenException(
+          "Vous ne pouvez supprimer que les événements que vous avez créés.",
+        );
+      }
+
+      const activeSchoolYearId = await this.getActiveSchoolYearId(schoolId);
+      if (!activeSchoolYearId || existing.schoolYearId !== activeSchoolYearId) {
+        throw new ForbiddenException(
+          "Les événements des années scolaires passées ne peuvent pas être supprimés.",
+        );
+      }
     }
 
     await this.prisma.studentLifeEvent.delete({
