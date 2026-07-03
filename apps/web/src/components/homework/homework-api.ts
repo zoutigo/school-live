@@ -2,9 +2,11 @@ import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
-function csrfHeaders() {
+function csrfHeaders(
+  headers: Record<string, string> = {},
+): Record<string, string> {
   const token = getCsrfTokenCookie();
-  return token ? { "x-csrf-token": token } : {};
+  return token ? { ...headers, "x-csrf-token": token } : headers;
 }
 
 export type HomeworkAttachment = {
@@ -128,7 +130,7 @@ export async function createHomework(
     {
       method: "POST",
       credentials: "include",
-      headers: { "content-type": "application/json", ...csrfHeaders() },
+      headers: csrfHeaders({ "content-type": "application/json" }),
       body: JSON.stringify(payload),
     },
   );
@@ -147,7 +149,7 @@ export async function updateHomework(
     {
       method: "PATCH",
       credentials: "include",
-      headers: { "content-type": "application/json", ...csrfHeaders() },
+      headers: csrfHeaders({ "content-type": "application/json" }),
       body: JSON.stringify(payload),
     },
   );
@@ -165,7 +167,7 @@ export async function deleteHomework(
     {
       method: "DELETE",
       credentials: "include",
-      headers: { ...csrfHeaders() },
+      headers: csrfHeaders(),
     },
   );
   await throwIfError(response, "HOMEWORK_DELETE_FAILED");
@@ -182,7 +184,7 @@ export async function addComment(
     {
       method: "POST",
       credentials: "include",
-      headers: { "content-type": "application/json", ...csrfHeaders() },
+      headers: csrfHeaders({ "content-type": "application/json" }),
       body: JSON.stringify(payload),
     },
   );
@@ -201,7 +203,7 @@ export async function setCompletion(
     {
       method: "PATCH",
       credentials: "include",
-      headers: { "content-type": "application/json", ...csrfHeaders() },
+      headers: csrfHeaders({ "content-type": "application/json" }),
       body: JSON.stringify(payload),
     },
   );
@@ -221,7 +223,7 @@ export async function uploadHomeworkInlineImage(
     {
       method: "POST",
       credentials: "include",
-      headers: { ...csrfHeaders() },
+      headers: csrfHeaders(),
       body: formData,
     },
   );
@@ -242,7 +244,7 @@ export async function uploadHomeworkAttachment(
     {
       method: "POST",
       credentials: "include",
-      headers: { ...csrfHeaders() },
+      headers: csrfHeaders(),
       body: formData,
     },
   );

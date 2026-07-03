@@ -317,7 +317,10 @@ describe("Homework CRUD e2e", () => {
       const { response } = await apiJson(homeworkUrl(), {
         method: "POST",
         headers: authHeaders(teacherToken),
-        body: JSON.stringify({ subjectId, expectedAt: "2026-09-01T17:00:00.000Z" }),
+        body: JSON.stringify({
+          subjectId,
+          expectedAt: "2026-09-01T17:00:00.000Z",
+        }),
       });
 
       expect(response.status).toBe(400);
@@ -398,9 +401,7 @@ describe("Homework CRUD e2e", () => {
         headers: authHeaders(studentToken),
       });
 
-      const hw = (body as JsonObject[]).find(
-        (item) => item.id === createdHwId,
-      );
+      const hw = (body as JsonObject[]).find((item) => item.id === createdHwId);
       expect(hw?.myDoneAt).toBeNull();
     });
   });
@@ -644,14 +645,11 @@ describe("Homework CRUD e2e", () => {
     });
 
     it("403 — l'enseignant ne peut pas marquer un devoir comme fait", async () => {
-      const { response } = await apiJson(
-        `${hwDetailUrl(hwId)}/completion`,
-        {
-          method: "PATCH",
-          headers: authHeaders(teacherToken),
-          body: JSON.stringify({ done: true }),
-        },
-      );
+      const { response } = await apiJson(`${hwDetailUrl(hwId)}/completion`, {
+        method: "PATCH",
+        headers: authHeaders(teacherToken),
+        body: JSON.stringify({ done: true }),
+      });
 
       expect(response.status).toBe(403);
     });
@@ -703,7 +701,9 @@ describe("Homework CRUD e2e", () => {
       expect(response.status).toBe(201);
       const comments = body?.comments as JsonObject[];
       expect(Array.isArray(comments)).toBe(true);
-      expect(comments.some((c) => c.body === "Bon courage à tous !")).toBe(true);
+      expect(comments.some((c) => c.body === "Bon courage à tous !")).toBe(
+        true,
+      );
     });
 
     it("le commentaire de l'enseignant a authorDisplayName et createdAt", async () => {
@@ -773,7 +773,9 @@ describe("Homework CRUD e2e", () => {
       });
 
       const comments = body?.comments as JsonObject[];
-      const timestamps = comments.map((c) => new Date(c.createdAt as string).getTime());
+      const timestamps = comments.map((c) =>
+        new Date(c.createdAt as string).getTime(),
+      );
       for (let i = 1; i < timestamps.length; i++) {
         expect(timestamps[i]).toBeGreaterThanOrEqual(timestamps[i - 1]);
       }

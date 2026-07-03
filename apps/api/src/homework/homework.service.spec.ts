@@ -25,7 +25,9 @@ const STUDENT_ID = "stu-1";
 const PARENT_USER_ID = "parent-1";
 const STUDENT_USER_ID = "student-user-1";
 
-function makeUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
+function makeUser(
+  overrides: Partial<AuthenticatedUser> = {},
+): AuthenticatedUser {
   return {
     id: TEACHER_USER_ID,
     firstName: "Paul",
@@ -242,11 +244,16 @@ describe("HomeworkService", () => {
 
     it("crée un devoir et renvoie la row mappée", async () => {
       const teacher = makeUser({ activeRole: "TEACHER" });
-      const result = await service.createHomework(teacher, SCHOOL_ID, CLASS_ID, {
-        subjectId: SUBJECT_ID,
-        title: "Devoir test",
-        expectedAt: "2026-07-10T08:00:00Z",
-      });
+      const result = await service.createHomework(
+        teacher,
+        SCHOOL_ID,
+        CLASS_ID,
+        {
+          subjectId: SUBJECT_ID,
+          title: "Devoir test",
+          expectedAt: "2026-07-10T08:00:00Z",
+        },
+      );
 
       expect(prisma.homework.create).toHaveBeenCalledTimes(1);
       expect(result.id).toBe(HOMEWORK_ID);
@@ -331,19 +338,24 @@ describe("HomeworkService", () => {
       prisma.homework.create.mockResolvedValue({ id: HOMEWORK_ID });
       prisma.homework.findFirst.mockResolvedValue(hwWithAttachments);
 
-      const result = await service.createHomework(teacher, SCHOOL_ID, CLASS_ID, {
-        subjectId: SUBJECT_ID,
-        title: "Devoir test",
-        expectedAt: "2026-07-10T08:00:00Z",
-        attachments: [
-          {
-            fileName: "cours.pdf",
-            fileUrl: "http://minio/cours.pdf",
-            sizeLabel: "120 Ko",
-            mimeType: "application/pdf",
-          },
-        ],
-      });
+      const result = await service.createHomework(
+        teacher,
+        SCHOOL_ID,
+        CLASS_ID,
+        {
+          subjectId: SUBJECT_ID,
+          title: "Devoir test",
+          expectedAt: "2026-07-10T08:00:00Z",
+          attachments: [
+            {
+              fileName: "cours.pdf",
+              fileUrl: "http://minio/cours.pdf",
+              sizeLabel: "120 Ko",
+              mimeType: "application/pdf",
+            },
+          ],
+        },
+      );
 
       expect(result.attachments).toHaveLength(1);
       expect(result.attachments[0].fileName).toBe("cours.pdf");
@@ -391,13 +403,9 @@ describe("HomeworkService", () => {
       prisma.teacherClassSubject.findFirst.mockResolvedValue(makeAssignment());
 
       await expect(
-        service.updateHomework(
-          otherTeacher,
-          SCHOOL_ID,
-          CLASS_ID,
-          HOMEWORK_ID,
-          { title: "Modif" },
-        ),
+        service.updateHomework(otherTeacher, SCHOOL_ID, CLASS_ID, HOMEWORK_ID, {
+          title: "Modif",
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -779,7 +787,10 @@ describe("HomeworkService", () => {
         service.listClassHomework(teacher, SCHOOL_ID, CLASS_ID, {}),
       ).rejects.toThrow(
         new NotFoundException(
-          translateHomeworkError("fr" as HomeworkLocale, "homework.errors.classNotFound"),
+          translateHomeworkError(
+            "fr" as HomeworkLocale,
+            "homework.errors.classNotFound",
+          ),
         ),
       );
     });
@@ -792,7 +803,10 @@ describe("HomeworkService", () => {
         service.listClassHomework(teacher, SCHOOL_ID, CLASS_ID, {}),
       ).rejects.toThrow(
         new NotFoundException(
-          translateHomeworkError("en" as HomeworkLocale, "homework.errors.classNotFound"),
+          translateHomeworkError(
+            "en" as HomeworkLocale,
+            "homework.errors.classNotFound",
+          ),
         ),
       );
     });

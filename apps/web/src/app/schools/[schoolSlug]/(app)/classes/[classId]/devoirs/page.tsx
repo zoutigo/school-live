@@ -40,9 +40,7 @@ type SubjectOption = { id: string; name: string };
 
 function buildFormSchema(t: TranslateFn) {
   return z.object({
-    subjectId: z
-      .string()
-      .min(1, t("homework.form.errors.subjectRequired")),
+    subjectId: z.string().min(1, t("homework.form.errors.subjectRequired")),
     title: z.string().trim().min(1, t("homework.form.errors.titleRequired")),
     expectedAt: z
       .string()
@@ -74,7 +72,8 @@ function computeStatus(
 }
 
 function statusPill(status: "done" | "late" | "todo") {
-  if (status === "done") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "done")
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (status === "late") return "border-rose-200 bg-rose-50 text-rose-700";
   return "border-sky-200 bg-sky-50 text-sky-700";
 }
@@ -125,10 +124,14 @@ export default function TeacherClassHomeworkPage() {
   const [context, setContext] = useState<GradesContext | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [homeworks, setHomeworks] = useState<HomeworkRow[]>([]);
-  const [selectedDetail, setSelectedDetail] = useState<HomeworkDetail | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<HomeworkDetail | null>(
+    null,
+  );
   const [detailLoading, setDetailLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [editingHomework, setEditingHomework] = useState<HomeworkRow | null>(null);
+  const [editingHomework, setEditingHomework] = useState<HomeworkRow | null>(
+    null,
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [formSaving, setFormSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<HomeworkRow | null>(null);
@@ -196,10 +199,12 @@ export default function TeacherClassHomeworkPage() {
     if (!schoolSlug || !classId) return;
     try {
       const items = await listClassHomework(schoolSlug, classId);
-      setHomeworks(items.sort(
-        (a, b) =>
-          new Date(a.expectedAt).getTime() - new Date(b.expectedAt).getTime(),
-      ));
+      setHomeworks(
+        items.sort(
+          (a, b) =>
+            new Date(a.expectedAt).getTime() - new Date(b.expectedAt).getTime(),
+        ),
+      );
     } catch {
       setError(t("homework.errors.loadFailed"));
     }
@@ -267,7 +272,11 @@ export default function TeacherClassHomeworkPage() {
     setAttachments([]);
     setContentHtml("");
     setFormError(null);
-    resetForm({ subjectId: subjectOptions[0]?.id ?? "", title: "", expectedAt: "" });
+    resetForm({
+      subjectId: subjectOptions[0]?.id ?? "",
+      title: "",
+      expectedAt: "",
+    });
     setShowForm(true);
   }
 
@@ -326,7 +335,9 @@ export default function TeacherClassHomeworkPage() {
       setEditingHomework(null);
     } catch (err) {
       setFormError(
-        err instanceof Error ? err.message : t("homework.form.errors.saveFailed"),
+        err instanceof Error
+          ? err.message
+          : t("homework.form.errors.saveFailed"),
       );
     } finally {
       setFormSaving(false);
@@ -342,7 +353,9 @@ export default function TeacherClassHomeworkPage() {
       setPendingDelete(null);
     } catch (err) {
       setDeleteError(
-        err instanceof Error ? err.message : t("homework.form.errors.deleteFailed"),
+        err instanceof Error
+          ? err.message
+          : t("homework.form.errors.deleteFailed"),
       );
     }
   }
@@ -386,7 +399,9 @@ export default function TeacherClassHomeworkPage() {
       resetComment({ body: "" });
     } catch (err) {
       setCommentError(
-        err instanceof Error ? err.message : t("homework.form.errors.saveFailed"),
+        err instanceof Error
+          ? err.message
+          : t("homework.form.errors.saveFailed"),
       );
     } finally {
       setCommentSaving(false);
@@ -403,7 +418,6 @@ export default function TeacherClassHomeworkPage() {
   }
 
   const listItems = useMemo(() => {
-    const now = new Date();
     return homeworks.map((hw) => ({
       ...hw,
       status: computeStatus(hw, role),
@@ -461,7 +475,9 @@ export default function TeacherClassHomeworkPage() {
         </div>
 
         {loading ? (
-          <p className="text-sm text-text-secondary">{t("homework.common.loading")}</p>
+          <p className="text-sm text-text-secondary">
+            {t("homework.common.loading")}
+          </p>
         ) : error ? (
           <p className="text-sm text-notification">{error}</p>
         ) : !classCtx ? (
@@ -505,16 +521,26 @@ export default function TeacherClassHomeworkPage() {
             )}
 
             {listItems.length === 0 ? (
-              <p className="text-sm text-text-secondary">{t("homework.list.empty")}</p>
+              <p className="text-sm text-text-secondary">
+                {t("homework.list.empty")}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">{t("homework.table.title")}</th>
-                      <th className="px-3 py-2 font-medium">{t("homework.table.subject")}</th>
-                      <th className="px-3 py-2 font-medium">{t("homework.table.dueDate")}</th>
-                      <th className="px-3 py-2 font-medium">{t("homework.table.status")}</th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("homework.table.title")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("homework.table.subject")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("homework.table.dueDate")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("homework.table.status")}
+                      </th>
                       <th className="px-3 py-2 font-medium"></th>
                     </tr>
                   </thead>
@@ -529,8 +555,12 @@ export default function TeacherClassHomeworkPage() {
                         <td className="px-3 py-2 font-medium text-text-primary">
                           {hw.title}
                         </td>
-                        <td className="px-3 py-2 text-text-secondary">{hw.subject.name}</td>
-                        <td className="px-3 py-2 text-text-secondary">{formatDate(hw.expectedAt)}</td>
+                        <td className="px-3 py-2 text-text-secondary">
+                          {hw.subject.name}
+                        </td>
+                        <td className="px-3 py-2 text-text-secondary">
+                          {formatDate(hw.expectedAt)}
+                        </td>
                         <td className="px-3 py-2">
                           <span
                             className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusPill(hw.status)}`}
@@ -577,20 +607,36 @@ export default function TeacherClassHomeworkPage() {
         ) : (
           <div className="grid gap-3 md:grid-cols-4">
             <div className="rounded-card border border-border bg-background p-3">
-              <p className="text-xs text-text-secondary">{t("homework.summary.class")}</p>
-              <p className="text-sm font-semibold text-text-primary">{classCtx.className}</p>
+              <p className="text-xs text-text-secondary">
+                {t("homework.summary.class")}
+              </p>
+              <p className="text-sm font-semibold text-text-primary">
+                {classCtx.className}
+              </p>
             </div>
             <div className="rounded-card border border-border bg-background p-3">
-              <p className="text-xs text-text-secondary">{t("homework.summary.total")}</p>
-              <p className="text-sm font-semibold text-text-primary">{summaryStats.total}</p>
+              <p className="text-xs text-text-secondary">
+                {t("homework.summary.total")}
+              </p>
+              <p className="text-sm font-semibold text-text-primary">
+                {summaryStats.total}
+              </p>
             </div>
             <div className="rounded-card border border-border bg-background p-3">
-              <p className="text-xs text-text-secondary">{t("homework.summary.todo")}</p>
-              <p className="text-sm font-semibold text-text-primary">{summaryStats.todo}</p>
+              <p className="text-xs text-text-secondary">
+                {t("homework.summary.todo")}
+              </p>
+              <p className="text-sm font-semibold text-text-primary">
+                {summaryStats.todo}
+              </p>
             </div>
             <div className="rounded-card border border-border bg-background p-3">
-              <p className="text-xs text-text-secondary">{t("homework.summary.late")}</p>
-              <p className="text-sm font-semibold text-text-primary">{summaryStats.late}</p>
+              <p className="text-xs text-text-secondary">
+                {t("homework.summary.late")}
+              </p>
+              <p className="text-sm font-semibold text-text-primary">
+                {summaryStats.late}
+              </p>
             </div>
           </div>
         )}
@@ -598,16 +644,25 @@ export default function TeacherClassHomeworkPage() {
 
       {/* ── Detail panel ─────────────────────────────────────────── */}
       {(selectedDetail || detailLoading) && (
-        <Card title={t("homework.detail.title")} subtitle={selectedDetail?.subject.name ?? ""}>
+        <Card
+          title={t("homework.detail.title")}
+          subtitle={selectedDetail?.subject.name ?? ""}
+        >
           {detailLoading ? (
-            <p className="text-sm text-text-secondary">{t("homework.common.loading")}</p>
+            <p className="text-sm text-text-secondary">
+              {t("homework.common.loading")}
+            </p>
           ) : selectedDetail ? (
             <div className="grid gap-6">
               {/* Meta */}
               <div>
-                <p className="text-lg font-bold text-text-primary">{selectedDetail.title}</p>
+                <p className="text-lg font-bold text-text-primary">
+                  {selectedDetail.title}
+                </p>
                 <p className="text-sm text-text-secondary">
-                  {t("homework.list.duePrefix")} {formatDate(selectedDetail.expectedAt)} · {t("homework.list.author")} {selectedDetail.authorDisplayName}
+                  {t("homework.list.duePrefix")}{" "}
+                  {formatDate(selectedDetail.expectedAt)} ·{" "}
+                  {t("homework.list.author")} {selectedDetail.authorDisplayName}
                 </p>
               </div>
 
@@ -618,7 +673,9 @@ export default function TeacherClassHomeworkPage() {
                   disabled={completionLoading}
                   onClick={() => void handleToggleDone(selectedDetail)}
                   className={`rounded-card px-4 py-2 text-sm font-semibold text-white ${
-                    selectedDetail.myDoneAt ? "bg-emerald-600 hover:bg-emerald-700" : "bg-primary hover:opacity-90"
+                    selectedDetail.myDoneAt
+                      ? "bg-emerald-600 hover:bg-emerald-700"
+                      : "bg-primary hover:opacity-90"
                   } disabled:opacity-60`}
                   data-testid="homework-toggle-done"
                 >
@@ -638,7 +695,9 @@ export default function TeacherClassHomeworkPage() {
                 {selectedDetail.contentHtml ? (
                   <div
                     className="prose prose-sm max-w-none text-text-primary"
-                    dangerouslySetInnerHTML={{ __html: selectedDetail.contentHtml }}
+                    dangerouslySetInnerHTML={{
+                      __html: selectedDetail.contentHtml,
+                    }}
                   />
                 ) : (
                   <p className="text-sm text-text-secondary">
@@ -664,7 +723,9 @@ export default function TeacherClassHomeworkPage() {
                         className="flex items-center justify-between rounded-card border border-border bg-background p-3"
                       >
                         <div>
-                          <p className="text-sm font-semibold text-text-primary">{att.fileName}</p>
+                          <p className="text-sm font-semibold text-text-primary">
+                            {att.fileName}
+                          </p>
                           <p className="text-xs text-text-secondary">
                             {att.mimeType ?? ""}
                             {att.sizeLabel ? ` · ${att.sizeLabel}` : ""}
@@ -695,7 +756,9 @@ export default function TeacherClassHomeworkPage() {
                     {t("homework.detail.studentsTitle")}
                     {selectedDetail.summary && (
                       <span className="ml-2 text-xs font-normal text-text-secondary">
-                        {selectedDetail.summary.doneStudents}/{selectedDetail.summary.totalStudents} {t("homework.detail.summarySuffix")}
+                        {selectedDetail.summary.doneStudents}/
+                        {selectedDetail.summary.totalStudents}{" "}
+                        {t("homework.detail.summarySuffix")}
                       </span>
                     )}
                   </p>
@@ -713,7 +776,9 @@ export default function TeacherClassHomeworkPage() {
                             status.doneAt ? "bg-emerald-600" : "bg-amber-500"
                           }`}
                         >
-                          {status.doneAt ? t("homework.status.done") : t("homework.status.todo")}
+                          {status.doneAt
+                            ? t("homework.status.done")
+                            : t("homework.status.todo")}
                         </span>
                       </div>
                     ))}
@@ -727,7 +792,9 @@ export default function TeacherClassHomeworkPage() {
                   {t("homework.detail.commentsTitle")}
                 </p>
                 {selectedDetail.comments.length === 0 ? (
-                  <p className="mb-3 text-sm text-text-secondary">{t("homework.comment.empty")}</p>
+                  <p className="mb-3 text-sm text-text-secondary">
+                    {t("homework.comment.empty")}
+                  </p>
                 ) : (
                   <div className="mb-3 grid gap-2">
                     {selectedDetail.comments.map((comment) => (
@@ -738,7 +805,9 @@ export default function TeacherClassHomeworkPage() {
                         <p className="text-xs font-semibold text-text-primary">
                           {comment.authorDisplayName}
                         </p>
-                        <p className="mt-1 text-sm text-text-primary">{comment.body}</p>
+                        <p className="mt-1 text-sm text-text-primary">
+                          {comment.body}
+                        </p>
                         <p className="mt-1 text-xs text-text-secondary">
                           {formatDate(comment.createdAt)}
                         </p>
@@ -766,10 +835,14 @@ export default function TeacherClassHomeworkPage() {
                   </button>
                 </form>
                 {commentErrors.body?.message && (
-                  <p className="mt-1 text-xs text-notification">{commentErrors.body.message}</p>
+                  <p className="mt-1 text-xs text-notification">
+                    {commentErrors.body.message}
+                  </p>
                 )}
                 {commentError && (
-                  <p className="mt-1 text-xs text-notification">{commentError}</p>
+                  <p className="mt-1 text-xs text-notification">
+                    {commentError}
+                  </p>
                 )}
               </div>
 
@@ -812,7 +885,11 @@ export default function TeacherClassHomeworkPage() {
       {/* ── Create/Edit Form ────────────────────────────────────── */}
       {showForm && (
         <Card
-          title={editingHomework ? t("homework.form.editTitle") : t("homework.form.createTitle")}
+          title={
+            editingHomework
+              ? t("homework.form.editTitle")
+              : t("homework.form.createTitle")
+          }
           subtitle={classCtx?.className ?? ""}
         >
           <form onSubmit={(e) => void handleSave(e)} className="grid gap-5">
@@ -826,7 +903,9 @@ export default function TeacherClassHomeworkPage() {
                 className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                 data-testid="homework-form-subject"
               >
-                <option value="">{t("homework.form.subjectPlaceholder")}</option>
+                <option value="">
+                  {t("homework.form.subjectPlaceholder")}
+                </option>
                 {subjectOptions.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -834,7 +913,9 @@ export default function TeacherClassHomeworkPage() {
                 ))}
               </select>
               {errors.subjectId?.message && (
-                <p className="mt-1 text-xs text-notification">{errors.subjectId.message}</p>
+                <p className="mt-1 text-xs text-notification">
+                  {errors.subjectId.message}
+                </p>
               )}
             </div>
 
@@ -850,7 +931,9 @@ export default function TeacherClassHomeworkPage() {
                 data-testid="homework-form-title"
               />
               {errors.title?.message && (
-                <p className="mt-1 text-xs text-notification">{errors.title.message}</p>
+                <p className="mt-1 text-xs text-notification">
+                  {errors.title.message}
+                </p>
               )}
             </div>
 
@@ -866,7 +949,9 @@ export default function TeacherClassHomeworkPage() {
                 data-testid="homework-form-expected-at"
               />
               {errors.expectedAt?.message && (
-                <p className="mt-1 text-xs text-notification">{errors.expectedAt.message}</p>
+                <p className="mt-1 text-xs text-notification">
+                  {errors.expectedAt.message}
+                </p>
               )}
             </div>
 
@@ -896,7 +981,9 @@ export default function TeacherClassHomeworkPage() {
                       data-testid={`homework-form-attachment-${idx}`}
                     >
                       <div>
-                        <p className="text-sm font-semibold text-text-primary">{att.fileName}</p>
+                        <p className="text-sm font-semibold text-text-primary">
+                          {att.fileName}
+                        </p>
                         <p className="text-xs text-text-secondary">
                           {att.mimeType ?? ""}
                           {att.sizeLabel ? ` · ${att.sizeLabel}` : ""}
@@ -905,7 +992,9 @@ export default function TeacherClassHomeworkPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          setAttachments((prev) => prev.filter((_, i) => i !== idx))
+                          setAttachments((prev) =>
+                            prev.filter((_, i) => i !== idx),
+                          )
                         }
                         className="text-xs text-notification hover:underline"
                         data-testid={`homework-form-remove-attachment-${idx}`}
@@ -953,7 +1042,9 @@ export default function TeacherClassHomeworkPage() {
                 className="rounded-card bg-primary px-6 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
                 data-testid="homework-form-submit"
               >
-                {formSaving ? t("homework.form.saving") : t("homework.form.save")}
+                {formSaving
+                  ? t("homework.form.saving")
+                  : t("homework.form.save")}
               </button>
               <button
                 type="button"

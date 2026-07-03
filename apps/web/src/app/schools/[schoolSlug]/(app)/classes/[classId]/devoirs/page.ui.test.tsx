@@ -235,9 +235,7 @@ describe("Teacher class homework page", () => {
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("homework-add-button"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("homework-add-button")).toBeInTheDocument();
     });
   });
 
@@ -247,7 +245,9 @@ describe("Teacher class homework page", () => {
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId("homework-add-button")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("homework-add-button"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -257,7 +257,9 @@ describe("Teacher class homework page", () => {
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Aucun devoir pour cette periode.")).toBeInTheDocument();
+      expect(
+        screen.getByText("Aucun devoir pour cette periode."),
+      ).toBeInTheDocument();
     });
   });
 
@@ -367,11 +369,16 @@ describe("Teacher class homework page", () => {
 
     await waitFor(() => {
       expect(screen.getByText("cours.pdf")).toBeInTheDocument();
-      expect(screen.getByTestId("homework-attachment-download-0")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("homework-attachment-download-0"),
+      ).toBeInTheDocument();
     });
 
     const downloadLink = screen.getByTestId("homework-attachment-download-0");
-    expect(downloadLink).toHaveAttribute("href", "http://minio.local/cours.pdf");
+    expect(downloadLink).toHaveAttribute(
+      "href",
+      "http://minio.local/cours.pdf",
+    );
     expect(downloadLink).toHaveAttribute("download", "cours.pdf");
   });
 });
