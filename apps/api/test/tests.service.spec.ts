@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { TestsService } from "../src/tests/tests.service";
 
 describe("TestsService", () => {
@@ -11,6 +15,8 @@ describe("TestsService", () => {
     },
     testExecution: {
       create: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
     },
     user: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -45,6 +51,8 @@ describe("TestsService", () => {
     prisma.testCampaign.findMany.mockReset();
     prisma.testCase.findFirst.mockReset();
     prisma.testExecution.create.mockReset();
+    prisma.testExecution.findFirst.mockReset();
+    prisma.testExecution.update.mockReset();
     mediaClientService.uploadImage.mockReset();
   });
 
@@ -214,5 +222,119 @@ describe("TestsService", () => {
     expect(result.attachments[0].url).toBe(
       "https://media.example.com/tests/capture.png",
     );
+  });
+
+  describe("updateMyExecution", () => {
+    const updatedExecution = {
+      id: "exec-1",
+      status: "PASSED",
+      resultText: "Scenario OK",
+      comment: "Good",
+      executedAt: new Date("2026-06-11T10:00:00.000Z"),
+      adminReviewedAt: null,
+      adminReviewNote: null,
+      deviceInfo: "android",
+      appVersion: "1.0.0",
+      createdAt: new Date("2026-06-11T10:00:00.000Z"),
+      user: { id: "user-1", firstName: "Valery", lastName: "MBELE" },
+      adminReviewedBy: null,
+      testCase: {
+        id: "case-1",
+        title: "Login",
+        campaign: { id: "camp-1", title: "v1.4" },
+      },
+      attachments: [],
+    };
+
+    it("blocks users who are neither tester nor admin", async () => {
+      await expect(
+        service.updateMyExecution(
+          { ...testerUser, isTester: false, platformRoles: [] },
+          "exec-1",
+          { status: "PASSED", resultText: "OK" },
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("throws NotFoundException when execution not found for owner", async () => {
+      prisma.testExecution.findFirst.mockResolvedValue(null);
+      await expect(
+        service.updateMyExecution(testerUser, "exec-missing", {
+          status: "PASSED",
+          resultText: "OK",
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it("rejects empty resultText", async () => {
+      prisma.testExecution.findFirst.mockResolvedValue({ id: "exec-1" });
+      await expect(
+        service.updateMyExecution(testerUser, "exec-1", {
+          status: "PASSED",
+          resultText: "   ",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("updates and returns execution detail for owner", async () => {
+      prisma.testExecution.findFirst.mockResolvedValue({ id: "exec-1" });
+      prisma.testExecution.update.mockResolvedValue(updatedExecution);
+
+      const result = await service.updateMyExecution(testerUser, "exec-1", {
+        status: "PASSED",
+        resultText: "Scenario OK",
+        comment: "Good",
+      });
+
+      expect(prisma.testExecution.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "exec-1" },
+          data: expect.objectContaining({
+            status: "PASSED",
+            resultText: "Scenario OK",
+            comment: "Good",
+          }),
+        }),
+      );
+      expect(result.id).toBe("exec-1");
+    });
+
+    it("allows ADMIN platform role to update any execution", async () => {
+      const adminUser = {
+        ...testerUser,
+        isTester: false,
+        platformRoles: ["ADMIN" as const],
+      };
+      prisma.testExecution.findFirst.mockResolvedValue({ id: "exec-1" });
+      prisma.testExecution.update.mockResolvedValue(updatedExecution);
+
+      await service.updateMyExecution(adminUser, "exec-1", {
+        status: "FAILED",
+        resultText: "Regression",
+      });
+
+      expect(prisma.testExecution.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "exec-1" },
+        }),
+      );
+    });
+
+    it("allows SUPER_ADMIN platform role to update any execution", async () => {
+      const superAdmin = {
+        ...testerUser,
+        isTester: false,
+        platformRoles: ["SUPER_ADMIN" as const],
+      };
+      prisma.testExecution.findFirst.mockResolvedValue({ id: "exec-1" });
+      prisma.testExecution.update.mockResolvedValue(updatedExecution);
+
+      await expect(
+        service.updateMyExecution(superAdmin, "exec-1", {
+          status: "BLOCKED",
+          resultText: "Blocked by API",
+        }),
+      ).resolves.toBeDefined();
+    });
   });
 });

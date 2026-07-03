@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UploadedFiles,
@@ -124,5 +125,30 @@ export class TestsController {
       { status, resultText, comment, deviceInfo, appVersion },
       attachments ?? [],
     );
+  }
+
+  @Patch("executions/:executionId")
+  updateMyExecution(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("executionId") executionId: string,
+    @Body() payload: Record<string, unknown>,
+  ) {
+    const locale = testsLocaleFromUser(user);
+    const status = String(payload.status ?? "").trim() as TestExecutionStatus;
+    if (!(status in TestExecutionStatus)) {
+      throw new BadRequestException(
+        translateTestsError(locale, "tests.errors.executionStatusInvalid"),
+      );
+    }
+    const resultText =
+      typeof payload.resultText === "string" ? payload.resultText : "";
+    const comment =
+      typeof payload.comment === "string" ? payload.comment : undefined;
+
+    return this.testsService.updateMyExecution(user, executionId, {
+      status,
+      resultText,
+      comment,
+    });
   }
 }

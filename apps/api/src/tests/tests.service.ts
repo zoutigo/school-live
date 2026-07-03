@@ -576,6 +576,60 @@ export class TestsService {
     return this.toExecutionDetail(execution);
   }
 
+  async updateMyExecution(
+    user: AuthenticatedUser,
+    executionId: string,
+    payload: {
+      status: TestExecutionStatus;
+      resultText: string;
+      comment?: string;
+    },
+  ) {
+    const locale = testsLocaleFromUser(user);
+    const isPlatformAdmin =
+      user.platformRoles.includes("ADMIN") ||
+      user.platformRoles.includes("SUPER_ADMIN");
+
+    if (!user.isTester && !isPlatformAdmin) {
+      throw new ForbiddenException(
+        translateTestsError(locale, "tests.errors.executionForbidden"),
+      );
+    }
+
+    const where = isPlatformAdmin
+      ? { id: executionId }
+      : { id: executionId, userId: user.id };
+
+    const existing = await this.prisma.testExecution.findFirst({
+      where,
+      select: { id: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(
+        translateTestsError(locale, "tests.errors.executionNotFound"),
+      );
+    }
+
+    if (!payload.resultText.trim()) {
+      throw new BadRequestException(
+        translateTestsError(locale, "tests.errors.executionResultRequired"),
+      );
+    }
+
+    const updated = await this.prisma.testExecution.update({
+      where: { id: executionId },
+      data: {
+        status: payload.status,
+        resultText: payload.resultText.trim(),
+        comment: payload.comment?.trim() || null,
+      },
+      select: this.executionDetailSelect(),
+    });
+
+    return this.toExecutionDetail(updated);
+  }
+
   async listAdminExecutions(params?: {
     status?: TestExecutionStatus;
     campaignId?: string;
