@@ -89,6 +89,12 @@ export function hasMeaningfulRichTextContent(input: string | null | undefined) {
     return false;
   }
 
+  // An image-only body (no surrounding text) is still meaningful content —
+  // stripping tags before checking for text would otherwise discard it.
+  if (/<img\b/i.test(input)) {
+    return true;
+  }
+
   return (
     input
       .replace(/<[^>]+>/g, " ")

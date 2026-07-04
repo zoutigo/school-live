@@ -351,6 +351,56 @@ describe("Homework CRUD e2e", () => {
       expect(attachments).toHaveLength(1);
       expect((attachments[0] as JsonObject).fileName).toBe("fiche.pdf");
     });
+
+    it("400 — refuse un attachment avec des champs non whitelistés (régression upload media)", async () => {
+      // Le endpoint d'upload média (POST /homework/uploads/attachment) renvoie
+      // { url, size, width, height, mimeType } — si le client mobile relaie ce
+      // payload brut tel quel dans `attachments`, ces champs additionnels
+      // doivent être rejetés (ValidationPipe forbidNonWhitelisted). C'est ce
+      // contrat que le client doit respecter en ne renvoyant que fileName/
+      // fileUrl/sizeLabel/mimeType.
+      const { response } = await apiJson(homeworkUrl(), {
+        method: "POST",
+        headers: authHeaders(teacherToken),
+        body: JSON.stringify({
+          subjectId,
+          title: "Devoir avec attachment brut",
+          expectedAt: "2026-09-02T17:00:00.000Z",
+          attachments: [
+            {
+              fileName: "fiche.pdf",
+              fileUrl: "http://minio.local/fiche.pdf",
+              mimeType: "application/pdf",
+              url: "http://minio.local/fiche.pdf",
+              size: 12345,
+              width: null,
+              height: null,
+            },
+          ],
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
+      "201 — un contenu composé uniquement d'une image .%s (sans texte) est conservé",
+      async (ext) => {
+        const { response, body } = await apiJson(homeworkUrl(), {
+          method: "POST",
+          headers: authHeaders(teacherToken),
+          body: JSON.stringify({
+            subjectId,
+            title: `Devoir avec image seule (${ext})`,
+            expectedAt: "2026-09-02T17:00:00.000Z",
+            contentHtml: `<div><img src="https://cdn.example.com/homework.${ext}" /></div>`,
+          }),
+        });
+
+        expect(response.status).toBe(201);
+        expect(body?.contentHtml as string).toContain("<img");
+      },
+    );
   });
 
   describe("GET /homework (lister)", () => {
@@ -520,6 +570,41 @@ describe("Homework CRUD e2e", () => {
       expect(attachments).toHaveLength(1);
       expect((attachments[0] as JsonObject).fileName).toBe("nouveau.pdf");
     });
+
+    it("400 — refuse un attachment avec des champs non whitelistés lors d'une modification", async () => {
+      const { response } = await apiJson(hwDetailUrl(hwId), {
+        method: "PATCH",
+        headers: authHeaders(teacherToken),
+        body: JSON.stringify({
+          attachments: [
+            {
+              fileName: "nouveau.pdf",
+              fileUrl: "http://minio.local/nouveau.pdf",
+              url: "http://minio.local/nouveau.pdf",
+              size: 512,
+            },
+          ],
+        }),
+      });
+
+      expect(response.status).toBe(400);
+    });
+
+    it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
+      "200 — un contenu composé uniquement d'une image .%s (sans texte) est conservé lors d'une modification",
+      async (ext) => {
+        const { response, body } = await apiJson(hwDetailUrl(hwId), {
+          method: "PATCH",
+          headers: authHeaders(teacherToken),
+          body: JSON.stringify({
+            contentHtml: `<div><img src="https://cdn.example.com/updated.${ext}" /></div>`,
+          }),
+        });
+
+        expect(response.status).toBe(200);
+        expect(body?.contentHtml as string).toContain("<img");
+      },
+    );
   });
 
   describe("DELETE /homework/:id (supprimer)", () => {

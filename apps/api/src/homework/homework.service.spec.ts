@@ -293,6 +293,29 @@ describe("HomeworkService", () => {
       );
     });
 
+    it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
+      "conserve un contentHtml composé uniquement d'une image .%s (sans texte)",
+      async (ext) => {
+        // Régression : hasMeaningfulRichTextContent stripait les tags avant de
+        // vérifier s'il restait du texte, donc un contenu ne contenant qu'une
+        // <img> était considéré comme vide et remplacé par null — quel que
+        // soit le format de l'image.
+        const teacher = makeUser({ activeRole: "TEACHER" });
+        await service.createHomework(teacher, SCHOOL_ID, CLASS_ID, {
+          subjectId: SUBJECT_ID,
+          title: "Devoir test",
+          contentHtml: `<div><img src="https://cdn.example.com/x.${ext}" /></div>`,
+          expectedAt: "2026-07-10T08:00:00Z",
+        });
+
+        const createArgs = prisma.homework.create.mock.calls[0][0] as {
+          data: { contentHtml: string | null };
+        };
+        expect(createArgs.data.contentHtml).not.toBeNull();
+        expect(createArgs.data.contentHtml).toContain("<img");
+      },
+    );
+
     it("lève ForbiddenException si la matière n'est pas accessible au teacher", async () => {
       prisma.teacherClassSubject.findFirst
         .mockResolvedValueOnce(makeAssignment())
@@ -393,6 +416,32 @@ describe("HomeworkService", () => {
       expect(prisma.homework.update).toHaveBeenCalledTimes(1);
       expect(result.title).toBe("Titre modifié");
     });
+
+    it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
+      "conserve un contentHtml composé uniquement d'une image .%s lors d'une modification",
+      async (ext) => {
+        const html = `<div><img src="https://cdn.example.com/y.${ext}" /></div>`;
+        const updatedHw = makeHomeworkEntity({ contentHtml: html });
+        prisma.homework.findFirst
+          .mockResolvedValueOnce(homework)
+          .mockResolvedValueOnce(updatedHw);
+
+        const teacher = makeUser({ activeRole: "TEACHER" });
+        await service.updateHomework(
+          teacher,
+          SCHOOL_ID,
+          CLASS_ID,
+          HOMEWORK_ID,
+          { contentHtml: html },
+        );
+
+        const updateArgs = prisma.homework.update.mock.calls[0][0] as {
+          data: { contentHtml: string | null };
+        };
+        expect(updateArgs.data.contentHtml).not.toBeNull();
+        expect(updateArgs.data.contentHtml).toContain("<img");
+      },
+    );
 
     it("lève ForbiddenException si le teacher n'est pas l'auteur", async () => {
       const otherTeacher = makeUser({
