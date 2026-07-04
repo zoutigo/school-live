@@ -87,6 +87,20 @@ export class FeedController {
     return this.feedService.deletePost(user, schoolId, postId);
   }
 
+  @Post("uploads/attachment")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+    }),
+  )
+  uploadAttachment(
+    @UploadedFile() file?: { buffer: Buffer; mimetype: string; size: number },
+  ) {
+    return this.mediaClientService.uploadImage("feed-attachment", file);
+  }
+
   @Post("uploads/inline-image")
   @UseInterceptors(
     FileInterceptor("file", {

@@ -222,7 +222,7 @@ export class EvaluationsService {
         ? EvaluationStatus.PUBLISHED
         : EvaluationStatus.DRAFT;
     const sanitizedDescription = sanitizeRichTextHtml(payload.description, {
-      allowImages: false,
+      allowImages: true,
     });
 
     const evaluation = await this.prisma.evaluation.create({
@@ -386,7 +386,7 @@ export class EvaluationsService {
       payload.description === undefined
         ? undefined
         : sanitizeRichTextHtml(payload.description, {
-            allowImages: false,
+            allowImages: true,
           });
 
     const isBeingPublished =

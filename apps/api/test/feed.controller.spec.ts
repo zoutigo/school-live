@@ -79,6 +79,28 @@ describe("FeedController", () => {
     ).rejects.toThrow("Missing image file.");
   });
 
+  it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
+    "delegates attachment upload to mediaClientService with the feed-attachment kind for .%s images",
+    async (ext) => {
+      const file = { buffer: Buffer.from("data"), mimetype: `image/${ext}`, size: 10 };
+      mediaClientService.uploadImage.mockResolvedValue({
+        url: `https://cdn.example.com/feed/photo.${ext}`,
+        size: 10,
+        width: null,
+        height: null,
+        mimeType: `image/${ext}`,
+      });
+
+      const result = await controller.uploadAttachment(file);
+
+      expect(mediaClientService.uploadImage).toHaveBeenCalledWith(
+        "feed-attachment",
+        file,
+      );
+      expect(result.url).toContain(`photo.${ext}`);
+    },
+  );
+
   it("delegates likes and comments to service", async () => {
     await controller.toggleLike(user, "school-1", "post-1");
     expect(feedService.toggleLike).toHaveBeenCalledWith(

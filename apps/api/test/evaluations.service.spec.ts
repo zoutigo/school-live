@@ -76,7 +76,7 @@ describe("EvaluationsService", () => {
     expect(prisma.evaluation.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          description: "<p>Consigne</p>",
+          description: '<p>Consigne</p><img src="https://cdn/image.png" />',
         }),
       }),
     );
