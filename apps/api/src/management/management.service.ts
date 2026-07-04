@@ -6006,8 +6006,7 @@ export class ManagementService {
 
       const eventTypeLabel =
         LIFE_EVENT_TYPE_LABELS[params.event.type] ?? params.event.type;
-      const studentFullName =
-        `${student.firstName} ${student.lastName}`.trim();
+      const studentFullName = `${student.firstName} ${student.lastName}`.trim();
 
       await this.pushService.sendStudentLifeEventNotification({
         tokens: pushTokens.map((row) => row.token),

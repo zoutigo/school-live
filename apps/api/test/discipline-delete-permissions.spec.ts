@@ -38,16 +38,21 @@ function makeUser(
   };
 }
 
-function makeEvent(overrides: {
-  authorUserId?: string;
-  schoolYearId?: string | null;
-} = {}) {
+function makeEvent(
+  overrides: {
+    authorUserId?: string;
+    schoolYearId?: string | null;
+  } = {},
+) {
   return {
     id: "event-1",
     schoolId: "school-1",
     studentId: "student-1",
     authorUserId: overrides.authorUserId ?? "teacher-1",
-    schoolYearId: overrides.schoolYearId !== undefined ? overrides.schoolYearId : "sy-active",
+    schoolYearId:
+      overrides.schoolYearId !== undefined
+        ? overrides.schoolYearId
+        : "sy-active",
   };
 }
 
@@ -87,7 +92,12 @@ describe("deleteStudentLifeEvent — événement introuvable", () => {
     const user = makeUser("admin-1", "SCHOOL_ADMIN");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-missing"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-missing",
+      ),
     ).rejects.toThrow(NotFoundException);
   });
 });
@@ -99,7 +109,12 @@ describe("deleteStudentLifeEvent — SCHOOL_ADMIN", () => {
     const user = makeUser("admin-1", "SCHOOL_ADMIN");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).resolves.toEqual({ id: "event-1", deleted: true });
   });
 
@@ -110,7 +125,12 @@ describe("deleteStudentLifeEvent — SCHOOL_ADMIN", () => {
     const user = makeUser("admin-1", "SCHOOL_ADMIN");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).resolves.toEqual({ id: "event-1", deleted: true });
   });
 
@@ -121,7 +141,12 @@ describe("deleteStudentLifeEvent — SCHOOL_ADMIN", () => {
     const user = makeUser("admin-1", "SCHOOL_ADMIN");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).resolves.toEqual({ id: "event-1", deleted: true });
   });
 });
@@ -133,7 +158,12 @@ describe("deleteStudentLifeEvent — SCHOOL_MANAGER / SUPERVISOR", () => {
     const user = makeUser("manager-1", "SCHOOL_MANAGER");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).resolves.toEqual({ id: "event-1", deleted: true });
   });
 
@@ -141,7 +171,12 @@ describe("deleteStudentLifeEvent — SCHOOL_MANAGER / SUPERVISOR", () => {
     const user = makeUser("supervisor-1", "SUPERVISOR");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).resolves.toEqual({ id: "event-1", deleted: true });
   });
 });
@@ -156,7 +191,12 @@ describe("deleteStudentLifeEvent — TEACHER autorisé", () => {
     const user = makeUser("teacher-1", "TEACHER");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).resolves.toEqual({ id: "event-1", deleted: true });
   });
 });
@@ -171,7 +211,12 @@ describe("deleteStudentLifeEvent — TEACHER refusé", () => {
     const user = makeUser("teacher-1", "TEACHER");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -182,7 +227,12 @@ describe("deleteStudentLifeEvent — TEACHER refusé", () => {
     const user = makeUser("teacher-1", "TEACHER");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -194,7 +244,12 @@ describe("deleteStudentLifeEvent — TEACHER refusé", () => {
     const user = makeUser("teacher-1", "TEACHER");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 });
@@ -206,7 +261,12 @@ describe("deleteStudentLifeEvent — rôles non autorisés", () => {
     const user = makeUser("parent-1", "PARENT");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -214,7 +274,12 @@ describe("deleteStudentLifeEvent — rôles non autorisés", () => {
     const user = makeUser("student-1", "STUDENT");
 
     await expect(
-      service.deleteStudentLifeEvent("school-1", user as never, "student-1", "event-1"),
+      service.deleteStudentLifeEvent(
+        "school-1",
+        user as never,
+        "student-1",
+        "event-1",
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 });

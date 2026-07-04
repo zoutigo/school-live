@@ -107,9 +107,7 @@ export class PushService {
     }
   }
 
-  async sendStudentLifeEventNotification(
-    payload: StudentLifeEventPushPayload,
-  ) {
+  async sendStudentLifeEventNotification(payload: StudentLifeEventPushPayload) {
     if (payload.tokens.length === 0) {
       return;
     }

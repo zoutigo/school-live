@@ -34,10 +34,12 @@ function makeCurrentUser(overrides: { id?: string } = {}) {
   };
 }
 
-function makeEvent(overrides: {
-  type?: string;
-  classId?: string | null;
-} = {}) {
+function makeEvent(
+  overrides: {
+    type?: string;
+    classId?: string | null;
+  } = {},
+) {
   return {
     id: EVENT_ID,
     schoolId: SCHOOL_ID,
@@ -55,48 +57,65 @@ function makeEvent(overrides: {
     updatedAt: new Date(),
     class: { id: "class-1", name: "6ème A" },
     schoolYear: { id: "sy-1", label: "2025-2026" },
-    authorUser: { id: "teacher-1", firstName: "Jean", lastName: "Dupont", email: "jean@school.com" },
+    authorUser: {
+      id: "teacher-1",
+      firstName: "Jean",
+      lastName: "Dupont",
+      email: "jean@school.com",
+    },
   };
 }
 
 // ─── Setup du service ─────────────────────────────────────────────────────────
 
-function makePrisma(overrides: {
-  student?: object | null;
-  school?: object | null;
-  pushTokens?: object[];
-  lifeEvent?: object | null;
-  studentInSchool?: boolean;
-  activeSchoolYearId?: string | null;
-  classContext?: object | null;
-} = {}) {
+function makePrisma(
+  overrides: {
+    student?: object | null;
+    school?: object | null;
+    pushTokens?: object[];
+    lifeEvent?: object | null;
+    studentInSchool?: boolean;
+    activeSchoolYearId?: string | null;
+    classContext?: object | null;
+  } = {},
+) {
   return {
     student: {
-      findFirst: jest.fn().mockImplementation((args: { where: { id: string; schoolId: string } }) => {
-        if (args.where.id === STUDENT_ID) {
-          return Promise.resolve(
-            overrides.student !== undefined ? overrides.student : {
-              firstName: "Aminata",
-              lastName: "Diallo",
-              parentLinks: [],
-            },
-          );
-        }
-        return Promise.resolve(null);
-      }),
+      findFirst: jest
+        .fn()
+        .mockImplementation(
+          (args: { where: { id: string; schoolId: string } }) => {
+            if (args.where.id === STUDENT_ID) {
+              return Promise.resolve(
+                overrides.student !== undefined
+                  ? overrides.student
+                  : {
+                      firstName: "Aminata",
+                      lastName: "Diallo",
+                      parentLinks: [],
+                    },
+              );
+            }
+            return Promise.resolve(null);
+          },
+        ),
     },
     school: {
       findUnique: jest.fn().mockResolvedValue(
-        overrides.school !== undefined ? overrides.school : {
-          name: "Lycée Victor Hugo",
-          slug: "lycee-victor-hugo",
-        },
+        overrides.school !== undefined
+          ? overrides.school
+          : {
+              name: "Lycée Victor Hugo",
+              slug: "lycee-victor-hugo",
+            },
       ),
     },
     mobilePushToken: {
-      findMany: jest.fn().mockResolvedValue(
-        overrides.pushTokens !== undefined ? overrides.pushTokens : [],
-      ),
+      findMany: jest
+        .fn()
+        .mockResolvedValue(
+          overrides.pushTokens !== undefined ? overrides.pushTokens : [],
+        ),
     },
     studentLifeEvent: {
       create: jest.fn().mockResolvedValue(makeEvent()),
@@ -104,9 +123,11 @@ function makePrisma(overrides: {
       update: jest.fn().mockResolvedValue(makeEvent()),
     },
     enrollment: {
-      findFirst: jest.fn().mockResolvedValue(
-        overrides.classContext !== undefined ? overrides.classContext : null,
-      ),
+      findFirst: jest
+        .fn()
+        .mockResolvedValue(
+          overrides.classContext !== undefined ? overrides.classContext : null,
+        ),
     },
     // used by ensureStudentInSchool
     $queryRaw: jest.fn(),
@@ -127,16 +148,22 @@ function makePush() {
 
 // Stub minimal pour les helpers internes qui font des lookups DB
 function stubHelpers(service: ManagementService, schoolYearId = "sy-1") {
-  (service as any).ensureStudentInSchool = jest.fn().mockResolvedValue(undefined);
-  (service as any).getCurrentClassContextForStudent = jest.fn().mockResolvedValue({
-    id: "class-1",
-    schoolYearId,
-  });
+  (service as any).ensureStudentInSchool = jest
+    .fn()
+    .mockResolvedValue(undefined);
+  (service as any).getCurrentClassContextForStudent = jest
+    .fn()
+    .mockResolvedValue({
+      id: "class-1",
+      schoolYearId,
+    });
   (service as any).ensureClassInSchoolAndGet = jest.fn().mockResolvedValue({
     id: "class-1",
     schoolYearId,
   });
-  (service as any).canWriteStudentLifeEvents = jest.fn().mockResolvedValue(true);
+  (service as any).canWriteStudentLifeEvents = jest
+    .fn()
+    .mockResolvedValue(true);
 }
 
 // ─── Suite principale ─────────────────────────────────────────────────────────
@@ -383,51 +410,46 @@ describe("notifyParentsAboutStudentLifeEvent — via createStudentLifeEvent", ()
     ["RETARD", "Retard"],
     ["SANCTION", "Sanction"],
     ["PUNITION", "Punition"],
-  ])(
-    "push body = '%s' pour le type %s",
-    async (type, expectedLabel) => {
-      const prisma = makePrisma({
-        student: {
-          firstName: "Aminata",
-          lastName: "Diallo",
-          parentLinks: [
-            {
-              parent: {
-                id: "parent-1",
-                email: "maman@gmail.com",
-                firstName: "Fatou",
-                preferredLocale: "FR",
-              },
+  ])("push body = '%s' pour le type %s", async (type, expectedLabel) => {
+    const prisma = makePrisma({
+      student: {
+        firstName: "Aminata",
+        lastName: "Diallo",
+        parentLinks: [
+          {
+            parent: {
+              id: "parent-1",
+              email: "maman@gmail.com",
+              firstName: "Fatou",
+              preferredLocale: "FR",
             },
-          ],
-        },
-        pushTokens: [{ token: "ExponentPushToken[tok1]" }],
-      });
-      // stub studentLifeEvent.create to return correct type
-      prisma.studentLifeEvent.create.mockResolvedValue(
-        makeEvent({ type }),
-      );
+          },
+        ],
+      },
+      pushTokens: [{ token: "ExponentPushToken[tok1]" }],
+    });
+    // stub studentLifeEvent.create to return correct type
+    prisma.studentLifeEvent.create.mockResolvedValue(makeEvent({ type }));
 
-      const service = new ManagementService(
-        prisma as never,
-        mail as never,
-        undefined,
-        push as never,
-      );
-      stubHelpers(service);
+    const service = new ManagementService(
+      prisma as never,
+      mail as never,
+      undefined,
+      push as never,
+    );
+    stubHelpers(service);
 
-      await service.createStudentLifeEvent(
-        SCHOOL_ID,
-        makeCurrentUser() as never,
-        STUDENT_ID,
-        { type: type as never, reason: "Test" },
-      );
+    await service.createStudentLifeEvent(
+      SCHOOL_ID,
+      makeCurrentUser() as never,
+      STUDENT_ID,
+      { type: type as never, reason: "Test" },
+    );
 
-      expect(push.sendStudentLifeEventNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ body: expectedLabel }),
-      );
-    },
-  );
+    expect(push.sendStudentLifeEventNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ body: expectedLabel }),
+    );
+  });
 
   // ── Push : non envoyé si aucun parent ─────────────────────────────────────
 
