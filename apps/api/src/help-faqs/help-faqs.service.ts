@@ -932,6 +932,13 @@ export class HelpFaqsService {
     }
   }
 
+  async assertCanManage(user: AuthenticatedUser) {
+    if (this.isPlatformUser(user)) {
+      return;
+    }
+    await this.requireSchoolFaqManager(user);
+  }
+
   private async getSchoolManagementScope(user: AuthenticatedUser) {
     if (user.activeRole !== "SCHOOL_ADMIN") {
       return null;
