@@ -18,6 +18,7 @@ import {
   publicEmailOrNull,
 } from "../common/email.util.js";
 import { MailService } from "../mail/mail.service.js";
+import { PushService } from "../notifications/push.service.js";
 import { RoomStatusChangeNotificationsService } from "../notifications/room-status-change-notifications.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { CreateAdminDto } from "./dto/create-admin.dto.js";
@@ -438,12 +439,24 @@ const NOOP_ROOM_STATUS_CHANGE_NOTIFICATIONS = {
   enqueue: async () => undefined,
 } as unknown as RoomStatusChangeNotificationsService;
 
+const NOOP_PUSH_SERVICE = {
+  sendStudentLifeEventNotification: async () => undefined,
+} as unknown as PushService;
+
+const LIFE_EVENT_TYPE_LABELS: Record<string, string> = {
+  ABSENCE: "Absence",
+  RETARD: "Retard",
+  SANCTION: "Sanction",
+  PUNITION: "Punition",
+};
+
 @Injectable()
 export class ManagementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
     private readonly roomStatusChangeNotificationsService: RoomStatusChangeNotificationsService = NOOP_ROOM_STATUS_CHANGE_NOTIFICATIONS,
+    private readonly pushService: PushService = NOOP_PUSH_SERVICE,
   ) {}
 
   async createUser(currentUser: AuthenticatedUser, payload: CreateUserDto) {
@@ -5916,6 +5929,7 @@ export class ManagementService {
           select: {
             parent: {
               select: {
+                id: true,
                 email: true,
                 firstName: true,
                 preferredLocale: true,
@@ -5944,14 +5958,19 @@ export class ManagementService {
       ? `${params.event.authorUser.firstName} ${params.event.authorUser.lastName}`.trim()
       : null;
 
+    const parentUserIds: string[] = [];
+
     for (const link of student.parentLinks) {
-      if (!link.parent.email) {
+      parentUserIds.push(link.parent.id);
+
+      const publicEmail = publicEmailOrNull(link.parent.email);
+      if (!publicEmail) {
         continue;
       }
 
       try {
         await this.mailService.sendStudentLifeEventNotification({
-          to: link.parent.email,
+          to: publicEmail,
           parentFirstName: link.parent.firstName,
           schoolName: school.name,
           schoolSlug: school.slug,
@@ -5968,6 +5987,40 @@ export class ManagementService {
       } catch {
         // The life event is already persisted; mail failures must not block business flow.
       }
+    }
+
+    if (parentUserIds.length === 0) {
+      return;
+    }
+
+    try {
+      const pushTokens = await this.prisma.mobilePushToken.findMany({
+        where: {
+          userId: { in: parentUserIds },
+          isActive: true,
+          OR: [{ schoolId: params.schoolId }, { schoolId: null }],
+        },
+        select: { token: true },
+        distinct: ["token"],
+      });
+
+      const eventTypeLabel =
+        LIFE_EVENT_TYPE_LABELS[params.event.type] ?? params.event.type;
+      const studentFullName =
+        `${student.firstName} ${student.lastName}`.trim();
+
+      await this.pushService.sendStudentLifeEventNotification({
+        tokens: pushTokens.map((row) => row.token),
+        title: `Vie scolaire · ${studentFullName}`,
+        body: eventTypeLabel,
+        data: {
+          type: "STUDENT_LIFE_EVENT",
+          schoolSlug: school.slug,
+          studentId: params.studentId,
+        },
+      });
+    } catch {
+      // Push failures must not block business flow.
     }
   }
 

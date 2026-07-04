@@ -5,6 +5,7 @@ import type {
   GradePublishedPushPayload,
   HomeworkCreatedPushPayload,
   RoomStatusChangePushPayload,
+  StudentLifeEventPushPayload,
   TimetableChangePushPayload,
 } from "../../notifications/push.types.js";
 
@@ -57,6 +58,17 @@ export class ExpoPushAdapter implements PushPort {
 
   async sendGradePublishedNotification(
     payload: GradePublishedPushPayload,
+  ): Promise<void> {
+    await this.dispatch(
+      payload.tokens,
+      payload.title,
+      payload.body,
+      payload.data,
+    );
+  }
+
+  async sendStudentLifeEventNotification(
+    payload: StudentLifeEventPushPayload,
   ): Promise<void> {
     await this.dispatch(
       payload.tokens,
