@@ -121,6 +121,11 @@ model TestExecution {
   adminReviewedBy   User?              @relation("TestExecutionAdminReviewedBy", fields: [adminReviewedById], references: [id], onDelete: SetNull)
   adminReviewNote   String?
 
+  reworkRequestedAt   DateTime?
+  reworkRequestedById String?
+  reworkRequestedBy   User?            @relation("TestExecutionReworkRequestedBy", fields: [reworkRequestedById], references: [id], onDelete: SetNull)
+  reworkNote          String?
+
   attachments TestExecutionAttachment[]
 
   @@index([testCaseId, executedAt])

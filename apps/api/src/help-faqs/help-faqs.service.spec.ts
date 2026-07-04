@@ -213,4 +213,34 @@ describe("HelpFaqsService", () => {
       service.listGlobalFaqsAdmin(makeUser(), {}),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  describe("assertCanManage", () => {
+    it("autorise un utilisateur plateforme", async () => {
+      await expect(
+        service.assertCanManage(makeUser({ platformRoles: ["SUPER_ADMIN"] })),
+      ).resolves.toBeUndefined();
+    });
+
+    it("autorise un administrateur d'école en mode école", async () => {
+      prisma.school.findUnique.mockResolvedValue({
+        id: "school-1",
+        name: "College Vogt",
+      });
+
+      await expect(
+        service.assertCanManage(
+          makeUser({
+            activeRole: "SCHOOL_ADMIN",
+            memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" }],
+          }),
+        ),
+      ).resolves.toBeUndefined();
+    });
+
+    it("refuse un utilisateur sans droit de gestion", async () => {
+      await expect(service.assertCanManage(makeUser())).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+  });
 });

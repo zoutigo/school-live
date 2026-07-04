@@ -44,7 +44,8 @@ export class MediaController {
       kind !== "evaluation-attachment" &&
       kind !== "homework-attachment" &&
       kind !== "messaging-attachment" &&
-      kind !== "test-execution-attachment"
+      kind !== "test-execution-attachment" &&
+      kind !== "feed-attachment"
     ) {
       throw new BadRequestException("Type upload non supporte");
     }

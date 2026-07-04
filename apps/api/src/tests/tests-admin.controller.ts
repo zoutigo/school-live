@@ -20,6 +20,7 @@ import { CreateTestCaseDto } from "./dto/create-test-case.dto.js";
 import { ListAdminCampaignsQueryDto } from "./dto/list-admin-campaigns-query.dto.js";
 import { ListAdminExecutionsQueryDto } from "./dto/list-admin-executions-query.dto.js";
 import { ListTestersQueryDto } from "./dto/list-testers-query.dto.js";
+import { RequestReworkDto } from "./dto/request-rework.dto.js";
 import { ReviewExecutionDto } from "./dto/review-execution.dto.js";
 import { UpdateTestCampaignDto } from "./dto/update-test-campaign.dto.js";
 import { UpdateTestCaseDto } from "./dto/update-test-case.dto.js";
@@ -65,6 +66,15 @@ export class TestsAdminController {
     @Body() payload: ReviewExecutionDto,
   ) {
     return this.testsService.reviewExecution(user, executionId, payload);
+  }
+
+  @Patch("executions/:executionId/rework")
+  requestRework(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("executionId") executionId: string,
+    @Body() payload: RequestReworkDto,
+  ) {
+    return this.testsService.requestRework(user, executionId, payload);
   }
 
   @Get("campaigns/:campaignId")

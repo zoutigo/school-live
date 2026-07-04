@@ -25,7 +25,12 @@ function makeUser(
 
 const makePrismaMock = () => ({
   class: { findFirst: jest.fn() },
-  evaluation: { findFirst: jest.fn(), findMany: jest.fn(), create: jest.fn() },
+  evaluation: {
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+  },
   evaluationType: {
     findFirst: jest.fn(),
     findMany: jest.fn(),
@@ -341,5 +346,73 @@ describe("EvaluationsService", () => {
         expect(result[0].countsForAverage).toBe(counts);
       }
     });
+  });
+
+  describe("createEvaluation / updateEvaluation — description avec image", () => {
+    const classEntity = {
+      id: "class-1",
+      name: "6ème A",
+      schoolYearId: "year-1",
+    };
+
+    beforeEach(() => {
+      prisma.class.findFirst.mockResolvedValue(classEntity);
+      prisma.evaluationType.upsert.mockResolvedValue({});
+      prisma.subject.findFirst.mockResolvedValue({ id: "subject-1" });
+      prisma.evaluationType.findFirst.mockResolvedValue({ id: "type-1" });
+      prisma.evaluationAuditLog.create.mockResolvedValue({});
+    });
+
+    it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
+      "conserve une description composée uniquement d'une image .%s (sans texte) à la création",
+      async (ext) => {
+        prisma.evaluation.create.mockResolvedValue(
+          makeEvaluation({ id: "eval-1" }),
+        );
+
+        await service.createEvaluation(makeUser(), "school-1", "class-1", {
+          subjectId: "subject-1",
+          evaluationTypeId: "type-1",
+          title: "Interro 1",
+          description: `<div><img src="https://cdn.example.com/x.${ext}" /></div>`,
+          coefficient: 1,
+          maxScore: 20,
+          sequence: "SEQ_1" as never,
+        });
+
+        const createArgs = prisma.evaluation.create.mock.calls[0][0] as {
+          data: { description: string | null };
+        };
+        expect(createArgs.data.description).not.toBeNull();
+        expect(createArgs.data.description).toContain("<img");
+      },
+    );
+
+    it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
+      "conserve une description composée uniquement d'une image .%s lors d'une modification",
+      async (ext) => {
+        const html = `<div><img src="https://cdn.example.com/y.${ext}" /></div>`;
+        prisma.evaluation.findFirst.mockResolvedValue(
+          makeEvaluation({ id: "eval-1", subjectId: "subject-1" }),
+        );
+        prisma.evaluation.update.mockResolvedValue(
+          makeEvaluation({ id: "eval-1" }),
+        );
+
+        await service.updateEvaluation(
+          makeUser(),
+          "school-1",
+          "class-1",
+          "eval-1",
+          { description: html },
+        );
+
+        const updateArgs = prisma.evaluation.update.mock.calls[0][0] as {
+          data: { description: string | null };
+        };
+        expect(updateArgs.data.description).not.toBeNull();
+        expect(updateArgs.data.description).toContain("<img");
+      },
+    );
   });
 });

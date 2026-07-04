@@ -52,3 +52,16 @@ export type GradePublishedPushPayload = {
     evaluationId: string;
   };
 };
+
+export const PUSH_JOB_SEND_STUDENT_LIFE_EVENT = "send-student-life-event-push";
+
+export type StudentLifeEventPushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "STUDENT_LIFE_EVENT";
+    schoolSlug: string;
+    studentId: string;
+  };
+};

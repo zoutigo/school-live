@@ -2,6 +2,7 @@ import type {
   GradePublishedPushPayload,
   HomeworkCreatedPushPayload,
   RoomStatusChangePushPayload,
+  StudentLifeEventPushPayload,
   TimetableChangePushPayload,
 } from "../../notifications/push.types.js";
 
@@ -19,5 +20,8 @@ export type PushPort = {
   ): Promise<void>;
   sendGradePublishedNotification(
     payload: GradePublishedPushPayload,
+  ): Promise<void>;
+  sendStudentLifeEventNotification(
+    payload: StudentLifeEventPushPayload,
   ): Promise<void>;
 };

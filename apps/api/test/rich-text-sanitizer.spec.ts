@@ -37,4 +37,24 @@ describe("rich text sanitizer", () => {
     expect(hasMeaningfulRichTextContent("<p>&nbsp;</p>")).toBe(false);
     expect(hasMeaningfulRichTextContent("<p>Consigne</p>")).toBe(true);
   });
+
+  it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
+    "treats image-only content (no surrounding text) as meaningful for .%s images",
+    (ext) => {
+      // A body made of only an <img> has zero text left after stripping tags —
+      // without this case, createHomework/updateEvaluation would silently null
+      // out a rich-text field that legitimately just contains a picture,
+      // regardless of which image format was uploaded.
+      expect(
+        hasMeaningfulRichTextContent(
+          `<div><img src="https://cdn.example.com/img.${ext}" /></div>`,
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it("returns false for null/undefined content", () => {
+    expect(hasMeaningfulRichTextContent(null)).toBe(false);
+    expect(hasMeaningfulRichTextContent(undefined)).toBe(false);
+  });
 });

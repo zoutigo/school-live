@@ -281,7 +281,16 @@ export class TestsService {
             appVersion: true,
             executedAt: true,
             createdAt: true,
+            reworkRequestedAt: true,
+            reworkNote: true,
             user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+            reworkRequestedBy: {
               select: {
                 id: true,
                 firstName: true,
@@ -376,11 +385,20 @@ export class TestsService {
         appVersion: execution.appVersion,
         executedAt: execution.executedAt,
         createdAt: execution.createdAt,
+        reworkRequestedAt: execution.reworkRequestedAt,
+        reworkNote: execution.reworkNote,
         user: {
           id: execution.user.id,
           fullName:
             `${execution.user.firstName} ${execution.user.lastName}`.trim(),
         },
+        reworkRequestedBy: execution.reworkRequestedBy
+          ? {
+              id: execution.reworkRequestedBy.id,
+              fullName:
+                `${execution.reworkRequestedBy.firstName} ${execution.reworkRequestedBy.lastName}`.trim(),
+            }
+          : null,
         attachments: execution.attachments.map((attachment) => ({
           id: attachment.id,
           fileName: attachment.fileName,
@@ -744,6 +762,122 @@ export class TestsService {
         },
       },
     });
+  }
+
+  async requestRework(
+    admin: AuthenticatedUser,
+    executionId: string,
+    payload: { requested: boolean; note?: string },
+  ) {
+    const current = await this.prisma.testExecution.findFirst({
+      where: { id: executionId },
+      select: { id: true, testCaseId: true, userId: true, executedAt: true },
+    });
+
+    if (!current) {
+      throw new NotFoundException(
+        translateTestsError(
+          testsLocaleFromUser(admin),
+          "tests.errors.executionNotFound",
+        ),
+      );
+    }
+
+    if (payload.requested) {
+      const supersededBy = await this.prisma.testExecution.findFirst({
+        where: {
+          testCaseId: current.testCaseId,
+          userId: current.userId,
+          executedAt: { gt: current.executedAt },
+        },
+        select: { id: true },
+      });
+      if (supersededBy) {
+        throw new BadRequestException(
+          translateTestsError(
+            testsLocaleFromUser(admin),
+            "tests.errors.reworkOnSupersededExecution",
+          ),
+        );
+      }
+    }
+
+    const updated = await this.prisma.testExecution.update({
+      where: { id: executionId },
+      data: payload.requested
+        ? {
+            reworkRequestedAt: new Date(),
+            reworkRequestedById: admin.id,
+            reworkNote: payload.note?.trim() || null,
+          }
+        : {
+            reworkRequestedAt: null,
+            reworkRequestedById: null,
+            reworkNote: null,
+          },
+      select: this.executionDetailSelect(),
+    });
+
+    return this.toExecutionDetail(updated);
+  }
+
+  async listMyTestsToRedo(user: AuthenticatedUser) {
+    this.assertTester(user);
+    const roles = this.resolveVisibleRoles(user);
+
+    const cases = await this.prisma.testCase.findMany({
+      where: {
+        campaign: { status: "ACTIVE" },
+        ...this.buildCaseVisibilityWhere(roles),
+        executions: {
+          some: { userId: user.id, reworkRequestedAt: { not: null } },
+        },
+      },
+      orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        module: true,
+        priority: true,
+        evidenceRequired: true,
+        campaign: { select: { id: true, title: true } },
+        executions: {
+          where: { userId: user.id },
+          orderBy: [{ executedAt: "desc" }],
+          take: 1,
+          select: {
+            status: true,
+            executedAt: true,
+            reworkRequestedAt: true,
+            reworkNote: true,
+            reworkRequestedBy: {
+              select: { firstName: true, lastName: true },
+            },
+          },
+        },
+      },
+    });
+
+    return cases
+      .map((testCase) => ({
+        testCase,
+        latestExecution: testCase.executions[0] ?? null,
+      }))
+      .filter((entry) => entry.latestExecution?.reworkRequestedAt)
+      .map(({ testCase, latestExecution }) => ({
+        id: testCase.id,
+        title: testCase.title,
+        module: testCase.module,
+        priority: testCase.priority,
+        evidenceRequired: testCase.evidenceRequired,
+        campaign: testCase.campaign,
+        reworkRequestedAt: latestExecution!.reworkRequestedAt,
+        reworkNote: latestExecution!.reworkNote,
+        reworkRequestedByName: latestExecution!.reworkRequestedBy
+          ? `${latestExecution!.reworkRequestedBy.firstName} ${latestExecution!.reworkRequestedBy.lastName}`.trim()
+          : null,
+        lastExecutedAt: latestExecution!.executedAt,
+      }));
   }
 
   async listAdminCampaigns(params?: {
@@ -1461,8 +1595,13 @@ export class TestsService {
       executedAt: true,
       adminReviewedAt: true,
       adminReviewNote: true,
+      reworkRequestedAt: true,
+      reworkNote: true,
       user: { select: { id: true, firstName: true, lastName: true } },
       adminReviewedBy: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      reworkRequestedBy: {
         select: { id: true, firstName: true, lastName: true },
       },
       testCase: {
@@ -1507,6 +1646,8 @@ export class TestsService {
       executedAt: execution.executedAt,
       adminReviewedAt: execution.adminReviewedAt,
       adminReviewNote: execution.adminReviewNote,
+      reworkRequestedAt: execution.reworkRequestedAt,
+      reworkNote: execution.reworkNote,
       user: {
         id: execution.user.id,
         fullName:
@@ -1517,6 +1658,13 @@ export class TestsService {
             id: execution.adminReviewedBy.id,
             fullName:
               `${execution.adminReviewedBy.firstName} ${execution.adminReviewedBy.lastName}`.trim(),
+          }
+        : null,
+      reworkRequestedBy: execution.reworkRequestedBy
+        ? {
+            id: execution.reworkRequestedBy.id,
+            fullName:
+              `${execution.reworkRequestedBy.firstName} ${execution.reworkRequestedBy.lastName}`.trim(),
           }
         : null,
       testCase: { id: execution.testCase.id, title: execution.testCase.title },

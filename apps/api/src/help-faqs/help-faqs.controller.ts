@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,11 +8,15 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
+import { MediaClientService } from "../media-client/media-client.service.js";
 import { CreateHelpFaqDto } from "./dto/create-help-faq.dto.js";
 import { CreateHelpFaqItemDto } from "./dto/create-help-faq-item.dto.js";
 import { CreateHelpFaqThemeDto } from "./dto/create-help-faq-theme.dto.js";
@@ -26,7 +31,10 @@ import { HelpFaqsService } from "./help-faqs.service.js";
 @Controller("help-faqs")
 @UseGuards(JwtAuthGuard)
 export class HelpFaqsController {
-  constructor(private readonly helpFaqsService: HelpFaqsService) {}
+  constructor(
+    private readonly helpFaqsService: HelpFaqsService,
+    private readonly mediaClientService: MediaClientService,
+  ) {}
 
   @Get("current")
   getCurrentFaq(
@@ -220,5 +228,26 @@ export class HelpFaqsController {
     @Param("itemId") itemId: string,
   ) {
     return this.helpFaqsService.deleteSchoolItem(user, itemId);
+  }
+
+  @Post("admin/uploads/inline-image")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: {
+        fileSize: 8 * 1024 * 1024,
+      },
+    }),
+  )
+  async uploadInlineImage(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file?: { buffer: Buffer; mimetype: string; size: number },
+  ) {
+    if (!file) {
+      throw new BadRequestException("Fichier image manquant");
+    }
+
+    await this.helpFaqsService.assertCanManage(user);
+
+    return this.mediaClientService.uploadImage("messaging-inline-image", file);
   }
 }

@@ -50,6 +50,11 @@ export class TestsController {
     return this.testsService.listCampaigns(user);
   }
 
+  @Get("to-redo")
+  listMyTestsToRedo(@CurrentUser() user: AuthenticatedUser) {
+    return this.testsService.listMyTestsToRedo(user);
+  }
+
   @Get("campaigns/:campaignId")
   getCampaign(
     @CurrentUser() user: AuthenticatedUser,

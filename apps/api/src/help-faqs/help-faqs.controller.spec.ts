@@ -1,5 +1,6 @@
 import { Test, type TestingModule } from "@nestjs/testing";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { MediaClientService } from "../media-client/media-client.service.js";
 import { HelpFaqsController } from "./help-faqs.controller.js";
 import { HelpFaqsService } from "./help-faqs.service.js";
 
@@ -47,18 +48,30 @@ const makeServiceMock = () => ({
   updateSchoolItem: jest.fn().mockResolvedValue({ id: "item-1" }),
   deleteGlobalItem: jest.fn().mockResolvedValue({ deleted: true }),
   deleteSchoolItem: jest.fn().mockResolvedValue({ deleted: true }),
+  assertCanManage: jest.fn(),
+});
+
+const makeMediaClientMock = () => ({
+  uploadImage: jest
+    .fn()
+    .mockResolvedValue({ url: "https://cdn.example.test/file" }),
 });
 
 describe("HelpFaqsController", () => {
   let controller: HelpFaqsController;
   let service: ReturnType<typeof makeServiceMock>;
+  let mediaClient: ReturnType<typeof makeMediaClientMock>;
 
   beforeEach(async () => {
     service = makeServiceMock();
+    mediaClient = makeMediaClientMock();
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [HelpFaqsController],
-      providers: [{ provide: HelpFaqsService, useValue: service }],
+      providers: [
+        { provide: HelpFaqsService, useValue: service },
+        { provide: MediaClientService, useValue: mediaClient },
+      ],
     }).compile();
 
     controller = module.get<HelpFaqsController>(HelpFaqsController);
@@ -95,6 +108,23 @@ describe("HelpFaqsController", () => {
       admin,
       "theme-1",
       dto,
+    );
+  });
+
+  it("uploade une image inline via media", async () => {
+    const admin = makeUser({ platformRoles: ["SUPER_ADMIN"], memberships: [] });
+    const file = {
+      buffer: Buffer.from("image"),
+      mimetype: "image/png",
+      size: 128,
+    };
+
+    await controller.uploadInlineImage(admin, file);
+
+    expect(service.assertCanManage).toHaveBeenCalledWith(admin);
+    expect(mediaClient.uploadImage).toHaveBeenCalledWith(
+      "messaging-inline-image",
+      file,
     );
   });
 });
