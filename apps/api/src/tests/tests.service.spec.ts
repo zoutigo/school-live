@@ -164,6 +164,7 @@ function makeFullPrismaMock() {
   return {
     testCase: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -940,5 +941,199 @@ describe("TestsService#reviewExecution", () => {
     await expect(
       service.reviewExecution(makeUser(), "missing", { reviewed: true }),
     ).rejects.toThrow("Exécution de test introuvable.");
+  });
+});
+
+describe("TestsService#requestRework", () => {
+  it("flags an execution as needing rework with a note", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst
+      .mockResolvedValueOnce({
+        id: "exec-1",
+        testCaseId: "case-1",
+        userId: "tester-1",
+        executedAt: new Date("2026-06-10T10:00:00Z"),
+      })
+      .mockResolvedValueOnce(null);
+    prisma.testExecution.update.mockResolvedValue({
+      ...EXECUTION_ROW,
+      reworkRequestedAt: new Date("2026-06-11T10:00:00Z"),
+      reworkNote: "A revoir apres le correctif",
+      reworkRequestedBy: {
+        id: "admin-1",
+        firstName: "Admin",
+        lastName: "Root",
+      },
+      deviceInfo: "android",
+      appVersion: "1.0.0",
+      createdAt: EXECUTION_ROW.executedAt,
+      attachments: [],
+    });
+    const service = await makeService(prisma);
+
+    const result = await service.requestRework(
+      makeUser({ id: "admin-1" }),
+      "exec-1",
+      { requested: true, note: "A revoir apres le correctif" },
+    );
+
+    expect(prisma.testExecution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "exec-1" },
+        data: expect.objectContaining({
+          reworkRequestedById: "admin-1",
+          reworkNote: "A revoir apres le correctif",
+        }),
+      }),
+    );
+    expect(result.reworkNote).toBe("A revoir apres le correctif");
+  });
+
+  it("clears the rework request when requested is false", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValueOnce({
+      id: "exec-1",
+      testCaseId: "case-1",
+      userId: "tester-1",
+      executedAt: new Date("2026-06-10T10:00:00Z"),
+    });
+    prisma.testExecution.update.mockResolvedValue({
+      ...EXECUTION_ROW,
+      reworkRequestedAt: null,
+      reworkNote: null,
+      reworkRequestedBy: null,
+      deviceInfo: "android",
+      appVersion: "1.0.0",
+      createdAt: EXECUTION_ROW.executedAt,
+      attachments: [],
+    });
+    const service = await makeService(prisma);
+
+    await service.requestRework(makeUser({ id: "admin-1" }), "exec-1", {
+      requested: false,
+    });
+
+    expect(prisma.testExecution.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          reworkRequestedAt: null,
+          reworkRequestedById: null,
+          reworkNote: null,
+        },
+      }),
+    );
+  });
+
+  it("rejects requesting rework on an execution superseded by a newer one", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst
+      .mockResolvedValueOnce({
+        id: "exec-1",
+        testCaseId: "case-1",
+        userId: "tester-1",
+        executedAt: new Date("2026-06-10T10:00:00Z"),
+      })
+      .mockResolvedValueOnce({ id: "exec-2" });
+    const service = await makeService(prisma);
+
+    await expect(
+      service.requestRework(makeUser({ id: "admin-1" }), "exec-1", {
+        requested: true,
+      }),
+    ).rejects.toThrow(
+      "Une exécution plus récente existe déjà pour ce testeur, la reprise ne peut pas être demandée sur cette exécution.",
+    );
+    expect(prisma.testExecution.update).not.toHaveBeenCalled();
+  });
+
+  it("throws when the execution does not exist", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testExecution.findFirst.mockResolvedValueOnce(null);
+    const service = await makeService(prisma);
+
+    await expect(
+      service.requestRework(makeUser(), "missing", { requested: true }),
+    ).rejects.toThrow("Exécution de test introuvable.");
+  });
+});
+
+describe("TestsService#listMyTestsToRedo", () => {
+  it("lists cases whose tester's latest execution is flagged for rework", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findMany.mockResolvedValue([
+      {
+        id: "case-1",
+        title: "Connexion email",
+        module: "Auth",
+        priority: "HIGH",
+        evidenceRequired: false,
+        campaign: { id: "campaign-1", title: "Campagne v1.2" },
+        executions: [
+          {
+            status: "FAILED",
+            executedAt: new Date("2026-06-10T10:00:00Z"),
+            reworkRequestedAt: new Date("2026-06-11T09:00:00Z"),
+            reworkNote: "A revoir",
+            reworkRequestedBy: { firstName: "Admin", lastName: "Root" },
+          },
+        ],
+      },
+    ]);
+    const service = await makeService(prisma);
+
+    const result = await service.listMyTestsToRedo(
+      makeUser({ id: "tester-1" }),
+    );
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: "case-1",
+        title: "Connexion email",
+        reworkNote: "A revoir",
+        reworkRequestedByName: "Admin Root",
+        campaign: { id: "campaign-1", title: "Campagne v1.2" },
+      }),
+    ]);
+  });
+
+  it("excludes a case when the tester's actual latest execution is not flagged", async () => {
+    const prisma = makeFullPrismaMock();
+    prisma.testCase.findMany.mockResolvedValue([
+      {
+        id: "case-1",
+        title: "Connexion email",
+        module: "Auth",
+        priority: "HIGH",
+        evidenceRequired: false,
+        campaign: { id: "campaign-1", title: "Campagne v1.2" },
+        executions: [
+          {
+            status: "PASSED",
+            executedAt: new Date("2026-06-12T10:00:00Z"),
+            reworkRequestedAt: null,
+            reworkNote: null,
+            reworkRequestedBy: null,
+          },
+        ],
+      },
+    ]);
+    const service = await makeService(prisma);
+
+    const result = await service.listMyTestsToRedo(
+      makeUser({ id: "tester-1" }),
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it("rejects a non-tester user", async () => {
+    const prisma = makeFullPrismaMock();
+    const service = await makeService(prisma);
+
+    await expect(
+      service.listMyTestsToRedo(makeUser({ isTester: false })),
+    ).rejects.toThrow(
+      "Ce module est reserve aux utilisateurs marques comme testeurs.",
+    );
   });
 });

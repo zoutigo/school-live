@@ -19,6 +19,8 @@ const fr = {
   "tests.errors.executionNotFound": "Exécution de test introuvable.",
   "tests.errors.executionForbidden":
     "Vous n'êtes pas autorisé à modifier cette exécution.",
+  "tests.errors.reworkOnSupersededExecution":
+    "Une exécution plus récente existe déjà pour ce testeur, la reprise ne peut pas être demandée sur cette exécution.",
 };
 
 const en = {
@@ -35,6 +37,8 @@ const en = {
   "tests.errors.executionNotFound": "Test execution not found.",
   "tests.errors.executionForbidden":
     "You are not allowed to modify this execution.",
+  "tests.errors.reworkOnSupersededExecution":
+    "A more recent execution already exists for this tester, rework cannot be requested on this execution.",
 };
 
 export function testsLocaleFromUser(

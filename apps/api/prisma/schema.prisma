@@ -407,6 +407,7 @@ model User {
   testCasesUpdated      TestCase[]              @relation("TestCaseUpdatedBy")
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
   testExecutionsReviewed TestExecution[]        @relation("TestExecutionAdminReviewedBy")
+  testExecutionsReworkRequested TestExecution[] @relation("TestExecutionReworkRequestedBy")
   mobilePushTokens      MobilePushToken[]
   readMarkers           UserReadMarker[]
 }
@@ -1942,6 +1943,11 @@ model TestExecution {
   adminReviewedById String?
   adminReviewedBy   User?              @relation("TestExecutionAdminReviewedBy", fields: [adminReviewedById], references: [id], onDelete: SetNull)
   adminReviewNote   String?
+
+  reworkRequestedAt   DateTime?
+  reworkRequestedById String?
+  reworkRequestedBy   User?            @relation("TestExecutionReworkRequestedBy", fields: [reworkRequestedById], references: [id], onDelete: SetNull)
+  reworkNote          String?
 
   attachments TestExecutionAttachment[]
 

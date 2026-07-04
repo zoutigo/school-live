@@ -145,6 +145,7 @@ model User {
   testCasesUpdated      TestCase[]              @relation("TestCaseUpdatedBy")
   testExecutions        TestExecution[]         @relation("TestExecutionUser")
   testExecutionsReviewed TestExecution[]        @relation("TestExecutionAdminReviewedBy")
+  testExecutionsReworkRequested TestExecution[] @relation("TestExecutionReworkRequestedBy")
   mobilePushTokens      MobilePushToken[]
   readMarkers           UserReadMarker[]
 }
