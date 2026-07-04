@@ -2,7 +2,8 @@
 
 ## Git
 
-- Ne jamais créer de commit ni pousser sur le remote sans instruction explicite de l'utilisateur.
+- Après toute modification du code (correction de bug, nouvelle fonctionnalité, correctif), terminer systématiquement par : des tests approfondis unitaires, fonctionnels et d'intégration (front ET back, y compris la gestion des erreurs), puis les vérifications précommit (format, lint, typecheck, build), et enfin un commit.
+- Le push sur le remote reste soumis à une instruction explicite de l'utilisateur (voir `/release-ci` pour le cycle complet push → PR → CI → merge).
 - Sauf indication explicite contraire de l'utilisateur, tout le développement se fait sur la branche `dev`.
 - Si la branche courante n'est pas `dev`, basculer dessus avant toute modification ou signaler clairement le blocage.
 
