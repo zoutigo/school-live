@@ -82,7 +82,11 @@ describe("FeedController", () => {
   it.each(["png", "jpg", "jpeg", "webp", "gif", "heic"])(
     "delegates attachment upload to mediaClientService with the feed-attachment kind for .%s images",
     async (ext) => {
-      const file = { buffer: Buffer.from("data"), mimetype: `image/${ext}`, size: 10 };
+      const file = {
+        buffer: Buffer.from("data"),
+        mimetype: `image/${ext}`,
+        size: 10,
+      };
       mediaClientService.uploadImage.mockResolvedValue({
         url: `https://cdn.example.com/feed/photo.${ext}`,
         size: 10,
