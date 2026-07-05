@@ -6,7 +6,10 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
+import { MessageAttachmentDto } from "./message-attachment.dto.js";
 
 export class UpdateDraftMessageDto {
   @IsOptional()
@@ -26,4 +29,15 @@ export class UpdateDraftMessageDto {
   @ArrayMaxSize(200)
   @IsString({ each: true })
   recipientUserIds?: string[];
+
+  /**
+   * Full desired attachment list — replaces all existing attachments on the
+   * draft. Undefined leaves attachments untouched; [] clears them.
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ValidateNested({ each: true })
+  @Type(() => MessageAttachmentDto)
+  attachments?: MessageAttachmentDto[];
 }

@@ -15,6 +15,7 @@ import type { ArchiveMessageDto } from "./dto/archive-message.dto.js";
 import type { CreateMessageDto } from "./dto/create-message.dto.js";
 import type { ListMessagesDto } from "./dto/list-messages.dto.js";
 import type { MarkMessageReadDto } from "./dto/mark-message-read.dto.js";
+import type { MessageAttachmentDto } from "./dto/message-attachment.dto.js";
 import type { UpdateDraftMessageDto } from "./dto/update-draft-message.dto.js";
 import {
   messagingLocaleFromUser,
@@ -495,6 +496,11 @@ export class MessagingService {
       select: {
         id: true,
         body: true,
+        attachments: {
+          select: {
+            fileUrl: true,
+          },
+        },
       },
     });
 
@@ -507,7 +513,8 @@ export class MessagingService {
     if (
       payload.subject === undefined &&
       payload.body === undefined &&
-      payload.recipientUserIds === undefined
+      payload.recipientUserIds === undefined &&
+      payload.attachments === undefined
     ) {
       throw new BadRequestException(
         translateMessagingError(locale, "messaging.errors.noFieldsToUpdate"),
@@ -522,6 +529,10 @@ export class MessagingService {
       payload.body === undefined
         ? undefined
         : sanitizeRichTextHtml(payload.body);
+    const nextAttachments =
+      payload.attachments === undefined
+        ? undefined
+        : this.normalizeMessageAttachments(payload.attachments);
 
     if (recipientIds) {
       await this.ensureRecipientsInSchool(
@@ -531,12 +542,32 @@ export class MessagingService {
       );
     }
 
+    if (nextAttachments) {
+      const nextUrls = new Set(
+        nextAttachments.map((attachment) => attachment.fileUrl),
+      );
+      const removedUrls = draft.attachments
+        .map((attachment) => attachment.fileUrl)
+        .filter((url) => !nextUrls.has(url));
+      await this.cleanupMediaUrls(removedUrls);
+    }
+
     await this.prisma.$transaction(async (tx) => {
       await tx.internalMessage.update({
         where: { id: messageId },
         data: {
           subject: payload.subject?.trim(),
           body: sanitizedBody,
+          attachments:
+            nextAttachments === undefined
+              ? undefined
+              : {
+                  deleteMany: {},
+                  create: nextAttachments.map((attachment) => ({
+                    schoolId: effectiveSchoolId,
+                    ...attachment,
+                  })),
+                },
         },
       });
 
@@ -1181,6 +1212,28 @@ export class MessagingService {
   private normalizeAttachmentFileName(fileName?: string) {
     const normalized = fileName?.trim();
     return normalized && normalized.length > 0 ? normalized : "piece-jointe";
+  }
+
+  private normalizeMessageAttachments(attachments: MessageAttachmentDto[]) {
+    return attachments.map((attachment) => ({
+      fileName: this.normalizeAttachmentFileName(attachment.fileName),
+      fileUrl: attachment.fileUrl.trim(),
+      mimeType: attachment.mimeType.trim(),
+      sizeBytes: attachment.sizeBytes,
+    }));
+  }
+
+  private async cleanupMediaUrls(urls: string[]) {
+    for (const url of urls) {
+      try {
+        await this.mediaClientService.deleteImageByUrl(url);
+      } catch (error) {
+        console.warn(
+          `[messaging] media cleanup failed for ${url}:`,
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
   }
 
   private mapAttachment(attachment: {
