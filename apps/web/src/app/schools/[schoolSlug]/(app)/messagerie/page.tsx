@@ -3,18 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  Archive,
-  ArchiveRestore,
-  FileText,
-  Forward,
-  Inbox,
-  Mail,
-  MailOpen,
-  Reply,
-  Send,
-} from "lucide-react";
-import { Card } from "../../../../../components/ui/card";
-import {
   archiveSchoolMessage,
   deleteSchoolMessage,
   getSchoolMessage,
@@ -22,23 +10,13 @@ import {
   listSchoolMessages,
   markSchoolMessageRead,
 } from "../../../../../components/messaging/messaging-api";
-import { MessagingAttachmentPreviewModal } from "../../../../../components/messaging/messaging-attachment-preview-modal";
 import { buildComposeQueryFromMessage } from "../../../../../components/messaging/messaging-compose-logic";
-import { MessagingMessageActions } from "../../../../../components/messaging/messaging-message-actions";
-import { MessagingFoldersPanel } from "../../../../../components/messaging/messaging-folders-panel";
-import { MessagingMessagesList } from "../../../../../components/messaging/messaging-messages-list";
-import { MessagingReader } from "../../../../../components/messaging/messaging-reader";
-import { MessagingToolbar } from "../../../../../components/messaging/messaging-toolbar";
-import { ConfirmDialog } from "../../../../../components/ui/confirm-dialog";
-import { ActionIconButton } from "../../../../../components/ui/action-icon-button";
+import {
+  MessagingMailboxView,
+  type MessagingMailboxClient,
+} from "../../../../../components/messaging/messaging-mailbox-view";
 import { useTranslation } from "../../../../../i18n/useTranslation";
-import type { TranslateFn } from "../../../../../i18n/useTranslation";
-import type {
-  FolderKey,
-  MessageAttachment,
-  MessagingFolder,
-  MessagingMessage,
-} from "../../../../../components/messaging/types";
+import type { FolderKey } from "../../../../../components/messaging/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -57,15 +35,6 @@ type MePayload = {
   schoolName?: string;
 };
 
-function buildFolders(t: TranslateFn): MessagingFolder[] {
-  return [
-    { key: "inbox", label: t("messaging.folders.inbox"), icon: Inbox },
-    { key: "sent", label: t("messaging.folders.sent"), icon: Send },
-    { key: "drafts", label: t("messaging.folders.drafts"), icon: FileText },
-    { key: "archive", label: t("messaging.folders.archive"), icon: Archive },
-  ];
-}
-
 const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
@@ -76,19 +45,6 @@ const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
   "PARENT",
 ];
 
-function getFolderLabel(folder: FolderKey, t: TranslateFn) {
-  if (folder === "inbox") {
-    return t("messaging.list.panelLabel.inbox");
-  }
-  if (folder === "sent") {
-    return t("messaging.list.panelLabel.sent");
-  }
-  if (folder === "drafts") {
-    return t("messaging.list.panelLabel.drafts");
-  }
-  return t("messaging.list.panelLabel.archive");
-}
-
 export default function SchoolMessageriePage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -96,36 +52,18 @@ export default function SchoolMessageriePage() {
   const params = useParams<{ schoolSlug: string }>();
   const schoolSlug = params.schoolSlug;
 
-  const initialFolder = searchParams.get("folder");
-  const [folder, setFolder] = useState<FolderKey>(
-    initialFolder === "sent" ||
-      initialFolder === "drafts" ||
-      initialFolder === "archive"
-      ? initialFolder
-      : "inbox",
-  );
-  const [search, setSearch] = useState(searchParams.get("q") ?? "");
-  const [unreadOnly, setUnreadOnly] = useState(false);
-  const [isCompactDevice, setIsCompactDevice] = useState(false);
+  const initialFolderParam = searchParams.get("folder");
+  const initialFolder: FolderKey =
+    initialFolderParam === "sent" ||
+    initialFolderParam === "drafts" ||
+    initialFolderParam === "archive"
+      ? initialFolderParam
+      : "inbox";
+  const initialSearch = searchParams.get("q") ?? "";
 
-  const [loading, setLoading] = useState(true);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [role, setRole] = useState<SchoolRole | null>(null);
-  const [messages, setMessages] = useState<MessagingMessage[]>([]);
-  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
-  const [draftsCount, setDraftsCount] = useState(0);
-  const [archiveCount, setArchiveCount] = useState(0);
-  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
-    null,
-  );
-  const [selectedMessage, setSelectedMessage] =
-    useState<MessagingMessage | null>(null);
-  const [previewAttachment, setPreviewAttachment] =
-    useState<MessageAttachment | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!schoolSlug) {
@@ -134,23 +72,12 @@ export default function SchoolMessageriePage() {
     void loadProfile(schoolSlug);
   }, [schoolSlug]);
 
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 1023px)");
-    const onChange = () => setIsCompactDevice(media.matches);
-    onChange();
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
-
   async function loadProfile(currentSchoolSlug: string) {
-    setLoading(true);
-    setError(null);
+    setProfileLoading(true);
     try {
       const response = await fetch(
         `${API_URL}/schools/${currentSchoolSlug}/me`,
-        {
-          credentials: "include",
-        },
+        { credentials: "include" },
       );
 
       if (!response.ok) {
@@ -161,395 +88,57 @@ export default function SchoolMessageriePage() {
       const payload = (await response.json()) as MePayload;
       setRole(payload.role ?? null);
       setSchoolName(payload.schoolName ?? null);
-      await loadMessages(currentSchoolSlug, folder, search);
-    } catch {
-      setError(t("messaging.page.loadError"));
     } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!schoolSlug || loading) {
-      return;
-    }
-    void loadMessages(schoolSlug, folder, search);
-  }, [schoolSlug, folder, search]);
-
-  useEffect(() => {
-    if (folder !== "inbox" && unreadOnly) {
-      setUnreadOnly(false);
-    }
-  }, [folder, unreadOnly]);
-
-  async function loadMessages(
-    currentSchoolSlug: string,
-    nextFolder: FolderKey,
-    nextSearch: string,
-  ) {
-    setMessagesLoading(true);
-    try {
-      const [payload, unreadCount, draftsPayload, archivePayload] =
-        await Promise.all([
-          listSchoolMessages(currentSchoolSlug, {
-            folder: nextFolder,
-            q: nextSearch,
-            page: 1,
-            limit: 50,
-          }),
-          getSchoolMessagesUnreadCount(currentSchoolSlug),
-          listSchoolMessages(currentSchoolSlug, {
-            folder: "drafts",
-            page: 1,
-            limit: 1,
-          }),
-          listSchoolMessages(currentSchoolSlug, {
-            folder: "archive",
-            page: 1,
-            limit: 1,
-          }),
-        ]);
-      setMessages(payload.items);
-      setInboxUnreadCount(unreadCount);
-      setDraftsCount(draftsPayload.meta.total);
-      setArchiveCount(archivePayload.meta.total);
-      setError(null);
-    } catch {
-      setError(t("messaging.page.loadError"));
-    } finally {
-      setMessagesLoading(false);
+      setProfileLoading(false);
     }
   }
 
   const canCompose = role ? COMPOSER_ALLOWED_ROLES.includes(role) : false;
 
-  useEffect(() => {
-    if (messages.length === 0) {
-      setSelectedMessageId(null);
-      setSelectedMessage(null);
-      return;
-    }
-    if (
-      !selectedMessageId ||
-      !messages.some((message) => message.id === selectedMessageId)
-    ) {
-      setSelectedMessageId(messages[0].id);
-    }
-  }, [messages, selectedMessageId]);
-
-  useEffect(() => {
-    if (!schoolSlug || !selectedMessageId || isCompactDevice) {
-      return;
-    }
-    void loadSelectedMessage(schoolSlug, selectedMessageId);
-  }, [schoolSlug, selectedMessageId, isCompactDevice]);
-
-  async function loadSelectedMessage(
-    currentSchoolSlug: string,
-    messageId: string,
-  ) {
-    try {
-      const details = await getSchoolMessage(currentSchoolSlug, messageId);
-      setSelectedMessage(details);
-      if (folder === "inbox") {
-        await markSchoolMessageRead(currentSchoolSlug, messageId, true);
-        setMessages((prev) =>
-          prev.map((entry) =>
-            entry.id === messageId ? { ...entry, unread: false } : entry,
-          ),
-        );
-        window.dispatchEvent(new Event("messaging:updated"));
-      }
-    } catch {
-      setSelectedMessage(null);
-    }
-  }
-
-  function handleMessageClick(messageId: string) {
-    if (isCompactDevice) {
-      const query = new URLSearchParams({ folder });
-      if (search.trim()) {
-        query.set("q", search.trim());
-      }
-      router.push(
-        `/schools/${schoolSlug}/messagerie/${messageId}?${query.toString()}`,
-      );
-      return;
-    }
-    setSelectedMessageId(messageId);
-  }
-
-  async function handleArchiveToggle() {
-    if (!schoolSlug || !selectedMessageId) {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      const isCurrentlyArchived = folder === "archive";
-      const archiveFlag = !isCurrentlyArchived;
-      await archiveSchoolMessage(schoolSlug, selectedMessageId, archiveFlag);
-      setMessages((prev) =>
-        prev.filter((entry) => entry.id !== selectedMessageId),
-      );
-      setSelectedMessageId(null);
-      setSelectedMessage(null);
-      window.dispatchEvent(new Event("messaging:updated"));
-      if (isCurrentlyArchived) {
-        // Désarchivage : bascule sur le dossier d'origine du message.
-        // mapDetailToUi hardcode folder:"inbox", on lit donc le folder depuis la liste.
-        const listEntry = messages.find((m) => m.id === selectedMessageId);
-        const targetFolder = listEntry?.folder === "sent" ? "sent" : "inbox";
-        setFolder(targetFolder);
-        await loadMessages(schoolSlug, targetFolder, search);
-      } else {
-        await loadMessages(schoolSlug, folder, search);
-      }
-    } catch {
-      setError(t("messaging.page.archiveError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!schoolSlug || !selectedMessageId) {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      await deleteSchoolMessage(schoolSlug, selectedMessageId);
-      setMessages((prev) =>
-        prev.filter((entry) => entry.id !== selectedMessageId),
-      );
-      setSelectedMessageId(null);
-      setSelectedMessage(null);
-      setDeleteConfirmOpen(false);
-      window.dispatchEvent(new Event("messaging:updated"));
-      await loadMessages(schoolSlug, folder, search);
-    } catch {
-      setError(t("messaging.page.deleteError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleToggleRead(messageId: string, read: boolean) {
-    if (!schoolSlug) {
-      return;
-    }
-    try {
-      await markSchoolMessageRead(schoolSlug, messageId, read);
-      setMessages((prev) =>
-        prev.map((entry) =>
-          entry.id === messageId ? { ...entry, unread: !read } : entry,
-        ),
-      );
-      if (selectedMessageId === messageId) {
-        setSelectedMessage((prev) =>
-          prev ? { ...prev, unread: !read } : prev,
-        );
-      }
-      window.dispatchEvent(new Event("messaging:updated"));
-    } catch {
-      setError(t("messaging.page.toggleReadError"));
-    }
-  }
-
-  async function handleRestoreFromArchive(messageId: string) {
-    if (!schoolSlug) {
-      return;
-    }
-    try {
-      const messageInList = messages.find((m) => m.id === messageId);
-      await archiveSchoolMessage(schoolSlug, messageId, false);
-      setMessages((prev) => prev.filter((entry) => entry.id !== messageId));
-      if (selectedMessageId === messageId) {
-        setSelectedMessageId(null);
-        setSelectedMessage(null);
-      }
-      window.dispatchEvent(new Event("messaging:updated"));
-      // Bascule sur le dossier d'origine et recharge
-      const targetFolder = messageInList?.folder === "sent" ? "sent" : "inbox";
-      setFolder(targetFolder);
-      await loadMessages(schoolSlug, targetFolder, search);
-    } catch {
-      setError(t("messaging.page.restoreError"));
-    }
-  }
-
-  function openComposeFromMessage(
-    mode: "reply" | "forward",
-    message: MessagingMessage,
-  ) {
-    const query = buildComposeQueryFromMessage(mode, message, t);
-    router.push(
-      `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
+  if (profileLoading) {
+    return (
+      <p className="text-sm text-text-secondary">
+        {t("messaging.page.loading")}
+      </p>
     );
   }
 
+  const client: MessagingMailboxClient = {
+    list: (params) => listSchoolMessages(schoolSlug, params),
+    get: (messageId) => getSchoolMessage(schoolSlug, messageId),
+    markRead: (messageId, read) =>
+      markSchoolMessageRead(schoolSlug, messageId, read),
+    archive: (messageId, archived) =>
+      archiveSchoolMessage(schoolSlug, messageId, archived),
+    remove: (messageId) => deleteSchoolMessage(schoolSlug, messageId),
+    unreadCount: () => getSchoolMessagesUnreadCount(schoolSlug),
+  };
+
   return (
-    <div className="grid gap-4 lg:h-[calc(100vh-10rem)]">
-      <Card
-        title={undefined}
-        subtitle={undefined}
-        className="h-full overflow-hidden"
-      >
-        {loading ? (
-          <p className="text-sm text-text-secondary">
-            {t("messaging.page.loading")}
-          </p>
-        ) : error ? (
-          <p className="text-sm text-notification">{error}</p>
-        ) : (
-          <div className="flex h-full min-h-0 flex-col gap-3">
-            <MessagingToolbar
-              title={t("messaging.toolbar.title")}
-              contextLabel={schoolName ?? t("messaging.toolbar.defaultContext")}
-              search={search}
-              onSearchChange={setSearch}
-              onCompose={
-                canCompose
-                  ? () =>
-                      router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
-                  : undefined
-              }
-            />
-
-            <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[240px_320px_minmax(0,1fr)]">
-              <div className="lg:min-h-0">
-                <MessagingFoldersPanel
-                  folders={buildFolders(t)}
-                  activeFolder={folder}
-                  onSelectFolder={setFolder}
-                  inboxUnreadCount={inboxUnreadCount}
-                  draftsCount={draftsCount}
-                  archiveCount={archiveCount}
-                  showComposeButton={canCompose}
-                  onCompose={() =>
-                    router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
-                  }
-                />
-              </div>
-              <div className="lg:min-h-0">
-                <MessagingMessagesList
-                  panelLabel={getFolderLabel(folder, t)}
-                  folder={folder}
-                  messages={messages}
-                  selectedMessageId={selectedMessageId}
-                  onSelectMessage={handleMessageClick}
-                  unreadOnly={unreadOnly}
-                  onUnreadOnlyChange={setUnreadOnly}
-                  renderActions={(message) => {
-                    if (folder === "inbox") {
-                      return (
-                        <ActionIconButton
-                          icon={message.unread ? MailOpen : Mail}
-                          label={
-                            message.unread
-                              ? t("messaging.actions.markAsRead")
-                              : t("messaging.actions.markAsUnread")
-                          }
-                          onClick={() =>
-                            void handleToggleRead(message.id, message.unread)
-                          }
-                          variant="neutral"
-                        />
-                      );
-                    }
-                    if (folder === "archive") {
-                      return (
-                        <ActionIconButton
-                          icon={ArchiveRestore}
-                          label={t("messaging.actions.restoreFromArchive")}
-                          onClick={() =>
-                            void handleRestoreFromArchive(message.id)
-                          }
-                          variant="primary"
-                        />
-                      );
-                    }
-                    return null;
-                  }}
-                />
-              </div>
-              <div className="hidden gap-2 lg:grid lg:min-h-0">
-                <MessagingReader
-                  desktopOnly
-                  message={selectedMessage}
-                  onOpenAttachment={setPreviewAttachment}
-                  topActions={
-                    selectedMessage ? (
-                      <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openComposeFromMessage("reply", selectedMessage)
-                            }
-                            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
-                          >
-                            <Reply className="h-4 w-4" />
-                            {t("messaging.detail.reply")}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openComposeFromMessage("forward", selectedMessage)
-                            }
-                            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
-                          >
-                            <Forward className="h-4 w-4" />
-                            {t("messaging.detail.forward")}
-                          </button>
-                        </div>
-                        <MessagingMessageActions
-                          archivedView={folder === "archive"}
-                          busy={actionBusy}
-                          onArchiveToggle={() => void handleArchiveToggle()}
-                          onDelete={() => setDeleteConfirmOpen(true)}
-                          unread={selectedMessage.unread}
-                          onToggleRead={
-                            folder === "inbox" && selectedMessageId
-                              ? () =>
-                                  void handleToggleRead(
-                                    selectedMessageId,
-                                    selectedMessage.unread,
-                                  )
-                              : undefined
-                          }
-                        />
-                      </div>
-                    ) : undefined
-                  }
-                />
-              </div>
-            </div>
-            {messagesLoading ? (
-              <p className="text-xs text-text-secondary">
-                {t("messaging.page.refreshing")}
-              </p>
-            ) : null}
-          </div>
-        )}
-      </Card>
-
-      <MessagingAttachmentPreviewModal
-        attachment={previewAttachment}
-        onClose={() => setPreviewAttachment(null)}
-      />
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        title={t("messaging.page.deleteConfirmTitle")}
-        message={t("messaging.page.deleteConfirmMessage")}
-        confirmLabel={t("messaging.page.deleteConfirmAction")}
-        loading={actionBusy}
-        onCancel={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          void handleDelete();
-        }}
-      />
-    </div>
+    <MessagingMailboxView
+      client={client}
+      contextLabel={schoolName ?? t("messaging.toolbar.defaultContext")}
+      canCompose={canCompose}
+      initialFolder={initialFolder}
+      initialSearch={initialSearch}
+      onOpenCompose={() =>
+        router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
+      }
+      onOpenComposeFromMessage={(mode, message) => {
+        const query = buildComposeQueryFromMessage(mode, message, t);
+        router.push(
+          `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
+        );
+      }}
+      onOpenMessage={(messageId, folder, search) => {
+        const query = new URLSearchParams({ folder });
+        if (search.trim()) {
+          query.set("q", search.trim());
+        }
+        router.push(
+          `/schools/${schoolSlug}/messagerie/${messageId}?${query.toString()}`,
+        );
+      }}
+    />
   );
 }

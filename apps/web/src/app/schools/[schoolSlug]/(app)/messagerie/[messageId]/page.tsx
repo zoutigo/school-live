@@ -1,32 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Forward, Reply } from "lucide-react";
-import { Card } from "../../../../../../components/ui/card";
 import {
   archiveSchoolMessage,
   deleteSchoolMessage,
   getSchoolMessage,
   markSchoolMessageRead,
 } from "../../../../../../components/messaging/messaging-api";
-import { MessagingAttachmentPreviewModal } from "../../../../../../components/messaging/messaging-attachment-preview-modal";
 import { buildComposeQueryFromMessage } from "../../../../../../components/messaging/messaging-compose-logic";
-import { MessagingMessageActions } from "../../../../../../components/messaging/messaging-message-actions";
-import { MessagingMessageDetail } from "../../../../../../components/messaging/messaging-message-detail";
-import type {
-  MessageAttachment,
-  MessagingMessage,
-} from "../../../../../../components/messaging/types";
-import { Button } from "../../../../../../components/ui/button";
-import { ConfirmDialog } from "../../../../../../components/ui/confirm-dialog";
+import {
+  MessagingMessageDetailView,
+  type MessagingDetailClient,
+} from "../../../../../../components/messaging/messaging-message-detail-view";
 import { useTranslation } from "../../../../../../i18n/useTranslation";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
-
-type MePayload = {
-  schoolName?: string;
-};
 
 export default function SchoolMessagerieMessagePage() {
   const { t } = useTranslation();
@@ -46,204 +33,29 @@ export default function SchoolMessagerieMessagePage() {
     return `/schools/${schoolSlug}/messagerie?${q.toString()}`;
   }, [folderParam, schoolSlug, searchParam]);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [schoolName, setSchoolName] = useState<string | null>(null);
-  const [message, setMessage] = useState<MessagingMessage | null>(null);
-  const [previewAttachment, setPreviewAttachment] =
-    useState<MessageAttachment | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-
-  useEffect(() => {
-    if (!schoolSlug) {
-      return;
-    }
-    void loadProfile(schoolSlug);
-  }, [schoolSlug]);
-
-  async function loadProfile(currentSchoolSlug: string) {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(
-        `${API_URL}/schools/${currentSchoolSlug}/me`,
-        {
-          credentials: "include",
-        },
-      );
-
-      if (!response.ok) {
-        router.replace(`/schools/${currentSchoolSlug}/login`);
-        return;
-      }
-
-      const payload = (await response.json()) as MePayload;
-      setSchoolName(payload.schoolName ?? null);
-      const details = await getSchoolMessage(currentSchoolSlug, messageId);
-      setMessage(details);
-      if (folderParam === "inbox") {
-        await markSchoolMessageRead(currentSchoolSlug, messageId, true);
-        window.dispatchEvent(new Event("messaging:updated"));
-      }
-    } catch {
-      setError(t("messaging.page.loadMessageError"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleArchiveToggle() {
-    if (!schoolSlug) {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      const isCurrentlyArchived = folderParam === "archive";
-      await archiveSchoolMessage(schoolSlug, messageId, !isCurrentlyArchived);
-      window.dispatchEvent(new Event("messaging:updated"));
-      if (isCurrentlyArchived) {
-        // Désarchivage : redirige vers le dossier d'origine du message
-        // (sender null = message reçu → inbox ; sender présent → envoyé → sent)
-        const targetFolder = message?.sender ? "inbox" : "sent";
-        router.push(`/schools/${schoolSlug}/messagerie?folder=${targetFolder}`);
-      } else {
-        router.push(backUrl);
-      }
-    } catch {
-      setError(t("messaging.page.archiveError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!schoolSlug) {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      await deleteSchoolMessage(schoolSlug, messageId);
-      setDeleteConfirmOpen(false);
-      window.dispatchEvent(new Event("messaging:updated"));
-      router.push(backUrl);
-    } catch {
-      setError(t("messaging.page.deleteError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleToggleRead() {
-    if (!schoolSlug || folderParam !== "inbox") {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      const nextRead = message?.unread ? true : false;
-      await markSchoolMessageRead(schoolSlug, messageId, nextRead);
-      setMessage((prev) => (prev ? { ...prev, unread: !nextRead } : prev));
-      window.dispatchEvent(new Event("messaging:updated"));
-    } catch {
-      setError(t("messaging.page.toggleReadError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  function openComposeFromMessage(mode: "reply" | "forward") {
-    if (!message) {
-      return;
-    }
-    const query = buildComposeQueryFromMessage(mode, message, t);
-    router.push(
-      `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
-    );
-  }
+  const client: MessagingDetailClient = {
+    get: (id) => getSchoolMessage(schoolSlug, id),
+    markRead: (id, read) => markSchoolMessageRead(schoolSlug, id, read),
+    archive: (id, archived) => archiveSchoolMessage(schoolSlug, id, archived),
+    remove: (id) => deleteSchoolMessage(schoolSlug, id),
+  };
 
   return (
-    <div className="grid gap-4">
-      <Card
-        title={t("messaging.page.title")}
-        subtitle={schoolName ?? t("messaging.page.readingSubtitle")}
-      >
-        {loading ? (
-          <p className="text-sm text-text-secondary">
-            {t("messaging.page.loading")}
-          </p>
-        ) : error ? (
-          <p className="text-sm text-notification">{error}</p>
-        ) : (
-          <MessagingMessageDetail
-            message={message}
-            onBack={() => router.push(backUrl)}
-            onOpenAttachment={setPreviewAttachment}
-            topActions={
-              message ? (
-                <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => openComposeFromMessage("reply")}
-                      iconLeft={<Reply className="h-4 w-4" />}
-                      aria-label={t("messaging.detail.reply")}
-                      className="px-2.5 min-[360px]:px-4"
-                    >
-                      <span className="hidden min-[360px]:inline">
-                        {t("messaging.detail.reply")}
-                      </span>
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => openComposeFromMessage("forward")}
-                      iconLeft={<Forward className="h-4 w-4" />}
-                      aria-label={t("messaging.detail.forward")}
-                      className="px-2.5 min-[360px]:px-4"
-                    >
-                      <span className="hidden min-[360px]:inline">
-                        {t("messaging.detail.forward")}
-                      </span>
-                    </Button>
-                  </div>
-                  <MessagingMessageActions
-                    archivedView={folderParam === "archive"}
-                    busy={actionBusy}
-                    onArchiveToggle={() => void handleArchiveToggle()}
-                    onDelete={() => setDeleteConfirmOpen(true)}
-                    unread={message.unread}
-                    onToggleRead={
-                      folderParam === "inbox"
-                        ? () => {
-                            void handleToggleRead();
-                          }
-                        : undefined
-                    }
-                  />
-                </div>
-              ) : null
-            }
-          />
-        )}
-      </Card>
-
-      <MessagingAttachmentPreviewModal
-        attachment={previewAttachment}
-        onClose={() => setPreviewAttachment(null)}
-      />
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        title={t("messaging.page.deleteConfirmTitle")}
-        message={t("messaging.page.deleteConfirmMessage")}
-        confirmLabel={t("messaging.page.deleteConfirmAction")}
-        loading={actionBusy}
-        onCancel={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          void handleDelete();
-        }}
-      />
-    </div>
+    <MessagingMessageDetailView
+      client={client}
+      messageId={messageId}
+      folder={folderParam}
+      contextLabel={t("messaging.page.readingSubtitle")}
+      onBack={() => router.push(backUrl)}
+      onArchivedRedirect={(targetFolder) =>
+        router.push(`/schools/${schoolSlug}/messagerie?folder=${targetFolder}`)
+      }
+      onOpenCompose={(mode, message) => {
+        const query = buildComposeQueryFromMessage(mode, message, t);
+        router.push(
+          `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
+        );
+      }}
+    />
   );
 }

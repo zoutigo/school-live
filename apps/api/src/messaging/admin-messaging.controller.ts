@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -16,9 +15,7 @@ import {
 import { FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
 import { Roles } from "../access/roles.decorator.js";
 import { RolesGuard } from "../access/roles.guard.js";
-import { SchoolScopeGuard } from "../access/school-scope.guard.js";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
-import { CurrentSchoolId } from "../auth/decorators/current-school-id.decorator.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
@@ -28,27 +25,19 @@ import { ListMessagesDto } from "./dto/list-messages.dto.js";
 import { MarkMessageReadDto } from "./dto/mark-message-read.dto.js";
 import { UpdateDraftMessageDto } from "./dto/update-draft-message.dto.js";
 import { normalizeCreateMessagePayload } from "./messaging-payload.util.js";
-import {
-  messagingLocaleFromUser,
-  translateMessagingError,
-} from "./messaging.translations.js";
+import { messagingLocaleFromUser } from "./messaging.translations.js";
 import { MessagingService } from "./messaging.service.js";
 
-@Controller("schools/:schoolSlug/messages")
-@UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-@Roles(
-  "SCHOOL_ADMIN",
-  "SCHOOL_MANAGER",
-  "SUPERVISOR",
-  "SCHOOL_ACCOUNTANT",
-  "SCHOOL_STAFF",
-  "TEACHER",
-  "PARENT",
-  "STUDENT",
-  "ADMIN",
-  "SUPER_ADMIN",
-)
-export class MessagingController {
+/**
+ * Platform-role (SUPER_ADMIN/ADMIN) mailbox: aggregates every school where
+ * the caller is sender or recipient into a single inbox, since they aren't
+ * scoped to one school themselves. Never exposes messages between third
+ * parties the caller isn't a party to (see MessagingService doc).
+ */
+@Controller("admin/messages")
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles("SUPER_ADMIN", "ADMIN")
+export class AdminMessagingController {
   constructor(
     private readonly messagingService: MessagingService,
     private readonly mediaClientService: MediaClientService,
@@ -58,52 +47,45 @@ export class MessagingController {
   @Get()
   list(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Query() query: ListMessagesDto,
   ) {
-    return this.messagingService.listMessages(user, schoolId, query);
+    return this.messagingService.listMessagesAcrossSchools(user, query);
+  }
+
+  @Get("unread-count")
+  unreadCount(@CurrentUser() user: AuthenticatedUser) {
+    return this.messagingService.getUnreadCountAcrossSchools(user);
+  }
+
+  @Get(":messageId")
+  details(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("messageId") messageId: string,
+  ) {
+    return this.messagingService.getMessageAcrossSchools(user, messageId);
   }
 
   @Post("uploads/inline-image")
   @UseInterceptors(
     FileInterceptor("file", {
-      limits: {
-        fileSize: 8 * 1024 * 1024,
-      },
+      limits: { fileSize: 8 * 1024 * 1024 },
     }),
   )
-  async uploadInlineImage(
-    @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
+  uploadInlineImage(
     @UploadedFile() file?: { buffer: Buffer; mimetype: string; size: number },
   ) {
-    if (!file) {
-      throw new BadRequestException(
-        translateMessagingError(
-          messagingLocaleFromUser(user),
-          "messaging.errors.missingImageFile",
-        ),
-      );
-    }
-    const uploaded = await this.mediaClientService.uploadImage(
-      "messaging-inline-image",
-      file,
-    );
-    await this.inlineMediaService.registerTempUpload({
-      schoolId,
-      uploadedByUserId: user.id,
-      scope: "MESSAGING",
-      url: uploaded.url,
-    });
-    return uploaded;
+    // Unlike the per-school controller, this doesn't call
+    // inlineMediaService.registerTempUpload: no schoolId is known yet at
+    // upload time (it's resolved once the recipients are picked). The image
+    // still gets tracked for cleanup once the message is created/saved, via
+    // syncEntityImages(schoolId) inside MessagingService#createMessage.
+    return this.mediaClientService.uploadImage("messaging-inline-image", file);
   }
 
   @Post("uploads/attachment")
   @UseInterceptors(
     FileInterceptor("file", {
-      limits: {
-        fileSize: 10 * 1024 * 1024,
-      },
+      limits: { fileSize: 10 * 1024 * 1024 },
     }),
   )
   uploadAttachment(
@@ -112,34 +94,14 @@ export class MessagingController {
     return this.mediaClientService.uploadImage("messaging-attachment", file);
   }
 
-  @Get("unread-count")
-  unreadCount(
-    @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
-  ) {
-    return this.messagingService.getUnreadCount(user, schoolId);
-  }
-
-  @Get(":messageId")
-  details(
-    @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
-    @Param("messageId") messageId: string,
-  ) {
-    return this.messagingService.getMessage(user, schoolId, messageId);
-  }
-
   @Post()
   @UseInterceptors(
     FilesInterceptor("attachments", 10, {
-      limits: {
-        fileSize: 10 * 1024 * 1024,
-      },
+      limits: { fileSize: 10 * 1024 * 1024 },
     }),
   )
-  create(
+  async create(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Body() payload: Record<string, unknown>,
     @UploadedFiles()
     attachments?: Array<{
@@ -149,24 +111,53 @@ export class MessagingController {
       size: number;
     }>,
   ) {
-    return this.messagingService.createMessage(
-      user,
-      schoolId,
-      normalizeCreateMessagePayload(payload, messagingLocaleFromUser(user)),
-      attachments ?? [],
+    const locale = messagingLocaleFromUser(user);
+    const normalized = normalizeCreateMessagePayload(payload, locale);
+    const groups = await this.messagingService.groupRecipientsBySchool(
+      normalized.recipientUserIds ?? [],
+      locale,
     );
+
+    const schoolIds = Array.from(groups.keys());
+
+    if (schoolIds.length === 1) {
+      return this.messagingService.createMessage(
+        user,
+        schoolIds[0],
+        normalized,
+        attachments ?? [],
+      );
+    }
+
+    // Broadcast across several schools at once (e.g. "message every school
+    // admin"): one InternalMessage per school, always sent immediately —
+    // a multi-school "draft" can't be represented coherently in one row.
+    const created = await Promise.all(
+      schoolIds.map((schoolId) =>
+        this.messagingService.createMessage(
+          user,
+          schoolId,
+          {
+            ...normalized,
+            recipientUserIds: groups.get(schoolId),
+            isDraft: false,
+          },
+          attachments ?? [],
+        ),
+      ),
+    );
+
+    return { broadcast: true, schools: schoolIds.length, messages: created };
   }
 
   @Patch(":messageId/draft")
   updateDraft(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Param("messageId") messageId: string,
     @Body() payload: UpdateDraftMessageDto,
   ) {
-    return this.messagingService.updateDraft(
+    return this.messagingService.updateDraftAcrossSchools(
       user,
-      schoolId,
       messageId,
       payload,
     );
@@ -175,22 +166,19 @@ export class MessagingController {
   @Post(":messageId/send")
   sendDraft(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Param("messageId") messageId: string,
   ) {
-    return this.messagingService.sendDraft(user, schoolId, messageId);
+    return this.messagingService.sendDraftAcrossSchools(user, messageId);
   }
 
   @Patch(":messageId/read")
   markRead(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Param("messageId") messageId: string,
     @Body() payload: MarkMessageReadDto,
   ) {
-    return this.messagingService.markRead(
+    return this.messagingService.markReadAcrossSchools(
       user,
-      schoolId,
       messageId,
       payload.read,
     );
@@ -199,13 +187,11 @@ export class MessagingController {
   @Patch(":messageId/archive")
   archive(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Param("messageId") messageId: string,
     @Body() payload: ArchiveMessageDto,
   ) {
-    return this.messagingService.archiveMessage(
+    return this.messagingService.archiveMessageAcrossSchools(
       user,
-      schoolId,
       messageId,
       payload.archived,
     );
@@ -214,9 +200,11 @@ export class MessagingController {
   @Delete(":messageId")
   remove(
     @CurrentUser() user: AuthenticatedUser,
-    @CurrentSchoolId() schoolId: string,
     @Param("messageId") messageId: string,
   ) {
-    return this.messagingService.deleteFromMailbox(user, schoolId, messageId);
+    return this.messagingService.deleteFromMailboxAcrossSchools(
+      user,
+      messageId,
+    );
   }
 }

@@ -1639,6 +1639,8 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "messaging.toolbar.title": "Messagerie",
     "messaging.toolbar.defaultContext": "Echanges internes et familles",
+    "messaging.toolbar.platformContext":
+      "Messagerie plateforme (toutes ecoles)",
     "messaging.toolbar.searchPlaceholder": "Rechercher un message...",
     "messaging.toolbar.refresh": "Rafraichir",
     "messaging.toolbar.newMessage": "Nouveau message",
@@ -1676,6 +1678,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.compose.addStaff": "Ajouter un personnel",
     "messaging.compose.removeRecipient": "Retirer ce destinataire",
     "messaging.compose.noRecipientOption": "Aucun destinataire selectionne",
+    "messaging.compose.searchRecipientsPlaceholder":
+      "Rechercher un destinataire par nom ou email...",
+    "messaging.compose.searchingRecipients": "Recherche en cours...",
+    "messaging.compose.noRecipientMatch": "Aucun resultat",
+    "messaging.compose.multiSchoolDraftNotice":
+      "Les destinataires appartiennent a plusieurs ecoles : le message sera envoye immediatement (l'enregistrement en brouillon n'est pas disponible dans ce cas).",
     "messaging.compose.subject": "Sujet",
     "messaging.compose.subjectPlaceholder": "Objet du message",
     "messaging.compose.message": "Message",
@@ -4668,6 +4676,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "messaging.toolbar.title": "Messaging",
     "messaging.toolbar.defaultContext": "Internal and family exchanges",
+    "messaging.toolbar.platformContext": "Platform messaging (all schools)",
     "messaging.toolbar.searchPlaceholder": "Search a message...",
     "messaging.toolbar.refresh": "Refresh",
     "messaging.toolbar.newMessage": "New message",
@@ -4704,6 +4713,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.compose.addStaff": "Add a staff member",
     "messaging.compose.removeRecipient": "Remove this recipient",
     "messaging.compose.noRecipientOption": "No recipient selected",
+    "messaging.compose.searchRecipientsPlaceholder":
+      "Search a recipient by name or email...",
+    "messaging.compose.searchingRecipients": "Searching...",
+    "messaging.compose.noRecipientMatch": "No match",
+    "messaging.compose.multiSchoolDraftNotice":
+      "Recipients belong to several schools: the message will be sent immediately (saving as a draft isn't available in this case).",
     "messaging.compose.subject": "Subject",
     "messaging.compose.subjectPlaceholder": "Message subject",
     "messaging.compose.message": "Message",

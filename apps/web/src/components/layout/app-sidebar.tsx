@@ -35,6 +35,7 @@ import {
   type TeacherClassBadgeSummary,
   type UnreadSummary,
 } from "./badges-api";
+import { getPlatformMessagesUnreadCount } from "../messaging/admin-messaging-api";
 import type { Role } from "../../lib/role-view";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
@@ -81,6 +82,7 @@ function buildItems(
   schoolSlug: string | null | undefined,
   t: TranslateFn,
   badges: UnreadSummary | null,
+  platformMessagesUnread?: number,
 ): NavItem[] {
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "/acceuil";
   const messagesUnread = toUnread(badges?.messagesUnread);
@@ -166,6 +168,13 @@ function buildItems(
               href: "/admin-tests",
               icon: ClipboardList,
               matchPrefix: "/admin-tests",
+            },
+            {
+              label: t("messaging.nav.title"),
+              href: "/messagerie",
+              icon: MessageSquare,
+              matchPrefix: "/messagerie",
+              unread: toUnread(platformMessagesUnread),
             },
           ]
         : []),
@@ -580,7 +589,14 @@ export function AppSidebar({
   const [openTeacherSection, setOpenTeacherSection] =
     useState<string>("classes");
   const [badgeSummary, setBadgeSummary] = useState<UnreadSummary | null>(null);
-  const items = buildItems(role, schoolSlug, t, badgeSummary);
+  const [platformMessagesUnread, setPlatformMessagesUnread] = useState(0);
+  const items = buildItems(
+    role,
+    schoolSlug,
+    t,
+    badgeSummary,
+    platformMessagesUnread,
+  );
   const ticketsUnread = toUnread(
     (badgeSummary?.ticketsNeedingResponse ?? 0) +
       (badgeSummary?.ticketsUnreadReplies ?? 0),
@@ -648,6 +664,34 @@ export function AppSidebar({
       window.removeEventListener("online", reload);
     };
   }, [schoolSlug]);
+
+  useEffect(() => {
+    // Platform roles (SUPER_ADMIN/ADMIN) have no schoolSlug context, so their
+    // messaging badge can't come from the school-scoped unread summary above
+    // — it's fetched independently from the aggregated mailbox endpoint.
+    if (role !== "SUPER_ADMIN" && role !== "ADMIN") {
+      setPlatformMessagesUnread(0);
+      return;
+    }
+
+    void loadPlatformMessagesUnread();
+    const reload = () => void loadPlatformMessagesUnread();
+    window.addEventListener("messaging:updated", reload);
+    window.addEventListener("online", reload);
+    return () => {
+      window.removeEventListener("messaging:updated", reload);
+      window.removeEventListener("online", reload);
+    };
+  }, [role]);
+
+  async function loadPlatformMessagesUnread() {
+    try {
+      const unread = await getPlatformMessagesUnreadCount();
+      setPlatformMessagesUnread(unread);
+    } catch {
+      // Keep last known count if the request fails transiently.
+    }
+  }
 
   async function loadBadgeSummary(currentSchoolSlug: string) {
     try {

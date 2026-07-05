@@ -3606,6 +3606,31 @@ export class ManagementService {
   }
 
   async listMessagingRecipients(schoolId: string) {
+    const platformAdminAssignments =
+      await this.prisma.platformRoleAssignment.findMany({
+        where: { role: { in: ["SUPER_ADMIN", "ADMIN"] } },
+        orderBy: [
+          { user: { lastName: "asc" } },
+          { user: { firstName: "asc" } },
+        ],
+        select: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+        },
+        distinct: ["userId"],
+      });
+    const platformAdmins = platformAdminAssignments.map((entry) => ({
+      value: entry.user.id,
+      label: `${entry.user.lastName} ${entry.user.firstName}`.trim(),
+      email: entry.user.email,
+    }));
+
     const activeSchoolYearId = await this.getActiveSchoolYearId(schoolId);
     const teacherAssignments = await this.prisma.teacherClassSubject.findMany({
       where: {
@@ -3744,6 +3769,7 @@ export class ManagementService {
           functionLabel: entry.name,
         })),
       ),
+      platformAdmins,
     };
   }
 

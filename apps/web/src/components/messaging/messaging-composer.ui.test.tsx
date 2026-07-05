@@ -182,3 +182,100 @@ describe("MessagingComposer", () => {
     expect(onRequestBackToList).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("MessagingComposer — mode recherche de destinataires (admin plateforme)", () => {
+  it("recherche et ajoute un destinataire trouvé via onSearchRecipients", async () => {
+    const onSearchRecipients = vi.fn().mockResolvedValue([
+      {
+        value: "u-directeur-a",
+        label: "Directeur EcoleA",
+        schoolSlug: "ecole-a",
+        schoolName: "École A",
+      },
+    ]);
+    const onSend = vi.fn().mockResolvedValue(undefined);
+
+    const { container } = render(
+      <MessagingComposer
+        onSearchRecipients={onSearchRecipients}
+        onCancel={vi.fn()}
+        onSend={onSend}
+      />,
+    );
+
+    const searchInput = screen.getByPlaceholderText(
+      "Rechercher un destinataire par nom ou email...",
+    );
+    fireEvent.change(searchInput, { target: { value: "direct" } });
+
+    await waitFor(
+      () => expect(onSearchRecipients).toHaveBeenCalledWith("direct"),
+      {
+        timeout: 1000,
+      },
+    );
+
+    const resultButton = await screen.findByText("Directeur EcoleA");
+    fireEvent.click(resultButton);
+
+    expect(screen.getByText("Directeur EcoleA")).toBeInTheDocument();
+    expect(searchInput).toHaveValue("");
+
+    fireEvent.change(screen.getByPlaceholderText("Objet du message"), {
+      target: { value: "Bonjour" },
+    });
+    setEditorText(container, "Contenu");
+
+    fireEvent.click(screen.getByRole("button", { name: "Envoyer" }));
+
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientUserIds: ["u-directeur-a"] }),
+    );
+  });
+
+  it("désactive l'enregistrement en brouillon quand les destinataires couvrent plusieurs écoles", async () => {
+    const onSearchRecipients = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          value: "u-directeur-a",
+          label: "Directeur EcoleA",
+          schoolSlug: "ecole-a",
+          schoolName: "École A",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          value: "u-directeur-b",
+          label: "Directeur EcoleB",
+          schoolSlug: "ecole-b",
+          schoolName: "École B",
+        },
+      ]);
+
+    render(
+      <MessagingComposer
+        onSearchRecipients={onSearchRecipients}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    const searchInput = screen.getByPlaceholderText(
+      "Rechercher un destinataire par nom ou email...",
+    );
+
+    fireEvent.change(searchInput, { target: { value: "direct a" } });
+    fireEvent.click(await screen.findByText("Directeur EcoleA"));
+
+    const saveDraftButton = screen.getByRole("button", {
+      name: "Enregistrer en brouillon",
+    });
+    expect(saveDraftButton).toBeEnabled();
+
+    fireEvent.change(searchInput, { target: { value: "direct b" } });
+    fireEvent.click(await screen.findByText("Directeur EcoleB"));
+
+    expect(saveDraftButton).toBeDisabled();
+  });
+});

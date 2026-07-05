@@ -48,6 +48,7 @@ const makePrismaMock = () => {
     },
     internalMessageAttachment: { findMany: jest.fn() },
     schoolMembership: { findMany: jest.fn() },
+    platformRoleAssignment: { findMany: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -1037,6 +1038,355 @@ describe("MessagingService", () => {
       ).rejects.toThrow(BadRequestException);
 
       expect(prisma.internalMessage.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── *AcrossSchools — mailbox agrégée des rôles plateforme ──────────────────
+
+  describe("listMessagesAcrossSchools()", () => {
+    it("n'applique aucun filtre schoolId sur la requête inbox", async () => {
+      const admin = makeUser({
+        id: "admin-1",
+        platformRoles: ["SUPER_ADMIN"],
+        memberships: [],
+      });
+      prisma.internalMessageRecipient.count.mockResolvedValue(0);
+      prisma.internalMessageRecipient.findMany.mockResolvedValue([]);
+
+      await service.listMessagesAcrossSchools(admin, { folder: "inbox" });
+
+      const whereArg =
+        prisma.internalMessageRecipient.findMany.mock.calls[0][0].where;
+      expect(whereArg.schoolId).toBeUndefined();
+      expect(whereArg.recipientUserId).toBe("admin-1");
+    });
+
+    it("agrège les messages reçus de plusieurs écoles distinctes", async () => {
+      const admin = makeUser({
+        id: "admin-1",
+        platformRoles: ["SUPER_ADMIN"],
+        memberships: [],
+      });
+      const rowSchoolA = {
+        id: "rec-a",
+        readAt: null,
+        message: {
+          id: "msg-a",
+          status: "SENT",
+          subject: "De l'école A",
+          body: "<p>a</p>",
+          createdAt: new Date(),
+          sentAt: new Date(),
+          senderUser: {
+            id: "s-a",
+            firstName: "A",
+            lastName: "A",
+            email: null,
+          },
+          school: { slug: "ecole-a", name: "École A" },
+          attachments: [],
+          _count: { recipients: 1 },
+        },
+      };
+      const rowSchoolB = {
+        ...rowSchoolA,
+        id: "rec-b",
+        message: {
+          ...rowSchoolA.message,
+          id: "msg-b",
+          subject: "De l'école B",
+          school: { slug: "ecole-b", name: "École B" },
+        },
+      };
+      prisma.internalMessageRecipient.count.mockResolvedValue(2);
+      prisma.internalMessageRecipient.findMany.mockResolvedValue([
+        rowSchoolA,
+        rowSchoolB,
+      ]);
+
+      const result = await service.listMessagesAcrossSchools(admin, {
+        folder: "inbox",
+      });
+
+      expect(result.items).toHaveLength(2);
+      expect(result.items.map((item) => item.subject)).toEqual([
+        "De l'école A",
+        "De l'école B",
+      ]);
+    });
+  });
+
+  describe("getUnreadCountAcrossSchools()", () => {
+    it("compte sans filtre schoolId", async () => {
+      const admin = makeUser({
+        id: "admin-1",
+        platformRoles: ["ADMIN"],
+        memberships: [],
+      });
+      prisma.internalMessageRecipient.count.mockResolvedValue(3);
+
+      const result = await service.getUnreadCountAcrossSchools(admin);
+
+      expect(result).toEqual({ unread: 3 });
+      const whereArg = prisma.internalMessageRecipient.count.mock.calls[0][0]
+        .where as Record<string, unknown>;
+      expect(whereArg.schoolId).toBeUndefined();
+      expect(whereArg.recipientUserId).toBe("admin-1");
+    });
+  });
+
+  describe("getMessageAcrossSchools()", () => {
+    it("retourne le message si l'utilisateur est destinataire, quelle que soit l'école", async () => {
+      const admin = makeUser({
+        id: "admin-1",
+        platformRoles: ["ADMIN"],
+        memberships: [],
+      });
+      prisma.internalMessage.findFirst.mockResolvedValue({
+        id: "msg-1",
+        schoolId: "school-X",
+        senderUserId: "other-user",
+        status: "SENT",
+        subject: "Sujet",
+        body: "<p>Bonjour</p>",
+        createdAt: new Date(),
+        sentAt: new Date(),
+        senderArchivedAt: null,
+        school: { slug: "ecole-x", name: "École X" },
+        senderUser: {
+          id: "other-user",
+          firstName: "O",
+          lastName: "U",
+          email: null,
+        },
+        attachments: [],
+        recipients: [
+          {
+            id: "rec-1",
+            recipientUserId: "admin-1",
+            readAt: null,
+            archivedAt: null,
+            deletedAt: null,
+            createdAt: new Date(),
+            recipientUser: {
+              id: "admin-1",
+              firstName: "Admin",
+              lastName: "Root",
+              email: null,
+            },
+          },
+        ],
+      });
+
+      const result = await service.getMessageAcrossSchools(admin, "msg-1");
+
+      expect(result.id).toBe("msg-1");
+      expect(result.school).toEqual({ slug: "ecole-x", name: "École X" });
+    });
+
+    it("lance ForbiddenException si l'utilisateur n'est ni émetteur ni destinataire (pas de fuite inter-école)", async () => {
+      const admin = makeUser({
+        id: "admin-1",
+        platformRoles: ["ADMIN"],
+        memberships: [],
+      });
+      prisma.internalMessage.findFirst.mockResolvedValue({
+        id: "msg-1",
+        schoolId: "school-X",
+        senderUserId: "other-user",
+        status: "SENT",
+        subject: "Sujet",
+        body: "<p>Bonjour</p>",
+        createdAt: new Date(),
+        sentAt: new Date(),
+        senderArchivedAt: null,
+        school: { slug: "ecole-x", name: "École X" },
+        senderUser: {
+          id: "other-user",
+          firstName: "O",
+          lastName: "U",
+          email: null,
+        },
+        attachments: [],
+        recipients: [],
+      });
+
+      await expect(
+        service.getMessageAcrossSchools(admin, "msg-1"),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("lance NotFoundException si le message n'existe pas", async () => {
+      const admin = makeUser({
+        id: "admin-1",
+        platformRoles: ["ADMIN"],
+        memberships: [],
+      });
+      prisma.internalMessage.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.getMessageAcrossSchools(admin, "msg-missing"),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("markReadAcrossSchools() / archiveMessageAcrossSchools() / deleteFromMailboxAcrossSchools()", () => {
+    const admin = makeUser({
+      id: "admin-1",
+      platformRoles: ["ADMIN"],
+      memberships: [],
+    });
+
+    it("markReadAcrossSchools ne filtre pas par schoolId", async () => {
+      prisma.internalMessageRecipient.findFirst.mockResolvedValue({
+        id: "rec-1",
+      });
+      prisma.internalMessageRecipient.update.mockResolvedValue({});
+
+      await service.markReadAcrossSchools(admin, "msg-1", true);
+
+      const whereArg = prisma.internalMessageRecipient.findFirst.mock
+        .calls[0][0].where as Record<string, unknown>;
+      expect(whereArg.schoolId).toBeUndefined();
+    });
+
+    it("archiveMessageAcrossSchools archive côté destinataire sans schoolId", async () => {
+      prisma.internalMessage.findFirst.mockResolvedValue({
+        id: "msg-1",
+        senderUserId: "someone-else",
+      });
+      prisma.internalMessageRecipient.findFirst.mockResolvedValue({
+        id: "rec-1",
+      });
+      prisma.internalMessageRecipient.update.mockResolvedValue({});
+
+      const result = await service.archiveMessageAcrossSchools(
+        admin,
+        "msg-1",
+        true,
+      );
+
+      expect(result).toEqual({ success: true });
+    });
+
+    it("deleteFromMailboxAcrossSchools soft-delete côté destinataire", async () => {
+      prisma.internalMessage.findFirst.mockResolvedValue({
+        id: "msg-1",
+        status: "SENT",
+        senderUserId: "someone-else",
+      });
+      prisma.internalMessageRecipient.findFirst.mockResolvedValue({
+        id: "rec-1",
+      });
+      prisma.internalMessageRecipient.update.mockResolvedValue({});
+
+      const result = await service.deleteFromMailboxAcrossSchools(
+        admin,
+        "msg-1",
+      );
+
+      expect(prisma.internalMessageRecipient.update).toHaveBeenCalledWith({
+        where: { id: "rec-1" },
+        data: { deletedAt: expect.any(Date) },
+      });
+      expect(result).toEqual({ success: true });
+    });
+  });
+
+  describe("groupRecipientsBySchool()", () => {
+    it("regroupe les destinataires par école", async () => {
+      prisma.schoolMembership.findMany.mockResolvedValue([
+        { userId: "user-a", schoolId: "school-A" },
+        { userId: "user-b", schoolId: "school-B" },
+      ]);
+
+      const groups = await service.groupRecipientsBySchool(
+        ["user-a", "user-b"],
+        "fr",
+      );
+
+      expect(groups.get("school-A")).toEqual(["user-a"]);
+      expect(groups.get("school-B")).toEqual(["user-b"]);
+    });
+
+    it("ne fait apparaître un utilisateur multi-écoles que dans un seul groupe (le plus ancien)", async () => {
+      prisma.schoolMembership.findMany.mockResolvedValue([
+        { userId: "user-a", schoolId: "school-A" },
+        { userId: "user-a", schoolId: "school-B" },
+      ]);
+
+      const groups = await service.groupRecipientsBySchool(["user-a"], "fr");
+
+      const totalOccurrences = Array.from(groups.values()).flat().length;
+      expect(totalOccurrences).toBe(1);
+      expect(groups.get("school-A")).toEqual(["user-a"]);
+    });
+
+    it("lance BadRequestException si un destinataire n'appartient à aucune école", async () => {
+      prisma.schoolMembership.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.groupRecipientsBySchool(["ghost-user"], "fr"),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("lance BadRequestException si la liste de destinataires est vide", async () => {
+      await expect(service.groupRecipientsBySchool([], "fr")).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe("ensureRecipientsInSchool() — via createMessage() — destinataire admin sans membership", () => {
+    it("accepte un platform admin comme destinataire même sans SchoolMembership", async () => {
+      const user = makeUser({ id: "sender-1" });
+      prisma.schoolMembership.findMany.mockResolvedValue([]);
+      prisma.platformRoleAssignment.findMany.mockResolvedValue([
+        { userId: "admin-1" },
+      ]);
+      prisma.internalMessage.create.mockResolvedValue({ id: "msg-new" });
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+      prisma.internalMessage.findFirst.mockResolvedValue(
+        makeGetMessageResponse({ senderUserId: "sender-1", recipients: [] }),
+      );
+
+      await expect(
+        service.createMessage(
+          user,
+          "school-1",
+          {
+            subject: "Besoin d'aide",
+            body: "<p>Bonjour</p>",
+            recipientUserIds: ["admin-1"],
+            isDraft: false,
+          },
+          [],
+        ),
+      ).resolves.toBeDefined();
+
+      expect(prisma.internalMessage.create).toHaveBeenCalled();
+    });
+
+    it("rejette un destinataire qui n'a ni membership ni rôle plateforme", async () => {
+      const user = makeUser({ id: "sender-1" });
+      prisma.schoolMembership.findMany.mockResolvedValue([]);
+      prisma.platformRoleAssignment.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.createMessage(
+          user,
+          "school-1",
+          {
+            subject: "Sujet",
+            body: "<p>Bonjour</p>",
+            recipientUserIds: ["ghost-user"],
+            isDraft: false,
+          },
+          [],
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.internalMessage.create).not.toHaveBeenCalled();
     });
   });
 });
