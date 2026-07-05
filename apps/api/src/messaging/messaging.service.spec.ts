@@ -27,28 +27,44 @@ function makeUser(
   };
 }
 
-const makePrismaMock = () => ({
-  internalMessage: {
-    findFirst: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    findMany: jest.fn(),
-    count: jest.fn(),
-  },
-  internalMessageRecipient: {
-    findFirst: jest.fn(),
-    findMany: jest.fn(),
-    count: jest.fn(),
-    update: jest.fn(),
-    updateMany: jest.fn(),
-    createMany: jest.fn(),
-    deleteMany: jest.fn(),
-  },
-  internalMessageAttachment: { findMany: jest.fn() },
-  schoolMembership: { findMany: jest.fn() },
-  $transaction: jest.fn((arr: Promise<unknown>[]) => Promise.all(arr)),
-});
+const makePrismaMock = () => {
+  const client = {
+    internalMessage: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+    },
+    internalMessageRecipient: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      createMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    internalMessageAttachment: { findMany: jest.fn() },
+    schoolMembership: { findMany: jest.fn() },
+    $transaction: jest.fn(),
+  };
+
+  // Supports both array-form (`$transaction([...])`) and callback-form
+  // (`$transaction(async (tx) => {...})`) usages — updateDraft() uses the
+  // latter, passing the same mocked client through as `tx`.
+  client.$transaction.mockImplementation(
+    (arg: Promise<unknown>[] | ((tx: typeof client) => Promise<unknown>)) => {
+      if (typeof arg === "function") {
+        return arg(client);
+      }
+      return Promise.all(arg);
+    },
+  );
+
+  return client;
+};
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -853,6 +869,174 @@ describe("MessagingService", () => {
       );
       expect(urls).toContain("https://cdn/nouveau.pdf");
       expect(urls).toContain("https://cdn/existant.pdf");
+    });
+  });
+
+  // ── updateDraft — pièces jointes ────────────────────────────────────────────
+
+  const makeDraftRow = (overrides: Record<string, unknown> = {}) => ({
+    id: "draft-1",
+    body: "<p>Bonjour</p>",
+    attachments: [],
+    ...overrides,
+  });
+
+  describe("updateDraft() — pièces jointes", () => {
+    it("ne touche pas les attachments si le champ n'est pas fourni", async () => {
+      const user = makeUser({ id: "user-1" });
+      prisma.internalMessage.findFirst
+        .mockResolvedValueOnce(
+          makeDraftRow({
+            attachments: [{ fileUrl: "https://cdn/keep.pdf" }],
+          }),
+        )
+        .mockResolvedValueOnce(makeGetMessageResponse({ status: "DRAFT" }));
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+
+      await service.updateDraft(user, "school-1", "draft-1", {
+        subject: "Nouveau sujet",
+      });
+
+      expect(mediaClient.deleteImageByUrl).not.toHaveBeenCalled();
+      const updateCall = prisma.internalMessage.update.mock.calls[0][0] as {
+        data: { attachments: unknown };
+      };
+      expect(updateCall.data.attachments).toBeUndefined();
+    });
+
+    it("ajoute des pièces jointes à un brouillon qui n'en avait aucune", async () => {
+      const user = makeUser({ id: "user-1" });
+      prisma.internalMessage.findFirst
+        .mockResolvedValueOnce(makeDraftRow({ attachments: [] }))
+        .mockResolvedValueOnce(makeGetMessageResponse({ status: "DRAFT" }));
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+
+      await service.updateDraft(user, "school-1", "draft-1", {
+        attachments: [
+          {
+            fileName: "nouveau.pdf",
+            fileUrl: "https://cdn/nouveau.pdf",
+            mimeType: "application/pdf",
+            sizeBytes: 1000,
+          },
+        ],
+      });
+
+      expect(mediaClient.deleteImageByUrl).not.toHaveBeenCalled();
+      const updateCall = prisma.internalMessage.update.mock.calls[0][0] as {
+        data: {
+          attachments: {
+            deleteMany: object;
+            create: Array<{ fileUrl: string; fileName: string }>;
+          };
+        };
+      };
+      expect(updateCall.data.attachments.deleteMany).toEqual({});
+      expect(updateCall.data.attachments.create).toHaveLength(1);
+      expect(updateCall.data.attachments.create[0].fileUrl).toBe(
+        "https://cdn/nouveau.pdf",
+      );
+    });
+
+    it("supprime physiquement les pièces jointes retirées, garde celles listées", async () => {
+      const user = makeUser({ id: "user-1" });
+      prisma.internalMessage.findFirst
+        .mockResolvedValueOnce(
+          makeDraftRow({
+            attachments: [
+              { fileUrl: "https://cdn/keep.pdf" },
+              { fileUrl: "https://cdn/remove.pdf" },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(makeGetMessageResponse({ status: "DRAFT" }));
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+
+      await service.updateDraft(user, "school-1", "draft-1", {
+        attachments: [
+          {
+            fileName: "keep.pdf",
+            fileUrl: "https://cdn/keep.pdf",
+            mimeType: "application/pdf",
+            sizeBytes: 500,
+          },
+        ],
+      });
+
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledTimes(1);
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledWith(
+        "https://cdn/remove.pdf",
+      );
+    });
+
+    it("vide toutes les pièces jointes et nettoie les fichiers média quand attachments=[]", async () => {
+      const user = makeUser({ id: "user-1" });
+      prisma.internalMessage.findFirst
+        .mockResolvedValueOnce(
+          makeDraftRow({
+            attachments: [
+              { fileUrl: "https://cdn/a.pdf" },
+              { fileUrl: "https://cdn/b.pdf" },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(makeGetMessageResponse({ status: "DRAFT" }));
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+
+      await service.updateDraft(user, "school-1", "draft-1", {
+        attachments: [],
+      });
+
+      expect(mediaClient.deleteImageByUrl).toHaveBeenCalledTimes(2);
+      const updateCall = prisma.internalMessage.update.mock.calls[0][0] as {
+        data: { attachments: { create: unknown[] } };
+      };
+      expect(updateCall.data.attachments.create).toHaveLength(0);
+    });
+
+    it("continue même si la suppression média échoue (best effort, ne bloque pas la sauvegarde)", async () => {
+      const user = makeUser({ id: "user-1" });
+      prisma.internalMessage.findFirst
+        .mockResolvedValueOnce(
+          makeDraftRow({
+            attachments: [{ fileUrl: "https://cdn/remove.pdf" }],
+          }),
+        )
+        .mockResolvedValueOnce(makeGetMessageResponse({ status: "DRAFT" }));
+      inlineMedia.syncEntityImages.mockResolvedValue(undefined);
+      mediaClient.deleteImageByUrl.mockRejectedValue(
+        new Error("media service down"),
+      );
+
+      await expect(
+        service.updateDraft(user, "school-1", "draft-1", { attachments: [] }),
+      ).resolves.toBeDefined();
+
+      expect(prisma.internalMessage.update).toHaveBeenCalled();
+    });
+
+    it("lance NotFoundException si le brouillon n'existe pas ou n'appartient pas à l'utilisateur", async () => {
+      const user = makeUser({ id: "user-1" });
+      prisma.internalMessage.findFirst.mockResolvedValueOnce(null);
+
+      await expect(
+        service.updateDraft(user, "school-1", "draft-missing", {
+          attachments: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.internalMessage.update).not.toHaveBeenCalled();
+    });
+
+    it("lance BadRequestException si aucun champ n'est fourni (subject/body/recipients/attachments)", async () => {
+      const user = makeUser({ id: "user-1" });
+      prisma.internalMessage.findFirst.mockResolvedValueOnce(makeDraftRow());
+
+      await expect(
+        service.updateDraft(user, "school-1", "draft-1", {}),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(prisma.internalMessage.update).not.toHaveBeenCalled();
     });
   });
 });

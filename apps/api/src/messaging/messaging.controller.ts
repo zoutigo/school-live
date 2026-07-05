@@ -99,6 +99,20 @@ export class MessagingController {
     return uploaded;
   }
 
+  @Post("uploads/attachment")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+    }),
+  )
+  uploadAttachment(
+    @UploadedFile() file?: { buffer: Buffer; mimetype: string; size: number },
+  ) {
+    return this.mediaClientService.uploadImage("messaging-attachment", file);
+  }
+
   @Get("unread-count")
   unreadCount(
     @CurrentUser() user: AuthenticatedUser,

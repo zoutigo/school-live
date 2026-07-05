@@ -86,6 +86,36 @@ describe("MessagingController", () => {
     });
   });
 
+  it("uploads a message attachment through the media client without registering it as inline media", async () => {
+    const file = {
+      buffer: Buffer.from("doc"),
+      mimetype: "application/pdf",
+      size: 456,
+    };
+    mediaClientService.uploadImage.mockResolvedValue({
+      url: "https://cdn.example.com/messaging/attachment/1.pdf",
+      size: 456,
+      width: null,
+      height: null,
+      mimeType: "application/pdf",
+    });
+
+    const result = await controller.uploadAttachment(file);
+
+    expect(mediaClientService.uploadImage).toHaveBeenCalledWith(
+      "messaging-attachment",
+      file,
+    );
+    expect(result).toEqual({
+      url: "https://cdn.example.com/messaging/attachment/1.pdf",
+      size: 456,
+      width: null,
+      height: null,
+      mimeType: "application/pdf",
+    });
+    expect(inlineMediaService.registerTempUpload).not.toHaveBeenCalled();
+  });
+
   it("delegates write actions to messaging service", async () => {
     const createPayload = {
       recipientUserIds: ["u-2"],

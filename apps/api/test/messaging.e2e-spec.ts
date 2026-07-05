@@ -553,4 +553,209 @@ describe("Messaging API e2e", () => {
     expect(response.status).toBe(502);
     expect(String(body.message)).toBe("Type upload non supporte");
   });
+
+  it("supports adding, replacing and clearing attachments on a draft via updateDraft", async () => {
+    const createDraft = await apiJson(`/api/schools/${schoolSlug}/messages`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${senderToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        subject: "Brouillon avec pieces jointes",
+        body: "<p>Brouillon</p>",
+        recipientUserIds: [],
+        isDraft: true,
+      }),
+    });
+    expect(createDraft.response.status).toBe(201);
+    const draftId = String(createDraft.body!.id);
+
+    const firstUrl = `https://cdn.example.test/messaging-attachment-first-${runId}.pdf`;
+    const uploadSpy = jest
+      .spyOn(mediaClientService, "uploadImage")
+      .mockResolvedValueOnce({
+        url: firstUrl,
+        size: 1024,
+        width: null,
+        height: null,
+        mimeType: "application/pdf",
+      });
+
+    const uploadFormData = new FormData();
+    uploadFormData.append(
+      "file",
+      new Blob([Buffer.from("first-pdf")], { type: "application/pdf" }),
+      "premier.pdf",
+    );
+    const uploadResponse = await api(
+      `/api/schools/${schoolSlug}/messages/uploads/attachment`,
+      {
+        method: "POST",
+        headers: { authorization: `Bearer ${senderToken}` },
+        body: uploadFormData,
+      },
+    );
+    const uploadBody = (await uploadResponse.json()) as JsonObject;
+    expect(uploadResponse.status).toBe(201);
+    expect(uploadBody.url).toBe(firstUrl);
+    expect(uploadSpy).toHaveBeenCalledWith(
+      "messaging-attachment",
+      expect.objectContaining({ mimetype: "application/pdf" }),
+    );
+
+    const addAttachment = await apiJson(
+      `/api/schools/${schoolSlug}/messages/${draftId}/draft`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${senderToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          attachments: [
+            {
+              fileName: "premier.pdf",
+              fileUrl: firstUrl,
+              mimeType: "application/pdf",
+              sizeBytes: 1024,
+            },
+          ],
+        }),
+      },
+    );
+    expect(addAttachment.response.status).toBe(200);
+    expect(addAttachment.body!.attachments).toEqual([
+      expect.objectContaining({
+        fileName: "premier.pdf",
+        url: firstUrl,
+        mimeType: "application/pdf",
+        sizeBytes: 1024,
+      }),
+    ]);
+
+    const secondUrl = `https://cdn.example.test/messaging-attachment-second-${runId}.pdf`;
+    const deleteSpy = jest
+      .spyOn(mediaClientService, "deleteImageByUrl")
+      .mockResolvedValue(undefined);
+
+    const replaceAttachment = await apiJson(
+      `/api/schools/${schoolSlug}/messages/${draftId}/draft`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${senderToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          attachments: [
+            {
+              fileName: "second.pdf",
+              fileUrl: secondUrl,
+              mimeType: "application/pdf",
+              sizeBytes: 2048,
+            },
+          ],
+        }),
+      },
+    );
+    expect(replaceAttachment.response.status).toBe(200);
+    expect(replaceAttachment.body!.attachments).toEqual([
+      expect.objectContaining({ fileName: "second.pdf", url: secondUrl }),
+    ]);
+    expect(deleteSpy).toHaveBeenCalledWith(firstUrl);
+
+    const clearAttachments = await apiJson(
+      `/api/schools/${schoolSlug}/messages/${draftId}/draft`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${senderToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ attachments: [] }),
+      },
+    );
+    expect(clearAttachments.response.status).toBe(200);
+    expect(clearAttachments.body!.attachments).toEqual([]);
+    expect(deleteSpy).toHaveBeenCalledWith(secondUrl);
+
+    const remaining = await prisma.internalMessageAttachment.findMany({
+      where: { messageId: draftId },
+    });
+    expect(remaining).toHaveLength(0);
+
+    await prisma.internalMessage.deleteMany({ where: { id: draftId } });
+  });
+
+  it("rejects updateDraft attachments payloads missing required fields", async () => {
+    const createDraft = await apiJson(`/api/schools/${schoolSlug}/messages`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${senderToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        subject: "Brouillon invalide",
+        body: "<p>Brouillon</p>",
+        recipientUserIds: [],
+        isDraft: true,
+      }),
+    });
+    const draftId = String(createDraft.body!.id);
+
+    const { response, body } = await apiJson(
+      `/api/schools/${schoolSlug}/messages/${draftId}/draft`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${senderToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          attachments: [{ fileName: "sans-url.pdf" }],
+        }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    expect(
+      Array.isArray(body!.message) || typeof body!.message === "string",
+    ).toBe(true);
+
+    await prisma.internalMessage.deleteMany({ where: { id: draftId } });
+  });
+
+  it("rejects updateDraft on a draft owned by another user", async () => {
+    const createDraft = await apiJson(`/api/schools/${schoolSlug}/messages`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${senderToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        subject: "Brouillon d'un autre",
+        body: "<p>Brouillon</p>",
+        recipientUserIds: [],
+        isDraft: true,
+      }),
+    });
+    const draftId = String(createDraft.body!.id);
+
+    const { response } = await apiJson(
+      `/api/schools/${schoolSlug}/messages/${draftId}/draft`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${recipientToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ attachments: [] }),
+      },
+    );
+
+    expect(response.status).toBe(404);
+
+    await prisma.internalMessage.deleteMany({ where: { id: draftId } });
+  });
 });
