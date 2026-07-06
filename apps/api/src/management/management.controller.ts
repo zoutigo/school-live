@@ -407,6 +407,13 @@ export class ManagementController {
     );
   }
 
+  @Get("schools/:schoolSlug/admin/dashboard-kpis")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  getDashboardKpis(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.getDashboardKpis(schoolId);
+  }
+
   @Get("schools/:schoolSlug/admin/school-years")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
   @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")

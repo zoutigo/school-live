@@ -4,12 +4,13 @@ import { MailModule } from "../mail/mail.module.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
 import { MediaClientModule } from "../media-client/media-client.module.js";
 import { SchoolsModule } from "../schools/schools.module.js";
+import { AdminMessagingController } from "./admin-messaging.controller.js";
 import { MessagingController } from "./messaging.controller.js";
 import { MessagingService } from "./messaging.service.js";
 
 @Module({
   imports: [AccessModule, SchoolsModule, MailModule, MediaClientModule],
-  controllers: [MessagingController],
+  controllers: [MessagingController, AdminMessagingController],
   providers: [MessagingService, InlineMediaService],
 })
 export class MessagingModule {}

@@ -34,6 +34,11 @@ type RecipientOption = {
   label: string;
 };
 
+export type SearchRecipientOption = RecipientOption & {
+  schoolSlug?: string | null;
+  schoolName?: string | null;
+};
+
 type TeacherRecipientOption = {
   value: string;
   label: string;
@@ -73,6 +78,14 @@ type Props = {
     attachments: File[];
   }) => Promise<void>;
   onUploadInlineImage?: (file: File) => Promise<string>;
+  /**
+   * Platform-wide compose mode (SUPER_ADMIN/ADMIN): recipients are searched
+   * across every school instead of picked from a preloaded list, since the
+   * candidate pool is the whole platform. When provided, takes over the
+   * recipient picker in place of `recipients`/`teacherRecipients`/
+   * `functionRecipients`.
+   */
+  onSearchRecipients?: (query: string) => Promise<SearchRecipientOption[]>;
 };
 
 type SelectedRecipient = {
@@ -80,6 +93,7 @@ type SelectedRecipient = {
   label: string;
   kind: "generic" | "teacher" | "function";
   subtitle?: string;
+  schoolSlug?: string | null;
 };
 
 export function MessagingComposer({
@@ -95,6 +109,7 @@ export function MessagingComposer({
   onSend,
   onSaveDraft,
   onUploadInlineImage,
+  onSearchRecipients,
 }: Props) {
   const { t } = useTranslation();
   const editorApiRef = useRef<RichTextEditorRef | null>(null);
@@ -121,9 +136,67 @@ export function MessagingComposer({
   const [staffModalOpen, setStaffModalOpen] = useState(false);
 
   const hasRecipientGroups =
-    teacherRecipients.length > 0 || functionRecipients.length > 0;
+    teacherRecipients.length > 0 ||
+    functionRecipients.length > 0 ||
+    Boolean(onSearchRecipients);
   const [initialRecipientsApplied, setInitialRecipientsApplied] =
     useState(false);
+
+  const [recipientSearchTerm, setRecipientSearchTerm] = useState("");
+  const [recipientSearchResults, setRecipientSearchResults] = useState<
+    SearchRecipientOption[]
+  >([]);
+  const [recipientSearchLoading, setRecipientSearchLoading] = useState(false);
+
+  useEffect(() => {
+    if (!onSearchRecipients) {
+      return;
+    }
+    const query = recipientSearchTerm.trim();
+    if (query.length < 2) {
+      setRecipientSearchResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    setRecipientSearchLoading(true);
+    const timeout = setTimeout(() => {
+      void onSearchRecipients(query)
+        .then((results) => {
+          if (!cancelled) {
+            setRecipientSearchResults(results);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setRecipientSearchResults([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setRecipientSearchLoading(false);
+          }
+        });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [recipientSearchTerm, onSearchRecipients]);
+
+  const selectedSchoolSlugs = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selectedRecipients
+            .map((entry) => entry.schoolSlug)
+            .filter((slug): slug is string => Boolean(slug)),
+        ),
+      ),
+    [selectedRecipients],
+  );
+  const spansMultipleSchools = selectedSchoolSlugs.length > 1;
 
   useEffect(() => {
     if (initialRecipientsApplied) {
@@ -400,21 +473,86 @@ export function MessagingComposer({
                       </div>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <ActionIconButton
-                      icon={UserRound}
-                      label={t("messaging.compose.addTeacher")}
-                      variant="primary"
-                      onClick={() => setTeacherModalOpen(true)}
-                    />
-                    <ActionIconButton
-                      icon={Plus}
-                      label={t("messaging.compose.addStaff")}
-                      variant="primary"
-                      onClick={() => setStaffModalOpen(true)}
-                    />
-                  </div>
+                  {onSearchRecipients ? null : (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <ActionIconButton
+                        icon={UserRound}
+                        label={t("messaging.compose.addTeacher")}
+                        variant="primary"
+                        onClick={() => setTeacherModalOpen(true)}
+                      />
+                      <ActionIconButton
+                        icon={Plus}
+                        label={t("messaging.compose.addStaff")}
+                        variant="primary"
+                        onClick={() => setStaffModalOpen(true)}
+                      />
+                    </div>
+                  )}
                 </div>
+
+                {onSearchRecipients ? (
+                  <div className="relative">
+                    <div className="flex items-center gap-2 rounded-[14px] border border-warm-border bg-surface px-3 py-2">
+                      <Search className="h-4 w-4 text-text-secondary" />
+                      <input
+                        type="text"
+                        value={recipientSearchTerm}
+                        onChange={(event) =>
+                          setRecipientSearchTerm(event.target.value)
+                        }
+                        placeholder={t(
+                          "messaging.compose.searchRecipientsPlaceholder",
+                        )}
+                        className="w-full bg-transparent text-sm text-text-primary outline-none"
+                      />
+                    </div>
+                    {recipientSearchTerm.trim().length >= 2 ? (
+                      <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-[14px] border border-warm-border bg-surface shadow-lg">
+                        {recipientSearchLoading ? (
+                          <p className="px-3 py-2 text-xs text-text-secondary">
+                            {t("messaging.compose.searchingRecipients")}
+                          </p>
+                        ) : recipientSearchResults.length === 0 ? (
+                          <p className="px-3 py-2 text-xs text-text-secondary">
+                            {t("messaging.compose.noRecipientMatch")}
+                          </p>
+                        ) : (
+                          recipientSearchResults.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => {
+                                addRecipient({
+                                  kind: "generic",
+                                  value: option.value,
+                                  label: option.label,
+                                  subtitle: option.schoolName ?? undefined,
+                                  schoolSlug: option.schoolSlug,
+                                });
+                                setRecipientSearchTerm("");
+                                setRecipientSearchResults([]);
+                              }}
+                              className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-text-primary transition hover:bg-warm-highlight/60"
+                            >
+                              <span>{option.label}</span>
+                              {option.schoolName ? (
+                                <span className="text-[11px] text-text-secondary">
+                                  {option.schoolName}
+                                </span>
+                              ) : null}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+                    {spansMultipleSchools ? (
+                      <p className="mt-1 text-[11px] text-text-secondary">
+                        {t("messaging.compose.multiSchoolDraftNotice")}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : (
               <FormSelect
@@ -546,8 +684,13 @@ export function MessagingComposer({
             <button
               type="button"
               onClick={handleSaveDraft}
-              disabled={sending || savingDraft}
-              className="rounded-[14px] border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary transition hover:bg-primary/20"
+              disabled={sending || savingDraft || spansMultipleSchools}
+              title={
+                spansMultipleSchools
+                  ? t("messaging.compose.multiSchoolDraftNotice")
+                  : undefined
+              }
+              className="rounded-[14px] border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary transition hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {savingDraft
                 ? t("messaging.compose.savingDraft")

@@ -82,6 +82,108 @@ body {
   animation: menu-attention-pulse 1.6s ease-in-out 1;
 }
 
+@keyframes float-blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(24px, -28px) scale(1.06);
+  }
+  66% {
+    transform: translate(-18px, 18px) scale(0.96);
+  }
+}
+
+@keyframes float-blob-slow {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-30px, 26px) scale(1.08);
+  }
+}
+
+@keyframes hero-ken-burns {
+  0% {
+    transform: scale(1.06) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.14) translate(-1%, -1%);
+  }
+}
+
+.animate-blob {
+  animation: float-blob 15s ease-in-out infinite;
+}
+
+.animate-blob-slow {
+  animation: float-blob-slow 21s ease-in-out infinite;
+}
+
+.animate-blob-delay {
+  animation-delay: -7s;
+}
+
+.hero-bg-ken-burns {
+  animation: hero-ken-burns 18s ease-out forwards alternate infinite;
+}
+
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Ruled-paper texture: a nod to the school exercise-book, used as ambient
+   texture instead of generic decorative blobs. */
+.paper-ruled-bg {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 34px,
+    rgba(12, 95, 168, 0.06) 34px,
+    rgba(12, 95, 168, 0.06) 35px
+  );
+}
+
+@keyframes bulletin-drift {
+  0%,
+  100% {
+    transform: rotate(-3deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-1.5deg) translateY(-10px);
+  }
+}
+
+.bulletin-card {
+  animation: bulletin-drift 7s ease-in-out infinite;
+}
+
+@keyframes pen-circle-draw {
+  from {
+    stroke-dashoffset: 220;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.pen-circle-path {
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  animation: pen-circle-draw 0.9s 0.6s ease-out forwards;
+}
+
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
     [type="file"]
   ),

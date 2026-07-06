@@ -682,3 +682,71 @@ describe("AppSidebar badges", () => {
     expect(messagingLink).toHaveTextContent("9");
   });
 });
+
+describe("AppSidebar messaging link for platform roles", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockPush.mockReset();
+    mockPathname = "/acceuil";
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+  });
+
+  function mockUnreadCount(unread: number) {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/admin/messages/unread-count")) {
+        return new Response(JSON.stringify({ unread }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+  }
+
+  it("shows a Messagerie link pointing to /messagerie for SUPER_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SUPER_ADMIN" />);
+
+    const link = await screen.findByRole("link", { name: /Messagerie/ });
+    expect(link.getAttribute("href")).toBe("/messagerie");
+  });
+
+  it("shows a Messagerie link for ADMIN with the aggregated unread badge", async () => {
+    mockUnreadCount(4);
+
+    render(<AppSidebar role="ADMIN" />);
+
+    const link = await screen.findByRole("link", { name: /Messagerie/ });
+    expect(link).toHaveTextContent("4");
+  });
+
+  it("does not show a Messagerie link for SALES", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SALES" />);
+
+    await screen.findByRole("link", { name: /Ecoles|Schools/ });
+    expect(
+      screen.queryByRole("link", { name: /Messagerie/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show a Messagerie link for SUPPORT", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SUPPORT" />);
+
+    await screen.findByRole("link", { name: /Ecoles|Schools/ });
+    expect(
+      screen.queryByRole("link", { name: /Messagerie/ }),
+    ).not.toBeInTheDocument();
+  });
+});

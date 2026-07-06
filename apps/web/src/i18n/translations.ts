@@ -79,11 +79,20 @@ export const translations: Record<Locale, Record<string, string>> = {
     "landing.hero.title": "Acces Scolive",
     "landing.hero.subtitle":
       "Connectez-vous avec la methode fournie par votre ecole.",
+    "landing.hero.eyebrow": "La plateforme scolaire tout-en-un",
+    "landing.hero.catchphrase":
+      "La vie scolaire de votre enfant, connectee et sereine.",
+    "landing.hero.loginCta": "Se connecter",
+    "landing.login.backToHome": "Retour a l'accueil",
+    "landing.hero.mock.name": "Amina N. - 6e",
+    "landing.hero.mock.term": "Trimestre 1",
+    "landing.hero.mock.average": "Moyenne generale",
+    "landing.hero.mock.score": "15,8/20",
+    "landing.hero.mock.status": "Bulletin valide",
     "landing.mobileApp.title": "Application mobile Scolive",
-    "landing.mobileApp.subtitle": "Disponible sur iOS et Android",
+    "landing.mobileApp.subtitle": "Disponible sur Android",
     "landing.mobileApp.description":
       "Restez connecte a la vie scolaire de votre etablissement depuis votre mobile.",
-    "landing.mobileApp.appStore": "Telecharger sur App Store",
     "landing.mobileApp.androidApk": "Telecharger l'APK Android",
     "landing.platform.title": "Une plateforme pensee pour les ecoles",
     "landing.platform.subtitle":
@@ -91,6 +100,18 @@ export const translations: Record<Locale, Record<string, string>> = {
     "landing.platform.imageAlt": "Eleves africains dans une ecole moderne",
     "landing.platform.description":
       "Scolive valorise la reussite des apprenants avec des outils numeriques clairs, accessibles et adaptes au quotidien scolaire.",
+    "landing.appShowcase.eyebrow": "L'application mobile",
+    "landing.appShowcase.title":
+      "Toute la scolarite de votre enfant, a portee de main",
+    "landing.appShowcase.description":
+      "Notes, devoirs, emploi du temps, messagerie... Naviguez d'un geste entre toutes les rubriques de la vie scolaire, directement depuis votre telephone.",
+    "landing.appShowcase.imageAlt":
+      "Menu de navigation de l'application mobile Scolive",
+    "landing.appShowcase.item1": "Notes",
+    "landing.appShowcase.item2": "Devoirs",
+    "landing.appShowcase.item3": "Emploi du temps",
+    "landing.appShowcase.item4": "Vie scolaire",
+    "landing.appShowcase.item5": "Messagerie",
     "landing.features.notes.title": "Suivi des notes",
     "landing.features.notes.description":
       "Consultez resultats, moyennes et progression en temps reel.",
@@ -103,6 +124,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "landing.features.schoolLife.title": "Vie scolaire",
     "landing.features.schoolLife.description":
       "Absences, emploi du temps, documents et informations utiles.",
+    "landing.features.eyebrow": "Ce que Scolive change au quotidien",
     "landing.features.cardFooter":
       "Scolive centralise vos interactions ecole-famille.",
 
@@ -1639,6 +1661,8 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "messaging.toolbar.title": "Messagerie",
     "messaging.toolbar.defaultContext": "Echanges internes et familles",
+    "messaging.toolbar.platformContext":
+      "Messagerie plateforme (toutes ecoles)",
     "messaging.toolbar.searchPlaceholder": "Rechercher un message...",
     "messaging.toolbar.refresh": "Rafraichir",
     "messaging.toolbar.newMessage": "Nouveau message",
@@ -1676,6 +1700,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.compose.addStaff": "Ajouter un personnel",
     "messaging.compose.removeRecipient": "Retirer ce destinataire",
     "messaging.compose.noRecipientOption": "Aucun destinataire selectionne",
+    "messaging.compose.searchRecipientsPlaceholder":
+      "Rechercher un destinataire par nom ou email...",
+    "messaging.compose.searchingRecipients": "Recherche en cours...",
+    "messaging.compose.noRecipientMatch": "Aucun resultat",
+    "messaging.compose.multiSchoolDraftNotice":
+      "Les destinataires appartiennent a plusieurs ecoles : le message sera envoye immediatement (l'enregistrement en brouillon n'est pas disponible dans ce cas).",
     "messaging.compose.subject": "Sujet",
     "messaging.compose.subjectPlaceholder": "Objet du message",
     "messaging.compose.message": "Message",
@@ -3169,17 +3199,37 @@ export const translations: Record<Locale, Record<string, string>> = {
     "landing.hero.title": "Scolive Access",
     "landing.hero.subtitle":
       "Sign in using the method provided by your school.",
+    "landing.hero.eyebrow": "The all-in-one school platform",
+    "landing.hero.catchphrase":
+      "Your child's school life, connected and effortless.",
+    "landing.hero.loginCta": "Sign in",
+    "landing.login.backToHome": "Back to home",
+    "landing.hero.mock.name": "Amina N. - Grade 6",
+    "landing.hero.mock.term": "Term 1",
+    "landing.hero.mock.average": "Overall average",
+    "landing.hero.mock.score": "15.8/20",
+    "landing.hero.mock.status": "Report validated",
     "landing.mobileApp.title": "Scolive mobile app",
-    "landing.mobileApp.subtitle": "Available on iOS and Android",
+    "landing.mobileApp.subtitle": "Available on Android",
     "landing.mobileApp.description":
       "Stay connected to your school's life from your mobile.",
-    "landing.mobileApp.appStore": "Download on the App Store",
     "landing.mobileApp.androidApk": "Download the Android APK",
     "landing.platform.title": "A platform designed for schools",
     "landing.platform.subtitle": "A modern, connected school environment",
     "landing.platform.imageAlt": "African students in a modern school",
     "landing.platform.description":
       "Scolive supports learner success with clear, accessible digital tools suited to everyday school life.",
+    "landing.appShowcase.eyebrow": "The mobile app",
+    "landing.appShowcase.title":
+      "Your child's whole school life, right in your hand",
+    "landing.appShowcase.description":
+      "Grades, homework, timetable, messaging... Move between every part of school life in one tap, straight from your phone.",
+    "landing.appShowcase.imageAlt": "Navigation menu of the Scolive mobile app",
+    "landing.appShowcase.item1": "Grades",
+    "landing.appShowcase.item2": "Homework",
+    "landing.appShowcase.item3": "Timetable",
+    "landing.appShowcase.item4": "School life",
+    "landing.appShowcase.item5": "Messaging",
     "landing.features.notes.title": "Grade tracking",
     "landing.features.notes.description":
       "View results, averages and progress in real time.",
@@ -3192,6 +3242,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "landing.features.schoolLife.title": "School life",
     "landing.features.schoolLife.description":
       "Absences, timetable, documents and useful information.",
+    "landing.features.eyebrow": "What Scolive changes every day",
     "landing.features.cardFooter":
       "Scolive centralizes school-family interactions.",
 
@@ -4668,6 +4719,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "messaging.toolbar.title": "Messaging",
     "messaging.toolbar.defaultContext": "Internal and family exchanges",
+    "messaging.toolbar.platformContext": "Platform messaging (all schools)",
     "messaging.toolbar.searchPlaceholder": "Search a message...",
     "messaging.toolbar.refresh": "Refresh",
     "messaging.toolbar.newMessage": "New message",
@@ -4704,6 +4756,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.compose.addStaff": "Add a staff member",
     "messaging.compose.removeRecipient": "Remove this recipient",
     "messaging.compose.noRecipientOption": "No recipient selected",
+    "messaging.compose.searchRecipientsPlaceholder":
+      "Search a recipient by name or email...",
+    "messaging.compose.searchingRecipients": "Searching...",
+    "messaging.compose.noRecipientMatch": "No match",
+    "messaging.compose.multiSchoolDraftNotice":
+      "Recipients belong to several schools: the message will be sent immediately (saving as a draft isn't available in this case).",
     "messaging.compose.subject": "Subject",
     "messaging.compose.subjectPlaceholder": "Message subject",
     "messaging.compose.message": "Message",

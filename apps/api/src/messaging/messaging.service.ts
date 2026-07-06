@@ -828,6 +828,821 @@ export class MessagingService {
     return { success: true };
   }
 
+  /**
+   * Platform-role (SUPER_ADMIN/ADMIN) variants below aggregate across every
+   * school instead of scoping to one — the caller isn't a member of any
+   * particular school, so their mailbox spans everywhere they are sender or
+   * recipient. They never expose messages the platform user isn't a party
+   * to (no cross-school "supervision" access).
+   */
+
+  async listMessagesAcrossSchools(
+    user: AuthenticatedUser,
+    query: ListMessagesDto,
+  ) {
+    const folder: MessageFolder = query.folder ?? "inbox";
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.max(1, Math.min(100, query.limit ?? 20));
+    const searchTerm = query.q?.trim().toLowerCase() ?? "";
+
+    if (folder === "archive") {
+      return this.listArchiveMessagesAcrossSchools(
+        user.id,
+        page,
+        limit,
+        searchTerm,
+      );
+    }
+
+    if (folder === "inbox") {
+      const where: Prisma.InternalMessageRecipientWhereInput = {
+        recipientUserId: user.id,
+        deletedAt: null,
+        archivedAt: null,
+        message: {
+          status: "SENT",
+          ...(searchTerm
+            ? {
+                OR: [
+                  { subject: { contains: searchTerm, mode: "insensitive" } },
+                  { body: { contains: searchTerm, mode: "insensitive" } },
+                  {
+                    senderUser: {
+                      OR: [
+                        {
+                          firstName: {
+                            contains: searchTerm,
+                            mode: "insensitive",
+                          },
+                        },
+                        {
+                          lastName: {
+                            contains: searchTerm,
+                            mode: "insensitive",
+                          },
+                        },
+                        {
+                          email: {
+                            contains: searchTerm,
+                            mode: "insensitive",
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              }
+            : {}),
+        },
+      };
+
+      const [total, rows] = await this.prisma.$transaction([
+        this.prisma.internalMessageRecipient.count({ where }),
+        this.prisma.internalMessageRecipient.findMany({
+          where,
+          orderBy: [{ message: { sentAt: "desc" } }, { createdAt: "desc" }],
+          skip: (page - 1) * limit,
+          take: limit,
+          select: {
+            id: true,
+            readAt: true,
+            message: {
+              select: {
+                id: true,
+                status: true,
+                subject: true,
+                body: true,
+                createdAt: true,
+                sentAt: true,
+                senderUser: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                  },
+                },
+                school: {
+                  select: { slug: true, name: true },
+                },
+                attachments: {
+                  orderBy: [{ createdAt: "asc" }],
+                  select: {
+                    id: true,
+                    fileName: true,
+                    fileUrl: true,
+                    mimeType: true,
+                    sizeBytes: true,
+                  },
+                },
+                _count: {
+                  select: {
+                    recipients: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+
+      return {
+        items: rows.map((row) => this.mapInboxRow(row)),
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / limit)),
+        },
+      };
+    }
+
+    const status = folder === "drafts" ? "DRAFT" : "SENT";
+    const where: Prisma.InternalMessageWhereInput = {
+      senderUserId: user.id,
+      status,
+      ...(folder === "sent" ? { senderArchivedAt: null } : {}),
+      ...(searchTerm
+        ? {
+            OR: [
+              { subject: { contains: searchTerm, mode: "insensitive" } },
+              { body: { contains: searchTerm, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.internalMessage.count({ where }),
+      this.prisma.internalMessage.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          status: true,
+          subject: true,
+          body: true,
+          createdAt: true,
+          sentAt: true,
+          school: {
+            select: { slug: true, name: true },
+          },
+          _count: {
+            select: {
+              recipients: true,
+            },
+          },
+          attachments: {
+            orderBy: [{ createdAt: "asc" }],
+            select: {
+              id: true,
+              fileName: true,
+              fileUrl: true,
+              mimeType: true,
+              sizeBytes: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        folder,
+        status: row.status,
+        subject: row.subject,
+        preview: this.toPreview(row.body),
+        createdAt: row.createdAt,
+        sentAt: row.sentAt,
+        unread: false,
+        sender: null,
+        school: row.school,
+        recipientsCount: row._count.recipients,
+        attachments: row.attachments.map((attachment) =>
+          this.mapAttachment(attachment),
+        ),
+      })),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  async getUnreadCountAcrossSchools(user: AuthenticatedUser) {
+    const unread = await this.prisma.internalMessageRecipient.count({
+      where: {
+        recipientUserId: user.id,
+        readAt: null,
+        archivedAt: null,
+        deletedAt: null,
+        message: {
+          status: "SENT",
+        },
+      },
+    });
+
+    return { unread };
+  }
+
+  async getMessageAcrossSchools(user: AuthenticatedUser, messageId: string) {
+    const locale = messagingLocaleFromUser(user);
+
+    const message = await this.prisma.internalMessage.findFirst({
+      where: {
+        id: messageId,
+      },
+      select: {
+        id: true,
+        schoolId: true,
+        senderUserId: true,
+        status: true,
+        subject: true,
+        body: true,
+        createdAt: true,
+        sentAt: true,
+        senderArchivedAt: true,
+        school: {
+          select: { slug: true, name: true },
+        },
+        senderUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        attachments: {
+          orderBy: [{ createdAt: "asc" }],
+          select: {
+            id: true,
+            fileName: true,
+            fileUrl: true,
+            mimeType: true,
+            sizeBytes: true,
+          },
+        },
+        recipients: {
+          orderBy: [{ createdAt: "asc" }],
+          select: {
+            id: true,
+            recipientUserId: true,
+            readAt: true,
+            archivedAt: true,
+            deletedAt: true,
+            createdAt: true,
+            recipientUser: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!message) {
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
+    }
+
+    const isSender = message.senderUserId === user.id;
+    const recipientRow = message.recipients.find(
+      (entry) => entry.recipientUserId === user.id,
+    );
+
+    if (!isSender && !recipientRow) {
+      throw new ForbiddenException(
+        translateMessagingError(locale, "messaging.errors.accessDenied"),
+      );
+    }
+
+    if (recipientRow?.deletedAt) {
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
+    }
+
+    return {
+      id: message.id,
+      subject: message.subject,
+      body: message.body,
+      status: message.status,
+      createdAt: message.createdAt,
+      sentAt: message.sentAt,
+      senderArchivedAt: message.senderArchivedAt,
+      isSender,
+      school: message.school,
+      attachments: message.attachments.map((attachment) =>
+        this.mapAttachment(attachment),
+      ),
+      recipientState: recipientRow
+        ? {
+            readAt: recipientRow.readAt,
+            archivedAt: recipientRow.archivedAt,
+            deletedAt: recipientRow.deletedAt,
+          }
+        : null,
+      sender: message.senderUser,
+      recipients: message.recipients
+        .filter((entry) => !entry.deletedAt)
+        .map((entry) => ({
+          id: entry.id,
+          userId: entry.recipientUser.id,
+          firstName: entry.recipientUser.firstName,
+          lastName: entry.recipientUser.lastName,
+          email: entry.recipientUser.email,
+          readAt: entry.readAt,
+          archivedAt: entry.archivedAt,
+        })),
+    };
+  }
+
+  async updateDraftAcrossSchools(
+    user: AuthenticatedUser,
+    messageId: string,
+    payload: UpdateDraftMessageDto,
+  ) {
+    const locale = messagingLocaleFromUser(user);
+
+    const draft = await this.prisma.internalMessage.findFirst({
+      where: {
+        id: messageId,
+        senderUserId: user.id,
+        status: "DRAFT",
+      },
+      select: {
+        id: true,
+        schoolId: true,
+        body: true,
+        attachments: {
+          select: {
+            fileUrl: true,
+          },
+        },
+      },
+    });
+
+    if (!draft) {
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.draftNotFound"),
+      );
+    }
+
+    if (
+      payload.subject === undefined &&
+      payload.body === undefined &&
+      payload.recipientUserIds === undefined &&
+      payload.attachments === undefined
+    ) {
+      throw new BadRequestException(
+        translateMessagingError(locale, "messaging.errors.noFieldsToUpdate"),
+      );
+    }
+
+    const recipientIds =
+      payload.recipientUserIds === undefined
+        ? undefined
+        : this.normalizeRecipientIds(payload.recipientUserIds);
+    const sanitizedBody =
+      payload.body === undefined
+        ? undefined
+        : sanitizeRichTextHtml(payload.body);
+    const nextAttachments =
+      payload.attachments === undefined
+        ? undefined
+        : this.normalizeMessageAttachments(payload.attachments);
+
+    if (recipientIds) {
+      await this.ensureRecipientsInSchool(draft.schoolId, recipientIds, locale);
+    }
+
+    if (nextAttachments) {
+      const nextUrls = new Set(
+        nextAttachments.map((attachment) => attachment.fileUrl),
+      );
+      const removedUrls = draft.attachments
+        .map((attachment) => attachment.fileUrl)
+        .filter((url) => !nextUrls.has(url));
+      await this.cleanupMediaUrls(removedUrls);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.internalMessage.update({
+        where: { id: messageId },
+        data: {
+          subject: payload.subject?.trim(),
+          body: sanitizedBody,
+          attachments:
+            nextAttachments === undefined
+              ? undefined
+              : {
+                  deleteMany: {},
+                  create: nextAttachments.map((attachment) => ({
+                    schoolId: draft.schoolId,
+                    ...attachment,
+                  })),
+                },
+        },
+      });
+
+      if (recipientIds !== undefined) {
+        await tx.internalMessageRecipient.deleteMany({
+          where: { messageId },
+        });
+
+        if (recipientIds.length > 0) {
+          await tx.internalMessageRecipient.createMany({
+            data: recipientIds.map((recipientUserId) => ({
+              messageId,
+              schoolId: draft.schoolId,
+              recipientUserId,
+            })),
+          });
+        }
+      }
+    });
+
+    await this.inlineMediaService.syncEntityImages({
+      schoolId: draft.schoolId,
+      uploadedByUserId: user.id,
+      scope: "MESSAGING",
+      entityType: InlineMediaEntityType.INTERNAL_MESSAGE,
+      entityId: messageId,
+      previousBodyHtml: draft.body,
+      nextBodyHtml: sanitizedBody ?? draft.body,
+      deleteRemovedPhysically: true,
+    });
+
+    return this.getMessageAcrossSchools(user, messageId);
+  }
+
+  async sendDraftAcrossSchools(user: AuthenticatedUser, messageId: string) {
+    const locale = messagingLocaleFromUser(user);
+
+    const draft = await this.prisma.internalMessage.findFirst({
+      where: {
+        id: messageId,
+        senderUserId: user.id,
+        status: "DRAFT",
+      },
+      select: {
+        id: true,
+        schoolId: true,
+        _count: {
+          select: {
+            recipients: true,
+          },
+        },
+      },
+    });
+
+    if (!draft) {
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.draftNotFound"),
+      );
+    }
+
+    if (draft._count.recipients === 0) {
+      throw new BadRequestException(
+        translateMessagingError(locale, "messaging.errors.recipientRequired"),
+      );
+    }
+
+    await this.prisma.internalMessage.update({
+      where: { id: messageId },
+      data: {
+        status: "SENT",
+        sentAt: new Date(),
+      },
+    });
+
+    await this.notifyMessageRecipients(draft.schoolId, messageId);
+
+    return this.getMessageAcrossSchools(user, messageId);
+  }
+
+  async markReadAcrossSchools(
+    user: AuthenticatedUser,
+    messageId: string,
+    read: MarkMessageReadDto["read"],
+  ) {
+    const recipient = await this.prisma.internalMessageRecipient.findFirst({
+      where: {
+        messageId,
+        recipientUserId: user.id,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!recipient) {
+      throw new NotFoundException(
+        translateMessagingError(
+          messagingLocaleFromUser(user),
+          "messaging.errors.messageNotFound",
+        ),
+      );
+    }
+
+    await this.prisma.internalMessageRecipient.update({
+      where: { id: recipient.id },
+      data: {
+        readAt: read ? new Date() : null,
+      },
+    });
+
+    return { success: true };
+  }
+
+  async archiveMessageAcrossSchools(
+    user: AuthenticatedUser,
+    messageId: string,
+    archived: ArchiveMessageDto["archived"],
+  ) {
+    const locale = messagingLocaleFromUser(user);
+
+    const message = await this.prisma.internalMessage.findFirst({
+      where: {
+        id: messageId,
+      },
+      select: {
+        id: true,
+        senderUserId: true,
+      },
+    });
+
+    if (!message) {
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
+    }
+
+    if (message.senderUserId === user.id) {
+      await this.prisma.internalMessage.update({
+        where: { id: message.id },
+        data: {
+          senderArchivedAt: archived ? new Date() : null,
+        },
+      });
+      return { success: true };
+    }
+
+    const recipient = await this.prisma.internalMessageRecipient.findFirst({
+      where: {
+        messageId,
+        recipientUserId: user.id,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!recipient) {
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
+    }
+
+    await this.prisma.internalMessageRecipient.update({
+      where: { id: recipient.id },
+      data: {
+        archivedAt: archived ? new Date() : null,
+      },
+    });
+
+    return { success: true };
+  }
+
+  async deleteFromMailboxAcrossSchools(
+    user: AuthenticatedUser,
+    messageId: string,
+  ) {
+    const locale = messagingLocaleFromUser(user);
+
+    const message = await this.prisma.internalMessage.findFirst({
+      where: {
+        id: messageId,
+      },
+      select: {
+        id: true,
+        status: true,
+        senderUserId: true,
+      },
+    });
+
+    if (!message) {
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
+    }
+
+    if (message.senderUserId === user.id) {
+      if (message.status === "DRAFT") {
+        await this.inlineMediaService.removeEntityImages({
+          entityType: InlineMediaEntityType.INTERNAL_MESSAGE,
+          entityId: message.id,
+          deletePhysically: true,
+        });
+        await this.prisma.internalMessage.delete({
+          where: { id: message.id },
+        });
+      } else {
+        await this.prisma.internalMessage.update({
+          where: { id: message.id },
+          data: {
+            senderArchivedAt: new Date(),
+          },
+        });
+      }
+
+      return { success: true };
+    }
+
+    const recipient = await this.prisma.internalMessageRecipient.findFirst({
+      where: {
+        messageId,
+        recipientUserId: user.id,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!recipient) {
+      throw new NotFoundException(
+        translateMessagingError(locale, "messaging.errors.messageNotFound"),
+      );
+    }
+
+    await this.prisma.internalMessageRecipient.update({
+      where: { id: recipient.id },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    return { success: true };
+  }
+
+  private async listArchiveMessagesAcrossSchools(
+    userId: string,
+    page: number,
+    limit: number,
+    searchTerm: string,
+  ) {
+    const [received, sent] = await this.prisma.$transaction([
+      this.prisma.internalMessageRecipient.findMany({
+        where: {
+          recipientUserId: userId,
+          archivedAt: { not: null },
+          deletedAt: null,
+          message: {
+            status: "SENT",
+          },
+        },
+        orderBy: [{ archivedAt: "desc" }],
+        select: {
+          id: true,
+          readAt: true,
+          message: {
+            select: {
+              id: true,
+              status: true,
+              subject: true,
+              body: true,
+              createdAt: true,
+              sentAt: true,
+              senderUser: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+              school: {
+                select: { slug: true, name: true },
+              },
+              attachments: {
+                orderBy: [{ createdAt: "asc" }],
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileUrl: true,
+                  mimeType: true,
+                  sizeBytes: true,
+                },
+              },
+              _count: {
+                select: {
+                  recipients: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.internalMessage.findMany({
+        where: {
+          senderUserId: userId,
+          senderArchivedAt: { not: null },
+          status: "SENT",
+        },
+        orderBy: [{ senderArchivedAt: "desc" }],
+        select: {
+          id: true,
+          status: true,
+          subject: true,
+          body: true,
+          createdAt: true,
+          sentAt: true,
+          school: {
+            select: { slug: true, name: true },
+          },
+          _count: {
+            select: {
+              recipients: true,
+            },
+          },
+          attachments: {
+            orderBy: [{ createdAt: "asc" }],
+            select: {
+              id: true,
+              fileName: true,
+              fileUrl: true,
+              mimeType: true,
+              sizeBytes: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const combined = [
+      ...received.map((row) => this.mapInboxRow(row)),
+      ...sent.map((row) => ({
+        id: row.id,
+        folder: "sent" as const,
+        status: row.status,
+        subject: row.subject,
+        preview: this.toPreview(row.body),
+        createdAt: row.createdAt,
+        sentAt: row.sentAt,
+        unread: false,
+        sender: null,
+        school: row.school,
+        recipientsCount: row._count.recipients,
+        attachments: row.attachments.map((attachment) =>
+          this.mapAttachment(attachment),
+        ),
+      })),
+    ]
+      .filter((entry) => {
+        if (!searchTerm) {
+          return true;
+        }
+
+        return (
+          entry.subject.toLowerCase().includes(searchTerm) ||
+          entry.preview.toLowerCase().includes(searchTerm) ||
+          `${entry.sender?.firstName ?? ""} ${entry.sender?.lastName ?? ""}`
+            .toLowerCase()
+            .includes(searchTerm)
+        );
+      })
+      .sort((a, b) => {
+        const left = a.sentAt ?? a.createdAt;
+        const right = b.sentAt ?? b.createdAt;
+        return right.getTime() - left.getTime();
+      });
+
+    const total = combined.length;
+    const items = combined.slice((page - 1) * limit, page * limit);
+
+    return {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
   private mapInboxRow(row: {
     id: string;
     readAt: Date | null;
@@ -1052,6 +1867,76 @@ export class MessagingService {
     );
 
     if (missing.length > 0) {
+      // A platform admin/super-admin can be picked as a recipient from any
+      // school even without a SchoolMembership row there — they're reached
+      // through their platform role, not a school seat.
+      const platformAdmins = await this.prisma.platformRoleAssignment.findMany({
+        where: {
+          userId: { in: missing },
+          role: { in: ["SUPER_ADMIN", "ADMIN"] },
+        },
+        select: { userId: true },
+        distinct: ["userId"],
+      });
+      const platformAdminSet = new Set(
+        platformAdmins.map((entry) => entry.userId),
+      );
+      const stillMissing = missing.filter((id) => !platformAdminSet.has(id));
+
+      if (stillMissing.length > 0) {
+        throw new BadRequestException(
+          translateMessagingError(
+            locale,
+            "messaging.errors.recipientsNotInSchool",
+          ),
+        );
+      }
+    }
+  }
+
+  /**
+   * Groups recipient ids by the school they belong to (via SchoolMembership),
+   * for platform-role senders who aren't scoped to one school themselves.
+   * Used to fan a single admin compose action out into one InternalMessage
+   * per school involved (see MessagingService class doc on *AcrossSchools).
+   */
+  async groupRecipientsBySchool(
+    recipientIds: string[],
+    locale: MessagingLocale,
+  ): Promise<Map<string, string[]>> {
+    const normalized = this.normalizeRecipientIds(recipientIds);
+
+    if (normalized.length === 0) {
+      throw new BadRequestException(
+        translateMessagingError(locale, "messaging.errors.recipientRequired"),
+      );
+    }
+
+    const memberships = await this.prisma.schoolMembership.findMany({
+      where: { userId: { in: normalized } },
+      orderBy: { createdAt: "asc" },
+      select: { userId: true, schoolId: true },
+    });
+
+    const groups = new Map<string, string[]>();
+    const covered = new Set<string>();
+
+    for (const membership of memberships) {
+      // A user can hold memberships in several schools (e.g. a teacher
+      // assigned in two establishments) — route them through the first one
+      // only, so a single compose action never delivers duplicate copies to
+      // the same person.
+      if (covered.has(membership.userId)) {
+        continue;
+      }
+      covered.add(membership.userId);
+      const group = groups.get(membership.schoolId) ?? [];
+      group.push(membership.userId);
+      groups.set(membership.schoolId, group);
+    }
+
+    const missing = normalized.filter((id) => !covered.has(id));
+    if (missing.length > 0) {
       throw new BadRequestException(
         translateMessagingError(
           locale,
@@ -1059,6 +1944,8 @@ export class MessagingService {
         ),
       );
     }
+
+    return groups;
   }
 
   private async notifyMessageRecipients(schoolId: string, messageId: string) {
