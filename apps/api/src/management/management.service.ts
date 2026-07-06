@@ -2437,6 +2437,84 @@ export class ManagementService {
     return { success: true };
   }
 
+  async getDashboardKpis(schoolId: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: {
+        activeSchoolYearId: true,
+        activeSchoolYear: { select: { id: true, label: true } },
+        _count: { select: { rooms: true } },
+      },
+    });
+
+    if (!school) {
+      throw new NotFoundException("School not found");
+    }
+
+    const schoolYearId = school.activeSchoolYearId;
+
+    if (!schoolYearId) {
+      return {
+        academicYear: null,
+        classesCount: 0,
+        studentsCount: 0,
+        teachersCount: 0,
+        subjectsCount: 0,
+        parentsCount: 0,
+        roomsCount: school._count.rooms,
+      };
+    }
+
+    const [
+      classesCount,
+      studentsCount,
+      teachingAssignments,
+      parentLinks,
+      roomsCount,
+    ] = await Promise.all([
+      this.prisma.class.count({ where: { schoolId, schoolYearId } }),
+      this.prisma.enrollment
+        .findMany({
+          where: { schoolId, schoolYearId, status: "ACTIVE" },
+          distinct: ["studentId"],
+          select: { studentId: true },
+        })
+        .then((rows) => rows.length),
+      this.prisma.teacherClassSubject.findMany({
+        where: { schoolId, schoolYearId },
+        distinct: ["teacherUserId", "subjectId"],
+        select: { teacherUserId: true, subjectId: true },
+      }),
+      this.prisma.parentStudent.findMany({
+        where: {
+          schoolId,
+          student: {
+            enrollments: { some: { schoolYearId, status: "ACTIVE" } },
+          },
+        },
+        distinct: ["parentUserId"],
+        select: { parentUserId: true },
+      }),
+      this.prisma.room.count({ where: { schoolId } }),
+    ]);
+
+    const teachersCount = new Set(
+      teachingAssignments.map((a) => a.teacherUserId),
+    ).size;
+    const subjectsCount = new Set(teachingAssignments.map((a) => a.subjectId))
+      .size;
+
+    return {
+      academicYear: school.activeSchoolYear,
+      classesCount,
+      studentsCount,
+      teachersCount,
+      subjectsCount,
+      parentsCount: parentLinks.length,
+      roomsCount,
+    };
+  }
+
   async listSchoolYears(schoolId: string) {
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
