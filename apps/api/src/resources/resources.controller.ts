@@ -76,6 +76,11 @@ export class ResourcesController {
     return this.resourcesService.listMyResources(user, query);
   }
 
+  @Get("catalog")
+  listCatalog() {
+    return this.resourcesService.listCatalog();
+  }
+
   @Get(":resourceId")
   getResource(
     @CurrentUser() user: AuthenticatedUser,

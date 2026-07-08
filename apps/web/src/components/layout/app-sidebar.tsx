@@ -17,6 +17,7 @@ import {
   HelpCircle,
   Home,
   LayoutDashboard,
+  Library,
   LogOut,
   MessageSquare,
   School,
@@ -168,6 +169,12 @@ function buildItems(
               href: "/admin-tests",
               icon: ClipboardList,
               matchPrefix: "/admin-tests",
+            },
+            {
+              label: t("sidebar.nav.resourcesModeration"),
+              href: "/admin-resources",
+              icon: Library,
+              matchPrefix: "/admin-resources",
             },
             {
               label: t("messaging.nav.title"),

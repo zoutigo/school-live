@@ -63,6 +63,26 @@ export class ResourcesService {
     return resource;
   }
 
+  // Lecture seule du catalogue national (niveaux/matières), nécessaire à tout
+  // utilisateur du module pour filtrer la recherche ou soumettre une ressource —
+  // la gestion (create/update/delete) reste réservée à SUPER_ADMIN/ADMIN via
+  // `management.controller.ts` (`system/academic-levels` / `system/subjects`).
+  async listCatalog() {
+    const [academicLevels, subjects] = await Promise.all([
+      this.prisma.academicLevel.findMany({
+        where: { schoolId: null },
+        orderBy: [{ code: "asc" }],
+        select: { id: true, code: true, label: true },
+      }),
+      this.prisma.subject.findMany({
+        where: { schoolId: null },
+        orderBy: [{ name: "asc" }],
+        select: { id: true, code: true, name: true },
+      }),
+    ]);
+    return { academicLevels, subjects };
+  }
+
   async listResources(user: AuthenticatedUser, query: ListResourcesQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;

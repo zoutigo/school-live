@@ -426,4 +426,21 @@ describe("Resources API e2e", () => {
     const result = body as { items: Array<{ id: string }> };
     expect(result.items.some((item) => item.id === resourceId)).toBe(true);
   });
+
+  it("lets any authenticated role (not just platform roles) read the national catalog for filters/forms", async () => {
+    const { response, body } = await apiJson("/api/resources/catalog", {
+      headers: authHeaders(parentToken),
+    });
+    expect(response.status).toBe(200);
+    const catalog = body as {
+      academicLevels: Array<{ id: string }>;
+      subjects: Array<{ id: string }>;
+    };
+    expect(
+      catalog.academicLevels.some((level) => level.id === academicLevelId),
+    ).toBe(true);
+    expect(catalog.subjects.some((subject) => subject.id === subjectId)).toBe(
+      true,
+    );
+  });
 });
