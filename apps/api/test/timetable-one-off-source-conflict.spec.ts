@@ -122,7 +122,7 @@ beforeEach(() => {
     referentTeacherUserId: "albert",
   });
   (service as any).ensureSchoolYearInSchool = jest.fn().mockResolvedValue({});
-  (service as any).ensureSubjectInSchool = jest
+  (service as any).ensureSubjectAccessible = jest
     .fn()
     .mockResolvedValue(undefined);
   (service as any).ensureSubjectAllowedForClass = jest

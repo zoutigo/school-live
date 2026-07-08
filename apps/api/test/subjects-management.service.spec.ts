@@ -17,10 +17,16 @@ const prisma = {
   },
   curriculum: {
     findFirst: jest.fn(),
+    delete: jest.fn(),
   },
   curriculumSubject: {
     findFirst: jest.fn(),
     upsert: jest.fn(),
+    delete: jest.fn(),
+  },
+  academicLevel: {
+    findFirst: jest.fn(),
+    update: jest.fn(),
     delete: jest.fn(),
   },
 };
@@ -69,7 +75,7 @@ describe("ManagementService — listSubjects", () => {
 
     expect(prisma.subject.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { schoolId: "school-1" },
+        where: { OR: [{ schoolId: "school-1" }, { schoolId: null }] },
         include: expect.objectContaining({
           branches: expect.any(Object),
           curriculumSubjects: expect.objectContaining({
@@ -90,6 +96,51 @@ describe("ManagementService — listSubjects", () => {
       "6ème",
     );
     expect(result[0].branches[0].name).toBe("Algèbre");
+  });
+
+  it("expose isNational: true pour une matière du catalogue plateforme (schoolId null) et false pour une matière locale", async () => {
+    prisma.subject.findMany.mockResolvedValue([
+      {
+        id: "subject-national",
+        schoolId: null,
+        name: "Mathématiques",
+        branches: [],
+        curriculumSubjects: [],
+        _count: {
+          assignments: 0,
+          studentGrades: 0,
+          curriculumSubjects: 0,
+          classOverrides: 0,
+        },
+      },
+      {
+        id: "subject-local",
+        schoolId: "school-1",
+        name: "Théâtre (option école)",
+        branches: [],
+        curriculumSubjects: [],
+        _count: {
+          assignments: 0,
+          studentGrades: 0,
+          curriculumSubjects: 0,
+          classOverrides: 0,
+        },
+      },
+    ]);
+
+    const result = await service.listSubjects("school-1");
+
+    expect(prisma.subject.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { OR: [{ schoolId: "school-1" }, { schoolId: null }] },
+      }),
+    );
+    expect(result.find((s) => s.id === "subject-national")?.isNational).toBe(
+      true,
+    );
+    expect(result.find((s) => s.id === "subject-local")?.isNational).toBe(
+      false,
+    );
   });
 });
 
@@ -218,6 +269,43 @@ describe("ManagementService — SubjectBranch (spécialités) CRUD", () => {
     expect(prisma.subjectBranch.create).not.toHaveBeenCalled();
   });
 
+  it("autorise la création d'une spécialité sur une matière nationale (catalogue plateforme)", async () => {
+    prisma.subject.findFirst.mockResolvedValue({
+      id: "subject-national",
+      schoolId: null,
+    });
+    prisma.subjectBranch.create.mockResolvedValue({
+      id: "branch-1",
+      subjectId: "subject-national",
+      name: "Algèbre",
+      code: null,
+    });
+
+    await service.createSubjectBranch("school-1", "subject-national", {
+      name: "Algèbre",
+    });
+
+    expect(prisma.subject.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: "subject-national",
+        OR: [{ schoolId: "school-1" }, { schoolId: null }],
+      },
+      select: { id: true },
+    });
+    expect(prisma.subjectBranch.create).toHaveBeenCalled();
+  });
+
+  it("rejette la création si la matière n'appartient ni à l'école ni au catalogue national", async () => {
+    prisma.subject.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.createSubjectBranch("school-1", "subject-other-school", {
+        name: "Algèbre",
+      }),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.subjectBranch.create).not.toHaveBeenCalled();
+  });
+
   it("modifie une spécialité existante", async () => {
     prisma.subjectBranch.findFirst.mockResolvedValue({ id: "branch-1" });
     prisma.subjectBranch.update.mockResolvedValue({
@@ -327,5 +415,72 @@ describe("ManagementService — affectation matière ↔ niveau (CurriculumSubje
     await expect(
       service.deleteCurriculumSubject("school-1", "curriculum-6e", "subject-x"),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it("autorise l'affectation d'une matière nationale à un curriculum local (soupape)", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-6e" });
+    prisma.subject.findFirst.mockResolvedValue({
+      id: "subject-national",
+      schoolId: null,
+    });
+    prisma.curriculumSubject.upsert.mockResolvedValue({
+      id: "cs-1",
+      subjectId: "subject-national",
+      curriculumId: "curriculum-6e",
+      isMandatory: true,
+      subject: { id: "subject-national", name: "Mathématiques" },
+    });
+
+    await service.upsertCurriculumSubject("school-1", "curriculum-6e", {
+      subjectId: "subject-national",
+    });
+
+    expect(prisma.curriculum.findFirst).toHaveBeenCalledWith({
+      where: { id: "curriculum-6e", schoolId: "school-1" },
+      select: { id: true },
+    });
+    expect(prisma.curriculumSubject.upsert).toHaveBeenCalled();
+  });
+
+  it("rejette l'affectation d'une matière sur un curriculum national (écriture réservée à la plateforme)", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.upsertCurriculumSubject("school-1", "curriculum-national", {
+        subjectId: "subject-1",
+      }),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.curriculumSubject.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("ManagementService — écriture réservée à l'école propriétaire (AcademicLevel/Curriculum nationaux)", () => {
+  it("rejette la modification d'un niveau académique national via la route école", async () => {
+    prisma.academicLevel.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateAcademicLevel("school-1", "level-national", {
+        label: "Terminale",
+      }),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.academicLevel.update).not.toHaveBeenCalled();
+  });
+
+  it("rejette la suppression d'un niveau académique national via la route école", async () => {
+    prisma.academicLevel.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.deleteAcademicLevel("school-1", "level-national"),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.academicLevel.delete).not.toHaveBeenCalled();
+  });
+
+  it("rejette la suppression d'un curriculum national via la route école", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.deleteCurriculum("school-1", "curriculum-national"),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.curriculum.delete).not.toHaveBeenCalled();
   });
 });

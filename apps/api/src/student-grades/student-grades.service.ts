@@ -44,7 +44,7 @@ export class StudentGradesService {
       effectiveSchoolId,
       locale,
     );
-    await this.ensureSubjectInSchool(
+    await this.ensureSubjectAccessible(
       payload.subjectId,
       effectiveSchoolId,
       locale,
@@ -646,13 +646,13 @@ export class StudentGradesService {
     }
   }
 
-  private async ensureSubjectInSchool(
+  private async ensureSubjectAccessible(
     subjectId: string,
     schoolId: string,
     locale: StudentGradesLocale = "fr",
   ) {
     const subject = await this.prisma.subject.findFirst({
-      where: { id: subjectId, schoolId },
+      where: { id: subjectId, OR: [{ schoolId }, { schoolId: null }] },
       select: { id: true },
     });
 

@@ -41,12 +41,12 @@ model SchoolYear {
 
 model AcademicLevel {
   id          String       @id @default(cuid())
-  schoolId    String
+  schoolId    String?
   code        String
   label       String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school      School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classes     Class[]
   feedPosts   FeedPost[]
   curriculums Curriculum[]
@@ -73,13 +73,13 @@ model Track {
 
 model Curriculum {
   id              String              @id @default(cuid())
-  schoolId        String
+  schoolId        String?
   name            String
   academicLevelId String
   trackId         String?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
-  school          School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school          School?             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   academicLevel   AcademicLevel       @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
   track           Track?              @relation(fields: [trackId], references: [id], onDelete: SetNull)
   classes         Class[]
@@ -93,7 +93,7 @@ model Curriculum {
 
 model CurriculumSubject {
   id           String     @id @default(cuid())
-  schoolId     String
+  schoolId     String?
   curriculumId String
   subjectId    String
   isMandatory  Boolean    @default(true)
@@ -101,7 +101,7 @@ model CurriculumSubject {
   weeklyHours  Float?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school       School?    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   curriculum   Curriculum @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
   subject      Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
@@ -156,11 +156,12 @@ model Class {
 
 model Subject {
   id           String                @id @default(cuid())
-  schoolId     String
+  schoolId     String?
+  code         String?
   name         String
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
-  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school       School?               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   assignments  TeacherClassSubject[]
   studentGrades StudentGrade[]
   branches     SubjectBranch[]

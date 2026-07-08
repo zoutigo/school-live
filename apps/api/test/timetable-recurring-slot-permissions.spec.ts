@@ -144,7 +144,7 @@ beforeEach(() => {
     startsAt: null,
     endsAt: null,
   });
-  (service as any).ensureSubjectInSchool = jest
+  (service as any).ensureSubjectAccessible = jest
     .fn()
     .mockResolvedValue(undefined);
   (service as any).ensureSubjectAllowedForClass = jest

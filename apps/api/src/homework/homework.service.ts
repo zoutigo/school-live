@@ -799,7 +799,7 @@ export class HomeworkService {
     subjectId: string,
   ) {
     const subject = await this.prisma.subject.findFirst({
-      where: { id: subjectId, schoolId },
+      where: { id: subjectId, OR: [{ schoolId }, { schoolId: null }] },
       select: { id: true },
     });
     if (!subject) {

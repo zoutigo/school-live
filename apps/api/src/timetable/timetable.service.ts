@@ -603,7 +603,7 @@ export class TimetableService {
         : null;
     this.assertActiveDateRange(activeFromDate, activeToDate, locale);
 
-    await this.ensureSubjectInSchool(
+    await this.ensureSubjectAccessible(
       payload.subjectId,
       effectiveSchoolId,
       locale,
@@ -706,7 +706,7 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.ensureSubjectInSchool(
+    await this.ensureSubjectAccessible(
       payload.subjectId,
       effectiveSchoolId,
       locale,
@@ -902,7 +902,11 @@ export class TimetableService {
     this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
     this.assertActiveDateRange(nextActiveFromDate, nextActiveToDate, locale);
 
-    await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
+    await this.ensureSubjectAccessible(
+      nextSubjectId,
+      effectiveSchoolId,
+      locale,
+    );
     await this.ensureSubjectAllowedForClass(
       classEntity.id,
       nextSubjectId,
@@ -1177,7 +1181,11 @@ export class TimetableService {
     const nextRoomId = oneOffRoomReference.roomId;
     this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
 
-    await this.ensureSubjectInSchool(nextSubjectId, effectiveSchoolId, locale);
+    await this.ensureSubjectAccessible(
+      nextSubjectId,
+      effectiveSchoolId,
+      locale,
+    );
     await this.ensureSubjectAllowedForClass(
       classEntity.id,
       nextSubjectId,
@@ -1282,7 +1290,7 @@ export class TimetableService {
       effectiveSchoolId,
       locale,
     );
-    await this.ensureSubjectInSchool(subjectId, effectiveSchoolId, locale);
+    await this.ensureSubjectAccessible(subjectId, effectiveSchoolId, locale);
     await this.ensureSubjectAllowedForClass(
       classId,
       subjectId,
@@ -1387,7 +1395,7 @@ export class TimetableService {
       nextRoomId = exceptionRoomReference.roomId;
 
       this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
-      await this.ensureSubjectInSchool(
+      await this.ensureSubjectAccessible(
         nextSubjectId,
         effectiveSchoolId,
         locale,
@@ -1627,7 +1635,7 @@ export class TimetableService {
       }
 
       this.assertMinuteRange(nextStartMinute, nextEndMinute, locale);
-      await this.ensureSubjectInSchool(
+      await this.ensureSubjectAccessible(
         nextSubjectId,
         effectiveSchoolId,
         locale,
@@ -1964,7 +1972,7 @@ export class TimetableService {
     }
 
     if (query.academicLevelId) {
-      await this.ensureAcademicLevelInSchool(
+      await this.ensureAcademicLevelAccessible(
         query.academicLevelId,
         effectiveSchoolId,
         locale,
@@ -3539,13 +3547,13 @@ export class TimetableService {
     }
   }
 
-  private async ensureSubjectInSchool(
+  private async ensureSubjectAccessible(
     subjectId: string,
     schoolId: string,
     locale: TimetableLocale = "fr",
   ) {
     const subject = await this.prisma.subject.findFirst({
-      where: { id: subjectId, schoolId },
+      where: { id: subjectId, OR: [{ schoolId }, { schoolId: null }] },
       select: { id: true },
     });
 
@@ -3556,13 +3564,16 @@ export class TimetableService {
     }
   }
 
-  private async ensureAcademicLevelInSchool(
+  private async ensureAcademicLevelAccessible(
     academicLevelId: string,
     schoolId: string,
     locale: TimetableLocale = "fr",
   ) {
     const level = await this.prisma.academicLevel.findFirst({
-      where: { id: academicLevelId, schoolId },
+      where: {
+        id: academicLevelId,
+        OR: [{ schoolId }, { schoolId: null }],
+      },
       select: { id: true },
     });
 
@@ -3709,7 +3720,7 @@ export class TimetableService {
           ),
         );
       }
-      await this.ensureAcademicLevelInSchool(
+      await this.ensureAcademicLevelAccessible(
         input.academicLevelId,
         input.schoolId,
         locale,

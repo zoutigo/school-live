@@ -35,7 +35,7 @@ type Role =
   | "PARENT"
   | "STUDENT";
 
-type Tab = "catalog" | "assignments" | "evaluation-types" | "help";
+type Tab = "catalog" | "national" | "assignments" | "evaluation-types" | "help";
 
 type MeResponse = {
   role: Role;
@@ -59,6 +59,18 @@ type SubjectRow = {
     name: string;
     code?: string | null;
   }>;
+  _count: {
+    assignments: number;
+    studentGrades: number;
+    curriculumSubjects: number;
+    classOverrides: number;
+  };
+};
+
+type NationalSubjectRow = {
+  id: string;
+  code: string;
+  name: string;
   _count: {
     assignments: number;
     studentGrades: number;
@@ -126,6 +138,11 @@ const createEvaluationTypeSchema = z.object({
   label: z.string().trim().min(1, "Le libelle est obligatoire."),
 });
 
+const createNationalSubjectSchema = z.object({
+  code: z.string().trim().min(1, "Le code est obligatoire."),
+  name: z.string().trim().min(1, "Le nom de la matiere est obligatoire."),
+});
+
 const createAssignmentSchema = z.object({
   schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
   teacherUserId: z.string().trim().min(1, "L'enseignant est obligatoire."),
@@ -145,6 +162,12 @@ export default function SubjectsPage() {
   const [schools, setSchools] = useState<SchoolOption[]>([]);
 
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
+  const [nationalSubjects, setNationalSubjects] = useState<
+    NationalSubjectRow[]
+  >([]);
+  const [loadingNationalSubjects, setLoadingNationalSubjects] = useState(false);
+  const [submittingNationalSubject, setSubmittingNationalSubject] =
+    useState(false);
   const [evaluationTypes, setEvaluationTypes] = useState<EvaluationTypeRow[]>(
     [],
   );
@@ -179,6 +202,7 @@ export default function SubjectsPage() {
     | { kind: "branch"; id: string; label: string }
     | { kind: "evaluation-type"; id: string; label: string }
     | { kind: "assignment"; id: string; label: string }
+    | { kind: "national-subject"; id: string; label: string }
     | null
   >(null);
 
@@ -210,6 +234,13 @@ export default function SubjectsPage() {
     resolver: zodResolver(createSubjectSchema),
     mode: "onChange",
     defaultValues: { name: "" },
+  });
+  const createNationalSubjectForm = useForm<
+    z.input<typeof createNationalSubjectSchema>
+  >({
+    resolver: zodResolver(createNationalSubjectSchema),
+    mode: "onChange",
+    defaultValues: { code: "", name: "" },
   });
   const editEvaluationTypeForm = useForm<
     z.input<typeof createEvaluationTypeSchema>
@@ -248,6 +279,16 @@ export default function SubjectsPage() {
     }
     void loadData(schoolSlug);
   }, [schoolSlug]);
+
+  useEffect(() => {
+    if (role === "SUPER_ADMIN" || role === "ADMIN") {
+      void loadNationalSubjects();
+    }
+  }, [role]);
+
+  useEffect(() => {
+    void createNationalSubjectForm.trigger();
+  }, [createNationalSubjectForm]);
 
   function buildAdminPath(currentSchoolSlug: string, segment: string) {
     return `${API_URL}/schools/${currentSchoolSlug}/admin/${segment}`;
@@ -497,6 +538,94 @@ export default function SubjectsPage() {
     } finally {
       setSubmittingSubject(false);
     }
+  }
+
+  async function loadNationalSubjects() {
+    setLoadingNationalSubjects(true);
+    try {
+      const response = await fetch(`${API_URL}/system/subjects`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        return;
+      }
+      const rows = (await response.json()) as NationalSubjectRow[];
+      setNationalSubjects(rows);
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setLoadingNationalSubjects(false);
+    }
+  }
+
+  async function onCreateNationalSubject(
+    values: z.output<typeof createNationalSubjectSchema>,
+  ) {
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError("Session CSRF invalide. Reconnectez-vous.");
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingNationalSubject(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch(`${API_URL}/system/subjects`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Creation impossible.");
+        setError(String(message));
+        createNationalSubjectForm.setFocus(
+          payload?.message && String(payload.message).includes("code")
+            ? "code"
+            : "name",
+        );
+        return;
+      }
+
+      createNationalSubjectForm.reset({ code: "", name: "" });
+      setSuccess("Matiere nationale creee.");
+      await loadNationalSubjects();
+    } catch {
+      setError("Erreur reseau.");
+    } finally {
+      setSubmittingNationalSubject(false);
+    }
+  }
+
+  function onInvalidCreateNationalSubject(
+    errors: typeof createNationalSubjectForm.formState.errors,
+  ) {
+    if (errors.code) {
+      createNationalSubjectForm.setFocus("code");
+    } else if (errors.name) {
+      createNationalSubjectForm.setFocus("name");
+    }
+  }
+
+  function askDeleteNationalSubject(subject: NationalSubjectRow) {
+    setDeleteTarget({
+      kind: "national-subject",
+      id: subject.id,
+      label: subject.name,
+    });
   }
 
   function startEditSubject(subject: SubjectRow) {
@@ -906,7 +1035,11 @@ export default function SubjectsPage() {
   }
 
   async function onConfirmDelete() {
-    if (!schoolSlug || !deleteTarget) {
+    if (!deleteTarget) {
+      return;
+    }
+
+    if (deleteTarget.kind !== "national-subject" && !schoolSlug) {
       return;
     }
 
@@ -922,16 +1055,21 @@ export default function SubjectsPage() {
     setSuccess(null);
 
     try {
-      const segment =
-        deleteTarget.kind === "subject"
-          ? `subjects/${deleteTarget.id}`
-          : deleteTarget.kind === "branch"
-            ? `subjects/branches/${deleteTarget.id}`
-            : deleteTarget.kind === "evaluation-type"
-              ? `evaluation-types/${deleteTarget.id}`
-              : `teacher-assignments/${deleteTarget.id}`;
+      const url =
+        deleteTarget.kind === "national-subject"
+          ? `${API_URL}/system/subjects/${deleteTarget.id}`
+          : buildAdminPath(
+              schoolSlug as string,
+              deleteTarget.kind === "subject"
+                ? `subjects/${deleteTarget.id}`
+                : deleteTarget.kind === "branch"
+                  ? `subjects/branches/${deleteTarget.id}`
+                  : deleteTarget.kind === "evaluation-type"
+                    ? `evaluation-types/${deleteTarget.id}`
+                    : `teacher-assignments/${deleteTarget.id}`,
+            );
 
-      const response = await fetch(buildAdminPath(schoolSlug, segment), {
+      const response = await fetch(url, {
         method: "DELETE",
         credentials: "include",
         headers: {
@@ -959,9 +1097,15 @@ export default function SubjectsPage() {
             ? "Sous-branche supprimee."
             : deleteTarget.kind === "evaluation-type"
               ? "Type d'evaluation supprime."
-              : "Affectation supprimee.",
+              : deleteTarget.kind === "national-subject"
+                ? "Matiere nationale supprimee."
+                : "Affectation supprimee.",
       );
-      await loadData(schoolSlug);
+      if (deleteTarget.kind === "national-subject") {
+        await loadNationalSubjects();
+      } else if (schoolSlug) {
+        await loadData(schoolSlug);
+      }
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -1000,6 +1144,19 @@ export default function SubjectsPage() {
             >
               {t("subjects.tab.catalog")}
             </button>
+            {role === "SUPER_ADMIN" || role === "ADMIN" ? (
+              <button
+                type="button"
+                onClick={() => setTab("national")}
+                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                  tab === "national"
+                    ? "border border-border border-b-surface bg-surface text-primary"
+                    : "text-text-secondary"
+                }`}
+              >
+                {t("subjects.tab.national")}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setTab("assignments")}
@@ -1339,6 +1496,105 @@ export default function SubjectsPage() {
                           colSpan={6}
                         >
                           {t("subjects.catalog.empty")}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : tab === "national" ? (
+            <div className="grid gap-4">
+              <p className="text-sm text-text-secondary">
+                {t("subjects.national.intro")}
+              </p>
+              <form
+                className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                onSubmit={createNationalSubjectForm.handleSubmit(
+                  onCreateNationalSubject,
+                  onInvalidCreateNationalSubject,
+                )}
+              >
+                <FormField
+                  label={t("subjects.national.codeLabel")}
+                  error={
+                    createNationalSubjectForm.formState.errors.code?.message
+                  }
+                >
+                  <FormTextInput
+                    aria-label={t("subjects.national.codeLabel")}
+                    {...createNationalSubjectForm.register("code")}
+                    placeholder={t("subjects.national.codePlaceholder")}
+                    invalid={Boolean(
+                      createNationalSubjectForm.formState.errors.code,
+                    )}
+                  />
+                </FormField>
+                <FormField
+                  label={t("subjects.national.nameLabel")}
+                  error={
+                    createNationalSubjectForm.formState.errors.name?.message
+                  }
+                >
+                  <FormTextInput
+                    aria-label={t("subjects.national.nameLabel")}
+                    {...createNationalSubjectForm.register("name")}
+                    placeholder={t("subjects.national.namePlaceholder")}
+                    invalid={Boolean(
+                      createNationalSubjectForm.formState.errors.name,
+                    )}
+                  />
+                </FormField>
+                <div className="self-end">
+                  <SubmitButton disabled={submittingNationalSubject}>
+                    {submittingNationalSubject
+                      ? t("subjects.national.adding")
+                      : t("subjects.national.add")}
+                  </SubmitButton>
+                </div>
+              </form>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-text-secondary">
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.national.colCode")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.national.colName")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("subjects.national.colActions")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nationalSubjects.map((subject) => (
+                      <tr key={subject.id} className="border-b border-border">
+                        <td className="px-3 py-2 font-mono text-xs">
+                          {subject.code}
+                        </td>
+                        <td className="px-3 py-2">{subject.name}</td>
+                        <td className="px-3 py-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => askDeleteNationalSubject(subject)}
+                          >
+                            {t("subjects.delete.confirm")}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {!loadingNationalSubjects &&
+                    nationalSubjects.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={3}
+                        >
+                          {t("subjects.national.empty")}
                         </td>
                       </tr>
                     ) : null}

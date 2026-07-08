@@ -33,6 +33,9 @@ import { ListAvailableRoomsQueryDto } from "./dto/list-available-rooms-query.dto
 import { GetRoomCalendarQueryDto } from "./dto/get-room-calendar-query.dto.js";
 import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
+import { CreateNationalCurriculumDto } from "./dto/create-national-curriculum.dto.js";
+import { CreateNationalSubjectDto } from "./dto/create-national-subject.dto.js";
+import { UpdateNationalSubjectDto } from "./dto/update-national-subject.dto.js";
 import { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
 import { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
@@ -200,6 +203,129 @@ export class ManagementController {
     return this.managementService.resendSchoolAdminInvite(
       schoolId,
       adminUserId,
+    );
+  }
+
+  // --- Catalogue national (plateforme) ---
+
+  @Get("system/academic-levels")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  listNationalAcademicLevels() {
+    return this.managementService.listNationalAcademicLevels();
+  }
+
+  @Post("system/academic-levels")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  createNationalAcademicLevel(@Body() payload: CreateAcademicLevelDto) {
+    return this.managementService.createNationalAcademicLevel(payload);
+  }
+
+  @Patch("system/academic-levels/:academicLevelId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  updateNationalAcademicLevel(
+    @Param("academicLevelId") academicLevelId: string,
+    @Body() payload: UpdateAcademicLevelDto,
+  ) {
+    return this.managementService.updateNationalAcademicLevel(
+      academicLevelId,
+      payload,
+    );
+  }
+
+  @Delete("system/academic-levels/:academicLevelId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  deleteNationalAcademicLevel(
+    @Param("academicLevelId") academicLevelId: string,
+  ) {
+    return this.managementService.deleteNationalAcademicLevel(academicLevelId);
+  }
+
+  @Get("system/subjects")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  listNationalSubjects() {
+    return this.managementService.listNationalSubjects();
+  }
+
+  @Post("system/subjects")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  createNationalSubject(@Body() payload: CreateNationalSubjectDto) {
+    return this.managementService.createNationalSubject(payload);
+  }
+
+  @Patch("system/subjects/:subjectId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  updateNationalSubject(
+    @Param("subjectId") subjectId: string,
+    @Body() payload: UpdateNationalSubjectDto,
+  ) {
+    return this.managementService.updateNationalSubject(subjectId, payload);
+  }
+
+  @Delete("system/subjects/:subjectId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  deleteNationalSubject(@Param("subjectId") subjectId: string) {
+    return this.managementService.deleteNationalSubject(subjectId);
+  }
+
+  @Get("system/curriculums")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  listNationalCurriculums() {
+    return this.managementService.listNationalCurriculums();
+  }
+
+  @Post("system/curriculums")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  createNationalCurriculum(@Body() payload: CreateNationalCurriculumDto) {
+    return this.managementService.createNationalCurriculum(payload);
+  }
+
+  @Delete("system/curriculums/:curriculumId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  deleteNationalCurriculum(@Param("curriculumId") curriculumId: string) {
+    return this.managementService.deleteNationalCurriculum(curriculumId);
+  }
+
+  @Get("system/curriculums/:curriculumId/subjects")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  listNationalCurriculumSubjects(@Param("curriculumId") curriculumId: string) {
+    return this.managementService.listNationalCurriculumSubjects(curriculumId);
+  }
+
+  @Post("system/curriculums/:curriculumId/subjects")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  upsertNationalCurriculumSubject(
+    @Param("curriculumId") curriculumId: string,
+    @Body() payload: UpsertCurriculumSubjectDto,
+  ) {
+    return this.managementService.upsertNationalCurriculumSubject(
+      curriculumId,
+      payload,
+    );
+  }
+
+  @Delete("system/curriculums/:curriculumId/subjects/:subjectId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  deleteNationalCurriculumSubject(
+    @Param("curriculumId") curriculumId: string,
+    @Param("subjectId") subjectId: string,
+  ) {
+    return this.managementService.deleteNationalCurriculumSubject(
+      curriculumId,
+      subjectId,
     );
   }
 

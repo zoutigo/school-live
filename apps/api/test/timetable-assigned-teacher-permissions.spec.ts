@@ -120,7 +120,7 @@ beforeEach(() => {
     startsAt: new Date("2099-01-01T00:00:00.000Z"),
     endsAt: new Date("2099-12-31T00:00:00.000Z"),
   });
-  (service as any).ensureSubjectInSchool = jest
+  (service as any).ensureSubjectAccessible = jest
     .fn()
     .mockResolvedValue(undefined);
   (service as any).ensureSubjectAllowedForClass = jest
