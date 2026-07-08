@@ -4,6 +4,7 @@ import type { AuthenticatedUser } from "./auth.types.js";
 import { LinkSsoDto } from "./dto/link-sso.dto.js";
 import { RequestEmailChangeDto } from "./dto/request-email-change.dto.js";
 import { SetActiveRoleDto } from "./dto/set-active-role.dto.js";
+import { SetActiveSchoolDto } from "./dto/set-active-school.dto.js";
 import { UpdatePersonalProfileDto } from "./dto/update-personal-profile.dto.js";
 import { UpdatePreferredLocaleDto } from "./dto/update-preferred-locale.dto.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
@@ -26,6 +27,15 @@ export class GlobalMeController {
     @Body() payload: SetActiveRoleDto,
   ) {
     return this.authService.setActiveRole(user.id, payload.role);
+  }
+
+  @Put("me/active-school")
+  @UseGuards(JwtAuthGuard)
+  setActiveSchool(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: SetActiveSchoolDto,
+  ) {
+    return this.authService.setActiveSchool(user.id, payload.schoolId);
   }
 
   @Put("me/profile")
