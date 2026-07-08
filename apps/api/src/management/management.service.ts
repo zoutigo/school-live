@@ -3174,6 +3174,20 @@ export class ManagementService {
         branches: {
           orderBy: [{ name: "asc" }],
         },
+        curriculumSubjects: {
+          include: {
+            curriculum: {
+              select: {
+                id: true,
+                name: true,
+                academicLevel: {
+                  select: { id: true, code: true, label: true },
+                },
+                track: { select: { id: true, code: true, label: true } },
+              },
+            },
+          },
+        },
         _count: {
           select: {
             assignments: true,
