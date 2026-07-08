@@ -25,9 +25,11 @@ export type UploadKind =
   | "user-avatar"
   | "messaging-inline-image"
   | "homework-inline-image"
+  | "resource-inline-image"
   | "guide-inline-video"
   | "evaluation-attachment"
   | "homework-attachment"
+  | "resource-attachment"
   | "messaging-attachment"
   | "test-execution-attachment"
   | "ticket-attachment"
@@ -108,7 +110,7 @@ export class ImageStorageService {
       return this.storeAttachment(kind, file);
     }
 
-    if (kind === "homework-attachment") {
+    if (kind === "homework-attachment" || kind === "resource-attachment") {
       return this.storeAttachment(kind, file);
     }
 
@@ -140,7 +142,7 @@ export class ImageStorageService {
         ? this.getSchoolVariant()
         : kind === "user-avatar"
           ? this.getAvatarVariant()
-          : kind === "homework-inline-image"
+          : kind === "homework-inline-image" || kind === "resource-inline-image"
             ? this.getHomeworkInlineVariant()
             : this.getMessagingInlineVariant();
     const outputBuffer = await variant.transform(image);
@@ -165,6 +167,7 @@ export class ImageStorageService {
       | "messaging-attachment"
       | "test-execution-attachment"
       | "homework-attachment"
+      | "resource-attachment"
       | "feed-attachment",
     file?: UploadedMediaFile,
   ) {
@@ -191,9 +194,11 @@ export class ImageStorageService {
           ? `tests/executions/${fileName}`
           : kind === "homework-attachment"
             ? `homework/attachments/${fileName}`
-            : kind === "feed-attachment"
-              ? `feed/attachments/${fileName}`
-              : `evaluations/attachments/${fileName}`;
+            : kind === "resource-attachment"
+              ? `resources/attachments/${fileName}`
+              : kind === "feed-attachment"
+                ? `feed/attachments/${fileName}`
+                : `evaluations/attachments/${fileName}`;
     await this.ensureBucket();
     await this.putObject(objectKey, file.buffer, file.mimetype);
 

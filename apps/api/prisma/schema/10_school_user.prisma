@@ -60,6 +60,7 @@ model School {
   helpFaqs           HelpFaq[]
   testCampaigns      TestCampaign[]
   mobilePushTokens   MobilePushToken[]
+  resources          Resource[]
 
   @@index([activeSchoolYearId])
 }
@@ -148,6 +149,11 @@ model User {
   testExecutionsReworkRequested TestExecution[] @relation("TestExecutionReworkRequestedBy")
   mobilePushTokens      MobilePushToken[]
   readMarkers           UserReadMarker[]
+  resourcesAuthored     Resource[]              @relation("ResourceAuthor")
+  resourceStatementsApproved Resource[]         @relation("ResourceStatementApprovedBy")
+  resourceCorrectionsApproved Resource[]        @relation("ResourceCorrectionApprovedBy")
+  resourceFavorites     ResourceFavorite[]       @relation("ResourceFavoriteUser")
+  resourceAuditLogs     ResourceAuditLog[]       @relation("ResourceAuditActor")
 }
 
 model UserAuthIdentity {

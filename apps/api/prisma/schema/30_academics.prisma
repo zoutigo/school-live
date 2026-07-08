@@ -51,6 +51,7 @@ model AcademicLevel {
   feedPosts   FeedPost[]
   curriculums Curriculum[]
   calendarEvents SchoolCalendarEvent[]
+  resources   Resource[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -174,6 +175,7 @@ model Subject {
   timetableOneOffSlots ClassTimetableOneOffSlot[]
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
+  resources      Resource[]
 
   @@unique([schoolId, name])
   @@index([schoolId])

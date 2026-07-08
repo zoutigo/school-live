@@ -1,0 +1,118 @@
+// Module Ressources pédagogiques (contrôles/examens partagés au niveau national).
+// Indépendant du module Evaluation (bulletin/notes) : aucune relation entre les deux.
+// "ASSESSMENT" est utilisé plutôt que "EVALUATION" pour éviter toute confusion avec le
+// modèle Evaluation existant (gradebook).
+
+enum ResourceKind {
+  ASSESSMENT
+  EXAM
+}
+
+enum ResourceExamType {
+  SEQUENCE_TEST
+  POP_QUIZ
+  MOCK_EXAM
+}
+
+enum ResourceApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ResourceAttachmentPart {
+  STATEMENT
+  CORRECTION
+}
+
+enum ResourceAuditAction {
+  SUBMIT
+  EDIT
+  APPROVE_STATEMENT
+  REJECT_STATEMENT
+  REVOKE_STATEMENT
+  APPROVE_CORRECTION
+  REJECT_CORRECTION
+  REVOKE_CORRECTION
+}
+
+model Resource {
+  id                        String                 @id @default(cuid())
+  kind                      ResourceKind
+  schoolId                  String?
+  academicLevelId           String
+  subjectId                 String
+  examType                  ResourceExamType
+  sequence                  Sequence?
+  title                     String
+  authorUserId              String
+  statementContent          String
+  statementStatus           ResourceApprovalStatus @default(PENDING)
+  statementApprovedByUserId String?
+  statementApprovedAt       DateTime?
+  correctionContent         String?
+  correctionStatus          ResourceApprovalStatus @default(PENDING)
+  correctionApprovedByUserId String?
+  correctionApprovedAt      DateTime?
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime               @updatedAt
+
+  school                  School?             @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  academicLevel           AcademicLevel       @relation(fields: [academicLevelId], references: [id], onDelete: Restrict)
+  subject                 Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  authorUser               User               @relation("ResourceAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  statementApprovedByUser   User?             @relation("ResourceStatementApprovedBy", fields: [statementApprovedByUserId], references: [id], onDelete: SetNull)
+  correctionApprovedByUser  User?             @relation("ResourceCorrectionApprovedBy", fields: [correctionApprovedByUserId], references: [id], onDelete: SetNull)
+
+  attachments ResourceAttachment[]
+  favorites   ResourceFavorite[]
+  auditLogs   ResourceAuditLog[]
+
+  @@index([kind, academicLevelId, subjectId, sequence])
+  @@index([kind, statementStatus])
+  @@index([schoolId])
+  @@index([authorUserId])
+}
+
+model ResourceAttachment {
+  id         String                 @id @default(cuid())
+  resourceId String
+  part       ResourceAttachmentPart
+  fileName   String
+  fileUrl    String
+  sizeLabel  String?
+  mimeType   String?
+  createdAt  DateTime               @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId, part])
+}
+
+model ResourceFavorite {
+  id         String   @id @default(cuid())
+  resourceId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user     User     @relation("ResourceFavoriteUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, userId])
+  @@index([userId])
+}
+
+model ResourceAuditLog {
+  id          String              @id @default(cuid())
+  resourceId  String
+  actorUserId String
+  action      ResourceAuditAction
+  payloadJson Json?
+  createdAt   DateTime            @default(now())
+
+  resource  Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  actorUser User     @relation("ResourceAuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId, createdAt])
+  @@index([actorUserId])
+}

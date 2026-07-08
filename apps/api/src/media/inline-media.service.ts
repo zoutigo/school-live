@@ -8,7 +8,7 @@ import { MediaClientService } from "../media-client/media-client.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 type SyncEntityImagesParams = {
-  schoolId: string;
+  schoolId: string | null;
   uploadedByUserId: string;
   scope: InlineMediaScope;
   entityType: InlineMediaEntityType;
@@ -28,7 +28,7 @@ export class InlineMediaService {
   ) {}
 
   async registerTempUpload(params: {
-    schoolId: string;
+    schoolId: string | null;
     uploadedByUserId: string;
     scope: InlineMediaScope;
     url: string;
