@@ -104,7 +104,7 @@ export class ResourcesController {
   }
 
   @Patch(":resourceId")
-  @Roles("TEACHER", "SCHOOL_ADMIN")
+  @Roles("TEACHER", "SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
   updateResource(
     @CurrentUser() user: AuthenticatedUser,
     @Param("resourceId") resourceId: string,

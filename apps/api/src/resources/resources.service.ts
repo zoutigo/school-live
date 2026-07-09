@@ -424,7 +424,9 @@ export class ResourcesService {
         translateResourceError(locale, "resources.errors.notFound"),
       );
     }
-    if (existing.authorUserId !== user.id) {
+    const isAuthor = existing.authorUserId === user.id;
+    const isPlatform = user.platformRoles.length > 0;
+    if (!isAuthor && !isPlatform) {
       throw new ForbiddenException(
         translateResourceError(locale, "resources.errors.onlyAuthorCanEdit"),
       );

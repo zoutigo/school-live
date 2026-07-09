@@ -281,6 +281,23 @@ describe("ResourcesService", () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
+    it("allows a platform admin to edit a resource authored by someone else", async () => {
+      prisma.resource.findUnique
+        .mockResolvedValueOnce(
+          makeResourceRow({ authorUserId: OTHER_TEACHER_ID }),
+        )
+        .mockResolvedValueOnce(
+          makeResourceRow({ authorUserId: OTHER_TEACHER_ID }),
+        );
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateResource(makePlatformAdmin(), RESOURCE_ID, {
+          title: "x",
+        }),
+      ).resolves.toBeDefined();
+    });
+
     it("resets an APPROVED statement back to PENDING when its content changes", async () => {
       prisma.resource.findUnique
         .mockResolvedValueOnce(
