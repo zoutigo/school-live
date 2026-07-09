@@ -1468,6 +1468,7 @@ model Resource {
   subjectId                 String
   examType                  ResourceExamType
   sequence                  Sequence?
+  academicYearLabel         String
   title                     String
   authorUserId              String
   statementContent          String
@@ -1494,6 +1495,7 @@ model Resource {
 
   @@index([kind, academicLevelId, subjectId, sequence])
   @@index([kind, statementStatus])
+  @@index([kind, academicYearLabel])
   @@index([schoolId])
   @@index([authorUserId])
 }

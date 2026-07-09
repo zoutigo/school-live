@@ -27,6 +27,7 @@ const RESOURCE_LIST_SELECT = {
   subjectId: true,
   examType: true,
   sequence: true,
+  academicYearLabel: true,
   title: true,
   authorUserId: true,
   statementStatus: true,
@@ -83,6 +84,30 @@ export class ResourcesService {
     return { academicLevels, subjects };
   }
 
+  // Écoles ayant au moins un assessment approuvé — alimente le filtre "établissement
+  // scolaire" du formulaire de recherche, sans exposer la liste complète des écoles.
+  async listSchoolsWithResources() {
+    const schoolIds = await this.prisma.resource.findMany({
+      where: {
+        kind: "ASSESSMENT",
+        statementStatus: "APPROVED",
+        schoolId: { not: null },
+      },
+      distinct: ["schoolId"],
+      select: { schoolId: true },
+    });
+    const ids = schoolIds
+      .map((r) => r.schoolId)
+      .filter((id): id is string => id !== null);
+    if (ids.length === 0) return [];
+    const schools = await this.prisma.school.findMany({
+      where: { id: { in: ids } },
+      orderBy: [{ name: "asc" }],
+      select: { id: true, name: true },
+    });
+    return schools;
+  }
+
   async listResources(user: AuthenticatedUser, query: ListResourcesQueryDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -97,6 +122,9 @@ export class ResourcesService {
       ...(query.examType ? { examType: query.examType } : {}),
       ...(query.sequence ? { sequence: query.sequence } : {}),
       ...(query.schoolId ? { schoolId: query.schoolId } : {}),
+      ...(query.academicYearLabel
+        ? { academicYearLabel: query.academicYearLabel }
+        : {}),
       ...(query.search
         ? { title: { contains: query.search, mode: "insensitive" } }
         : {}),
@@ -315,6 +343,7 @@ export class ResourcesService {
         subjectId: payload.subjectId,
         examType: payload.examType,
         sequence: payload.kind === "ASSESSMENT" ? payload.sequence : null,
+        academicYearLabel: payload.academicYearLabel,
         title: payload.title,
         authorUserId: user.id,
         statementContent: payload.statementContent,
@@ -378,8 +407,11 @@ export class ResourcesService {
       where: { id: resourceId },
       select: {
         id: true,
+        kind: true,
         authorUserId: true,
         schoolId: true,
+        academicLevelId: true,
+        subjectId: true,
         statementContent: true,
         statementStatus: true,
         correctionContent: true,
@@ -398,9 +430,38 @@ export class ResourcesService {
       );
     }
 
+    if (
+      payload.academicLevelId !== undefined ||
+      payload.subjectId !== undefined
+    ) {
+      await this.assertNationalReferences(
+        user,
+        payload.academicLevelId ?? existing.academicLevelId,
+        payload.subjectId ?? existing.subjectId,
+      );
+    }
+
     const data: Prisma.ResourceUncheckedUpdateInput = {};
     if (payload.title !== undefined) {
       data.title = payload.title;
+    }
+    if (payload.academicLevelId !== undefined) {
+      data.academicLevelId = payload.academicLevelId;
+    }
+    if (payload.subjectId !== undefined) {
+      data.subjectId = payload.subjectId;
+    }
+    if (payload.examType !== undefined) {
+      data.examType = payload.examType;
+    }
+    if (existing.kind === "ASSESSMENT" && payload.sequence !== undefined) {
+      data.sequence = payload.sequence;
+    }
+    if (existing.kind === "ASSESSMENT" && payload.schoolId !== undefined) {
+      data.schoolId = payload.schoolId;
+    }
+    if (payload.academicYearLabel !== undefined) {
+      data.academicYearLabel = payload.academicYearLabel;
     }
 
     const statementChanged =

@@ -32,6 +32,12 @@ for (const candidate of [
   dotenv.config({ path: candidate, override: false });
 }
 
+function currentAcademicYearLabel(now = new Date()) {
+  const year = now.getFullYear();
+  return now.getMonth() >= 8 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+}
+const CURRENT_ACADEMIC_YEAR_LABEL = currentAcademicYearLabel();
+
 const prisma = new PrismaClient();
 
 const TEACHER_EMAIL = "plizaweb@gmail.com";
@@ -166,6 +172,7 @@ async function ensureAssessment(
       subjectId: subject.id,
       examType: template.examType,
       sequence: template.sequence,
+      academicYearLabel: CURRENT_ACADEMIC_YEAR_LABEL,
       title: template.title,
       authorUserId,
       statementContent: template.statementContent,
@@ -205,6 +212,7 @@ async function ensureNationalExam(
       subjectId: subject.id,
       examType: template.examType,
       sequence: null,
+      academicYearLabel: CURRENT_ACADEMIC_YEAR_LABEL,
       title: template.title,
       authorUserId,
       statementContent: template.statementContent,

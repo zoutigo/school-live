@@ -57,6 +57,7 @@ function makeCreatePayload(
     subjectId: SUBJECT_ID,
     examType: "SEQUENCE_TEST",
     sequence: "SEQ_1",
+    academicYearLabel: "2025-2026",
     title: "Controle chapitre 3",
     statementContent: "<p>Enonce</p>",
     ...overrides,
@@ -72,6 +73,7 @@ function makeResourceRow(overrides: Record<string, unknown> = {}) {
     subjectId: SUBJECT_ID,
     examType: "SEQUENCE_TEST",
     sequence: "SEQ_1",
+    academicYearLabel: "2025-2026",
     title: "Controle chapitre 3",
     authorUserId: TEACHER_ID,
     statementContent: "<p>Enonce</p>",
@@ -109,6 +111,9 @@ function makePrismaMock() {
       findUnique: jest.fn(),
       upsert: jest.fn(),
       deleteMany: jest.fn(),
+    },
+    school: {
+      findMany: jest.fn(),
     },
   };
 }
@@ -320,6 +325,57 @@ describe("ResourcesService", () => {
 
       const call = prisma.resource.update.mock.calls[0][0];
       expect(call.data.statementStatus).toBeUndefined();
+    });
+
+    it("allows updating level/subject/examType/sequence/academicYearLabel, re-validating national references", async () => {
+      prisma.resource.findUnique
+        .mockResolvedValueOnce(makeResourceRow())
+        .mockResolvedValueOnce(makeResourceRow());
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      await service.updateResource(makeTeacher(), RESOURCE_ID, {
+        academicLevelId: "level-national-2",
+        subjectId: "subject-national-2",
+        examType: "MOCK_EXAM",
+        sequence: "SEQ_3",
+        academicYearLabel: "2026-2027",
+      });
+
+      expect(prisma.academicLevel.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "level-national-2" } }),
+      );
+      expect(prisma.subject.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "subject-national-2" } }),
+      );
+      expect(prisma.resource.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            academicLevelId: "level-national-2",
+            subjectId: "subject-national-2",
+            examType: "MOCK_EXAM",
+            sequence: "SEQ_3",
+            academicYearLabel: "2026-2027",
+          }),
+        }),
+      );
+    });
+
+    it("ignores schoolId/sequence updates for an EXAM resource", async () => {
+      prisma.resource.findUnique
+        .mockResolvedValueOnce(
+          makeResourceRow({ kind: "EXAM", schoolId: null, sequence: null }),
+        )
+        .mockResolvedValueOnce(makeResourceRow());
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      await service.updateResource(makeTeacher(), RESOURCE_ID, {
+        schoolId: SCHOOL_ID,
+        sequence: "SEQ_2",
+      });
+
+      const call = prisma.resource.update.mock.calls[0][0];
+      expect(call.data.schoolId).toBeUndefined();
+      expect(call.data.sequence).toBeUndefined();
     });
 
     it("resets an APPROVED correction back to PENDING independently of the statement", async () => {
@@ -540,6 +596,45 @@ describe("ResourcesService", () => {
       expect(prisma.resourceFavorite.deleteMany).toHaveBeenCalledWith({
         where: { resourceId: RESOURCE_ID, userId: TEACHER_ID },
       });
+    });
+  });
+
+  describe("listSchoolsWithResources", () => {
+    it("returns only schools that have an APPROVED assessment, sorted by name", async () => {
+      prisma.resource.findMany.mockResolvedValue([
+        { schoolId: "school-a" },
+        { schoolId: "school-b" },
+      ]);
+      prisma.school.findMany.mockResolvedValue([
+        { id: "school-a", name: "Alpha" },
+        { id: "school-b", name: "Beta" },
+      ]);
+
+      const result = await service.listSchoolsWithResources();
+
+      expect(prisma.resource.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            kind: "ASSESSMENT",
+            statementStatus: "APPROVED",
+            schoolId: { not: null },
+          },
+          distinct: ["schoolId"],
+        }),
+      );
+      expect(result).toEqual([
+        { id: "school-a", name: "Alpha" },
+        { id: "school-b", name: "Beta" },
+      ]);
+    });
+
+    it("returns an empty array without querying schools when no resource has one", async () => {
+      prisma.resource.findMany.mockResolvedValue([]);
+
+      const result = await service.listSchoolsWithResources();
+
+      expect(result).toEqual([]);
+      expect(prisma.school.findMany).not.toHaveBeenCalled();
     });
   });
 });

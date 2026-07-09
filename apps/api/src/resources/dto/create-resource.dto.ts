@@ -49,6 +49,10 @@ export class CreateResourceDto {
   sequence?: Sequence;
 
   @IsString()
+  @MaxLength(9)
+  academicYearLabel!: string;
+
+  @IsString()
   @MaxLength(200)
   title!: string;
 

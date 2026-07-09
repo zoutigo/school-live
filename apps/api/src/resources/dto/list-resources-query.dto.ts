@@ -28,6 +28,10 @@ export class ListResourcesQueryDto {
 
   @IsOptional()
   @IsString()
+  academicYearLabel?: string;
+
+  @IsOptional()
+  @IsString()
   search?: string;
 
   @IsOptional()
