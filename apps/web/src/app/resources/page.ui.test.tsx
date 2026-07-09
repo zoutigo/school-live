@@ -95,7 +95,9 @@ describe("ResourcesBrowsePage", () => {
 
     render(<ResourcesBrowsePage />);
 
-    expect(await screen.findByTestId("resources-card-res-1")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("resources-card-res-1"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Contrôle chapitre 3")).toBeInTheDocument();
     expect(
       screen.getByTestId("resources-card-res-1-academic-year"),
@@ -103,9 +105,7 @@ describe("ResourcesBrowsePage", () => {
   });
 
   it("shows the empty state when nothing matches", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(
-      baseRouter({ items: [] }),
-    );
+    vi.spyOn(globalThis, "fetch").mockImplementation(baseRouter({ items: [] }));
 
     render(<ResourcesBrowsePage />);
 
