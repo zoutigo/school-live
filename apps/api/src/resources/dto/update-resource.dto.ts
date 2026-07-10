@@ -1,16 +1,9 @@
-import {
-  ArrayMaxSize,
-  IsArray,
-  IsEnum,
-  IsOptional,
-  IsString,
-  MaxLength,
-  ValidateNested,
-} from "class-validator";
-import { Type } from "class-transformer";
+import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
 import { ResourceExamType, Sequence } from "@prisma/client";
-import { ResourceAttachmentDto } from "./create-resource.dto.js";
 
+// Le contenu (énoncé/corrigé) ne s'édite plus ici : il passe par le circuit de
+// soumissions (brouillon -> soumission -> approbation). Cet endpoint ne touche
+// plus qu'aux métadonnées de la fiche.
 export class UpdateResourceDto {
   @IsOptional()
   @IsString()
@@ -41,26 +34,4 @@ export class UpdateResourceDto {
   @IsString()
   @MaxLength(200)
   title?: string;
-
-  @IsOptional()
-  @IsString()
-  statementContent?: string;
-
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(10)
-  @ValidateNested({ each: true })
-  @Type(() => ResourceAttachmentDto)
-  statementAttachments?: ResourceAttachmentDto[];
-
-  @IsOptional()
-  @IsString()
-  correctionContent?: string;
-
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(10)
-  @ValidateNested({ each: true })
-  @Type(() => ResourceAttachmentDto)
-  correctionAttachments?: ResourceAttachmentDto[];
 }

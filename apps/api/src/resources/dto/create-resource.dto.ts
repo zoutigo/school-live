@@ -1,14 +1,11 @@
 import {
-  ArrayMaxSize,
-  IsArray,
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
   MaxLength,
   ValidateIf,
-  ValidateNested,
 } from "class-validator";
-import { Type } from "class-transformer";
 import { ResourceExamType, ResourceKind, Sequence } from "@prisma/client";
 
 export class ResourceAttachmentDto {
@@ -27,6 +24,9 @@ export class ResourceAttachmentDto {
   mimeType?: string;
 }
 
+// La création ne porte plus que les métadonnées de la fiche : l'énoncé et le
+// corrigé sont saisis séparément par n'importe quel contributeur via le
+// circuit de soumissions (voir SaveSubmissionDraftDto).
 export class CreateResourceDto {
   @IsEnum(ResourceKind)
   kind!: ResourceKind;
@@ -56,24 +56,10 @@ export class CreateResourceDto {
   @MaxLength(200)
   title!: string;
 
-  @IsString()
-  statementContent!: string;
-
+  // Si un doublon potentiel (score de similarité entre 50% et 80%) a déjà été
+  // signalé par une première tentative de création, le client renvoie ce flag
+  // pour confirmer explicitement la création malgré l'avertissement.
   @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(10)
-  @ValidateNested({ each: true })
-  @Type(() => ResourceAttachmentDto)
-  statementAttachments?: ResourceAttachmentDto[];
-
-  @IsOptional()
-  @IsString()
-  correctionContent?: string;
-
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(10)
-  @ValidateNested({ each: true })
-  @Type(() => ResourceAttachmentDto)
-  correctionAttachments?: ResourceAttachmentDto[];
+  @IsBoolean()
+  confirmDuplicate?: boolean;
 }

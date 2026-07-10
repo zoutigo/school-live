@@ -4,6 +4,8 @@ import type { PushPort } from "./push.port.js";
 import type {
   GradePublishedPushPayload,
   HomeworkCreatedPushPayload,
+  ResourceSubmissionDiscardedPushPayload,
+  ResourceSubmissionRejectedPushPayload,
   RoomStatusChangePushPayload,
   StudentLifeEventPushPayload,
   TimetableChangePushPayload,
@@ -69,6 +71,28 @@ export class ExpoPushAdapter implements PushPort {
 
   async sendStudentLifeEventNotification(
     payload: StudentLifeEventPushPayload,
+  ): Promise<void> {
+    await this.dispatch(
+      payload.tokens,
+      payload.title,
+      payload.body,
+      payload.data,
+    );
+  }
+
+  async sendResourceSubmissionDiscardedNotification(
+    payload: ResourceSubmissionDiscardedPushPayload,
+  ): Promise<void> {
+    await this.dispatch(
+      payload.tokens,
+      payload.title,
+      payload.body,
+      payload.data,
+    );
+  }
+
+  async sendResourceSubmissionRejectedNotification(
+    payload: ResourceSubmissionRejectedPushPayload,
   ): Promise<void> {
     await this.dispatch(
       payload.tokens,

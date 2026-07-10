@@ -13,6 +13,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import type { ResourceAttachmentPart } from "@prisma/client";
 import { AnyMembershipRolesGuard } from "../access/any-membership-roles.guard.js";
 import { Roles } from "../access/roles.decorator.js";
 import { RolesGuard } from "../access/roles.guard.js";
@@ -24,12 +25,27 @@ import { MediaClientService } from "../media-client/media-client.service.js";
 import { CreateResourceDto } from "./dto/create-resource.dto.js";
 import { ListMyResourcesQueryDto } from "./dto/list-my-resources-query.dto.js";
 import { ListResourcesQueryDto } from "./dto/list-resources-query.dto.js";
+import { SaveSubmissionDraftDto } from "./dto/save-submission-draft.dto.js";
 import { UpdateResourceDto } from "./dto/update-resource.dto.js";
 import { ResourcesService } from "./resources.service.js";
 import {
   resourceLocaleFromUser,
   translateResourceError,
 } from "./resources.translations.js";
+
+function partFromUrl(
+  user: AuthenticatedUser,
+  value: string,
+): ResourceAttachmentPart {
+  if (value === "statement") return "STATEMENT";
+  if (value === "correction") return "CORRECTION";
+  throw new BadRequestException(
+    translateResourceError(
+      resourceLocaleFromUser(user),
+      "resources.errors.invalidPart",
+    ),
+  );
+}
 
 // Le module Ressources est global à l'application : une ressource approuvée est
 // visible par n'importe quel élève/enseignant, quel que soit son école ou son niveau,
@@ -111,6 +127,50 @@ export class ResourcesController {
     @Body() payload: UpdateResourceDto,
   ) {
     return this.resourcesService.updateResource(user, resourceId, payload);
+  }
+
+  @Get(":resourceId/submissions")
+  @Roles("TEACHER", "SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  listSubmissions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("resourceId") resourceId: string,
+    @Query("part") part: string,
+  ) {
+    return this.resourcesService.listSubmissions(
+      user,
+      resourceId,
+      partFromUrl(user, part),
+    );
+  }
+
+  @Post(":resourceId/:part/submissions")
+  @Roles("TEACHER", "SCHOOL_ADMIN")
+  saveSubmissionDraft(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("resourceId") resourceId: string,
+    @Param("part") part: string,
+    @Body() payload: SaveSubmissionDraftDto,
+  ) {
+    return this.resourcesService.saveSubmissionDraft(
+      user,
+      resourceId,
+      partFromUrl(user, part),
+      payload,
+    );
+  }
+
+  @Patch(":resourceId/submissions/:submissionId/submit")
+  @Roles("TEACHER", "SCHOOL_ADMIN")
+  submitSubmission(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("resourceId") resourceId: string,
+    @Param("submissionId") submissionId: string,
+  ) {
+    return this.resourcesService.submitSubmission(
+      user,
+      resourceId,
+      submissionId,
+    );
   }
 
   @Post(":resourceId/favorite")

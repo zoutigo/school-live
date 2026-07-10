@@ -23,6 +23,22 @@ const fr: TranslationDict = {
   "resources.errors.missingImageFile": "Fichier image manquant.",
   "resources.errors.alreadyReviewed":
     "Cette partie de la ressource a deja ete traitee.",
+  "resources.errors.invalidPart":
+    "La partie demandee doit etre 'statement' ou 'correction'.",
+  "resources.errors.duplicateBlocked":
+    "Une ressource quasi identique existe deja pour cette ecole, cette matiere, ce niveau, cette annee et cette sequence.",
+  "resources.errors.duplicateWarning":
+    "Une ressource similaire existe peut-etre deja. Confirmez pour creer quand meme.",
+  "resources.errors.correctionRequiresApprovedStatement":
+    "Le corrige ne peut etre propose que lorsque l'enonce a ete valide.",
+  "resources.errors.submissionAlreadyReviewed":
+    "Cette soumission a deja ete traitee par un autre administrateur.",
+  "resources.errors.notSubmissionAuthor":
+    "Seul l'auteur de la soumission peut effectuer cette action.",
+  "resources.errors.submissionNotDraft":
+    "Seul un brouillon peut etre soumis a validation.",
+  "resources.errors.submissionAwaitingReview":
+    "Une soumission est deja en attente de validation pour cette partie.",
 };
 
 const en: TranslationDict = {
@@ -46,6 +62,22 @@ const en: TranslationDict = {
   "resources.errors.missingImageFile": "Missing image file.",
   "resources.errors.alreadyReviewed":
     "This resource part was already reviewed.",
+  "resources.errors.invalidPart":
+    "The requested part must be 'statement' or 'correction'.",
+  "resources.errors.duplicateBlocked":
+    "A near-identical resource already exists for this school, subject, level, year and sequence.",
+  "resources.errors.duplicateWarning":
+    "A similar resource may already exist. Confirm to create it anyway.",
+  "resources.errors.correctionRequiresApprovedStatement":
+    "The correction can only be proposed once the statement has been approved.",
+  "resources.errors.submissionAlreadyReviewed":
+    "This submission was already reviewed by another administrator.",
+  "resources.errors.notSubmissionAuthor":
+    "Only the submission's author can perform this action.",
+  "resources.errors.submissionNotDraft":
+    "Only a draft can be submitted for review.",
+  "resources.errors.submissionAwaitingReview":
+    "A submission is already awaiting review for this part.",
 };
 
 const translations: Record<ResourceLocale, TranslationDict> = {

@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { Prisma, ResourceApprovalStatus } from "@prisma/client";
+import type { ResourceAttachmentPart } from "@prisma/client";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -13,7 +15,13 @@ import type { ListAdminResourcesQueryDto } from "./dto/list-admin-resources-quer
 import type { ListMyResourcesQueryDto } from "./dto/list-my-resources-query.dto.js";
 import type { ListResourcesQueryDto } from "./dto/list-resources-query.dto.js";
 import type { ReviewResourceDto } from "./dto/review-resource.dto.js";
+import type { SaveSubmissionDraftDto } from "./dto/save-submission-draft.dto.js";
 import type { UpdateResourceDto } from "./dto/update-resource.dto.js";
+import { ResourceSubmissionNotificationsService } from "./resource-submission-notifications.service.js";
+import {
+  DUPLICATE_BLOCK_THRESHOLD,
+  findPotentialDuplicates,
+} from "./resources-duplicate.util.js";
 import {
   resourceLocaleFromUser,
   translateResourceError,
@@ -41,15 +49,42 @@ const RESOURCE_LIST_SELECT = {
   authorUser: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.ResourceSelect;
 
+const SUBMISSION_SELECT = {
+  id: true,
+  resourceId: true,
+  part: true,
+  status: true,
+  content: true,
+  reason: true,
+  createdAt: true,
+  updatedAt: true,
+  reviewedAt: true,
+  authorUser: { select: { id: true, firstName: true, lastName: true } },
+  attachments: {
+    select: {
+      id: true,
+      fileName: true,
+      fileUrl: true,
+      sizeLabel: true,
+      mimeType: true,
+    },
+  },
+} satisfies Prisma.ResourceSubmissionSelect;
+
 @Injectable()
 export class ResourcesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly inlineMediaService: InlineMediaService,
+    private readonly notificationsService: ResourceSubmissionNotificationsService,
   ) {}
 
   private inlineEntityId(resourceId: string, part: "statement" | "correction") {
     return `${resourceId}:${part}`;
+  }
+
+  private inlineSubmissionEntityId(submissionId: string) {
+    return `submission:${submissionId}`;
   }
 
   private maskCorrection<
@@ -112,9 +147,19 @@ export class ResourcesService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
+    // Par défaut, parcours public = énoncé approuvé uniquement. needsStatement
+    // inverse ce filtre pour laisser les contributeurs trouver les fiches à
+    // compléter ; needsCorrection restreint aux fiches à énoncé approuvé mais
+    // sans corrigé approuvé, pour les contributeurs de corrigés.
+    const statementFilter: Prisma.ResourceWhereInput["statementStatus"] =
+      query.needsStatement ? { not: "APPROVED" } : "APPROVED";
+
     const where: Prisma.ResourceWhereInput = {
       kind: query.kind,
-      statementStatus: "APPROVED",
+      statementStatus: statementFilter,
+      ...(query.needsCorrection
+        ? { correctionStatus: { not: "APPROVED" } }
+        : {}),
       ...(query.academicLevelId
         ? { academicLevelId: query.academicLevelId }
         : {}),
@@ -206,6 +251,8 @@ export class ResourcesService {
       select: {
         ...RESOURCE_LIST_SELECT,
         statementContent: true,
+        statementSubmissionId: true,
+        correctionSubmissionId: true,
         attachments: {
           orderBy: [{ createdAt: "asc" }],
           select: {
@@ -215,6 +262,7 @@ export class ResourcesService {
             fileUrl: true,
             sizeLabel: true,
             mimeType: true,
+            submissionId: true,
           },
         },
       },
@@ -248,12 +296,31 @@ export class ResourcesService {
     const showCorrection =
       resource.correctionStatus === "APPROVED" || isAuthor || isPlatform;
 
+    // Les pièces jointes sont désormais rattachées à des ResourceSubmission
+    // concurrentes ; seules celles de la soumission effectivement approuvée
+    // pour chaque partie doivent apparaître en lecture.
+    const attachments = resource.attachments.filter((a) => {
+      if (a.part === "STATEMENT") {
+        return (
+          resource.statementSubmissionId !== null &&
+          a.submissionId === resource.statementSubmissionId
+        );
+      }
+      return (
+        showCorrection &&
+        resource.correctionSubmissionId !== null &&
+        a.submissionId === resource.correctionSubmissionId
+      );
+    });
+
+    const { statementSubmissionId, correctionSubmissionId, ...rest } = resource;
+    void statementSubmissionId;
+    void correctionSubmissionId;
+
     return {
-      ...resource,
+      ...rest,
       correctionContent: showCorrection ? resource.correctionContent : null,
-      attachments: resource.attachments.filter(
-        (a) => a.part === "STATEMENT" || showCorrection,
-      ),
+      attachments,
       isFavorite: Boolean(favorite),
     };
   }
@@ -290,6 +357,9 @@ export class ResourcesService {
     }
   }
 
+  // Ne crée plus que la fiche (métadonnées) : l'énoncé et le corrigé sont
+  // saisis séparément par n'importe quel contributeur via le circuit de
+  // soumissions (saveSubmissionDraft / submitSubmission / approveSubmission).
   async createResource(user: AuthenticatedUser, payload: CreateResourceDto) {
     const locale = resourceLocaleFromUser(user);
 
@@ -335,6 +405,40 @@ export class ResourcesService {
       payload.subjectId,
     );
 
+    if (!payload.confirmDuplicate) {
+      const duplicates = await findPotentialDuplicates(this.prisma, {
+        kind: payload.kind,
+        schoolId:
+          payload.kind === "ASSESSMENT" ? (payload.schoolId ?? null) : null,
+        academicLevelId: payload.academicLevelId,
+        subjectId: payload.subjectId,
+        academicYearLabel: payload.academicYearLabel,
+        examType: payload.examType,
+        sequence:
+          payload.kind === "ASSESSMENT" ? (payload.sequence ?? null) : null,
+        title: payload.title,
+      });
+
+      const blocking = duplicates.find(
+        (candidate) => candidate.score >= DUPLICATE_BLOCK_THRESHOLD,
+      );
+      if (blocking) {
+        throw new BadRequestException(
+          translateResourceError(locale, "resources.errors.duplicateBlocked"),
+        );
+      }
+      if (duplicates.length > 0) {
+        throw new ConflictException({
+          message: translateResourceError(
+            locale,
+            "resources.errors.duplicateWarning",
+          ),
+          warning: true,
+          candidates: duplicates,
+        });
+      }
+    }
+
     const resource = await this.prisma.resource.create({
       data: {
         kind: payload.kind,
@@ -346,53 +450,12 @@ export class ResourcesService {
         academicYearLabel: payload.academicYearLabel,
         title: payload.title,
         authorUserId: user.id,
-        statementContent: payload.statementContent,
-        correctionContent: payload.correctionContent ?? null,
-        attachments: {
-          create: [
-            ...(payload.statementAttachments ?? []).map((a) => ({
-              part: "STATEMENT" as const,
-              fileName: a.fileName,
-              fileUrl: a.fileUrl,
-              sizeLabel: a.sizeLabel,
-              mimeType: a.mimeType,
-            })),
-            ...(payload.correctionAttachments ?? []).map((a) => ({
-              part: "CORRECTION" as const,
-              fileName: a.fileName,
-              fileUrl: a.fileUrl,
-              sizeLabel: a.sizeLabel,
-              mimeType: a.mimeType,
-            })),
-          ],
-        },
         auditLogs: {
           create: { actorUserId: user.id, action: "SUBMIT" },
         },
       },
-      select: { id: true, schoolId: true },
+      select: { id: true },
     });
-
-    await this.inlineMediaService.syncEntityImages({
-      schoolId: resource.schoolId,
-      uploadedByUserId: user.id,
-      scope: "RESOURCE",
-      entityType: "RESOURCE",
-      entityId: this.inlineEntityId(resource.id, "statement"),
-      nextBodyHtml: payload.statementContent,
-      deleteRemovedPhysically: false,
-    });
-    if (payload.correctionContent) {
-      await this.inlineMediaService.syncEntityImages({
-        schoolId: resource.schoolId,
-        uploadedByUserId: user.id,
-        scope: "RESOURCE",
-        entityType: "RESOURCE",
-        entityId: this.inlineEntityId(resource.id, "correction"),
-        nextBodyHtml: payload.correctionContent,
-        deleteRemovedPhysically: false,
-      });
-    }
 
     return this.getResource(user, resource.id);
   }
@@ -409,13 +472,8 @@ export class ResourcesService {
         id: true,
         kind: true,
         authorUserId: true,
-        schoolId: true,
         academicLevelId: true,
         subjectId: true,
-        statementContent: true,
-        statementStatus: true,
-        correctionContent: true,
-        correctionStatus: true,
       },
     });
 
@@ -466,61 +524,6 @@ export class ResourcesService {
       data.academicYearLabel = payload.academicYearLabel;
     }
 
-    const statementChanged =
-      payload.statementContent !== undefined &&
-      payload.statementContent !== existing.statementContent;
-    if (payload.statementContent !== undefined) {
-      data.statementContent = payload.statementContent;
-    }
-    if (statementChanged && existing.statementStatus === "APPROVED") {
-      data.statementStatus = "PENDING";
-      data.statementApprovedByUserId = null;
-      data.statementApprovedAt = null;
-    }
-
-    const correctionChanged =
-      payload.correctionContent !== undefined &&
-      payload.correctionContent !== existing.correctionContent;
-    if (payload.correctionContent !== undefined) {
-      data.correctionContent = payload.correctionContent;
-    }
-    if (correctionChanged && existing.correctionStatus === "APPROVED") {
-      data.correctionStatus = "PENDING";
-      data.correctionApprovedByUserId = null;
-      data.correctionApprovedAt = null;
-    }
-
-    if (payload.statementAttachments !== undefined) {
-      await this.prisma.resourceAttachment.deleteMany({
-        where: { resourceId, part: "STATEMENT" },
-      });
-      await this.prisma.resourceAttachment.createMany({
-        data: payload.statementAttachments.map((a) => ({
-          resourceId,
-          part: "STATEMENT" as const,
-          fileName: a.fileName,
-          fileUrl: a.fileUrl,
-          sizeLabel: a.sizeLabel,
-          mimeType: a.mimeType,
-        })),
-      });
-    }
-    if (payload.correctionAttachments !== undefined) {
-      await this.prisma.resourceAttachment.deleteMany({
-        where: { resourceId, part: "CORRECTION" },
-      });
-      await this.prisma.resourceAttachment.createMany({
-        data: payload.correctionAttachments.map((a) => ({
-          resourceId,
-          part: "CORRECTION" as const,
-          fileName: a.fileName,
-          fileUrl: a.fileUrl,
-          sizeLabel: a.sizeLabel,
-          mimeType: a.mimeType,
-        })),
-      });
-    }
-
     await this.prisma.resource.update({
       where: { id: resourceId },
       data: {
@@ -528,29 +531,6 @@ export class ResourcesService {
         auditLogs: { create: { actorUserId: user.id, action: "EDIT" } },
       },
     });
-
-    if (payload.statementContent !== undefined) {
-      await this.inlineMediaService.syncEntityImages({
-        schoolId: existing.schoolId,
-        uploadedByUserId: user.id,
-        scope: "RESOURCE",
-        entityType: "RESOURCE",
-        entityId: this.inlineEntityId(resourceId, "statement"),
-        nextBodyHtml: payload.statementContent,
-        deleteRemovedPhysically: false,
-      });
-    }
-    if (payload.correctionContent !== undefined) {
-      await this.inlineMediaService.syncEntityImages({
-        schoolId: existing.schoolId,
-        uploadedByUserId: user.id,
-        scope: "RESOURCE",
-        entityType: "RESOURCE",
-        entityId: this.inlineEntityId(resourceId, "correction"),
-        nextBodyHtml: payload.correctionContent,
-        deleteRemovedPhysically: false,
-      });
-    }
 
     return this.getResource(user, resourceId);
   }
@@ -584,34 +564,7 @@ export class ResourcesService {
     return { favorite: false };
   }
 
-  // ── Modération platform ──────────────────────────────────────────────
-
-  async listAdminResources(query: ListAdminResourcesQueryDto) {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
-    const status = query.status ?? "PENDING";
-    const part = query.part ?? "statement";
-
-    const where: Prisma.ResourceWhereInput = {
-      ...(query.kind ? { kind: query.kind } : {}),
-      ...(part === "statement"
-        ? { statementStatus: status }
-        : { correctionStatus: status, correctionContent: { not: null } }),
-    };
-
-    const [items, total] = await Promise.all([
-      this.prisma.resource.findMany({
-        where,
-        select: RESOURCE_LIST_SELECT,
-        orderBy: [{ createdAt: "asc" }],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      this.prisma.resource.count({ where }),
-    ]);
-
-    return { items, total, page, limit };
-  }
+  // ── Circuit de soumissions (énoncé / corrigé) ─────────────────────────
 
   private async findResourceOrThrow(
     user: AuthenticatedUser,
@@ -619,7 +572,12 @@ export class ResourcesService {
   ) {
     const resource = await this.prisma.resource.findUnique({
       where: { id: resourceId },
-      select: { id: true, statementStatus: true, correctionStatus: true },
+      select: {
+        id: true,
+        schoolId: true,
+        statementStatus: true,
+        correctionStatus: true,
+      },
     });
     if (!resource) {
       throw new NotFoundException(
@@ -632,135 +590,426 @@ export class ResourcesService {
     return resource;
   }
 
-  async approveStatement(user: AuthenticatedUser, resourceId: string) {
-    await this.findResourceOrThrow(user, resourceId);
-    await this.prisma.resource.update({
-      where: { id: resourceId },
-      data: {
-        statementStatus: "APPROVED",
-        statementApprovedByUserId: user.id,
-        statementApprovedAt: new Date(),
-        auditLogs: {
-          create: { actorUserId: user.id, action: "APPROVE_STATEMENT" },
-        },
-      },
-    });
-    return this.getResource(user, resourceId);
-  }
-
-  async rejectStatement(
+  async saveSubmissionDraft(
     user: AuthenticatedUser,
     resourceId: string,
-    payload: ReviewResourceDto,
+    part: ResourceAttachmentPart,
+    payload: SaveSubmissionDraftDto,
   ) {
-    await this.findResourceOrThrow(user, resourceId);
-    await this.prisma.resource.update({
-      where: { id: resourceId },
-      data: {
-        statementStatus: "REJECTED",
-        statementApprovedByUserId: null,
-        statementApprovedAt: null,
-        auditLogs: {
-          create: {
-            actorUserId: user.id,
-            action: "REJECT_STATEMENT",
-            payloadJson: payload.reason
-              ? { reason: payload.reason }
-              : undefined,
-          },
-        },
-      },
-    });
-    return this.getResource(user, resourceId);
-  }
-
-  async revokeStatement(user: AuthenticatedUser, resourceId: string) {
+    const locale = resourceLocaleFromUser(user);
     const resource = await this.findResourceOrThrow(user, resourceId);
-    if (resource.statementStatus !== "APPROVED") {
+
+    if (part === "CORRECTION" && resource.statementStatus !== "APPROVED") {
       throw new BadRequestException(
         translateResourceError(
-          resourceLocaleFromUser(user),
-          "resources.errors.alreadyReviewed",
+          locale,
+          "resources.errors.correctionRequiresApprovedStatement",
         ),
       );
     }
-    await this.prisma.resource.update({
-      where: { id: resourceId },
-      data: {
-        statementStatus: "PENDING",
-        statementApprovedByUserId: null,
-        statementApprovedAt: null,
-        auditLogs: {
-          create: { actorUserId: user.id, action: "REVOKE_STATEMENT" },
-        },
+
+    const existing = await this.prisma.resourceSubmission.findFirst({
+      where: {
+        resourceId,
+        part,
+        authorUserId: user.id,
+        status: { in: ["DRAFT", "AWAITING"] },
       },
     });
-    return this.getResource(user, resourceId);
-  }
 
-  async approveCorrection(user: AuthenticatedUser, resourceId: string) {
-    await this.findResourceOrThrow(user, resourceId);
-    await this.prisma.resource.update({
-      where: { id: resourceId },
-      data: {
-        correctionStatus: "APPROVED",
-        correctionApprovedByUserId: user.id,
-        correctionApprovedAt: new Date(),
-        auditLogs: {
-          create: { actorUserId: user.id, action: "APPROVE_CORRECTION" },
-        },
-      },
-    });
-    return this.getResource(user, resourceId);
-  }
-
-  async rejectCorrection(
-    user: AuthenticatedUser,
-    resourceId: string,
-    payload: ReviewResourceDto,
-  ) {
-    await this.findResourceOrThrow(user, resourceId);
-    await this.prisma.resource.update({
-      where: { id: resourceId },
-      data: {
-        correctionStatus: "REJECTED",
-        correctionApprovedByUserId: null,
-        correctionApprovedAt: null,
-        auditLogs: {
-          create: {
-            actorUserId: user.id,
-            action: "REJECT_CORRECTION",
-            payloadJson: payload.reason
-              ? { reason: payload.reason }
-              : undefined,
-          },
-        },
-      },
-    });
-    return this.getResource(user, resourceId);
-  }
-
-  async revokeCorrection(user: AuthenticatedUser, resourceId: string) {
-    const resource = await this.findResourceOrThrow(user, resourceId);
-    if (resource.correctionStatus !== "APPROVED") {
+    if (existing && existing.status === "AWAITING") {
       throw new BadRequestException(
         translateResourceError(
-          resourceLocaleFromUser(user),
-          "resources.errors.alreadyReviewed",
+          locale,
+          "resources.errors.submissionAwaitingReview",
         ),
       );
     }
-    await this.prisma.resource.update({
-      where: { id: resourceId },
-      data: {
-        correctionStatus: "PENDING",
-        correctionApprovedByUserId: null,
-        correctionApprovedAt: null,
-        auditLogs: {
-          create: { actorUserId: user.id, action: "REVOKE_CORRECTION" },
+
+    const attachmentsData = payload.attachments.map((a) => ({
+      resourceId,
+      part,
+      fileName: a.fileName,
+      fileUrl: a.fileUrl,
+      sizeLabel: a.sizeLabel,
+      mimeType: a.mimeType,
+    }));
+
+    let submission;
+    if (existing) {
+      await this.prisma.resourceAttachment.deleteMany({
+        where: { submissionId: existing.id },
+      });
+      submission = await this.prisma.resourceSubmission.update({
+        where: { id: existing.id },
+        data: {
+          content: payload.content,
+          attachments: { create: attachmentsData },
         },
+        select: SUBMISSION_SELECT,
+      });
+    } else {
+      submission = await this.prisma.resourceSubmission.create({
+        data: {
+          resourceId,
+          part,
+          authorUserId: user.id,
+          content: payload.content,
+          status: "DRAFT",
+          attachments: { create: attachmentsData },
+        },
+        select: SUBMISSION_SELECT,
+      });
+    }
+
+    await this.prisma.resourceAuditLog.create({
+      data: {
+        resourceId,
+        actorUserId: user.id,
+        action: "SUBMISSION_DRAFT",
+        payloadJson: { submissionId: submission.id, part },
       },
     });
-    return this.getResource(user, resourceId);
+
+    await this.inlineMediaService.syncEntityImages({
+      schoolId: resource.schoolId,
+      uploadedByUserId: user.id,
+      scope: "RESOURCE",
+      entityType: "RESOURCE",
+      entityId: this.inlineSubmissionEntityId(submission.id),
+      nextBodyHtml: payload.content,
+      deleteRemovedPhysically: false,
+    });
+
+    return submission;
+  }
+
+  async submitSubmission(
+    user: AuthenticatedUser,
+    resourceId: string,
+    submissionId: string,
+  ) {
+    const locale = resourceLocaleFromUser(user);
+    const submission = await this.prisma.resourceSubmission.findUnique({
+      where: { id: submissionId },
+    });
+    if (!submission || submission.resourceId !== resourceId) {
+      throw new NotFoundException(
+        translateResourceError(locale, "resources.errors.notFound"),
+      );
+    }
+    if (submission.authorUserId !== user.id) {
+      throw new ForbiddenException(
+        translateResourceError(locale, "resources.errors.notSubmissionAuthor"),
+      );
+    }
+    if (submission.status !== "DRAFT") {
+      throw new BadRequestException(
+        translateResourceError(locale, "resources.errors.submissionNotDraft"),
+      );
+    }
+    if (submission.part === "CORRECTION") {
+      const resource = await this.findResourceOrThrow(user, resourceId);
+      if (resource.statementStatus !== "APPROVED") {
+        throw new BadRequestException(
+          translateResourceError(
+            locale,
+            "resources.errors.correctionRequiresApprovedStatement",
+          ),
+        );
+      }
+    }
+
+    const updated = await this.prisma.resourceSubmission.update({
+      where: { id: submissionId },
+      data: { status: "AWAITING" },
+      select: SUBMISSION_SELECT,
+    });
+
+    await this.prisma.resourceAuditLog.create({
+      data: {
+        resourceId,
+        actorUserId: user.id,
+        action: "SUBMISSION_SUBMIT",
+        payloadJson: { submissionId },
+      },
+    });
+
+    return updated;
+  }
+
+  // Vue "candidats" pour un admin (soumissions AWAITING d'une fiche/partie),
+  // ou historique personnel pour un contributeur non-admin.
+  async listSubmissions(
+    user: AuthenticatedUser,
+    resourceId: string,
+    part: ResourceAttachmentPart,
+  ) {
+    await this.findResourceOrThrow(user, resourceId);
+    const isPlatform = user.platformRoles.length > 0;
+
+    const where: Prisma.ResourceSubmissionWhereInput = isPlatform
+      ? { resourceId, part, status: "AWAITING" }
+      : { resourceId, part, authorUserId: user.id };
+
+    return this.prisma.resourceSubmission.findMany({
+      where,
+      orderBy: [{ createdAt: "asc" }],
+      select: SUBMISSION_SELECT,
+    });
+  }
+
+  async approveSubmission(admin: AuthenticatedUser, submissionId: string) {
+    const locale = resourceLocaleFromUser(admin);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.resourceSubmission.updateMany({
+        where: { id: submissionId, status: "AWAITING" },
+        data: {
+          status: "APPROVED",
+          reviewedByUserId: admin.id,
+          reviewedAt: new Date(),
+        },
+      });
+      if (claimed.count === 0) {
+        throw new ConflictException(
+          translateResourceError(
+            locale,
+            "resources.errors.submissionAlreadyReviewed",
+          ),
+        );
+      }
+
+      const submission = await tx.resourceSubmission.findUniqueOrThrow({
+        where: { id: submissionId },
+      });
+
+      const siblings = await tx.resourceSubmission.findMany({
+        where: {
+          resourceId: submission.resourceId,
+          part: submission.part,
+          status: "AWAITING",
+          id: { not: submissionId },
+        },
+        select: { id: true, authorUserId: true },
+      });
+
+      if (siblings.length > 0) {
+        await tx.resourceSubmission.updateMany({
+          where: { id: { in: siblings.map((s) => s.id) } },
+          data: {
+            status: "DISCARDED",
+            reviewedByUserId: admin.id,
+            reviewedAt: new Date(),
+          },
+        });
+      }
+
+      await tx.resource.update({
+        where: { id: submission.resourceId },
+        data:
+          submission.part === "STATEMENT"
+            ? {
+                statementContent: submission.content,
+                statementStatus: "APPROVED",
+                statementApprovedByUserId: admin.id,
+                statementApprovedAt: new Date(),
+                statementSubmissionId: submission.id,
+                auditLogs: {
+                  create: {
+                    actorUserId: admin.id,
+                    action: "SUBMISSION_APPROVE",
+                    payloadJson: { submissionId },
+                  },
+                },
+              }
+            : {
+                correctionContent: submission.content,
+                correctionStatus: "APPROVED",
+                correctionApprovedByUserId: admin.id,
+                correctionApprovedAt: new Date(),
+                correctionSubmissionId: submission.id,
+                auditLogs: {
+                  create: {
+                    actorUserId: admin.id,
+                    action: "SUBMISSION_APPROVE",
+                    payloadJson: { submissionId },
+                  },
+                },
+              },
+      });
+
+      return {
+        resourceId: submission.resourceId,
+        part: submission.part,
+        discarded: siblings,
+      };
+    });
+
+    await Promise.all(
+      result.discarded.map((sibling) =>
+        this.notificationsService.notifyDiscarded({
+          resourceId: result.resourceId,
+          part: result.part,
+          authorUserId: sibling.authorUserId,
+        }),
+      ),
+    );
+
+    return this.getResource(admin, result.resourceId);
+  }
+
+  async rejectSubmission(
+    admin: AuthenticatedUser,
+    submissionId: string,
+    payload: ReviewResourceDto,
+  ) {
+    const locale = resourceLocaleFromUser(admin);
+
+    const submission = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.resourceSubmission.updateMany({
+        where: { id: submissionId, status: "AWAITING" },
+        data: {
+          status: "REJECTED",
+          reason: payload.reason ?? null,
+          reviewedByUserId: admin.id,
+          reviewedAt: new Date(),
+        },
+      });
+      if (claimed.count === 0) {
+        throw new ConflictException(
+          translateResourceError(
+            locale,
+            "resources.errors.submissionAlreadyReviewed",
+          ),
+        );
+      }
+
+      const found = await tx.resourceSubmission.findUniqueOrThrow({
+        where: { id: submissionId },
+      });
+
+      await tx.resourceAuditLog.create({
+        data: {
+          resourceId: found.resourceId,
+          actorUserId: admin.id,
+          action: "SUBMISSION_REJECT",
+          payloadJson: payload.reason
+            ? { submissionId, reason: payload.reason }
+            : { submissionId },
+        },
+      });
+
+      return found;
+    });
+
+    await this.notificationsService.notifyRejected({
+      resourceId: submission.resourceId,
+      part: submission.part,
+      authorUserId: submission.authorUserId,
+      reason: payload.reason,
+    });
+
+    return { id: submission.id, status: submission.status };
+  }
+
+  async revokeSubmission(admin: AuthenticatedUser, submissionId: string) {
+    const locale = resourceLocaleFromUser(admin);
+    const submission = await this.prisma.resourceSubmission.findUnique({
+      where: { id: submissionId },
+    });
+    if (!submission) {
+      throw new NotFoundException(
+        translateResourceError(locale, "resources.errors.notFound"),
+      );
+    }
+    if (submission.status !== "APPROVED") {
+      throw new BadRequestException(
+        translateResourceError(locale, "resources.errors.alreadyReviewed"),
+      );
+    }
+
+    const isStatement = submission.part === "STATEMENT";
+    await this.prisma.resource.update({
+      where: { id: submission.resourceId },
+      data: isStatement
+        ? {
+            statementStatus: "PENDING",
+            statementApprovedByUserId: null,
+            statementApprovedAt: null,
+            statementSubmissionId: null,
+            auditLogs: {
+              create: {
+                actorUserId: admin.id,
+                action: "REVOKE_STATEMENT",
+                payloadJson: { submissionId },
+              },
+            },
+          }
+        : {
+            correctionStatus: "PENDING",
+            correctionApprovedByUserId: null,
+            correctionApprovedAt: null,
+            correctionSubmissionId: null,
+            auditLogs: {
+              create: {
+                actorUserId: admin.id,
+                action: "REVOKE_CORRECTION",
+                payloadJson: { submissionId },
+              },
+            },
+          },
+    });
+
+    await this.prisma.resourceSubmission.update({
+      where: { id: submissionId },
+      data: { status: "AWAITING", reviewedByUserId: null, reviewedAt: null },
+    });
+
+    return this.getResource(admin, submission.resourceId);
+  }
+
+  // ── Modération platform ──────────────────────────────────────────────
+
+  async listAdminSubmissions(query: ListAdminResourcesQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const status = query.status ?? "AWAITING";
+    const part: ResourceAttachmentPart =
+      query.part === "correction" ? "CORRECTION" : "STATEMENT";
+
+    const where: Prisma.ResourceSubmissionWhereInput = {
+      part,
+      status,
+      ...(query.kind ? { resource: { kind: query.kind } } : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.resourceSubmission.findMany({
+        where,
+        orderBy: [{ createdAt: "asc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          ...SUBMISSION_SELECT,
+          resource: {
+            select: {
+              id: true,
+              kind: true,
+              title: true,
+              examType: true,
+              sequence: true,
+              academicYearLabel: true,
+              school: { select: { id: true, name: true } },
+              academicLevel: { select: { id: true, label: true } },
+              subject: { select: { id: true, name: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.resourceSubmission.count({ where }),
+    ]);
+
+    return { items, total, page, limit };
   }
 }

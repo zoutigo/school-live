@@ -65,3 +65,30 @@ export type StudentLifeEventPushPayload = {
     studentId: string;
   };
 };
+
+export const PUSH_JOB_SEND_RESOURCE_SUBMISSION_DISCARDED =
+  "send-resource-submission-discarded-push";
+export const PUSH_JOB_SEND_RESOURCE_SUBMISSION_REJECTED =
+  "send-resource-submission-rejected-push";
+
+export type ResourceSubmissionDiscardedPushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "RESOURCE_SUBMISSION_DISCARDED";
+    resourceId: string;
+    part: "STATEMENT" | "CORRECTION";
+  };
+};
+
+export type ResourceSubmissionRejectedPushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "RESOURCE_SUBMISSION_REJECTED";
+    resourceId: string;
+    part: "STATEMENT" | "CORRECTION";
+  };
+};

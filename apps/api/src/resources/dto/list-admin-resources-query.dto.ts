@@ -1,6 +1,6 @@
 import { Type } from "class-transformer";
 import { IsEnum, IsIn, IsInt, IsOptional, Max, Min } from "class-validator";
-import { ResourceApprovalStatus, ResourceKind } from "@prisma/client";
+import { ResourceKind, ResourceSubmissionStatus } from "@prisma/client";
 
 export class ListAdminResourcesQueryDto {
   @IsOptional()
@@ -12,8 +12,8 @@ export class ListAdminResourcesQueryDto {
   part?: "statement" | "correction";
 
   @IsOptional()
-  @IsEnum(ResourceApprovalStatus)
-  status?: ResourceApprovalStatus;
+  @IsEnum(ResourceSubmissionStatus)
+  status?: ResourceSubmissionStatus;
 
   @IsOptional()
   @Type(() => Number)

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from "@nestjs/common";
@@ -8,15 +9,18 @@ import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { CreateResourceDto } from "./dto/create-resource.dto.js";
+import { ResourceSubmissionNotificationsService } from "./resource-submission-notifications.service.js";
 import { ResourcesService } from "./resources.service.js";
 
 const SCHOOL_ID = "school-1";
 const TEACHER_ID = "teacher-1";
 const OTHER_TEACHER_ID = "teacher-2";
+const THIRD_TEACHER_ID = "teacher-3";
 const ADMIN_ID = "admin-1";
 const LEVEL_ID = "level-national-1";
 const SUBJECT_ID = "subject-national-1";
 const RESOURCE_ID = "resource-1";
+const SUBMISSION_ID = "submission-1";
 
 function makeTeacher(
   overrides: Partial<AuthenticatedUser> = {},
@@ -59,7 +63,6 @@ function makeCreatePayload(
     sequence: "SEQ_1",
     academicYearLabel: "2025-2026",
     title: "Controle chapitre 3",
-    statementContent: "<p>Enonce</p>",
     ...overrides,
   };
 }
@@ -78,8 +81,10 @@ function makeResourceRow(overrides: Record<string, unknown> = {}) {
     authorUserId: TEACHER_ID,
     statementContent: "<p>Enonce</p>",
     statementStatus: "PENDING",
+    statementSubmissionId: null,
     correctionContent: null,
     correctionStatus: "PENDING",
+    correctionSubmissionId: null,
     createdAt: new Date("2026-07-01T10:00:00Z"),
     updatedAt: new Date("2026-07-01T10:00:00Z"),
     school: { id: SCHOOL_ID, name: "Ecole Test" },
@@ -91,8 +96,25 @@ function makeResourceRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makePrismaMock() {
+function makeSubmissionRow(overrides: Record<string, unknown> = {}) {
   return {
+    id: SUBMISSION_ID,
+    resourceId: RESOURCE_ID,
+    part: "STATEMENT",
+    authorUserId: TEACHER_ID,
+    content: "<p>Enonce propose</p>",
+    status: "DRAFT",
+    reason: null,
+    reviewedByUserId: null,
+    reviewedAt: null,
+    createdAt: new Date("2026-07-01T10:00:00Z"),
+    updatedAt: new Date("2026-07-01T10:00:00Z"),
+    ...overrides,
+  };
+}
+
+function makePrismaMock() {
+  const mock = {
     academicLevel: { findUnique: jest.fn() },
     subject: { findUnique: jest.fn() },
     resource: {
@@ -102,9 +124,22 @@ function makePrismaMock() {
       findUnique: jest.fn(),
       count: jest.fn(),
     },
+    resourceSubmission: {
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      count: jest.fn(),
+    },
     resourceAttachment: {
       deleteMany: jest.fn(),
       createMany: jest.fn(),
+    },
+    resourceAuditLog: {
+      create: jest.fn(),
     },
     resourceFavorite: {
       findMany: jest.fn(),
@@ -115,7 +150,12 @@ function makePrismaMock() {
     school: {
       findMany: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
+  mock.$transaction.mockImplementation(
+    async (callback: (tx: typeof mock) => unknown) => callback(mock),
+  );
+  return mock;
 }
 
 function makeInlineMediaMock() {
@@ -125,23 +165,37 @@ function makeInlineMediaMock() {
   };
 }
 
+function makeNotificationsMock() {
+  return {
+    notifyDiscarded: jest.fn().mockResolvedValue(undefined),
+    notifyRejected: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 describe("ResourcesService", () => {
   let service: ResourcesService;
   let prisma: ReturnType<typeof makePrismaMock>;
   let inlineMedia: ReturnType<typeof makeInlineMediaMock>;
+  let notifications: ReturnType<typeof makeNotificationsMock>;
 
   beforeEach(async () => {
     prisma = makePrismaMock();
     inlineMedia = makeInlineMediaMock();
+    notifications = makeNotificationsMock();
 
     prisma.academicLevel.findUnique.mockResolvedValue({ schoolId: null });
     prisma.subject.findUnique.mockResolvedValue({ schoolId: null });
+    prisma.resource.findMany.mockResolvedValue([]);
 
     const module = await Test.createTestingModule({
       providers: [
         ResourcesService,
         { provide: PrismaService, useValue: prisma },
         { provide: InlineMediaService, useValue: inlineMedia },
+        {
+          provide: ResourceSubmissionNotificationsService,
+          useValue: notifications,
+        },
       ],
     }).compile();
 
@@ -209,12 +263,11 @@ describe("ResourcesService", () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it("creates a valid ASSESSMENT resource with a SUBMIT audit log entry", async () => {
-      prisma.resource.create.mockResolvedValue({
-        id: RESOURCE_ID,
-        schoolId: SCHOOL_ID,
-      });
-      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
+    it("creates a shell ASSESSMENT resource (no content) with a SUBMIT audit log entry", async () => {
+      prisma.resource.create.mockResolvedValue({ id: RESOURCE_ID });
+      prisma.resource.findUnique.mockResolvedValue(
+        makeResourceRow({ statementContent: null }),
+      );
       prisma.resourceFavorite.findUnique.mockResolvedValue(null);
 
       await service.createResource(makeTeacher(), makeCreatePayload());
@@ -232,16 +285,14 @@ describe("ResourcesService", () => {
           }),
         }),
       );
-      expect(inlineMedia.syncEntityImages).toHaveBeenCalledWith(
-        expect.objectContaining({ entityId: `${RESOURCE_ID}:statement` }),
+      expect(prisma.resource.create.mock.calls[0][0].data).not.toHaveProperty(
+        "statementContent",
       );
+      expect(inlineMedia.syncEntityImages).not.toHaveBeenCalled();
     });
 
     it("creates a valid EXAM resource with schoolId=null", async () => {
-      prisma.resource.create.mockResolvedValue({
-        id: RESOURCE_ID,
-        schoolId: null,
-      });
+      prisma.resource.create.mockResolvedValue({ id: RESOURCE_ID });
       prisma.resource.findUnique.mockResolvedValue(
         makeResourceRow({ kind: "EXAM", schoolId: null, sequence: null }),
       );
@@ -261,6 +312,45 @@ describe("ResourcesService", () => {
           data: expect.objectContaining({ schoolId: null, sequence: null }),
         }),
       );
+    });
+
+    it("blocks creation when a near-identical resource already exists (score >= 80%)", async () => {
+      prisma.resource.findMany.mockResolvedValue([
+        { id: "resource-existing", title: "Controle chapitre 3" },
+      ]);
+
+      await expect(
+        service.createResource(makeTeacher(), makeCreatePayload()),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.resource.create).not.toHaveBeenCalled();
+    });
+
+    it("warns (409) without creating when a similar resource exists (50-80%)", async () => {
+      prisma.resource.findMany.mockResolvedValue([
+        { id: "resource-existing", title: "Controle chap 3 bis" },
+      ]);
+
+      await expect(
+        service.createResource(makeTeacher(), makeCreatePayload()),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.resource.create).not.toHaveBeenCalled();
+    });
+
+    it("bypasses the duplicate warning when confirmDuplicate is set", async () => {
+      prisma.resource.findMany.mockResolvedValue([
+        { id: "resource-existing", title: "Controle chap 3 bis" },
+      ]);
+      prisma.resource.create.mockResolvedValue({ id: RESOURCE_ID });
+      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.createResource(
+          makeTeacher(),
+          makeCreatePayload({ confirmDuplicate: true }),
+        ),
+      ).resolves.toBeDefined();
+      expect(prisma.resource.create).toHaveBeenCalled();
     });
   });
 
@@ -296,52 +386,6 @@ describe("ResourcesService", () => {
           title: "x",
         }),
       ).resolves.toBeDefined();
-    });
-
-    it("resets an APPROVED statement back to PENDING when its content changes", async () => {
-      prisma.resource.findUnique
-        .mockResolvedValueOnce(
-          makeResourceRow({
-            statementStatus: "APPROVED",
-            statementContent: "<p>old</p>",
-          }),
-        )
-        .mockResolvedValueOnce(makeResourceRow());
-      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
-
-      await service.updateResource(makeTeacher(), RESOURCE_ID, {
-        statementContent: "<p>new</p>",
-      });
-
-      expect(prisma.resource.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            statementContent: "<p>new</p>",
-            statementStatus: "PENDING",
-            statementApprovedByUserId: null,
-            statementApprovedAt: null,
-          }),
-        }),
-      );
-    });
-
-    it("does not touch statementStatus when the content is unchanged", async () => {
-      prisma.resource.findUnique
-        .mockResolvedValueOnce(
-          makeResourceRow({
-            statementStatus: "APPROVED",
-            statementContent: "<p>same</p>",
-          }),
-        )
-        .mockResolvedValueOnce(makeResourceRow());
-      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
-
-      await service.updateResource(makeTeacher(), RESOURCE_ID, {
-        statementContent: "<p>same</p>",
-      });
-
-      const call = prisma.resource.update.mock.calls[0][0];
-      expect(call.data.statementStatus).toBeUndefined();
     });
 
     it("allows updating level/subject/examType/sequence/academicYearLabel, re-validating national references", async () => {
@@ -394,39 +438,27 @@ describe("ResourcesService", () => {
       expect(call.data.schoolId).toBeUndefined();
       expect(call.data.sequence).toBeUndefined();
     });
-
-    it("resets an APPROVED correction back to PENDING independently of the statement", async () => {
-      prisma.resource.findUnique
-        .mockResolvedValueOnce(
-          makeResourceRow({
-            statementStatus: "APPROVED",
-            correctionStatus: "APPROVED",
-            correctionContent: "<p>old correction</p>",
-          }),
-        )
-        .mockResolvedValueOnce(makeResourceRow());
-      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
-
-      await service.updateResource(makeTeacher(), RESOURCE_ID, {
-        correctionContent: "<p>new correction</p>",
-      });
-
-      const call = prisma.resource.update.mock.calls[0][0];
-      expect(call.data.correctionStatus).toBe("PENDING");
-      expect(call.data.statementStatus).toBeUndefined();
-    });
   });
 
-  describe("getResource — correction visibility", () => {
+  describe("getResource — correction visibility & attachment scoping", () => {
     it("masks the correction content when correctionStatus is not APPROVED, for a non-author reader", async () => {
       prisma.resource.findUnique.mockResolvedValue(
         makeResourceRow({
           authorUserId: OTHER_TEACHER_ID,
           statementStatus: "APPROVED",
+          statementSubmissionId: "sub-statement",
           correctionStatus: "PENDING",
           correctionContent: "<p>secret correction</p>",
+          correctionSubmissionId: "sub-correction",
           statementContent: "<p>enonce</p>",
-          attachments: [{ id: "a1", part: "CORRECTION", fileName: "c.pdf" }],
+          attachments: [
+            {
+              id: "a1",
+              part: "CORRECTION",
+              fileName: "c.pdf",
+              submissionId: "sub-correction",
+            },
+          ],
         }),
       );
       prisma.resourceFavorite.findUnique.mockResolvedValue(null);
@@ -437,14 +469,23 @@ describe("ResourcesService", () => {
       expect(result.attachments).toHaveLength(0);
     });
 
-    it("shows the correction content once correctionStatus is APPROVED", async () => {
+    it("shows the correction content and its attachments once correctionStatus is APPROVED", async () => {
       prisma.resource.findUnique.mockResolvedValue(
         makeResourceRow({
           authorUserId: OTHER_TEACHER_ID,
           statementStatus: "APPROVED",
+          statementSubmissionId: "sub-statement",
           correctionStatus: "APPROVED",
           correctionContent: "<p>visible correction</p>",
-          attachments: [{ id: "a1", part: "CORRECTION", fileName: "c.pdf" }],
+          correctionSubmissionId: "sub-correction",
+          attachments: [
+            {
+              id: "a1",
+              part: "CORRECTION",
+              fileName: "c.pdf",
+              submissionId: "sub-correction",
+            },
+          ],
         }),
       );
       prisma.resourceFavorite.findUnique.mockResolvedValue(null);
@@ -453,6 +494,36 @@ describe("ResourcesService", () => {
 
       expect(result.correctionContent).toBe("<p>visible correction</p>");
       expect(result.attachments).toHaveLength(1);
+    });
+
+    it("filters out attachments from discarded/rejected sibling submissions", async () => {
+      prisma.resource.findUnique.mockResolvedValue(
+        makeResourceRow({
+          authorUserId: TEACHER_ID,
+          statementStatus: "APPROVED",
+          statementSubmissionId: "sub-winner",
+          attachments: [
+            {
+              id: "a1",
+              part: "STATEMENT",
+              fileName: "winner.pdf",
+              submissionId: "sub-winner",
+            },
+            {
+              id: "a2",
+              part: "STATEMENT",
+              fileName: "discarded.pdf",
+              submissionId: "sub-loser",
+            },
+          ],
+        }),
+      );
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      const result = await service.getResource(makeTeacher(), RESOURCE_ID);
+
+      expect(result.attachments).toHaveLength(1);
+      expect(result.attachments[0].fileName).toBe("winner.pdf");
     });
 
     it("always shows the correction to the author, even if not yet approved", async () => {
@@ -499,79 +570,374 @@ describe("ResourcesService", () => {
     });
   });
 
-  describe("moderation transitions", () => {
-    it("approves a statement and stamps the acting admin", async () => {
-      prisma.resource.findUnique.mockResolvedValueOnce(
+  describe("saveSubmissionDraft", () => {
+    it("creates a new draft for the statement of an existing resource", async () => {
+      prisma.resource.findUnique.mockResolvedValue(
         makeResourceRow({ statementStatus: "PENDING" }),
       );
-      prisma.resource.findUnique.mockResolvedValueOnce(makeResourceRow());
-      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+      prisma.resourceSubmission.findFirst.mockResolvedValue(null);
+      prisma.resourceSubmission.create.mockResolvedValue(makeSubmissionRow());
 
-      await service.approveStatement(makePlatformAdmin(), RESOURCE_ID);
+      const result = await service.saveSubmissionDraft(
+        makeTeacher(),
+        RESOURCE_ID,
+        "STATEMENT",
+        { content: "<p>Enonce propose</p>", attachments: [] },
+      );
 
-      expect(prisma.resource.update).toHaveBeenCalledWith(
+      expect(prisma.resourceSubmission.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            statementStatus: "APPROVED",
-            statementApprovedByUserId: ADMIN_ID,
+            resourceId: RESOURCE_ID,
+            part: "STATEMENT",
+            authorUserId: TEACHER_ID,
+            content: "<p>Enonce propose</p>",
+            status: "DRAFT",
           }),
+        }),
+      );
+      expect(result.id).toBe(SUBMISSION_ID);
+      expect(prisma.resourceAuditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ action: "SUBMISSION_DRAFT" }),
         }),
       );
     });
 
-    it("rejects revokeStatement when the statement is not currently APPROVED", async () => {
+    it("updates the existing draft in place instead of creating a duplicate", async () => {
+      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
+      prisma.resourceSubmission.findFirst.mockResolvedValue(
+        makeSubmissionRow({ status: "DRAFT" }),
+      );
+      prisma.resourceSubmission.update.mockResolvedValue(
+        makeSubmissionRow({ content: "<p>updated</p>" }),
+      );
+
+      await service.saveSubmissionDraft(
+        makeTeacher(),
+        RESOURCE_ID,
+        "STATEMENT",
+        {
+          content: "<p>updated</p>",
+          attachments: [],
+        },
+      );
+
+      expect(prisma.resourceSubmission.create).not.toHaveBeenCalled();
+      expect(prisma.resourceSubmission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: SUBMISSION_ID },
+          data: expect.objectContaining({ content: "<p>updated</p>" }),
+        }),
+      );
+    });
+
+    it("rejects a new draft while the author already has one AWAITING review", async () => {
+      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
+      prisma.resourceSubmission.findFirst.mockResolvedValue(
+        makeSubmissionRow({ status: "AWAITING" }),
+      );
+
+      await expect(
+        service.saveSubmissionDraft(makeTeacher(), RESOURCE_ID, "STATEMENT", {
+          content: "<p>x</p>",
+          attachments: [],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.resourceSubmission.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a correction draft while the statement is not yet approved", async () => {
       prisma.resource.findUnique.mockResolvedValue(
         makeResourceRow({ statementStatus: "PENDING" }),
       );
+
       await expect(
-        service.revokeStatement(makePlatformAdmin(), RESOURCE_ID),
+        service.saveSubmissionDraft(makeTeacher(), RESOURCE_ID, "CORRECTION", {
+          content: "<p>corrige</p>",
+          attachments: [],
+        }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it("revokes an APPROVED statement back to PENDING", async () => {
-      prisma.resource.findUnique.mockResolvedValueOnce(
+    it("allows a correction draft once the statement is approved", async () => {
+      prisma.resource.findUnique.mockResolvedValue(
         makeResourceRow({ statementStatus: "APPROVED" }),
       );
-      prisma.resource.findUnique.mockResolvedValueOnce(makeResourceRow());
+      prisma.resourceSubmission.findFirst.mockResolvedValue(null);
+      prisma.resourceSubmission.create.mockResolvedValue(
+        makeSubmissionRow({ part: "CORRECTION" }),
+      );
+
+      await expect(
+        service.saveSubmissionDraft(makeTeacher(), RESOURCE_ID, "CORRECTION", {
+          content: "<p>corrige</p>",
+          attachments: [],
+        }),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe("submitSubmission", () => {
+    it("moves a DRAFT submission to AWAITING", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(
+        makeSubmissionRow({ status: "DRAFT" }),
+      );
+      prisma.resourceSubmission.update.mockResolvedValue(
+        makeSubmissionRow({ status: "AWAITING" }),
+      );
+
+      const result = await service.submitSubmission(
+        makeTeacher(),
+        RESOURCE_ID,
+        SUBMISSION_ID,
+      );
+
+      expect(prisma.resourceSubmission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: SUBMISSION_ID },
+          data: { status: "AWAITING" },
+        }),
+      );
+      expect(result.status).toBe("AWAITING");
+    });
+
+    it("refuses to submit someone else's draft", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(
+        makeSubmissionRow({ authorUserId: OTHER_TEACHER_ID }),
+      );
+
+      await expect(
+        service.submitSubmission(makeTeacher(), RESOURCE_ID, SUBMISSION_ID),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("refuses to re-submit a submission that is not a draft", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(
+        makeSubmissionRow({ status: "AWAITING" }),
+      );
+
+      await expect(
+        service.submitSubmission(makeTeacher(), RESOURCE_ID, SUBMISSION_ID),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("re-checks that the statement is still approved before submitting a correction", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(
+        makeSubmissionRow({ part: "CORRECTION", status: "DRAFT" }),
+      );
+      prisma.resource.findUnique.mockResolvedValue(
+        makeResourceRow({ statementStatus: "PENDING" }),
+      );
+
+      await expect(
+        service.submitSubmission(makeTeacher(), RESOURCE_ID, SUBMISSION_ID),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe("listSubmissions", () => {
+    it("returns only AWAITING candidates for a platform admin", async () => {
+      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
+      prisma.resourceSubmission.findMany.mockResolvedValue([]);
+
+      await service.listSubmissions(
+        makePlatformAdmin(),
+        RESOURCE_ID,
+        "STATEMENT",
+      );
+
+      expect(prisma.resourceSubmission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            resourceId: RESOURCE_ID,
+            part: "STATEMENT",
+            status: "AWAITING",
+          },
+        }),
+      );
+    });
+
+    it("returns only the caller's own submissions for a non-admin", async () => {
+      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
+      prisma.resourceSubmission.findMany.mockResolvedValue([]);
+
+      await service.listSubmissions(makeTeacher(), RESOURCE_ID, "STATEMENT");
+
+      expect(prisma.resourceSubmission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            resourceId: RESOURCE_ID,
+            part: "STATEMENT",
+            authorUserId: TEACHER_ID,
+          },
+        }),
+      );
+    });
+  });
+
+  describe("approveSubmission", () => {
+    it("approves the submission, discards AWAITING siblings, and notifies their authors", async () => {
+      prisma.resourceSubmission.updateMany.mockResolvedValue({ count: 1 });
+      prisma.resourceSubmission.findUniqueOrThrow.mockResolvedValue(
+        makeSubmissionRow({ status: "APPROVED" }),
+      );
+      prisma.resourceSubmission.findMany.mockResolvedValue([
+        { id: "submission-2", authorUserId: OTHER_TEACHER_ID },
+        { id: "submission-3", authorUserId: THIRD_TEACHER_ID },
+      ]);
+      prisma.resource.update.mockResolvedValue({});
+      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
       prisma.resourceFavorite.findUnique.mockResolvedValue(null);
 
-      await service.revokeStatement(makePlatformAdmin(), RESOURCE_ID);
+      await service.approveSubmission(makePlatformAdmin(), SUBMISSION_ID);
+
+      expect(prisma.resourceSubmission.updateMany).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          where: { id: SUBMISSION_ID, status: "AWAITING" },
+          data: expect.objectContaining({ status: "APPROVED" }),
+        }),
+      );
+      expect(prisma.resourceSubmission.updateMany).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: { id: { in: ["submission-2", "submission-3"] } },
+          data: expect.objectContaining({ status: "DISCARDED" }),
+        }),
+      );
+      expect(prisma.resource.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            statementContent: expect.any(String),
+            statementStatus: "APPROVED",
+            statementSubmissionId: SUBMISSION_ID,
+          }),
+        }),
+      );
+      expect(notifications.notifyDiscarded).toHaveBeenCalledTimes(2);
+      expect(notifications.notifyDiscarded).toHaveBeenCalledWith(
+        expect.objectContaining({ authorUserId: OTHER_TEACHER_ID }),
+      );
+      expect(notifications.notifyDiscarded).toHaveBeenCalledWith(
+        expect.objectContaining({ authorUserId: THIRD_TEACHER_ID }),
+      );
+    });
+
+    it("fails with a conflict when the submission was already reviewed by someone else (race condition)", async () => {
+      prisma.resourceSubmission.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.approveSubmission(makePlatformAdmin(), SUBMISSION_ID),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.resource.update).not.toHaveBeenCalled();
+      expect(notifications.notifyDiscarded).not.toHaveBeenCalled();
+    });
+
+    it("simulates two concurrent admins: the second approval attempt is rejected", async () => {
+      prisma.resourceSubmission.updateMany
+        .mockResolvedValueOnce({ count: 1 })
+        .mockResolvedValueOnce({ count: 0 });
+      prisma.resourceSubmission.findUniqueOrThrow.mockResolvedValue(
+        makeSubmissionRow({ status: "APPROVED" }),
+      );
+      prisma.resourceSubmission.findMany.mockResolvedValue([]);
+      prisma.resource.update.mockResolvedValue({});
+      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.approveSubmission(makePlatformAdmin(), SUBMISSION_ID),
+      ).resolves.toBeDefined();
+
+      await expect(
+        service.approveSubmission(makePlatformAdmin(), SUBMISSION_ID),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe("rejectSubmission", () => {
+    it("rejects an AWAITING submission with a reason and notifies its author", async () => {
+      prisma.resourceSubmission.updateMany.mockResolvedValue({ count: 1 });
+      prisma.resourceSubmission.findUniqueOrThrow.mockResolvedValue(
+        makeSubmissionRow({ status: "REJECTED", reason: "Incomplet" }),
+      );
+
+      const result = await service.rejectSubmission(
+        makePlatformAdmin(),
+        SUBMISSION_ID,
+        { reason: "Incomplet" },
+      );
+
+      expect(result).toEqual({ id: SUBMISSION_ID, status: "REJECTED" });
+      expect(prisma.resourceAuditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: "SUBMISSION_REJECT",
+            payloadJson: { submissionId: SUBMISSION_ID, reason: "Incomplet" },
+          }),
+        }),
+      );
+      expect(notifications.notifyRejected).toHaveBeenCalledWith(
+        expect.objectContaining({
+          authorUserId: TEACHER_ID,
+          reason: "Incomplet",
+        }),
+      );
+    });
+
+    it("fails with a conflict when the submission was already reviewed", async () => {
+      prisma.resourceSubmission.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.rejectSubmission(makePlatformAdmin(), SUBMISSION_ID, {}),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(notifications.notifyRejected).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("revokeSubmission", () => {
+    it("resets an APPROVED statement submission back to AWAITING and clears the resource pointer", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(
+        makeSubmissionRow({ status: "APPROVED", part: "STATEMENT" }),
+      );
+      prisma.resource.update.mockResolvedValue({});
+      prisma.resourceSubmission.update.mockResolvedValue(
+        makeSubmissionRow({ status: "AWAITING" }),
+      );
+      prisma.resource.findUnique.mockResolvedValue(makeResourceRow());
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      await service.revokeSubmission(makePlatformAdmin(), SUBMISSION_ID);
 
       expect(prisma.resource.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             statementStatus: "PENDING",
-            statementApprovedByUserId: null,
+            statementSubmissionId: null,
           }),
+        }),
+      );
+      expect(prisma.resourceSubmission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: SUBMISSION_ID },
+          data: {
+            status: "AWAITING",
+            reviewedByUserId: null,
+            reviewedAt: null,
+          },
         }),
       );
     });
 
-    it("rejects a correction with an optional reason recorded in the audit log", async () => {
-      prisma.resource.findUnique.mockResolvedValueOnce(
-        makeResourceRow({ correctionStatus: "PENDING" }),
+    it("refuses to revoke a submission that is not APPROVED", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(
+        makeSubmissionRow({ status: "AWAITING" }),
       );
-      prisma.resource.findUnique.mockResolvedValueOnce(makeResourceRow());
-      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
 
-      await service.rejectCorrection(makePlatformAdmin(), RESOURCE_ID, {
-        reason: "Contenu incomplet",
-      });
-
-      expect(prisma.resource.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            correctionStatus: "REJECTED",
-            auditLogs: {
-              create: {
-                actorUserId: ADMIN_ID,
-                action: "REJECT_CORRECTION",
-                payloadJson: { reason: "Contenu incomplet" },
-              },
-            },
-          }),
-        }),
-      );
+      await expect(
+        service.revokeSubmission(makePlatformAdmin(), SUBMISSION_ID),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 
@@ -652,6 +1018,42 @@ describe("ResourcesService", () => {
 
       expect(result).toEqual([]);
       expect(prisma.school.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("listAdminSubmissions", () => {
+    it("defaults to AWAITING statement submissions", async () => {
+      prisma.resourceSubmission.findMany.mockResolvedValue([]);
+      prisma.resourceSubmission.count.mockResolvedValue(0);
+
+      await service.listAdminSubmissions({});
+
+      expect(prisma.resourceSubmission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { part: "STATEMENT", status: "AWAITING" },
+        }),
+      );
+    });
+
+    it("scopes by kind and correction part when requested", async () => {
+      prisma.resourceSubmission.findMany.mockResolvedValue([]);
+      prisma.resourceSubmission.count.mockResolvedValue(0);
+
+      await service.listAdminSubmissions({
+        kind: "EXAM",
+        part: "correction",
+        status: "REJECTED",
+      });
+
+      expect(prisma.resourceSubmission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            part: "CORRECTION",
+            status: "REJECTED",
+            resource: { kind: "EXAM" },
+          },
+        }),
+      );
     });
   });
 });

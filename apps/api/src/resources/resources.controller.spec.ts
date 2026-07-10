@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { BadRequestException } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { AnyMembershipRolesGuard } from "../access/any-membership-roles.guard.js";
 import { ROLES_KEY } from "../access/roles.decorator.js";
@@ -27,11 +28,19 @@ function makeUser(): AuthenticatedUser {
 
 describe("ResourcesController", () => {
   let controller: ResourcesController;
-  let service: { updateResource: jest.Mock };
+  let service: {
+    updateResource: jest.Mock;
+    saveSubmissionDraft: jest.Mock;
+    submitSubmission: jest.Mock;
+    listSubmissions: jest.Mock;
+  };
 
   beforeEach(async () => {
     service = {
       updateResource: jest.fn(),
+      saveSubmissionDraft: jest.fn(),
+      submitSubmission: jest.fn(),
+      listSubmissions: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -80,6 +89,78 @@ describe("ResourcesController", () => {
         "ADMIN",
         "SUPER_ADMIN",
       ]),
+    );
+  });
+
+  it("saveSubmissionDraft maps the 'statement' url segment to the STATEMENT enum", async () => {
+    const user = makeUser();
+    service.saveSubmissionDraft.mockResolvedValue({ id: "submission-1" });
+
+    await controller.saveSubmissionDraft(user, "resource-1", "statement", {
+      content: "<p>x</p>",
+      attachments: [],
+    });
+
+    expect(service.saveSubmissionDraft).toHaveBeenCalledWith(
+      user,
+      "resource-1",
+      "STATEMENT",
+      { content: "<p>x</p>", attachments: [] },
+    );
+  });
+
+  it("saveSubmissionDraft maps the 'correction' url segment to the CORRECTION enum", async () => {
+    const user = makeUser();
+    service.saveSubmissionDraft.mockResolvedValue({ id: "submission-1" });
+
+    await controller.saveSubmissionDraft(user, "resource-1", "correction", {
+      content: "<p>x</p>",
+      attachments: [],
+    });
+
+    expect(service.saveSubmissionDraft).toHaveBeenCalledWith(
+      user,
+      "resource-1",
+      "CORRECTION",
+      { content: "<p>x</p>", attachments: [] },
+    );
+  });
+
+  it("saveSubmissionDraft rejects an invalid part segment", () => {
+    const user = makeUser();
+
+    expect(() =>
+      controller.saveSubmissionDraft(user, "resource-1", "bogus", {
+        content: "<p>x</p>",
+        attachments: [],
+      }),
+    ).toThrow(BadRequestException);
+    expect(service.saveSubmissionDraft).not.toHaveBeenCalled();
+  });
+
+  it("submitSubmission delegates to the service with resourceId and submissionId", async () => {
+    const user = makeUser();
+    service.submitSubmission.mockResolvedValue({ id: "submission-1" });
+
+    await controller.submitSubmission(user, "resource-1", "submission-1");
+
+    expect(service.submitSubmission).toHaveBeenCalledWith(
+      user,
+      "resource-1",
+      "submission-1",
+    );
+  });
+
+  it("listSubmissions maps the part query param and delegates to the service", async () => {
+    const user = makeUser();
+    service.listSubmissions.mockResolvedValue([]);
+
+    await controller.listSubmissions(user, "resource-1", "correction");
+
+    expect(service.listSubmissions).toHaveBeenCalledWith(
+      user,
+      "resource-1",
+      "CORRECTION",
     );
   });
 });

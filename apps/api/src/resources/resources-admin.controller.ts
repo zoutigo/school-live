@@ -17,65 +17,42 @@ import { ReviewResourceDto } from "./dto/review-resource.dto.js";
 import { ResourcesService } from "./resources.service.js";
 
 // Modération réservée aux platform roles : les ressources sont nationales, aucun
-// school admin n'intervient dans ce circuit de validation.
+// school admin n'intervient dans ce circuit de validation. Chaque fiche peut avoir
+// plusieurs soumissions concurrentes (énoncé/corrigé) déposées par des contributeurs
+// différents ; la modération porte sur les soumissions individuelles, pas la fiche.
 @Controller("admin/resources")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles("ADMIN", "SUPER_ADMIN")
 export class ResourcesAdminController {
   constructor(private readonly resourcesService: ResourcesService) {}
 
-  @Get()
-  listAdminResources(@Query() query: ListAdminResourcesQueryDto) {
-    return this.resourcesService.listAdminResources(query);
+  @Get("submissions")
+  listAdminSubmissions(@Query() query: ListAdminResourcesQueryDto) {
+    return this.resourcesService.listAdminSubmissions(query);
   }
 
-  @Patch(":resourceId/statement/approve")
-  approveStatement(
+  @Patch("submissions/:submissionId/approve")
+  approveSubmission(
     @CurrentUser() user: AuthenticatedUser,
-    @Param("resourceId") resourceId: string,
+    @Param("submissionId") submissionId: string,
   ) {
-    return this.resourcesService.approveStatement(user, resourceId);
+    return this.resourcesService.approveSubmission(user, submissionId);
   }
 
-  @Patch(":resourceId/statement/reject")
-  rejectStatement(
+  @Patch("submissions/:submissionId/reject")
+  rejectSubmission(
     @CurrentUser() user: AuthenticatedUser,
-    @Param("resourceId") resourceId: string,
+    @Param("submissionId") submissionId: string,
     @Body() payload: ReviewResourceDto,
   ) {
-    return this.resourcesService.rejectStatement(user, resourceId, payload);
+    return this.resourcesService.rejectSubmission(user, submissionId, payload);
   }
 
-  @Patch(":resourceId/statement/revoke")
-  revokeStatement(
+  @Patch("submissions/:submissionId/revoke")
+  revokeSubmission(
     @CurrentUser() user: AuthenticatedUser,
-    @Param("resourceId") resourceId: string,
+    @Param("submissionId") submissionId: string,
   ) {
-    return this.resourcesService.revokeStatement(user, resourceId);
-  }
-
-  @Patch(":resourceId/correction/approve")
-  approveCorrection(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param("resourceId") resourceId: string,
-  ) {
-    return this.resourcesService.approveCorrection(user, resourceId);
-  }
-
-  @Patch(":resourceId/correction/reject")
-  rejectCorrection(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param("resourceId") resourceId: string,
-    @Body() payload: ReviewResourceDto,
-  ) {
-    return this.resourcesService.rejectCorrection(user, resourceId, payload);
-  }
-
-  @Patch(":resourceId/correction/revoke")
-  revokeCorrection(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param("resourceId") resourceId: string,
-  ) {
-    return this.resourcesService.revokeCorrection(user, resourceId);
+    return this.resourcesService.revokeSubmission(user, submissionId);
   }
 }

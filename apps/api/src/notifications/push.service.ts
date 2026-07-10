@@ -7,12 +7,16 @@ import { PUSH_PORT, type PushPort } from "../infrastructure/push/push.port.js";
 import {
   PUSH_JOB_SEND_GRADE_PUBLISHED,
   PUSH_JOB_SEND_HOMEWORK_CREATED,
+  PUSH_JOB_SEND_RESOURCE_SUBMISSION_DISCARDED,
+  PUSH_JOB_SEND_RESOURCE_SUBMISSION_REJECTED,
   PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
   PUSH_JOB_SEND_STUDENT_LIFE_EVENT,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
   type GradePublishedPushPayload,
   type HomeworkCreatedPushPayload,
+  type ResourceSubmissionDiscardedPushPayload,
+  type ResourceSubmissionRejectedPushPayload,
   type RoomStatusChangePushPayload,
   type StudentLifeEventPushPayload,
   type TimetableChangePushPayload,
@@ -124,6 +128,50 @@ export class PushService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.pushPort.sendStudentLifeEventNotification(payload);
+    }
+  }
+
+  async sendResourceSubmissionDiscardedNotification(
+    payload: ResourceSubmissionDiscardedPushPayload,
+  ) {
+    if (payload.tokens.length === 0) {
+      return;
+    }
+
+    try {
+      await this.queue.add(
+        PUSH_QUEUE_NAME,
+        PUSH_JOB_SEND_RESOURCE_SUBMISSION_DISCARDED,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous push sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.pushPort.sendResourceSubmissionDiscardedNotification(payload);
+    }
+  }
+
+  async sendResourceSubmissionRejectedNotification(
+    payload: ResourceSubmissionRejectedPushPayload,
+  ) {
+    if (payload.tokens.length === 0) {
+      return;
+    }
+
+    try {
+      await this.queue.add(
+        PUSH_QUEUE_NAME,
+        PUSH_JOB_SEND_RESOURCE_SUBMISSION_REJECTED,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous push sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.pushPort.sendResourceSubmissionRejectedNotification(payload);
     }
   }
 }
