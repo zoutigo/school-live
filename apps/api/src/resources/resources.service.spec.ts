@@ -371,6 +371,19 @@ describe("ResourcesService", () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
+    it("forbids editing when the caller's raw id matches authorUserId but their active role is PARENT", async () => {
+      prisma.resource.findUnique.mockResolvedValue(
+        makeResourceRow({ authorUserId: TEACHER_ID }),
+      );
+      await expect(
+        service.updateResource(
+          makeTeacher({ activeRole: "PARENT" }),
+          RESOURCE_ID,
+          { title: "x" },
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
     it("allows a platform admin to edit a resource authored by someone else", async () => {
       prisma.resource.findUnique
         .mockResolvedValueOnce(
@@ -540,6 +553,25 @@ describe("ResourcesService", () => {
       const result = await service.getResource(makeTeacher(), RESOURCE_ID);
 
       expect(result.correctionContent).toBe("<p>my draft correction</p>");
+    });
+
+    it("masks the correction when the caller's raw id matches authorUserId but their active role is PARENT", async () => {
+      prisma.resource.findUnique.mockResolvedValue(
+        makeResourceRow({
+          authorUserId: TEACHER_ID,
+          statementStatus: "APPROVED",
+          correctionStatus: "PENDING",
+          correctionContent: "<p>my draft correction</p>",
+        }),
+      );
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      const result = await service.getResource(
+        makeTeacher({ activeRole: "PARENT" }),
+        RESOURCE_ID,
+      );
+
+      expect(result.correctionContent).toBeNull();
     });
 
     it("hides a non-approved statement from a reader who is not the author", async () => {

@@ -90,9 +90,8 @@ export default function AdminResourcesPage() {
         router.replace("/");
         return;
       }
-      const me = (await meRes.json()) as { platformRoles?: string[] };
-      const roles = me.platformRoles ?? [];
-      if (!roles.some((r) => ["SUPER_ADMIN", "ADMIN"].includes(r))) {
+      const me = (await meRes.json()) as { activeRole?: string | null };
+      if (!["SUPER_ADMIN", "ADMIN"].includes(me.activeRole ?? "")) {
         router.replace("/acceuil");
         return;
       }

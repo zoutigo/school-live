@@ -23,7 +23,10 @@ function jsonResponse(payload: unknown, status = 200) {
   );
 }
 
-const SUPER_ADMIN_ME = { platformRoles: ["SUPER_ADMIN"] };
+const SUPER_ADMIN_ME = {
+  platformRoles: ["SUPER_ADMIN"],
+  activeRole: "SUPER_ADMIN",
+};
 
 const AWAITING_SUBMISSION = {
   id: "sub-1",
@@ -80,7 +83,21 @@ describe("AdminResourcesPage", () => {
 
   it("redirects a non platform role away", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(
-      baseRouter({ me: { platformRoles: [] } }),
+      baseRouter({ me: { platformRoles: [], activeRole: "PARENT" } }),
+    );
+
+    render(<AdminResourcesPage />);
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/acceuil");
+    });
+  });
+
+  it("redirects away an account with lifetime ADMIN platformRoles whose active role is PARENT", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({
+        me: { platformRoles: ["ADMIN"], activeRole: "PARENT" },
+      }),
     );
 
     render(<AdminResourcesPage />);

@@ -49,6 +49,18 @@ const RESOURCE_LIST_SELECT = {
   authorUser: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.ResourceSelect;
 
+const NON_AUTHOR_ROLES = new Set(["PARENT", "STUDENT"]);
+
+function canActAsResourceAuthor(user: AuthenticatedUser): boolean {
+  return (
+    user.activeRole == null || !NON_AUTHOR_ROLES.has(user.activeRole)
+  );
+}
+
+function isResourcePlatformAdmin(user: AuthenticatedUser): boolean {
+  return user.activeRole === "ADMIN" || user.activeRole === "SUPER_ADMIN";
+}
+
 const SUBMISSION_SELECT = {
   id: true,
   resourceId: true,
@@ -277,8 +289,9 @@ export class ResourcesService {
       );
     }
 
-    const isAuthor = resource.authorUserId === user.id;
-    const isPlatform = user.platformRoles.length > 0;
+    const isAuthor =
+      resource.authorUserId === user.id && canActAsResourceAuthor(user);
+    const isPlatform = isResourcePlatformAdmin(user);
     if (resource.statementStatus !== "APPROVED" && !isAuthor && !isPlatform) {
       throw new NotFoundException(
         translateResourceError(
@@ -482,8 +495,9 @@ export class ResourcesService {
         translateResourceError(locale, "resources.errors.notFound"),
       );
     }
-    const isAuthor = existing.authorUserId === user.id;
-    const isPlatform = user.platformRoles.length > 0;
+    const isAuthor =
+      existing.authorUserId === user.id && canActAsResourceAuthor(user);
+    const isPlatform = isResourcePlatformAdmin(user);
     if (!isAuthor && !isPlatform) {
       throw new ForbiddenException(
         translateResourceError(locale, "resources.errors.onlyAuthorCanEdit"),
@@ -746,7 +760,7 @@ export class ResourcesService {
     part: ResourceAttachmentPart,
   ) {
     await this.findResourceOrThrow(user, resourceId);
-    const isPlatform = user.platformRoles.length > 0;
+    const isPlatform = isResourcePlatformAdmin(user);
 
     const where: Prisma.ResourceSubmissionWhereInput = isPlatform
       ? { resourceId, part, status: "AWAITING" }
