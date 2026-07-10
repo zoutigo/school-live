@@ -52,9 +52,7 @@ const RESOURCE_LIST_SELECT = {
 const NON_AUTHOR_ROLES = new Set(["PARENT", "STUDENT"]);
 
 function canActAsResourceAuthor(user: AuthenticatedUser): boolean {
-  return (
-    user.activeRole == null || !NON_AUTHOR_ROLES.has(user.activeRole)
-  );
+  return user.activeRole == null || !NON_AUTHOR_ROLES.has(user.activeRole);
 }
 
 function isResourcePlatformAdmin(user: AuthenticatedUser): boolean {
