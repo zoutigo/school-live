@@ -42,6 +42,8 @@ const ASSESSMENT_ITEM = {
   school: { id: "school-1", name: "École Test" },
   academicLevel: { id: "level-1", label: "6ème" },
   subject: { id: "subject-1", name: "Mathématiques" },
+  correctionContent: null,
+  correctionStatus: "PENDING" as const,
 };
 
 function baseRouter({
@@ -217,5 +219,64 @@ describe("ResourcesBrowsePage", () => {
     await waitFor(() =>
       expect(screen.getByText("Enoncé complet")).toBeInTheDocument(),
     );
+  });
+
+  it("expands a card with no approved statement yet and shows the fallback message", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({
+        extra: (url) => {
+          if (url.endsWith("/resources/res-1")) {
+            return jsonResponse({
+              ...ASSESSMENT_ITEM,
+              statementContent: null,
+              correctionContent: null,
+            });
+          }
+          return undefined;
+        },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+    await screen.findByTestId("resources-card-res-1");
+
+    fireEvent.click(screen.getByTestId("resources-card-res-1-toggle"));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Aucun enonce valide pour le moment."),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("shows a « correction available » badge when the correction is approved", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({
+        items: [
+          {
+            ...ASSESSMENT_ITEM,
+            correctionContent: "<p>Corrigé</p>",
+            correctionStatus: "APPROVED",
+          },
+        ],
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+
+    expect(
+      await screen.findByTestId("resources-card-res-1-correction-badge"),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the « correction available » badge when the correction is not approved", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(baseRouter());
+
+    render(<ResourcesBrowsePage />);
+    await screen.findByTestId("resources-card-res-1");
+
+    expect(
+      screen.queryByTestId("resources-card-res-1-correction-badge"),
+    ).toBeNull();
   });
 });

@@ -9,60 +9,70 @@ import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
-type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
 type ResourcePart = "statement" | "correction";
 
-type ResourceRow = {
+type SubmissionRow = {
   id: string;
-  kind: "ASSESSMENT" | "EXAM";
-  title: string;
-  examType: string;
-  sequence: string | null;
-  statementStatus: ApprovalStatus;
-  correctionStatus: ApprovalStatus;
-  correctionContent: string | null;
-  school: { id: string; name: string } | null;
-  academicLevel: { id: string; label: string };
-  subject: { id: string; name: string };
-  authorUser: { id: string; firstName: string; lastName: string };
+  content: string;
   createdAt: string;
+  authorUser: { id: string; firstName: string; lastName: string };
+  resource: {
+    id: string;
+    kind: "ASSESSMENT" | "EXAM";
+    title: string;
+    examType: string;
+    sequence: string | null;
+    school: { id: string; name: string } | null;
+    academicLevel: { id: string; label: string };
+    subject: { id: string; name: string };
+  };
 };
 
 type ListResponse = {
-  items: ResourceRow[];
+  items: SubmissionRow[];
   total: number;
 };
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export default function AdminResourcesPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [part, setPart] = useState<ResourcePart>("statement");
-  const [items, setItems] = useState<ResourceRow[]>([]);
+  const [items, setItems] = useState<SubmissionRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  const load = useCallback(async (nextPart: ResourcePart) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `${API_URL}/admin/resources?part=${nextPart}&status=PENDING`,
-        { credentials: "include" },
-      );
-      if (!res.ok) {
-        throw new Error("LOAD_FAILED");
+  const load = useCallback(
+    async (nextPart: ResourcePart) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(
+          `${API_URL}/admin/resources/submissions?part=${nextPart}&status=AWAITING`,
+          { credentials: "include" },
+        );
+        if (!res.ok) {
+          throw new Error("LOAD_FAILED");
+        }
+        const data = (await res.json()) as ListResponse;
+        setItems(data.items);
+      } catch {
+        setError(t("resourcesModeration.errors.loadFailed"));
+      } finally {
+        setIsLoading(false);
       }
-      const data = (await res.json()) as ListResponse;
-      setItems(data.items);
-    } catch {
-      setError(t("resourcesModeration.errors.loadFailed"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
+    },
+    [t],
+  );
 
   useEffect(() => {
     void boot();
@@ -95,14 +105,14 @@ export default function AdminResourcesPage() {
   }
 
   async function act(
-    resourceId: string,
-    action: "approve" | "reject" | "revoke",
+    submissionId: string,
+    action: "approve" | "reject",
     reason?: string,
   ) {
     setError(null);
     try {
       const res = await fetch(
-        `${API_URL}/admin/resources/${resourceId}/${part}/${action}`,
+        `${API_URL}/admin/resources/submissions/${submissionId}/${action}`,
         {
           method: "PATCH",
           credentials: "include",
@@ -111,13 +121,18 @@ export default function AdminResourcesPage() {
         },
       );
       if (!res.ok) {
-        throw new Error("ACTION_FAILED");
+        throw new Error(res.status === 409 ? "CONFLICT" : "ACTION_FAILED");
       }
       setRejectingId(null);
       setRejectReason("");
       await load(part);
-    } catch {
-      setError(t("resourcesModeration.errors.actionFailed"));
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message === "CONFLICT"
+          ? t("resourcesModeration.errors.conflict")
+          : t("resourcesModeration.errors.actionFailed");
+      await load(part);
+      setError(message);
     }
   }
 
@@ -186,15 +201,21 @@ export default function AdminResourcesPage() {
         ) : (
           <div className="space-y-4">
             {items.map((item) => (
-              <Card key={item.id} data-testid={`admin-resources-card-${item.id}`}>
+              <Card
+                key={item.id}
+                data-testid={`admin-resources-card-${item.id}`}
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-heading text-lg font-semibold">
-                      {item.title}
+                      {item.resource.title}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {item.subject.name} • {item.academicLevel.label}
-                      {item.school ? ` • ${item.school.name}` : ""}
+                      {item.resource.subject.name} •{" "}
+                      {item.resource.academicLevel.label}
+                      {item.resource.school
+                        ? ` • ${item.resource.school.name}`
+                        : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t("resourcesModeration.authorPrefix")}
@@ -202,6 +223,13 @@ export default function AdminResourcesPage() {
                     </p>
                   </div>
                 </div>
+
+                <p
+                  className="mt-3 line-clamp-4 text-sm text-foreground"
+                  data-testid={`admin-resources-content-${item.id}`}
+                >
+                  {stripHtml(item.content)}
+                </p>
 
                 <div className="mt-4 flex gap-2">
                   <Button
@@ -214,9 +242,7 @@ export default function AdminResourcesPage() {
                     variant="secondary"
                     data-testid={`admin-resources-reject-${item.id}`}
                     onClick={() =>
-                      setRejectingId(
-                        rejectingId === item.id ? null : item.id,
-                      )
+                      setRejectingId(rejectingId === item.id ? null : item.id)
                     }
                   >
                     {t("resourcesModeration.reject")}

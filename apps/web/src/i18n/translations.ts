@@ -774,6 +774,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Impossible de charger les ressources en attente.",
     "resourcesModeration.errors.actionFailed":
       "L'action n'a pas pu etre enregistree.",
+    "resourcesModeration.errors.conflict":
+      "Cette soumission a deja ete traitee par un autre administrateur.",
     "resources.examType.SEQUENCE_TEST": "Evaluation de sequence",
     "resources.examType.POP_QUIZ": "Interrogation surprise",
     "resources.examType.MOCK_EXAM": "Examen blanc",
@@ -801,6 +803,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesBrowse.filters.reset": "Reinitialiser",
     "resourcesBrowse.errors.loadFailed":
       "Impossible de charger les ressources.",
+    "resourcesBrowse.correctionAvailable": "Corrige disponible",
+    "resourcesBrowse.noStatementYet": "Aucun enonce valide pour le moment.",
     "sidebar.nav.settings": "Parametres",
     "sidebar.nav.home": "Accueil",
     "sidebar.nav.newsFeed": "Fil d'actualite",
@@ -3938,6 +3942,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesModeration.errors.loadFailed":
       "Could not load pending resources.",
     "resourcesModeration.errors.actionFailed": "The action could not be saved.",
+    "resourcesModeration.errors.conflict":
+      "This submission was already handled by another administrator.",
     "resources.examType.SEQUENCE_TEST": "Sequence test",
     "resources.examType.POP_QUIZ": "Pop quiz",
     "resources.examType.MOCK_EXAM": "Mock exam",
@@ -3964,6 +3970,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesBrowse.filters.allExamTypes": "All types",
     "resourcesBrowse.filters.reset": "Reset",
     "resourcesBrowse.errors.loadFailed": "Could not load resources.",
+    "resourcesBrowse.correctionAvailable": "Correction available",
+    "resourcesBrowse.noStatementYet": "No approved statement yet.",
     "sidebar.nav.settings": "Settings",
     "sidebar.nav.home": "Home",
     "sidebar.nav.newsFeed": "News feed",

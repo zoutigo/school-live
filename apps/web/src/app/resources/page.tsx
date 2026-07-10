@@ -22,11 +22,12 @@ type ResourceRow = {
   school: { id: string; name: string } | null;
   academicLevel: { id: string; label: string };
   subject: { id: string; name: string };
+  correctionContent: string | null;
+  correctionStatus: "PENDING" | "APPROVED" | "REJECTED";
 };
 
 type ResourceDetail = ResourceRow & {
-  statementContent: string;
-  correctionContent: string | null;
+  statementContent: string | null;
 };
 
 type ListResponse = {
@@ -428,6 +429,15 @@ export default function ResourcesBrowsePage() {
                         {t(`resources.sequence.${item.sequence}`)}
                       </span>
                     ) : null}
+                    {item.correctionStatus === "APPROVED" &&
+                    item.correctionContent ? (
+                      <span
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700"
+                        data-testid={`resources-card-${item.id}-correction-badge`}
+                      >
+                        {t("resourcesBrowse.correctionAvailable")}
+                      </span>
+                    ) : null}
                   </div>
                 </button>
 
@@ -441,7 +451,11 @@ export default function ResourcesBrowsePage() {
                         {t("common.loading")}
                       </p>
                     ) : expandedDetail ? (
-                      <p>{stripHtml(expandedDetail.statementContent)}</p>
+                      <p>
+                        {expandedDetail.statementContent
+                          ? stripHtml(expandedDetail.statementContent)
+                          : t("resourcesBrowse.noStatementYet")}
+                      </p>
                     ) : null}
                   </div>
                 ) : null}
