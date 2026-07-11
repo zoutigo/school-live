@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SchoolsPage from "./page";
 
@@ -306,9 +312,6 @@ describe("Schools page create form", () => {
       });
 
     render(<SchoolsPage />);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Actions ecole" }),
-    );
     fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
 
     const saveButton = screen.getByRole("button", { name: "Enregistrer" });
@@ -411,9 +414,6 @@ describe("Schools page create form", () => {
       });
 
     render(<SchoolsPage />);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Actions ecole" }),
-    );
     fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
 
     const cycleSelect = screen.getByLabelText("Cycle (optionnel)");
@@ -449,5 +449,118 @@ describe("Schools page create form", () => {
         }),
       );
     });
+  });
+
+  it("renders schools as cards with edit/delete at the bottom, filters via the header search, and adds a school admin", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools") && method === "GET") {
+          return jsonResponse([
+            {
+              id: "school-1",
+              slug: "college-vogt",
+              name: "College Vogt",
+              country: "Cameroun",
+              region: "Centre",
+              city: "Yaounde",
+              cycle: "SECONDARY",
+              languageSystem: "FRANCOPHONE",
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              usersCount: 10,
+              classesCount: 4,
+              studentsCount: 120,
+            },
+            {
+              id: "school-2",
+              slug: "greenwich-college",
+              name: "Greenwich College",
+              country: "Cameroun",
+              region: "Nord-Ouest",
+              city: "Bamenda",
+              cycle: "SECONDARY",
+              languageSystem: "ANGLOPHONE",
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              usersCount: 5,
+              classesCount: 2,
+              studentsCount: 60,
+            },
+          ]);
+        }
+        if (
+          url.endsWith("/api/system/schools/school-1/admins") &&
+          method === "POST"
+        ) {
+          return jsonResponse({
+            schoolAdmin: { id: "admin-2", email: "new.admin@vogt.cm" },
+            userExisted: false,
+            setupCompleted: false,
+          });
+        }
+        if (url.includes("/api/system/users/exists?")) {
+          return jsonResponse({ exists: false });
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+
+    const vogtCard = await screen.findByTestId("school-card-school-1");
+    expect(vogtCard).toHaveTextContent("College Vogt");
+    within(vogtCard).getByRole("button", { name: "Modifier" });
+    within(vogtCard).getByRole("button", { name: "Supprimer" });
+
+    fireEvent.click(screen.getByTestId("schools-search-toggle"));
+    fireEvent.change(screen.getByTestId("schools-filter-search-input"), {
+      target: { value: "greenwich" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("school-card-school-1"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("school-card-school-2")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("schools-filter-reset"));
+    await screen.findByTestId("school-card-school-1");
+
+    fireEvent.click(
+      within(await screen.findByTestId("school-card-school-1")).getByRole(
+        "button",
+        { name: "Modifier" },
+      ),
+    );
+
+    fireEvent.change(screen.getByLabelText("Email du school admin"), {
+      target: { value: "new.admin@vogt.cm" },
+    });
+
+    const addAdminButton = screen.getByRole("button", { name: "Ajouter" });
+    await waitFor(() => expect(addAdminButton).toBeEnabled());
+    fireEvent.click(addAdminButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/schools/school-1/admins"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ email: "new.admin@vogt.cm" }),
+        }),
+      );
+    });
+
+    expect(await screen.findByText("School admin ajoute.")).toBeInTheDocument();
   });
 });

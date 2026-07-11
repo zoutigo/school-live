@@ -1,9 +1,9 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical } from "lucide-react";
+import { RotateCcw, Search } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
@@ -226,9 +226,6 @@ export default function SchoolsPage() {
   const [emailCheckState, setEmailCheckState] =
     useState<EmailCheckState>("idle");
   const [emailCheckName, setEmailCheckName] = useState<string | null>(null);
-  const [openActionsSchoolId, setOpenActionsSchoolId] = useState<string | null>(
-    null,
-  );
   const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -244,6 +241,17 @@ export default function SchoolsPage() {
   const [sendingInviteAdminId, setSendingInviteAdminId] = useState<
     string | null
   >(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [addAdminEmail, setAddAdminEmail] = useState("");
+  const [addAdminEmailCheckState, setAddAdminEmailCheckState] =
+    useState<EmailCheckState>("idle");
+  const [addAdminEmailCheckName, setAddAdminEmailCheckName] = useState<
+    string | null
+  >(null);
+  const [submittingAddAdmin, setSubmittingAddAdmin] = useState(false);
+  const [addAdminError, setAddAdminError] = useState<string | null>(null);
+  const [addAdminSuccess, setAddAdminSuccess] = useState<string | null>(null);
   const createSchoolForm = useForm<z.input<typeof createSchoolSchema>>({
     resolver: zodResolver(createSchoolSchema),
     mode: "onChange",
@@ -325,6 +333,27 @@ export default function SchoolsPage() {
     }
     void createSchoolForm.trigger();
   }, [createSchoolForm, tab]);
+
+  useEffect(() => {
+    const email = addAdminEmail.trim();
+    if (!email) {
+      setAddAdminEmailCheckState("idle");
+      setAddAdminEmailCheckName(null);
+      return;
+    }
+
+    if (!z.string().email().safeParse(email).success) {
+      setAddAdminEmailCheckState("invalid");
+      setAddAdminEmailCheckName(null);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      void checkAddAdminEmail(email);
+    }, 350);
+
+    return () => clearTimeout(timeout);
+  }, [addAdminEmail]);
 
   async function bootstrap() {
     const meResponse = await fetch(`${API_URL}/me`, {
@@ -420,6 +449,103 @@ export default function SchoolsPage() {
     } catch {
       setEmailCheckState("error");
       setEmailCheckName(null);
+    }
+  }
+
+  async function checkAddAdminEmail(email: string) {
+    setAddAdminEmailCheckState("checking");
+    try {
+      const params = new URLSearchParams({ email });
+      const response = await fetch(
+        `${API_URL}/system/users/exists?${params.toString()}`,
+        {
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        setAddAdminEmailCheckState("error");
+        setAddAdminEmailCheckName(null);
+        return;
+      }
+
+      const payload = (await response.json()) as {
+        exists: boolean;
+        user?: {
+          firstName: string;
+          lastName: string;
+          mustChangePassword: boolean;
+        };
+      };
+
+      if (payload.exists && payload.user) {
+        setAddAdminEmailCheckState("exists");
+        setAddAdminEmailCheckName(
+          `${payload.user.firstName} ${payload.user.lastName}`,
+        );
+      } else {
+        setAddAdminEmailCheckState("not_found");
+        setAddAdminEmailCheckName(null);
+      }
+    } catch {
+      setAddAdminEmailCheckState("error");
+      setAddAdminEmailCheckName(null);
+    }
+  }
+
+  async function onAddSchoolAdmin(schoolId: string) {
+    const email = addAdminEmail.trim();
+    if (!z.string().email().safeParse(email).success) {
+      return;
+    }
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setAddAdminError(t("schools.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingAddAdmin(true);
+    setAddAdminError(null);
+    setAddAdminSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/system/schools/${schoolId}/admins`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ email }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("schools.form.addAdminFailed"));
+        setAddAdminError(String(message));
+        return;
+      }
+
+      setAddAdminSuccess(t("schools.form.addAdminSuccess"));
+      setAddAdminEmail("");
+      setAddAdminEmailCheckState("idle");
+      setAddAdminEmailCheckName(null);
+      if (selectedSchool?.id === schoolId) {
+        await openSchoolDetails(schoolId);
+      }
+    } catch {
+      setAddAdminError(t("schools.error.network"));
+    } finally {
+      setSubmittingAddAdmin(false);
     }
   }
 
@@ -554,7 +680,6 @@ export default function SchoolsPage() {
 
   function startEditSchool(school: SchoolRow) {
     setEditError(null);
-    setOpenActionsSchoolId(null);
     setEditingSchoolId(school.id);
     editSchoolForm.reset({
       name: school.name,
@@ -566,6 +691,11 @@ export default function SchoolsPage() {
       logoUrl: school.logoUrl ?? "",
     });
     void editSchoolForm.trigger();
+    setAddAdminEmail("");
+    setAddAdminEmailCheckState("idle");
+    setAddAdminEmailCheckName(null);
+    setAddAdminError(null);
+    setAddAdminSuccess(null);
   }
 
   async function onSaveSchool(
@@ -630,7 +760,6 @@ export default function SchoolsPage() {
       id: school.id,
       label: school.name,
     });
-    setOpenActionsSchoolId(null);
   }
 
   async function onDeleteSchool(schoolId: string) {
@@ -735,6 +864,18 @@ export default function SchoolsPage() {
     () => [...schools].sort((a, b) => a.name.localeCompare(b.name)),
     [schools],
   );
+  const filteredSchools = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return orderedSchools;
+    }
+    return orderedSchools.filter((school) =>
+      [school.name, school.slug, school.city, school.region, school.country]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(query)),
+    );
+  }, [orderedSchools, search]);
+  const hasActiveSearch = search.trim().length > 0;
 
   return (
     <AppShell schoolName="Scolive Platform">
@@ -787,375 +928,454 @@ export default function SchoolsPage() {
             >
               {t("schools.tab.help")}
             </button>
+
+            {tab === "list" ? (
+              <button
+                type="button"
+                data-testid="schools-search-toggle"
+                onClick={() => setFiltersOpen((current) => !current)}
+                className={`ml-auto flex items-center gap-1.5 rounded-[12px] border px-3 py-1.5 text-xs font-semibold transition ${
+                  filtersOpen
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <Search className="h-3.5 w-3.5" />
+                {t("schools.search.toggleLabel")}
+              </button>
+            ) : null}
           </div>
 
-          {tab === "list" ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-text-secondary">
-                    <th className="px-3 py-2 font-medium">
-                      {t("schools.table.name")}
-                    </th>
-                    <th className="px-3 py-2 font-medium">
-                      {t("schools.table.slug")}
-                    </th>
-                    <th className="px-3 py-2 font-medium">
-                      {t("schools.table.location")}
-                    </th>
-                    <th className="px-3 py-2 font-medium">
-                      {t("schools.table.users")}
-                    </th>
-                    <th className="px-3 py-2 font-medium">
-                      {t("schools.table.classes")}
-                    </th>
-                    <th className="px-3 py-2 font-medium">
-                      {t("schools.table.students")}
-                    </th>
-                    <th className="px-3 py-2 font-medium">
-                      {t("schools.table.createdAt")}
-                    </th>
-                    <th className="px-3 py-2 font-medium text-right">
-                      {t("schools.table.actions")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td className="px-3 py-6 text-text-secondary" colSpan={8}>
-                        {t("schools.table.loading")}
-                      </td>
-                    </tr>
-                  ) : null}
+          {tab === "list" && filtersOpen ? (
+            <div
+              className="mb-4 grid gap-3 rounded-card border border-border bg-background p-4"
+              data-testid="schools-filter-panel"
+            >
+              <FormTextInput
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("schools.search.placeholder")}
+                data-testid="schools-filter-search-input"
+              />
+              <button
+                type="button"
+                data-testid="schools-filter-reset"
+                onClick={() => setSearch("")}
+                disabled={!hasActiveSearch}
+                className="flex items-center justify-center gap-2 rounded-card border border-primary px-3 py-2 text-sm font-semibold text-primary transition disabled:cursor-not-allowed disabled:border-border disabled:text-text-secondary"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {t("schools.search.reset")}
+              </button>
+            </div>
+          ) : null}
 
-                  {!loading &&
-                    orderedSchools.map((school) => (
-                      <Fragment key={school.id}>
-                        <tr className="border-b border-border text-text-primary">
-                          <td className="px-3 py-2">
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-2 text-left text-primary hover:underline"
-                              onClick={() => {
-                                void openSchoolDetails(school.id);
-                              }}
-                            >
-                              {school.logoUrl ? (
-                                <img
-                                  src={toFileUrl(school.logoUrl) ?? ""}
-                                  alt={school.name}
-                                  className="h-7 w-7 rounded-card border border-border object-cover"
-                                />
-                              ) : null}
-                              <span>{school.name}</span>
-                            </button>
-                          </td>
-                          <td className="px-3 py-2">{school.slug}</td>
-                          <td className="px-3 py-2">
-                            {[school.city, school.region, school.country]
-                              .filter(Boolean)
-                              .join(", ") || "-"}
-                          </td>
-                          <td className="px-3 py-2">{school.usersCount}</td>
-                          <td className="px-3 py-2">{school.classesCount}</td>
-                          <td className="px-3 py-2">{school.studentsCount}</td>
-                          <td className="px-3 py-2">
-                            {new Date(school.createdAt).toLocaleDateString(
-                              "fr-FR",
-                            )}
-                          </td>
-                          <td className="relative px-3 py-2 text-right">
-                            <button
-                              type="button"
-                              aria-label={t("schools.action.actionsAria")}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-card border border-border bg-surface text-text-primary hover:bg-background"
-                              onClick={() =>
-                                setOpenActionsSchoolId((current) =>
-                                  current === school.id ? null : school.id,
-                                )
+          {tab === "list" ? (
+            <div>
+              {loading ? (
+                <p className="text-sm text-text-secondary">
+                  {t("schools.table.loading")}
+                </p>
+              ) : null}
+
+              {!loading && filteredSchools.length === 0 ? (
+                <p className="text-sm text-text-secondary">
+                  {hasActiveSearch
+                    ? t("schools.search.empty")
+                    : t("schools.table.empty")}
+                </p>
+              ) : null}
+
+              {!loading && filteredSchools.length > 0 ? (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredSchools.map((school) => (
+                    <div
+                      key={school.id}
+                      data-testid={`school-card-${school.id}`}
+                      className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4"
+                    >
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 text-left text-primary hover:underline"
+                        onClick={() => {
+                          void openSchoolDetails(school.id);
+                        }}
+                      >
+                        {school.logoUrl ? (
+                          <img
+                            src={toFileUrl(school.logoUrl) ?? ""}
+                            alt={school.name}
+                            className="h-9 w-9 rounded-card border border-border object-cover"
+                          />
+                        ) : null}
+                        <span className="font-heading font-semibold">
+                          {school.name}
+                        </span>
+                      </button>
+                      <p className="text-xs text-text-secondary">
+                        {school.slug}
+                      </p>
+                      <p className="text-sm text-text-primary">
+                        {[school.city, school.region, school.country]
+                          .filter(Boolean)
+                          .join(", ") || "-"}
+                      </p>
+                      <p className="text-xs text-text-secondary">
+                        {[
+                          school.cycle
+                            ? t(
+                                school.cycle === "PRIMARY"
+                                  ? "schools.form.cyclePrimary"
+                                  : "schools.form.cycleSecondary",
+                              )
+                            : null,
+                          school.languageSystem
+                            ? t(
+                                {
+                                  FRANCOPHONE:
+                                    "schools.form.languageSystemFrancophone",
+                                  ANGLOPHONE:
+                                    "schools.form.languageSystemAnglophone",
+                                  BILINGUAL:
+                                    "schools.form.languageSystemBilingual",
+                                }[school.languageSystem],
+                              )
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" - ") || "-"}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs text-text-secondary">
+                        <div>
+                          <p className="font-heading text-base font-semibold text-primary">
+                            {school.usersCount}
+                          </p>
+                          {t("schools.table.users")}
+                        </div>
+                        <div>
+                          <p className="font-heading text-base font-semibold text-primary">
+                            {school.classesCount}
+                          </p>
+                          {t("schools.table.classes")}
+                        </div>
+                        <div>
+                          <p className="font-heading text-base font-semibold text-primary">
+                            {school.studentsCount}
+                          </p>
+                          {t("schools.table.students")}
+                        </div>
+                      </div>
+                      <p className="text-xs text-text-secondary">
+                        {t("schools.table.createdAt")}:{" "}
+                        {new Date(school.createdAt).toLocaleDateString("fr-FR")}
+                      </p>
+
+                      {editingSchoolId === school.id ? (
+                        <div className="grid gap-3 border-t border-border pt-3">
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <FormField
+                              label={t("schools.form.fieldName")}
+                              error={
+                                editSchoolForm.formState.errors.name?.message
                               }
                             >
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-                            {openActionsSchoolId === school.id ? (
-                              <div className="absolute right-3 top-11 z-10 w-36 rounded-card border border-border bg-surface p-1 shadow-soft">
-                                <button
-                                  type="button"
-                                  className="w-full rounded-card px-3 py-2 text-left text-sm text-text-primary hover:bg-background"
-                                  onClick={() => startEditSchool(school)}
-                                >
-                                  {t("schools.action.edit")}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="w-full rounded-card px-3 py-2 text-left text-sm text-notification hover:bg-background"
-                                  onClick={() => {
-                                    requestDeleteSchool(school);
-                                  }}
-                                >
-                                  {t("schools.action.delete")}
-                                </button>
-                              </div>
-                            ) : null}
-                          </td>
-                        </tr>
-
-                        {editingSchoolId === school.id ? (
-                          <tr className="border-b border-border bg-background">
-                            <td className="px-3 py-3" colSpan={8}>
-                              <div className="grid gap-3 md:grid-cols-2">
-                                <FormField
-                                  label={t("schools.form.fieldName")}
-                                  error={
-                                    editSchoolForm.formState.errors.name
-                                      ?.message
-                                  }
-                                >
-                                  <FormTextInput
-                                    aria-label={t("schools.form.fieldName")}
-                                    value={editSchoolValues.name ?? ""}
-                                    onChange={(event) => {
-                                      editSchoolForm.setValue(
-                                        "name",
-                                        event.target.value,
-                                        {
-                                          shouldDirty: true,
-                                          shouldTouch: true,
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    invalid={
-                                      Boolean(
-                                        editSchoolForm.formState.errors.name,
-                                      ) ||
-                                      !String(
-                                        editSchoolValues.name ?? "",
-                                      ).trim()
-                                    }
-                                  />
-                                </FormField>
-                                <FormField
-                                  label={t("schools.form.fieldCountry")}
-                                >
-                                  <FormTextInput
-                                    aria-label={t("schools.form.fieldCountry")}
-                                    value={editSchoolValues.country ?? ""}
-                                    onChange={(event) => {
-                                      editSchoolForm.setValue(
-                                        "country",
-                                        event.target.value,
-                                        {
-                                          shouldDirty: true,
-                                          shouldTouch: true,
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    invalid={Boolean(
-                                      editSchoolForm.formState.errors.country,
-                                    )}
-                                  />
-                                </FormField>
-                                <FormField
-                                  label={t("schools.form.fieldRegion")}
-                                >
-                                  <FormTextInput
-                                    aria-label={t("schools.form.fieldRegion")}
-                                    value={editSchoolValues.region ?? ""}
-                                    onChange={(event) => {
-                                      editSchoolForm.setValue(
-                                        "region",
-                                        event.target.value,
-                                        {
-                                          shouldDirty: true,
-                                          shouldTouch: true,
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    invalid={Boolean(
-                                      editSchoolForm.formState.errors.region,
-                                    )}
-                                  />
-                                </FormField>
-                                <FormField label={t("schools.form.fieldCity")}>
-                                  <FormTextInput
-                                    aria-label={t("schools.form.fieldCity")}
-                                    value={editSchoolValues.city ?? ""}
-                                    onChange={(event) => {
-                                      editSchoolForm.setValue(
-                                        "city",
-                                        event.target.value,
-                                        {
-                                          shouldDirty: true,
-                                          shouldTouch: true,
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                    invalid={Boolean(
-                                      editSchoolForm.formState.errors.city,
-                                    )}
-                                  />
-                                </FormField>
-                                <FormField
-                                  label={t("schools.form.fieldCycleOpt")}
-                                >
-                                  <select
-                                    aria-label={t("schools.form.fieldCycleOpt")}
-                                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-                                    value={editSchoolValues.cycle ?? ""}
-                                    onChange={(event) => {
-                                      editSchoolForm.setValue(
-                                        "cycle",
-                                        event.target.value as
-                                          | ""
-                                          | "PRIMARY"
-                                          | "SECONDARY",
-                                        {
-                                          shouldDirty: true,
-                                          shouldTouch: true,
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                  >
-                                    <option value="">
-                                      {t("schools.form.cyclePlaceholder")}
-                                    </option>
-                                    <option value="PRIMARY">
-                                      {t("schools.form.cyclePrimary")}
-                                    </option>
-                                    <option value="SECONDARY">
-                                      {t("schools.form.cycleSecondary")}
-                                    </option>
-                                  </select>
-                                </FormField>
-                                <FormField
-                                  label={t(
-                                    "schools.form.fieldLanguageSystemOpt",
-                                  )}
-                                >
-                                  <select
-                                    aria-label={t(
-                                      "schools.form.fieldLanguageSystemOpt",
-                                    )}
-                                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-                                    value={
-                                      editSchoolValues.languageSystem ?? ""
-                                    }
-                                    onChange={(event) => {
-                                      editSchoolForm.setValue(
-                                        "languageSystem",
-                                        event.target.value as
-                                          | ""
-                                          | "FRANCOPHONE"
-                                          | "ANGLOPHONE"
-                                          | "BILINGUAL",
-                                        {
-                                          shouldDirty: true,
-                                          shouldTouch: true,
-                                          shouldValidate: true,
-                                        },
-                                      );
-                                    }}
-                                  >
-                                    <option value="">
-                                      {t(
-                                        "schools.form.languageSystemPlaceholder",
-                                      )}
-                                    </option>
-                                    <option value="FRANCOPHONE">
-                                      {t(
-                                        "schools.form.languageSystemFrancophone",
-                                      )}
-                                    </option>
-                                    <option value="ANGLOPHONE">
-                                      {t(
-                                        "schools.form.languageSystemAnglophone",
-                                      )}
-                                    </option>
-                                    <option value="BILINGUAL">
-                                      {t(
-                                        "schools.form.languageSystemBilingual",
-                                      )}
-                                    </option>
-                                  </select>
-                                </FormField>
-
-                                <ImageUploadField
-                                  kind="school-logo"
-                                  label={t("schools.form.fieldLogo")}
-                                  helperText={t("schools.form.logoHelper")}
-                                  value={editSchoolValues.logoUrl ?? null}
-                                  onChange={(value) => {
-                                    editSchoolForm.setValue(
-                                      "logoUrl",
-                                      value ?? "",
-                                      {
-                                        shouldDirty: true,
-                                        shouldTouch: true,
-                                        shouldValidate: true,
-                                      },
-                                    );
-                                  }}
-                                />
-                              </div>
-                              {editError ? (
-                                <p className="mt-2 text-sm text-notification">
-                                  {editError}
-                                </p>
-                              ) : null}
-                              <FormSubmitHint
-                                visible={!editSchoolForm.formState.isValid}
-                                className="mt-2"
+                              <FormTextInput
+                                aria-label={t("schools.form.fieldName")}
+                                value={editSchoolValues.name ?? ""}
+                                onChange={(event) => {
+                                  editSchoolForm.setValue(
+                                    "name",
+                                    event.target.value,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                invalid={
+                                  Boolean(
+                                    editSchoolForm.formState.errors.name,
+                                  ) ||
+                                  !String(editSchoolValues.name ?? "").trim()
+                                }
                               />
-                              <div className="mt-3 flex gap-2">
-                                <Button
-                                  type="button"
-                                  disabled={
-                                    savingEdit ||
-                                    !editSchoolForm.formState.isValid
-                                  }
-                                  onClick={() => {
-                                    void editSchoolForm.handleSubmit((values) =>
-                                      onSaveSchool(school.id, values),
-                                    )();
-                                  }}
-                                >
-                                  {savingEdit
-                                    ? t("schools.action.saving")
-                                    : t("schools.action.save")}
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="secondary"
-                                  onClick={() => {
-                                    setEditingSchoolId(null);
-                                    setEditError(null);
-                                    editSchoolForm.reset();
-                                  }}
-                                >
-                                  {t("schools.action.cancel")}
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ) : null}
-                      </Fragment>
-                    ))}
+                            </FormField>
+                            <FormField label={t("schools.form.fieldCountry")}>
+                              <FormTextInput
+                                aria-label={t("schools.form.fieldCountry")}
+                                value={editSchoolValues.country ?? ""}
+                                onChange={(event) => {
+                                  editSchoolForm.setValue(
+                                    "country",
+                                    event.target.value,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                invalid={Boolean(
+                                  editSchoolForm.formState.errors.country,
+                                )}
+                              />
+                            </FormField>
+                            <FormField label={t("schools.form.fieldRegion")}>
+                              <FormTextInput
+                                aria-label={t("schools.form.fieldRegion")}
+                                value={editSchoolValues.region ?? ""}
+                                onChange={(event) => {
+                                  editSchoolForm.setValue(
+                                    "region",
+                                    event.target.value,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                invalid={Boolean(
+                                  editSchoolForm.formState.errors.region,
+                                )}
+                              />
+                            </FormField>
+                            <FormField label={t("schools.form.fieldCity")}>
+                              <FormTextInput
+                                aria-label={t("schools.form.fieldCity")}
+                                value={editSchoolValues.city ?? ""}
+                                onChange={(event) => {
+                                  editSchoolForm.setValue(
+                                    "city",
+                                    event.target.value,
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                                invalid={Boolean(
+                                  editSchoolForm.formState.errors.city,
+                                )}
+                              />
+                            </FormField>
+                            <FormField label={t("schools.form.fieldCycleOpt")}>
+                              <select
+                                aria-label={t("schools.form.fieldCycleOpt")}
+                                className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                                value={editSchoolValues.cycle ?? ""}
+                                onChange={(event) => {
+                                  editSchoolForm.setValue(
+                                    "cycle",
+                                    event.target.value as
+                                      | ""
+                                      | "PRIMARY"
+                                      | "SECONDARY",
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                              >
+                                <option value="">
+                                  {t("schools.form.cyclePlaceholder")}
+                                </option>
+                                <option value="PRIMARY">
+                                  {t("schools.form.cyclePrimary")}
+                                </option>
+                                <option value="SECONDARY">
+                                  {t("schools.form.cycleSecondary")}
+                                </option>
+                              </select>
+                            </FormField>
+                            <FormField
+                              label={t("schools.form.fieldLanguageSystemOpt")}
+                            >
+                              <select
+                                aria-label={t(
+                                  "schools.form.fieldLanguageSystemOpt",
+                                )}
+                                className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                                value={editSchoolValues.languageSystem ?? ""}
+                                onChange={(event) => {
+                                  editSchoolForm.setValue(
+                                    "languageSystem",
+                                    event.target.value as
+                                      | ""
+                                      | "FRANCOPHONE"
+                                      | "ANGLOPHONE"
+                                      | "BILINGUAL",
+                                    {
+                                      shouldDirty: true,
+                                      shouldTouch: true,
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                }}
+                              >
+                                <option value="">
+                                  {t("schools.form.languageSystemPlaceholder")}
+                                </option>
+                                <option value="FRANCOPHONE">
+                                  {t("schools.form.languageSystemFrancophone")}
+                                </option>
+                                <option value="ANGLOPHONE">
+                                  {t("schools.form.languageSystemAnglophone")}
+                                </option>
+                                <option value="BILINGUAL">
+                                  {t("schools.form.languageSystemBilingual")}
+                                </option>
+                              </select>
+                            </FormField>
 
-                  {!loading && orderedSchools.length === 0 ? (
-                    <tr>
-                      <td className="px-3 py-6 text-text-secondary" colSpan={8}>
-                        {t("schools.table.empty")}
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+                            <ImageUploadField
+                              kind="school-logo"
+                              label={t("schools.form.fieldLogo")}
+                              helperText={t("schools.form.logoHelper")}
+                              value={editSchoolValues.logoUrl ?? null}
+                              onChange={(value) => {
+                                editSchoolForm.setValue(
+                                  "logoUrl",
+                                  value ?? "",
+                                  {
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                    shouldValidate: true,
+                                  },
+                                );
+                              }}
+                            />
+                          </div>
+                          {editError ? (
+                            <p className="mt-2 text-sm text-notification">
+                              {editError}
+                            </p>
+                          ) : null}
+                          <FormSubmitHint
+                            visible={!editSchoolForm.formState.isValid}
+                            className="mt-2"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              disabled={
+                                savingEdit || !editSchoolForm.formState.isValid
+                              }
+                              onClick={() => {
+                                void editSchoolForm.handleSubmit((values) =>
+                                  onSaveSchool(school.id, values),
+                                )();
+                              }}
+                            >
+                              {savingEdit
+                                ? t("schools.action.saving")
+                                : t("schools.action.save")}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => {
+                                setEditingSchoolId(null);
+                                setEditError(null);
+                                editSchoolForm.reset();
+                              }}
+                            >
+                              {t("schools.action.cancel")}
+                            </Button>
+                          </div>
+
+                          <div className="grid gap-2 border-t border-border pt-3">
+                            <p className="text-sm font-medium text-text-primary">
+                              {t("schools.form.addAdminTitle")}
+                            </p>
+                            <FormField
+                              label={t("schools.form.addAdminEmailLabel")}
+                              hint={
+                                addAdminEmailCheckState === "checking"
+                                  ? t("schools.email.checking")
+                                  : addAdminEmailCheckState === "invalid"
+                                    ? t("schools.email.invalid")
+                                    : addAdminEmailCheckState === "exists"
+                                      ? t("schools.email.exists").replace(
+                                          "{name}",
+                                          addAdminEmailCheckName ??
+                                            "utilisateur",
+                                        )
+                                      : addAdminEmailCheckState === "not_found"
+                                        ? t("schools.email.notFound")
+                                        : addAdminEmailCheckState === "error"
+                                          ? t("schools.email.error")
+                                          : null
+                              }
+                            >
+                              <EmailInput
+                                aria-label={t(
+                                  "schools.form.addAdminEmailLabel",
+                                )}
+                                value={addAdminEmail}
+                                onChange={(event) =>
+                                  setAddAdminEmail(event.target.value)
+                                }
+                              />
+                            </FormField>
+                            {addAdminError ? (
+                              <p className="text-sm text-notification">
+                                {addAdminError}
+                              </p>
+                            ) : null}
+                            {addAdminSuccess ? (
+                              <p className="text-sm text-primary">
+                                {addAdminSuccess}
+                              </p>
+                            ) : null}
+                            <div>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={
+                                  submittingAddAdmin ||
+                                  !z
+                                    .string()
+                                    .email()
+                                    .safeParse(addAdminEmail.trim()).success
+                                }
+                                onClick={() => {
+                                  void onAddSchoolAdmin(school.id);
+                                }}
+                              >
+                                {submittingAddAdmin
+                                  ? t("schools.form.addAdminSubmitting")
+                                  : t("schools.form.addAdminSubmit")}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 border-t border-border pt-3">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => startEditSchool(school)}
+                          >
+                            {t("schools.action.edit")}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => requestDeleteSchool(school)}
+                          >
+                            {t("schools.action.delete")}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
 

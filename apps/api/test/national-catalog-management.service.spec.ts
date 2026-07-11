@@ -20,6 +20,7 @@ const prisma = {
     findMany: jest.fn(),
     findFirst: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
     delete: jest.fn(),
   },
   curriculumSubject: {
@@ -276,6 +277,60 @@ describe("ManagementService — catalogue national : Curriculum", () => {
       service.deleteNationalCurriculum("curriculum-local"),
     ).rejects.toThrow(NotFoundException);
     expect(prisma.curriculum.delete).not.toHaveBeenCalled();
+  });
+
+  it("met à jour le niveau académique d'un curriculum national et régénère son nom", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-1" });
+    prisma.academicLevel.findFirst.mockResolvedValue({
+      id: "level-2",
+      code: "5EME",
+    });
+    prisma.curriculum.update.mockResolvedValue({
+      id: "curriculum-1",
+      schoolId: null,
+      name: "5EME - TRONC_COMMUN",
+      academicLevelId: "level-2",
+    });
+
+    const result = await service.updateNationalCurriculum("curriculum-1", {
+      academicLevelId: "level-2",
+    });
+
+    expect(prisma.curriculum.update).toHaveBeenCalledWith({
+      where: { id: "curriculum-1" },
+      data: {
+        academicLevelId: "level-2",
+        name: "5EME - TRONC_COMMUN",
+      },
+    });
+    expect(result.name).toBe("5EME - TRONC_COMMUN");
+  });
+
+  it("rejette la mise à jour d'un curriculum national sans aucun champ fourni", async () => {
+    await expect(
+      service.updateNationalCurriculum("curriculum-1", {}),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it("rejette la mise à jour d'un curriculum qui n'est pas national", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateNationalCurriculum("curriculum-local", {
+        academicLevelId: "level-2",
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it("rejette la mise à jour d'un curriculum national vers un niveau non national", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-1" });
+    prisma.academicLevel.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateNationalCurriculum("curriculum-1", {
+        academicLevelId: "level-local",
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it("affecte une matière nationale à un curriculum national", async () => {

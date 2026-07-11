@@ -34,8 +34,10 @@ import { GetRoomCalendarQueryDto } from "./dto/get-room-calendar-query.dto.js";
 import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
 import { CreateNationalCurriculumDto } from "./dto/create-national-curriculum.dto.js";
+import { UpdateNationalCurriculumDto } from "./dto/update-national-curriculum.dto.js";
 import { CreateNationalSubjectDto } from "./dto/create-national-subject.dto.js";
 import { UpdateNationalSubjectDto } from "./dto/update-national-subject.dto.js";
+import { AddSchoolAdminDto } from "./dto/add-school-admin.dto.js";
 import { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
 import { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
@@ -193,6 +195,16 @@ export class ManagementController {
     return this.managementService.deleteSchool(schoolId);
   }
 
+  @Post("system/schools/:schoolId/admins")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  addSchoolAdmin(
+    @Param("schoolId") schoolId: string,
+    @Body() payload: AddSchoolAdminDto,
+  ) {
+    return this.managementService.addSchoolAdmin(schoolId, payload);
+  }
+
   @Post("system/schools/:schoolId/admins/:adminUserId/resend-invite")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("SUPER_ADMIN", "ADMIN")
@@ -287,6 +299,19 @@ export class ManagementController {
   @Roles("SUPER_ADMIN", "ADMIN")
   createNationalCurriculum(@Body() payload: CreateNationalCurriculumDto) {
     return this.managementService.createNationalCurriculum(payload);
+  }
+
+  @Patch("system/curriculums/:curriculumId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  updateNationalCurriculum(
+    @Param("curriculumId") curriculumId: string,
+    @Body() payload: UpdateNationalCurriculumDto,
+  ) {
+    return this.managementService.updateNationalCurriculum(
+      curriculumId,
+      payload,
+    );
   }
 
   @Delete("system/curriculums/:curriculumId")
