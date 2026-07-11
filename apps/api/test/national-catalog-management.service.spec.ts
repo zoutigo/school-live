@@ -70,6 +70,80 @@ describe("ManagementService — catalogue national : AcademicLevel", () => {
     });
   });
 
+  it("crée un niveau national avec cycle et languageSystem renseignés", async () => {
+    prisma.academicLevel.create.mockResolvedValue({
+      id: "level-en-1",
+      schoolId: null,
+      code: "FORM1",
+      label: "Form 1",
+      cycle: "SECONDARY",
+      languageSystem: "ANGLOPHONE",
+    });
+
+    await service.createNationalAcademicLevel({
+      code: "FORM1",
+      label: "Form 1",
+      cycle: "SECONDARY",
+      languageSystem: "ANGLOPHONE",
+    });
+
+    expect(prisma.academicLevel.create).toHaveBeenCalledWith({
+      data: {
+        schoolId: null,
+        code: "FORM1",
+        label: "Form 1",
+        cycle: "SECONDARY",
+        languageSystem: "ANGLOPHONE",
+      },
+    });
+  });
+
+  it("rejette un cycle ou un languageSystem invalide a la creation d'un niveau national", async () => {
+    await expect(
+      service.createNationalAcademicLevel({
+        code: "FORM1",
+        label: "Form 1",
+        // @ts-expect-error - valeur d'enum invalide volontaire pour le test
+        cycle: "COLLEGE",
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.academicLevel.create).not.toHaveBeenCalled();
+  });
+
+  it("met a jour cycle et languageSystem d'un niveau national existant", async () => {
+    prisma.academicLevel.findFirst.mockResolvedValue({ id: "level-1" });
+    prisma.academicLevel.update.mockResolvedValue({
+      id: "level-1",
+      schoolId: null,
+      code: "6EME",
+      label: "6ème",
+      cycle: "SECONDARY",
+      languageSystem: "FRANCOPHONE",
+    });
+
+    await service.updateNationalAcademicLevel("level-1", {
+      cycle: "SECONDARY",
+      languageSystem: "FRANCOPHONE",
+    });
+
+    expect(prisma.academicLevel.update).toHaveBeenCalledWith({
+      where: { id: "level-1" },
+      data: {
+        code: undefined,
+        label: undefined,
+        cycle: "SECONDARY",
+        languageSystem: "FRANCOPHONE",
+      },
+    });
+  });
+
+  it("rejette une mise a jour de niveau national sans aucun champ fourni", async () => {
+    await expect(
+      service.updateNationalAcademicLevel("level-1", {}),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.academicLevel.update).not.toHaveBeenCalled();
+  });
+
   it("rejette la modification d'un niveau qui n'est pas national (schoolId non null)", async () => {
     prisma.academicLevel.findFirst.mockResolvedValue(null);
 

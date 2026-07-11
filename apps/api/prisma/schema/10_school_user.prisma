@@ -9,6 +9,7 @@ model School {
   primaryColor       String?
   activeSchoolYearId String?
   languageSystem     SchoolLanguageSystem?
+  cycle              SchoolCycle?
   schoolType         SchoolType?
   ownership          String?
   foundedYear        Int?

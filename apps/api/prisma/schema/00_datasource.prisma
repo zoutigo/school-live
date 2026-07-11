@@ -62,6 +62,11 @@ enum SchoolType {
   TECHNICAL
 }
 
+enum SchoolCycle {
+  PRIMARY
+  SECONDARY
+}
+
 enum AccountActivationStatus {
   PENDING
   ACTIVE

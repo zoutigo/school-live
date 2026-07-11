@@ -4,8 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import type {
   PlatformRole,
+  SchoolLanguageSystem,
   SchoolRole,
   StudentLifeEventType,
 } from "@prisma/client";
@@ -163,6 +165,8 @@ const createSchoolSchema = z.object({
   country: z.string().trim().min(1).max(120).optional(),
   region: z.string().trim().min(1).max(120).optional(),
   city: z.string().trim().min(1).max(120).optional(),
+  cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
+  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
   schoolAdminEmail: z.string().trim().email(),
   logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional(),
 });
@@ -196,6 +200,11 @@ const updateSchoolSchema = z.object({
       }
       return value;
     }),
+  cycle: z.enum(["PRIMARY", "SECONDARY"]).nullable().optional(),
+  languageSystem: z
+    .enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"])
+    .nullable()
+    .optional(),
   logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).nullable().optional(),
 });
 
@@ -375,11 +384,15 @@ const rolloverSchoolYearSchema = z
 const createAcademicLevelSchema = z.object({
   code: z.string().trim().min(1),
   label: z.string().trim().min(1),
+  cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
+  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
 });
 
 const updateAcademicLevelSchema = z.object({
   code: z.string().trim().min(1).optional(),
   label: z.string().trim().min(1).optional(),
+  cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
+  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
 });
 
 const createTrackSchema = z.object({
@@ -864,6 +877,8 @@ export class ManagementService {
         country: true,
         region: true,
         city: true,
+        cycle: true,
+        languageSystem: true,
         logoUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -884,6 +899,8 @@ export class ManagementService {
       country: school.country,
       region: school.region,
       city: school.city,
+      cycle: school.cycle,
+      languageSystem: school.languageSystem,
       logoUrl: school.logoUrl,
       createdAt: school.createdAt,
       updatedAt: school.updatedAt,
@@ -903,6 +920,8 @@ export class ManagementService {
         country: true,
         region: true,
         city: true,
+        cycle: true,
+        languageSystem: true,
         logoUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -1068,6 +1087,8 @@ export class ManagementService {
       parsed.country === undefined &&
       parsed.region === undefined &&
       parsed.city === undefined &&
+      parsed.cycle === undefined &&
+      parsed.languageSystem === undefined &&
       parsed.logoUrl === undefined
     ) {
       throw new BadRequestException("No fields to update");
@@ -1089,6 +1110,8 @@ export class ManagementService {
         country: parsed.country,
         region: parsed.region,
         city: parsed.city,
+        cycle: parsed.cycle,
+        languageSystem: parsed.languageSystem,
         logoUrl: parsed.logoUrl,
       },
       select: {
@@ -1098,6 +1121,8 @@ export class ManagementService {
         country: true,
         region: true,
         city: true,
+        cycle: true,
+        languageSystem: true,
         logoUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -1528,6 +1553,8 @@ export class ManagementService {
                 country: parsed.country,
                 region: parsed.region,
                 city: parsed.city,
+                cycle: parsed.cycle,
+                languageSystem: parsed.languageSystem,
                 logoUrl: parsed.logoUrl,
               },
             },
@@ -1541,6 +1568,8 @@ export class ManagementService {
                 country: true,
                 region: true,
                 city: true,
+                cycle: true,
+                languageSystem: true,
                 logoUrl: true,
                 createdAt: true,
                 updatedAt: true,
@@ -1594,6 +1623,8 @@ export class ManagementService {
               country: parsed.country,
               region: parsed.region,
               city: parsed.city,
+              cycle: parsed.cycle,
+              languageSystem: parsed.languageSystem,
               logoUrl: parsed.logoUrl,
             },
           },
@@ -1607,6 +1638,8 @@ export class ManagementService {
               country: true,
               region: true,
               city: true,
+              cycle: true,
+              languageSystem: true,
               logoUrl: true,
               createdAt: true,
               updatedAt: true,
@@ -2817,9 +2850,52 @@ export class ManagementService {
     };
   }
 
+  private async getNationalCatalogClassificationFilter(
+    schoolId: string,
+  ): Promise<Prisma.AcademicLevelWhereInput["AND"]> {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { cycle: true, languageSystem: true },
+    });
+
+    const languageSystems: SchoolLanguageSystem[] | undefined =
+      school?.languageSystem === "BILINGUAL"
+        ? ["FRANCOPHONE", "ANGLOPHONE"]
+        : school?.languageSystem
+          ? [school.languageSystem]
+          : undefined;
+
+    const conditions: Prisma.AcademicLevelWhereInput[] = [];
+    if (school?.cycle) {
+      conditions.push({ OR: [{ cycle: null }, { cycle: school.cycle }] });
+    }
+    if (languageSystems) {
+      conditions.push({
+        OR: [
+          { languageSystem: null },
+          { languageSystem: { in: languageSystems } },
+        ],
+      });
+    }
+    return conditions;
+  }
+
+  private async getNationalCatalogFilterForSchool(
+    schoolId: string,
+  ): Promise<Prisma.AcademicLevelWhereInput> {
+    const classification =
+      await this.getNationalCatalogClassificationFilter(schoolId);
+    return {
+      schoolId: null,
+      AND: classification,
+    };
+  }
+
   async listAcademicLevels(schoolId: string) {
+    const nationalFilter =
+      await this.getNationalCatalogFilterForSchool(schoolId);
     const levels = await this.prisma.academicLevel.findMany({
-      where: { OR: [{ schoolId }, { schoolId: null }] },
+      where: { OR: [{ schoolId }, nationalFilter] },
       orderBy: [{ code: "asc" }],
       include: {
         _count: {
@@ -2925,6 +3001,8 @@ export class ManagementService {
         schoolId: null,
         code: parsed.code,
         label: parsed.label,
+        cycle: parsed.cycle,
+        languageSystem: parsed.languageSystem,
       },
     });
   }
@@ -2941,7 +3019,12 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    if (parsed.code === undefined && parsed.label === undefined) {
+    if (
+      parsed.code === undefined &&
+      parsed.label === undefined &&
+      parsed.cycle === undefined &&
+      parsed.languageSystem === undefined
+    ) {
       throw new BadRequestException("No fields to update");
     }
 
@@ -2958,6 +3041,8 @@ export class ManagementService {
       data: {
         code: parsed.code,
         label: parsed.label,
+        cycle: parsed.cycle,
+        languageSystem: parsed.languageSystem,
       },
     });
   }
@@ -3049,8 +3134,18 @@ export class ManagementService {
   }
 
   async listCurriculums(schoolId: string) {
+    const classification =
+      await this.getNationalCatalogClassificationFilter(schoolId);
     const curriculums = await this.prisma.curriculum.findMany({
-      where: { OR: [{ schoolId }, { schoolId: null }] },
+      where: {
+        OR: [
+          { schoolId },
+          {
+            schoolId: null,
+            academicLevel: { is: { AND: classification } },
+          },
+        ],
+      },
       orderBy: [{ name: "asc" }],
       include: {
         academicLevel: {

@@ -44,6 +44,9 @@ type MeResponse = {
   schoolSlug: string | null;
 };
 
+type SchoolCycle = "PRIMARY" | "SECONDARY";
+type SchoolLanguageSystem = "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL";
+
 type SchoolRow = {
   id: string;
   slug: string;
@@ -51,6 +54,8 @@ type SchoolRow = {
   country: string | null;
   region: string | null;
   city: string | null;
+  cycle: SchoolCycle | null;
+  languageSystem: SchoolLanguageSystem | null;
   logoUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -66,6 +71,8 @@ type SchoolDetails = {
   country: string | null;
   region: string | null;
   city: string | null;
+  cycle: SchoolCycle | null;
+  languageSystem: SchoolLanguageSystem | null;
   logoUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -132,6 +139,18 @@ const createSchoolSchema = z.object({
       }
       return value;
     }),
+  cycle: z
+    .union([z.enum(["PRIMARY", "SECONDARY"]), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  languageSystem: z
+    .union([
+      z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]),
+      z.literal(""),
+      z.null(),
+    ])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
   schoolAdminEmail: z
     .string()
     .trim()
@@ -152,6 +171,18 @@ const updateSchoolSchema = z.object({
   country: z.string().trim().nullable().optional(),
   region: z.string().trim().nullable().optional(),
   city: z.string().trim().nullable().optional(),
+  cycle: z
+    .union([z.enum(["PRIMARY", "SECONDARY"]), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => (value ? value : null)),
+  languageSystem: z
+    .union([
+      z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]),
+      z.literal(""),
+      z.null(),
+    ])
+    .optional()
+    .transform((value) => (value ? value : null)),
   logoUrl: z
     .union([z.string().trim().url(), z.literal(""), z.null(), z.undefined()])
     .optional()
@@ -221,6 +252,8 @@ export default function SchoolsPage() {
       country: "",
       region: "",
       city: "",
+      cycle: "",
+      languageSystem: "",
       schoolAdminEmail: "",
       logoUrl: "",
     },
@@ -233,6 +266,8 @@ export default function SchoolsPage() {
       country: "",
       region: "",
       city: "",
+      cycle: "",
+      languageSystem: "",
       logoUrl: "",
     },
   });
@@ -494,6 +529,8 @@ export default function SchoolsPage() {
         country: "",
         region: "",
         city: "",
+        cycle: "",
+        languageSystem: "",
         schoolAdminEmail: "",
         logoUrl: "",
       });
@@ -524,6 +561,8 @@ export default function SchoolsPage() {
       country: school.country ?? "",
       region: school.region ?? "",
       city: school.city ?? "",
+      cycle: school.cycle ?? "",
+      languageSystem: school.languageSystem ?? "",
       logoUrl: school.logoUrl ?? "",
     });
     void editSchoolForm.trigger();
@@ -556,6 +595,8 @@ export default function SchoolsPage() {
           country: values.country ?? null,
           region: values.region ?? null,
           city: values.city ?? null,
+          cycle: values.cycle ?? null,
+          languageSystem: values.languageSystem ?? null,
           logoUrl: values.logoUrl ?? null,
         }),
       });
@@ -959,6 +1000,90 @@ export default function SchoolsPage() {
                                     )}
                                   />
                                 </FormField>
+                                <FormField
+                                  label={t("schools.form.fieldCycleOpt")}
+                                >
+                                  <select
+                                    aria-label={t("schools.form.fieldCycleOpt")}
+                                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={editSchoolValues.cycle ?? ""}
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "cycle",
+                                        event.target.value as
+                                          | ""
+                                          | "PRIMARY"
+                                          | "SECONDARY",
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
+                                  >
+                                    <option value="">
+                                      {t("schools.form.cyclePlaceholder")}
+                                    </option>
+                                    <option value="PRIMARY">
+                                      {t("schools.form.cyclePrimary")}
+                                    </option>
+                                    <option value="SECONDARY">
+                                      {t("schools.form.cycleSecondary")}
+                                    </option>
+                                  </select>
+                                </FormField>
+                                <FormField
+                                  label={t(
+                                    "schools.form.fieldLanguageSystemOpt",
+                                  )}
+                                >
+                                  <select
+                                    aria-label={t(
+                                      "schools.form.fieldLanguageSystemOpt",
+                                    )}
+                                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={
+                                      editSchoolValues.languageSystem ?? ""
+                                    }
+                                    onChange={(event) => {
+                                      editSchoolForm.setValue(
+                                        "languageSystem",
+                                        event.target.value as
+                                          | ""
+                                          | "FRANCOPHONE"
+                                          | "ANGLOPHONE"
+                                          | "BILINGUAL",
+                                        {
+                                          shouldDirty: true,
+                                          shouldTouch: true,
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                    }}
+                                  >
+                                    <option value="">
+                                      {t(
+                                        "schools.form.languageSystemPlaceholder",
+                                      )}
+                                    </option>
+                                    <option value="FRANCOPHONE">
+                                      {t(
+                                        "schools.form.languageSystemFrancophone",
+                                      )}
+                                    </option>
+                                    <option value="ANGLOPHONE">
+                                      {t(
+                                        "schools.form.languageSystemAnglophone",
+                                      )}
+                                    </option>
+                                    <option value="BILINGUAL">
+                                      {t(
+                                        "schools.form.languageSystemBilingual",
+                                      )}
+                                    </option>
+                                  </select>
+                                </FormField>
 
                                 <ImageUploadField
                                   kind="school-logo"
@@ -1077,6 +1202,35 @@ export default function SchoolsPage() {
                       <InfoLine
                         label={t("schools.details.labelCity")}
                         value={selectedSchool.city ?? "-"}
+                      />
+                      <InfoLine
+                        label={t("schools.details.labelCycle")}
+                        value={
+                          selectedSchool.cycle
+                            ? t(
+                                selectedSchool.cycle === "PRIMARY"
+                                  ? "schools.form.cyclePrimary"
+                                  : "schools.form.cycleSecondary",
+                              )
+                            : "-"
+                        }
+                      />
+                      <InfoLine
+                        label={t("schools.details.labelLanguageSystem")}
+                        value={
+                          selectedSchool.languageSystem
+                            ? t(
+                                {
+                                  FRANCOPHONE:
+                                    "schools.form.languageSystemFrancophone",
+                                  ANGLOPHONE:
+                                    "schools.form.languageSystemAnglophone",
+                                  BILINGUAL:
+                                    "schools.form.languageSystemBilingual",
+                                }[selectedSchool.languageSystem],
+                              )
+                            : "-"
+                        }
                       />
                       <InfoLine
                         label={t("schools.details.labelCreated")}
@@ -1267,6 +1421,69 @@ export default function SchoolsPage() {
                   }}
                   invalid={Boolean(createSchoolForm.formState.errors.city)}
                 />
+              </FormField>
+
+              <FormField label={t("schools.form.fieldCycleOpt")}>
+                <select
+                  aria-label={t("schools.form.fieldCycleOpt")}
+                  className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={createSchoolValues.cycle ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue(
+                      "cycle",
+                      event.target.value as "" | "PRIMARY" | "SECONDARY",
+                      {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      },
+                    );
+                  }}
+                >
+                  <option value="">{t("schools.form.cyclePlaceholder")}</option>
+                  <option value="PRIMARY">
+                    {t("schools.form.cyclePrimary")}
+                  </option>
+                  <option value="SECONDARY">
+                    {t("schools.form.cycleSecondary")}
+                  </option>
+                </select>
+              </FormField>
+
+              <FormField label={t("schools.form.fieldLanguageSystemOpt")}>
+                <select
+                  aria-label={t("schools.form.fieldLanguageSystemOpt")}
+                  className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={createSchoolValues.languageSystem ?? ""}
+                  onChange={(event) => {
+                    createSchoolForm.setValue(
+                      "languageSystem",
+                      event.target.value as
+                        | ""
+                        | "FRANCOPHONE"
+                        | "ANGLOPHONE"
+                        | "BILINGUAL",
+                      {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      },
+                    );
+                  }}
+                >
+                  <option value="">
+                    {t("schools.form.languageSystemPlaceholder")}
+                  </option>
+                  <option value="FRANCOPHONE">
+                    {t("schools.form.languageSystemFrancophone")}
+                  </option>
+                  <option value="ANGLOPHONE">
+                    {t("schools.form.languageSystemAnglophone")}
+                  </option>
+                  <option value="BILINGUAL">
+                    {t("schools.form.languageSystemBilingual")}
+                  </option>
+                </select>
               </FormField>
 
               <FormField
