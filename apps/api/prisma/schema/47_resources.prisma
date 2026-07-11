@@ -25,6 +25,14 @@ enum ResourceAttachmentPart {
   CORRECTION
 }
 
+enum ResourceSubmissionStatus {
+  DRAFT
+  AWAITING
+  APPROVED
+  REJECTED
+  DISCARDED
+}
+
 enum ResourceAuditAction {
   SUBMIT
   EDIT
@@ -34,6 +42,11 @@ enum ResourceAuditAction {
   APPROVE_CORRECTION
   REJECT_CORRECTION
   REVOKE_CORRECTION
+  SUBMISSION_DRAFT
+  SUBMISSION_SUBMIT
+  SUBMISSION_APPROVE
+  SUBMISSION_REJECT
+  SUBMISSION_DISCARD
 }
 
 model Resource {
@@ -47,14 +60,16 @@ model Resource {
   academicYearLabel         String
   title                     String
   authorUserId              String
-  statementContent          String
+  statementContent          String?
   statementStatus           ResourceApprovalStatus @default(PENDING)
   statementApprovedByUserId String?
   statementApprovedAt       DateTime?
+  statementSubmissionId     String?                @unique
   correctionContent         String?
   correctionStatus          ResourceApprovalStatus @default(PENDING)
   correctionApprovedByUserId String?
   correctionApprovedAt      DateTime?
+  correctionSubmissionId    String?                @unique
   createdAt                 DateTime               @default(now())
   updatedAt                 DateTime               @updatedAt
 
@@ -63,11 +78,14 @@ model Resource {
   subject                 Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
   authorUser               User               @relation("ResourceAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
   statementApprovedByUser   User?             @relation("ResourceStatementApprovedBy", fields: [statementApprovedByUserId], references: [id], onDelete: SetNull)
+  approvedStatementSubmission  ResourceSubmission? @relation("ResourceStatementApprovedSubmission", fields: [statementSubmissionId], references: [id], onDelete: SetNull)
+  approvedCorrectionSubmission ResourceSubmission? @relation("ResourceCorrectionApprovedSubmission", fields: [correctionSubmissionId], references: [id], onDelete: SetNull)
   correctionApprovedByUser  User?             @relation("ResourceCorrectionApprovedBy", fields: [correctionApprovedByUserId], references: [id], onDelete: SetNull)
 
   attachments ResourceAttachment[]
   favorites   ResourceFavorite[]
   auditLogs   ResourceAuditLog[]
+  submissions ResourceSubmission[] @relation("ResourceSubmissions")
 
   @@index([kind, academicLevelId, subjectId, sequence])
   @@index([kind, statementStatus])
@@ -76,19 +94,47 @@ model Resource {
   @@index([authorUserId])
 }
 
-model ResourceAttachment {
-  id         String                 @id @default(cuid())
-  resourceId String
-  part       ResourceAttachmentPart
-  fileName   String
-  fileUrl    String
-  sizeLabel  String?
-  mimeType   String?
-  createdAt  DateTime               @default(now())
+model ResourceSubmission {
+  id               String                    @id @default(cuid())
+  resourceId       String
+  part             ResourceAttachmentPart
+  authorUserId     String
+  content          String
+  status           ResourceSubmissionStatus  @default(DRAFT)
+  reason           String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
 
-  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  resource       Resource @relation("ResourceSubmissions", fields: [resourceId], references: [id], onDelete: Cascade)
+  authorUser     User     @relation("ResourceSubmissionAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  reviewedByUser User?    @relation("ResourceSubmissionReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvedAsStatementFor  Resource? @relation("ResourceStatementApprovedSubmission")
+  approvedAsCorrectionFor Resource? @relation("ResourceCorrectionApprovedSubmission")
+
+  attachments ResourceAttachment[]
+
+  @@index([resourceId, part, status])
+  @@index([authorUserId])
+}
+
+model ResourceAttachment {
+  id           String                 @id @default(cuid())
+  resourceId   String
+  submissionId String?
+  part         ResourceAttachmentPart
+  fileName     String
+  fileUrl      String
+  sizeLabel    String?
+  mimeType     String?
+  createdAt    DateTime               @default(now())
+
+  resource   Resource            @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  submission ResourceSubmission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 
   @@index([resourceId, part])
+  @@index([submissionId])
 }
 
 model ResourceFavorite {

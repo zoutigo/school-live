@@ -51,6 +51,17 @@ enum Locale {
   EN
 }
 
+enum SchoolLanguageSystem {
+  FRANCOPHONE
+  ANGLOPHONE
+  BILINGUAL
+}
+
+enum SchoolType {
+  GENERAL
+  TECHNICAL
+}
+
 enum AccountActivationStatus {
   PENDING
   ACTIVE
