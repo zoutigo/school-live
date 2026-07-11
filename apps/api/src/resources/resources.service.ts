@@ -281,8 +281,7 @@ export class ResourcesService {
       );
     }
 
-    const isAuthor =
-      resource.authorUserId === user.id;
+    const isAuthor = resource.authorUserId === user.id;
     const isPlatform = isResourcePlatformAdmin(user);
     if (resource.statementStatus !== "APPROVED" && !isAuthor && !isPlatform) {
       throw new NotFoundException(
@@ -487,8 +486,7 @@ export class ResourcesService {
         translateResourceError(locale, "resources.errors.notFound"),
       );
     }
-    const isAuthor =
-      existing.authorUserId === user.id;
+    const isAuthor = existing.authorUserId === user.id;
     const isPlatform = isResourcePlatformAdmin(user);
     if (!isAuthor && !isPlatform) {
       throw new ForbiddenException(

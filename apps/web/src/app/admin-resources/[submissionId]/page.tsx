@@ -84,10 +84,9 @@ function AdminResourceModerationReviewPageContent() {
         fetch(`${API_URL}/resources/${resourceId}`, {
           credentials: "include",
         }),
-        fetch(
-          `${API_URL}/resources/${resourceId}/submissions?part=${part}`,
-          { credentials: "include" },
-        ),
+        fetch(`${API_URL}/resources/${resourceId}/submissions?part=${part}`, {
+          credentials: "include",
+        }),
       ]);
       if (!resourceRes.ok || !submissionsRes.ok) {
         throw new Error("LOAD_FAILED");
@@ -263,9 +262,7 @@ function AdminResourceModerationReviewPageContent() {
           </div>
         ) : (
           <Card>
-            <p className="font-heading text-xl font-semibold">
-              {detail.title}
-            </p>
+            <p className="font-heading text-xl font-semibold">{detail.title}</p>
             <p className="text-sm text-muted-foreground">
               {detail.subject.name} • {detail.academicLevel.label}
               {detail.school ? ` • ${detail.school.name}` : ""}
@@ -275,8 +272,7 @@ function AdminResourceModerationReviewPageContent() {
               data-testid="admin-resources-review-author"
             >
               {t("resourcesModeration.authorPrefix")}
-              {submission.authorUser.firstName}{" "}
-              {submission.authorUser.lastName}
+              {submission.authorUser.firstName} {submission.authorUser.lastName}
             </p>
 
             {part === "correction" ? (

@@ -184,7 +184,8 @@ describe("AdminResourceModerationReviewPage", () => {
       const url = String(input);
       const method = init?.method ?? "GET";
       if (url.endsWith("/me")) return jsonResponse(SUPER_ADMIN_ME);
-      if (url.endsWith("/resources/res-1")) return jsonResponse(RESOURCE_DETAIL);
+      if (url.endsWith("/resources/res-1"))
+        return jsonResponse(RESOURCE_DETAIL);
       if (url.includes("/resources/res-1/submissions") && method === "GET") {
         return jsonResponse([SUBMISSION]);
       }
@@ -208,9 +209,7 @@ describe("AdminResourceModerationReviewPage", () => {
     fireEvent.click(screen.getByTestId("admin-resources-review-reject"));
 
     await waitFor(() => {
-      expect(rejectBody).toBe(
-        JSON.stringify({ reason: "Corrigé incomplet" }),
-      );
+      expect(rejectBody).toBe(JSON.stringify({ reason: "Corrigé incomplet" }));
     });
     expect(pushMock).toHaveBeenCalledWith("/admin-resources");
   });
@@ -221,7 +220,8 @@ describe("AdminResourceModerationReviewPage", () => {
       const url = String(input);
       const method = init?.method ?? "GET";
       if (url.endsWith("/me")) return jsonResponse(SUPER_ADMIN_ME);
-      if (url.endsWith("/resources/res-1")) return jsonResponse(RESOURCE_DETAIL);
+      if (url.endsWith("/resources/res-1"))
+        return jsonResponse(RESOURCE_DETAIL);
       if (url.includes("/resources/res-1/submissions") && method === "GET") {
         return jsonResponse([SUBMISSION]);
       }
@@ -257,7 +257,8 @@ describe("AdminResourceModerationReviewPage", () => {
       const url = String(input);
       const method = init?.method ?? "GET";
       if (url.endsWith("/me")) return jsonResponse(SUPER_ADMIN_ME);
-      if (url.endsWith("/resources/res-1")) return jsonResponse(RESOURCE_DETAIL);
+      if (url.endsWith("/resources/res-1"))
+        return jsonResponse(RESOURCE_DETAIL);
       if (url.includes("/resources/res-1/submissions") && method === "GET") {
         return jsonResponse([SUBMISSION]);
       }
