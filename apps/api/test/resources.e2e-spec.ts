@@ -213,8 +213,8 @@ describe("Resources API e2e", () => {
     }
   });
 
-  it("rejects a PARENT from creating a resource", async () => {
-    const { response } = await apiJson("/api/resources", {
+  it("lets a PARENT create a resource (national module, no privileged school role)", async () => {
+    const { response, body } = await apiJson("/api/resources", {
       method: "POST",
       headers: authHeaders(parentToken),
       body: JSON.stringify({
@@ -225,11 +225,14 @@ describe("Resources API e2e", () => {
         examType: "SEQUENCE_TEST",
         sequence: "SEQ_1",
         academicYearLabel: "2025-2026",
-        title: "Controle e2e",
+        title: "Controle e2e parent",
         statementContent: "<p>Enonce</p>",
       }),
     });
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(201);
+    const created = body as { id: string; statementStatus: string };
+    expect(created.statementStatus).toBe("PENDING");
+    await prisma.resource.delete({ where: { id: created.id } }).catch(() => {});
   });
 
   it("lets a TEACHER submit an ASSESSMENT resource, pending by default", async () => {

@@ -76,16 +76,18 @@ describe("ResourcesController", () => {
     expect(result).toEqual({ id: "resource-1" });
   });
 
-  it("exposes PATCH :resourceId to ADMIN and SUPER_ADMIN platform roles, not just TEACHER/SCHOOL_ADMIN", () => {
+  it("exposes PATCH :resourceId to every role allowed on the module (national module, no method-level restriction)", () => {
     const requiredRoles = Reflect.getMetadata(
       ROLES_KEY,
-      ResourcesController.prototype.updateResource,
+      ResourcesController,
     ) as string[];
 
     expect(requiredRoles).toEqual(
       expect.arrayContaining([
         "TEACHER",
         "SCHOOL_ADMIN",
+        "PARENT",
+        "STUDENT",
         "ADMIN",
         "SUPER_ADMIN",
       ]),

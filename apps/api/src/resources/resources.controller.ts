@@ -111,7 +111,6 @@ export class ResourcesController {
   }
 
   @Post()
-  @Roles("TEACHER", "SCHOOL_ADMIN")
   createResource(
     @CurrentUser() user: AuthenticatedUser,
     @Body() payload: CreateResourceDto,
@@ -120,7 +119,6 @@ export class ResourcesController {
   }
 
   @Patch(":resourceId")
-  @Roles("TEACHER", "SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
   updateResource(
     @CurrentUser() user: AuthenticatedUser,
     @Param("resourceId") resourceId: string,
@@ -130,7 +128,6 @@ export class ResourcesController {
   }
 
   @Get(":resourceId/submissions")
-  @Roles("TEACHER", "SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
   listSubmissions(
     @CurrentUser() user: AuthenticatedUser,
     @Param("resourceId") resourceId: string,
@@ -144,7 +141,6 @@ export class ResourcesController {
   }
 
   @Post(":resourceId/:part/submissions")
-  @Roles("TEACHER", "SCHOOL_ADMIN")
   saveSubmissionDraft(
     @CurrentUser() user: AuthenticatedUser,
     @Param("resourceId") resourceId: string,
@@ -160,7 +156,6 @@ export class ResourcesController {
   }
 
   @Patch(":resourceId/submissions/:submissionId/submit")
-  @Roles("TEACHER", "SCHOOL_ADMIN")
   submitSubmission(
     @CurrentUser() user: AuthenticatedUser,
     @Param("resourceId") resourceId: string,
@@ -190,7 +185,6 @@ export class ResourcesController {
   }
 
   @Post("uploads/attachment")
-  @Roles("TEACHER", "SCHOOL_ADMIN")
   @UseInterceptors(
     FileInterceptor("file", {
       limits: { fileSize: 10 * 1024 * 1024 },
@@ -203,7 +197,6 @@ export class ResourcesController {
   }
 
   @Post("uploads/inline-image")
-  @Roles("TEACHER", "SCHOOL_ADMIN")
   @UseInterceptors(
     FileInterceptor("file", {
       limits: { fileSize: 8 * 1024 * 1024 },

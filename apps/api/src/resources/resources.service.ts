@@ -49,12 +49,6 @@ const RESOURCE_LIST_SELECT = {
   authorUser: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.ResourceSelect;
 
-const NON_AUTHOR_ROLES = new Set(["PARENT", "STUDENT"]);
-
-function canActAsResourceAuthor(user: AuthenticatedUser): boolean {
-  return user.activeRole == null || !NON_AUTHOR_ROLES.has(user.activeRole);
-}
-
 function isResourcePlatformAdmin(user: AuthenticatedUser): boolean {
   return user.activeRole === "ADMIN" || user.activeRole === "SUPER_ADMIN";
 }
@@ -288,7 +282,7 @@ export class ResourcesService {
     }
 
     const isAuthor =
-      resource.authorUserId === user.id && canActAsResourceAuthor(user);
+      resource.authorUserId === user.id;
     const isPlatform = isResourcePlatformAdmin(user);
     if (resource.statementStatus !== "APPROVED" && !isAuthor && !isPlatform) {
       throw new NotFoundException(
@@ -494,7 +488,7 @@ export class ResourcesService {
       );
     }
     const isAuthor =
-      existing.authorUserId === user.id && canActAsResourceAuthor(user);
+      existing.authorUserId === user.id;
     const isPlatform = isResourcePlatformAdmin(user);
     if (!isAuthor && !isPlatform) {
       throw new ForbiddenException(
