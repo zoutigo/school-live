@@ -60,7 +60,12 @@ describe("ManagementService — filtrage strict du catalogue national par cycle 
               {
                 schoolId: null,
                 AND: [
-                  { OR: [{ cycle: null }, { cycle: "SECONDARY" }] },
+                  {
+                    OR: [
+                      { cycleId: null },
+                      { cycle: { is: { code: "SECONDARY" } } },
+                    ],
+                  },
                   {
                     OR: [
                       { languageSystem: null },
@@ -167,7 +172,12 @@ describe("ManagementService — filtrage strict du catalogue national par cycle 
                 academicLevel: {
                   is: {
                     AND: [
-                      { OR: [{ cycle: null }, { cycle: "PRIMARY" }] },
+                      {
+                        OR: [
+                          { cycleId: null },
+                          { cycle: { is: { code: "PRIMARY" } } },
+                        ],
+                      },
                       {
                         OR: [
                           { languageSystem: null },

@@ -37,11 +37,13 @@ describe("Curriculums page — catalogue national", () => {
   });
 
   function mockBaseRoutes(options?: {
+    nationalCycles?: unknown[];
     nationalLevels?: unknown[];
     nationalCurriculums?: unknown[];
     nationalSubjects?: unknown[];
     nationalCurriculumSubjects?: unknown[];
   }) {
+    const nationalCycles = options?.nationalCycles ?? [];
     const nationalLevels = options?.nationalLevels ?? [];
     const nationalCurriculums = options?.nationalCurriculums ?? [];
     const nationalSubjects = options?.nationalSubjects ?? [];
@@ -59,6 +61,9 @@ describe("Curriculums page — catalogue national", () => {
         return jsonResponse([
           { id: "school-1", slug: "lycee-du-poisson-d-avril", name: "LPA" },
         ]);
+      }
+      if (url.endsWith("/api/system/cycles")) {
+        return jsonResponse(nationalCycles);
       }
       if (/\/api\/system\/academic-levels\/[^/]+$/.test(url)) {
         if (method === "PATCH" || method === "DELETE") {
@@ -202,7 +207,11 @@ describe("Curriculums page — catalogue national", () => {
   });
 
   it("creates a national academic level with cycle and languageSystem selected", async () => {
-    const fetchMock = mockBaseRoutes();
+    const fetchMock = mockBaseRoutes({
+      nationalCycles: [
+        { id: "cycle-secondary", code: "SECONDARY", label: "Secondaire" },
+      ],
+    });
 
     render(<CurriculumsPage />);
 
@@ -223,7 +232,7 @@ describe("Curriculums page — catalogue national", () => {
       target: { value: "Form 1" },
     });
     fireEvent.change(screen.getByLabelText("Cycle (optionnel)"), {
-      target: { value: "SECONDARY" },
+      target: { value: "cycle-secondary" },
     });
     fireEvent.change(
       screen.getByLabelText("Systeme linguistique (optionnel)"),
@@ -240,7 +249,7 @@ describe("Curriculums page — catalogue national", () => {
           body: JSON.stringify({
             code: "FORM1",
             label: "Form 1",
-            cycle: "SECONDARY",
+            cycleId: "cycle-secondary",
             languageSystem: "ANGLOPHONE",
           }),
         }),
@@ -250,12 +259,20 @@ describe("Curriculums page — catalogue national", () => {
 
   it("displays cycle and languageSystem classification on national level rows", async () => {
     mockBaseRoutes({
+      nationalCycles: [
+        { id: "cycle-secondary", code: "SECONDARY", label: "Secondaire" },
+      ],
       nationalLevels: [
         {
           id: "level-1",
           code: "FORM1",
           label: "Form 1",
-          cycle: "SECONDARY",
+          cycleId: "cycle-secondary",
+          cycle: {
+            id: "cycle-secondary",
+            code: "SECONDARY",
+            label: "Secondaire",
+          },
           languageSystem: "ANGLOPHONE",
         },
       ],
@@ -354,19 +371,29 @@ describe("Curriculums page — catalogue national", () => {
 
   it("shows level counts per cycle on the Cycles tab", async () => {
     mockBaseRoutes({
+      nationalCycles: [
+        { id: "cycle-secondary", code: "SECONDARY", label: "Secondaire" },
+        { id: "cycle-primary", code: "PRIMARY", label: "Primaire" },
+      ],
       nationalLevels: [
         {
           id: "level-1",
           code: "6EME",
           label: "6eme",
-          cycle: "SECONDARY",
+          cycleId: "cycle-secondary",
+          cycle: {
+            id: "cycle-secondary",
+            code: "SECONDARY",
+            label: "Secondaire",
+          },
           languageSystem: "FRANCOPHONE",
         },
         {
           id: "level-2",
           code: "CP",
           label: "CP",
-          cycle: "PRIMARY",
+          cycleId: "cycle-primary",
+          cycle: { id: "cycle-primary", code: "PRIMARY", label: "Primaire" },
           languageSystem: "FRANCOPHONE",
         },
       ],
@@ -377,11 +404,11 @@ describe("Curriculums page — catalogue national", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Cycles" }));
 
     const secondaryCard = await screen.findByTestId(
-      "curriculums-cycle-card-SECONDARY",
+      "curriculums-cycle-card-cycle-secondary",
     );
     expect(secondaryCard).toHaveTextContent("1");
     const primaryCard = await screen.findByTestId(
-      "curriculums-cycle-card-PRIMARY",
+      "curriculums-cycle-card-cycle-primary",
     );
     expect(primaryCard).toHaveTextContent("1");
   });

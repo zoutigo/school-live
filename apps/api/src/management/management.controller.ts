@@ -37,6 +37,8 @@ import { CreateNationalCurriculumDto } from "./dto/create-national-curriculum.dt
 import { UpdateNationalCurriculumDto } from "./dto/update-national-curriculum.dto.js";
 import { CreateNationalSubjectDto } from "./dto/create-national-subject.dto.js";
 import { UpdateNationalSubjectDto } from "./dto/update-national-subject.dto.js";
+import { CreateNationalCycleDto } from "./dto/create-national-cycle.dto.js";
+import { UpdateNationalCycleDto } from "./dto/update-national-cycle.dto.js";
 import { AddSchoolAdminDto } from "./dto/add-school-admin.dto.js";
 import { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
 import { CreateSubjectDto } from "./dto/create-subject.dto.js";
@@ -219,6 +221,37 @@ export class ManagementController {
   }
 
   // --- Catalogue national (plateforme) ---
+
+  @Get("system/cycles")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  listNationalCycles() {
+    return this.managementService.listNationalCycles();
+  }
+
+  @Post("system/cycles")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  createNationalCycle(@Body() payload: CreateNationalCycleDto) {
+    return this.managementService.createNationalCycle(payload);
+  }
+
+  @Patch("system/cycles/:cycleId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  updateNationalCycle(
+    @Param("cycleId") cycleId: string,
+    @Body() payload: UpdateNationalCycleDto,
+  ) {
+    return this.managementService.updateNationalCycle(cycleId, payload);
+  }
+
+  @Delete("system/cycles/:cycleId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  deleteNationalCycle(@Param("cycleId") cycleId: string) {
+    return this.managementService.deleteNationalCycle(cycleId);
+  }
 
   @Get("system/academic-levels")
   @UseGuards(JwtAuthGuard, RolesGuard)

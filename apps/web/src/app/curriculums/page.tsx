@@ -104,11 +104,21 @@ type CurriculumSubject = {
   subject: Subject;
 };
 
+type NationalCycle = {
+  id: string;
+  code: string;
+  label: string;
+  _count?: {
+    academicLevels: number;
+  };
+};
+
 type NationalAcademicLevel = {
   id: string;
   code: string;
   label: string;
-  cycle: "PRIMARY" | "SECONDARY" | null;
+  cycleId: string | null;
+  cycle: NationalCycle | null;
   languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null;
   _count?: {
     classes: number;
@@ -153,8 +163,9 @@ const academicLevelFormSchema = z.object({
 const nationalAcademicLevelFormSchema = z.object({
   code: z.string().trim().min(1, "Le code est obligatoire."),
   label: z.string().trim().min(1, "Le libelle est obligatoire."),
-  cycle: z
-    .union([z.enum(["PRIMARY", "SECONDARY"]), z.literal("")])
+  cycleId: z
+    .string()
+    .trim()
     .optional()
     .transform((value) => (value ? value : undefined)),
   languageSystem: z
@@ -255,6 +266,7 @@ export default function CurriculumsPage() {
   const [submittingCurriculumSubject, setSubmittingCurriculumSubject] =
     useState(false);
 
+  const [nationalCycles, setNationalCycles] = useState<NationalCycle[]>([]);
   const [nationalAcademicLevels, setNationalAcademicLevels] = useState<
     NationalAcademicLevel[]
   >([]);
@@ -325,7 +337,7 @@ export default function CurriculumsPage() {
   >({
     resolver: zodResolver(nationalAcademicLevelFormSchema),
     mode: "onChange",
-    defaultValues: { code: "", label: "", cycle: "", languageSystem: "" },
+    defaultValues: { code: "", label: "", cycleId: "", languageSystem: "" },
   });
   const nationalCurriculumForm = useForm<
     z.input<typeof nationalCurriculumFormSchema>
@@ -363,7 +375,7 @@ export default function CurriculumsPage() {
   >({
     resolver: zodResolver(nationalAcademicLevelFormSchema),
     mode: "onChange",
-    defaultValues: { code: "", label: "", cycle: "", languageSystem: "" },
+    defaultValues: { code: "", label: "", cycleId: "", languageSystem: "" },
   });
   const editNationalCurriculumForm = useForm<
     z.input<typeof nationalCurriculumFormSchema>
@@ -825,11 +837,18 @@ export default function CurriculumsPage() {
   async function loadNationalCatalog() {
     setLoadingNationalCatalog(true);
     try {
-      const [levelsResponse, curriculumsResponse] = await Promise.all([
-        fetch(`${API_URL}/system/academic-levels`, { credentials: "include" }),
-        fetch(`${API_URL}/system/curriculums`, { credentials: "include" }),
-      ]);
+      const [cyclesResponse, levelsResponse, curriculumsResponse] =
+        await Promise.all([
+          fetch(`${API_URL}/system/cycles`, { credentials: "include" }),
+          fetch(`${API_URL}/system/academic-levels`, {
+            credentials: "include",
+          }),
+          fetch(`${API_URL}/system/curriculums`, { credentials: "include" }),
+        ]);
 
+      if (cyclesResponse.ok) {
+        setNationalCycles((await cyclesResponse.json()) as NationalCycle[]);
+      }
       if (levelsResponse.ok) {
         setNationalAcademicLevels(
           (await levelsResponse.json()) as NationalAcademicLevel[],
@@ -871,7 +890,7 @@ export default function CurriculumsPage() {
         body: JSON.stringify({
           code: values.code,
           label: values.label,
-          cycle: values.cycle || undefined,
+          cycleId: values.cycleId || undefined,
           languageSystem: values.languageSystem || undefined,
         }),
       });
@@ -891,7 +910,7 @@ export default function CurriculumsPage() {
       nationalAcademicLevelForm.reset({
         code: "",
         label: "",
-        cycle: "",
+        cycleId: "",
         languageSystem: "",
       });
       setSuccess(t("curriculums.success.levelCreated"));
@@ -960,7 +979,7 @@ export default function CurriculumsPage() {
     editNationalAcademicLevelForm.reset({
       code: level.code,
       label: level.label,
-      cycle: level.cycle ?? "",
+      cycleId: level.cycleId ?? "",
       languageSystem: level.languageSystem ?? "",
     });
     void editNationalAcademicLevelForm.trigger();
@@ -993,7 +1012,7 @@ export default function CurriculumsPage() {
           body: JSON.stringify({
             code: values.code,
             label: values.label,
-            cycle: values.cycle || undefined,
+            cycleId: values.cycleId || undefined,
             languageSystem: values.languageSystem || undefined,
           }),
         },
@@ -1883,14 +1902,13 @@ export default function CurriculumsPage() {
     [nationalSubjects],
   );
   const cycleSummaries = useMemo(() => {
-    const cycles: Array<"PRIMARY" | "SECONDARY" | "UNCLASSIFIED"> = [
-      "PRIMARY",
-      "SECONDARY",
-      "UNCLASSIFIED",
+    const groups: Array<{ cycle: NationalCycle | null }> = [
+      ...nationalCycles.map((cycle) => ({ cycle })),
+      { cycle: null },
     ];
-    return cycles.map((cycle) => {
+    return groups.map(({ cycle }) => {
       const levelsForCycle = nationalAcademicLevels.filter((level) =>
-        cycle === "UNCLASSIFIED" ? !level.cycle : level.cycle === cycle,
+        cycle ? level.cycleId === cycle.id : !level.cycleId,
       );
       const languageSystemBreakdown = (
         ["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"] as const
@@ -1909,7 +1927,7 @@ export default function CurriculumsPage() {
         ).length,
       };
     });
-  }, [nationalAcademicLevels]);
+  }, [nationalCycles, nationalAcademicLevels]);
   const generatedCurriculumName = useMemo(() => {
     const level = academicLevels.find(
       (entry) => entry.id === curriculumValues.academicLevelId,
@@ -2798,17 +2816,16 @@ export default function CurriculumsPage() {
                     <select
                       aria-label={t("schools.form.fieldCycleOpt")}
                       className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-                      {...nationalAcademicLevelForm.register("cycle")}
+                      {...nationalAcademicLevelForm.register("cycleId")}
                     >
                       <option value="">
                         {t("schools.form.cyclePlaceholder")}
                       </option>
-                      <option value="PRIMARY">
-                        {t("schools.form.cyclePrimary")}
-                      </option>
-                      <option value="SECONDARY">
-                        {t("schools.form.cycleSecondary")}
-                      </option>
+                      {nationalCycles.map((cycle) => (
+                        <option key={cycle.id} value={cycle.id}>
+                          {cycle.label}
+                        </option>
+                      ))}
                     </select>
                   </FormField>
                   <FormField label={t("schools.form.fieldLanguageSystemOpt")}>
@@ -2868,13 +2885,7 @@ export default function CurriculumsPage() {
                             </td>
                             <td className="px-3 py-2">{level.label}</td>
                             <td className="px-3 py-2">
-                              {level.cycle
-                                ? t(
-                                    level.cycle === "PRIMARY"
-                                      ? "schools.form.cyclePrimary"
-                                      : "schools.form.cycleSecondary",
-                                  )
-                                : "-"}
+                              {level.cycle ? level.cycle.label : "-"}
                             </td>
                             <td className="px-3 py-2">
                               {level.languageSystem
@@ -2961,18 +2972,17 @@ export default function CurriculumsPage() {
                                       )}
                                       className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                                       {...editNationalAcademicLevelForm.register(
-                                        "cycle",
+                                        "cycleId",
                                       )}
                                     >
                                       <option value="">
                                         {t("schools.form.cyclePlaceholder")}
                                       </option>
-                                      <option value="PRIMARY">
-                                        {t("schools.form.cyclePrimary")}
-                                      </option>
-                                      <option value="SECONDARY">
-                                        {t("schools.form.cycleSecondary")}
-                                      </option>
+                                      {nationalCycles.map((cycle) => (
+                                        <option key={cycle.id} value={cycle.id}>
+                                          {cycle.label}
+                                        </option>
+                                      ))}
                                     </select>
                                   </FormField>
                                   <FormField
@@ -3244,16 +3254,14 @@ export default function CurriculumsPage() {
             >
               {cycleSummaries.map((summary) => (
                 <div
-                  key={summary.cycle}
+                  key={summary.cycle?.id ?? "unclassified"}
                   className="rounded-card border border-border bg-background p-4"
-                  data-testid={`curriculums-cycle-card-${summary.cycle}`}
+                  data-testid={`curriculums-cycle-card-${summary.cycle?.id ?? "unclassified"}`}
                 >
                   <h3 className="font-heading text-base font-semibold text-text-primary">
-                    {summary.cycle === "PRIMARY"
-                      ? t("schools.form.cyclePrimary")
-                      : summary.cycle === "SECONDARY"
-                        ? t("schools.form.cycleSecondary")
-                        : t("curriculums.cycles.unclassified")}
+                    {summary.cycle
+                      ? summary.cycle.label
+                      : t("curriculums.cycles.unclassified")}
                   </h3>
                   <p className="mt-1 text-2xl font-heading font-semibold text-primary">
                     {summary.count}

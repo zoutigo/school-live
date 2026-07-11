@@ -37,6 +37,8 @@ import type { CreateNationalCurriculumDto } from "./dto/create-national-curricul
 import type { UpdateNationalCurriculumDto } from "./dto/update-national-curriculum.dto.js";
 import type { CreateNationalSubjectDto } from "./dto/create-national-subject.dto.js";
 import type { UpdateNationalSubjectDto } from "./dto/update-national-subject.dto.js";
+import type { CreateNationalCycleDto } from "./dto/create-national-cycle.dto.js";
+import type { UpdateNationalCycleDto } from "./dto/update-national-cycle.dto.js";
 import type { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
 import type { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import type { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
@@ -386,15 +388,25 @@ const rolloverSchoolYearSchema = z
 const createAcademicLevelSchema = z.object({
   code: z.string().trim().min(1),
   label: z.string().trim().min(1),
-  cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
+  cycleId: z.string().trim().min(1).optional(),
   languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
 });
 
 const updateAcademicLevelSchema = z.object({
   code: z.string().trim().min(1).optional(),
   label: z.string().trim().min(1).optional(),
-  cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
+  cycleId: z.string().trim().min(1).optional(),
   languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
+});
+
+const createNationalCycleSchema = z.object({
+  code: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+});
+
+const updateNationalCycleSchema = z.object({
+  code: z.string().trim().min(1).optional(),
+  label: z.string().trim().min(1).optional(),
 });
 
 const createTrackSchema = z.object({
@@ -2968,7 +2980,9 @@ export class ManagementService {
 
     const conditions: Prisma.AcademicLevelWhereInput[] = [];
     if (school?.cycle) {
-      conditions.push({ OR: [{ cycle: null }, { cycle: school.cycle }] });
+      conditions.push({
+        OR: [{ cycleId: null }, { cycle: { is: { code: school.cycle } } }],
+      });
     }
     if (languageSystems) {
       conditions.push({
@@ -3069,6 +3083,86 @@ export class ManagementService {
     return { success: true };
   }
 
+  // --- Catalogue national (plateforme) : NationalCycle ---
+
+  async listNationalCycles() {
+    const cycles = await this.prisma.nationalCycle.findMany({
+      orderBy: [{ code: "asc" }],
+      include: {
+        _count: {
+          select: {
+            academicLevels: true,
+          },
+        },
+      },
+    });
+
+    return cycles;
+  }
+
+  async createNationalCycle(payload: CreateNationalCycleDto) {
+    const parsedResult = createNationalCycleSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    return this.prisma.nationalCycle.create({
+      data: {
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async updateNationalCycle(cycleId: string, payload: UpdateNationalCycleDto) {
+    const parsedResult = updateNationalCycleSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (parsed.code === undefined && parsed.label === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.nationalCycle.findUnique({
+      where: { id: cycleId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("National cycle not found");
+    }
+
+    return this.prisma.nationalCycle.update({
+      where: { id: cycleId },
+      data: {
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async deleteNationalCycle(cycleId: string) {
+    const existing = await this.prisma.nationalCycle.findUnique({
+      where: { id: cycleId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("National cycle not found");
+    }
+
+    await this.prisma.nationalCycle.delete({
+      where: { id: cycleId },
+    });
+
+    return { success: true };
+  }
+
   // --- Catalogue national (plateforme) : AcademicLevel ---
 
   async listNationalAcademicLevels() {
@@ -3076,6 +3170,7 @@ export class ManagementService {
       where: { schoolId: null },
       orderBy: [{ code: "asc" }],
       include: {
+        cycle: true,
         _count: {
           select: {
             classes: true,
@@ -3102,9 +3197,10 @@ export class ManagementService {
         schoolId: null,
         code: parsed.code,
         label: parsed.label,
-        cycle: parsed.cycle,
+        cycleId: parsed.cycleId,
         languageSystem: parsed.languageSystem,
       },
+      include: { cycle: true },
     });
   }
 
@@ -3123,7 +3219,7 @@ export class ManagementService {
     if (
       parsed.code === undefined &&
       parsed.label === undefined &&
-      parsed.cycle === undefined &&
+      parsed.cycleId === undefined &&
       parsed.languageSystem === undefined
     ) {
       throw new BadRequestException("No fields to update");
@@ -3142,9 +3238,10 @@ export class ManagementService {
       data: {
         code: parsed.code,
         label: parsed.label,
-        cycle: parsed.cycle,
+        cycleId: parsed.cycleId,
         languageSystem: parsed.languageSystem,
       },
+      include: { cycle: true },
     });
   }
 
