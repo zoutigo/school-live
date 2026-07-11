@@ -1,4 +1,5 @@
-import { IsOptional, IsString, Matches } from "class-validator";
+import { SchoolCycle, SchoolLanguageSystem } from "@prisma/client";
+import { IsEnum, IsOptional, IsString, Matches } from "class-validator";
 
 const SCHOOL_LOGO_URL_REGEX = /^https?:\/\/.+$/;
 
@@ -18,6 +19,14 @@ export class UpdateSchoolDto {
   @IsOptional()
   @IsString()
   city?: string;
+
+  @IsOptional()
+  @IsEnum(SchoolCycle)
+  cycle?: SchoolCycle;
+
+  @IsOptional()
+  @IsEnum(SchoolLanguageSystem)
+  languageSystem?: SchoolLanguageSystem;
 
   @IsOptional()
   @IsString()

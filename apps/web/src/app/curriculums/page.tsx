@@ -106,6 +106,8 @@ type NationalAcademicLevel = {
   id: string;
   code: string;
   label: string;
+  cycle: "PRIMARY" | "SECONDARY" | null;
+  languageSystem: "FRANCOPHONE" | "ANGLOPHONE" | "BILINGUAL" | null;
   _count?: {
     classes: number;
     curriculums: number;
@@ -126,6 +128,22 @@ type NationalCurriculum = {
 const academicLevelFormSchema = z.object({
   code: z.string().trim().min(1, "Le code est obligatoire."),
   label: z.string().trim().min(1, "Le libelle est obligatoire."),
+});
+
+const nationalAcademicLevelFormSchema = z.object({
+  code: z.string().trim().min(1, "Le code est obligatoire."),
+  label: z.string().trim().min(1, "Le libelle est obligatoire."),
+  cycle: z
+    .union([z.enum(["PRIMARY", "SECONDARY"]), z.literal("")])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  languageSystem: z
+    .union([
+      z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]),
+      z.literal(""),
+    ])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
 });
 
 const trackFormSchema = z.object({
@@ -249,11 +267,11 @@ export default function CurriculumsPage() {
     defaultValues: { academicLevelId: "", trackId: "" },
   });
   const nationalAcademicLevelForm = useForm<
-    z.input<typeof academicLevelFormSchema>
+    z.input<typeof nationalAcademicLevelFormSchema>
   >({
-    resolver: zodResolver(academicLevelFormSchema),
+    resolver: zodResolver(nationalAcademicLevelFormSchema),
     mode: "onChange",
-    defaultValues: { code: "", label: "" },
+    defaultValues: { code: "", label: "", cycle: "", languageSystem: "" },
   });
   const nationalCurriculumForm = useForm<
     z.input<typeof nationalCurriculumFormSchema>
@@ -700,7 +718,7 @@ export default function CurriculumsPage() {
   }
 
   async function onCreateNationalAcademicLevel(
-    values: z.output<typeof academicLevelFormSchema>,
+    values: z.input<typeof nationalAcademicLevelFormSchema>,
   ) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -720,7 +738,12 @@ export default function CurriculumsPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          code: values.code,
+          label: values.label,
+          cycle: values.cycle || undefined,
+          languageSystem: values.languageSystem || undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -735,7 +758,12 @@ export default function CurriculumsPage() {
         return;
       }
 
-      nationalAcademicLevelForm.reset({ code: "", label: "" });
+      nationalAcademicLevelForm.reset({
+        code: "",
+        label: "",
+        cycle: "",
+        languageSystem: "",
+      });
       setSuccess(t("curriculums.success.levelCreated"));
       await loadNationalCatalog();
     } catch {
@@ -2121,7 +2149,7 @@ export default function CurriculumsPage() {
                   {t("curriculums.national.levelsTitle")}
                 </h3>
                 <form
-                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                  className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]"
                   onSubmit={nationalAcademicLevelForm.handleSubmit(
                     onCreateNationalAcademicLevel,
                     onInvalidCreateNationalAcademicLevel,
@@ -2157,6 +2185,43 @@ export default function CurriculumsPage() {
                       )}
                     />
                   </FormField>
+                  <FormField label={t("schools.form.fieldCycleOpt")}>
+                    <select
+                      aria-label={t("schools.form.fieldCycleOpt")}
+                      className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                      {...nationalAcademicLevelForm.register("cycle")}
+                    >
+                      <option value="">
+                        {t("schools.form.cyclePlaceholder")}
+                      </option>
+                      <option value="PRIMARY">
+                        {t("schools.form.cyclePrimary")}
+                      </option>
+                      <option value="SECONDARY">
+                        {t("schools.form.cycleSecondary")}
+                      </option>
+                    </select>
+                  </FormField>
+                  <FormField label={t("schools.form.fieldLanguageSystemOpt")}>
+                    <select
+                      aria-label={t("schools.form.fieldLanguageSystemOpt")}
+                      className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                      {...nationalAcademicLevelForm.register("languageSystem")}
+                    >
+                      <option value="">
+                        {t("schools.form.languageSystemPlaceholder")}
+                      </option>
+                      <option value="FRANCOPHONE">
+                        {t("schools.form.languageSystemFrancophone")}
+                      </option>
+                      <option value="ANGLOPHONE">
+                        {t("schools.form.languageSystemAnglophone")}
+                      </option>
+                      <option value="BILINGUAL">
+                        {t("schools.form.languageSystemBilingual")}
+                      </option>
+                    </select>
+                  </FormField>
                   <div className="self-end">
                     <SubmitButton disabled={submittingNationalLevel}>
                       {t("curriculums.national.add")}
@@ -2175,6 +2240,12 @@ export default function CurriculumsPage() {
                           {t("curriculums.national.colLabel")}
                         </th>
                         <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colCycle")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colLanguageSystem")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
                           {t("curriculums.national.colActions")}
                         </th>
                       </tr>
@@ -2186,6 +2257,29 @@ export default function CurriculumsPage() {
                             {level.code}
                           </td>
                           <td className="px-3 py-2">{level.label}</td>
+                          <td className="px-3 py-2">
+                            {level.cycle
+                              ? t(
+                                  level.cycle === "PRIMARY"
+                                    ? "schools.form.cyclePrimary"
+                                    : "schools.form.cycleSecondary",
+                                )
+                              : "-"}
+                          </td>
+                          <td className="px-3 py-2">
+                            {level.languageSystem
+                              ? t(
+                                  {
+                                    FRANCOPHONE:
+                                      "schools.form.languageSystemFrancophone",
+                                    ANGLOPHONE:
+                                      "schools.form.languageSystemAnglophone",
+                                    BILINGUAL:
+                                      "schools.form.languageSystemBilingual",
+                                  }[level.languageSystem],
+                                )
+                              : "-"}
+                          </td>
                           <td className="px-3 py-2">
                             <Button
                               type="button"
@@ -2207,7 +2301,7 @@ export default function CurriculumsPage() {
                         <tr>
                           <td
                             className="px-3 py-6 text-text-secondary"
-                            colSpan={3}
+                            colSpan={5}
                           >
                             {t("curriculums.national.emptyLevels")}
                           </td>

@@ -180,6 +180,80 @@ describe("Schools page create form", () => {
     });
   });
 
+  it("submits the create form with cycle and languageSystem selected", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools") && method === "GET") {
+          return jsonResponse([]);
+        }
+        if (url.includes("/api/system/schools/slug-preview?")) {
+          return jsonResponse({
+            baseSlug: "greenwich-college",
+            suggestedSlug: "greenwich-college",
+            baseExists: false,
+          });
+        }
+        if (url.includes("/api/system/users/exists?")) {
+          return jsonResponse({ exists: false });
+        }
+        if (url.endsWith("/api/system/schools") && method === "POST") {
+          return jsonResponse(
+            { userExisted: false, setupCompleted: false },
+            201,
+          );
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Creer une ecole" }),
+    );
+
+    fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
+      target: { value: "Greenwich College" },
+    });
+    fireEvent.change(screen.getByLabelText("Cycle (optionnel)"), {
+      target: { value: "SECONDARY" },
+    });
+    fireEvent.change(screen.getByLabelText("Systeme linguistique (optionnel)"), {
+      target: { value: "ANGLOPHONE" },
+    });
+    fireEvent.change(screen.getByLabelText("Email School Admin"), {
+      target: { value: "admin@greenwich.cm" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Creer l ecole" }),
+      ).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Creer l ecole" }));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/api/system/schools") &&
+          init?.method === "POST" &&
+          init?.body ===
+            JSON.stringify({
+              name: "Greenwich College",
+              cycle: "SECONDARY",
+              languageSystem: "ANGLOPHONE",
+              schoolAdminEmail: "admin@greenwich.cm",
+            }),
+      );
+      expect(postCall).toBeDefined();
+    });
+  });
+
   it("uses inline validation for school edition and submits the patch", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
@@ -274,6 +348,99 @@ describe("Schools page create form", () => {
             country: "Cameroun",
             region: "Centre",
             city: "Yaounde",
+            cycle: null,
+            languageSystem: null,
+            logoUrl: null,
+          }),
+        }),
+      );
+    });
+  });
+
+  it("patches cycle and languageSystem when changed via the edit form selects", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools") && method === "GET") {
+          return jsonResponse([
+            {
+              id: "school-1",
+              slug: "college-vogt",
+              name: "College Vogt",
+              country: "Cameroun",
+              region: "Centre",
+              city: "Yaounde",
+              cycle: "SECONDARY",
+              languageSystem: "FRANCOPHONE",
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              usersCount: 10,
+              classesCount: 4,
+              studentsCount: 120,
+            },
+          ]);
+        }
+        if (
+          url.endsWith("/api/system/schools/school-1") &&
+          method === "PATCH"
+        ) {
+          return jsonResponse({ id: "school-1" });
+        }
+        if (url.includes("/api/system/schools/slug-preview?")) {
+          return jsonResponse({
+            baseSlug: "college-vogt",
+            suggestedSlug: "college-vogt",
+            baseExists: false,
+          });
+        }
+        if (url.includes("/api/system/users/exists?")) {
+          return jsonResponse({ exists: false });
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Actions ecole" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
+
+    const cycleSelect = screen.getByLabelText("Cycle (optionnel)");
+    expect(cycleSelect).toHaveValue("SECONDARY");
+    const languageSelect = screen.getByLabelText(
+      "Systeme linguistique (optionnel)",
+    );
+    expect(languageSelect).toHaveValue("FRANCOPHONE");
+
+    fireEvent.change(languageSelect, { target: { value: "BILINGUAL" } });
+
+    const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+    await waitFor(() => {
+      expect(languageSelect).toHaveValue("BILINGUAL");
+      expect(saveButton).toBeEnabled();
+    });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/schools/school-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            name: "College Vogt",
+            country: "Cameroun",
+            region: "Centre",
+            city: "Yaounde",
+            cycle: "SECONDARY",
+            languageSystem: "BILINGUAL",
             logoUrl: null,
           }),
         }),

@@ -1,4 +1,5 @@
-import { IsString } from "class-validator";
+import { SchoolCycle, SchoolLanguageSystem } from "@prisma/client";
+import { IsEnum, IsOptional, IsString } from "class-validator";
 
 export class CreateAcademicLevelDto {
   @IsString()
@@ -6,4 +7,12 @@ export class CreateAcademicLevelDto {
 
   @IsString()
   label!: string;
+
+  @IsOptional()
+  @IsEnum(SchoolCycle)
+  cycle?: SchoolCycle;
+
+  @IsOptional()
+  @IsEnum(SchoolLanguageSystem)
+  languageSystem?: SchoolLanguageSystem;
 }

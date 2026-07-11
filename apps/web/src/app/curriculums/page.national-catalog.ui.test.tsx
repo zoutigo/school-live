@@ -150,6 +150,78 @@ describe("Curriculums page — catalogue national", () => {
     });
   });
 
+  it("creates a national academic level with cycle and languageSystem selected", async () => {
+    const fetchMock = mockBaseRoutes();
+
+    render(<CurriculumsPage />);
+
+    const nationalTab = await screen.findByRole("button", {
+      name: "Catalogue national",
+    });
+    fireEvent.click(nationalTab);
+
+    const submitButtons = await screen.findAllByRole("button", {
+      name: "Ajouter",
+    });
+    const addLevelButton = submitButtons[0];
+
+    fireEvent.change(screen.getByLabelText("Code"), {
+      target: { value: "FORM1" },
+    });
+    fireEvent.change(screen.getByLabelText("Libelle"), {
+      target: { value: "Form 1" },
+    });
+    fireEvent.change(screen.getByLabelText("Cycle (optionnel)"), {
+      target: { value: "SECONDARY" },
+    });
+    fireEvent.change(
+      screen.getByLabelText("Systeme linguistique (optionnel)"),
+      { target: { value: "ANGLOPHONE" } },
+    );
+
+    fireEvent.click(addLevelButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/academic-levels"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            code: "FORM1",
+            label: "Form 1",
+            cycle: "SECONDARY",
+            languageSystem: "ANGLOPHONE",
+          }),
+        }),
+      );
+    });
+  });
+
+  it("displays cycle and languageSystem classification on national level rows", async () => {
+    mockBaseRoutes({
+      nationalLevels: [
+        {
+          id: "level-1",
+          code: "FORM1",
+          label: "Form 1",
+          cycle: "SECONDARY",
+          languageSystem: "ANGLOPHONE",
+        },
+      ],
+    });
+
+    render(<CurriculumsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Catalogue national" }),
+    );
+
+    const row = (await screen.findByText("FORM1")).closest("tr");
+    expect(row).not.toBeNull();
+    expect(row).toHaveTextContent("Secondaire");
+    expect(row).toHaveTextContent("Anglophone");
+  });
+
   it("does not show the national catalog tab for a SCHOOL_ADMIN", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
