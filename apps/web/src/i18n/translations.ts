@@ -776,6 +776,18 @@ export const translations: Record<Locale, Record<string, string>> = {
       "L'action n'a pas pu etre enregistree.",
     "resourcesModeration.errors.conflict":
       "Cette soumission a deja ete traitee par un autre administrateur.",
+    "resourcesModeration.back": "Retour",
+    "resourcesModeration.referenceStatementLabel": "Enonce de reference",
+    "resourcesModeration.statementNotApproved":
+      "L'enonce de cette ressource n'est pas encore valide.",
+    "resourcesModeration.submissionContentLabel": "Contenu propose",
+    "resourcesModeration.notFound":
+      "Cette soumission n'existe plus ou a deja ete traitee.",
+    "resourcesModeration.editContent": "Modifier",
+    "resourcesModeration.saveEdit": "Enregistrer les modifications",
+    "resourcesModeration.editSuccess": "Contenu mis a jour.",
+    "resourcesModeration.editFailed":
+      "Impossible d'enregistrer les modifications.",
     "resources.examType.SEQUENCE_TEST": "Evaluation de sequence",
     "resources.examType.POP_QUIZ": "Interrogation surprise",
     "resources.examType.MOCK_EXAM": "Examen blanc",
@@ -3944,6 +3956,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesModeration.errors.actionFailed": "The action could not be saved.",
     "resourcesModeration.errors.conflict":
       "This submission was already handled by another administrator.",
+    "resourcesModeration.back": "Back",
+    "resourcesModeration.referenceStatementLabel": "Reference statement",
+    "resourcesModeration.statementNotApproved":
+      "This resource's statement is not approved yet.",
+    "resourcesModeration.submissionContentLabel": "Submitted content",
+    "resourcesModeration.notFound":
+      "This submission no longer exists or was already handled.",
+    "resourcesModeration.editContent": "Edit",
+    "resourcesModeration.saveEdit": "Save changes",
+    "resourcesModeration.editSuccess": "Content updated.",
+    "resourcesModeration.editFailed": "Could not save the changes.",
     "resources.examType.SEQUENCE_TEST": "Sequence test",
     "resources.examType.POP_QUIZ": "Pop quiz",
     "resources.examType.MOCK_EXAM": "Mock exam",

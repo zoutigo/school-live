@@ -810,6 +810,96 @@ describe("ResourcesService", () => {
     });
   });
 
+  describe("updateSubmissionContent", () => {
+    it("replaces the content and attachments of an AWAITING submission and logs the edit", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(
+        makeSubmissionRow({ status: "AWAITING", part: "CORRECTION" }),
+      );
+      prisma.resourceSubmission.update.mockResolvedValue(
+        makeSubmissionRow({
+          status: "AWAITING",
+          part: "CORRECTION",
+          content: "<p>Corrigé corrigé par l'admin</p>",
+        }),
+      );
+
+      const result = await service.updateSubmissionContent(
+        makePlatformAdmin(),
+        SUBMISSION_ID,
+        {
+          content: "<p>Corrigé corrigé par l'admin</p>",
+          attachments: [
+            { fileName: "v2.pdf", fileUrl: "https://files/v2.pdf" },
+          ],
+        },
+      );
+
+      expect(prisma.resourceAttachment.deleteMany).toHaveBeenCalledWith({
+        where: { submissionId: SUBMISSION_ID },
+      });
+      expect(prisma.resourceSubmission.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: SUBMISSION_ID },
+          data: expect.objectContaining({
+            content: "<p>Corrigé corrigé par l'admin</p>",
+            attachments: {
+              create: [
+                expect.objectContaining({
+                  resourceId: RESOURCE_ID,
+                  part: "CORRECTION",
+                  fileName: "v2.pdf",
+                  fileUrl: "https://files/v2.pdf",
+                }),
+              ],
+            },
+          }),
+        }),
+      );
+      expect(prisma.resourceAuditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            resourceId: RESOURCE_ID,
+            action: "EDIT",
+            payloadJson: { submissionId: SUBMISSION_ID },
+          }),
+        }),
+      );
+      expect(inlineMedia.syncEntityImages).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nextBodyHtml: "<p>Corrigé corrigé par l'admin</p>",
+        }),
+      );
+      expect(result.content).toBe("<p>Corrigé corrigé par l'admin</p>");
+    });
+
+    it("fails with NotFoundException when the submission does not exist", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateSubmissionContent(makePlatformAdmin(), SUBMISSION_ID, {
+          content: "<p>x</p>",
+          attachments: [],
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.resourceSubmission.update).not.toHaveBeenCalled();
+    });
+
+    it("fails with ConflictException when the submission was already reviewed", async () => {
+      prisma.resourceSubmission.findUnique.mockResolvedValue(
+        makeSubmissionRow({ status: "APPROVED" }),
+      );
+
+      await expect(
+        service.updateSubmissionContent(makePlatformAdmin(), SUBMISSION_ID, {
+          content: "<p>x</p>",
+          attachments: [],
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.resourceAttachment.deleteMany).not.toHaveBeenCalled();
+      expect(prisma.resourceSubmission.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe("approveSubmission", () => {
     it("approves the submission, discards AWAITING siblings, and notifies their authors", async () => {
       prisma.resourceSubmission.updateMany.mockResolvedValue({ count: 1 });

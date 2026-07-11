@@ -26,6 +26,7 @@ describe("ResourcesAdminController", () => {
   let controller: ResourcesAdminController;
   let service: {
     listAdminSubmissions: jest.Mock;
+    updateSubmissionContent: jest.Mock;
     approveSubmission: jest.Mock;
     rejectSubmission: jest.Mock;
     revokeSubmission: jest.Mock;
@@ -34,6 +35,7 @@ describe("ResourcesAdminController", () => {
   beforeEach(async () => {
     service = {
       listAdminSubmissions: jest.fn(),
+      updateSubmissionContent: jest.fn(),
       approveSubmission: jest.fn(),
       rejectSubmission: jest.fn(),
       revokeSubmission: jest.fn(),
@@ -74,6 +76,26 @@ describe("ResourcesAdminController", () => {
 
     expect(service.listAdminSubmissions).toHaveBeenCalledWith(query);
     expect(result).toEqual({ items: [], total: 0, page: 1, limit: 20 });
+  });
+
+  it("delegates updateSubmissionContent with the current admin, submissionId and payload", async () => {
+    const admin = makeAdmin();
+    service.updateSubmissionContent.mockResolvedValue({
+      id: "submission-1",
+      content: "<p>Corrigé</p>",
+    });
+
+    const payload = {
+      content: "<p>Corrigé</p>",
+      attachments: [] as never[],
+    };
+    await controller.updateSubmissionContent(admin, "submission-1", payload);
+
+    expect(service.updateSubmissionContent).toHaveBeenCalledWith(
+      admin,
+      "submission-1",
+      payload,
+    );
   });
 
   it("delegates approveSubmission with the current admin and submissionId", async () => {

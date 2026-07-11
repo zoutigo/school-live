@@ -14,6 +14,7 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { ListAdminResourcesQueryDto } from "./dto/list-admin-resources-query.dto.js";
 import { ReviewResourceDto } from "./dto/review-resource.dto.js";
+import { SaveSubmissionDraftDto } from "./dto/save-submission-draft.dto.js";
 import { ResourcesService } from "./resources.service.js";
 
 // Modération réservée aux platform roles : les ressources sont nationales, aucun
@@ -29,6 +30,19 @@ export class ResourcesAdminController {
   @Get("submissions")
   listAdminSubmissions(@Query() query: ListAdminResourcesQueryDto) {
     return this.resourcesService.listAdminSubmissions(query);
+  }
+
+  @Patch("submissions/:submissionId")
+  updateSubmissionContent(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("submissionId") submissionId: string,
+    @Body() payload: SaveSubmissionDraftDto,
+  ) {
+    return this.resourcesService.updateSubmissionContent(
+      user,
+      submissionId,
+      payload,
+    );
   }
 
   @Patch("submissions/:submissionId/approve")

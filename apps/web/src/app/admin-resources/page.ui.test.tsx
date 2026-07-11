@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminResourcesPage from "./page";
 
 const replaceMock = vi.fn();
+const pushMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock, push: pushMock }),
 }));
 
 vi.mock("../../components/layout/app-shell", () => ({
@@ -79,6 +80,7 @@ describe("AdminResourcesPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
+    pushMock.mockReset();
   });
 
   it("redirects a non platform role away", async () => {
@@ -168,100 +170,32 @@ describe("AdminResourcesPage", () => {
     });
   });
 
-  it("approves a submission", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
-      baseRouter({
-        extra: (url, method) => {
-          if (
-            url.includes("/admin/resources/submissions/sub-1/approve") &&
-            method === "PATCH"
-          ) {
-            return jsonResponse({ id: "res-1" });
-          }
-          return undefined;
-        },
-      }),
-    );
+  it("navigates to the review page with resourceId and part when a card is clicked", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(baseRouter());
 
     render(<AdminResourcesPage />);
-    await screen.findByTestId("admin-resources-card-sub-1");
+    const card = await screen.findByTestId("admin-resources-card-sub-1");
 
-    fireEvent.click(screen.getByTestId("admin-resources-approve-sub-1"));
+    fireEvent.click(card);
 
-    await waitFor(() => {
-      const call = fetchMock.mock.calls.find(([u]) =>
-        String(u).includes("/submissions/sub-1/approve"),
-      );
-      expect(call).toBeDefined();
-    });
+    expect(pushMock).toHaveBeenCalledWith(
+      "/admin-resources/sub-1?resourceId=res-1&part=statement",
+    );
   });
 
-  it("rejects a submission with an optional reason", async () => {
-    let rejectBody: string | undefined;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
-      if (url.endsWith("/me")) return jsonResponse(SUPER_ADMIN_ME);
-      if (url.includes("/admin/resources/submissions") && method === "GET") {
-        return jsonResponse({ items: [AWAITING_SUBMISSION], total: 1 });
-      }
-      if (
-        url.includes("/admin/resources/submissions/sub-1/reject") &&
-        method === "PATCH"
-      ) {
-        rejectBody = init?.body as string | undefined;
-        return jsonResponse({ id: "sub-1", status: "REJECTED" });
-      }
-      return jsonResponse({}, 404);
-    });
+  it("navigates with part=correction after switching tabs", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(baseRouter());
 
     render(<AdminResourcesPage />);
     await screen.findByTestId("admin-resources-card-sub-1");
+    fireEvent.click(screen.getByTestId("admin-resources-tab-correction"));
+    const card = await screen.findByTestId("admin-resources-card-sub-1");
 
-    fireEvent.click(screen.getByTestId("admin-resources-reject-sub-1"));
-    fireEvent.change(
-      screen.getByTestId("admin-resources-reject-reason-sub-1"),
-      { target: { value: "Contenu incomplet" } },
+    fireEvent.click(card);
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/admin-resources/sub-1?resourceId=res-1&part=correction",
     );
-    fireEvent.click(screen.getByTestId("admin-resources-reject-confirm-sub-1"));
-
-    await waitFor(() => {
-      expect(rejectBody).toBe(JSON.stringify({ reason: "Contenu incomplet" }));
-    });
-  });
-
-  it("shows a conflict message and refreshes the list when another admin already handled it", async () => {
-    let approveCalls = 0;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
-      if (url.endsWith("/me")) return jsonResponse(SUPER_ADMIN_ME);
-      if (url.includes("/admin/resources/submissions") && method === "GET") {
-        return jsonResponse({ items: [AWAITING_SUBMISSION], total: 1 });
-      }
-      if (
-        url.includes("/admin/resources/submissions/sub-1/approve") &&
-        method === "PATCH"
-      ) {
-        approveCalls += 1;
-        return jsonResponse({}, 409);
-      }
-      return jsonResponse({}, 404);
-    });
-
-    render(<AdminResourcesPage />);
-    await screen.findByTestId("admin-resources-card-sub-1");
-
-    fireEvent.click(screen.getByTestId("admin-resources-approve-sub-1"));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          "Cette soumission a deja ete traitee par un autre administrateur.",
-        ),
-      ).toBeInTheDocument();
-    });
-    expect(approveCalls).toBe(1);
   });
 
   it("shows the empty state when there is nothing pending", async () => {

@@ -765,6 +765,77 @@ export class ResourcesService {
     });
   }
 
+  // Permet à un platform admin de corriger une soumission (énoncé/corrigé)
+  // avant de l'approuver, sans repasser par l'auteur (typo, mise en forme,
+  // pièce jointe erronée...). Restreint aux soumissions encore AWAITING : une
+  // fois tranchée (APPROVED/REJECTED/DISCARDED), l'historique ne bouge plus.
+  async updateSubmissionContent(
+    admin: AuthenticatedUser,
+    submissionId: string,
+    payload: SaveSubmissionDraftDto,
+  ) {
+    const locale = resourceLocaleFromUser(admin);
+    const submission = await this.prisma.resourceSubmission.findUnique({
+      where: { id: submissionId },
+    });
+    if (!submission) {
+      throw new NotFoundException(
+        translateResourceError(locale, "resources.errors.notFound"),
+      );
+    }
+    if (submission.status !== "AWAITING") {
+      throw new ConflictException(
+        translateResourceError(
+          locale,
+          "resources.errors.submissionAlreadyReviewed",
+        ),
+      );
+    }
+
+    await this.prisma.resourceAttachment.deleteMany({
+      where: { submissionId },
+    });
+
+    const updated = await this.prisma.resourceSubmission.update({
+      where: { id: submissionId },
+      data: {
+        content: payload.content,
+        attachments: {
+          create: payload.attachments.map((a) => ({
+            resourceId: submission.resourceId,
+            part: submission.part,
+            fileName: a.fileName,
+            fileUrl: a.fileUrl,
+            sizeLabel: a.sizeLabel,
+            mimeType: a.mimeType,
+          })),
+        },
+      },
+      select: SUBMISSION_SELECT,
+    });
+
+    await this.prisma.resourceAuditLog.create({
+      data: {
+        resourceId: submission.resourceId,
+        actorUserId: admin.id,
+        action: "EDIT",
+        payloadJson: { submissionId },
+      },
+    });
+
+    await this.inlineMediaService.syncEntityImages({
+      schoolId: null,
+      uploadedByUserId: admin.id,
+      scope: "RESOURCE",
+      entityType: "RESOURCE",
+      entityId: this.inlineSubmissionEntityId(submission.id),
+      nextBodyHtml: payload.content,
+      deleteRemovedPhysically: false,
+    });
+
+    return updated;
+  }
+
   async approveSubmission(admin: AuthenticatedUser, submissionId: string) {
     const locale = resourceLocaleFromUser(admin);
 

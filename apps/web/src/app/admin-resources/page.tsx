@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/layout/app-shell";
-import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -48,8 +47,6 @@ export default function AdminResourcesPage() {
   const [items, setItems] = useState<SubmissionRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
 
   const load = useCallback(
     async (nextPart: ResourcePart) => {
@@ -100,38 +97,6 @@ export default function AdminResourcesPage() {
       return;
     } finally {
       setReady(true);
-    }
-  }
-
-  async function act(
-    submissionId: string,
-    action: "approve" | "reject",
-    reason?: string,
-  ) {
-    setError(null);
-    try {
-      const res = await fetch(
-        `${API_URL}/admin/resources/submissions/${submissionId}/${action}`,
-        {
-          method: "PATCH",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: reason ? JSON.stringify({ reason }) : undefined,
-        },
-      );
-      if (!res.ok) {
-        throw new Error(res.status === 409 ? "CONFLICT" : "ACTION_FAILED");
-      }
-      setRejectingId(null);
-      setRejectReason("");
-      await load(part);
-    } catch (err) {
-      const message =
-        err instanceof Error && err.message === "CONFLICT"
-          ? t("resourcesModeration.errors.conflict")
-          : t("resourcesModeration.errors.actionFailed");
-      await load(part);
-      setError(message);
     }
   }
 
@@ -203,6 +168,12 @@ export default function AdminResourcesPage() {
               <Card
                 key={item.id}
                 data-testid={`admin-resources-card-${item.id}`}
+                className="cursor-pointer transition hover:border-primary"
+                onClick={() =>
+                  router.push(
+                    `/admin-resources/${item.id}?resourceId=${item.resource.id}&part=${part}`,
+                  )
+                }
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -221,64 +192,17 @@ export default function AdminResourcesPage() {
                       {item.authorUser.firstName} {item.authorUser.lastName}
                     </p>
                   </div>
+                  <span aria-hidden className="text-muted-foreground">
+                    →
+                  </span>
                 </div>
 
                 <p
-                  className="mt-3 line-clamp-4 text-sm text-foreground"
+                  className="mt-3 line-clamp-2 text-sm text-foreground"
                   data-testid={`admin-resources-content-${item.id}`}
                 >
                   {stripHtml(item.content)}
                 </p>
-
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    data-testid={`admin-resources-approve-${item.id}`}
-                    onClick={() => act(item.id, "approve")}
-                  >
-                    {t("resourcesModeration.approve")}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    data-testid={`admin-resources-reject-${item.id}`}
-                    onClick={() =>
-                      setRejectingId(rejectingId === item.id ? null : item.id)
-                    }
-                  >
-                    {t("resourcesModeration.reject")}
-                  </Button>
-                </div>
-
-                {rejectingId === item.id ? (
-                  <div className="mt-3 space-y-2">
-                    <textarea
-                      className="w-full rounded-card border border-warm-border p-2 text-sm"
-                      placeholder={t(
-                        "resourcesModeration.rejectReasonPlaceholder",
-                      )}
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                      data-testid={`admin-resources-reject-reason-${item.id}`}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        variant="secondary"
-                        data-testid={`admin-resources-reject-confirm-${item.id}`}
-                        onClick={() => act(item.id, "reject", rejectReason)}
-                      >
-                        {t("resourcesModeration.confirmReject")}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setRejectingId(null);
-                          setRejectReason("");
-                        }}
-                      >
-                        {t("common.cancel")}
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
               </Card>
             ))}
           </div>
