@@ -21,7 +21,7 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { MFOUNDI_SCHOOLS, slugify } from "./mfoundi-schools.data.mjs";
+import { MFOUNDI_SCHOOLS, withUniqueSlugs } from "./mfoundi-schools.data.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -236,8 +236,8 @@ async function main() {
 
   const summary = { curriculums: 0, assessments: 0, nationalExams: 0 };
 
-  for (const entry of MFOUNDI_SCHOOLS) {
-    const slug = slugify(entry.name);
+  for (const entry of withUniqueSlugs(MFOUNDI_SCHOOLS)) {
+    const slug = entry.slug;
 
     const school = await prisma.school.findUnique({ where: { slug } });
     if (!school) {

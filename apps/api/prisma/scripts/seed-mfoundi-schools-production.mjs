@@ -1,19 +1,18 @@
 /**
- * Seed : ajoute 5 établissements secondaires du Mfoundi (Yaoundé) au catalogue
- * Scolive, en s'appuyant sur la liste officielle DDES Mfoundi
- * (ecole-secondaire-mfoundi.pdf, "Liste complète des établissements
- * secondaires du Mfoundi").
+ * Seed de production : crée les établissements secondaires du Mfoundi
+ * (Yaoundé) recensés par la DDES Mfoundi comme des "coquilles" School
+ * (+ année scolaire active), sans compte admin ni membership — contrairement
+ * à seed-mfoundi-schools.mjs (dev/démo), qui rattache un enseignant de test.
  *
- * Objectif : disposer de plusieurs écoles réalistes (au-delà de l'école
- * pilote college-vogt) pour tester le module Ressources en contexte
- * multi-école, et pour exercer le sélecteur d'école active.
+ * Chaque école reçoit son cycle et son languageSystem (voir
+ * mfoundi-schools.data.mjs), ce qui suffit à faire apparaître automatiquement
+ * le sous-ensemble pertinent du catalogue national (niveaux + curriculums)
+ * dans ses listes, via le filtrage strict de ManagementService.
  *
- * languageSystem : seul l'établissement explicitement marqué "Bilingue"
- * dans la colonne Système du PDF reçoit BILINGUAL ; tous les autres
- * établissements du Mfoundi (division de Yaoundé, zone francophone, aucune
- * mention "Anglophone" dans la source) reçoivent FRANCOPHONE par défaut.
+ * Prérequis : lancer npm run seed:national:catalog avant (ou après, l'ordre
+ * n'a pas d'importance) pour que le catalogue national existe.
  *
- * Usage : node prisma/scripts/seed-mfoundi-schools.mjs
+ * Usage : node prisma/scripts/seed-mfoundi-schools-production.mjs
  */
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
@@ -32,8 +31,6 @@ for (const candidate of [
 
 const prisma = new PrismaClient();
 
-const TEACHER_EMAIL = "plizaweb@gmail.com";
-
 function defaultSchoolYearLabel(now = new Date()) {
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth() + 1;
@@ -42,12 +39,10 @@ function defaultSchoolYearLabel(now = new Date()) {
 }
 
 async function ensureSchool(entry) {
-  const slug = entry.slug;
-
   const school = await prisma.school.upsert({
-    where: { slug },
+    where: { slug: entry.slug },
     create: {
-      slug,
+      slug: entry.slug,
       name: entry.name,
       country: "Cameroun",
       region: "Centre",
@@ -86,42 +81,23 @@ async function ensureSchool(entry) {
   return { ...school, activeSchoolYearId };
 }
 
-async function ensureMembership(userId, schoolId, role) {
-  return prisma.schoolMembership.upsert({
-    where: { userId_schoolId_role: { userId, schoolId, role } },
-    create: { userId, schoolId, role },
-    update: {},
-  });
-}
-
 async function main() {
-  const teacher = await prisma.user.findUnique({
-    where: { email: TEACHER_EMAIL },
-    select: { id: true },
-  });
-
-  if (!teacher) {
-    throw new Error(`Utilisateur introuvable pour ${TEACHER_EMAIL}`);
-  }
-
   const summary = [];
 
   for (const entry of withUniqueSlugs(MFOUNDI_SCHOOLS)) {
     const school = await ensureSchool(entry);
-    await ensureMembership(teacher.id, school.id, "TEACHER");
-    await ensureMembership(teacher.id, school.id, "SCHOOL_ADMIN");
-
     summary.push({
       slug: school.slug,
       name: school.name,
       schoolId: school.id,
-      activeSchoolYearId: school.activeSchoolYearId,
+      cycle: school.cycle,
       languageSystem: school.languageSystem,
+      schoolType: school.schoolType,
     });
   }
 
   console.log(
-    JSON.stringify({ teacherId: teacher.id, schools: summary }, null, 2),
+    JSON.stringify({ totalSchools: summary.length, schools: summary }, null, 2),
   );
 }
 
