@@ -1004,9 +1004,7 @@ export default function SchoolsPage() {
                                   label={t("schools.form.fieldCycleOpt")}
                                 >
                                   <select
-                                    aria-label={t(
-                                      "schools.form.fieldCycleOpt",
-                                    )}
+                                    aria-label={t("schools.form.fieldCycleOpt")}
                                     className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                                     value={editSchoolValues.cycle ?? ""}
                                     onChange={(event) => {
@@ -1045,7 +1043,9 @@ export default function SchoolsPage() {
                                       "schools.form.fieldLanguageSystemOpt",
                                     )}
                                     className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
-                                    value={editSchoolValues.languageSystem ?? ""}
+                                    value={
+                                      editSchoolValues.languageSystem ?? ""
+                                    }
                                     onChange={(event) => {
                                       editSchoolForm.setValue(
                                         "languageSystem",
@@ -1440,9 +1440,7 @@ export default function SchoolsPage() {
                     );
                   }}
                 >
-                  <option value="">
-                    {t("schools.form.cyclePlaceholder")}
-                  </option>
+                  <option value="">{t("schools.form.cyclePlaceholder")}</option>
                   <option value="PRIMARY">
                     {t("schools.form.cyclePrimary")}
                   </option>

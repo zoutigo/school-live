@@ -138,10 +138,7 @@ const nationalAcademicLevelFormSchema = z.object({
     .optional()
     .transform((value) => (value ? value : undefined)),
   languageSystem: z
-    .union([
-      z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]),
-      z.literal(""),
-    ])
+    .union([z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]), z.literal("")])
     .optional()
     .transform((value) => (value ? value : undefined)),
 });

@@ -2871,7 +2871,10 @@ export class ManagementService {
     }
     if (languageSystems) {
       conditions.push({
-        OR: [{ languageSystem: null }, { languageSystem: { in: languageSystems } }],
+        OR: [
+          { languageSystem: null },
+          { languageSystem: { in: languageSystems } },
+        ],
       });
     }
     return conditions;
@@ -2889,7 +2892,8 @@ export class ManagementService {
   }
 
   async listAcademicLevels(schoolId: string) {
-    const nationalFilter = await this.getNationalCatalogFilterForSchool(schoolId);
+    const nationalFilter =
+      await this.getNationalCatalogFilterForSchool(schoolId);
     const levels = await this.prisma.academicLevel.findMany({
       where: { OR: [{ schoolId }, nationalFilter] },
       orderBy: [{ code: "asc" }],

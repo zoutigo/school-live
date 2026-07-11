@@ -199,22 +199,24 @@ describe("ManagementService — persistance cycle/languageSystem sur School", ()
     prisma.$transaction.mockImplementation(async (callback) => {
       const tx = {
         schoolYear: {
-          create: jest.fn(async (args: { data: { school: { create: unknown } } }) => {
-            schoolCreateData.push(args.data.school.create);
-            return {
-              id: "school-year-1",
-              school: {
-                id: "school-1",
-                slug: "greenwich-college",
-                name: "Greenwich College",
-                country: "Cameroun",
-                region: "Nord-Ouest",
-                city: "Bamenda",
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            };
-          }),
+          create: jest.fn(
+            async (args: { data: { school: { create: unknown } } }) => {
+              schoolCreateData.push(args.data.school.create);
+              return {
+                id: "school-year-1",
+                school: {
+                  id: "school-1",
+                  slug: "greenwich-college",
+                  name: "Greenwich College",
+                  country: "Cameroun",
+                  region: "Nord-Ouest",
+                  city: "Bamenda",
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                },
+              };
+            },
+          ),
         },
         school: { update: jest.fn() },
         schoolMembership: { create: jest.fn() },
@@ -275,7 +277,10 @@ describe("ManagementService — persistance cycle/languageSystem sur School", ()
 
   it("accepte une mise a jour ne portant que sur le cycle", async () => {
     prisma.school.findUnique.mockResolvedValue({ id: "school-1" });
-    prisma.school.update.mockResolvedValue({ id: "school-1", cycle: "PRIMARY" });
+    prisma.school.update.mockResolvedValue({
+      id: "school-1",
+      cycle: "PRIMARY",
+    });
 
     await service.updateSchool("school-1", { cycle: "PRIMARY" });
 

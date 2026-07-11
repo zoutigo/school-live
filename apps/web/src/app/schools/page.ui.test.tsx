@@ -224,9 +224,12 @@ describe("Schools page create form", () => {
     fireEvent.change(screen.getByLabelText("Cycle (optionnel)"), {
       target: { value: "SECONDARY" },
     });
-    fireEvent.change(screen.getByLabelText("Systeme linguistique (optionnel)"), {
-      target: { value: "ANGLOPHONE" },
-    });
+    fireEvent.change(
+      screen.getByLabelText("Systeme linguistique (optionnel)"),
+      {
+        target: { value: "ANGLOPHONE" },
+      },
+    );
     fireEvent.change(screen.getByLabelText("Email School Admin"), {
       target: { value: "admin@greenwich.cm" },
     });
