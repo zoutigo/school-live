@@ -36,7 +36,13 @@ type Role =
   | "PARENT"
   | "STUDENT";
 
-type Tab = "levels" | "tracks" | "curriculums" | "subjects" | "help";
+type Tab =
+  | "levels"
+  | "tracks"
+  | "curriculums"
+  | "subjects"
+  | "national"
+  | "help";
 
 type MeResponse = {
   role: Role;
@@ -96,6 +102,27 @@ type CurriculumSubject = {
   subject: Subject;
 };
 
+type NationalAcademicLevel = {
+  id: string;
+  code: string;
+  label: string;
+  _count?: {
+    classes: number;
+    curriculums: number;
+  };
+};
+
+type NationalCurriculum = {
+  id: string;
+  name: string;
+  academicLevelId: string;
+  academicLevel: { id: string; code: string; label: string };
+  _count: {
+    classes: number;
+    subjects: number;
+  };
+};
+
 const academicLevelFormSchema = z.object({
   code: z.string().trim().min(1, "Le code est obligatoire."),
   label: z.string().trim().min(1, "Le libelle est obligatoire."),
@@ -115,6 +142,13 @@ const curriculumFormSchema = z.object({
     .union([z.string().trim(), z.literal("")])
     .optional()
     .transform((value) => (value ? value : undefined)),
+});
+
+const nationalCurriculumFormSchema = z.object({
+  academicLevelId: z
+    .string()
+    .trim()
+    .min(1, "Le niveau academique est obligatoire."),
 });
 
 const curriculumSubjectFormSchema = z.object({
@@ -181,6 +215,22 @@ export default function CurriculumsPage() {
   const [submittingCurriculumSubject, setSubmittingCurriculumSubject] =
     useState(false);
 
+  const [nationalAcademicLevels, setNationalAcademicLevels] = useState<
+    NationalAcademicLevel[]
+  >([]);
+  const [nationalCurriculums, setNationalCurriculums] = useState<
+    NationalCurriculum[]
+  >([]);
+  const [loadingNationalCatalog, setLoadingNationalCatalog] = useState(false);
+  const [submittingNationalLevel, setSubmittingNationalLevel] = useState(false);
+  const [deletingNationalLevelId, setDeletingNationalLevelId] = useState<
+    string | null
+  >(null);
+  const [submittingNationalCurriculum, setSubmittingNationalCurriculum] =
+    useState(false);
+  const [deletingNationalCurriculumId, setDeletingNationalCurriculumId] =
+    useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const academicLevelForm = useForm<z.input<typeof academicLevelFormSchema>>({
@@ -197,6 +247,20 @@ export default function CurriculumsPage() {
     resolver: zodResolver(curriculumFormSchema),
     mode: "onChange",
     defaultValues: { academicLevelId: "", trackId: "" },
+  });
+  const nationalAcademicLevelForm = useForm<
+    z.input<typeof academicLevelFormSchema>
+  >({
+    resolver: zodResolver(academicLevelFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const nationalCurriculumForm = useForm<
+    z.input<typeof nationalCurriculumFormSchema>
+  >({
+    resolver: zodResolver(nationalCurriculumFormSchema),
+    mode: "onChange",
+    defaultValues: { academicLevelId: "" },
   });
   const curriculumSubjectForm = useForm<
     z.input<typeof curriculumSubjectFormSchema>
@@ -271,6 +335,17 @@ export default function CurriculumsPage() {
     }
     void loadData(schoolSlug);
   }, [schoolSlug]);
+
+  useEffect(() => {
+    if (role === "SUPER_ADMIN" || role === "ADMIN") {
+      void loadNationalCatalog();
+    }
+  }, [role]);
+
+  useEffect(() => {
+    void nationalAcademicLevelForm.trigger();
+    void nationalCurriculumForm.trigger();
+  }, [nationalAcademicLevelForm, nationalCurriculumForm]);
 
   useEffect(() => {
     if (!schoolSlug || !selectedCurriculumId) {
@@ -596,6 +671,226 @@ export default function CurriculumsPage() {
       setError(t("curriculums.error.network"));
     } finally {
       setDeletingAcademicLevelId(null);
+    }
+  }
+
+  async function loadNationalCatalog() {
+    setLoadingNationalCatalog(true);
+    try {
+      const [levelsResponse, curriculumsResponse] = await Promise.all([
+        fetch(`${API_URL}/system/academic-levels`, { credentials: "include" }),
+        fetch(`${API_URL}/system/curriculums`, { credentials: "include" }),
+      ]);
+
+      if (levelsResponse.ok) {
+        setNationalAcademicLevels(
+          (await levelsResponse.json()) as NationalAcademicLevel[],
+        );
+      }
+      if (curriculumsResponse.ok) {
+        setNationalCurriculums(
+          (await curriculumsResponse.json()) as NationalCurriculum[],
+        );
+      }
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setLoadingNationalCatalog(false);
+    }
+  }
+
+  async function onCreateNationalAcademicLevel(
+    values: z.output<typeof academicLevelFormSchema>,
+  ) {
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("curriculums.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingNationalLevel(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(`${API_URL}/system/academic-levels`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("curriculums.error.levelCreateFailed"));
+        setError(String(message));
+        return;
+      }
+
+      nationalAcademicLevelForm.reset({ code: "", label: "" });
+      setSuccess(t("curriculums.success.levelCreated"));
+      await loadNationalCatalog();
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setSubmittingNationalLevel(false);
+    }
+  }
+
+  function onInvalidCreateNationalAcademicLevel(
+    errors: typeof nationalAcademicLevelForm.formState.errors,
+  ) {
+    if (errors.code) {
+      nationalAcademicLevelForm.setFocus("code");
+    } else if (errors.label) {
+      nationalAcademicLevelForm.setFocus("label");
+    }
+  }
+
+  async function deleteNationalAcademicLevel(levelId: string) {
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("curriculums.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setDeletingNationalLevelId(levelId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/system/academic-levels/${levelId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "X-CSRF-Token": csrfToken },
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("curriculums.error.levelDeleteFailed"));
+        setError(String(message));
+        return;
+      }
+
+      setSuccess(t("curriculums.success.levelDeleted"));
+      await loadNationalCatalog();
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setDeletingNationalLevelId(null);
+    }
+  }
+
+  async function onCreateNationalCurriculum(
+    values: z.output<typeof nationalCurriculumFormSchema>,
+  ) {
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("curriculums.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingNationalCurriculum(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(`${API_URL}/system/curriculums`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ??
+              t("curriculums.error.curriculumCreateFailed"));
+        setError(String(message));
+        return;
+      }
+
+      nationalCurriculumForm.reset({ academicLevelId: "" });
+      setSuccess(t("curriculums.success.curriculumCreated"));
+      await loadNationalCatalog();
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setSubmittingNationalCurriculum(false);
+    }
+  }
+
+  function onInvalidCreateNationalCurriculum(
+    errors: typeof nationalCurriculumForm.formState.errors,
+  ) {
+    if (errors.academicLevelId) {
+      nationalCurriculumForm.setFocus("academicLevelId");
+    }
+  }
+
+  async function deleteNationalCurriculum(curriculumId: string) {
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("curriculums.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setDeletingNationalCurriculumId(curriculumId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/system/curriculums/${curriculumId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "X-CSRF-Token": csrfToken },
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("curriculums.error.deleteFailed"));
+        setError(String(message));
+        return;
+      }
+
+      setSuccess(t("curriculums.success.curriculumDeleted"));
+      await loadNationalCatalog();
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setDeletingNationalCurriculumId(null);
     }
   }
 
@@ -1072,6 +1367,19 @@ export default function CurriculumsPage() {
             >
               {t("curriculums.tab.subjects")}
             </button>
+            {role === "SUPER_ADMIN" || role === "ADMIN" ? (
+              <button
+                type="button"
+                onClick={() => setTab("national")}
+                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                  tab === "national"
+                    ? "border border-border border-b-surface bg-surface text-primary"
+                    : "text-text-secondary"
+                }`}
+              >
+                {t("curriculums.tab.national")}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setTab("help")}
@@ -1800,6 +2108,212 @@ export default function CurriculumsPage() {
                     ) : null}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          ) : tab === "national" ? (
+            <div className="grid gap-6">
+              <p className="text-sm text-text-secondary">
+                {t("curriculums.national.intro")}
+              </p>
+
+              <div className="grid gap-3">
+                <h3 className="font-heading text-base font-semibold">
+                  {t("curriculums.national.levelsTitle")}
+                </h3>
+                <form
+                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                  onSubmit={nationalAcademicLevelForm.handleSubmit(
+                    onCreateNationalAcademicLevel,
+                    onInvalidCreateNationalAcademicLevel,
+                  )}
+                >
+                  <FormField
+                    label={t("curriculums.national.codeLabel")}
+                    error={
+                      nationalAcademicLevelForm.formState.errors.code?.message
+                    }
+                  >
+                    <FormTextInput
+                      aria-label={t("curriculums.national.codeLabel")}
+                      {...nationalAcademicLevelForm.register("code")}
+                      placeholder={t("curriculums.national.codePlaceholder")}
+                      invalid={Boolean(
+                        nationalAcademicLevelForm.formState.errors.code,
+                      )}
+                    />
+                  </FormField>
+                  <FormField
+                    label={t("curriculums.national.labelLabel")}
+                    error={
+                      nationalAcademicLevelForm.formState.errors.label?.message
+                    }
+                  >
+                    <FormTextInput
+                      aria-label={t("curriculums.national.labelLabel")}
+                      {...nationalAcademicLevelForm.register("label")}
+                      placeholder={t("curriculums.national.labelPlaceholder")}
+                      invalid={Boolean(
+                        nationalAcademicLevelForm.formState.errors.label,
+                      )}
+                    />
+                  </FormField>
+                  <div className="self-end">
+                    <SubmitButton disabled={submittingNationalLevel}>
+                      {t("curriculums.national.add")}
+                    </SubmitButton>
+                  </div>
+                </form>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-text-secondary">
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colCode")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colLabel")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colActions")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {nationalAcademicLevels.map((level) => (
+                        <tr key={level.id} className="border-b border-border">
+                          <td className="px-3 py-2 font-mono text-xs">
+                            {level.code}
+                          </td>
+                          <td className="px-3 py-2">{level.label}</td>
+                          <td className="px-3 py-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={deletingNationalLevelId === level.id}
+                              onClick={() =>
+                                void deleteNationalAcademicLevel(level.id)
+                              }
+                            >
+                              {deletingNationalLevelId === level.id
+                                ? "..."
+                                : t("common.delete")}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                      {!loadingNationalCatalog &&
+                      nationalAcademicLevels.length === 0 ? (
+                        <tr>
+                          <td
+                            className="px-3 py-6 text-text-secondary"
+                            colSpan={3}
+                          >
+                            {t("curriculums.national.emptyLevels")}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <h3 className="font-heading text-base font-semibold">
+                  {t("curriculums.national.curriculumsTitle")}
+                </h3>
+                <form
+                  className="grid gap-3 md:grid-cols-[1fr_auto]"
+                  onSubmit={nationalCurriculumForm.handleSubmit(
+                    onCreateNationalCurriculum,
+                    onInvalidCreateNationalCurriculum,
+                  )}
+                >
+                  <FormField
+                    label={t("curriculums.national.academicLevelLabel")}
+                    error={
+                      nationalCurriculumForm.formState.errors.academicLevelId
+                        ?.message
+                    }
+                  >
+                    <FormSelect
+                      aria-label={t("curriculums.national.academicLevelLabel")}
+                      {...nationalCurriculumForm.register("academicLevelId")}
+                    >
+                      <option value="">
+                        {t("curriculums.national.academicLevelPlaceholder")}
+                      </option>
+                      {nationalAcademicLevels.map((level) => (
+                        <option key={level.id} value={level.id}>
+                          {level.label}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </FormField>
+                  <div className="self-end">
+                    <SubmitButton disabled={submittingNationalCurriculum}>
+                      {t("curriculums.national.add")}
+                    </SubmitButton>
+                  </div>
+                </form>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-text-secondary">
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colName")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colLevel")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colActions")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {nationalCurriculums.map((curriculum) => (
+                        <tr
+                          key={curriculum.id}
+                          className="border-b border-border"
+                        >
+                          <td className="px-3 py-2">{curriculum.name}</td>
+                          <td className="px-3 py-2">
+                            {curriculum.academicLevel.label}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={
+                                deletingNationalCurriculumId === curriculum.id
+                              }
+                              onClick={() =>
+                                void deleteNationalCurriculum(curriculum.id)
+                              }
+                            >
+                              {deletingNationalCurriculumId === curriculum.id
+                                ? "..."
+                                : t("common.delete")}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                      {!loadingNationalCatalog &&
+                      nationalCurriculums.length === 0 ? (
+                        <tr>
+                          <td
+                            className="px-3 py-6 text-text-secondary"
+                            colSpan={3}
+                          >
+                            {t("curriculums.national.emptyCurriculums")}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           ) : (

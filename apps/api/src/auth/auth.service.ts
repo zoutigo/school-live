@@ -129,7 +129,7 @@ export class AuthService {
     }
 
     this.assertPlatformCredentialsReady(user, {
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
       reasonCode: "PLATFORM_CREDENTIAL_SETUP_REQUIRED",
     });
 
@@ -146,7 +146,7 @@ export class AuthService {
       throw new ForbiddenException({
         code: "PASSWORD_CHANGE_REQUIRED",
         email: user.email,
-        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+        schoolSlug: this.resolveDefaultSchoolSlug(user),
       });
     }
 
@@ -163,7 +163,7 @@ export class AuthService {
       throw new ForbiddenException({
         code: "PROFILE_SETUP_REQUIRED",
         email: user.email,
-        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+        schoolSlug: this.resolveDefaultSchoolSlug(user),
       });
     }
 
@@ -186,7 +186,7 @@ export class AuthService {
       throw new ForbiddenException({
         code: "ACCOUNT_VALIDATION_REQUIRED",
         email: user.email,
-        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+        schoolSlug: this.resolveDefaultSchoolSlug(user),
       });
     }
 
@@ -200,10 +200,7 @@ export class AuthService {
       context,
     });
 
-    return this.issueAuthSession(
-      user,
-      user.memberships[0]?.school?.slug ?? null,
-    );
+    return this.issueAuthSession(user, this.resolveDefaultSchoolSlug(user));
   }
 
   async loginWithUsername(
@@ -290,7 +287,7 @@ export class AuthService {
       throw new ForbiddenException({
         code: "PASSWORD_CHANGE_REQUIRED",
         username: user.username,
-        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+        schoolSlug: this.resolveDefaultSchoolSlug(user),
       });
     }
 
@@ -313,7 +310,7 @@ export class AuthService {
       throw new ForbiddenException({
         code: "ACCOUNT_VALIDATION_REQUIRED",
         username: user.username,
-        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+        schoolSlug: this.resolveDefaultSchoolSlug(user),
       });
     }
 
@@ -327,10 +324,7 @@ export class AuthService {
       context,
     });
 
-    return this.issueAuthSession(
-      user,
-      user.memberships[0]?.school?.slug ?? null,
-    );
+    return this.issueAuthSession(user, this.resolveDefaultSchoolSlug(user));
   }
 
   async loginInSchool(
@@ -664,12 +658,12 @@ export class AuthService {
       });
       throw new ForbiddenException({
         code: "ACCOUNT_VALIDATION_REQUIRED",
-        schoolSlug: user.memberships[0]?.school?.slug ?? null,
+        schoolSlug: this.resolveDefaultSchoolSlug(user),
       });
     }
 
     this.assertPlatformCredentialsReady(user, {
-      schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: schoolSlug ?? this.resolveDefaultSchoolSlug(user),
       reasonCode: "PLATFORM_CREDENTIAL_SETUP_REQUIRED",
     });
 
@@ -709,10 +703,10 @@ export class AuthService {
         email: user.email?.endsWith("@noemail.scolive.local")
           ? null
           : user.email,
-        schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
+        schoolSlug: schoolSlug ?? this.resolveDefaultSchoolSlug(user),
         setupToken: this.issueOnboardingSetupToken({
           userId: user.id,
-          schoolSlug: schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
+          schoolSlug: schoolSlug ?? this.resolveDefaultSchoolSlug(user),
         }),
       });
     }
@@ -730,7 +724,7 @@ export class AuthService {
 
     return this.issueAuthSession(
       user,
-      schoolSlug ?? user.memberships[0]?.school?.slug ?? null,
+      schoolSlug ?? this.resolveDefaultSchoolSlug(user),
     );
   }
 
@@ -960,7 +954,7 @@ export class AuthService {
     const isPlatformOnly = user.memberships.length === 0;
     const schoolSlug = isPlatformOnly
       ? null
-      : (input.schoolSlug ?? user.memberships[0]?.school?.slug ?? null);
+      : (input.schoolSlug ?? this.resolveDefaultSchoolSlug(user));
     if (!isPlatformOnly && input.schoolSlug) {
       const hasMembership = user.memberships.some(
         (membership) => membership.school.slug === input.schoolSlug,
@@ -1129,7 +1123,7 @@ export class AuthService {
 
     return this.issueAccessToken(
       existing.user,
-      schoolSlug ?? existing.user.memberships[0]?.school?.slug ?? null,
+      schoolSlug ?? this.resolveDefaultSchoolSlug(existing.user),
       {
         refreshToken: nextRefreshToken,
         refreshExpiresIn,
@@ -1218,7 +1212,7 @@ export class AuthService {
     return {
       success: true,
       email: user.email,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
       profileSetupRequired: true,
     };
   }
@@ -1285,7 +1279,7 @@ export class AuthService {
     return {
       success: true,
       username: user.username,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
       profileSetupRequired: true,
     };
   }
@@ -2224,7 +2218,7 @@ export class AuthService {
 
     const missing = this.getMissingPlatformCredentialFields(user);
     const schoolSlug =
-      payload.schoolSlug ?? user.memberships[0]?.school?.slug ?? null;
+      payload.schoolSlug ?? this.resolveDefaultSchoolSlug(user);
     if (!missing.includes("PASSWORD") && !missing.includes("PHONE_PIN")) {
       return this.issueAuthSession(user, schoolSlug);
     }
@@ -2530,7 +2524,7 @@ export class AuthService {
     const now = new Date();
     const expiresInMinutes = this.getPasswordResetTtlMinutes();
     const expiresAt = new Date(now.getTime() + expiresInMinutes * 60 * 1000);
-    const schoolSlug = user.memberships[0]?.school?.slug ?? null;
+    const schoolSlug = this.resolveDefaultSchoolSlug(user);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.passwordResetToken.updateMany({
@@ -2598,7 +2592,7 @@ export class AuthService {
     return {
       success: true,
       emailHint: this.maskEmail(resetToken.user.email),
-      schoolSlug: resetToken.user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(resetToken.user),
       questions: availableQuestions,
     };
   }
@@ -2770,7 +2764,7 @@ export class AuthService {
           answer.questionKey,
       })),
       noQuestions: false,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
     };
   }
 
@@ -2893,7 +2887,7 @@ export class AuthService {
     return {
       success: true,
       recoveryToken: resetToken,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
     };
   }
 
@@ -2980,7 +2974,7 @@ export class AuthService {
 
     return {
       success: true,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
       principalHint: input.email
         ? this.maskEmail(user.email)
         : this.maskPhone(user.phoneCredential?.phoneE164 ?? user.phone ?? ""),
@@ -3070,7 +3064,7 @@ export class AuthService {
     return {
       success: true,
       recoveryToken,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
     };
   }
 
@@ -3169,7 +3163,7 @@ export class AuthService {
 
     return {
       success: true,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
     };
   }
 
@@ -3933,6 +3927,13 @@ export class AuthService {
   async getGlobalMe(userId: string): Promise<
     AuthenticatedUser & {
       schoolSlug: string | null;
+      activeSchoolId: string | null;
+      schools: Array<{
+        schoolId: string;
+        slug: string;
+        name: string;
+        role: SchoolRole;
+      }>;
       role: PlatformRole | SchoolRole | null;
       activeRole: PlatformRole | SchoolRole | null;
       gender?: "M" | "F" | "OTHER" | null;
@@ -3946,6 +3947,7 @@ export class AuthService {
       select: {
         id: true,
         activeRole: true,
+        activeSchoolId: true,
         profileCompleted: true,
         activationStatus: true,
         isTester: true,
@@ -3963,7 +3965,7 @@ export class AuthService {
         memberships: {
           include: {
             school: {
-              select: { slug: true },
+              select: { slug: true, name: true },
             },
           },
           orderBy: { createdAt: "asc" },
@@ -4007,10 +4009,42 @@ export class AuthService {
       lastName: user.lastName,
       gender: user.gender,
       preferredLocale: user.preferredLocale,
-      schoolSlug: user.memberships[0]?.school?.slug ?? null,
+      schoolSlug: this.resolveDefaultSchoolSlug(user),
+      activeSchoolId: user.activeSchoolId,
+      schools: Array.from(
+        new Map(
+          user.memberships.map((membership) => [
+            membership.schoolId,
+            {
+              schoolId: membership.schoolId,
+              slug: membership.school.slug,
+              name: membership.school.name,
+              role: membership.role,
+            },
+          ]),
+        ).values(),
+      ),
       hasPassword: !!user.passwordHash,
       hasPhoneCredential: !!user.phoneCredential,
     };
+  }
+
+  async setActiveSchool(userId: string, schoolId: string) {
+    const membership = await this.prisma.schoolMembership.findFirst({
+      where: { userId, schoolId },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException("School is not assigned to this user");
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { activeSchoolId: schoolId },
+    });
+
+    return this.getGlobalMe(userId);
   }
 
   async updatePreferredLocale(userId: string, preferredLocale: "FR" | "EN") {
@@ -4365,6 +4399,25 @@ export class AuthService {
     }
 
     return this.getPrimaryRole(platformRoles, schoolRoles);
+  }
+
+  private resolveDefaultSchoolSlug(user: {
+    activeSchoolId?: string | null;
+    memberships: Array<{
+      schoolId: string;
+      school?: { slug: string } | null;
+    }>;
+  }): string | null {
+    if (user.activeSchoolId) {
+      const activeMembership = user.memberships.find(
+        (membership) => membership.schoolId === user.activeSchoolId,
+      );
+      if (activeMembership?.school?.slug) {
+        return activeMembership.school.slug;
+      }
+    }
+
+    return user.memberships[0]?.school?.slug ?? null;
   }
 
   private getRecoveryQuestions() {

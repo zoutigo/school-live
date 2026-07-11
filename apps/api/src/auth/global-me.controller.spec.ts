@@ -48,6 +48,7 @@ const GLOBAL_ME_RESULT = {
 const makeServiceMock = () => ({
   getGlobalMe: jest.fn().mockResolvedValue(GLOBAL_ME_RESULT),
   setActiveRole: jest.fn().mockResolvedValue(GLOBAL_ME_RESULT),
+  setActiveSchool: jest.fn().mockResolvedValue(GLOBAL_ME_RESULT),
   updatePersonalProfile: jest.fn().mockResolvedValue(GLOBAL_ME_RESULT),
 });
 
@@ -127,6 +128,34 @@ describe("GlobalMeController", () => {
 
       expect(service.setActiveRole).toHaveBeenCalledWith("user-1", "TEACHER");
       expect(result).toEqual(GLOBAL_ME_RESULT);
+    });
+  });
+
+  // ── PUT /me/active-school ─────────────────────────────────────────────────
+
+  describe("PUT /me/active-school", () => {
+    it("change l'école active et retourne le profil mis à jour", async () => {
+      const user = makeUser();
+      const result = await controller.setActiveSchool(user, {
+        schoolId: "school-2",
+      });
+
+      expect(service.setActiveSchool).toHaveBeenCalledWith(
+        "user-1",
+        "school-2",
+      );
+      expect(result).toEqual(GLOBAL_ME_RESULT);
+    });
+
+    it("propage l'erreur si l'utilisateur n'a pas de membership dans cette école", async () => {
+      service.setActiveSchool.mockRejectedValue(
+        new Error("School is not assigned to this user"),
+      );
+      const user = makeUser();
+
+      await expect(
+        controller.setActiveSchool(user, { schoolId: "school-999" }),
+      ).rejects.toThrow("School is not assigned to this user");
     });
   });
 

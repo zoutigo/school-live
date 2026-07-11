@@ -51,6 +51,17 @@ enum Locale {
   EN
 }
 
+enum SchoolLanguageSystem {
+  FRANCOPHONE
+  ANGLOPHONE
+  BILINGUAL
+}
+
+enum SchoolType {
+  GENERAL
+  TECHNICAL
+}
+
 enum AccountActivationStatus {
   PENDING
   ACTIVE
@@ -189,6 +200,7 @@ enum InlineMediaScope {
   FEED
   MESSAGING
   HOMEWORK
+  RESOURCE
 }
 
 enum InlineMediaStatus {
@@ -200,6 +212,7 @@ enum InlineMediaEntityType {
   FEED_POST
   INTERNAL_MESSAGE
   HOMEWORK
+  RESOURCE
 }
 
 enum EvaluationStatus {
@@ -270,6 +283,10 @@ model School {
   logoUrl            String?
   primaryColor       String?
   activeSchoolYearId String?
+  languageSystem     SchoolLanguageSystem?
+  schoolType         SchoolType?
+  ownership          String?
+  foundedYear        Int?
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   activeSchoolYear   SchoolYear?           @relation("ActiveSchoolYear", fields: [activeSchoolYearId], references: [id], onDelete: SetNull)
@@ -322,6 +339,8 @@ model School {
   helpFaqs           HelpFaq[]
   testCampaigns      TestCampaign[]
   mobilePushTokens   MobilePushToken[]
+  resources          Resource[]
+  usersWithActiveSchool User[]              @relation("UserActiveSchool")
 
   @@index([activeSchoolYearId])
 }
@@ -338,6 +357,8 @@ model User {
   profileCompleted   Boolean                  @default(true)
   activationStatus   AccountActivationStatus  @default(ACTIVE)
   activeRole         AppRole?
+  activeSchoolId     String?
+  activeSchool       School?                  @relation("UserActiveSchool", fields: [activeSchoolId], references: [id], onDelete: SetNull)
   recoveryBirthDate  DateTime?
   recoveryClassId    String?
   recoveryStudentId  String?
@@ -410,6 +431,15 @@ model User {
   testExecutionsReworkRequested TestExecution[] @relation("TestExecutionReworkRequestedBy")
   mobilePushTokens      MobilePushToken[]
   readMarkers           UserReadMarker[]
+  resourcesAuthored     Resource[]              @relation("ResourceAuthor")
+  resourceStatementsApproved Resource[]         @relation("ResourceStatementApprovedBy")
+  resourceCorrectionsApproved Resource[]        @relation("ResourceCorrectionApprovedBy")
+  resourceFavorites     ResourceFavorite[]       @relation("ResourceFavoriteUser")
+  resourceAuditLogs     ResourceAuditLog[]       @relation("ResourceAuditActor")
+  resourceSubmissions         ResourceSubmission[] @relation("ResourceSubmissionAuthor")
+  resourceSubmissionsReviewed ResourceSubmission[] @relation("ResourceSubmissionReviewer")
+
+  @@index([activeSchoolId])
 }
 
 model UserAuthIdentity {
@@ -724,16 +754,17 @@ model SchoolYear {
 
 model AcademicLevel {
   id          String       @id @default(cuid())
-  schoolId    String
+  schoolId    String?
   code        String
   label       String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school      School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classes     Class[]
   feedPosts   FeedPost[]
   curriculums Curriculum[]
   calendarEvents SchoolCalendarEvent[]
+  resources   Resource[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -756,13 +787,13 @@ model Track {
 
 model Curriculum {
   id              String              @id @default(cuid())
-  schoolId        String
+  schoolId        String?
   name            String
   academicLevelId String
   trackId         String?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
-  school          School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school          School?             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   academicLevel   AcademicLevel       @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
   track           Track?              @relation(fields: [trackId], references: [id], onDelete: SetNull)
   classes         Class[]
@@ -776,7 +807,7 @@ model Curriculum {
 
 model CurriculumSubject {
   id           String     @id @default(cuid())
-  schoolId     String
+  schoolId     String?
   curriculumId String
   subjectId    String
   isMandatory  Boolean    @default(true)
@@ -784,7 +815,7 @@ model CurriculumSubject {
   weeklyHours  Float?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school       School?    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   curriculum   Curriculum @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
   subject      Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
 
@@ -839,11 +870,12 @@ model Class {
 
 model Subject {
   id           String                @id @default(cuid())
-  schoolId     String
+  schoolId     String?
+  code         String?
   name         String
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
-  school       School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school       School?               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   assignments  TeacherClassSubject[]
   studentGrades StudentGrade[]
   branches     SubjectBranch[]
@@ -856,6 +888,7 @@ model Subject {
   timetableOneOffSlots ClassTimetableOneOffSlot[]
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
+  resources      Resource[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -1391,6 +1424,174 @@ model HomeworkCompletion {
 }
 
 
+// Module Ressources pédagogiques (contrôles/examens partagés au niveau national).
+// Indépendant du module Evaluation (bulletin/notes) : aucune relation entre les deux.
+// "ASSESSMENT" est utilisé plutôt que "EVALUATION" pour éviter toute confusion avec le
+// modèle Evaluation existant (gradebook).
+
+enum ResourceKind {
+  ASSESSMENT
+  EXAM
+}
+
+enum ResourceExamType {
+  SEQUENCE_TEST
+  POP_QUIZ
+  MOCK_EXAM
+}
+
+enum ResourceApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ResourceAttachmentPart {
+  STATEMENT
+  CORRECTION
+}
+
+enum ResourceSubmissionStatus {
+  DRAFT
+  AWAITING
+  APPROVED
+  REJECTED
+  DISCARDED
+}
+
+enum ResourceAuditAction {
+  SUBMIT
+  EDIT
+  APPROVE_STATEMENT
+  REJECT_STATEMENT
+  REVOKE_STATEMENT
+  APPROVE_CORRECTION
+  REJECT_CORRECTION
+  REVOKE_CORRECTION
+  SUBMISSION_DRAFT
+  SUBMISSION_SUBMIT
+  SUBMISSION_APPROVE
+  SUBMISSION_REJECT
+  SUBMISSION_DISCARD
+}
+
+model Resource {
+  id                        String                 @id @default(cuid())
+  kind                      ResourceKind
+  schoolId                  String?
+  academicLevelId           String
+  subjectId                 String
+  examType                  ResourceExamType
+  sequence                  Sequence?
+  academicYearLabel         String
+  title                     String
+  authorUserId              String
+  statementContent          String?
+  statementStatus           ResourceApprovalStatus @default(PENDING)
+  statementApprovedByUserId String?
+  statementApprovedAt       DateTime?
+  statementSubmissionId     String?                @unique
+  correctionContent         String?
+  correctionStatus          ResourceApprovalStatus @default(PENDING)
+  correctionApprovedByUserId String?
+  correctionApprovedAt      DateTime?
+  correctionSubmissionId    String?                @unique
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime               @updatedAt
+
+  school                  School?             @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  academicLevel           AcademicLevel       @relation(fields: [academicLevelId], references: [id], onDelete: Restrict)
+  subject                 Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  authorUser               User               @relation("ResourceAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  statementApprovedByUser   User?             @relation("ResourceStatementApprovedBy", fields: [statementApprovedByUserId], references: [id], onDelete: SetNull)
+  approvedStatementSubmission  ResourceSubmission? @relation("ResourceStatementApprovedSubmission", fields: [statementSubmissionId], references: [id], onDelete: SetNull)
+  approvedCorrectionSubmission ResourceSubmission? @relation("ResourceCorrectionApprovedSubmission", fields: [correctionSubmissionId], references: [id], onDelete: SetNull)
+  correctionApprovedByUser  User?             @relation("ResourceCorrectionApprovedBy", fields: [correctionApprovedByUserId], references: [id], onDelete: SetNull)
+
+  attachments ResourceAttachment[]
+  favorites   ResourceFavorite[]
+  auditLogs   ResourceAuditLog[]
+  submissions ResourceSubmission[] @relation("ResourceSubmissions")
+
+  @@index([kind, academicLevelId, subjectId, sequence])
+  @@index([kind, statementStatus])
+  @@index([kind, academicYearLabel])
+  @@index([schoolId])
+  @@index([authorUserId])
+}
+
+model ResourceSubmission {
+  id               String                    @id @default(cuid())
+  resourceId       String
+  part             ResourceAttachmentPart
+  authorUserId     String
+  content          String
+  status           ResourceSubmissionStatus  @default(DRAFT)
+  reason           String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  resource       Resource @relation("ResourceSubmissions", fields: [resourceId], references: [id], onDelete: Cascade)
+  authorUser     User     @relation("ResourceSubmissionAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  reviewedByUser User?    @relation("ResourceSubmissionReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvedAsStatementFor  Resource? @relation("ResourceStatementApprovedSubmission")
+  approvedAsCorrectionFor Resource? @relation("ResourceCorrectionApprovedSubmission")
+
+  attachments ResourceAttachment[]
+
+  @@index([resourceId, part, status])
+  @@index([authorUserId])
+}
+
+model ResourceAttachment {
+  id           String                 @id @default(cuid())
+  resourceId   String
+  submissionId String?
+  part         ResourceAttachmentPart
+  fileName     String
+  fileUrl      String
+  sizeLabel    String?
+  mimeType     String?
+  createdAt    DateTime               @default(now())
+
+  resource   Resource            @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  submission ResourceSubmission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId, part])
+  @@index([submissionId])
+}
+
+model ResourceFavorite {
+  id         String   @id @default(cuid())
+  resourceId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  user     User     @relation("ResourceFavoriteUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, userId])
+  @@index([userId])
+}
+
+model ResourceAuditLog {
+  id          String              @id @default(cuid())
+  resourceId  String
+  actorUserId String
+  action      ResourceAuditAction
+  payloadJson Json?
+  createdAt   DateTime            @default(now())
+
+  resource  Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  actorUser User     @relation("ResourceAuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId, createdAt])
+  @@index([actorUserId])
+}
+
+
 model InternalMessage {
   id              String                @id @default(cuid())
   schoolId        String
@@ -1549,7 +1750,7 @@ model FeedPollVote {
 
 model InlineMediaAsset {
   id               String                @id @default(cuid())
-  schoolId         String
+  schoolId         String?
   uploadedByUserId String?
   scope            InlineMediaScope
   status           InlineMediaStatus     @default(TEMP)

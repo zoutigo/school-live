@@ -36,22 +36,31 @@ const staffAssignmentSchema = z.object({
 
 type Tab = "navigation" | "staff" | "help" | "language";
 
+type SchoolMembershipRole =
+  | "SCHOOL_ADMIN"
+  | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
+  | "SCHOOL_ACCOUNTANT"
+  | "SCHOOL_STAFF"
+  | "TEACHER"
+  | "PARENT"
+  | "STUDENT";
+
 type MeResponse = {
   role: Role | null;
   activeRole?: Role | null;
   schoolSlug: string | null;
+  activeSchoolId?: string | null;
+  schools?: Array<{
+    schoolId: string;
+    slug: string;
+    name: string;
+    role: SchoolMembershipRole;
+  }>;
   platformRoles: Array<"SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT">;
   memberships: Array<{
     schoolId: string;
-    role:
-      | "SCHOOL_ADMIN"
-      | "SCHOOL_MANAGER"
-      | "SUPERVISOR"
-      | "SCHOOL_ACCOUNTANT"
-      | "SCHOOL_STAFF"
-      | "TEACHER"
-      | "PARENT"
-      | "STUDENT";
+    role: SchoolMembershipRole;
   }>;
 };
 
@@ -128,6 +137,8 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [savingSchool, setSavingSchool] = useState(false);
   const [staffFunctions, setStaffFunctions] = useState<StaffFunctionRow[]>([]);
   const [staffAssignments, setStaffAssignments] = useState<
     StaffAssignmentRow[]
@@ -186,8 +197,12 @@ export default function SettingsPage() {
           ? payload.activeRole
           : (payload.role ?? availableRoles[0] ?? null);
 
+      const nextSelectedSchoolId =
+        payload.activeSchoolId ?? payload.schools?.[0]?.schoolId ?? null;
+
       setMe(payload);
       setSelectedRole(nextSelected);
+      setSelectedSchoolId(nextSelectedSchoolId);
     } catch {
       setError("Impossible de charger vos parametres.");
     } finally {
@@ -262,6 +277,58 @@ export default function SettingsPage() {
       setError("Impossible d'enregistrer le role actif.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onSaveSchool() {
+    if (!selectedSchoolId) {
+      setError("Selectionnez une ecole.");
+      return;
+    }
+
+    setSavingSchool(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const csrfToken = getCsrfTokenCookie();
+      if (!csrfToken) {
+        setError("Session CSRF invalide. Reconnectez-vous.");
+        router.replace("/");
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/me/active-school`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ schoolId: selectedSchoolId }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? "Impossible d'enregistrer l'ecole active.");
+        setError(String(message));
+        return;
+      }
+
+      const payload = (await response.json()) as MeResponse;
+      setMe(payload);
+      setSuccess("Ecole active enregistree.");
+      if (payload.schoolSlug) {
+        router.push(`/schools/${payload.schoolSlug}/dashboard`);
+      }
+    } catch {
+      setError("Impossible d'enregistrer l'ecole active.");
+    } finally {
+      setSavingSchool(false);
     }
   }
 
@@ -528,6 +595,60 @@ export default function SettingsPage() {
               <p className="text-sm text-text-secondary">Chargement...</p>
             ) : (
               <div className="grid gap-4">
+                {(me?.schools?.length ?? 0) > 1 ? (
+                  <div className="grid gap-2 rounded-card border border-border bg-surface p-3">
+                    <h3 className="text-sm font-semibold text-text-primary">
+                      Ecole active
+                    </h3>
+                    <p className="text-sm text-text-secondary">
+                      Choisissez l&apos;etablissement qui conditionne les
+                      modules et donnees affiches dans l&apos;application.
+                    </p>
+                    <div className="grid gap-2">
+                      {(me?.schools ?? []).map((school) => (
+                        <label
+                          key={school.schoolId}
+                          className={`flex cursor-pointer items-center justify-between rounded-card border px-3 py-2 text-sm ${
+                            selectedSchoolId === school.schoolId
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-background"
+                          }`}
+                        >
+                          <span className="font-medium text-text-primary">
+                            {school.name}{" "}
+                            <span className="text-text-secondary">
+                              ({ROLE_LABEL[school.role]})
+                            </span>
+                          </span>
+                          <FormRadio
+                            name="activeSchool"
+                            value={school.schoolId}
+                            checked={selectedSchoolId === school.schoolId}
+                            onChange={() =>
+                              setSelectedSchoolId(school.schoolId)
+                            }
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    <div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          void onSaveSchool();
+                        }}
+                        disabled={
+                          savingSchool ||
+                          !selectedSchoolId ||
+                          selectedSchoolId === (me?.activeSchoolId ?? null)
+                        }
+                      >
+                        {savingSchool ? "Enregistrement..." : "Changer d'ecole"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
                 <p className="text-sm text-text-secondary">
                   Choisissez le role actif pour afficher une seule vue a la fois
                   dans le menu.

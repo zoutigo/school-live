@@ -8,6 +8,10 @@ model School {
   logoUrl            String?
   primaryColor       String?
   activeSchoolYearId String?
+  languageSystem     SchoolLanguageSystem?
+  schoolType         SchoolType?
+  ownership          String?
+  foundedYear        Int?
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   activeSchoolYear   SchoolYear?           @relation("ActiveSchoolYear", fields: [activeSchoolYearId], references: [id], onDelete: SetNull)
@@ -60,6 +64,8 @@ model School {
   helpFaqs           HelpFaq[]
   testCampaigns      TestCampaign[]
   mobilePushTokens   MobilePushToken[]
+  resources          Resource[]
+  usersWithActiveSchool User[]              @relation("UserActiveSchool")
 
   @@index([activeSchoolYearId])
 }
@@ -76,6 +82,8 @@ model User {
   profileCompleted   Boolean                  @default(true)
   activationStatus   AccountActivationStatus  @default(ACTIVE)
   activeRole         AppRole?
+  activeSchoolId     String?
+  activeSchool       School?                  @relation("UserActiveSchool", fields: [activeSchoolId], references: [id], onDelete: SetNull)
   recoveryBirthDate  DateTime?
   recoveryClassId    String?
   recoveryStudentId  String?
@@ -148,6 +156,15 @@ model User {
   testExecutionsReworkRequested TestExecution[] @relation("TestExecutionReworkRequestedBy")
   mobilePushTokens      MobilePushToken[]
   readMarkers           UserReadMarker[]
+  resourcesAuthored     Resource[]              @relation("ResourceAuthor")
+  resourceStatementsApproved Resource[]         @relation("ResourceStatementApprovedBy")
+  resourceCorrectionsApproved Resource[]        @relation("ResourceCorrectionApprovedBy")
+  resourceFavorites     ResourceFavorite[]       @relation("ResourceFavoriteUser")
+  resourceAuditLogs     ResourceAuditLog[]       @relation("ResourceAuditActor")
+  resourceSubmissions         ResourceSubmission[] @relation("ResourceSubmissionAuthor")
+  resourceSubmissionsReviewed ResourceSubmission[] @relation("ResourceSubmissionReviewer")
+
+  @@index([activeSchoolId])
 }
 
 model UserAuthIdentity {

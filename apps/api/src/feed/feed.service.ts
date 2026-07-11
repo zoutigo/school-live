@@ -968,7 +968,7 @@ export class FeedService {
       const level = await this.prisma.academicLevel.findFirst({
         where: {
           id: payload.audienceLevelId,
-          schoolId: context.schoolId,
+          OR: [{ schoolId: context.schoolId }, { schoolId: null }],
         },
         select: {
           id: true,

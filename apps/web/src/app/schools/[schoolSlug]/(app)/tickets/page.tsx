@@ -80,13 +80,14 @@ export default function SchoolTicketsPage() {
       const me = (await res.json()) as MePayload;
       setCurrentUserId(me.id ?? "");
       setSchoolName(me.schoolName ?? null);
-      const platformRoles = me.platformRoles ?? [];
       setIsPlatformStaff(
-        platformRoles.some((r) =>
-          ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(r),
+        ["SUPER_ADMIN", "ADMIN", "SUPPORT"].includes(me.activeRole ?? ""),
+      );
+      setIsPlatformAny(
+        ["SUPER_ADMIN", "ADMIN", "SUPPORT", "SALES"].includes(
+          me.activeRole ?? "",
         ),
       );
-      setIsPlatformAny(platformRoles.length > 0);
     } catch {
       router.replace(`/schools/${schoolSlug}/login`);
     } finally {

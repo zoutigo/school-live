@@ -1,6 +1,6 @@
 model InlineMediaAsset {
   id               String                @id @default(cuid())
-  schoolId         String
+  schoolId         String?
   uploadedByUserId String?
   scope            InlineMediaScope
   status           InlineMediaStatus     @default(TEMP)

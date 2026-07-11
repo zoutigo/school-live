@@ -30,6 +30,9 @@ import type { UpdateRoomDto } from "./dto/update-room.dto.js";
 import type { ListAvailableRoomsQueryDto } from "./dto/list-available-rooms-query.dto.js";
 import type { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import type { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
+import type { CreateNationalCurriculumDto } from "./dto/create-national-curriculum.dto.js";
+import type { CreateNationalSubjectDto } from "./dto/create-national-subject.dto.js";
+import type { UpdateNationalSubjectDto } from "./dto/update-national-subject.dto.js";
 import type { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
 import type { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import type { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
@@ -412,6 +415,20 @@ const createSubjectSchema = z.object({
 
 const updateSubjectSchema = z.object({
   name: z.string().trim().min(1).optional(),
+});
+
+const createNationalSubjectSchema = z.object({
+  code: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+});
+
+const updateNationalSubjectSchema = z.object({
+  code: z.string().trim().min(1).optional(),
+  name: z.string().trim().min(1).optional(),
+});
+
+const createNationalCurriculumSchema = z.object({
+  academicLevelId: z.string().trim().min(1),
 });
 
 const listTeacherAssignmentsQuerySchema = z.object({
@@ -2308,7 +2325,7 @@ export class ManagementService {
     const parsed = parsedResult.data;
 
     await this.ensureClassInSchool(classId, schoolId);
-    await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+    await this.ensureSubjectAccessible(parsed.subjectId, schoolId);
 
     return this.prisma.classSubjectOverride.upsert({
       where: {
@@ -2382,7 +2399,7 @@ export class ManagementService {
     }
 
     if (parsed.subjectId) {
-      await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+      await this.ensureSubjectAccessible(parsed.subjectId, schoolId);
     }
 
     return this.prisma.classSubjectOverride.update({
@@ -2801,8 +2818,8 @@ export class ManagementService {
   }
 
   async listAcademicLevels(schoolId: string) {
-    return this.prisma.academicLevel.findMany({
-      where: { schoolId },
+    const levels = await this.prisma.academicLevel.findMany({
+      where: { OR: [{ schoolId }, { schoolId: null }] },
       orderBy: [{ code: "asc" }],
       include: {
         _count: {
@@ -2813,6 +2830,11 @@ export class ManagementService {
         },
       },
     });
+
+    return levels.map((level) => ({
+      ...level,
+      isNational: level.schoolId === null,
+    }));
   }
 
   async createAcademicLevel(schoolId: string, payload: CreateAcademicLevelDto) {
@@ -2850,7 +2872,7 @@ export class ManagementService {
       throw new BadRequestException("No fields to update");
     }
 
-    await this.ensureAcademicLevelInSchool(academicLevelId, schoolId);
+    await this.ensureAcademicLevelOwnedBySchool(academicLevelId, schoolId);
     return this.prisma.academicLevel.update({
       where: { id: academicLevelId },
       data: {
@@ -2861,7 +2883,93 @@ export class ManagementService {
   }
 
   async deleteAcademicLevel(schoolId: string, academicLevelId: string) {
-    await this.ensureAcademicLevelInSchool(academicLevelId, schoolId);
+    await this.ensureAcademicLevelOwnedBySchool(academicLevelId, schoolId);
+
+    await this.prisma.academicLevel.delete({
+      where: { id: academicLevelId },
+    });
+
+    return { success: true };
+  }
+
+  // --- Catalogue national (plateforme) : AcademicLevel ---
+
+  async listNationalAcademicLevels() {
+    const levels = await this.prisma.academicLevel.findMany({
+      where: { schoolId: null },
+      orderBy: [{ code: "asc" }],
+      include: {
+        _count: {
+          select: {
+            classes: true,
+            curriculums: true,
+          },
+        },
+      },
+    });
+
+    return levels.map((level) => ({ ...level, isNational: true as const }));
+  }
+
+  async createNationalAcademicLevel(payload: CreateAcademicLevelDto) {
+    const parsedResult = createAcademicLevelSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    return this.prisma.academicLevel.create({
+      data: {
+        schoolId: null,
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async updateNationalAcademicLevel(
+    academicLevelId: string,
+    payload: UpdateAcademicLevelDto,
+  ) {
+    const parsedResult = updateAcademicLevelSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (parsed.code === undefined && parsed.label === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.academicLevel.findFirst({
+      where: { id: academicLevelId, schoolId: null },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Academic level not found");
+    }
+
+    return this.prisma.academicLevel.update({
+      where: { id: academicLevelId },
+      data: {
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async deleteNationalAcademicLevel(academicLevelId: string) {
+    const existing = await this.prisma.academicLevel.findFirst({
+      where: { id: academicLevelId, schoolId: null },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Academic level not found");
+    }
 
     await this.prisma.academicLevel.delete({
       where: { id: academicLevelId },
@@ -2941,8 +3049,8 @@ export class ManagementService {
   }
 
   async listCurriculums(schoolId: string) {
-    return this.prisma.curriculum.findMany({
-      where: { schoolId },
+    const curriculums = await this.prisma.curriculum.findMany({
+      where: { OR: [{ schoolId }, { schoolId: null }] },
       orderBy: [{ name: "asc" }],
       include: {
         academicLevel: {
@@ -2967,6 +3075,11 @@ export class ManagementService {
         },
       },
     });
+
+    return curriculums.map((curriculum) => ({
+      ...curriculum,
+      isNational: curriculum.schoolId === null,
+    }));
   }
 
   async createCurriculum(schoolId: string, payload: CreateCurriculumDto) {
@@ -2978,7 +3091,7 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    await this.ensureAcademicLevelInSchool(parsed.academicLevelId, schoolId);
+    await this.ensureAcademicLevelAccessible(parsed.academicLevelId, schoolId);
     if (parsed.trackId) {
       await this.ensureTrackInSchool(parsed.trackId, schoolId);
     }
@@ -3038,7 +3151,7 @@ export class ManagementService {
         ? (existing.trackId ?? undefined)
         : parsed.trackId;
 
-    await this.ensureAcademicLevelInSchool(nextAcademicLevelId, schoolId);
+    await this.ensureAcademicLevelAccessible(nextAcademicLevelId, schoolId);
     if (nextTrackId) {
       await this.ensureTrackInSchool(nextTrackId, schoolId);
     }
@@ -3059,7 +3172,7 @@ export class ManagementService {
   }
 
   async deleteCurriculum(schoolId: string, curriculumId: string) {
-    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+    await this.ensureCurriculumOwnedBySchool(curriculumId, schoolId);
 
     await this.prisma.curriculum.delete({
       where: { id: curriculumId },
@@ -3069,7 +3182,7 @@ export class ManagementService {
   }
 
   async listCurriculumSubjects(schoolId: string, curriculumId: string) {
-    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+    await this.ensureCurriculumAccessible(curriculumId, schoolId);
 
     return this.prisma.curriculumSubject.findMany({
       where: {
@@ -3101,8 +3214,8 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    await this.ensureCurriculumInSchool(curriculumId, schoolId);
-    await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+    await this.ensureCurriculumOwnedBySchool(curriculumId, schoolId);
+    await this.ensureSubjectAccessible(parsed.subjectId, schoolId);
 
     return this.prisma.curriculumSubject.upsert({
       where: {
@@ -3140,7 +3253,7 @@ export class ManagementService {
     curriculumId: string,
     subjectId: string,
   ) {
-    await this.ensureCurriculumInSchool(curriculumId, schoolId);
+    await this.ensureCurriculumOwnedBySchool(curriculumId, schoolId);
 
     const existing = await this.prisma.curriculumSubject.findFirst({
       where: {
@@ -3166,13 +3279,224 @@ export class ManagementService {
     return { success: true };
   }
 
+  // --- Catalogue national (plateforme) : Curriculum ---
+
+  async listNationalCurriculums() {
+    const curriculums = await this.prisma.curriculum.findMany({
+      where: { schoolId: null },
+      orderBy: [{ name: "asc" }],
+      include: {
+        academicLevel: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        _count: {
+          select: {
+            classes: true,
+            subjects: true,
+          },
+        },
+      },
+    });
+
+    return curriculums.map((curriculum) => ({
+      ...curriculum,
+      isNational: true as const,
+    }));
+  }
+
+  private async ensureAcademicLevelIsNational(academicLevelId: string) {
+    const academicLevel = await this.prisma.academicLevel.findFirst({
+      where: { id: academicLevelId, schoolId: null },
+      select: { id: true, code: true },
+    });
+
+    if (!academicLevel) {
+      throw new BadRequestException(
+        "Academic level must belong to the national catalog",
+      );
+    }
+
+    return academicLevel;
+  }
+
+  private async ensureSubjectIsNational(subjectId: string) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: subjectId, schoolId: null },
+      select: { id: true },
+    });
+
+    if (!subject) {
+      throw new BadRequestException(
+        "Subject must belong to the national catalog",
+      );
+    }
+  }
+
+  async createNationalCurriculum(payload: CreateNationalCurriculumDto) {
+    const parsedResult = createNationalCurriculumSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    const academicLevel = await this.ensureAcademicLevelIsNational(
+      parsed.academicLevelId,
+    );
+
+    return this.prisma.curriculum.create({
+      data: {
+        schoolId: null,
+        name: `${academicLevel.code} - TRONC_COMMUN`,
+        academicLevelId: parsed.academicLevelId,
+      },
+    });
+  }
+
+  async deleteNationalCurriculum(curriculumId: string) {
+    const existing = await this.prisma.curriculum.findFirst({
+      where: { id: curriculumId, schoolId: null },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Curriculum not found");
+    }
+
+    await this.prisma.curriculum.delete({
+      where: { id: curriculumId },
+    });
+
+    return { success: true };
+  }
+
+  async listNationalCurriculumSubjects(curriculumId: string) {
+    const curriculum = await this.prisma.curriculum.findFirst({
+      where: { id: curriculumId, schoolId: null },
+      select: { id: true },
+    });
+    if (!curriculum) {
+      throw new NotFoundException("Curriculum not found");
+    }
+
+    return this.prisma.curriculumSubject.findMany({
+      where: { schoolId: null, curriculumId },
+      orderBy: [{ subject: { name: "asc" } }],
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async upsertNationalCurriculumSubject(
+    curriculumId: string,
+    payload: UpsertCurriculumSubjectDto,
+  ) {
+    const parsedResult = upsertCurriculumSubjectSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    const curriculum = await this.prisma.curriculum.findFirst({
+      where: { id: curriculumId, schoolId: null },
+      select: { id: true },
+    });
+    if (!curriculum) {
+      throw new NotFoundException("Curriculum not found");
+    }
+    await this.ensureSubjectIsNational(parsed.subjectId);
+
+    return this.prisma.curriculumSubject.upsert({
+      where: {
+        curriculumId_subjectId: {
+          curriculumId,
+          subjectId: parsed.subjectId,
+        },
+      },
+      update: {
+        isMandatory: parsed.isMandatory,
+        coefficient: parsed.coefficient,
+        weeklyHours: parsed.weeklyHours,
+      },
+      create: {
+        schoolId: null,
+        curriculumId,
+        subjectId: parsed.subjectId,
+        isMandatory: parsed.isMandatory ?? true,
+        coefficient: parsed.coefficient,
+        weeklyHours: parsed.weeklyHours,
+      },
+      include: {
+        subject: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  async deleteNationalCurriculumSubject(
+    curriculumId: string,
+    subjectId: string,
+  ) {
+    const curriculum = await this.prisma.curriculum.findFirst({
+      where: { id: curriculumId, schoolId: null },
+      select: { id: true },
+    });
+    if (!curriculum) {
+      throw new NotFoundException("Curriculum not found");
+    }
+
+    const existing = await this.prisma.curriculumSubject.findFirst({
+      where: { schoolId: null, curriculumId, subjectId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Curriculum subject not found");
+    }
+
+    await this.prisma.curriculumSubject.delete({
+      where: { id: existing.id },
+    });
+
+    return { success: true };
+  }
+
   async listSubjects(schoolId: string) {
-    return this.prisma.subject.findMany({
-      where: { schoolId },
+    const subjects = await this.prisma.subject.findMany({
+      where: { OR: [{ schoolId }, { schoolId: null }] },
       orderBy: [{ name: "asc" }],
       include: {
         branches: {
           orderBy: [{ name: "asc" }],
+        },
+        curriculumSubjects: {
+          include: {
+            curriculum: {
+              select: {
+                id: true,
+                name: true,
+                academicLevel: {
+                  select: { id: true, code: true, label: true },
+                },
+                track: { select: { id: true, code: true, label: true } },
+              },
+            },
+          },
         },
         _count: {
           select: {
@@ -3184,6 +3508,11 @@ export class ManagementService {
         },
       },
     });
+
+    return subjects.map((subject) => ({
+      ...subject,
+      isNational: subject.schoolId === null,
+    }));
   }
 
   async createSubject(schoolId: string, payload: CreateSubjectDto) {
@@ -3220,7 +3549,7 @@ export class ManagementService {
       throw new BadRequestException("No fields to update");
     }
 
-    await this.ensureSubjectInSchool(subjectId, schoolId);
+    await this.ensureSubjectAccessible(subjectId, schoolId);
     return this.prisma.subject.update({
       where: { id: subjectId },
       data: {
@@ -3267,12 +3596,128 @@ export class ManagementService {
     return { success: true };
   }
 
+  // --- Catalogue national (plateforme) : Subject ---
+
+  async listNationalSubjects() {
+    const subjects = await this.prisma.subject.findMany({
+      where: { schoolId: null },
+      orderBy: [{ name: "asc" }],
+      include: {
+        branches: {
+          orderBy: [{ name: "asc" }],
+        },
+        _count: {
+          select: {
+            assignments: true,
+            studentGrades: true,
+            curriculumSubjects: true,
+            classOverrides: true,
+          },
+        },
+      },
+    });
+
+    return subjects.map((subject) => ({
+      ...subject,
+      isNational: true as const,
+    }));
+  }
+
+  async createNationalSubject(payload: CreateNationalSubjectDto) {
+    const parsedResult = createNationalSubjectSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    return this.prisma.subject.create({
+      data: {
+        schoolId: null,
+        code: parsed.code,
+        name: parsed.name,
+      },
+    });
+  }
+
+  async updateNationalSubject(
+    subjectId: string,
+    payload: UpdateNationalSubjectDto,
+  ) {
+    const parsedResult = updateNationalSubjectSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (parsed.code === undefined && parsed.name === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.subject.findFirst({
+      where: { id: subjectId, schoolId: null },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Subject not found");
+    }
+
+    return this.prisma.subject.update({
+      where: { id: subjectId },
+      data: {
+        code: parsed.code,
+        name: parsed.name,
+      },
+    });
+  }
+
+  async deleteNationalSubject(subjectId: string) {
+    const subject = await this.prisma.subject.findFirst({
+      where: { id: subjectId, schoolId: null },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            assignments: true,
+            studentGrades: true,
+            curriculumSubjects: true,
+            classOverrides: true,
+          },
+        },
+      },
+    });
+
+    if (!subject) {
+      throw new NotFoundException("Subject not found");
+    }
+
+    if (
+      subject._count.assignments > 0 ||
+      subject._count.studentGrades > 0 ||
+      subject._count.curriculumSubjects > 0 ||
+      subject._count.classOverrides > 0
+    ) {
+      throw new BadRequestException(
+        "Cannot delete a subject used by curriculums, assignments, class overrides or student grades",
+      );
+    }
+
+    await this.prisma.subject.delete({
+      where: { id: subjectId },
+    });
+
+    return { success: true };
+  }
+
   async createSubjectBranch(
     schoolId: string,
     subjectId: string,
     payload: CreateSubjectBranchDto,
   ) {
-    await this.ensureSubjectInSchool(subjectId, schoolId);
+    await this.ensureSubjectAccessible(subjectId, schoolId);
     const name = payload.name?.trim();
     if (!name) {
       throw new BadRequestException("Branch name is required");
@@ -3904,7 +4349,7 @@ export class ManagementService {
       await this.ensureClassInSchool(parsed.classId, schoolId);
     }
     if (parsed.subjectId) {
-      await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+      await this.ensureSubjectAccessible(parsed.subjectId, schoolId);
     }
     if (parsed.teacherUserId) {
       await this.ensureTeacherUserInSchool(parsed.teacherUserId, schoolId);
@@ -3970,7 +4415,7 @@ export class ManagementService {
       schoolId,
     );
     await this.ensureTeacherUserInSchool(parsed.teacherUserId, schoolId);
-    await this.ensureSubjectInSchool(parsed.subjectId, schoolId);
+    await this.ensureSubjectAccessible(parsed.subjectId, schoolId);
     this.ensureClassAndSchoolYearConsistency(
       classEntity.schoolYearId,
       parsed.schoolYearId,
@@ -4080,7 +4525,7 @@ export class ManagementService {
       schoolId,
     );
     await this.ensureTeacherUserInSchool(nextTeacherUserId, schoolId);
-    await this.ensureSubjectInSchool(nextSubjectId, schoolId);
+    await this.ensureSubjectAccessible(nextSubjectId, schoolId);
     this.ensureClassAndSchoolYearConsistency(
       classEntity.schoolYearId,
       nextSchoolYearId,
@@ -5563,9 +6008,9 @@ export class ManagementService {
     }
   }
 
-  private async ensureSubjectInSchool(subjectId: string, schoolId: string) {
+  private async ensureSubjectAccessible(subjectId: string, schoolId: string) {
     const subject = await this.prisma.subject.findFirst({
-      where: { id: subjectId, schoolId },
+      where: { id: subjectId, OR: [{ schoolId }, { schoolId: null }] },
       select: { id: true },
     });
 
@@ -5708,7 +6153,24 @@ export class ManagementService {
     }
   }
 
-  private async ensureAcademicLevelInSchool(
+  private async ensureAcademicLevelAccessible(
+    academicLevelId: string,
+    schoolId: string,
+  ) {
+    const academicLevel = await this.prisma.academicLevel.findFirst({
+      where: {
+        id: academicLevelId,
+        OR: [{ schoolId }, { schoolId: null }],
+      },
+      select: { id: true },
+    });
+
+    if (!academicLevel) {
+      throw new NotFoundException("Academic level not found");
+    }
+  }
+
+  private async ensureAcademicLevelOwnedBySchool(
     academicLevelId: string,
     schoolId: string,
   ) {
@@ -5733,7 +6195,24 @@ export class ManagementService {
     }
   }
 
-  private async ensureCurriculumInSchool(
+  private async ensureCurriculumAccessible(
+    curriculumId: string,
+    schoolId: string,
+  ) {
+    const curriculum = await this.prisma.curriculum.findFirst({
+      where: {
+        id: curriculumId,
+        OR: [{ schoolId }, { schoolId: null }],
+      },
+      select: { id: true },
+    });
+
+    if (!curriculum) {
+      throw new NotFoundException("Curriculum not found");
+    }
+  }
+
+  private async ensureCurriculumOwnedBySchool(
     curriculumId: string,
     schoolId: string,
   ) {
@@ -5754,7 +6233,7 @@ export class ManagementService {
     curriculumId?: string,
   ) {
     if (academicLevelId) {
-      await this.ensureAcademicLevelInSchool(academicLevelId, schoolId);
+      await this.ensureAcademicLevelAccessible(academicLevelId, schoolId);
     }
 
     if (trackId) {
@@ -5762,7 +6241,7 @@ export class ManagementService {
     }
 
     if (curriculumId) {
-      await this.ensureCurriculumInSchool(curriculumId, schoolId);
+      await this.ensureCurriculumAccessible(curriculumId, schoolId);
     }
   }
 
@@ -5804,7 +6283,7 @@ export class ManagementService {
     const curriculum = await this.prisma.curriculum.findFirst({
       where: {
         id: nextCurriculumId,
-        schoolId,
+        OR: [{ schoolId }, { schoolId: null }],
       },
       select: {
         id: true,
@@ -5845,7 +6324,7 @@ export class ManagementService {
     const academicLevel = await this.prisma.academicLevel.findFirst({
       where: {
         id: academicLevelId,
-        schoolId,
+        OR: [{ schoolId }, { schoolId: null }],
       },
       select: {
         code: true,

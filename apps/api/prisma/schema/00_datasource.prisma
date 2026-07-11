@@ -51,6 +51,17 @@ enum Locale {
   EN
 }
 
+enum SchoolLanguageSystem {
+  FRANCOPHONE
+  ANGLOPHONE
+  BILINGUAL
+}
+
+enum SchoolType {
+  GENERAL
+  TECHNICAL
+}
+
 enum AccountActivationStatus {
   PENDING
   ACTIVE
@@ -189,6 +200,7 @@ enum InlineMediaScope {
   FEED
   MESSAGING
   HOMEWORK
+  RESOURCE
 }
 
 enum InlineMediaStatus {
@@ -200,6 +212,7 @@ enum InlineMediaEntityType {
   FEED_POST
   INTERNAL_MESSAGE
   HOMEWORK
+  RESOURCE
 }
 
 enum EvaluationStatus {
