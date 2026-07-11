@@ -146,6 +146,20 @@ describe("Curriculums page — catalogue national", () => {
     expect(await screen.findByText("6EME - TRONC_COMMUN")).toBeInTheDocument();
   });
 
+  it("lands directly on the national catalog tab for SUPER_ADMIN, never on a specific school's curriculum", async () => {
+    mockBaseRoutes({
+      nationalLevels: [{ id: "level-1", code: "6EME", label: "6eme" }],
+      nationalCurriculums: [],
+    });
+
+    render(<CurriculumsPage />);
+
+    expect((await screen.findAllByText("6eme")).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("button", { name: "Catalogue national" }),
+    ).toHaveClass("text-primary");
+  });
+
   it("creates a national academic level with always-enabled submit and inline validation", async () => {
     const fetchMock = mockBaseRoutes();
 

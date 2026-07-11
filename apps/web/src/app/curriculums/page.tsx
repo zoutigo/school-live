@@ -550,6 +550,10 @@ export default function CurriculumsPage() {
       const schoolRows = (await schoolsResponse.json()) as SchoolOption[];
       setSchools(schoolRows);
       setSchoolSlug(schoolRows[0]?.slug ?? null);
+      // Un compte plateforme (SUPER_ADMIN/ADMIN) gère le catalogue NATIONAL par
+      // défaut : la gestion du catalogue d'une école précise reste accessible
+      // via le sélecteur d'école, mais ne doit jamais être la vue d'atterrissage.
+      setTab("national");
       setLoading(false);
     } catch {
       setError(t("curriculums.error.apiDown"));
