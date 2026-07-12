@@ -20,8 +20,14 @@ import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PaginationControls } from "../../components/ui/pagination-controls";
+import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
+import {
+  CAMEROON_CITIES_BY_REGION,
+  CAMEROON_COUNTRY,
+  CAMEROON_REGIONS,
+} from "../../data/cameroon-locations";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
@@ -108,11 +114,15 @@ type SchoolDetails = {
     firstName: string;
     lastName: string;
     email: string;
+    phone: string | null;
     mustChangePassword: boolean;
     profileCompleted: boolean;
+    activationRequired: boolean;
     canResendInvite: boolean;
   }>;
 };
+
+type AdminMode = "email" | "phone";
 
 type SchoolCycleGroup = { schools: number; students: number; classes: number };
 
@@ -179,9 +189,21 @@ const createSchoolSchema = z.object({
     .optional()
     .transform((value) => (value ? value : undefined)),
   schoolAdminEmail: z
-    .string()
-    .trim()
-    .email("L'email du school admin est invalide."),
+    .union([
+      z.string().trim().email("L'email du school admin est invalide."),
+      z.literal(""),
+      z.undefined(),
+    ])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  schoolAdminPhone: z
+    .union([z.string().trim(), z.literal(""), z.undefined()])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  schoolAdminPin: z
+    .union([z.string().trim(), z.literal(""), z.undefined()])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
   logoUrl: z
     .union([z.string().trim().url(), z.literal(""), z.undefined()])
     .optional()
@@ -192,6 +214,26 @@ const createSchoolSchema = z.object({
       return value;
     }),
 });
+
+function validateAdminIdentity(
+  mode: AdminMode,
+  email: string,
+  phone: string,
+  pin: string,
+): string | null {
+  if (mode === "email") {
+    return z.string().email().safeParse(email.trim()).success
+      ? null
+      : "L'email du school admin est invalide.";
+  }
+  if (!phone.trim()) {
+    return "Le téléphone du school admin est obligatoire.";
+  }
+  if (!/^\d{6}$/.test(pin.trim())) {
+    return "Le PIN doit contenir exactement 6 chiffres.";
+  }
+  return null;
+}
 
 const updateSchoolSchema = z.object({
   name: z.string().trim().min(1, "Le nom de l ecole est obligatoire."),
@@ -283,17 +325,35 @@ export default function SchoolsPage() {
   const [submittingAddAdmin, setSubmittingAddAdmin] = useState(false);
   const [addAdminError, setAddAdminError] = useState<string | null>(null);
   const [addAdminSuccess, setAddAdminSuccess] = useState<string | null>(null);
+  const [addAdminMode, setAddAdminMode] = useState<AdminMode>("email");
+  const [addAdminPhone, setAddAdminPhone] = useState("");
+  const [addAdminPin, setAddAdminPin] = useState("");
+  const [founderAdminMode, setFounderAdminMode] = useState<AdminMode>("email");
+  const [additionalAdmins, setAdditionalAdmins] = useState<
+    Array<{ mode: AdminMode; email: string; phone: string; pin: string }>
+  >([]);
+  const [additionalAdminErrors, setAdditionalAdminErrors] = useState<
+    Array<string | null>
+  >([]);
+  const [removeAdminTarget, setRemoveAdminTarget] = useState<{
+    schoolId: string;
+    adminId: string;
+    label: string;
+  } | null>(null);
+  const [removingAdminId, setRemovingAdminId] = useState<string | null>(null);
   const createSchoolForm = useForm<z.input<typeof createSchoolSchema>>({
     resolver: zodResolver(createSchoolSchema),
     mode: "onChange",
     defaultValues: {
       name: "",
-      country: "",
+      country: CAMEROON_COUNTRY.value,
       region: "",
       city: "",
       cycle: "",
       languageSystem: "",
       schoolAdminEmail: "",
+      schoolAdminPhone: "",
+      schoolAdminPin: "",
       logoUrl: "",
     },
   });
@@ -302,7 +362,7 @@ export default function SchoolsPage() {
     mode: "onChange",
     defaultValues: {
       name: "",
-      country: "",
+      country: CAMEROON_COUNTRY.value,
       region: "",
       city: "",
       cycle: "",
@@ -559,8 +619,14 @@ export default function SchoolsPage() {
   }
 
   async function onAddSchoolAdmin(schoolId: string) {
-    const email = addAdminEmail.trim();
-    if (!z.string().email().safeParse(email).success) {
+    const identityError = validateAdminIdentity(
+      addAdminMode,
+      addAdminEmail,
+      addAdminPhone,
+      addAdminPin,
+    );
+    if (identityError) {
+      setAddAdminError(identityError);
       return;
     }
 
@@ -570,6 +636,11 @@ export default function SchoolsPage() {
       router.replace("/");
       return;
     }
+
+    const body =
+      addAdminMode === "email"
+        ? { email: addAdminEmail.trim() }
+        : { phone: addAdminPhone.trim(), pin: addAdminPin.trim() };
 
     setSubmittingAddAdmin(true);
     setAddAdminError(null);
@@ -584,7 +655,7 @@ export default function SchoolsPage() {
             "Content-Type": "application/json",
             "X-CSRF-Token": csrfToken,
           },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify(body),
         },
       );
 
@@ -600,10 +671,21 @@ export default function SchoolsPage() {
         return;
       }
 
-      setAddAdminSuccess(t("schools.form.addAdminSuccess"));
+      const payload = (await response.json()) as {
+        activationCode?: string | null;
+      };
+      setAddAdminSuccess(
+        payload.activationCode
+          ? `${t("schools.form.addAdminSuccess")} ${t(
+              "schools.form.activationCodeBanner",
+            )}: ${payload.activationCode}`
+          : t("schools.form.addAdminSuccess"),
+      );
       setAddAdminEmail("");
       setAddAdminEmailCheckState("idle");
       setAddAdminEmailCheckName(null);
+      setAddAdminPhone("");
+      setAddAdminPin("");
       if (selectedSchool?.id === schoolId) {
         await openSchoolDetails(schoolId);
       }
@@ -611,6 +693,37 @@ export default function SchoolsPage() {
       setAddAdminError(t("schools.error.network"));
     } finally {
       setSubmittingAddAdmin(false);
+    }
+  }
+
+  async function onRemoveSchoolAdmin() {
+    if (!removeAdminTarget) return;
+    const { schoolId, adminId } = removeAdminTarget;
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      router.replace("/");
+      return;
+    }
+
+    setRemovingAdminId(adminId);
+    try {
+      const response = await fetch(
+        `${API_URL}/system/schools/${schoolId}/admins/${adminId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "X-CSRF-Token": csrfToken },
+        },
+      );
+      if (response.ok) {
+        setRemoveAdminTarget(null);
+        if (selectedSchool?.id === schoolId) {
+          await openSchoolDetails(schoolId);
+        }
+      }
+    } finally {
+      setRemovingAdminId(null);
     }
   }
 
@@ -669,12 +782,49 @@ export default function SchoolsPage() {
     setSubmitError(null);
     setSubmitSuccess(null);
 
+    const founderError = validateAdminIdentity(
+      founderAdminMode,
+      values.schoolAdminEmail ?? "",
+      values.schoolAdminPhone ?? "",
+      values.schoolAdminPin ?? "",
+    );
+    if (founderError) {
+      setSubmitError(founderError);
+      return;
+    }
+    const additionalErrors = additionalAdmins.map((admin) =>
+      validateAdminIdentity(admin.mode, admin.email, admin.phone, admin.pin),
+    );
+    if (additionalErrors.some((error) => error !== null)) {
+      setAdditionalAdminErrors(additionalErrors);
+      return;
+    }
+
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
       setSubmitError(t("schools.error.csrf"));
       router.replace("/");
       return;
     }
+
+    const parsed = createSchoolSchema.parse(values);
+    const founderPayload =
+      founderAdminMode === "email"
+        ? { schoolAdminEmail: parsed.schoolAdminEmail }
+        : {
+            schoolAdminPhone: parsed.schoolAdminPhone,
+            schoolAdminPin: parsed.schoolAdminPin,
+          };
+    const body = {
+      name: parsed.name,
+      country: parsed.country,
+      region: parsed.region,
+      city: parsed.city,
+      cycle: parsed.cycle,
+      languageSystem: parsed.languageSystem,
+      logoUrl: parsed.logoUrl,
+      ...founderPayload,
+    };
 
     setSubmitting(true);
     try {
@@ -685,7 +835,7 @@ export default function SchoolsPage() {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
-        body: JSON.stringify(createSchoolSchema.parse(values)),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -701,30 +851,80 @@ export default function SchoolsPage() {
       }
 
       const payload = (await response.json()) as {
+        school: { id: string };
         userExisted: boolean;
         setupCompleted: boolean;
+        activationRequired?: boolean;
+        activationCode?: string | null;
       };
 
-      if (payload.userExisted) {
-        setSubmitSuccess(
-          payload.setupCompleted
-            ? t("schools.success.createExisting")
-            : t("schools.success.createExistingPending"),
-        );
-      } else {
-        setSubmitSuccess(t("schools.success.createNew"));
+      const activationCodes: string[] = [];
+      if (payload.activationCode) activationCodes.push(payload.activationCode);
+
+      let additionalFailures = 0;
+      for (const admin of additionalAdmins) {
+        const adminBody =
+          admin.mode === "email"
+            ? { email: admin.email.trim() }
+            : { phone: admin.phone.trim(), pin: admin.pin.trim() };
+        try {
+          const addResponse = await fetch(
+            `${API_URL}/system/schools/${payload.school.id}/admins`,
+            {
+              method: "POST",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken,
+              },
+              body: JSON.stringify(adminBody),
+            },
+          );
+          if (!addResponse.ok) {
+            additionalFailures += 1;
+            continue;
+          }
+          const addPayload = (await addResponse.json()) as {
+            activationCode?: string | null;
+          };
+          if (addPayload.activationCode) {
+            activationCodes.push(addPayload.activationCode);
+          }
+        } catch {
+          additionalFailures += 1;
+        }
       }
+
+      const messageParts = [
+        payload.userExisted
+          ? payload.setupCompleted
+            ? t("schools.success.createExisting")
+            : t("schools.success.createExistingPending")
+          : t("schools.success.createNew"),
+        ...activationCodes.map(
+          (code) => `${t("schools.form.activationCodeBanner")}: ${code}`,
+        ),
+      ];
+      if (additionalFailures > 0) {
+        messageParts.push(t("schools.form.additionalAdminsFailed"));
+      }
+      setSubmitSuccess(messageParts.join(" "));
 
       createSchoolForm.reset({
         name: "",
-        country: "",
+        country: CAMEROON_COUNTRY.value,
         region: "",
         city: "",
         cycle: "",
         languageSystem: "",
         schoolAdminEmail: "",
+        schoolAdminPhone: "",
+        schoolAdminPin: "",
         logoUrl: "",
       });
+      setFounderAdminMode("email");
+      setAdditionalAdmins([]);
+      setAdditionalAdminErrors([]);
       setSlugPreview({
         loading: false,
         baseSlug: null,
@@ -735,7 +935,13 @@ export default function SchoolsPage() {
       setEmailCheckState("idle");
       setEmailCheckName(null);
       await Promise.all([loadOverview(), loadSchools(1)]);
-      setTab("list");
+      // Si un code d'activation doit etre transmis manuellement (admin cree
+      // par telephone), on reste sur l'onglet creation le temps que
+      // l'utilisateur le lise, au lieu de basculer immediatement vers la
+      // liste et de le faire disparaitre.
+      if (activationCodes.length === 0) {
+        setTab("list");
+      }
     } catch {
       setSubmitError(t("schools.error.network"));
     } finally {
@@ -748,7 +954,7 @@ export default function SchoolsPage() {
     setEditingSchoolId(school.id);
     editSchoolForm.reset({
       name: school.name,
-      country: school.country ?? "",
+      country: CAMEROON_COUNTRY.value,
       region: school.region ?? "",
       city: school.city ?? "",
       cycle: school.cycle ?? "",
@@ -759,6 +965,9 @@ export default function SchoolsPage() {
     setAddAdminEmail("");
     setAddAdminEmailCheckState("idle");
     setAddAdminEmailCheckName(null);
+    setAddAdminMode("email");
+    setAddAdminPhone("");
+    setAddAdminPin("");
     setAddAdminError(null);
     setAddAdminSuccess(null);
   }
@@ -1239,28 +1448,21 @@ export default function SchoolsPage() {
                                 />
                               </FormField>
                               <FormField label={t("schools.form.fieldCountry")}>
-                                <FormTextInput
+                                <select
                                   aria-label={t("schools.form.fieldCountry")}
-                                  value={editSchoolValues.country ?? ""}
-                                  onChange={(event) => {
-                                    editSchoolForm.setValue(
-                                      "country",
-                                      event.target.value,
-                                      {
-                                        shouldDirty: true,
-                                        shouldTouch: true,
-                                        shouldValidate: true,
-                                      },
-                                    );
-                                  }}
-                                  invalid={Boolean(
-                                    editSchoolForm.formState.errors.country,
-                                  )}
-                                />
+                                  className="w-full rounded-card border border-border bg-warm-surface px-3 py-2 text-sm text-text-secondary"
+                                  value={CAMEROON_COUNTRY.value}
+                                  disabled
+                                >
+                                  <option value={CAMEROON_COUNTRY.value}>
+                                    {CAMEROON_COUNTRY.label}
+                                  </option>
+                                </select>
                               </FormField>
                               <FormField label={t("schools.form.fieldRegion")}>
-                                <FormTextInput
+                                <select
                                   aria-label={t("schools.form.fieldRegion")}
+                                  className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                                   value={editSchoolValues.region ?? ""}
                                   onChange={(event) => {
                                     editSchoolForm.setValue(
@@ -1272,16 +1474,31 @@ export default function SchoolsPage() {
                                         shouldValidate: true,
                                       },
                                     );
+                                    editSchoolForm.setValue("city", "", {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    });
                                   }}
-                                  invalid={Boolean(
-                                    editSchoolForm.formState.errors.region,
-                                  )}
-                                />
+                                >
+                                  <option value="">
+                                    {t("schools.form.regionPlaceholder")}
+                                  </option>
+                                  {CAMEROON_REGIONS.map((region) => (
+                                    <option
+                                      key={region.value}
+                                      value={region.value}
+                                    >
+                                      {region.label}
+                                    </option>
+                                  ))}
+                                </select>
                               </FormField>
                               <FormField label={t("schools.form.fieldCity")}>
-                                <FormTextInput
+                                <select
                                   aria-label={t("schools.form.fieldCity")}
+                                  className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-warm-surface disabled:text-text-secondary"
                                   value={editSchoolValues.city ?? ""}
+                                  disabled={!editSchoolValues.region}
                                   onChange={(event) => {
                                     editSchoolForm.setValue(
                                       "city",
@@ -1293,10 +1510,24 @@ export default function SchoolsPage() {
                                       },
                                     );
                                   }}
-                                  invalid={Boolean(
-                                    editSchoolForm.formState.errors.city,
-                                  )}
-                                />
+                                >
+                                  <option value="">
+                                    {editSchoolValues.region
+                                      ? t("schools.form.cityPlaceholder")
+                                      : t(
+                                          "schools.form.cityPlaceholderNoRegion",
+                                        )}
+                                  </option>
+                                  {(
+                                    CAMEROON_CITIES_BY_REGION[
+                                      editSchoolValues.region ?? ""
+                                    ] ?? []
+                                  ).map((city) => (
+                                    <option key={city.value} value={city.value}>
+                                      {city.label}
+                                    </option>
+                                  ))}
+                                </select>
                               </FormField>
                               <FormField
                                 label={t("schools.form.fieldCycleOpt")}
@@ -1436,37 +1667,101 @@ export default function SchoolsPage() {
                               <p className="text-sm font-medium text-text-primary">
                                 {t("schools.form.addAdminTitle")}
                               </p>
-                              <FormField
-                                label={t("schools.form.addAdminEmailLabel")}
-                                hint={
-                                  addAdminEmailCheckState === "checking"
-                                    ? t("schools.email.checking")
-                                    : addAdminEmailCheckState === "invalid"
-                                      ? t("schools.email.invalid")
-                                      : addAdminEmailCheckState === "exists"
-                                        ? t("schools.email.exists").replace(
-                                            "{name}",
-                                            addAdminEmailCheckName ??
-                                              "utilisateur",
-                                          )
-                                        : addAdminEmailCheckState ===
-                                            "not_found"
-                                          ? t("schools.email.notFound")
-                                          : addAdminEmailCheckState === "error"
-                                            ? t("schools.email.error")
-                                            : null
-                                }
-                              >
-                                <EmailInput
-                                  aria-label={t(
-                                    "schools.form.addAdminEmailLabel",
-                                  )}
-                                  value={addAdminEmail}
-                                  onChange={(event) =>
-                                    setAddAdminEmail(event.target.value)
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant={
+                                    addAdminMode === "email"
+                                      ? "primary"
+                                      : "secondary"
                                   }
-                                />
-                              </FormField>
+                                  onClick={() => setAddAdminMode("email")}
+                                >
+                                  {t("schools.form.adminModeEmail")}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant={
+                                    addAdminMode === "phone"
+                                      ? "primary"
+                                      : "secondary"
+                                  }
+                                  onClick={() => setAddAdminMode("phone")}
+                                >
+                                  {t("schools.form.adminModePhone")}
+                                </Button>
+                              </div>
+                              {addAdminMode === "email" ? (
+                                <FormField
+                                  label={t("schools.form.addAdminEmailLabel")}
+                                  hint={
+                                    addAdminEmailCheckState === "checking"
+                                      ? t("schools.email.checking")
+                                      : addAdminEmailCheckState === "invalid"
+                                        ? t("schools.email.invalid")
+                                        : addAdminEmailCheckState === "exists"
+                                          ? t("schools.email.exists").replace(
+                                              "{name}",
+                                              addAdminEmailCheckName ??
+                                                "utilisateur",
+                                            )
+                                          : addAdminEmailCheckState ===
+                                              "not_found"
+                                            ? t("schools.email.notFound")
+                                            : addAdminEmailCheckState ===
+                                                "error"
+                                              ? t("schools.email.error")
+                                              : null
+                                  }
+                                >
+                                  <EmailInput
+                                    aria-label={t(
+                                      "schools.form.addAdminEmailLabel",
+                                    )}
+                                    value={addAdminEmail}
+                                    onChange={(event) =>
+                                      setAddAdminEmail(event.target.value)
+                                    }
+                                  />
+                                </FormField>
+                              ) : (
+                                <div className="grid gap-2 md:grid-cols-2">
+                                  <FormField
+                                    label={t("schools.form.fieldAdminPhone")}
+                                  >
+                                    <FormTextInput
+                                      aria-label={t(
+                                        "schools.form.fieldAdminPhone",
+                                      )}
+                                      value={addAdminPhone}
+                                      onChange={(event) =>
+                                        setAddAdminPhone(
+                                          event.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 9),
+                                        )
+                                      }
+                                    />
+                                  </FormField>
+                                  <FormField
+                                    label={t("schools.form.fieldAdminPin")}
+                                  >
+                                    <PinInput
+                                      aria-label={t(
+                                        "schools.form.fieldAdminPin",
+                                      )}
+                                      value={addAdminPin}
+                                      onChange={(event) =>
+                                        setAddAdminPin(
+                                          event.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 6),
+                                        )
+                                      }
+                                    />
+                                  </FormField>
+                                </div>
+                              )}
                               {addAdminError ? (
                                 <p className="text-sm text-notification">
                                   {addAdminError}
@@ -1481,13 +1776,7 @@ export default function SchoolsPage() {
                                 <Button
                                   type="button"
                                   variant="secondary"
-                                  disabled={
-                                    submittingAddAdmin ||
-                                    !z
-                                      .string()
-                                      .email()
-                                      .safeParse(addAdminEmail.trim()).success
-                                  }
+                                  disabled={submittingAddAdmin}
                                   onClick={() => {
                                     void onAddSchoolAdmin(school.id);
                                   }}
@@ -1718,30 +2007,58 @@ export default function SchoolsPage() {
                             className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-border bg-surface px-3 py-2"
                           >
                             <span>
-                              {admin.firstName} {admin.lastName} - {admin.email}
+                              {admin.firstName} {admin.lastName} -{" "}
+                              {admin.phone ? admin.phone : admin.email}
+                              {admin.activationRequired
+                                ? ` (${t("schools.details.pendingActivation")})`
+                                : ""}
                             </span>
-                            {admin.canResendInvite ? (
-                              <Button
+                            <div className="flex items-center gap-2">
+                              {admin.canResendInvite ? (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  disabled={sendingInviteAdminId === admin.id}
+                                  onClick={() => {
+                                    void onResendSchoolAdminInvite(admin.id);
+                                  }}
+                                >
+                                  {sendingInviteAdminId === admin.id
+                                    ? t("schools.details.inviteSending")
+                                    : t("schools.details.inviteResend")}
+                                </Button>
+                              ) : !admin.activationRequired ? (
+                                <span className="text-xs text-text-secondary">
+                                  {t("schools.details.adminActive")}
+                                </span>
+                              ) : null}
+                              <button
                                 type="button"
-                                variant="secondary"
-                                disabled={sendingInviteAdminId === admin.id}
-                                onClick={() => {
-                                  void onResendSchoolAdminInvite(admin.id);
-                                }}
+                                className="text-sm text-notification disabled:opacity-40"
+                                disabled={
+                                  selectedSchool.schoolAdmins.length <= 1
+                                }
+                                onClick={() =>
+                                  setRemoveAdminTarget({
+                                    schoolId: selectedSchool.id,
+                                    adminId: admin.id,
+                                    label: `${admin.firstName} ${admin.lastName}`,
+                                  })
+                                }
                               >
-                                {sendingInviteAdminId === admin.id
-                                  ? t("schools.details.inviteSending")
-                                  : t("schools.details.inviteResend")}
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-text-secondary">
-                                {t("schools.details.adminActive")}
-                              </span>
-                            )}
+                                {t("schools.details.removeAdmin")}
+                              </button>
+                            </div>
                           </li>
                         ))}
                       </ul>
                     )}
+                    {selectedSchool.schoolAdmins.length <= 1 &&
+                    selectedSchool.schoolAdmins.length > 0 ? (
+                      <p className="mt-2 text-xs text-text-secondary">
+                        {t("schools.details.removeAdminLastAdminHint")}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div>
@@ -1809,30 +2126,23 @@ export default function SchoolsPage() {
                   />
                 </FormField>
 
-                <FormField
-                  label={t("schools.form.fieldCountryOpt")}
-                  error={createSchoolForm.formState.errors.country?.message}
-                >
-                  <FormTextInput
+                <FormField label={t("schools.form.fieldCountryOpt")}>
+                  <select
                     aria-label={t("schools.form.fieldCountry")}
-                    value={createSchoolValues.country ?? ""}
-                    onChange={(event) => {
-                      createSchoolForm.setValue("country", event.target.value, {
-                        shouldDirty: true,
-                        shouldTouch: true,
-                        shouldValidate: true,
-                      });
-                    }}
-                    invalid={Boolean(createSchoolForm.formState.errors.country)}
-                  />
+                    className="w-full rounded-card border border-border bg-warm-surface px-3 py-2 text-sm text-text-secondary"
+                    value={CAMEROON_COUNTRY.value}
+                    disabled
+                  >
+                    <option value={CAMEROON_COUNTRY.value}>
+                      {CAMEROON_COUNTRY.label}
+                    </option>
+                  </select>
                 </FormField>
 
-                <FormField
-                  label={t("schools.form.fieldRegionOpt")}
-                  error={createSchoolForm.formState.errors.region?.message}
-                >
-                  <FormTextInput
+                <FormField label={t("schools.form.fieldRegionOpt")}>
+                  <select
                     aria-label={t("schools.form.fieldRegion")}
+                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary"
                     value={createSchoolValues.region ?? ""}
                     onChange={(event) => {
                       createSchoolForm.setValue("region", event.target.value, {
@@ -1840,19 +2150,32 @@ export default function SchoolsPage() {
                         shouldTouch: true,
                         shouldValidate: true,
                       });
+                      createSchoolForm.setValue("city", "", {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
                     }}
-                    invalid={Boolean(createSchoolForm.formState.errors.region)}
-                  />
+                  >
+                    <option value="">
+                      {t("schools.form.regionPlaceholder")}
+                    </option>
+                    {CAMEROON_REGIONS.map((region) => (
+                      <option key={region.value} value={region.value}>
+                        {region.label}
+                      </option>
+                    ))}
+                  </select>
                 </FormField>
 
                 <FormField
                   label={t("schools.form.fieldCityOpt")}
                   className="md:col-span-2"
-                  error={createSchoolForm.formState.errors.city?.message}
                 >
-                  <FormTextInput
+                  <select
                     aria-label={t("schools.form.fieldCity")}
+                    className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-warm-surface disabled:text-text-secondary"
                     value={createSchoolValues.city ?? ""}
+                    disabled={!createSchoolValues.region}
                     onChange={(event) => {
                       createSchoolForm.setValue("city", event.target.value, {
                         shouldDirty: true,
@@ -1860,8 +2183,22 @@ export default function SchoolsPage() {
                         shouldValidate: true,
                       });
                     }}
-                    invalid={Boolean(createSchoolForm.formState.errors.city)}
-                  />
+                  >
+                    <option value="">
+                      {createSchoolValues.region
+                        ? t("schools.form.cityPlaceholder")
+                        : t("schools.form.cityPlaceholderNoRegion")}
+                    </option>
+                    {(
+                      CAMEROON_CITIES_BY_REGION[
+                        createSchoolValues.region ?? ""
+                      ] ?? []
+                    ).map((city) => (
+                      <option key={city.value} value={city.value}>
+                        {city.label}
+                      </option>
+                    ))}
+                  </select>
                 </FormField>
 
                 <FormField label={t("schools.form.fieldCycleOpt")}>
@@ -1929,51 +2266,260 @@ export default function SchoolsPage() {
                   </select>
                 </FormField>
 
-                <FormField
-                  label={t("schools.form.fieldAdminEmail")}
-                  className="md:col-span-2"
-                  error={
-                    createSchoolForm.formState.errors.schoolAdminEmail?.message
-                  }
-                  hint={
-                    emailCheckState === "checking"
-                      ? t("schools.email.checking")
-                      : emailCheckState === "invalid"
-                        ? t("schools.email.invalid")
-                        : emailCheckState === "exists"
-                          ? t("schools.email.exists").replace(
-                              "{name}",
-                              emailCheckName ?? "utilisateur",
+                <div className="grid gap-3 md:col-span-2">
+                  <p className="text-sm font-medium text-text-primary">
+                    {t("schools.form.mainAdminTitle")}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={
+                        founderAdminMode === "email" ? "primary" : "secondary"
+                      }
+                      onClick={() => setFounderAdminMode("email")}
+                    >
+                      {t("schools.form.adminModeEmail")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={
+                        founderAdminMode === "phone" ? "primary" : "secondary"
+                      }
+                      onClick={() => setFounderAdminMode("phone")}
+                    >
+                      {t("schools.form.adminModePhone")}
+                    </Button>
+                  </div>
+
+                  {founderAdminMode === "email" ? (
+                    <FormField
+                      label={t("schools.form.fieldAdminEmail")}
+                      error={
+                        createSchoolForm.formState.errors.schoolAdminEmail
+                          ?.message
+                      }
+                      hint={
+                        emailCheckState === "checking"
+                          ? t("schools.email.checking")
+                          : emailCheckState === "invalid"
+                            ? t("schools.email.invalid")
+                            : emailCheckState === "exists"
+                              ? t("schools.email.exists").replace(
+                                  "{name}",
+                                  emailCheckName ?? "utilisateur",
+                                )
+                              : emailCheckState === "not_found"
+                                ? t("schools.email.notFound")
+                                : emailCheckState === "error"
+                                  ? t("schools.email.error")
+                                  : null
+                      }
+                    >
+                      <EmailInput
+                        aria-label={t("schools.form.fieldAdminEmail")}
+                        value={createSchoolValues.schoolAdminEmail ?? ""}
+                        onChange={(event) => {
+                          createSchoolForm.setValue(
+                            "schoolAdminEmail",
+                            event.target.value,
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
+                        invalid={Boolean(
+                          createSchoolForm.formState.errors.schoolAdminEmail,
+                        )}
+                      />
+                    </FormField>
+                  ) : (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <FormField label={t("schools.form.fieldAdminPhone")}>
+                        <FormTextInput
+                          aria-label={t("schools.form.fieldAdminPhone")}
+                          value={createSchoolValues.schoolAdminPhone ?? ""}
+                          onChange={(event) => {
+                            createSchoolForm.setValue(
+                              "schoolAdminPhone",
+                              event.target.value.replace(/\D/g, "").slice(0, 9),
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            );
+                          }}
+                        />
+                      </FormField>
+                      <FormField label={t("schools.form.fieldAdminPin")}>
+                        <PinInput
+                          aria-label={t("schools.form.fieldAdminPin")}
+                          value={createSchoolValues.schoolAdminPin ?? ""}
+                          onChange={(event) => {
+                            createSchoolForm.setValue(
+                              "schoolAdminPin",
+                              event.target.value.replace(/\D/g, "").slice(0, 6),
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            );
+                          }}
+                        />
+                      </FormField>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-3 md:col-span-2">
+                  <p className="text-sm font-medium text-text-primary">
+                    {t("schools.form.additionalAdminsTitle")}
+                  </p>
+                  {additionalAdmins.map((admin, index) => (
+                    <div
+                      key={index}
+                      className="grid gap-2 rounded-card border border-border p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-text-primary">
+                          {t("schools.form.additionalAdminTitle")} {index + 2}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-sm text-notification"
+                          onClick={() => {
+                            setAdditionalAdmins((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            );
+                            setAdditionalAdminErrors((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            );
+                          }}
+                        >
+                          {t("schools.form.removeAdmin")}
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={
+                            admin.mode === "email" ? "primary" : "secondary"
+                          }
+                          onClick={() =>
+                            setAdditionalAdmins((prev) =>
+                              prev.map((entry, i) =>
+                                i === index
+                                  ? { ...entry, mode: "email" }
+                                  : entry,
+                              ),
                             )
-                          : emailCheckState === "not_found"
-                            ? t("schools.email.notFound")
-                            : emailCheckState === "error"
-                              ? t("schools.email.error")
-                              : null
-                  }
-                >
-                  <EmailInput
-                    aria-label={t("schools.form.fieldAdminEmail")}
-                    value={createSchoolValues.schoolAdminEmail ?? ""}
-                    onChange={(event) => {
-                      createSchoolForm.setValue(
-                        "schoolAdminEmail",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      );
-                    }}
-                    invalid={
-                      Boolean(
-                        createSchoolForm.formState.errors.schoolAdminEmail,
-                      ) ||
-                      !String(createSchoolValues.schoolAdminEmail ?? "").trim()
-                    }
-                  />
-                </FormField>
+                          }
+                        >
+                          {t("schools.form.adminModeEmail")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={
+                            admin.mode === "phone" ? "primary" : "secondary"
+                          }
+                          onClick={() =>
+                            setAdditionalAdmins((prev) =>
+                              prev.map((entry, i) =>
+                                i === index
+                                  ? { ...entry, mode: "phone" }
+                                  : entry,
+                              ),
+                            )
+                          }
+                        >
+                          {t("schools.form.adminModePhone")}
+                        </Button>
+                      </div>
+                      {admin.mode === "email" ? (
+                        <FormField label={t("schools.form.fieldAdminEmail")}>
+                          <EmailInput
+                            aria-label={t("schools.form.fieldAdminEmail")}
+                            value={admin.email}
+                            onChange={(event) =>
+                              setAdditionalAdmins((prev) =>
+                                prev.map((entry, i) =>
+                                  i === index
+                                    ? { ...entry, email: event.target.value }
+                                    : entry,
+                                ),
+                              )
+                            }
+                          />
+                        </FormField>
+                      ) : (
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <FormField label={t("schools.form.fieldAdminPhone")}>
+                            <FormTextInput
+                              aria-label={t("schools.form.fieldAdminPhone")}
+                              value={admin.phone}
+                              onChange={(event) =>
+                                setAdditionalAdmins((prev) =>
+                                  prev.map((entry, i) =>
+                                    i === index
+                                      ? {
+                                          ...entry,
+                                          phone: event.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 9),
+                                        }
+                                      : entry,
+                                  ),
+                                )
+                              }
+                            />
+                          </FormField>
+                          <FormField label={t("schools.form.fieldAdminPin")}>
+                            <PinInput
+                              aria-label={t("schools.form.fieldAdminPin")}
+                              value={admin.pin}
+                              onChange={(event) =>
+                                setAdditionalAdmins((prev) =>
+                                  prev.map((entry, i) =>
+                                    i === index
+                                      ? {
+                                          ...entry,
+                                          pin: event.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 6),
+                                        }
+                                      : entry,
+                                  ),
+                                )
+                              }
+                            />
+                          </FormField>
+                        </div>
+                      )}
+                      {additionalAdminErrors[index] ? (
+                        <p className="text-sm text-notification">
+                          {additionalAdminErrors[index]}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                  <div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() =>
+                        setAdditionalAdmins((prev) => [
+                          ...prev,
+                          { mode: "email", email: "", phone: "", pin: "" },
+                        ])
+                      }
+                    >
+                      {t("schools.form.addAdminButton")}
+                    </Button>
+                  </div>
+                </div>
 
                 <div className="md:col-span-2">
                   <ImageUploadField
@@ -2094,6 +2640,29 @@ export default function SchoolsPage() {
           if (deleteTarget) {
             void onDeleteSchool(deleteTarget.id);
           }
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(removeAdminTarget)}
+        title={t("schools.details.confirmRemoveAdminTitle")}
+        message={
+          removeAdminTarget
+            ? t("schools.details.confirmRemoveAdminMessage").replace(
+                "{name}",
+                removeAdminTarget.label,
+              )
+            : ""
+        }
+        confirmLabel={t("schools.details.confirmRemoveAdminConfirm")}
+        loading={Boolean(removingAdminId)}
+        onCancel={() => {
+          if (!removingAdminId) {
+            setRemoveAdminTarget(null);
+          }
+        }}
+        onConfirm={() => {
+          void onRemoveSchoolAdmin();
         }}
       />
     </AppShell>

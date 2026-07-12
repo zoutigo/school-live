@@ -222,6 +222,16 @@ export class ManagementController {
     return this.managementService.addSchoolAdmin(schoolId, payload);
   }
 
+  @Delete("system/schools/:schoolId/admins/:adminUserId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  removeSchoolAdmin(
+    @Param("schoolId") schoolId: string,
+    @Param("adminUserId") adminUserId: string,
+  ) {
+    return this.managementService.removeSchoolAdmin(schoolId, adminUserId);
+  }
+
   @Post("system/schools/:schoolId/admins/:adminUserId/resend-invite")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("SUPER_ADMIN", "ADMIN")

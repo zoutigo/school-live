@@ -165,16 +165,35 @@ const updateUserSchema = z.object({
   isTester: z.boolean().optional(),
 });
 
-const createSchoolSchema = z.object({
-  name: z.string().trim().min(1),
-  country: z.string().trim().min(1).max(120).optional(),
-  region: z.string().trim().min(1).max(120).optional(),
-  city: z.string().trim().min(1).max(120).optional(),
-  cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
-  languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
-  schoolAdminEmail: z.string().trim().email(),
-  logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional(),
-});
+const createSchoolSchema = z
+  .object({
+    name: z.string().trim().min(1),
+    country: z.string().trim().min(1).max(120).optional(),
+    region: z.string().trim().min(1).max(120).optional(),
+    city: z.string().trim().min(1).max(120).optional(),
+    cycle: z.enum(["PRIMARY", "SECONDARY"]).optional(),
+    languageSystem: z
+      .enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"])
+      .optional(),
+    schoolAdminEmail: z.string().trim().email().optional(),
+    schoolAdminPhone: z.string().trim().min(6).max(30).optional(),
+    schoolAdminPin: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/)
+      .optional(),
+    logoUrl: z.string().trim().regex(SCHOOL_LOGO_URL_REGEX).optional(),
+  })
+  .refine(
+    (value) => Boolean(value.schoolAdminEmail || value.schoolAdminPhone),
+    { message: "Email ou telephone administrateur requis" },
+  )
+  .refine(
+    (value) =>
+      !(value.schoolAdminPhone && !value.schoolAdminEmail) ||
+      Boolean(value.schoolAdminPin),
+    { message: "PIN initial requis pour un administrateur cree par telephone" },
+  );
 
 const updateSchoolSchema = z.object({
   name: z.string().trim().min(1).optional(),
@@ -463,9 +482,22 @@ const updateNationalCurriculumSchema = z.object({
   academicLevelId: z.string().trim().min(1).optional(),
 });
 
-const addSchoolAdminSchema = z.object({
-  email: z.string().trim().email(),
-});
+const addSchoolAdminSchema = z
+  .object({
+    email: z.string().trim().email().optional(),
+    phone: z.string().trim().min(6).max(30).optional(),
+    pin: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/)
+      .optional(),
+  })
+  .refine((value) => Boolean(value.email || value.phone), {
+    message: "Email ou telephone administrateur requis",
+  })
+  .refine((value) => !(value.phone && !value.email) || Boolean(value.pin), {
+    message: "PIN initial requis pour un administrateur cree par telephone",
+  });
 
 const listTeacherAssignmentsQuerySchema = z.object({
   schoolYearId: z.string().trim().min(1).optional(),
@@ -1076,8 +1108,10 @@ export class ManagementService {
                 firstName: true,
                 lastName: true,
                 email: true,
+                phone: true,
                 mustChangePassword: true,
                 profileCompleted: true,
+                activationStatus: true,
               },
             },
           },
@@ -1166,8 +1200,10 @@ export class ManagementService {
         firstName: membership.user.firstName,
         lastName: membership.user.lastName,
         email: membership.user.email,
+        phone: membership.user.phone,
         mustChangePassword: membership.user.mustChangePassword,
         profileCompleted: membership.user.profileCompleted,
+        activationRequired: membership.user.activationStatus === "PENDING",
         canResendInvite:
           membership.user.mustChangePassword &&
           !membership.user.profileCompleted,
@@ -1274,11 +1310,20 @@ export class ManagementService {
       throw new NotFoundException("School not found");
     }
 
-    const adminEmail = parsedResult.data.email.toLowerCase();
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: adminEmail },
-      select: { id: true, firstName: true, mustChangePassword: true },
-    });
+    const adminEmail = parsedResult.data.email?.trim().toLowerCase() ?? null;
+    const adminPhone = parsedResult.data.phone
+      ? this.normalizePhone(parsedResult.data.phone)
+      : null;
+
+    const existingUser = adminEmail
+      ? await this.prisma.user.findUnique({
+          where: { email: adminEmail },
+          select: { id: true, firstName: true, mustChangePassword: true },
+        })
+      : await this.prisma.user.findFirst({
+          where: { phone: adminPhone! },
+          select: { id: true, firstName: true, mustChangePassword: true },
+        });
 
     if (existingUser) {
       const existingMembership = await this.prisma.schoolMembership.findFirst({
@@ -1310,18 +1355,63 @@ export class ManagementService {
       };
     }
 
-    const derivedName = this.deriveNameFromEmail(adminEmail);
-    const generatedTemporaryPassword = this.generateTemporaryPassword();
-    const passwordHash = await bcrypt.hash(generatedTemporaryPassword, 10);
+    if (adminEmail) {
+      const derivedName = this.deriveNameFromEmail(adminEmail);
+      const generatedTemporaryPassword = this.generateTemporaryPassword();
+      const passwordHash = await bcrypt.hash(generatedTemporaryPassword, 10);
+
+      const createdAdmin = await this.prisma.user.create({
+        data: {
+          firstName: derivedName.firstName,
+          lastName: derivedName.lastName,
+          email: adminEmail,
+          passwordHash,
+          mustChangePassword: true,
+          profileCompleted: false,
+          memberships: {
+            create: {
+              schoolId,
+              role: "SCHOOL_ADMIN",
+            },
+          },
+        },
+      });
+
+      await this.mailService.sendTemporaryPasswordEmail({
+        to: adminEmail,
+        firstName: derivedName.firstName,
+        temporaryPassword: generatedTemporaryPassword,
+        schoolSlug: school.slug,
+      });
+
+      return {
+        schoolAdmin: {
+          id: createdAdmin.id,
+          email: adminEmail,
+          firstName: createdAdmin.firstName,
+        },
+        userExisted: false,
+        setupCompleted: false,
+      };
+    }
+
+    const initialPin = parsedResult.data.pin!.trim();
+    const pinHash = await bcrypt.hash(initialPin, 10);
+    const technicalEmail = this.buildTechnicalEmailFromPhone(
+      adminPhone!,
+      "school-admin",
+    );
 
     const createdAdmin = await this.prisma.user.create({
       data: {
-        firstName: derivedName.firstName,
-        lastName: derivedName.lastName,
-        email: adminEmail,
-        passwordHash,
-        mustChangePassword: true,
+        firstName: "Administrateur",
+        lastName: adminPhone!.slice(-4),
+        email: technicalEmail,
+        phone: adminPhone!,
+        passwordHash: pinHash,
+        mustChangePassword: false,
         profileCompleted: false,
+        activationStatus: "PENDING",
         memberships: {
           create: {
             schoolId,
@@ -1331,12 +1421,11 @@ export class ManagementService {
       },
     });
 
-    await this.mailService.sendTemporaryPasswordEmail({
-      to: adminEmail,
-      firstName: derivedName.firstName,
-      temporaryPassword: generatedTemporaryPassword,
-      schoolSlug: school.slug,
-    });
+    const activationCode = await this.issueActivationCode(
+      createdAdmin.id,
+      schoolId,
+      undefined,
+    );
 
     return {
       schoolAdmin: {
@@ -1346,7 +1435,34 @@ export class ManagementService {
       },
       userExisted: false,
       setupCompleted: false,
+      activationRequired: true,
+      activationCode,
     };
+  }
+
+  async removeSchoolAdmin(schoolId: string, adminUserId: string) {
+    const membership = await this.prisma.schoolMembership.findFirst({
+      where: { schoolId, userId: adminUserId, role: "SCHOOL_ADMIN" },
+      select: { id: true },
+    });
+    if (!membership) {
+      throw new NotFoundException("School admin membership not found");
+    }
+
+    const activeAdminCount = await this.prisma.schoolMembership.count({
+      where: { schoolId, role: "SCHOOL_ADMIN" },
+    });
+    if (activeAdminCount <= 1) {
+      throw new BadRequestException(
+        "Impossible de retirer le dernier administrateur de l'ecole",
+      );
+    }
+
+    await this.prisma.schoolMembership.delete({
+      where: { id: membership.id },
+    });
+
+    return { success: true };
   }
 
   async updateSchool(schoolId: string, payload: UpdateSchoolDto) {
@@ -1805,16 +1921,45 @@ export class ManagementService {
 
     const generatedSlug = await this.generateAvailableSchoolSlug(parsed.name);
 
-    const adminEmail = parsed.schoolAdminEmail.toLowerCase();
-    const derivedName = this.deriveNameFromEmail(adminEmail);
-    const existingAdminUser = await this.prisma.user.findUnique({
-      where: { email: adminEmail },
-      select: {
-        id: true,
-        firstName: true,
-        mustChangePassword: true,
-      },
+    const adminEmail = parsed.schoolAdminEmail?.trim().toLowerCase() ?? null;
+    const adminPhone = parsed.schoolAdminPhone
+      ? this.normalizePhone(parsed.schoolAdminPhone)
+      : null;
+
+    const schoolSelect = {
+      id: true,
+      slug: true,
+      name: true,
+      country: true,
+      region: true,
+      city: true,
+      cycle: true,
+      languageSystem: true,
+      logoUrl: true,
+      createdAt: true,
+      updatedAt: true,
+    } as const;
+
+    const buildSchoolCreateInput = () => ({
+      slug: generatedSlug,
+      name: parsed.name,
+      country: parsed.country,
+      region: parsed.region,
+      city: parsed.city,
+      cycle: parsed.cycle,
+      languageSystem: parsed.languageSystem,
+      logoUrl: parsed.logoUrl,
     });
+
+    const existingAdminUser = adminEmail
+      ? await this.prisma.user.findUnique({
+          where: { email: adminEmail },
+          select: { id: true, firstName: true, mustChangePassword: true },
+        })
+      : await this.prisma.user.findFirst({
+          where: { phone: adminPhone! },
+          select: { id: true, firstName: true, mustChangePassword: true },
+        });
 
     if (existingAdminUser) {
       const result = await this.prisma.$transaction(async (tx) => {
@@ -1822,36 +1967,9 @@ export class ManagementService {
         const schoolYear = await tx.schoolYear.create({
           data: {
             label: schoolYearLabel,
-            school: {
-              create: {
-                slug: generatedSlug,
-                name: parsed.name,
-                country: parsed.country,
-                region: parsed.region,
-                city: parsed.city,
-                cycle: parsed.cycle,
-                languageSystem: parsed.languageSystem,
-                logoUrl: parsed.logoUrl,
-              },
-            },
+            school: { create: buildSchoolCreateInput() },
           },
-          include: {
-            school: {
-              select: {
-                id: true,
-                slug: true,
-                name: true,
-                country: true,
-                region: true,
-                city: true,
-                cycle: true,
-                languageSystem: true,
-                logoUrl: true,
-                createdAt: true,
-                updatedAt: true,
-              },
-            },
-          },
+          include: { school: { select: schoolSelect } },
         });
 
         const school = schoolYear.school;
@@ -1884,44 +2002,78 @@ export class ManagementService {
       };
     }
 
-    const generatedTemporaryPassword = this.generateTemporaryPassword();
-    const adminHash = await bcrypt.hash(generatedTemporaryPassword, 10);
+    if (adminEmail) {
+      const derivedName = this.deriveNameFromEmail(adminEmail);
+      const generatedTemporaryPassword = this.generateTemporaryPassword();
+      const adminHash = await bcrypt.hash(generatedTemporaryPassword, 10);
+
+      const created = await this.prisma.$transaction(async (tx) => {
+        const schoolYearLabel = this.getDefaultSchoolYearLabel();
+        const schoolYear = await tx.schoolYear.create({
+          data: {
+            label: schoolYearLabel,
+            school: { create: buildSchoolCreateInput() },
+          },
+          include: { school: { select: schoolSelect } },
+        });
+
+        const school = schoolYear.school;
+
+        await tx.school.update({
+          where: { id: school.id },
+          data: { activeSchoolYearId: schoolYear.id },
+        });
+
+        const schoolAdmin = await tx.user.create({
+          data: {
+            firstName: derivedName.firstName,
+            lastName: derivedName.lastName,
+            email: adminEmail,
+            passwordHash: adminHash,
+            mustChangePassword: true,
+            profileCompleted: false,
+            memberships: {
+              create: {
+                schoolId: school.id,
+                role: "SCHOOL_ADMIN",
+              },
+            },
+          },
+        });
+
+        return { school, schoolAdmin };
+      });
+
+      await this.mailService.sendTemporaryPasswordEmail({
+        to: adminEmail,
+        firstName: derivedName.firstName,
+        temporaryPassword: generatedTemporaryPassword,
+        schoolSlug: created.school.slug,
+      });
+
+      return {
+        school: created.school,
+        schoolAdmin: created.schoolAdmin,
+        userExisted: false,
+        setupCompleted: false,
+      };
+    }
+
+    const initialPin = parsed.schoolAdminPin!.trim();
+    const pinHash = await bcrypt.hash(initialPin, 10);
+    const technicalEmail = this.buildTechnicalEmailFromPhone(
+      adminPhone!,
+      "school-admin",
+    );
 
     const created = await this.prisma.$transaction(async (tx) => {
       const schoolYearLabel = this.getDefaultSchoolYearLabel();
       const schoolYear = await tx.schoolYear.create({
         data: {
           label: schoolYearLabel,
-          school: {
-            create: {
-              slug: generatedSlug,
-              name: parsed.name,
-              country: parsed.country,
-              region: parsed.region,
-              city: parsed.city,
-              cycle: parsed.cycle,
-              languageSystem: parsed.languageSystem,
-              logoUrl: parsed.logoUrl,
-            },
-          },
+          school: { create: buildSchoolCreateInput() },
         },
-        include: {
-          school: {
-            select: {
-              id: true,
-              slug: true,
-              name: true,
-              country: true,
-              region: true,
-              city: true,
-              cycle: true,
-              languageSystem: true,
-              logoUrl: true,
-              createdAt: true,
-              updatedAt: true,
-            },
-          },
-        },
+        include: { school: { select: schoolSelect } },
       });
 
       const school = schoolYear.school;
@@ -1933,12 +2085,14 @@ export class ManagementService {
 
       const schoolAdmin = await tx.user.create({
         data: {
-          firstName: derivedName.firstName,
-          lastName: derivedName.lastName,
-          email: adminEmail,
-          passwordHash: adminHash,
-          mustChangePassword: true,
+          firstName: "Administrateur",
+          lastName: adminPhone!.slice(-4),
+          email: technicalEmail,
+          phone: adminPhone!,
+          passwordHash: pinHash,
+          mustChangePassword: false,
           profileCompleted: false,
+          activationStatus: "PENDING",
           memberships: {
             create: {
               schoolId: school.id,
@@ -1951,18 +2105,19 @@ export class ManagementService {
       return { school, schoolAdmin };
     });
 
-    await this.mailService.sendTemporaryPasswordEmail({
-      to: adminEmail,
-      firstName: derivedName.firstName,
-      temporaryPassword: generatedTemporaryPassword,
-      schoolSlug: created.school.slug,
-    });
+    const activationCode = await this.issueActivationCode(
+      created.schoolAdmin.id,
+      created.school.id,
+      undefined,
+    );
 
     return {
       school: created.school,
       schoolAdmin: created.schoolAdmin,
       userExisted: false,
       setupCompleted: false,
+      activationRequired: true,
+      activationCode,
     };
   }
 
@@ -6354,7 +6509,7 @@ export class ManagementService {
 
   private buildTechnicalEmailFromPhone(
     normalizedPhone: string,
-    scope: "teacher" | "parent",
+    scope: "teacher" | "parent" | "school-admin",
   ) {
     const compact = normalizedPhone.replace(/\D/g, "");
     return `${scope}-${compact}-${this.generateShortToken()}${AUTO_GENERATED_EMAIL_DOMAIN}`;

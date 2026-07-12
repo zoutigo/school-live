@@ -197,14 +197,11 @@ describe("Schools page create form", () => {
     fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
       target: { value: "College Vogt" },
     });
-    fireEvent.change(screen.getByLabelText("Pays"), {
-      target: { value: "Cameroun" },
-    });
     fireEvent.change(screen.getByLabelText("Region"), {
       target: { value: "Centre" },
     });
     fireEvent.change(screen.getByLabelText("Ville"), {
-      target: { value: "Yaounde" },
+      target: { value: "Yaoundé" },
     });
     fireEvent.change(screen.getByLabelText("Email School Admin"), {
       target: { value: "admin@vogt.cm" },
@@ -226,12 +223,239 @@ describe("Schools page create form", () => {
               name: "College Vogt",
               country: "Cameroun",
               region: "Centre",
-              city: "Yaounde",
+              city: "Yaoundé",
               schoolAdminEmail: "admin@vogt.cm",
             }),
       );
       expect(postCall).toBeDefined();
     });
+  });
+
+  it("locks the country to Cameroun and cascades region to city selection", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+      }
+      if (url.endsWith("/api/system/schools/overview")) {
+        return jsonResponse(schoolsOverview([]));
+      }
+      if (url.includes("/api/system/schools?page=")) {
+        return jsonResponse(schoolsListPage([]));
+      }
+      if (url.includes("/api/system/schools/slug-preview?")) {
+        return jsonResponse({
+          baseSlug: "college-vogt",
+          suggestedSlug: "college-vogt",
+          baseExists: false,
+        });
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Nouvelle ecole" }),
+    );
+
+    const countrySelect = screen.getByLabelText("Pays");
+    expect(countrySelect).toBeDisabled();
+    expect(countrySelect).toHaveValue("Cameroun");
+
+    const citySelect = screen.getByLabelText("Ville");
+    expect(citySelect).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Region"), {
+      target: { value: "Littoral" },
+    });
+
+    expect(citySelect).toBeEnabled();
+    fireEvent.change(citySelect, { target: { value: "Douala" } });
+    expect(citySelect).toHaveValue("Douala");
+
+    // Changer de region reinitialise la ville selectionnee.
+    fireEvent.change(screen.getByLabelText("Region"), {
+      target: { value: "Centre" },
+    });
+    expect(citySelect).toHaveValue("");
+  });
+
+  it("cree l'admin fondateur par telephone + PIN quand ce mode est choisi", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
+        if (url.includes("/api/system/schools?page=") && method === "GET") {
+          return jsonResponse(schoolsListPage([]));
+        }
+        if (url.includes("/api/system/schools/slug-preview?")) {
+          return jsonResponse({
+            baseSlug: "ecole-telephone",
+            suggestedSlug: "ecole-telephone",
+            baseExists: false,
+          });
+        }
+        if (url.endsWith("/api/system/schools") && method === "POST") {
+          return jsonResponse(
+            {
+              school: { id: "school-phone-1" },
+              userExisted: false,
+              setupCompleted: false,
+              activationRequired: true,
+              activationCode: "ABCD1234",
+            },
+            201,
+          );
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Nouvelle ecole" }),
+    );
+
+    fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
+      target: { value: "École par téléphone" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Telephone + PIN" }));
+    fireEvent.change(screen.getByLabelText("Telephone"), {
+      target: { value: "699001122" },
+    });
+    fireEvent.change(screen.getByLabelText("PIN initial"), {
+      target: { value: "123456" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Creer l ecole" }),
+      ).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Creer l ecole" }));
+
+    await waitFor(() => {
+      const postCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/api/system/schools") &&
+          init?.method === "POST",
+      );
+      expect(postCall).toBeDefined();
+      const body = JSON.parse(String(postCall?.[1]?.body ?? "{}"));
+      expect(body.schoolAdminPhone).toBe("699001122");
+      expect(body.schoolAdminPin).toBe("123456");
+      expect(body.schoolAdminEmail).toBeUndefined();
+    });
+
+    expect(await screen.findByText(/ABCD1234/)).toBeInTheDocument();
+  });
+
+  it("ajoute et retire des administrateurs supplementaires a la creation", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
+        if (url.includes("/api/system/schools?page=") && method === "GET") {
+          return jsonResponse(schoolsListPage([]));
+        }
+        if (url.includes("/api/system/schools/slug-preview?")) {
+          return jsonResponse({
+            baseSlug: "ecole-multi-admins",
+            suggestedSlug: "ecole-multi-admins",
+            baseExists: false,
+          });
+        }
+        if (url.includes("/api/system/users/exists?")) {
+          return jsonResponse({ exists: false });
+        }
+        if (url.endsWith("/api/system/schools") && method === "POST") {
+          return jsonResponse(
+            {
+              school: { id: "school-multi-1" },
+              userExisted: false,
+              setupCompleted: false,
+            },
+            201,
+          );
+        }
+        if (
+          url.endsWith("/api/system/schools/school-multi-1/admins") &&
+          method === "POST"
+        ) {
+          return jsonResponse({
+            schoolAdmin: { id: "admin-extra", email: null },
+            userExisted: false,
+            setupCompleted: false,
+            activationRequired: true,
+            activationCode: "WXYZ9999",
+          });
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Nouvelle ecole" }),
+    );
+
+    fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
+      target: { value: "École multi-admins" },
+    });
+    fireEvent.change(screen.getByLabelText("Email School Admin"), {
+      target: { value: "principal@ecole.cm" },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "+ Ajouter un administrateur" }),
+    );
+
+    const modePhoneButtons = screen.getAllByRole("button", {
+      name: "Telephone + PIN",
+    });
+    fireEvent.click(modePhoneButtons[modePhoneButtons.length - 1]);
+    fireEvent.change(screen.getByLabelText("Telephone"), {
+      target: { value: "677889900" },
+    });
+    fireEvent.change(screen.getByLabelText("PIN initial"), {
+      target: { value: "654321" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Creer l ecole" }),
+      ).toBeEnabled();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Creer l ecole" }));
+
+    await waitFor(() => {
+      const addAdminCall = fetchMock.mock.calls.find(([url, init]) =>
+        String(url).endsWith("/api/system/schools/school-multi-1/admins")
+          ? init?.method === "POST"
+          : false,
+      );
+      expect(addAdminCall).toBeDefined();
+      const body = JSON.parse(String(addAdminCall?.[1]?.body ?? "{}"));
+      expect(body).toEqual({ phone: "677889900", pin: "654321" });
+    });
+
+    expect(await screen.findByText(/WXYZ9999/)).toBeInTheDocument();
   });
 
   it("submits the create form with cycle and languageSystem selected", async () => {
@@ -305,6 +529,7 @@ describe("Schools page create form", () => {
           init?.body ===
             JSON.stringify({
               name: "Greenwich College",
+              country: "Cameroun",
               cycle: "SECONDARY",
               languageSystem: "ANGLOPHONE",
               schoolAdminEmail: "admin@greenwich.cm",
@@ -647,6 +872,89 @@ describe("Schools page create form", () => {
     expect(await screen.findByText("School admin ajoute.")).toBeInTheDocument();
   });
 
+  it("ajoute un school admin par telephone + PIN depuis la carte en edition", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
+        if (url.includes("/api/system/schools?page=") && method === "GET") {
+          return jsonResponse(
+            schoolsListPage([
+              {
+                id: "school-1",
+                slug: "college-vogt",
+                name: "College Vogt",
+                country: "Cameroun",
+                region: "Centre",
+                city: "Yaounde",
+                cycle: "SECONDARY",
+                languageSystem: "FRANCOPHONE",
+                logoUrl: null,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                usersCount: 10,
+                classesCount: 4,
+                studentsCount: 120,
+              },
+            ]),
+          );
+        }
+        if (
+          url.endsWith("/api/system/schools/school-1/admins") &&
+          method === "POST"
+        ) {
+          return jsonResponse({
+            schoolAdmin: { id: "admin-phone-1", email: null },
+            userExisted: false,
+            setupCompleted: false,
+            activationRequired: true,
+            activationCode: "PHONE9999",
+          });
+        }
+        if (url.includes("/api/system/users/exists?")) {
+          return jsonResponse({ exists: false });
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Telephone + PIN" }));
+    fireEvent.change(screen.getByLabelText("Telephone"), {
+      target: { value: "699445566" },
+    });
+    fireEvent.change(screen.getByLabelText("PIN initial"), {
+      target: { value: "112233" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/schools/school-1/admins"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ phone: "699445566", pin: "112233" }),
+        }),
+      );
+    });
+
+    expect(await screen.findByText(/PHONE9999/)).toBeInTheDocument();
+  });
+
   it("shows the overview tab by default with totals and a per-cycle breakdown", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
@@ -805,6 +1113,141 @@ describe("Schools page create form", () => {
     expect(roleBreakdown).toHaveTextContent("Enseignants8");
     expect(roleBreakdown).toHaveTextContent("Parents90");
     expect(roleBreakdown).toHaveTextContent("Eleves100");
+  });
+
+  it("retire un administrateur depuis l'onglet details apres confirmation", async () => {
+    let admins = [
+      {
+        id: "admin-1",
+        firstName: "Sarah",
+        lastName: "Moukouri",
+        email: "sarah@vogt.cm",
+        phone: null,
+        mustChangePassword: false,
+        profileCompleted: true,
+        activationRequired: false,
+        canResendInvite: false,
+      },
+      {
+        id: "admin-2",
+        firstName: "Paul",
+        lastName: "Etoa",
+        email: "paul@vogt.cm",
+        phone: null,
+        mustChangePassword: false,
+        profileCompleted: true,
+        activationRequired: false,
+        canResendInvite: false,
+      },
+    ];
+
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
+        if (url.includes("/api/system/schools?page=")) {
+          return jsonResponse(
+            schoolsListPage([
+              {
+                id: "school-1",
+                slug: "college-vogt",
+                name: "College Vogt",
+                country: "Cameroun",
+                region: "Centre",
+                city: "Yaounde",
+                logoUrl: null,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                usersCount: 10,
+                classesCount: 4,
+                studentsCount: 120,
+              },
+            ]),
+          );
+        }
+        if (
+          url.endsWith("/api/system/schools/school-1/admins/admin-2") &&
+          method === "DELETE"
+        ) {
+          admins = admins.filter((admin) => admin.id !== "admin-2");
+          return jsonResponse({ success: true });
+        }
+        if (url.endsWith("/api/system/schools/school-1")) {
+          return jsonResponse({
+            id: "school-1",
+            slug: "college-vogt",
+            name: "College Vogt",
+            country: "Cameroun",
+            region: "Centre",
+            city: "Yaounde",
+            cycle: "SECONDARY",
+            languageSystem: "FRANCOPHONE",
+            logoUrl: null,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            academicYear: null,
+            stats: {
+              usersCount: 10,
+              classesCount: 4,
+              studentsCount: 120,
+              teachersCount: 8,
+              gradesCount: 300,
+            },
+            roleBreakdown: {
+              staff: 3,
+              teachers: 8,
+              parents: 90,
+              students: 100,
+            },
+            schoolAdmins: admins,
+          });
+        }
+
+        return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
+    fireEvent.click(
+      within(await screen.findByTestId("school-card-school-1")).getByRole(
+        "button",
+        { name: "Voir" },
+      ),
+    );
+
+    expect(await screen.findByText(/Paul Etoa/)).toBeInTheDocument();
+    const removeButtons = screen.getAllByRole("button", { name: "Retirer" });
+    expect(removeButtons).toHaveLength(2);
+    fireEvent.click(removeButtons[1]);
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retirer" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/schools/school-1/admins/admin-2"),
+        expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Paul Etoa/)).not.toBeInTheDocument();
+    });
+
+    // Un seul administrateur restant : le retrait doit maintenant etre
+    // desactive.
+    const lastRemoveButton = screen.getByRole("button", { name: "Retirer" });
+    expect(lastRemoveButton).toBeDisabled();
   });
 
   it("requests page/limit server-side and paginates the school list beyond page 1", async () => {
