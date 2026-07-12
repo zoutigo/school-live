@@ -904,6 +904,7 @@ export class ManagementService {
         logoUrl: true,
         createdAt: true,
         updatedAt: true,
+        activeSchoolYear: { select: { id: true, label: true } },
         _count: {
           select: {
             memberships: true,
@@ -926,6 +927,12 @@ export class ManagementService {
       logoUrl: school.logoUrl,
       createdAt: school.createdAt,
       updatedAt: school.updatedAt,
+      academicYear: school.activeSchoolYear
+        ? {
+            id: school.activeSchoolYear.id,
+            label: school.activeSchoolYear.label,
+          }
+        : null,
       usersCount: school._count.memberships,
       classesCount: school._count.classes,
       studentsCount: school._count.students,
@@ -947,6 +954,10 @@ export class ManagementService {
         logoUrl: true,
         createdAt: true,
         updatedAt: true,
+        activeSchoolYearId: true,
+        activeSchoolYear: {
+          select: { id: true, label: true, startsAt: true, endsAt: true },
+        },
         memberships: {
           where: { role: "SCHOOL_ADMIN" },
           include: {
@@ -981,6 +992,33 @@ export class ManagementService {
       throw new NotFoundException("School not found");
     }
 
+    const staffRoles: SchoolRole[] = [
+      "SCHOOL_ADMIN",
+      "SCHOOL_MANAGER",
+      "SUPERVISOR",
+      "SCHOOL_ACCOUNTANT",
+      "SCHOOL_STAFF",
+    ];
+
+    const [staffCount, teachersCount, parentsCount] =
+      await this.prisma.$transaction([
+        this.prisma.schoolMembership.count({
+          where: { schoolId, role: { in: staffRoles } },
+        }),
+        this.prisma.schoolMembership.count({
+          where: { schoolId, role: "TEACHER" },
+        }),
+        this.prisma.schoolMembership.count({
+          where: { schoolId, role: "PARENT" },
+        }),
+      ]);
+
+    const enrolledStudentsCount = school.activeSchoolYearId
+      ? await this.prisma.enrollment.count({
+          where: { schoolId, schoolYearId: school.activeSchoolYearId },
+        })
+      : 0;
+
     return {
       id: school.id,
       slug: school.slug,
@@ -988,15 +1026,31 @@ export class ManagementService {
       country: school.country,
       region: school.region,
       city: school.city,
+      cycle: school.cycle,
+      languageSystem: school.languageSystem,
       logoUrl: school.logoUrl,
       createdAt: school.createdAt,
       updatedAt: school.updatedAt,
+      academicYear: school.activeSchoolYear
+        ? {
+            id: school.activeSchoolYear.id,
+            label: school.activeSchoolYear.label,
+            startsAt: school.activeSchoolYear.startsAt,
+            endsAt: school.activeSchoolYear.endsAt,
+          }
+        : null,
       stats: {
         usersCount: school._count.memberships,
         classesCount: school._count.classes,
         studentsCount: school._count.students,
         teachersCount: school._count.teachers,
         gradesCount: school._count.studentGrades,
+      },
+      roleBreakdown: {
+        staff: staffCount,
+        teachers: teachersCount,
+        parents: parentsCount,
+        students: enrolledStudentsCount,
       },
       schoolAdmins: school.memberships.map((membership) => ({
         id: membership.user.id,
