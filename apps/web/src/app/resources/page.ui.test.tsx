@@ -291,9 +291,9 @@ describe("ResourcesBrowsePage", () => {
   });
 
   it("requests page/limit and paginates beyond the first page", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
-      baseRouter({ total: 45 }),
-    );
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(baseRouter({ total: 45 }));
 
     render(<ResourcesBrowsePage />);
     await screen.findByTestId("resources-card-res-1");
@@ -315,9 +315,9 @@ describe("ResourcesBrowsePage", () => {
   });
 
   it("resets to page 1 when switching tabs or applying a filter", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
-      baseRouter({ total: 45 }),
-    );
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(baseRouter({ total: 45 }));
 
     render(<ResourcesBrowsePage />);
     await screen.findByTestId("resources-card-res-1");

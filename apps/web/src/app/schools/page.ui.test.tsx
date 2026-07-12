@@ -67,7 +67,11 @@ function schoolsOverview(items: OverviewSourceItem[]) {
     totalClasses += item.classesCount;
   }
   return {
-    totals: { schools: items.length, students: totalStudents, classes: totalClasses },
+    totals: {
+      schools: items.length,
+      students: totalStudents,
+      classes: totalClasses,
+    },
     byCycle,
   };
 }

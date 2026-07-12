@@ -436,8 +436,7 @@ describe("ResourcesService", () => {
         result.items.find((item) => item.id === "resource-fav")?.isFavorite,
       ).toBe(true);
       expect(
-        result.items.find((item) => item.id === "resource-not-fav")
-          ?.isFavorite,
+        result.items.find((item) => item.id === "resource-not-fav")?.isFavorite,
       ).toBe(false);
     });
   });
