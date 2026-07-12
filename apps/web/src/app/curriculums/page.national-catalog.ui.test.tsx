@@ -37,11 +37,18 @@ describe("Curriculums page — catalogue national", () => {
   });
 
   function mockBaseRoutes(options?: {
+    nationalCycles?: unknown[];
     nationalLevels?: unknown[];
     nationalCurriculums?: unknown[];
+    nationalSubjects?: unknown[];
+    nationalCurriculumSubjects?: unknown[];
   }) {
+    const nationalCycles = options?.nationalCycles ?? [];
     const nationalLevels = options?.nationalLevels ?? [];
     const nationalCurriculums = options?.nationalCurriculums ?? [];
+    const nationalSubjects = options?.nationalSubjects ?? [];
+    const nationalCurriculumSubjects =
+      options?.nationalCurriculumSubjects ?? [];
 
     return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
       const url = String(input);
@@ -50,10 +57,18 @@ describe("Curriculums page — catalogue national", () => {
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
       }
-      if (url.endsWith("/api/system/schools")) {
+      if (url.endsWith("/api/system/schools/options")) {
         return jsonResponse([
           { id: "school-1", slug: "lycee-du-poisson-d-avril", name: "LPA" },
         ]);
+      }
+      if (url.endsWith("/api/system/cycles")) {
+        return jsonResponse(nationalCycles);
+      }
+      if (/\/api\/system\/academic-levels\/[^/]+$/.test(url)) {
+        if (method === "PATCH" || method === "DELETE") {
+          return jsonResponse({ id: "level-national-1" });
+        }
       }
       if (url.endsWith("/api/system/academic-levels")) {
         if (method === "POST") {
@@ -61,11 +76,38 @@ describe("Curriculums page — catalogue national", () => {
         }
         return jsonResponse(nationalLevels);
       }
+      if (/\/api\/system\/curriculums\/[^/]+\/subjects\/[^/]+$/.test(url)) {
+        if (method === "DELETE") {
+          return jsonResponse({ success: true });
+        }
+      }
+      if (/\/api\/system\/curriculums\/[^/]+\/subjects$/.test(url)) {
+        if (method === "POST") {
+          return jsonResponse({ id: "national-curriculum-subject-1" }, 201);
+        }
+        return jsonResponse(nationalCurriculumSubjects);
+      }
+      if (/\/api\/system\/curriculums\/[^/]+$/.test(url)) {
+        if (method === "PATCH" || method === "DELETE") {
+          return jsonResponse({ id: "curriculum-national-1" });
+        }
+      }
       if (url.endsWith("/api/system/curriculums")) {
         if (method === "POST") {
           return jsonResponse({ id: "curriculum-national-1" }, 201);
         }
         return jsonResponse(nationalCurriculums);
+      }
+      if (/\/api\/system\/subjects\/[^/]+$/.test(url)) {
+        if (method === "PATCH" || method === "DELETE") {
+          return jsonResponse({ id: "subject-national-1" });
+        }
+      }
+      if (url.endsWith("/api/system/subjects")) {
+        if (method === "POST") {
+          return jsonResponse({ id: "subject-national-1" }, 201);
+        }
+        return jsonResponse(nationalSubjects);
       }
       if (url.includes("/admin/academic-levels")) {
         return jsonResponse([]);
@@ -107,6 +149,20 @@ describe("Curriculums page — catalogue national", () => {
 
     expect((await screen.findAllByText("6eme")).length).toBeGreaterThan(0);
     expect(await screen.findByText("6EME - TRONC_COMMUN")).toBeInTheDocument();
+  });
+
+  it("lands directly on the national catalog tab for SUPER_ADMIN, never on a specific school's curriculum", async () => {
+    mockBaseRoutes({
+      nationalLevels: [{ id: "level-1", code: "6EME", label: "6eme" }],
+      nationalCurriculums: [],
+    });
+
+    render(<CurriculumsPage />);
+
+    expect((await screen.findAllByText("6eme")).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("button", { name: "Catalogue national" }),
+    ).toHaveClass("text-primary");
   });
 
   it("creates a national academic level with always-enabled submit and inline validation", async () => {
@@ -151,7 +207,11 @@ describe("Curriculums page — catalogue national", () => {
   });
 
   it("creates a national academic level with cycle and languageSystem selected", async () => {
-    const fetchMock = mockBaseRoutes();
+    const fetchMock = mockBaseRoutes({
+      nationalCycles: [
+        { id: "cycle-secondary", code: "SECONDARY", label: "Secondaire" },
+      ],
+    });
 
     render(<CurriculumsPage />);
 
@@ -172,7 +232,7 @@ describe("Curriculums page — catalogue national", () => {
       target: { value: "Form 1" },
     });
     fireEvent.change(screen.getByLabelText("Cycle (optionnel)"), {
-      target: { value: "SECONDARY" },
+      target: { value: "cycle-secondary" },
     });
     fireEvent.change(
       screen.getByLabelText("Systeme linguistique (optionnel)"),
@@ -189,7 +249,7 @@ describe("Curriculums page — catalogue national", () => {
           body: JSON.stringify({
             code: "FORM1",
             label: "Form 1",
-            cycle: "SECONDARY",
+            cycleId: "cycle-secondary",
             languageSystem: "ANGLOPHONE",
           }),
         }),
@@ -199,12 +259,20 @@ describe("Curriculums page — catalogue national", () => {
 
   it("displays cycle and languageSystem classification on national level rows", async () => {
     mockBaseRoutes({
+      nationalCycles: [
+        { id: "cycle-secondary", code: "SECONDARY", label: "Secondaire" },
+      ],
       nationalLevels: [
         {
           id: "level-1",
           code: "FORM1",
           label: "Form 1",
-          cycle: "SECONDARY",
+          cycleId: "cycle-secondary",
+          cycle: {
+            id: "cycle-secondary",
+            code: "SECONDARY",
+            label: "Secondaire",
+          },
           languageSystem: "ANGLOPHONE",
         },
       ],
@@ -220,6 +288,220 @@ describe("Curriculums page — catalogue national", () => {
     expect(row).not.toBeNull();
     expect(row).toHaveTextContent("Secondaire");
     expect(row).toHaveTextContent("Anglophone");
+  });
+
+  it("edits an existing national academic level", async () => {
+    const fetchMock = mockBaseRoutes({
+      nationalLevels: [{ id: "level-1", code: "6EME", label: "6eme" }],
+    });
+
+    render(<CurriculumsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Catalogue national" }),
+    );
+
+    await screen.findByText("6EME");
+    const editButtons = await screen.findAllByRole("button", {
+      name: "Modifier",
+    });
+    fireEvent.click(editButtons[0]);
+
+    const codeInput = await screen.findByLabelText("Code niveau national");
+    fireEvent.change(codeInput, { target: { value: "6EME-BIS" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/academic-levels/level-1"),
+        expect.objectContaining({ method: "PATCH" }),
+      );
+    });
+  });
+
+  it("edits an existing national curriculum's academic level", async () => {
+    const fetchMock = mockBaseRoutes({
+      nationalLevels: [
+        { id: "level-1", code: "6EME", label: "6eme" },
+        { id: "level-2", code: "5EME", label: "5eme" },
+      ],
+      nationalCurriculums: [
+        {
+          id: "curriculum-1",
+          name: "6EME - TRONC_COMMUN",
+          academicLevelId: "level-1",
+          academicLevel: { id: "level-1", code: "6EME", label: "6eme" },
+          _count: { classes: 0, subjects: 0 },
+        },
+      ],
+    });
+
+    render(<CurriculumsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Catalogue national" }),
+    );
+
+    await screen.findByText("6EME - TRONC_COMMUN");
+    const editButtons = await screen.findAllByRole("button", {
+      name: "Modifier",
+    });
+    fireEvent.click(editButtons[editButtons.length - 1]);
+
+    fireEvent.change(
+      screen.getByLabelText("Niveau academique du curriculum national"),
+      { target: { value: "level-2" } },
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Enregistrer" });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/curriculums/curriculum-1"),
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ academicLevelId: "level-2" }),
+        }),
+      );
+    });
+  });
+
+  it("shows level counts per cycle on the Cycles tab", async () => {
+    mockBaseRoutes({
+      nationalCycles: [
+        { id: "cycle-secondary", code: "SECONDARY", label: "Secondaire" },
+        { id: "cycle-primary", code: "PRIMARY", label: "Primaire" },
+      ],
+      nationalLevels: [
+        {
+          id: "level-1",
+          code: "6EME",
+          label: "6eme",
+          cycleId: "cycle-secondary",
+          cycle: {
+            id: "cycle-secondary",
+            code: "SECONDARY",
+            label: "Secondaire",
+          },
+          languageSystem: "FRANCOPHONE",
+        },
+        {
+          id: "level-2",
+          code: "CP",
+          label: "CP",
+          cycleId: "cycle-primary",
+          cycle: { id: "cycle-primary", code: "PRIMARY", label: "Primaire" },
+          languageSystem: "FRANCOPHONE",
+        },
+      ],
+    });
+
+    render(<CurriculumsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cycles" }));
+
+    const secondaryCard = await screen.findByTestId(
+      "curriculums-cycle-card-cycle-secondary",
+    );
+    expect(secondaryCard).toHaveTextContent("1");
+    const primaryCard = await screen.findByTestId(
+      "curriculums-cycle-card-cycle-primary",
+    );
+    expect(primaryCard).toHaveTextContent("1");
+  });
+
+  it("creates, edits and lists national subjects, then attaches one with a coefficient", async () => {
+    const fetchMock = mockBaseRoutes({
+      nationalCurriculums: [
+        {
+          id: "curriculum-1",
+          name: "6EME - TRONC_COMMUN",
+          academicLevelId: "level-1",
+          academicLevel: { id: "level-1", code: "6EME", label: "6eme" },
+          _count: { classes: 0, subjects: 0 },
+        },
+      ],
+      nationalSubjects: [{ id: "subject-1", code: "MATH", name: "Maths" }],
+    });
+
+    render(<CurriculumsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Matieres nationales" }),
+    );
+
+    await screen.findByText("Maths");
+
+    fireEvent.change(screen.getByLabelText("Code"), {
+      target: { value: "PHYS" },
+    });
+    fireEvent.change(screen.getByLabelText("Nom"), {
+      target: { value: "Physique" },
+    });
+    const addSubjectButton = screen.getByRole("button", { name: "Ajouter" });
+    await waitFor(() => expect(addSubjectButton).toBeEnabled());
+    fireEvent.click(addSubjectButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/subjects"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ code: "PHYS", name: "Physique" }),
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    fireEvent.change(screen.getByLabelText("Nom (modification)"), {
+      target: { value: "Mathematiques" },
+    });
+    const saveSubjectButton = screen.getByRole("button", {
+      name: "Enregistrer",
+    });
+    await waitFor(() => expect(saveSubjectButton).toBeEnabled());
+    fireEvent.click(saveSubjectButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/system/subjects/subject-1"),
+        expect.objectContaining({ method: "PATCH" }),
+      );
+    });
+
+    fireEvent.change(screen.getByLabelText("Niveau academique"), {
+      target: { value: "curriculum-1" },
+    });
+
+    fireEvent.change(screen.getByLabelText("Matiere"), {
+      target: { value: "subject-1" },
+    });
+    fireEvent.change(screen.getByLabelText("Coefficient"), {
+      target: { value: "4" },
+    });
+    const attachButton = screen.getByRole("button", { name: "Enregistrer" });
+    await waitFor(() => expect(attachButton).toBeEnabled());
+    fireEvent.click(attachButton);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "/api/system/curriculums/curriculum-1/subjects",
+        ),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "subject-1",
+            isMandatory: true,
+            coefficient: 4,
+            weeklyHours: undefined,
+          }),
+        }),
+      );
+    });
   });
 
   it("does not show the national catalog tab for a SCHOOL_ADMIN", async () => {

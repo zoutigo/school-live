@@ -11,25 +11,39 @@ dotenv.config({ path: envPath });
 const prisma = new PrismaClient();
 
 /**
- * Backfill des 7 AcademicLevel nationaux existants (6ème -> Terminale),
- * créés avant l'introduction de cycle/languageSystem.
- */
-const EXISTING_SECONDARY_FR_CODES = [
-  "6EME",
-  "5EME",
-  "4EME",
-  "3EME",
-  "2NDE",
-  "1ERE",
-  "TLE",
-];
-
-/**
  * Les 4 catalogues nationaux (cycle x languageSystem) à créer.
  * Chaque niveau produit : AcademicLevel national, Curriculum "TRONC_COMMUN",
  * et un rattachement CurriculumSubject vers la liste de matières du groupe.
  */
 const CATALOGS = [
+  {
+    cycle: "SECONDARY",
+    languageSystem: "FRANCOPHONE",
+    levels: [
+      { code: "6EME", label: "6ème" },
+      { code: "5EME", label: "5ème" },
+      { code: "4EME", label: "4ème" },
+      { code: "3EME", label: "3ème" },
+      { code: "2NDE", label: "2nde" },
+      { code: "1ERE", label: "1ère" },
+      { code: "TLE", label: "Terminale" },
+    ],
+    subjects: [
+      { code: "FR", name: "Français" },
+      { code: "MATH", name: "Mathématiques" },
+      { code: "ANG", name: "Anglais" },
+      { code: "HIST", name: "Histoire" },
+      { code: "GEO", name: "Géographie" },
+      { code: "SVT", name: "SVT" },
+      { code: "PHYS", name: "Physique" },
+      { code: "CHIM", name: "Chimie" },
+      { code: "TECH", name: "Technologie" },
+      { code: "EC", name: "Éducation civique" },
+      { code: "EPS", name: "EPS" },
+      { code: "ART", name: "Arts plastiques" },
+      { code: "MUS", name: "Musique" },
+    ],
+  },
   {
     cycle: "PRIMARY",
     languageSystem: "FRANCOPHONE",
@@ -104,21 +118,6 @@ const CATALOGS = [
   },
 ];
 
-async function backfillExistingSecondaryFrenchLevels() {
-  const result = await prisma.academicLevel.updateMany({
-    where: {
-      schoolId: null,
-      code: { in: EXISTING_SECONDARY_FR_CODES },
-      cycle: null,
-    },
-    data: {
-      cycle: "SECONDARY",
-      languageSystem: "FRANCOPHONE",
-    },
-  });
-  return result.count;
-}
-
 async function upsertSubject(code, name) {
   const existing = await prisma.subject.findFirst({
     where: { schoolId: null, name },
@@ -191,15 +190,11 @@ async function ensureCurriculumSubject(curriculumId, subjectId) {
 
 async function main() {
   const summary = {
-    backfilledSecondaryFrLevels: 0,
     levelsCreated: 0,
     subjectsCreated: 0,
     curriculumsCreated: 0,
     curriculumSubjectsCreated: 0,
   };
-
-  summary.backfilledSecondaryFrLevels =
-    await backfillExistingSecondaryFrenchLevels();
 
   for (const catalog of CATALOGS) {
     const subjectIds = [];

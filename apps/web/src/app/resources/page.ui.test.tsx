@@ -49,10 +49,12 @@ const ASSESSMENT_ITEM = {
 function baseRouter({
   me = ME,
   items = [ASSESSMENT_ITEM] as unknown[],
+  total,
   extra,
 }: {
   me?: unknown;
   items?: unknown[];
+  total?: number;
   extra?: (url: string, method: string) => Promise<Response> | undefined;
 } = {}) {
   return (input: RequestInfo | URL, init?: RequestInit) => {
@@ -66,7 +68,15 @@ function baseRouter({
     if (url.includes("/resources/catalog")) return jsonResponse(CATALOG);
     if (url.includes("/resources/schools")) return jsonResponse(SCHOOLS);
     if (url.includes("/resources?")) {
-      return jsonResponse({ items, total: items.length });
+      const params = new URL(url, "http://localhost").searchParams;
+      const page = Number(params.get("page") ?? "1");
+      const limit = Number(params.get("limit") ?? "20");
+      return jsonResponse({
+        items,
+        total: total ?? items.length,
+        page,
+        limit,
+      });
     }
     return jsonResponse({}, 404);
   };
@@ -278,5 +288,55 @@ describe("ResourcesBrowsePage", () => {
     expect(
       screen.queryByTestId("resources-card-res-1-correction-badge"),
     ).toBeNull();
+  });
+
+  it("requests page/limit and paginates beyond the first page", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(baseRouter({ total: 45 }));
+
+    render(<ResourcesBrowsePage />);
+    await screen.findByTestId("resources-card-res-1");
+
+    const firstCall = fetchMock.mock.calls.find(([u]) =>
+      String(u).includes("/resources?"),
+    );
+    expect(String(firstCall?.[0])).toContain("page=1");
+    expect(String(firstCall?.[0])).toContain("limit=20");
+
+    fireEvent.click(screen.getByRole("button", { name: /suivant/i }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls
+        .filter(([u]) => String(u).includes("/resources?"))
+        .at(-1);
+      expect(String(call?.[0])).toContain("page=2");
+    });
+  });
+
+  it("resets to page 1 when switching tabs or applying a filter", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(baseRouter({ total: 45 }));
+
+    render(<ResourcesBrowsePage />);
+    await screen.findByTestId("resources-card-res-1");
+    fireEvent.click(screen.getByRole("button", { name: /suivant/i }));
+    await waitFor(() => {
+      const call = fetchMock.mock.calls
+        .filter(([u]) => String(u).includes("/resources?"))
+        .at(-1);
+      expect(String(call?.[0])).toContain("page=2");
+    });
+
+    fireEvent.click(screen.getByTestId("resources-tab-EXAM"));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls
+        .filter(([u]) => String(u).includes("/resources?"))
+        .at(-1);
+      expect(String(call?.[0])).toContain("page=1");
+      expect(String(call?.[0])).toContain("kind=EXAM");
+    });
   });
 });

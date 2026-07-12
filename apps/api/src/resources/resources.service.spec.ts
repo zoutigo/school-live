@@ -354,6 +354,93 @@ describe("ResourcesService", () => {
     });
   });
 
+  describe("listResources", () => {
+    beforeEach(() => {
+      prisma.resourceFavorite.findMany.mockResolvedValue([]);
+    });
+
+    it("defaults to page 1 with a limit of 20 when unspecified", async () => {
+      prisma.resource.findMany.mockResolvedValue([]);
+      prisma.resource.count.mockResolvedValue(0);
+
+      const result = await service.listResources(makeTeacher(), {
+        kind: "ASSESSMENT",
+      });
+
+      expect(result).toEqual({ items: [], total: 0, page: 1, limit: 20 });
+      expect(prisma.resource.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 0, take: 20 }),
+      );
+    });
+
+    it("applies skip/take from the requested page and limit", async () => {
+      prisma.resource.findMany.mockResolvedValue([
+        makeResourceRow({ id: "resource-page3" }),
+      ]);
+      prisma.resource.count.mockResolvedValue(45);
+
+      const result = await service.listResources(makeTeacher(), {
+        kind: "ASSESSMENT",
+        page: 3,
+        limit: 20,
+      });
+
+      expect(prisma.resource.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 40, take: 20 }),
+      );
+      expect(result.total).toBe(45);
+      expect(result.page).toBe(3);
+      expect(result.items).toHaveLength(1);
+    });
+
+    it("passes the search term as a case-insensitive title filter", async () => {
+      prisma.resource.findMany.mockResolvedValue([]);
+      prisma.resource.count.mockResolvedValue(0);
+
+      await service.listResources(makeTeacher(), {
+        kind: "ASSESSMENT",
+        search: "chapitre 3",
+      });
+
+      expect(prisma.resource.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            title: { contains: "chapitre 3", mode: "insensitive" },
+          }),
+        }),
+      );
+      expect(prisma.resource.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            title: { contains: "chapitre 3", mode: "insensitive" },
+          }),
+        }),
+      );
+    });
+
+    it("flags isFavorite from the caller's favorites, independently of other resources", async () => {
+      prisma.resource.findMany.mockResolvedValue([
+        makeResourceRow({ id: "resource-fav" }),
+        makeResourceRow({ id: "resource-not-fav" }),
+      ]);
+      prisma.resource.count.mockResolvedValue(2);
+      prisma.resourceFavorite.findMany.mockResolvedValue([
+        { resourceId: "resource-fav" },
+      ]);
+
+      const result = await service.listResources(makeTeacher(), {
+        kind: "ASSESSMENT",
+      });
+
+      expect(
+        result.items.find((item) => item.id === "resource-fav")?.isFavorite,
+      ).toBe(true);
+      expect(
+        result.items.find((item) => item.id === "resource-not-fav")?.isFavorite,
+      ).toBe(false);
+    });
+  });
+
   describe("updateResource", () => {
     it("throws NotFoundException if the resource does not exist", async () => {
       prisma.resource.findUnique.mockResolvedValue(null);

@@ -20,6 +20,7 @@ const prisma = {
     findMany: jest.fn(),
     findFirst: jest.fn(),
     create: jest.fn(),
+    update: jest.fn(),
     delete: jest.fn(),
   },
   curriculumSubject: {
@@ -27,6 +28,16 @@ const prisma = {
     findMany: jest.fn(),
     upsert: jest.fn(),
     delete: jest.fn(),
+  },
+  nationalCycle: {
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+  school: {
+    findUnique: jest.fn(),
   },
 };
 
@@ -66,24 +77,31 @@ describe("ManagementService — catalogue national : AcademicLevel", () => {
     });
 
     expect(prisma.academicLevel.create).toHaveBeenCalledWith({
-      data: { schoolId: null, code: "6EME", label: "6ème" },
+      data: {
+        schoolId: null,
+        code: "6EME",
+        label: "6ème",
+        cycleId: undefined,
+        languageSystem: undefined,
+      },
+      include: { cycle: true },
     });
   });
 
-  it("crée un niveau national avec cycle et languageSystem renseignés", async () => {
+  it("crée un niveau national avec cycleId et languageSystem renseignés", async () => {
     prisma.academicLevel.create.mockResolvedValue({
       id: "level-en-1",
       schoolId: null,
       code: "FORM1",
       label: "Form 1",
-      cycle: "SECONDARY",
+      cycleId: "cycle-secondary",
       languageSystem: "ANGLOPHONE",
     });
 
     await service.createNationalAcademicLevel({
       code: "FORM1",
       label: "Form 1",
-      cycle: "SECONDARY",
+      cycleId: "cycle-secondary",
       languageSystem: "ANGLOPHONE",
     });
 
@@ -92,37 +110,38 @@ describe("ManagementService — catalogue national : AcademicLevel", () => {
         schoolId: null,
         code: "FORM1",
         label: "Form 1",
-        cycle: "SECONDARY",
+        cycleId: "cycle-secondary",
         languageSystem: "ANGLOPHONE",
       },
+      include: { cycle: true },
     });
   });
 
-  it("rejette un cycle ou un languageSystem invalide a la creation d'un niveau national", async () => {
+  it("rejette un languageSystem invalide a la creation d'un niveau national", async () => {
     await expect(
       service.createNationalAcademicLevel({
         code: "FORM1",
         label: "Form 1",
         // @ts-expect-error - valeur d'enum invalide volontaire pour le test
-        cycle: "COLLEGE",
+        languageSystem: "COLLEGE",
       }),
     ).rejects.toThrow(BadRequestException);
     expect(prisma.academicLevel.create).not.toHaveBeenCalled();
   });
 
-  it("met a jour cycle et languageSystem d'un niveau national existant", async () => {
+  it("met a jour cycleId et languageSystem d'un niveau national existant", async () => {
     prisma.academicLevel.findFirst.mockResolvedValue({ id: "level-1" });
     prisma.academicLevel.update.mockResolvedValue({
       id: "level-1",
       schoolId: null,
       code: "6EME",
       label: "6ème",
-      cycle: "SECONDARY",
+      cycleId: "cycle-secondary",
       languageSystem: "FRANCOPHONE",
     });
 
     await service.updateNationalAcademicLevel("level-1", {
-      cycle: "SECONDARY",
+      cycleId: "cycle-secondary",
       languageSystem: "FRANCOPHONE",
     });
 
@@ -131,9 +150,10 @@ describe("ManagementService — catalogue national : AcademicLevel", () => {
       data: {
         code: undefined,
         label: undefined,
-        cycle: "SECONDARY",
+        cycleId: "cycle-secondary",
         languageSystem: "FRANCOPHONE",
       },
+      include: { cycle: true },
     });
   });
 
@@ -278,6 +298,60 @@ describe("ManagementService — catalogue national : Curriculum", () => {
     expect(prisma.curriculum.delete).not.toHaveBeenCalled();
   });
 
+  it("met à jour le niveau académique d'un curriculum national et régénère son nom", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-1" });
+    prisma.academicLevel.findFirst.mockResolvedValue({
+      id: "level-2",
+      code: "5EME",
+    });
+    prisma.curriculum.update.mockResolvedValue({
+      id: "curriculum-1",
+      schoolId: null,
+      name: "5EME - TRONC_COMMUN",
+      academicLevelId: "level-2",
+    });
+
+    const result = await service.updateNationalCurriculum("curriculum-1", {
+      academicLevelId: "level-2",
+    });
+
+    expect(prisma.curriculum.update).toHaveBeenCalledWith({
+      where: { id: "curriculum-1" },
+      data: {
+        academicLevelId: "level-2",
+        name: "5EME - TRONC_COMMUN",
+      },
+    });
+    expect(result.name).toBe("5EME - TRONC_COMMUN");
+  });
+
+  it("rejette la mise à jour d'un curriculum national sans aucun champ fourni", async () => {
+    await expect(
+      service.updateNationalCurriculum("curriculum-1", {}),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it("rejette la mise à jour d'un curriculum qui n'est pas national", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateNationalCurriculum("curriculum-local", {
+        academicLevelId: "level-2",
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it("rejette la mise à jour d'un curriculum national vers un niveau non national", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-1" });
+    prisma.academicLevel.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateNationalCurriculum("curriculum-1", {
+        academicLevelId: "level-local",
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it("affecte une matière nationale à un curriculum national", async () => {
     prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-1" });
     prisma.subject.findFirst.mockResolvedValue({ id: "subject-1" });
@@ -313,5 +387,138 @@ describe("ManagementService — catalogue national : Curriculum", () => {
       }),
     ).rejects.toThrow(BadRequestException);
     expect(prisma.curriculumSubject.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("ManagementService — catalogue national : NationalCycle", () => {
+  it("liste les cycles nationaux avec le compte de niveaux rattachés", async () => {
+    prisma.nationalCycle.findMany.mockResolvedValue([
+      { id: "cycle-primary", code: "PRIMARY", label: "Primaire" },
+    ]);
+
+    const result = await service.listNationalCycles();
+
+    expect(prisma.nationalCycle.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: { _count: { select: { academicLevels: true } } },
+      }),
+    );
+    expect(result[0].code).toBe("PRIMARY");
+  });
+
+  it("crée un cycle national", async () => {
+    prisma.nationalCycle.create.mockResolvedValue({
+      id: "cycle-1",
+      code: "PRESCHOOL",
+      label: "Préscolaire",
+    });
+
+    await service.createNationalCycle({
+      code: "PRESCHOOL",
+      label: "Préscolaire",
+    });
+
+    expect(prisma.nationalCycle.create).toHaveBeenCalledWith({
+      data: { code: "PRESCHOOL", label: "Préscolaire" },
+    });
+  });
+
+  it("rejette la création d'un cycle sans code", async () => {
+    await expect(
+      service.createNationalCycle({ code: "", label: "Préscolaire" }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.nationalCycle.create).not.toHaveBeenCalled();
+  });
+
+  it("met à jour le libellé d'un cycle national existant", async () => {
+    prisma.nationalCycle.findUnique.mockResolvedValue({ id: "cycle-1" });
+    prisma.nationalCycle.update.mockResolvedValue({
+      id: "cycle-1",
+      code: "PRIMARY",
+      label: "Primaire renommé",
+    });
+
+    await service.updateNationalCycle("cycle-1", {
+      label: "Primaire renommé",
+    });
+
+    expect(prisma.nationalCycle.update).toHaveBeenCalledWith({
+      where: { id: "cycle-1" },
+      data: { code: undefined, label: "Primaire renommé" },
+    });
+  });
+
+  it("rejette la mise à jour d'un cycle national sans aucun champ fourni", async () => {
+    await expect(service.updateNationalCycle("cycle-1", {})).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(prisma.nationalCycle.update).not.toHaveBeenCalled();
+  });
+
+  it("rejette la mise à jour d'un cycle national inexistant", async () => {
+    prisma.nationalCycle.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.updateNationalCycle("cycle-missing", { label: "X" }),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.nationalCycle.update).not.toHaveBeenCalled();
+  });
+
+  it("supprime un cycle national existant", async () => {
+    prisma.nationalCycle.findUnique.mockResolvedValue({ id: "cycle-1" });
+    prisma.nationalCycle.delete.mockResolvedValue({ id: "cycle-1" });
+
+    const result = await service.deleteNationalCycle("cycle-1");
+
+    expect(prisma.nationalCycle.delete).toHaveBeenCalledWith({
+      where: { id: "cycle-1" },
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("rejette la suppression d'un cycle national inexistant", async () => {
+    prisma.nationalCycle.findUnique.mockResolvedValue(null);
+
+    await expect(service.deleteNationalCycle("cycle-missing")).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(prisma.nationalCycle.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe("ManagementService — filtrage du catalogue national par cycle de l'école", () => {
+  it("filtre les niveaux nationaux par cycle via la relation NationalCycle", async () => {
+    prisma.school.findUnique.mockResolvedValue({
+      cycle: "PRIMARY",
+      languageSystem: null,
+    });
+    prisma.curriculum.findMany.mockResolvedValue([]);
+
+    await service.listCurriculums("school-1");
+
+    expect(prisma.curriculum.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { schoolId: "school-1" },
+            {
+              schoolId: null,
+              academicLevel: {
+                is: {
+                  AND: [
+                    {
+                      OR: [
+                        { cycleId: null },
+                        { cycle: { is: { code: "PRIMARY" } } },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      }),
+    );
   });
 });

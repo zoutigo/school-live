@@ -34,8 +34,12 @@ import { GetRoomCalendarQueryDto } from "./dto/get-room-calendar-query.dto.js";
 import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
 import { CreateNationalCurriculumDto } from "./dto/create-national-curriculum.dto.js";
+import { UpdateNationalCurriculumDto } from "./dto/update-national-curriculum.dto.js";
 import { CreateNationalSubjectDto } from "./dto/create-national-subject.dto.js";
 import { UpdateNationalSubjectDto } from "./dto/update-national-subject.dto.js";
+import { CreateNationalCycleDto } from "./dto/create-national-cycle.dto.js";
+import { UpdateNationalCycleDto } from "./dto/update-national-cycle.dto.js";
+import { AddSchoolAdminDto } from "./dto/add-school-admin.dto.js";
 import { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
 import { CreateSubjectDto } from "./dto/create-subject.dto.js";
 import { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
@@ -54,6 +58,7 @@ import { CreateTeacherDto } from "./dto/create-teacher.dto.js";
 import { CreateTrackDto } from "./dto/create-track.dto.js";
 import { CreateUserDto } from "./dto/create-user.dto.js";
 import { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
+import { ListSchoolsQueryDto } from "./dto/list-schools-query.dto.js";
 import { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-query.dto.js";
 import { ListStudentLifeEventsQueryDto } from "./dto/list-student-life-events-query.dto.js";
 import { ListTeacherAssignmentsQueryDto } from "./dto/list-teacher-assignments-query.dto.js";
@@ -85,8 +90,22 @@ export class ManagementController {
   @Get("system/schools")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("SUPER_ADMIN", "ADMIN")
-  listSchools() {
-    return this.managementService.listSchools();
+  listSchools(@Query() query: ListSchoolsQueryDto) {
+    return this.managementService.listSchools(query);
+  }
+
+  @Get("system/schools/options")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  schoolOptions() {
+    return this.managementService.listSchoolOptions();
+  }
+
+  @Get("system/schools/overview")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  schoolsOverview() {
+    return this.managementService.getSchoolsOverview();
   }
 
   @Get("system/schools/slug-preview")
@@ -193,6 +212,26 @@ export class ManagementController {
     return this.managementService.deleteSchool(schoolId);
   }
 
+  @Post("system/schools/:schoolId/admins")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  addSchoolAdmin(
+    @Param("schoolId") schoolId: string,
+    @Body() payload: AddSchoolAdminDto,
+  ) {
+    return this.managementService.addSchoolAdmin(schoolId, payload);
+  }
+
+  @Delete("system/schools/:schoolId/admins/:adminUserId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  removeSchoolAdmin(
+    @Param("schoolId") schoolId: string,
+    @Param("adminUserId") adminUserId: string,
+  ) {
+    return this.managementService.removeSchoolAdmin(schoolId, adminUserId);
+  }
+
   @Post("system/schools/:schoolId/admins/:adminUserId/resend-invite")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("SUPER_ADMIN", "ADMIN")
@@ -207,6 +246,37 @@ export class ManagementController {
   }
 
   // --- Catalogue national (plateforme) ---
+
+  @Get("system/cycles")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  listNationalCycles() {
+    return this.managementService.listNationalCycles();
+  }
+
+  @Post("system/cycles")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  createNationalCycle(@Body() payload: CreateNationalCycleDto) {
+    return this.managementService.createNationalCycle(payload);
+  }
+
+  @Patch("system/cycles/:cycleId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  updateNationalCycle(
+    @Param("cycleId") cycleId: string,
+    @Body() payload: UpdateNationalCycleDto,
+  ) {
+    return this.managementService.updateNationalCycle(cycleId, payload);
+  }
+
+  @Delete("system/cycles/:cycleId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  deleteNationalCycle(@Param("cycleId") cycleId: string) {
+    return this.managementService.deleteNationalCycle(cycleId);
+  }
 
   @Get("system/academic-levels")
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -287,6 +357,19 @@ export class ManagementController {
   @Roles("SUPER_ADMIN", "ADMIN")
   createNationalCurriculum(@Body() payload: CreateNationalCurriculumDto) {
     return this.managementService.createNationalCurriculum(payload);
+  }
+
+  @Patch("system/curriculums/:curriculumId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  updateNationalCurriculum(
+    @Param("curriculumId") curriculumId: string,
+    @Body() payload: UpdateNationalCurriculumDto,
+  ) {
+    return this.managementService.updateNationalCurriculum(
+      curriculumId,
+      payload,
+    );
   }
 
   @Delete("system/curriculums/:curriculumId")

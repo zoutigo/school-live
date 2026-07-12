@@ -421,7 +421,7 @@ export default function UsersPage() {
   }
 
   async function loadUsersAndSchools() {
-    const schoolsResponse = await fetch(`${API_URL}/system/schools`, {
+    const schoolsResponse = await fetch(`${API_URL}/system/schools/options`, {
       credentials: "include",
     });
 

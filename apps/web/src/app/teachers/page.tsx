@@ -351,7 +351,7 @@ export default function TeachersPage() {
         return;
       }
 
-      const schoolsResponse = await fetch(`${API_URL}/system/schools`, {
+      const schoolsResponse = await fetch(`${API_URL}/system/schools/options`, {
         credentials: "include",
       });
       if (!schoolsResponse.ok) {

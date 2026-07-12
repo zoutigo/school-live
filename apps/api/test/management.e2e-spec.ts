@@ -206,6 +206,25 @@ describe("Management API e2e", () => {
 
     expect(setActive.response.status).toBe(200);
 
+    const schoolDetails = await apiJson(
+      `/api/system/schools/${createdSchoolId}`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+
+    expect(schoolDetails.response.status).toBe(200);
+    expect(schoolDetails.body?.academicYear).toMatchObject({
+      id: createdSchoolYearId,
+      label: "2030-2031",
+    });
+    expect(schoolDetails.body?.roleBreakdown).toMatchObject({
+      staff: 1,
+      teachers: 0,
+      parents: 0,
+      students: 0,
+    });
+
     const createClassroom = await apiJson(
       `/api/schools/${createdSchoolSlug}/admin/classrooms`,
       {
@@ -325,6 +344,21 @@ describe("Management API e2e", () => {
 
     expect(switchActiveYear.response.status).toBe(200);
 
+    const schoolDetailsAfterEnrollment = await apiJson(
+      `/api/system/schools/${createdSchoolId}`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+
+    expect(schoolDetailsAfterEnrollment.response.status).toBe(200);
+    expect(schoolDetailsAfterEnrollment.body?.academicYear).toMatchObject({
+      id: rolledSchoolYearId,
+    });
+    expect(schoolDetailsAfterEnrollment.body?.roleBreakdown).toMatchObject({
+      students: 1,
+    });
+
     const studentEnrollments = await apiJson(
       `/api/schools/${createdSchoolSlug}/admin/students/${createdStudentId}/enrollments`,
       {
@@ -419,6 +453,26 @@ describe("Management API e2e", () => {
     );
     const secondSchoolId = String((secondSchool.body?.school as JsonValue)?.id);
     createdSchoolIds.push(secondSchoolId);
+
+    const listSchools = await apiJson(
+      `/api/system/schools?search=${encodeURIComponent(secondSchoolSlug)}`,
+      { headers: { authorization: `Bearer ${bearerToken}` } },
+    );
+
+    expect(listSchools.response.status).toBe(200);
+    const listSchoolsBody = listSchools.body as {
+      items?: JsonValue[];
+    } | null;
+    const listedSchools = Array.isArray(listSchoolsBody?.items)
+      ? listSchoolsBody!.items!
+      : [];
+    const listedSecondSchool = listedSchools.find(
+      (entry) => String(entry.id) === secondSchoolId,
+    );
+    expect(listedSecondSchool).toBeDefined();
+    expect(listedSecondSchool?.academicYear).toMatchObject({
+      label: expect.any(String),
+    });
 
     const secondGroup = await apiJson(
       `/api/schools/${secondSchoolSlug}/admin/class-groups`,

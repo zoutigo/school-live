@@ -25,6 +25,8 @@
     "seed:tests:college-vogt": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-test-campaigns-college-vogt.mjs'",
     "seed:resources:catalog": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-resources-catalog.mjs'",
     "seed:national:catalog": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-national-catalog.mjs'",
+    "seed:mfoundi:schools": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-mfoundi-schools.mjs'",
+    "seed:mfoundi:schools:production": "sh -c 'if [ -f ../../docker/.env ]; then set -a; . ../../docker/.env; set +a; elif [ -f ../../.env ]; then set -a; . ../../.env; set +a; fi; node prisma/scripts/seed-mfoundi-schools-production.mjs'",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "npm run prisma:generate && tsc -p tsconfig.json --noEmit",
     "test": "jest --config ./jest.config.cjs",

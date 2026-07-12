@@ -1,0 +1,122 @@
+export type LocationOption = {
+  value: string;
+  label: string;
+};
+
+export const CAMEROON_COUNTRY: LocationOption = {
+  value: "Cameroun",
+  label: "Cameroun",
+};
+
+export const CAMEROON_REGIONS: LocationOption[] = [
+  { value: "Adamaoua", label: "Adamaoua" },
+  { value: "Centre", label: "Centre" },
+  { value: "Est", label: "Est" },
+  { value: "Extrême-Nord", label: "Extrême-Nord" },
+  { value: "Littoral", label: "Littoral" },
+  { value: "Nord", label: "Nord" },
+  { value: "Nord-Ouest", label: "Nord-Ouest" },
+  { value: "Ouest", label: "Ouest" },
+  { value: "Sud", label: "Sud" },
+  { value: "Sud-Ouest", label: "Sud-Ouest" },
+];
+
+export const CAMEROON_CITIES_BY_REGION: Record<string, LocationOption[]> = {
+  Adamaoua: [
+    "Ngaoundéré",
+    "Meiganga",
+    "Tibati",
+    "Tignère",
+    "Banyo",
+    "Ngaoundal",
+    "Djohong",
+  ].map((name) => ({ value: name, label: name })),
+  Centre: [
+    "Yaoundé",
+    "Mbalmayo",
+    "Obala",
+    "Nanga-Eboko",
+    "Mfou",
+    "Akonolinga",
+    "Bafia",
+    "Monatélé",
+    "Ntui",
+    "Eséka",
+    "Soa",
+  ].map((name) => ({ value: name, label: name })),
+  Est: [
+    "Bertoua",
+    "Abong-Mbang",
+    "Batouri",
+    "Yokadouma",
+    "Bélabo",
+    "Doumé",
+    "Garoua-Boulaï",
+  ].map((name) => ({ value: name, label: name })),
+  "Extrême-Nord": [
+    "Maroua",
+    "Kousséri",
+    "Mokolo",
+    "Yagoua",
+    "Kaélé",
+    "Mora",
+    "Guider",
+    "Waza",
+  ].map((name) => ({ value: name, label: name })),
+  Littoral: [
+    "Douala",
+    "Edéa",
+    "Nkongsamba",
+    "Loum",
+    "Manjo",
+    "Yabassi",
+    "Dibombari",
+    "Mbanga",
+  ].map((name) => ({ value: name, label: name })),
+  Nord: [
+    "Garoua",
+    "Guider",
+    "Poli",
+    "Tcholliré",
+    "Figuil",
+    "Pitoa",
+    "Lagdo",
+  ].map((name) => ({ value: name, label: name })),
+  "Nord-Ouest": [
+    "Bamenda",
+    "Kumbo",
+    "Wum",
+    "Ndop",
+    "Nkambe",
+    "Fundong",
+    "Mbengwi",
+  ].map((name) => ({ value: name, label: name })),
+  Ouest: [
+    "Bafoussam",
+    "Dschang",
+    "Foumban",
+    "Mbouda",
+    "Bafang",
+    "Bandjoun",
+    "Bangangté",
+    "Foumbot",
+  ].map((name) => ({ value: name, label: name })),
+  Sud: [
+    "Ebolowa",
+    "Kribi",
+    "Sangmélima",
+    "Ambam",
+    "Djoum",
+    "Mvangan",
+    "Akom II",
+  ].map((name) => ({ value: name, label: name })),
+  "Sud-Ouest": [
+    "Buea",
+    "Limbe",
+    "Kumba",
+    "Tiko",
+    "Mamfe",
+    "Ekondo-Titi",
+    "Muyuka",
+  ].map((name) => ({ value: name, label: name })),
+};
