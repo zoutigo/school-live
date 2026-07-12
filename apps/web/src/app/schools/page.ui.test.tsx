@@ -34,6 +34,13 @@ function jsonResponse(payload: unknown, status = 200) {
   );
 }
 
+function schoolsListPage(items: unknown[]) {
+  return {
+    items,
+    meta: { page: 1, limit: 100, total: items.length, totalPages: 1 },
+  };
+}
+
 describe("Schools page create form", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -49,8 +56,8 @@ describe("Schools page create form", () => {
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
       }
-      if (url.endsWith("/api/system/schools")) {
-        return jsonResponse([]);
+      if (url.includes("/api/system/schools?page=")) {
+        return jsonResponse(schoolsListPage([]));
       }
       if (url.includes("/api/system/schools/slug-preview?")) {
         return jsonResponse({
@@ -118,8 +125,8 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
-        if (url.endsWith("/api/system/schools") && method === "GET") {
-          return jsonResponse([]);
+        if (url.includes("/api/system/schools?page=") && method === "GET") {
+          return jsonResponse(schoolsListPage([]));
         }
         if (url.includes("/api/system/schools/slug-preview?")) {
           return jsonResponse({
@@ -196,8 +203,8 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
-        if (url.endsWith("/api/system/schools") && method === "GET") {
-          return jsonResponse([]);
+        if (url.includes("/api/system/schools?page=") && method === "GET") {
+          return jsonResponse(schoolsListPage([]));
         }
         if (url.includes("/api/system/schools/slug-preview?")) {
           return jsonResponse({
@@ -273,23 +280,25 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
-        if (url.endsWith("/api/system/schools") && method === "GET") {
-          return jsonResponse([
-            {
-              id: "school-1",
-              slug: "college-vogt",
-              name: "College Vogt",
-              country: "Cameroun",
-              region: "Centre",
-              city: "Yaounde",
-              logoUrl: null,
-              createdAt: "2026-01-01T00:00:00.000Z",
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              usersCount: 10,
-              classesCount: 4,
-              studentsCount: 120,
-            },
-          ]);
+        if (url.includes("/api/system/schools?page=") && method === "GET") {
+          return jsonResponse(
+            schoolsListPage([
+              {
+                id: "school-1",
+                slug: "college-vogt",
+                name: "College Vogt",
+                country: "Cameroun",
+                region: "Centre",
+                city: "Yaounde",
+                logoUrl: null,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                usersCount: 10,
+                classesCount: 4,
+                studentsCount: 120,
+              },
+            ]),
+          );
         }
         if (
           url.endsWith("/api/system/schools/school-1") &&
@@ -376,25 +385,27 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
-        if (url.endsWith("/api/system/schools") && method === "GET") {
-          return jsonResponse([
-            {
-              id: "school-1",
-              slug: "college-vogt",
-              name: "College Vogt",
-              country: "Cameroun",
-              region: "Centre",
-              city: "Yaounde",
-              cycle: "SECONDARY",
-              languageSystem: "FRANCOPHONE",
-              logoUrl: null,
-              createdAt: "2026-01-01T00:00:00.000Z",
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              usersCount: 10,
-              classesCount: 4,
-              studentsCount: 120,
-            },
-          ]);
+        if (url.includes("/api/system/schools?page=") && method === "GET") {
+          return jsonResponse(
+            schoolsListPage([
+              {
+                id: "school-1",
+                slug: "college-vogt",
+                name: "College Vogt",
+                country: "Cameroun",
+                region: "Centre",
+                city: "Yaounde",
+                cycle: "SECONDARY",
+                languageSystem: "FRANCOPHONE",
+                logoUrl: null,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                usersCount: 10,
+                classesCount: 4,
+                studentsCount: 120,
+              },
+            ]),
+          );
         }
         if (
           url.endsWith("/api/system/schools/school-1") &&
@@ -467,41 +478,43 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
-        if (url.endsWith("/api/system/schools") && method === "GET") {
-          return jsonResponse([
-            {
-              id: "school-1",
-              slug: "college-vogt",
-              name: "College Vogt",
-              country: "Cameroun",
-              region: "Centre",
-              city: "Yaounde",
-              cycle: "SECONDARY",
-              languageSystem: "FRANCOPHONE",
-              logoUrl: null,
-              createdAt: "2026-01-01T00:00:00.000Z",
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              usersCount: 10,
-              classesCount: 4,
-              studentsCount: 120,
-            },
-            {
-              id: "school-2",
-              slug: "greenwich-college",
-              name: "Greenwich College",
-              country: "Cameroun",
-              region: "Nord-Ouest",
-              city: "Bamenda",
-              cycle: "SECONDARY",
-              languageSystem: "ANGLOPHONE",
-              logoUrl: null,
-              createdAt: "2026-01-01T00:00:00.000Z",
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              usersCount: 5,
-              classesCount: 2,
-              studentsCount: 60,
-            },
-          ]);
+        if (url.includes("/api/system/schools?page=") && method === "GET") {
+          return jsonResponse(
+            schoolsListPage([
+              {
+                id: "school-1",
+                slug: "college-vogt",
+                name: "College Vogt",
+                country: "Cameroun",
+                region: "Centre",
+                city: "Yaounde",
+                cycle: "SECONDARY",
+                languageSystem: "FRANCOPHONE",
+                logoUrl: null,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                usersCount: 10,
+                classesCount: 4,
+                studentsCount: 120,
+              },
+              {
+                id: "school-2",
+                slug: "greenwich-college",
+                name: "Greenwich College",
+                country: "Cameroun",
+                region: "Nord-Ouest",
+                city: "Bamenda",
+                cycle: "SECONDARY",
+                languageSystem: "ANGLOPHONE",
+                logoUrl: null,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                usersCount: 5,
+                classesCount: 2,
+                studentsCount: 60,
+              },
+            ]),
+          );
         }
         if (
           url.endsWith("/api/system/schools/school-1/admins") &&
@@ -581,43 +594,45 @@ describe("Schools page create form", () => {
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
       }
-      if (url.endsWith("/api/system/schools")) {
-        return jsonResponse([
-          {
-            id: "school-1",
-            slug: "college-vogt",
-            name: "College Vogt",
-            country: "Cameroun",
-            region: "Centre",
-            city: "Yaounde",
-            cycle: "SECONDARY",
-            languageSystem: "FRANCOPHONE",
-            logoUrl: null,
-            createdAt: "2026-01-01T00:00:00.000Z",
-            updatedAt: "2026-01-01T00:00:00.000Z",
-            academicYear: { id: "year-1", label: "2025-2026" },
-            usersCount: 10,
-            classesCount: 4,
-            studentsCount: 120,
-          },
-          {
-            id: "school-2",
-            slug: "ecole-primaire",
-            name: "Ecole primaire du lac",
-            country: "Cameroun",
-            region: "Centre",
-            city: "Yaounde",
-            cycle: "PRIMARY",
-            languageSystem: null,
-            logoUrl: null,
-            createdAt: "2026-01-01T00:00:00.000Z",
-            updatedAt: "2026-01-01T00:00:00.000Z",
-            academicYear: null,
-            usersCount: 3,
-            classesCount: 1,
-            studentsCount: 30,
-          },
-        ]);
+      if (url.includes("/api/system/schools?page=")) {
+        return jsonResponse(
+          schoolsListPage([
+            {
+              id: "school-1",
+              slug: "college-vogt",
+              name: "College Vogt",
+              country: "Cameroun",
+              region: "Centre",
+              city: "Yaounde",
+              cycle: "SECONDARY",
+              languageSystem: "FRANCOPHONE",
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              academicYear: { id: "year-1", label: "2025-2026" },
+              usersCount: 10,
+              classesCount: 4,
+              studentsCount: 120,
+            },
+            {
+              id: "school-2",
+              slug: "ecole-primaire",
+              name: "Ecole primaire du lac",
+              country: "Cameroun",
+              region: "Centre",
+              city: "Yaounde",
+              cycle: "PRIMARY",
+              languageSystem: null,
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              academicYear: null,
+              usersCount: 3,
+              classesCount: 1,
+              studentsCount: 30,
+            },
+          ]),
+        );
       }
 
       return jsonResponse({ message: `Unhandled ${url}` }, 404);
@@ -651,26 +666,28 @@ describe("Schools page create form", () => {
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
       }
-      if (url.endsWith("/api/system/schools")) {
-        return jsonResponse([
-          {
-            id: "school-1",
-            slug: "college-vogt",
-            name: "College Vogt",
-            country: "Cameroun",
-            region: "Centre",
-            city: "Yaounde",
-            cycle: "SECONDARY",
-            languageSystem: "FRANCOPHONE",
-            logoUrl: null,
-            createdAt: "2026-01-01T00:00:00.000Z",
-            updatedAt: "2026-01-01T00:00:00.000Z",
-            academicYear: { id: "year-1", label: "2025-2026" },
-            usersCount: 10,
-            classesCount: 4,
-            studentsCount: 120,
-          },
-        ]);
+      if (url.includes("/api/system/schools?page=")) {
+        return jsonResponse(
+          schoolsListPage([
+            {
+              id: "school-1",
+              slug: "college-vogt",
+              name: "College Vogt",
+              country: "Cameroun",
+              region: "Centre",
+              city: "Yaounde",
+              cycle: "SECONDARY",
+              languageSystem: "FRANCOPHONE",
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              academicYear: { id: "year-1", label: "2025-2026" },
+              usersCount: 10,
+              classesCount: 4,
+              studentsCount: 120,
+            },
+          ]),
+        );
       }
       if (url.endsWith("/api/system/schools/school-1")) {
         return jsonResponse({

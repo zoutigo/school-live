@@ -396,16 +396,31 @@ export default function SchoolsPage() {
   }
 
   async function loadSchools() {
-    const schoolsResponse = await fetch(`${API_URL}/system/schools`, {
-      credentials: "include",
-    });
+    const allSchools: SchoolRow[] = [];
+    let page = 1;
+    let totalPages = 1;
 
-    if (!schoolsResponse.ok) {
-      router.replace("/");
-      return;
-    }
+    do {
+      const schoolsResponse = await fetch(
+        `${API_URL}/system/schools?page=${page}&limit=100`,
+        { credentials: "include" },
+      );
 
-    setSchools((await schoolsResponse.json()) as SchoolRow[]);
+      if (!schoolsResponse.ok) {
+        router.replace("/");
+        return;
+      }
+
+      const body = (await schoolsResponse.json()) as {
+        items: SchoolRow[];
+        meta: { totalPages: number };
+      };
+      allSchools.push(...body.items);
+      totalPages = body.meta.totalPages;
+      page += 1;
+    } while (page <= totalPages);
+
+    setSchools(allSchools);
   }
 
   async function openSchoolDetails(schoolId: string) {

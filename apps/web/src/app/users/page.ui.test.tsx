@@ -47,7 +47,7 @@ describe("Users page create form", () => {
         });
       }
 
-      if (url.endsWith("/api/system/schools")) {
+      if (url.endsWith("/api/system/schools/options")) {
         return jsonResponse([
           { id: "school-1", slug: "college-vogt", name: "College Vogt" },
         ]);
@@ -135,7 +135,7 @@ describe("Users page create form", () => {
         });
       }
 
-      if (url.endsWith("/api/system/schools")) {
+      if (url.endsWith("/api/system/schools/options")) {
         return jsonResponse([
           { id: "school-1", slug: "college-vogt", name: "College Vogt" },
         ]);
@@ -204,7 +204,7 @@ describe("Users page create form", () => {
           });
         }
 
-        if (url.endsWith("/api/system/schools")) {
+        if (url.endsWith("/api/system/schools/options")) {
           return jsonResponse([
             { id: "school-1", slug: "college-vogt", name: "College Vogt" },
           ]);
@@ -298,7 +298,7 @@ describe("Users page create form", () => {
           });
         }
 
-        if (url.endsWith("/api/system/schools")) {
+        if (url.endsWith("/api/system/schools/options")) {
           return jsonResponse([
             { id: "school-1", slug: "college-vogt", name: "College Vogt" },
           ]);

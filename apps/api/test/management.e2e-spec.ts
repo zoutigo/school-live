@@ -454,13 +454,17 @@ describe("Management API e2e", () => {
     const secondSchoolId = String((secondSchool.body?.school as JsonValue)?.id);
     createdSchoolIds.push(secondSchoolId);
 
-    const listSchools = await apiJson("/api/system/schools", {
-      headers: { authorization: `Bearer ${bearerToken}` },
-    });
+    const listSchools = await apiJson(
+      `/api/system/schools?search=${encodeURIComponent(secondSchoolSlug)}`,
+      { headers: { authorization: `Bearer ${bearerToken}` } },
+    );
 
     expect(listSchools.response.status).toBe(200);
-    const listedSchools = Array.isArray(listSchools.body)
-      ? (listSchools.body as JsonValue[])
+    const listSchoolsBody = listSchools.body as {
+      items?: JsonValue[];
+    } | null;
+    const listedSchools = Array.isArray(listSchoolsBody?.items)
+      ? listSchoolsBody!.items!
       : [];
     const listedSecondSchool = listedSchools.find(
       (entry) => String(entry.id) === secondSchoolId,

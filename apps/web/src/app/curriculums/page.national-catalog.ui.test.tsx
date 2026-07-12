@@ -57,7 +57,7 @@ describe("Curriculums page — catalogue national", () => {
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
       }
-      if (url.endsWith("/api/system/schools")) {
+      if (url.endsWith("/api/system/schools/options")) {
         return jsonResponse([
           { id: "school-1", slug: "lycee-du-poisson-d-avril", name: "LPA" },
         ]);

@@ -58,6 +58,7 @@ import { CreateTeacherDto } from "./dto/create-teacher.dto.js";
 import { CreateTrackDto } from "./dto/create-track.dto.js";
 import { CreateUserDto } from "./dto/create-user.dto.js";
 import { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
+import { ListSchoolsQueryDto } from "./dto/list-schools-query.dto.js";
 import { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-query.dto.js";
 import { ListStudentLifeEventsQueryDto } from "./dto/list-student-life-events-query.dto.js";
 import { ListTeacherAssignmentsQueryDto } from "./dto/list-teacher-assignments-query.dto.js";
@@ -89,8 +90,22 @@ export class ManagementController {
   @Get("system/schools")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("SUPER_ADMIN", "ADMIN")
-  listSchools() {
-    return this.managementService.listSchools();
+  listSchools(@Query() query: ListSchoolsQueryDto) {
+    return this.managementService.listSchools(query);
+  }
+
+  @Get("system/schools/options")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  schoolOptions() {
+    return this.managementService.listSchoolOptions();
+  }
+
+  @Get("system/schools/overview")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  schoolsOverview() {
+    return this.managementService.getSchoolsOverview();
   }
 
   @Get("system/schools/slug-preview")

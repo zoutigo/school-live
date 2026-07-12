@@ -56,6 +56,7 @@ import type { CreateTrackDto } from "./dto/create-track.dto.js";
 import type { CreateUserDto } from "./dto/create-user.dto.js";
 import type { ListTeacherAssignmentsQueryDto } from "./dto/list-teacher-assignments-query.dto.js";
 import type { ListUsersQueryDto } from "./dto/list-users-query.dto.js";
+import type { ListSchoolsQueryDto } from "./dto/list-schools-query.dto.js";
 import type { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-query.dto.js";
 import type { ListStudentLifeEventsQueryDto } from "./dto/list-student-life-events-query.dto.js";
 import type { RolloverSchoolYearDto } from "./dto/rollover-school-year.dto.js";
@@ -889,54 +890,162 @@ export class ManagementService {
     return { success: true };
   }
 
-  async listSchools() {
-    const schools = await this.prisma.school.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        country: true,
-        region: true,
-        city: true,
-        cycle: true,
-        languageSystem: true,
-        logoUrl: true,
-        createdAt: true,
-        updatedAt: true,
-        activeSchoolYear: { select: { id: true, label: true } },
-        _count: {
-          select: {
-            memberships: true,
-            classes: true,
-            students: true,
+  async listSchools(query: ListSchoolsQueryDto = {}) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const andFilters: Array<Record<string, unknown>> = [];
+
+    if (query.search?.trim()) {
+      const search = query.search.trim();
+      andFilters.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { slug: { contains: search, mode: "insensitive" } },
+          { city: { contains: search, mode: "insensitive" } },
+          { region: { contains: search, mode: "insensitive" } },
+          { country: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
+
+    if (query.cycle) {
+      andFilters.push({ cycle: query.cycle });
+    }
+
+    if (query.languageSystem) {
+      andFilters.push({ languageSystem: query.languageSystem });
+    }
+
+    const where = andFilters.length > 0 ? { AND: andFilters } : {};
+
+    const [schools, total] = await this.prisma.$transaction([
+      this.prisma.school.findMany({
+        where,
+        orderBy: { name: "asc" },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          country: true,
+          region: true,
+          city: true,
+          cycle: true,
+          languageSystem: true,
+          logoUrl: true,
+          createdAt: true,
+          updatedAt: true,
+          activeSchoolYear: { select: { id: true, label: true } },
+          _count: {
+            select: {
+              memberships: true,
+              classes: true,
+              students: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.school.count({ where }),
+    ]);
 
-    return schools.map((school) => ({
-      id: school.id,
-      slug: school.slug,
-      name: school.name,
-      country: school.country,
-      region: school.region,
-      city: school.city,
-      cycle: school.cycle,
-      languageSystem: school.languageSystem,
-      logoUrl: school.logoUrl,
-      createdAt: school.createdAt,
-      updatedAt: school.updatedAt,
-      academicYear: school.activeSchoolYear
-        ? {
-            id: school.activeSchoolYear.id,
-            label: school.activeSchoolYear.label,
-          }
-        : null,
-      usersCount: school._count.memberships,
-      classesCount: school._count.classes,
-      studentsCount: school._count.students,
-    }));
+    return {
+      items: schools.map((school) => ({
+        id: school.id,
+        slug: school.slug,
+        name: school.name,
+        country: school.country,
+        region: school.region,
+        city: school.city,
+        cycle: school.cycle,
+        languageSystem: school.languageSystem,
+        logoUrl: school.logoUrl,
+        createdAt: school.createdAt,
+        updatedAt: school.updatedAt,
+        academicYear: school.activeSchoolYear
+          ? {
+              id: school.activeSchoolYear.id,
+              label: school.activeSchoolYear.label,
+            }
+          : null,
+        usersCount: school._count.memberships,
+        classesCount: school._count.classes,
+        studentsCount: school._count.students,
+      })),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  async listSchoolOptions() {
+    return this.prisma.school.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, slug: true, name: true },
+    });
+  }
+
+  async getSchoolsOverview() {
+    type CycleKey = "PRIMARY" | "SECONDARY" | "UNSET";
+
+    const [schools, studentGroups, classGroups] = await Promise.all([
+      this.prisma.school.findMany({ select: { id: true, cycle: true } }),
+      this.prisma.student.groupBy({
+        by: ["schoolId"],
+        _count: { _all: true },
+      }),
+      this.prisma.class.groupBy({
+        by: ["schoolId"],
+        _count: { _all: true },
+      }),
+    ]);
+
+    const cycleBySchoolId = new Map<string, CycleKey>(
+      schools.map((school) => [school.id, school.cycle ?? "UNSET"]),
+    );
+    const studentsBySchoolId = new Map(
+      studentGroups.map((group) => [group.schoolId, group._count._all]),
+    );
+    const classesBySchoolId = new Map(
+      classGroups.map((group) => [group.schoolId, group._count._all]),
+    );
+
+    const byCycle: Record<
+      CycleKey,
+      { schools: number; students: number; classes: number }
+    > = {
+      PRIMARY: { schools: 0, students: 0, classes: 0 },
+      SECONDARY: { schools: 0, students: 0, classes: 0 },
+      UNSET: { schools: 0, students: 0, classes: 0 },
+    };
+
+    let totalStudents = 0;
+    let totalClasses = 0;
+
+    for (const school of schools) {
+      const cycleKey = cycleBySchoolId.get(school.id) ?? "UNSET";
+      const students = studentsBySchoolId.get(school.id) ?? 0;
+      const classes = classesBySchoolId.get(school.id) ?? 0;
+      byCycle[cycleKey].schools += 1;
+      byCycle[cycleKey].students += students;
+      byCycle[cycleKey].classes += classes;
+      totalStudents += students;
+      totalClasses += classes;
+    }
+
+    return {
+      totals: {
+        schools: schools.length,
+        students: totalStudents,
+        classes: totalClasses,
+      },
+      byCycle,
+    };
   }
 
   async getSchoolDetails(schoolId: string) {
