@@ -68,7 +68,7 @@ describe("Schools page create form", () => {
 
     render(<SchoolsPage />);
     fireEvent.click(
-      await screen.findByRole("button", { name: "Creer une ecole" }),
+      await screen.findByRole("button", { name: "Nouvelle ecole" }),
     );
 
     const submitButton = screen.getByRole("button", { name: "Creer l ecole" });
@@ -143,7 +143,7 @@ describe("Schools page create form", () => {
 
     render(<SchoolsPage />);
     fireEvent.click(
-      await screen.findByRole("button", { name: "Creer une ecole" }),
+      await screen.findByRole("button", { name: "Nouvelle ecole" }),
     );
 
     fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
@@ -221,7 +221,7 @@ describe("Schools page create form", () => {
 
     render(<SchoolsPage />);
     fireEvent.click(
-      await screen.findByRole("button", { name: "Creer une ecole" }),
+      await screen.findByRole("button", { name: "Nouvelle ecole" }),
     );
 
     fireEvent.change(screen.getByLabelText("Nom de l ecole"), {
@@ -312,6 +312,9 @@ describe("Schools page create form", () => {
       });
 
     render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
 
     const saveButton = screen.getByRole("button", { name: "Enregistrer" });
@@ -414,6 +417,9 @@ describe("Schools page create form", () => {
       });
 
     render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Modifier" }));
 
     const cycleSelect = screen.getByLabelText("Cycle (optionnel)");
@@ -515,9 +521,13 @@ describe("Schools page create form", () => {
       });
 
     render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
 
     const vogtCard = await screen.findByTestId("school-card-school-1");
     expect(vogtCard).toHaveTextContent("College Vogt");
+    within(vogtCard).getByRole("button", { name: "Voir" });
     within(vogtCard).getByRole("button", { name: "Modifier" });
     within(vogtCard).getByRole("button", { name: "Supprimer" });
 
@@ -562,5 +572,156 @@ describe("Schools page create form", () => {
     });
 
     expect(await screen.findByText("School admin ajoute.")).toBeInTheDocument();
+  });
+
+  it("shows the overview tab by default with totals and a per-cycle breakdown", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+      }
+      if (url.endsWith("/api/system/schools")) {
+        return jsonResponse([
+          {
+            id: "school-1",
+            slug: "college-vogt",
+            name: "College Vogt",
+            country: "Cameroun",
+            region: "Centre",
+            city: "Yaounde",
+            cycle: "SECONDARY",
+            languageSystem: "FRANCOPHONE",
+            logoUrl: null,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            academicYear: { id: "year-1", label: "2025-2026" },
+            usersCount: 10,
+            classesCount: 4,
+            studentsCount: 120,
+          },
+          {
+            id: "school-2",
+            slug: "ecole-primaire",
+            name: "Ecole primaire du lac",
+            country: "Cameroun",
+            region: "Centre",
+            city: "Yaounde",
+            cycle: "PRIMARY",
+            languageSystem: null,
+            logoUrl: null,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            academicYear: null,
+            usersCount: 3,
+            classesCount: 1,
+            studentsCount: 30,
+          },
+        ]);
+      }
+
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<SchoolsPage />);
+
+    expect(await screen.findByRole("button", { name: "Synthese" })).toHaveClass(
+      "text-primary",
+    );
+    expect(await screen.findByText("2")).toBeInTheDocument();
+    expect(screen.getByText("150")).toBeInTheDocument();
+    expect(screen.getByText("5")).toBeInTheDocument();
+
+    const primaryRow = screen.getByTestId("schools-overview-cycle-PRIMARY");
+    expect(primaryRow).toHaveTextContent("1 ecoles");
+    const secondaryRow = screen.getByTestId("schools-overview-cycle-SECONDARY");
+    expect(secondaryRow).toHaveTextContent("1 ecoles");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
+    const card = await screen.findByTestId("school-card-school-1");
+    expect(card).toHaveTextContent("2025-2026");
+  });
+
+  it("opens the details tab from the card Voir button and shows the current-year role breakdown", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+      }
+      if (url.endsWith("/api/system/schools")) {
+        return jsonResponse([
+          {
+            id: "school-1",
+            slug: "college-vogt",
+            name: "College Vogt",
+            country: "Cameroun",
+            region: "Centre",
+            city: "Yaounde",
+            cycle: "SECONDARY",
+            languageSystem: "FRANCOPHONE",
+            logoUrl: null,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            academicYear: { id: "year-1", label: "2025-2026" },
+            usersCount: 10,
+            classesCount: 4,
+            studentsCount: 120,
+          },
+        ]);
+      }
+      if (url.endsWith("/api/system/schools/school-1")) {
+        return jsonResponse({
+          id: "school-1",
+          slug: "college-vogt",
+          name: "College Vogt",
+          country: "Cameroun",
+          region: "Centre",
+          city: "Yaounde",
+          cycle: "SECONDARY",
+          languageSystem: "FRANCOPHONE",
+          logoUrl: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          academicYear: { id: "year-1", label: "2025-2026" },
+          stats: {
+            usersCount: 10,
+            classesCount: 4,
+            studentsCount: 120,
+            teachersCount: 8,
+            gradesCount: 300,
+          },
+          roleBreakdown: { staff: 3, teachers: 8, parents: 90, students: 100 },
+          schoolAdmins: [],
+        });
+      }
+
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
+
+    fireEvent.click(
+      within(await screen.findByTestId("school-card-school-1")).getByRole(
+        "button",
+        { name: "Voir" },
+      ),
+    );
+
+    expect(await screen.findByText("Annee academique")).toBeInTheDocument();
+    expect(screen.getByText("2025-2026")).toBeInTheDocument();
+    expect(
+      screen.getByText("Utilisateurs (annee en cours)"),
+    ).toBeInTheDocument();
+    const roleBreakdown = screen.getByTestId("schools-details-role-breakdown");
+    expect(roleBreakdown).toHaveTextContent("Staff3");
+    expect(roleBreakdown).toHaveTextContent("Enseignants8");
+    expect(roleBreakdown).toHaveTextContent("Parents90");
+    expect(roleBreakdown).toHaveTextContent("Eleves100");
   });
 });
