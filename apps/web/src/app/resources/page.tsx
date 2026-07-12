@@ -6,9 +6,11 @@ import { RotateCcw, Search } from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
 import { FormSelect, FormTextInput } from "../../components/ui/form-controls";
+import { PaginationControls } from "../../components/ui/pagination-controls";
 import { useTranslation } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+const RESOURCES_PAGE_SIZE = 20;
 
 type ResourceKind = "ASSESSMENT" | "EXAM";
 
@@ -33,6 +35,8 @@ type ResourceDetail = ResourceRow & {
 type ListResponse = {
   items: ResourceRow[];
   total: number;
+  page: number;
+  limit: number;
 };
 
 type CatalogResponse = {
@@ -81,6 +85,7 @@ export default function ResourcesBrowsePage() {
   const [tab, setTab] = useState<ResourceKind>("ASSESSMENT");
   const [items, setItems] = useState<ResourceRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,48 +151,59 @@ export default function ResourcesBrowsePage() {
     }
   }
 
-  const loadList = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ kind: tab });
-      if (search.trim()) params.set("search", search.trim());
-      if (academicYearLabel) params.set("academicYearLabel", academicYearLabel);
-      if (schoolId) params.set("schoolId", schoolId);
-      if (academicLevelId) params.set("academicLevelId", academicLevelId);
-      if (tab === "ASSESSMENT" && sequence) params.set("sequence", sequence);
-      if (examType) params.set("examType", examType);
+  const loadList = useCallback(
+    async (targetPage: number) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          kind: tab,
+          page: String(targetPage),
+          limit: String(RESOURCES_PAGE_SIZE),
+        });
+        if (search.trim()) params.set("search", search.trim());
+        if (academicYearLabel)
+          params.set("academicYearLabel", academicYearLabel);
+        if (schoolId) params.set("schoolId", schoolId);
+        if (academicLevelId) params.set("academicLevelId", academicLevelId);
+        if (tab === "ASSESSMENT" && sequence) params.set("sequence", sequence);
+        if (examType) params.set("examType", examType);
 
-      const res = await fetch(`${API_URL}/resources?${params.toString()}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("LOAD_FAILED");
-      const data = (await res.json()) as ListResponse;
-      setItems(data.items);
-      setTotal(data.total);
-    } catch {
-      setError(t("resourcesBrowse.errors.loadFailed"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    tab,
-    search,
-    academicYearLabel,
-    schoolId,
-    academicLevelId,
-    sequence,
-    examType,
-    t,
-  ]);
+        const res = await fetch(`${API_URL}/resources?${params.toString()}`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("LOAD_FAILED");
+        const data = (await res.json()) as ListResponse;
+        setItems(data.items);
+        setTotal(data.total);
+        setPage(data.page);
+      } catch {
+        setError(t("resourcesBrowse.errors.loadFailed"));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      tab,
+      search,
+      academicYearLabel,
+      schoolId,
+      academicLevelId,
+      sequence,
+      examType,
+      t,
+    ],
+  );
 
   useEffect(() => {
     if (!ready) return;
     const timer = setTimeout(() => {
-      void loadList();
+      void loadList(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [ready, loadList]);
+
+  const totalPages = Math.max(1, Math.ceil(total / RESOURCES_PAGE_SIZE));
 
   function resetFilters() {
     setSearch("");
@@ -461,6 +477,16 @@ export default function ResourcesBrowsePage() {
                 ) : null}
               </Card>
             ))}
+
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              totalItems={total}
+              disabled={isLoading}
+              onPageChange={(nextPage) => {
+                void loadList(nextPage);
+              }}
+            />
           </div>
         )}
       </div>

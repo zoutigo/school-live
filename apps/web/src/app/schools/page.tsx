@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, Plus, RotateCcw, Search } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -19,11 +19,14 @@ import { FormField } from "../../components/ui/form-field";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { PaginationControls } from "../../components/ui/pagination-controls";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
+const SCHOOLS_PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
 
 type Role =
   | "SUPER_ADMIN"
@@ -109,6 +112,13 @@ type SchoolDetails = {
     profileCompleted: boolean;
     canResendInvite: boolean;
   }>;
+};
+
+type SchoolCycleGroup = { schools: number; students: number; classes: number };
+
+type SchoolsOverview = {
+  totals: { schools: number; students: number; classes: number };
+  byCycle: Record<"PRIMARY" | "SECONDARY" | "UNSET", SchoolCycleGroup>;
 };
 
 type SlugPreviewState = {
@@ -228,7 +238,11 @@ export default function SchoolsPage() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("overview");
   const [schools, setSchools] = useState<SchoolRow[]>([]);
+  const [overview, setOverview] = useState<SchoolsOverview | null>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -302,6 +316,14 @@ export default function SchoolsPage() {
   useEffect(() => {
     void bootstrap();
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    const timeout = setTimeout(() => {
+      void loadSchools(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [search, loading]);
 
   useEffect(() => {
     const value = (createSchoolValues.name ?? "").trim();
@@ -391,18 +413,29 @@ export default function SchoolsPage() {
       return;
     }
 
-    await loadSchools();
+    await Promise.all([loadOverview(), loadSchools(1)]);
     setLoading(false);
   }
 
-  async function loadSchools() {
-    const allSchools: SchoolRow[] = [];
-    let page = 1;
-    let totalPages = 1;
+  async function loadOverview() {
+    const response = await fetch(`${API_URL}/system/schools/overview`, {
+      credentials: "include",
+    });
+    if (!response.ok) return;
+    setOverview((await response.json()) as SchoolsOverview);
+  }
 
-    do {
+  async function loadSchools(targetPage = page) {
+    setListLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(targetPage),
+        limit: String(SCHOOLS_PAGE_SIZE),
+      });
+      if (search.trim()) params.set("search", search.trim());
+
       const schoolsResponse = await fetch(
-        `${API_URL}/system/schools?page=${page}&limit=100`,
+        `${API_URL}/system/schools?${params.toString()}`,
         { credentials: "include" },
       );
 
@@ -413,14 +446,14 @@ export default function SchoolsPage() {
 
       const body = (await schoolsResponse.json()) as {
         items: SchoolRow[];
-        meta: { totalPages: number };
+        meta: { page: number; total: number; totalPages: number };
       };
-      allSchools.push(...body.items);
-      totalPages = body.meta.totalPages;
-      page += 1;
-    } while (page <= totalPages);
-
-    setSchools(allSchools);
+      setSchools(body.items);
+      setTotal(body.meta.total);
+      setPage(body.meta.page);
+    } finally {
+      setListLoading(false);
+    }
   }
 
   async function openSchoolDetails(schoolId: string) {
@@ -701,7 +734,7 @@ export default function SchoolsPage() {
       });
       setEmailCheckState("idle");
       setEmailCheckName(null);
-      await loadSchools();
+      await Promise.all([loadOverview(), loadSchools(1)]);
       setTab("list");
     } catch {
       setSubmitError(t("schools.error.network"));
@@ -776,7 +809,7 @@ export default function SchoolsPage() {
       }
 
       setEditingSchoolId(null);
-      await loadSchools();
+      await Promise.all([loadOverview(), loadSchools()]);
       if (selectedSchool?.id === schoolId) {
         await openSchoolDetails(schoolId);
       }
@@ -832,7 +865,7 @@ export default function SchoolsPage() {
         setEditingSchoolId(null);
       }
 
-      await loadSchools();
+      await Promise.all([loadOverview(), loadSchools()]);
     } catch {
       setSubmitError(t("schools.error.network"));
     } finally {
@@ -892,42 +925,19 @@ export default function SchoolsPage() {
     }
   }
 
-  const orderedSchools = useMemo(
-    () => [...schools].sort((a, b) => a.name.localeCompare(b.name)),
-    [schools],
-  );
-  const filteredSchools = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) {
-      return orderedSchools;
-    }
-    return orderedSchools.filter((school) =>
-      [school.name, school.slug, school.city, school.region, school.country]
-        .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(query)),
-    );
-  }, [orderedSchools, search]);
   const hasActiveSearch = search.trim().length > 0;
+  const totalPages = Math.max(1, Math.ceil(total / SCHOOLS_PAGE_SIZE));
 
-  const overviewTotals = useMemo(
-    () => ({
-      schools: schools.length,
-      students: schools.reduce((sum, school) => sum + school.studentsCount, 0),
-      classes: schools.reduce((sum, school) => sum + school.classesCount, 0),
-    }),
-    [schools],
-  );
-  const overviewByCycle = useMemo(() => {
-    const groups: Record<"PRIMARY" | "SECONDARY" | "UNSET", SchoolRow[]> = {
-      PRIMARY: [],
-      SECONDARY: [],
-      UNSET: [],
-    };
-    for (const school of schools) {
-      groups[school.cycle ?? "UNSET"].push(school);
-    }
-    return groups;
-  }, [schools]);
+  const overviewTotals = overview?.totals ?? {
+    schools: 0,
+    students: 0,
+    classes: 0,
+  };
+  const overviewByCycle = overview?.byCycle ?? {
+    PRIMARY: { schools: 0, students: 0, classes: 0 },
+    SECONDARY: { schools: 0, students: 0, classes: 0 },
+    UNSET: { schools: 0, students: 0, classes: 0 },
+  };
 
   return (
     <AppShell schoolName="Scolive Platform">
@@ -1045,7 +1055,7 @@ export default function SchoolsPage() {
                 <p className="text-sm text-text-secondary">
                   {t("schools.table.loading")}
                 </p>
-              ) : schools.length === 0 ? (
+              ) : overviewTotals.schools === 0 ? (
                 <p className="text-sm text-text-secondary">
                   {t("schools.overview.empty")}
                 </p>
@@ -1078,18 +1088,10 @@ export default function SchoolsPage() {
                     <div className="grid gap-3">
                       {(["PRIMARY", "SECONDARY", "UNSET"] as const).map(
                         (cycleKey) => {
-                          const rows = overviewByCycle[cycleKey];
-                          if (rows.length === 0) {
+                          const group = overviewByCycle[cycleKey];
+                          if (group.schools === 0) {
                             return null;
                           }
-                          const studentsCount = rows.reduce(
-                            (sum, school) => sum + school.studentsCount,
-                            0,
-                          );
-                          const classesCount = rows.reduce(
-                            (sum, school) => sum + school.classesCount,
-                            0,
-                          );
                           return (
                             <div
                               key={cycleKey}
@@ -1098,13 +1100,13 @@ export default function SchoolsPage() {
                             >
                               <CyclePill cycle={cycleKey} t={t} />
                               <p className="text-sm font-semibold text-text-primary">
-                                {rows.length}{" "}
+                                {group.schools}{" "}
                                 {t("schools.overview.schoolsLabel")}
                               </p>
                               <p className="text-xs text-text-secondary">
-                                {studentsCount}{" "}
+                                {group.students}{" "}
                                 {t("schools.overview.studentsLabel")} ·{" "}
-                                {classesCount}{" "}
+                                {group.classes}{" "}
                                 {t("schools.overview.classesLabel")}
                               </p>
                             </div>
@@ -1120,13 +1122,13 @@ export default function SchoolsPage() {
 
           {tab === "list" ? (
             <div>
-              {loading ? (
+              {loading || listLoading ? (
                 <p className="text-sm text-text-secondary">
                   {t("schools.table.loading")}
                 </p>
               ) : null}
 
-              {!loading && filteredSchools.length === 0 ? (
+              {!loading && !listLoading && schools.length === 0 ? (
                 <p className="text-sm text-text-secondary">
                   {hasActiveSearch
                     ? t("schools.search.empty")
@@ -1134,9 +1136,9 @@ export default function SchoolsPage() {
                 </p>
               ) : null}
 
-              {!loading && filteredSchools.length > 0 ? (
+              {!loading && !listLoading && schools.length > 0 ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredSchools.map((school) => (
+                  {schools.map((school) => (
                     <div
                       key={school.id}
                       data-testid={`school-card-${school.id}`}
@@ -1528,6 +1530,20 @@ export default function SchoolsPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : null}
+
+              {!loading && schools.length > 0 ? (
+                <div className="pt-4">
+                  <PaginationControls
+                    page={page}
+                    totalPages={totalPages}
+                    totalItems={total}
+                    disabled={listLoading}
+                    onPageChange={(nextPage) => {
+                      void loadSchools(nextPage);
+                    }}
+                  />
                 </div>
               ) : null}
             </div>

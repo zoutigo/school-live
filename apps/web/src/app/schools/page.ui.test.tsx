@@ -41,6 +41,37 @@ function schoolsListPage(items: unknown[]) {
   };
 }
 
+type OverviewSourceItem = {
+  cycle?: "PRIMARY" | "SECONDARY" | null;
+  studentsCount: number;
+  classesCount: number;
+};
+
+function schoolsOverview(items: OverviewSourceItem[]) {
+  const byCycle: Record<
+    "PRIMARY" | "SECONDARY" | "UNSET",
+    { schools: number; students: number; classes: number }
+  > = {
+    PRIMARY: { schools: 0, students: 0, classes: 0 },
+    SECONDARY: { schools: 0, students: 0, classes: 0 },
+    UNSET: { schools: 0, students: 0, classes: 0 },
+  };
+  let totalStudents = 0;
+  let totalClasses = 0;
+  for (const item of items) {
+    const key = item.cycle ?? "UNSET";
+    byCycle[key].schools += 1;
+    byCycle[key].students += item.studentsCount;
+    byCycle[key].classes += item.classesCount;
+    totalStudents += item.studentsCount;
+    totalClasses += item.classesCount;
+  }
+  return {
+    totals: { schools: items.length, students: totalStudents, classes: totalClasses },
+    byCycle,
+  };
+}
+
 describe("Schools page create form", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -55,6 +86,9 @@ describe("Schools page create form", () => {
 
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+      }
+      if (url.endsWith("/api/system/schools/overview")) {
+        return jsonResponse(schoolsOverview([]));
       }
       if (url.includes("/api/system/schools?page=")) {
         return jsonResponse(schoolsListPage([]));
@@ -124,6 +158,9 @@ describe("Schools page create form", () => {
 
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
         }
         if (url.includes("/api/system/schools?page=") && method === "GET") {
           return jsonResponse(schoolsListPage([]));
@@ -203,6 +240,9 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
         if (url.includes("/api/system/schools?page=") && method === "GET") {
           return jsonResponse(schoolsListPage([]));
         }
@@ -279,6 +319,9 @@ describe("Schools page create form", () => {
 
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
         }
         if (url.includes("/api/system/schools?page=") && method === "GET") {
           return jsonResponse(
@@ -385,6 +428,9 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
         if (url.includes("/api/system/schools?page=") && method === "GET") {
           return jsonResponse(
             schoolsListPage([
@@ -478,43 +524,53 @@ describe("Schools page create form", () => {
         if (url.endsWith("/api/me")) {
           return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
         }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
         if (url.includes("/api/system/schools?page=") && method === "GET") {
-          return jsonResponse(
-            schoolsListPage([
-              {
-                id: "school-1",
-                slug: "college-vogt",
-                name: "College Vogt",
-                country: "Cameroun",
-                region: "Centre",
-                city: "Yaounde",
-                cycle: "SECONDARY",
-                languageSystem: "FRANCOPHONE",
-                logoUrl: null,
-                createdAt: "2026-01-01T00:00:00.000Z",
-                updatedAt: "2026-01-01T00:00:00.000Z",
-                usersCount: 10,
-                classesCount: 4,
-                studentsCount: 120,
-              },
-              {
-                id: "school-2",
-                slug: "greenwich-college",
-                name: "Greenwich College",
-                country: "Cameroun",
-                region: "Nord-Ouest",
-                city: "Bamenda",
-                cycle: "SECONDARY",
-                languageSystem: "ANGLOPHONE",
-                logoUrl: null,
-                createdAt: "2026-01-01T00:00:00.000Z",
-                updatedAt: "2026-01-01T00:00:00.000Z",
-                usersCount: 5,
-                classesCount: 2,
-                studentsCount: 60,
-              },
-            ]),
+          const allSchools = [
+            {
+              id: "school-1",
+              slug: "college-vogt",
+              name: "College Vogt",
+              country: "Cameroun",
+              region: "Centre",
+              city: "Yaounde",
+              cycle: "SECONDARY",
+              languageSystem: "FRANCOPHONE",
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              usersCount: 10,
+              classesCount: 4,
+              studentsCount: 120,
+            },
+            {
+              id: "school-2",
+              slug: "greenwich-college",
+              name: "Greenwich College",
+              country: "Cameroun",
+              region: "Nord-Ouest",
+              city: "Bamenda",
+              cycle: "SECONDARY",
+              languageSystem: "ANGLOPHONE",
+              logoUrl: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              usersCount: 5,
+              classesCount: 2,
+              studentsCount: 60,
+            },
+          ];
+          const search = new URL(url, "http://localhost").searchParams.get(
+            "search",
           );
+          const filtered = search
+            ? allSchools.filter((school) =>
+                school.name.toLowerCase().includes(search.toLowerCase()),
+              )
+            : allSchools;
+          return jsonResponse(schoolsListPage(filtered));
         }
         if (
           url.endsWith("/api/system/schools/school-1/admins") &&
@@ -594,45 +650,47 @@ describe("Schools page create form", () => {
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
       }
+      const overviewSourceSchools = [
+        {
+          id: "school-1",
+          slug: "college-vogt",
+          name: "College Vogt",
+          country: "Cameroun",
+          region: "Centre",
+          city: "Yaounde",
+          cycle: "SECONDARY" as const,
+          languageSystem: "FRANCOPHONE",
+          logoUrl: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          academicYear: { id: "year-1", label: "2025-2026" },
+          usersCount: 10,
+          classesCount: 4,
+          studentsCount: 120,
+        },
+        {
+          id: "school-2",
+          slug: "ecole-primaire",
+          name: "Ecole primaire du lac",
+          country: "Cameroun",
+          region: "Centre",
+          city: "Yaounde",
+          cycle: "PRIMARY" as const,
+          languageSystem: null,
+          logoUrl: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          academicYear: null,
+          usersCount: 3,
+          classesCount: 1,
+          studentsCount: 30,
+        },
+      ];
+      if (url.endsWith("/api/system/schools/overview")) {
+        return jsonResponse(schoolsOverview(overviewSourceSchools));
+      }
       if (url.includes("/api/system/schools?page=")) {
-        return jsonResponse(
-          schoolsListPage([
-            {
-              id: "school-1",
-              slug: "college-vogt",
-              name: "College Vogt",
-              country: "Cameroun",
-              region: "Centre",
-              city: "Yaounde",
-              cycle: "SECONDARY",
-              languageSystem: "FRANCOPHONE",
-              logoUrl: null,
-              createdAt: "2026-01-01T00:00:00.000Z",
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              academicYear: { id: "year-1", label: "2025-2026" },
-              usersCount: 10,
-              classesCount: 4,
-              studentsCount: 120,
-            },
-            {
-              id: "school-2",
-              slug: "ecole-primaire",
-              name: "Ecole primaire du lac",
-              country: "Cameroun",
-              region: "Centre",
-              city: "Yaounde",
-              cycle: "PRIMARY",
-              languageSystem: null,
-              logoUrl: null,
-              createdAt: "2026-01-01T00:00:00.000Z",
-              updatedAt: "2026-01-01T00:00:00.000Z",
-              academicYear: null,
-              usersCount: 3,
-              classesCount: 1,
-              studentsCount: 30,
-            },
-          ]),
-        );
+        return jsonResponse(schoolsListPage(overviewSourceSchools));
       }
 
       return jsonResponse({ message: `Unhandled ${url}` }, 404);
@@ -665,6 +723,9 @@ describe("Schools page create form", () => {
 
       if (url.endsWith("/api/me")) {
         return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+      }
+      if (url.endsWith("/api/system/schools/overview")) {
+        return jsonResponse(schoolsOverview([]));
       }
       if (url.includes("/api/system/schools?page=")) {
         return jsonResponse(
@@ -740,5 +801,72 @@ describe("Schools page create form", () => {
     expect(roleBreakdown).toHaveTextContent("Enseignants8");
     expect(roleBreakdown).toHaveTextContent("Parents90");
     expect(roleBreakdown).toHaveTextContent("Eleves100");
+  });
+
+  it("requests page/limit server-side and paginates the school list beyond page 1", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({ role: "SUPER_ADMIN", schoolSlug: null });
+        }
+        if (url.endsWith("/api/system/schools/overview")) {
+          return jsonResponse(schoolsOverview([]));
+        }
+        if (url.includes("/api/system/schools?page=")) {
+          const params = new URL(url, "http://localhost").searchParams;
+          return jsonResponse({
+            items: [
+              {
+                id: "school-1",
+                slug: "college-vogt",
+                name: "College Vogt",
+                country: "Cameroun",
+                region: "Centre",
+                city: "Yaounde",
+                cycle: "SECONDARY",
+                languageSystem: "FRANCOPHONE",
+                logoUrl: null,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                usersCount: 10,
+                classesCount: 4,
+                studentsCount: 120,
+              },
+            ],
+            meta: {
+              page: Number(params.get("page") ?? "1"),
+              limit: 20,
+              total: 45,
+              totalPages: 3,
+            },
+          });
+        }
+
+        return jsonResponse({ message: `Unhandled ${url}` }, 404);
+      });
+
+    render(<SchoolsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Liste des ecoles" }),
+    );
+    await screen.findByTestId("school-card-school-1");
+
+    const firstCall = fetchMock.mock.calls.find(([u]) =>
+      String(u).includes("/api/system/schools?page="),
+    );
+    expect(String(firstCall?.[0])).toContain("page=1");
+    expect(String(firstCall?.[0])).toContain("limit=20");
+
+    fireEvent.click(screen.getByRole("button", { name: "Suivant" }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls
+        .filter(([u]) => String(u).includes("/api/system/schools?page="))
+        .at(-1);
+      expect(String(call?.[0])).toContain("page=2");
+    });
   });
 });
