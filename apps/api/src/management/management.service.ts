@@ -1548,6 +1548,14 @@ export class ManagementService {
       gradesCount,
       adminsCount,
       schoolAdminsCount,
+      assessmentsWithoutStatement,
+      assessmentsWithoutCorrection,
+      assessmentsStatementsToApprove,
+      assessmentsCorrectionsToApprove,
+      examsWithoutStatement,
+      examsWithoutCorrection,
+      examsStatementsToApprove,
+      examsCorrectionsToApprove,
     ] = await this.prisma.$transaction([
       this.prisma.school.count(),
       this.prisma.user.count(),
@@ -1556,6 +1564,46 @@ export class ManagementService {
       this.prisma.studentGrade.count(),
       this.prisma.platformRoleAssignment.count({ where: { role: "ADMIN" } }),
       this.prisma.schoolMembership.count({ where: { role: "SCHOOL_ADMIN" } }),
+      this.prisma.resource.count({
+        where: { kind: "ASSESSMENT", statementContent: null },
+      }),
+      this.prisma.resource.count({
+        where: { kind: "ASSESSMENT", correctionContent: null },
+      }),
+      this.prisma.resourceSubmission.count({
+        where: {
+          part: "STATEMENT",
+          status: "AWAITING",
+          resource: { kind: "ASSESSMENT" },
+        },
+      }),
+      this.prisma.resourceSubmission.count({
+        where: {
+          part: "CORRECTION",
+          status: "AWAITING",
+          resource: { kind: "ASSESSMENT" },
+        },
+      }),
+      this.prisma.resource.count({
+        where: { kind: "EXAM", statementContent: null },
+      }),
+      this.prisma.resource.count({
+        where: { kind: "EXAM", correctionContent: null },
+      }),
+      this.prisma.resourceSubmission.count({
+        where: {
+          part: "STATEMENT",
+          status: "AWAITING",
+          resource: { kind: "EXAM" },
+        },
+      }),
+      this.prisma.resourceSubmission.count({
+        where: {
+          part: "CORRECTION",
+          status: "AWAITING",
+          resource: { kind: "EXAM" },
+        },
+      }),
     ]);
 
     return {
@@ -1566,6 +1614,20 @@ export class ManagementService {
       gradesCount,
       adminsCount,
       schoolAdminsCount,
+      resources: {
+        assessments: {
+          withoutStatement: assessmentsWithoutStatement,
+          withoutCorrection: assessmentsWithoutCorrection,
+          statementsToApprove: assessmentsStatementsToApprove,
+          correctionsToApprove: assessmentsCorrectionsToApprove,
+        },
+        exams: {
+          withoutStatement: examsWithoutStatement,
+          withoutCorrection: examsWithoutCorrection,
+          statementsToApprove: examsStatementsToApprove,
+          correctionsToApprove: examsCorrectionsToApprove,
+        },
+      },
     };
   }
 

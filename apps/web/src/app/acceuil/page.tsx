@@ -7,6 +7,7 @@ import {
   BarChart3,
   Building2,
   ChevronRight,
+  ClipboardList,
   ShieldCheck,
   Sparkles,
   Users,
@@ -33,6 +34,13 @@ type MeResponse = {
   schoolSlug: string | null;
 };
 
+type ResourceApprovalIndicators = {
+  withoutStatement: number;
+  withoutCorrection: number;
+  statementsToApprove: number;
+  correctionsToApprove: number;
+};
+
 type IndicatorsResponse = {
   schoolsCount: number;
   usersCount: number;
@@ -41,6 +49,10 @@ type IndicatorsResponse = {
   gradesCount: number;
   adminsCount: number;
   schoolAdminsCount: number;
+  resources: {
+    assessments: ResourceApprovalIndicators;
+    exams: ResourceApprovalIndicators;
+  };
 };
 
 function formatCount(value: number) {
@@ -166,6 +178,61 @@ function PlatformLinkRow({
         <ChevronRight className="h-4 w-4 shrink-0 text-orange-700" />
       </div>
     </Link>
+  );
+}
+
+function PlatformStatRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | undefined;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[14px] border border-white/80 bg-white/70 px-3 py-2.5 ring-1 ring-orange-100/50">
+      <p className="min-w-0 truncate text-xs font-medium text-slate-700 sm:text-sm">
+        {label}
+      </p>
+      <span className="font-heading text-lg font-semibold text-slate-950">
+        {value === undefined ? "—" : formatCount(value)}
+      </span>
+    </div>
+  );
+}
+
+function ResourceKpiCard({
+  title,
+  data,
+  t,
+}: {
+  title: string;
+  data: ResourceApprovalIndicators | undefined;
+  t: TranslateFn;
+}) {
+  return (
+    <div className="rounded-[16px] border border-white/80 bg-white/60 p-3 ring-1 ring-orange-100/50 sm:p-4">
+      <h3 className="mb-3 font-heading text-base font-semibold text-slate-900">
+        {title}
+      </h3>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <PlatformStatRow
+          label={t("accueil.resources.kpi.withoutStatement")}
+          value={data?.withoutStatement}
+        />
+        <PlatformStatRow
+          label={t("accueil.resources.kpi.withoutCorrection")}
+          value={data?.withoutCorrection}
+        />
+        <PlatformStatRow
+          label={t("accueil.resources.kpi.statementsToApprove")}
+          value={data?.statementsToApprove}
+        />
+        <PlatformStatRow
+          label={t("accueil.resources.kpi.correctionsToApprove")}
+          value={data?.correctionsToApprove}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -328,6 +395,30 @@ export default function AcceuilPage() {
             )}
           </PlatformCard>
         </div>
+
+        <PlatformCard
+          title={t("accueil.resources.title")}
+          eyebrow={t("accueil.resources.eyebrow")}
+          icon={ClipboardList}
+          accent="from-[#e6f7e9] via-[#f3fbf1] to-white"
+        >
+          {loading ? (
+            <div className="h-40 animate-pulse rounded-[18px] bg-white/80" />
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              <ResourceKpiCard
+                title={t("accueil.resources.assessments.title")}
+                data={indicators?.resources.assessments}
+                t={t}
+              />
+              <ResourceKpiCard
+                title={t("accueil.resources.exams.title")}
+                data={indicators?.resources.exams}
+                t={t}
+              />
+            </div>
+          )}
+        </PlatformCard>
       </div>
     </AppShell>
   );

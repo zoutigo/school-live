@@ -55,6 +55,20 @@ describe("AcceuilPage platform dashboard", () => {
           gradesCount: 12840,
           adminsCount: 8,
           schoolAdminsCount: 24,
+          resources: {
+            assessments: {
+              withoutStatement: 5,
+              withoutCorrection: 9,
+              statementsToApprove: 2,
+              correctionsToApprove: 1,
+            },
+            exams: {
+              withoutStatement: 3,
+              withoutCorrection: 6,
+              statementsToApprove: 4,
+              correctionsToApprove: 7,
+            },
+          },
         });
       }
 
@@ -86,6 +100,16 @@ describe("AcceuilPage platform dashboard", () => {
     expect(
       screen.getByRole("link", { name: /Indicateurs.*12.*840/i }),
     ).toHaveAttribute("href", "/indicators");
+
+    expect(screen.getByText("Ressources")).toBeInTheDocument();
+    expect(screen.getByText("Devoirs")).toBeInTheDocument();
+    expect(screen.getByText("Examens")).toBeInTheDocument();
+    expect(screen.getAllByText("Sans enonce")).toHaveLength(2);
+    expect(screen.getAllByText("Sans corrige")).toHaveLength(2);
+    expect(screen.getAllByText("Enonces a approuver")).toHaveLength(2);
+    expect(screen.getAllByText("Corriges a approuver")).toHaveLength(2);
+    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByText("9")).toBeInTheDocument();
   });
 
   it("keeps support role on platform home without indicators", async () => {
@@ -117,5 +141,8 @@ describe("AcceuilPage platform dashboard", () => {
       screen.getByRole("link", { name: /Ecoles\s+Ouvrir/i }),
     ).toHaveAttribute("href", "/schools");
     expect(replaceMock).not.toHaveBeenCalled();
+
+    expect(screen.getByText("Ressources")).toBeInTheDocument();
+    expect(screen.getAllByText("—")).toHaveLength(8);
   });
 });
