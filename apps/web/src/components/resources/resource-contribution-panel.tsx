@@ -25,6 +25,10 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+function hasMeaningfulContent(html: string): boolean {
+  return stripHtml(html).length > 0 || /<img[\s>]/i.test(html);
+}
+
 function ContributionSection(props: {
   resourceId: string;
   part: ResourceSubmissionPart;
@@ -48,6 +52,7 @@ function ContributionSection(props: {
   >([]);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contentError, setContentError] = useState<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -123,11 +128,19 @@ function ContributionSection(props: {
   }
 
   async function handleSubmitForReview() {
-    if (!activeSubmission || activeSubmission.status !== "DRAFT") return;
+    if (!hasMeaningfulContent(draftContent)) {
+      setContentError(t("resourcesMine.contribution.errors.contentRequired"));
+      return;
+    }
+    setContentError(null);
     setIsSaving(true);
     setError(null);
     try {
-      await submitSubmission(resourceId, activeSubmission.id);
+      const submission = await saveSubmissionDraft(resourceId, part, {
+        content: draftContent.trim(),
+        attachments: draftAttachments,
+      });
+      await submitSubmission(resourceId, submission.id);
       await load();
       props.onResourceChanged();
     } catch (err) {
@@ -233,10 +246,15 @@ function ContributionSection(props: {
               <FormRichTextEditor
                 label={t("resourcesMine.contribution.myContributionLabel")}
                 value={draftContent}
-                onChange={setDraftContent}
+                onChange={(html) => {
+                  setDraftContent(html);
+                  if (contentError) setContentError(null);
+                }}
                 allowInlineImages
                 onUploadInlineImage={uploadInlineImage}
                 editorTestId={`resources-mine-contribution-${part}-editor`}
+                error={contentError}
+                invalid={!!contentError}
               />
 
               <div className="mt-2">
@@ -307,11 +325,7 @@ function ContributionSection(props: {
                 </button>
                 <button
                   type="button"
-                  disabled={
-                    isSaving ||
-                    !activeSubmission ||
-                    activeSubmission.status !== "DRAFT"
-                  }
+                  disabled={isSaving}
                   onClick={() => void handleSubmitForReview()}
                   className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
                   data-testid={`resources-mine-contribution-${part}-submit`}

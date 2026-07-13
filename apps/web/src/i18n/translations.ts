@@ -894,6 +894,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Impossible de soumettre pour validation.",
     "resourcesMine.contribution.errors.attachmentFailed":
       "Impossible d'ajouter la piece jointe.",
+    "resourcesMine.contribution.errors.contentRequired":
+      "Le contenu est obligatoire.",
 
     "sidebar.nav.settings": "Parametres",
     "sidebar.nav.home": "Accueil",
@@ -4258,6 +4260,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Could not submit for review.",
     "resourcesMine.contribution.errors.attachmentFailed":
       "Could not add the attachment.",
+    "resourcesMine.contribution.errors.contentRequired": "Content is required.",
 
     "sidebar.nav.settings": "Settings",
     "sidebar.nav.home": "Home",

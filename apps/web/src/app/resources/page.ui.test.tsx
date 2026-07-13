@@ -629,6 +629,15 @@ describe("ResourcesBrowsePage — Mes ressources", () => {
     );
 
     await screen.findByTestId("resources-mine-contribution-statement");
+    const editorWrapper = screen.getByTestId(
+      "resources-mine-contribution-statement-editor",
+    );
+    const contentEditable = editorWrapper.querySelector(
+      "[contenteditable]",
+    ) as HTMLElement;
+    contentEditable.innerHTML = "<p>Enonce</p>";
+    fireEvent.input(contentEditable);
+
     fireEvent.click(
       screen.getByTestId("resources-mine-contribution-statement-save-draft"),
     );
