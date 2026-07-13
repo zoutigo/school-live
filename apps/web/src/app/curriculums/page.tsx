@@ -43,6 +43,7 @@ type Tab =
   | "subjects"
   | "cycles"
   | "national"
+  | "nationalTracks"
   | "nationalSubjects"
   | "help";
 
@@ -126,11 +127,23 @@ type NationalAcademicLevel = {
   };
 };
 
+type NationalTrack = {
+  id: string;
+  code: string;
+  label: string;
+  _count?: {
+    classes: number;
+    curriculums: number;
+  };
+};
+
 type NationalCurriculum = {
   id: string;
   name: string;
   academicLevelId: string;
+  trackId: string | null;
   academicLevel: { id: string; code: string; label: string };
+  track: { id: string; code: string; label: string } | null;
   _count: {
     classes: number;
     subjects: number;
@@ -195,6 +208,10 @@ const nationalCurriculumFormSchema = z.object({
     .string()
     .trim()
     .min(1, "Le niveau academique est obligatoire."),
+  trackId: z
+    .union([z.string().trim(), z.literal("")])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
 });
 
 const curriculumSubjectFormSchema = z.object({
@@ -292,6 +309,17 @@ export default function CurriculumsPage() {
   const [savingNationalCurriculum, setSavingNationalCurriculum] =
     useState(false);
 
+  const [nationalTracks, setNationalTracks] = useState<NationalTrack[]>([]);
+  const [loadingNationalTracks, setLoadingNationalTracks] = useState(false);
+  const [submittingNationalTrack, setSubmittingNationalTrack] = useState(false);
+  const [editingNationalTrackId, setEditingNationalTrackId] = useState<
+    string | null
+  >(null);
+  const [savingNationalTrack, setSavingNationalTrack] = useState(false);
+  const [deletingNationalTrackId, setDeletingNationalTrackId] = useState<
+    string | null
+  >(null);
+
   const [nationalSubjects, setNationalSubjects] = useState<NationalSubject[]>(
     [],
   );
@@ -344,7 +372,17 @@ export default function CurriculumsPage() {
   >({
     resolver: zodResolver(nationalCurriculumFormSchema),
     mode: "onChange",
-    defaultValues: { academicLevelId: "" },
+    defaultValues: { academicLevelId: "", trackId: "" },
+  });
+  const nationalTrackForm = useForm<z.input<typeof trackFormSchema>>({
+    resolver: zodResolver(trackFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
+  });
+  const editNationalTrackForm = useForm<z.input<typeof trackFormSchema>>({
+    resolver: zodResolver(trackFormSchema),
+    mode: "onChange",
+    defaultValues: { code: "", label: "" },
   });
   const curriculumSubjectForm = useForm<
     z.input<typeof curriculumSubjectFormSchema>
@@ -382,7 +420,7 @@ export default function CurriculumsPage() {
   >({
     resolver: zodResolver(nationalCurriculumFormSchema),
     mode: "onChange",
-    defaultValues: { academicLevelId: "" },
+    defaultValues: { academicLevelId: "", trackId: "" },
   });
   const nationalSubjectForm = useForm<
     z.input<typeof nationalSubjectFormSchema>
@@ -416,6 +454,8 @@ export default function CurriculumsPage() {
   const curriculumSubjectValues = curriculumSubjectForm.watch();
   const editAcademicLevelValues = editAcademicLevelForm.watch();
   const editTrackValues = editTrackForm.watch();
+  const nationalTrackValues = nationalTrackForm.watch();
+  const editNationalTrackValues = editNationalTrackForm.watch();
   const nationalSubjectValues = nationalSubjectForm.watch();
   const editNationalSubjectValues = editNationalSubjectForm.watch();
   const nationalCurriculumSubjectValues = nationalCurriculumSubjectForm.watch();
@@ -441,6 +481,18 @@ export default function CurriculumsPage() {
   const editTrackLabelInvalid =
     !!editTrackForm.formState.errors.label ||
     !(editTrackValues.label ?? "").trim();
+  const nationalTrackCodeInvalid =
+    !!nationalTrackForm.formState.errors.code ||
+    !(nationalTrackValues.code ?? "").trim();
+  const nationalTrackLabelInvalid =
+    !!nationalTrackForm.formState.errors.label ||
+    !(nationalTrackValues.label ?? "").trim();
+  const editNationalTrackCodeInvalid =
+    !!editNationalTrackForm.formState.errors.code ||
+    !(editNationalTrackValues.code ?? "").trim();
+  const editNationalTrackLabelInvalid =
+    !!editNationalTrackForm.formState.errors.label ||
+    !(editNationalTrackValues.label ?? "").trim();
   const curriculumAcademicLevelInvalid =
     !!curriculumForm.formState.errors.academicLevelId ||
     !(curriculumValues.academicLevelId ?? "").trim();
@@ -485,6 +537,7 @@ export default function CurriculumsPage() {
   useEffect(() => {
     if (role === "SUPER_ADMIN" || role === "ADMIN") {
       void loadNationalCatalog();
+      void loadNationalTracks();
       void loadNationalSubjects();
     }
   }, [role]);
@@ -492,8 +545,14 @@ export default function CurriculumsPage() {
   useEffect(() => {
     void nationalAcademicLevelForm.trigger();
     void nationalCurriculumForm.trigger();
+    void nationalTrackForm.trigger();
     void nationalSubjectForm.trigger();
-  }, [nationalAcademicLevelForm, nationalCurriculumForm, nationalSubjectForm]);
+  }, [
+    nationalAcademicLevelForm,
+    nationalCurriculumForm,
+    nationalTrackForm,
+    nationalSubjectForm,
+  ]);
 
   useEffect(() => {
     if (!schoolSlug || !selectedCurriculumId) {
@@ -837,14 +896,19 @@ export default function CurriculumsPage() {
   async function loadNationalCatalog() {
     setLoadingNationalCatalog(true);
     try {
-      const [cyclesResponse, levelsResponse, curriculumsResponse] =
-        await Promise.all([
-          fetch(`${API_URL}/system/cycles`, { credentials: "include" }),
-          fetch(`${API_URL}/system/academic-levels`, {
-            credentials: "include",
-          }),
-          fetch(`${API_URL}/system/curriculums`, { credentials: "include" }),
-        ]);
+      const [
+        cyclesResponse,
+        levelsResponse,
+        tracksResponse,
+        curriculumsResponse,
+      ] = await Promise.all([
+        fetch(`${API_URL}/system/cycles`, { credentials: "include" }),
+        fetch(`${API_URL}/system/academic-levels`, {
+          credentials: "include",
+        }),
+        fetch(`${API_URL}/system/tracks`, { credentials: "include" }),
+        fetch(`${API_URL}/system/curriculums`, { credentials: "include" }),
+      ]);
 
       if (cyclesResponse.ok) {
         setNationalCycles((await cyclesResponse.json()) as NationalCycle[]);
@@ -853,6 +917,9 @@ export default function CurriculumsPage() {
         setNationalAcademicLevels(
           (await levelsResponse.json()) as NationalAcademicLevel[],
         );
+      }
+      if (tracksResponse.ok) {
+        setNationalTracks((await tracksResponse.json()) as NationalTrack[]);
       }
       if (curriculumsResponse.ok) {
         setNationalCurriculums(
@@ -863,6 +930,170 @@ export default function CurriculumsPage() {
       setError(t("curriculums.error.network"));
     } finally {
       setLoadingNationalCatalog(false);
+    }
+  }
+
+  async function loadNationalTracks() {
+    setLoadingNationalTracks(true);
+    try {
+      const response = await fetch(`${API_URL}/system/tracks`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        setNationalTracks((await response.json()) as NationalTrack[]);
+      }
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setLoadingNationalTracks(false);
+    }
+  }
+
+  async function onCreateNationalTrack(
+    values: z.output<typeof trackFormSchema>,
+  ) {
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("curriculums.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setSubmittingNationalTrack(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(`${API_URL}/system/tracks`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("curriculums.error.trackCreateFailed"));
+        setError(String(message));
+        return;
+      }
+
+      nationalTrackForm.reset({ code: "", label: "" });
+      setSuccess(t("curriculums.success.trackCreated"));
+      await loadNationalTracks();
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setSubmittingNationalTrack(false);
+    }
+  }
+
+  function onInvalidCreateNationalTrack(
+    errors: typeof nationalTrackForm.formState.errors,
+  ) {
+    if (errors.code) {
+      nationalTrackForm.setFocus("code");
+    } else if (errors.label) {
+      nationalTrackForm.setFocus("label");
+    }
+  }
+
+  function startEditNationalTrack(track: NationalTrack) {
+    setEditingNationalTrackId(track.id);
+    editNationalTrackForm.reset({ code: track.code, label: track.label });
+    void editNationalTrackForm.trigger();
+  }
+
+  async function saveNationalTrack(
+    trackId: string,
+    values: z.output<typeof trackFormSchema>,
+  ) {
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("curriculums.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setSavingNationalTrack(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(`${API_URL}/system/tracks/${trackId}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("curriculums.error.trackUpdateFailed"));
+        setError(String(message));
+        return;
+      }
+
+      setEditingNationalTrackId(null);
+      setSuccess(t("curriculums.success.trackEdited"));
+      await loadNationalTracks();
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setSavingNationalTrack(false);
+    }
+  }
+
+  async function deleteNationalTrack(trackId: string) {
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("curriculums.error.csrf"));
+      router.replace("/");
+      return;
+    }
+
+    setDeletingNationalTrackId(trackId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(`${API_URL}/system/tracks/${trackId}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "X-CSRF-Token": csrfToken },
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("curriculums.error.trackDeleteFailed"));
+        setError(String(message));
+        return;
+      }
+
+      setSuccess(t("curriculums.success.trackDeleted"));
+      await loadNationalTracks();
+    } catch {
+      setError(t("curriculums.error.network"));
+    } finally {
+      setDeletingNationalTrackId(null);
     }
   }
 
@@ -1041,7 +1272,7 @@ export default function CurriculumsPage() {
   }
 
   async function onCreateNationalCurriculum(
-    values: z.output<typeof nationalCurriculumFormSchema>,
+    values: z.input<typeof nationalCurriculumFormSchema>,
   ) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -1077,7 +1308,7 @@ export default function CurriculumsPage() {
         return;
       }
 
-      nationalCurriculumForm.reset({ academicLevelId: "" });
+      nationalCurriculumForm.reset({ academicLevelId: "", trackId: "" });
       setSuccess(t("curriculums.success.curriculumCreated"));
       await loadNationalCatalog();
     } catch {
@@ -1141,13 +1372,14 @@ export default function CurriculumsPage() {
     setEditingNationalCurriculumId(curriculum.id);
     editNationalCurriculumForm.reset({
       academicLevelId: curriculum.academicLevelId,
+      trackId: curriculum.trackId ?? "",
     });
     void editNationalCurriculumForm.trigger();
   }
 
   async function saveNationalCurriculum(
     curriculumId: string,
-    values: z.output<typeof nationalCurriculumFormSchema>,
+    values: z.input<typeof nationalCurriculumFormSchema>,
   ) {
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -2020,6 +2252,19 @@ export default function CurriculumsPage() {
                 }`}
               >
                 {t("curriculums.tab.national")}
+              </button>
+            ) : null}
+            {role === "SUPER_ADMIN" || role === "ADMIN" ? (
+              <button
+                type="button"
+                onClick={() => setTab("nationalTracks")}
+                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                  tab === "nationalTracks"
+                    ? "border border-border border-b-surface bg-surface text-primary"
+                    : "text-text-secondary"
+                }`}
+              >
+                {t("curriculums.tab.nationalTracks")}
               </button>
             ) : null}
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
@@ -3079,7 +3324,7 @@ export default function CurriculumsPage() {
                   {t("curriculums.national.curriculumsTitle")}
                 </h3>
                 <form
-                  className="grid gap-3 md:grid-cols-[1fr_auto]"
+                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
                   onSubmit={nationalCurriculumForm.handleSubmit(
                     onCreateNationalCurriculum,
                     onInvalidCreateNationalCurriculum,
@@ -3106,6 +3351,21 @@ export default function CurriculumsPage() {
                       ))}
                     </FormSelect>
                   </FormField>
+                  <FormField label={t("curriculums.national.trackLabel")}>
+                    <FormSelect
+                      aria-label={t("curriculums.national.trackLabel")}
+                      {...nationalCurriculumForm.register("trackId")}
+                    >
+                      <option value="">
+                        {t("curriculums.national.trackPlaceholder")}
+                      </option>
+                      {nationalTracks.map((track) => (
+                        <option key={track.id} value={track.id}>
+                          {track.label}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </FormField>
                   <div className="self-end">
                     <SubmitButton disabled={submittingNationalCurriculum}>
                       {t("curriculums.national.add")}
@@ -3124,6 +3384,9 @@ export default function CurriculumsPage() {
                           {t("curriculums.national.colLevel")}
                         </th>
                         <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colTrack")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
                           {t("curriculums.national.colActions")}
                         </th>
                       </tr>
@@ -3135,6 +3398,11 @@ export default function CurriculumsPage() {
                             <td className="px-3 py-2">{curriculum.name}</td>
                             <td className="px-3 py-2">
                               {curriculum.academicLevel.label}
+                            </td>
+                            <td className="px-3 py-2">
+                              {curriculum.track
+                                ? curriculum.track.label
+                                : t("curriculums.national.trackPlaceholder")}
                             </td>
                             <td className="px-3 py-2">
                               <div className="inline-flex gap-2">
@@ -3168,8 +3436,8 @@ export default function CurriculumsPage() {
                           </tr>
                           {editingNationalCurriculumId === curriculum.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={3}>
-                                <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                              <td className="px-3 py-3" colSpan={4}>
+                                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
                                   <FormField
                                     label={t(
                                       "curriculums.national.academicLevelLabel",
@@ -3190,6 +3458,29 @@ export default function CurriculumsPage() {
                                       {nationalAcademicLevels.map((level) => (
                                         <option key={level.id} value={level.id}>
                                           {level.label}
+                                        </option>
+                                      ))}
+                                    </FormSelect>
+                                  </FormField>
+                                  <FormField
+                                    label={t("curriculums.national.trackLabel")}
+                                  >
+                                    <FormSelect
+                                      aria-label={t(
+                                        "curriculums.national.trackLabel",
+                                      )}
+                                      {...editNationalCurriculumForm.register(
+                                        "trackId",
+                                      )}
+                                    >
+                                      <option value="">
+                                        {t(
+                                          "curriculums.national.trackPlaceholder",
+                                        )}
+                                      </option>
+                                      {nationalTracks.map((track) => (
+                                        <option key={track.id} value={track.id}>
+                                          {track.label}
                                         </option>
                                       ))}
                                     </FormSelect>
@@ -3236,7 +3527,7 @@ export default function CurriculumsPage() {
                         <tr>
                           <td
                             className="px-3 py-6 text-text-secondary"
-                            colSpan={3}
+                            colSpan={4}
                           >
                             {t("curriculums.national.emptyCurriculums")}
                           </td>
@@ -3302,6 +3593,234 @@ export default function CurriculumsPage() {
                   </ul>
                 </div>
               ))}
+            </div>
+          ) : tab === "nationalTracks" ? (
+            <div className="grid gap-6">
+              <div className="grid gap-3">
+                <h3 className="font-heading text-base font-semibold">
+                  {t("curriculums.national.track.title")}
+                </h3>
+                <form
+                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                  onSubmit={nationalTrackForm.handleSubmit(
+                    onCreateNationalTrack,
+                    onInvalidCreateNationalTrack,
+                  )}
+                >
+                  <FormField
+                    label={t("curriculums.national.codeLabel")}
+                    error={nationalTrackForm.formState.errors.code?.message}
+                  >
+                    <FormTextInput
+                      aria-label={t("curriculums.national.codeLabel")}
+                      invalid={nationalTrackCodeInvalid}
+                      value={nationalTrackValues.code ?? ""}
+                      onChange={(event) => {
+                        nationalTrackForm.setValue("code", event.target.value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        });
+                      }}
+                    />
+                  </FormField>
+                  <FormField
+                    label={t("curriculums.national.labelLabel")}
+                    error={nationalTrackForm.formState.errors.label?.message}
+                  >
+                    <FormTextInput
+                      aria-label={t("curriculums.national.labelLabel")}
+                      invalid={nationalTrackLabelInvalid}
+                      value={nationalTrackValues.label ?? ""}
+                      onChange={(event) => {
+                        nationalTrackForm.setValue(
+                          "label",
+                          event.target.value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        );
+                      }}
+                    />
+                  </FormField>
+                  <div className="self-end">
+                    <SubmitButton
+                      disabled={
+                        submittingNationalTrack ||
+                        !nationalTrackForm.formState.isValid
+                      }
+                    >
+                      {submittingNationalTrack
+                        ? t("curriculums.national.track.creating")
+                        : t("curriculums.national.add")}
+                    </SubmitButton>
+                  </div>
+                  <FormSubmitHint
+                    visible={!nationalTrackForm.formState.isValid}
+                    className="md:col-span-3"
+                  />
+                </form>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-text-secondary">
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colCode")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colLabel")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("curriculums.national.colActions")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {nationalTracks.map((track) => (
+                        <Fragment key={track.id}>
+                          <tr className="border-b border-border">
+                            <td className="px-3 py-2 font-mono text-xs">
+                              {track.code}
+                            </td>
+                            <td className="px-3 py-2">{track.label}</td>
+                            <td className="px-3 py-2">
+                              <div className="inline-flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => startEditNationalTrack(track)}
+                                >
+                                  {t("common.edit")}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  disabled={
+                                    deletingNationalTrackId === track.id
+                                  }
+                                  onClick={() =>
+                                    void deleteNationalTrack(track.id)
+                                  }
+                                >
+                                  {deletingNationalTrackId === track.id
+                                    ? "..."
+                                    : t("common.delete")}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                          {editingNationalTrackId === track.id ? (
+                            <tr className="border-b border-border bg-background">
+                              <td className="px-3 py-3" colSpan={3}>
+                                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
+                                  <FormField
+                                    label={t(
+                                      "curriculums.national.track.codeEditAria",
+                                    )}
+                                    error={
+                                      editNationalTrackForm.formState.errors
+                                        .code?.message
+                                    }
+                                  >
+                                    <FormTextInput
+                                      aria-label={t(
+                                        "curriculums.national.track.codeEditAria",
+                                      )}
+                                      invalid={editNationalTrackCodeInvalid}
+                                      value={editNationalTrackValues.code ?? ""}
+                                      onChange={(event) => {
+                                        editNationalTrackForm.setValue(
+                                          "code",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    />
+                                  </FormField>
+                                  <FormField
+                                    label={t(
+                                      "curriculums.national.track.labelEditAria",
+                                    )}
+                                    error={
+                                      editNationalTrackForm.formState.errors
+                                        .label?.message
+                                    }
+                                  >
+                                    <FormTextInput
+                                      aria-label={t(
+                                        "curriculums.national.track.labelEditAria",
+                                      )}
+                                      invalid={editNationalTrackLabelInvalid}
+                                      value={
+                                        editNationalTrackValues.label ?? ""
+                                      }
+                                      onChange={(event) => {
+                                        editNationalTrackForm.setValue(
+                                          "label",
+                                          event.target.value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        );
+                                      }}
+                                    />
+                                  </FormField>
+                                  <Button
+                                    type="button"
+                                    disabled={
+                                      savingNationalTrack ||
+                                      !editNationalTrackForm.formState.isValid
+                                    }
+                                    onClick={() => {
+                                      void editNationalTrackForm.handleSubmit(
+                                        (values) =>
+                                          saveNationalTrack(track.id, values),
+                                      )();
+                                    }}
+                                  >
+                                    {savingNationalTrack
+                                      ? t("curriculums.level.saving")
+                                      : t("common.save")}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setEditingNationalTrackId(null);
+                                      editNationalTrackForm.reset();
+                                    }}
+                                  >
+                                    {t("common.cancel")}
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      ))}
+                      {!loadingNationalTracks && nationalTracks.length === 0 ? (
+                        <tr>
+                          <td
+                            className="px-3 py-6 text-text-secondary"
+                            colSpan={3}
+                          >
+                            {t("curriculums.national.track.empty")}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           ) : tab === "nationalSubjects" ? (
             <div className="grid gap-6">

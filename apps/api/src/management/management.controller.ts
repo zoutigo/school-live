@@ -37,6 +37,8 @@ import { CreateNationalCurriculumDto } from "./dto/create-national-curriculum.dt
 import { UpdateNationalCurriculumDto } from "./dto/update-national-curriculum.dto.js";
 import { CreateNationalSubjectDto } from "./dto/create-national-subject.dto.js";
 import { UpdateNationalSubjectDto } from "./dto/update-national-subject.dto.js";
+import { CreateNationalTrackDto } from "./dto/create-national-track.dto.js";
+import { UpdateNationalTrackDto } from "./dto/update-national-track.dto.js";
 import { CreateNationalCycleDto } from "./dto/create-national-cycle.dto.js";
 import { UpdateNationalCycleDto } from "./dto/update-national-cycle.dto.js";
 import { AddSchoolAdminDto } from "./dto/add-school-admin.dto.js";
@@ -343,6 +345,37 @@ export class ManagementController {
   @Roles("SUPER_ADMIN", "ADMIN")
   deleteNationalSubject(@Param("subjectId") subjectId: string) {
     return this.managementService.deleteNationalSubject(subjectId);
+  }
+
+  @Get("system/tracks")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  listNationalTracks() {
+    return this.managementService.listNationalTracks();
+  }
+
+  @Post("system/tracks")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  createNationalTrack(@Body() payload: CreateNationalTrackDto) {
+    return this.managementService.createNationalTrack(payload);
+  }
+
+  @Patch("system/tracks/:trackId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  updateNationalTrack(
+    @Param("trackId") trackId: string,
+    @Body() payload: UpdateNationalTrackDto,
+  ) {
+    return this.managementService.updateNationalTrack(trackId, payload);
+  }
+
+  @Delete("system/tracks/:trackId")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("SUPER_ADMIN", "ADMIN")
+  deleteNationalTrack(@Param("trackId") trackId: string) {
+    return this.managementService.deleteNationalTrack(trackId);
   }
 
   @Get("system/curriculums")

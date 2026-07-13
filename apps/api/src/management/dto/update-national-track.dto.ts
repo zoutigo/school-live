@@ -1,11 +1,11 @@
 import { IsOptional, IsString } from "class-validator";
 
-export class UpdateNationalCurriculumDto {
+export class UpdateNationalTrackDto {
   @IsOptional()
   @IsString()
-  academicLevelId?: string;
+  code?: string;
 
   @IsOptional()
   @IsString()
-  trackId?: string;
+  label?: string;
 }

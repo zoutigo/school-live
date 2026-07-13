@@ -16,6 +16,10 @@ const fr: TranslationDict = {
     "Le niveau selectionne doit provenir du catalogue national.",
   "resources.errors.subjectNotNational":
     "La matiere selectionnee doit provenir du catalogue national.",
+  "resources.errors.trackNotNational":
+    "La filiere selectionnee doit provenir du catalogue national.",
+  "resources.errors.trackNotInLevel":
+    "Cette filiere n'est pas rattachee a ce niveau dans le catalogue national.",
   "resources.errors.onlyAuthorCanEdit":
     "Seul l'auteur peut modifier cette ressource.",
   "resources.errors.correctionContentRequired":
@@ -55,6 +59,10 @@ const en: TranslationDict = {
     "The selected level must come from the national catalog.",
   "resources.errors.subjectNotNational":
     "The selected subject must come from the national catalog.",
+  "resources.errors.trackNotNational":
+    "The selected track must come from the national catalog.",
+  "resources.errors.trackNotInLevel":
+    "This track is not linked to this level in the national catalog.",
   "resources.errors.onlyAuthorCanEdit":
     "Only the author can edit this resource.",
   "resources.errors.correctionContentRequired":

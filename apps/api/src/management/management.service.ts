@@ -37,6 +37,8 @@ import type { CreateNationalCurriculumDto } from "./dto/create-national-curricul
 import type { UpdateNationalCurriculumDto } from "./dto/update-national-curriculum.dto.js";
 import type { CreateNationalSubjectDto } from "./dto/create-national-subject.dto.js";
 import type { UpdateNationalSubjectDto } from "./dto/update-national-subject.dto.js";
+import type { CreateNationalTrackDto } from "./dto/create-national-track.dto.js";
+import type { UpdateNationalTrackDto } from "./dto/update-national-track.dto.js";
 import type { CreateNationalCycleDto } from "./dto/create-national-cycle.dto.js";
 import type { UpdateNationalCycleDto } from "./dto/update-national-cycle.dto.js";
 import type { CreateEvaluationTypeDto } from "./dto/create-evaluation-type.dto.js";
@@ -439,6 +441,16 @@ const updateTrackSchema = z.object({
   label: z.string().trim().min(1).optional(),
 });
 
+const createNationalTrackSchema = z.object({
+  code: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+});
+
+const updateNationalTrackSchema = z.object({
+  code: z.string().trim().min(1).optional(),
+  label: z.string().trim().min(1).optional(),
+});
+
 const createCurriculumSchema = z.object({
   academicLevelId: z.string().trim().min(1),
   trackId: z.string().trim().min(1).optional(),
@@ -476,10 +488,12 @@ const updateNationalSubjectSchema = z.object({
 
 const createNationalCurriculumSchema = z.object({
   academicLevelId: z.string().trim().min(1),
+  trackId: z.string().trim().min(1).optional(),
 });
 
 const updateNationalCurriculumSchema = z.object({
   academicLevelId: z.string().trim().min(1).optional(),
+  trackId: z.string().trim().min(1).optional(),
 });
 
 const addSchoolAdminSchema = z
@@ -3966,6 +3980,13 @@ export class ManagementService {
             label: true,
           },
         },
+        track: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
         _count: {
           select: {
             classes: true,
@@ -4021,12 +4042,16 @@ export class ManagementService {
     const academicLevel = await this.ensureAcademicLevelIsNational(
       parsed.academicLevelId,
     );
+    const track = parsed.trackId
+      ? await this.ensureTrackIsNational(parsed.trackId)
+      : null;
 
     return this.prisma.curriculum.create({
       data: {
         schoolId: null,
-        name: `${academicLevel.code} - TRONC_COMMUN`,
+        name: `${academicLevel.code} - ${track ? track.code : "TRONC_COMMUN"}`,
         academicLevelId: parsed.academicLevelId,
+        trackId: track?.id,
       },
     });
   }
@@ -4043,27 +4068,37 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    if (parsed.academicLevelId === undefined) {
+    if (parsed.academicLevelId === undefined && parsed.trackId === undefined) {
       throw new BadRequestException("No fields to update");
     }
 
     const existing = await this.prisma.curriculum.findFirst({
       where: { id: curriculumId, schoolId: null },
-      select: { id: true },
+      select: { id: true, academicLevelId: true, trackId: true },
     });
     if (!existing) {
       throw new NotFoundException("Curriculum not found");
     }
 
-    const academicLevel = await this.ensureAcademicLevelIsNational(
-      parsed.academicLevelId,
-    );
+    const nextAcademicLevelId =
+      parsed.academicLevelId ?? existing.academicLevelId;
+    const nextTrackId =
+      parsed.trackId === undefined
+        ? (existing.trackId ?? undefined)
+        : parsed.trackId;
+
+    const academicLevel =
+      await this.ensureAcademicLevelIsNational(nextAcademicLevelId);
+    const track = nextTrackId
+      ? await this.ensureTrackIsNational(nextTrackId)
+      : null;
 
     return this.prisma.curriculum.update({
       where: { id: curriculumId },
       data: {
-        academicLevelId: parsed.academicLevelId,
-        name: `${academicLevel.code} - TRONC_COMMUN`,
+        academicLevelId: nextAcademicLevelId,
+        trackId: nextTrackId,
+        name: `${academicLevel.code} - ${track ? track.code : "TRONC_COMMUN"}`,
       },
     });
   }
@@ -4420,6 +4455,122 @@ export class ManagementService {
     });
 
     return { success: true };
+  }
+
+  // --- Catalogue national (plateforme) : Track (filière) ---
+
+  async listNationalTracks() {
+    const tracks = await this.prisma.track.findMany({
+      where: { schoolId: null },
+      orderBy: [{ code: "asc" }],
+      include: {
+        _count: {
+          select: {
+            classes: true,
+            curriculums: true,
+          },
+        },
+      },
+    });
+
+    return tracks.map((track) => ({
+      ...track,
+      isNational: true as const,
+    }));
+  }
+
+  async createNationalTrack(payload: CreateNationalTrackDto) {
+    const parsedResult = createNationalTrackSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    return this.prisma.track.create({
+      data: {
+        schoolId: null,
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async updateNationalTrack(trackId: string, payload: UpdateNationalTrackDto) {
+    const parsedResult = updateNationalTrackSchema.safeParse(payload);
+    if (!parsedResult.success) {
+      throw new BadRequestException(
+        parsedResult.error.issues.map((issue) => issue.message).join(", "),
+      );
+    }
+
+    const parsed = parsedResult.data;
+    if (parsed.code === undefined && parsed.label === undefined) {
+      throw new BadRequestException("No fields to update");
+    }
+
+    const existing = await this.prisma.track.findFirst({
+      where: { id: trackId, schoolId: null },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException("Track not found");
+    }
+
+    return this.prisma.track.update({
+      where: { id: trackId },
+      data: {
+        code: parsed.code,
+        label: parsed.label,
+      },
+    });
+  }
+
+  async deleteNationalTrack(trackId: string) {
+    const track = await this.prisma.track.findFirst({
+      where: { id: trackId, schoolId: null },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            classes: true,
+            curriculums: true,
+          },
+        },
+      },
+    });
+
+    if (!track) {
+      throw new NotFoundException("Track not found");
+    }
+
+    if (track._count.classes > 0 || track._count.curriculums > 0) {
+      throw new BadRequestException(
+        "Cannot delete a track used by classes or curriculums",
+      );
+    }
+
+    await this.prisma.track.delete({
+      where: { id: trackId },
+    });
+
+    return { success: true };
+  }
+
+  private async ensureTrackIsNational(trackId: string) {
+    const track = await this.prisma.track.findFirst({
+      where: { id: trackId, schoolId: null },
+      select: { id: true, code: true },
+    });
+
+    if (!track) {
+      throw new BadRequestException(
+        "Track must belong to the national catalog",
+      );
+    }
+
+    return track;
   }
 
   async createSubjectBranch(

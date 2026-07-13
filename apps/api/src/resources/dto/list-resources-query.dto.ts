@@ -34,6 +34,10 @@ export class ListResourcesQueryDto {
 
   @IsOptional()
   @IsString()
+  trackId?: string;
+
+  @IsOptional()
+  @IsString()
   subjectId?: string;
 
   @IsOptional()
