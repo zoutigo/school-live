@@ -3873,7 +3873,6 @@ export class ManagementService {
 
     return this.prisma.curriculumSubject.findMany({
       where: {
-        schoolId,
         curriculumId,
       },
       orderBy: [{ subject: { name: "asc" } }],
@@ -6998,7 +6997,6 @@ export class ManagementService {
 
     const curriculumSubject = await this.prisma.curriculumSubject.findFirst({
       where: {
-        schoolId,
         curriculumId: classEntity.curriculumId,
         subjectId,
       },
