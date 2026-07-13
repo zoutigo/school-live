@@ -331,6 +331,48 @@ describe("Resources API e2e", () => {
     expect(response.status).toBe(403);
   });
 
+  // Régression : le formulaire d'édition mobile envoyait `kind` même en update,
+  // provoquant "property kind should not exist" (whitelist/forbidNonWhitelisted).
+  // `kind` est immuable après création et n'a jamais fait partie d'UpdateResourceDto.
+  // Ressource créée directement via Prisma (indépendante du flux POST /resources,
+  // pour ne pas dépendre des autres cas de ce fichier) puis nettoyée après coup.
+  it("rejects a PATCH payload that still carries kind (immutable after creation)", async () => {
+    const teacher = await prisma.user.findUniqueOrThrow({
+      where: { email: teacherEmail },
+      select: { id: true },
+    });
+    const seeded = await prisma.resource.create({
+      data: {
+        kind: "ASSESSMENT",
+        schoolId,
+        academicLevelId,
+        subjectId,
+        examType: "SEQUENCE_TEST",
+        sequence: "SEQ_1",
+        academicYearLabel: "2025-2026",
+        title: "Ressource e2e kind-regression",
+        authorUserId: teacher.id,
+      },
+      select: { id: true },
+    });
+
+    try {
+      const { response, body } = await apiJson(`/api/resources/${seeded.id}`, {
+        method: "PATCH",
+        headers: authHeaders(teacherToken),
+        body: JSON.stringify({ kind: "ASSESSMENT", title: "Titre inchangé" }),
+      });
+      expect(response.status).toBe(400);
+      expect((body as { message: string[] }).message).toEqual(
+        expect.arrayContaining([expect.stringContaining("kind")]),
+      );
+    } finally {
+      await prisma.resource
+        .delete({ where: { id: seeded.id } })
+        .catch(() => {});
+    }
+  });
+
   it("re-editing the approved statement resets it to PENDING and hides it again from the public listing", async () => {
     const update = await apiJson(`/api/resources/${resourceId}`, {
       method: "PATCH",
