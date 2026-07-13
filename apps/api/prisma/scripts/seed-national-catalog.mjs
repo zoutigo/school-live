@@ -131,22 +131,34 @@ async function upsertSubject(code, name) {
   });
 }
 
-async function ensureLevel(cycle, languageSystem, code, label) {
+async function resolveCycleId(cycleCode) {
+  const cycle = await prisma.nationalCycle.findUnique({
+    where: { code: cycleCode },
+    select: { id: true },
+  });
+  if (!cycle) {
+    throw new Error(`NationalCycle introuvable pour le code "${cycleCode}"`);
+  }
+  return cycle.id;
+}
+
+async function ensureLevel(cycleCode, languageSystem, code, label) {
+  const cycleId = await resolveCycleId(cycleCode);
   const existing = await prisma.academicLevel.findFirst({
     where: { schoolId: null, code },
-    select: { id: true, cycle: true, languageSystem: true },
+    select: { id: true, cycleId: true, languageSystem: true },
   });
   if (existing) {
-    if (!existing.cycle || !existing.languageSystem) {
+    if (!existing.cycleId || !existing.languageSystem) {
       await prisma.academicLevel.update({
         where: { id: existing.id },
-        data: { cycle, languageSystem },
+        data: { cycleId, languageSystem },
       });
     }
     return existing.id;
   }
   const created = await prisma.academicLevel.create({
-    data: { schoolId: null, code, label, cycle, languageSystem },
+    data: { schoolId: null, code, label, cycleId, languageSystem },
   });
   return created.id;
 }

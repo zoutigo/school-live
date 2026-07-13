@@ -1395,6 +1395,54 @@ describe("ResourcesService", () => {
     });
   });
 
+  describe("searchSchools", () => {
+    it("returns every school with cycle/languageSystem when no query is given", async () => {
+      prisma.school.findMany.mockResolvedValue([
+        {
+          id: "school-a",
+          name: "Alpha",
+          cycle: "SECONDARY",
+          languageSystem: "FRANCOPHONE",
+        },
+      ]);
+
+      const result = await service.searchSchools({});
+
+      expect(prisma.school.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: undefined,
+          take: 50,
+          select: {
+            id: true,
+            name: true,
+            cycle: true,
+            languageSystem: true,
+          },
+        }),
+      );
+      expect(result).toEqual([
+        {
+          id: "school-a",
+          name: "Alpha",
+          cycle: "SECONDARY",
+          languageSystem: "FRANCOPHONE",
+        },
+      ]);
+    });
+
+    it("filters by name (case-insensitive) when q is provided", async () => {
+      prisma.school.findMany.mockResolvedValue([]);
+
+      await service.searchSchools({ q: "  vogt  " });
+
+      expect(prisma.school.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { name: { contains: "vogt", mode: "insensitive" } },
+        }),
+      );
+    });
+  });
+
   describe("listAdminSubmissions", () => {
     it("defaults to AWAITING statement submissions", async () => {
       prisma.resourceSubmission.findMany.mockResolvedValue([]);

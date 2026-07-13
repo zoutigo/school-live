@@ -16,6 +16,7 @@ import type { ListMyResourcesQueryDto } from "./dto/list-my-resources-query.dto.
 import type { ListResourcesQueryDto } from "./dto/list-resources-query.dto.js";
 import type { ReviewResourceDto } from "./dto/review-resource.dto.js";
 import type { SaveSubmissionDraftDto } from "./dto/save-submission-draft.dto.js";
+import type { SearchSchoolsQueryDto } from "./dto/search-schools-query.dto.js";
 import type { UpdateResourceDto } from "./dto/update-resource.dto.js";
 import { ResourceSubmissionNotificationsService } from "./resource-submission-notifications.service.js";
 import {
@@ -122,7 +123,13 @@ export class ResourcesService {
         this.prisma.academicLevel.findMany({
           where: { schoolId: null },
           orderBy: [{ code: "asc" }],
-          select: { id: true, code: true, label: true, cycleId: true },
+          select: {
+            id: true,
+            code: true,
+            label: true,
+            cycleId: true,
+            languageSystem: true,
+          },
         }),
         this.prisma.track.findMany({
           where: { schoolId: null },
@@ -184,6 +191,28 @@ export class ResourcesService {
       where: { id: { in: ids } },
       orderBy: [{ name: "asc" }],
       select: { id: true, name: true },
+    });
+    return schools;
+  }
+
+  // Toutes les écoles (pas seulement celles ayant déjà des ressources) —
+  // alimente le sélecteur d'école du formulaire de création, dont le choix
+  // détermine ensuite le cycle et le système linguistique à proposer pour
+  // filtrer les niveaux.
+  async searchSchools(query: SearchSchoolsQueryDto) {
+    const search = query.q?.trim();
+    const schools = await this.prisma.school.findMany({
+      where: search
+        ? { name: { contains: search, mode: "insensitive" } }
+        : undefined,
+      orderBy: [{ name: "asc" }],
+      take: 50,
+      select: {
+        id: true,
+        name: true,
+        cycle: true,
+        languageSystem: true,
+      },
     });
     return schools;
   }

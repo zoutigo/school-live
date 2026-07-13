@@ -26,6 +26,7 @@ import { CreateResourceDto } from "./dto/create-resource.dto.js";
 import { ListMyResourcesQueryDto } from "./dto/list-my-resources-query.dto.js";
 import { ListResourcesQueryDto } from "./dto/list-resources-query.dto.js";
 import { SaveSubmissionDraftDto } from "./dto/save-submission-draft.dto.js";
+import { SearchSchoolsQueryDto } from "./dto/search-schools-query.dto.js";
 import { UpdateResourceDto } from "./dto/update-resource.dto.js";
 import { ResourcesService } from "./resources.service.js";
 import {
@@ -100,6 +101,11 @@ export class ResourcesController {
   @Get("schools")
   listSchoolsWithResources() {
     return this.resourcesService.listSchoolsWithResources();
+  }
+
+  @Get("schools/search")
+  searchSchools(@Query() query: SearchSchoolsQueryDto) {
+    return this.resourcesService.searchSchools(query);
   }
 
   @Get(":resourceId")
