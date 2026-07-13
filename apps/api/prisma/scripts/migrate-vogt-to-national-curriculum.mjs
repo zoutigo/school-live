@@ -68,14 +68,20 @@ async function main() {
       );
     }
     const national = await prisma.academicLevel.findFirst({
-      where: { schoolId: null, code: nationalCode, languageSystem: "FRANCOPHONE" },
+      where: {
+        schoolId: null,
+        code: nationalCode,
+        languageSystem: "FRANCOPHONE",
+      },
       select: { id: true },
     });
     if (!national) {
       throw new Error(`Niveau national "${nationalCode}" introuvable — arrêt.`);
     }
     levelIdMap.set(local.id, national.id);
-    console.log(`  niveau: ${local.code} -> national ${nationalCode} (${national.id})`);
+    console.log(
+      `  niveau: ${local.code} -> national ${nationalCode} (${national.id})`,
+    );
   }
 
   // 3) Mapping curriculum national par niveau (TRONC_COMMUN)
@@ -86,7 +92,9 @@ async function main() {
       select: { id: true, name: true },
     });
     if (!curriculum) {
-      throw new Error(`Curriculum national introuvable pour le niveau ${nationalLevelId}`);
+      throw new Error(
+        `Curriculum national introuvable pour le niveau ${nationalLevelId}`,
+      );
     }
     curriculumIdByLevel.set(nationalLevelId, curriculum.id);
   }
@@ -110,7 +118,9 @@ async function main() {
   }
 
   if (!APPLY) {
-    console.log("\nDry-run terminé (aucune écriture). Relancer avec --apply pour exécuter.");
+    console.log(
+      "\nDry-run terminé (aucune écriture). Relancer avec --apply pour exécuter.",
+    );
     return;
   }
 

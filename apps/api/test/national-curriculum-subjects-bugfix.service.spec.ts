@@ -31,9 +31,16 @@ beforeEach(() => {
 
 describe("ManagementService — matières d'un curriculum national utilisé par une école", () => {
   it("listCurriculumSubjects renvoie les matières d'un curriculum national (CurriculumSubject.schoolId = null)", async () => {
-    prisma.curriculum.findFirst.mockResolvedValue({ id: NATIONAL_CURRICULUM_ID });
+    prisma.curriculum.findFirst.mockResolvedValue({
+      id: NATIONAL_CURRICULUM_ID,
+    });
     prisma.curriculumSubject.findMany.mockResolvedValue([
-      { id: "cs-1", schoolId: null, curriculumId: NATIONAL_CURRICULUM_ID, subjectId: "sub-ang" },
+      {
+        id: "cs-1",
+        schoolId: null,
+        curriculumId: NATIONAL_CURRICULUM_ID,
+        subjectId: "sub-ang",
+      },
     ]);
 
     const result = await service.listCurriculumSubjects(
@@ -64,7 +71,9 @@ describe("ManagementService — matières d'un curriculum national utilisé par 
     // ClassSubjectOverride check happens via a different prisma delegate not mocked here;
     // ensureSubjectAssignableToClass only reaches classSubjectOverride when curriculumId is set,
     // so we also stub it to "no override" (undefined => falls through to curriculumSubject check).
-    (prisma as unknown as { classSubjectOverride: { findFirst: jest.Mock } }).classSubjectOverride = {
+    (
+      prisma as unknown as { classSubjectOverride: { findFirst: jest.Mock } }
+    ).classSubjectOverride = {
       findFirst: jest.fn().mockResolvedValue(null),
     };
     prisma.curriculumSubject.findFirst.mockResolvedValue({ id: "cs-1" });
