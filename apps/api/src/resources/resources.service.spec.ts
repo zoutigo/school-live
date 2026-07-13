@@ -115,8 +115,11 @@ function makeSubmissionRow(overrides: Record<string, unknown> = {}) {
 
 function makePrismaMock() {
   const mock = {
-    academicLevel: { findUnique: jest.fn() },
-    subject: { findUnique: jest.fn() },
+    academicLevel: { findUnique: jest.fn(), findMany: jest.fn() },
+    subject: { findUnique: jest.fn(), findMany: jest.fn() },
+    track: { findUnique: jest.fn(), findMany: jest.fn() },
+    curriculum: { findFirst: jest.fn(), findMany: jest.fn() },
+    nationalCycle: { findMany: jest.fn() },
     resource: {
       create: jest.fn(),
       update: jest.fn(),
@@ -261,6 +264,57 @@ describe("ResourcesService", () => {
       await expect(
         service.createResource(makeTeacher(), makeCreatePayload()),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects a track that is not part of the national catalog", async () => {
+      prisma.track.findUnique.mockResolvedValue({ schoolId: SCHOOL_ID });
+      await expect(
+        service.createResource(
+          makeTeacher(),
+          makeCreatePayload({ trackId: "track-local" }),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("rejects a track that has no national curriculum for the given level", async () => {
+      prisma.track.findUnique.mockResolvedValue({ schoolId: null });
+      prisma.curriculum.findFirst.mockResolvedValue(null);
+      await expect(
+        service.createResource(
+          makeTeacher(),
+          makeCreatePayload({ trackId: "track-d" }),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it("creates a resource with a valid national track", async () => {
+      prisma.track.findUnique.mockResolvedValue({ schoolId: null });
+      prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-1" });
+      prisma.resource.create.mockResolvedValue({ id: RESOURCE_ID });
+      prisma.resource.findUnique.mockResolvedValue(
+        makeResourceRow({ trackId: "track-d" }),
+      );
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+
+      await service.createResource(
+        makeTeacher(),
+        makeCreatePayload({ trackId: "track-d" }),
+      );
+
+      expect(prisma.curriculum.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            schoolId: null,
+            academicLevelId: LEVEL_ID,
+            trackId: "track-d",
+          },
+        }),
+      );
+      expect(prisma.resource.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ trackId: "track-d" }),
+        }),
+      );
     });
 
     it("creates a shell ASSESSMENT resource (no content) with a SUBMIT audit log entry", async () => {
@@ -439,6 +493,22 @@ describe("ResourcesService", () => {
         result.items.find((item) => item.id === "resource-not-fav")?.isFavorite,
       ).toBe(false);
     });
+
+    it("filters by trackId when provided", async () => {
+      prisma.resource.findMany.mockResolvedValue([]);
+      prisma.resource.count.mockResolvedValue(0);
+
+      await service.listResources(makeTeacher(), {
+        kind: "ASSESSMENT",
+        trackId: "track-d",
+      });
+
+      expect(prisma.resource.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ trackId: "track-d" }),
+        }),
+      );
+    });
   });
 
   describe("updateResource", () => {
@@ -521,6 +591,49 @@ describe("ResourcesService", () => {
           }),
         }),
       );
+    });
+
+    it("validates and persists a trackId update against the level already on the resource", async () => {
+      prisma.resource.findUnique
+        .mockResolvedValueOnce(makeResourceRow({ trackId: null }))
+        .mockResolvedValueOnce(makeResourceRow({ trackId: "track-d" }));
+      prisma.resourceFavorite.findUnique.mockResolvedValue(null);
+      prisma.track.findUnique.mockResolvedValue({ schoolId: null });
+      prisma.curriculum.findFirst.mockResolvedValue({ id: "curriculum-1" });
+
+      await service.updateResource(makeTeacher(), RESOURCE_ID, {
+        trackId: "track-d",
+      });
+
+      expect(prisma.curriculum.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            schoolId: null,
+            academicLevelId: LEVEL_ID,
+            trackId: "track-d",
+          },
+        }),
+      );
+      expect(prisma.resource.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ trackId: "track-d" }),
+        }),
+      );
+    });
+
+    it("rejects a trackId update when no national curriculum links it to the resource's level", async () => {
+      prisma.resource.findUnique.mockResolvedValueOnce(
+        makeResourceRow({ trackId: null }),
+      );
+      prisma.track.findUnique.mockResolvedValue({ schoolId: null });
+      prisma.curriculum.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.updateResource(makeTeacher(), RESOURCE_ID, {
+          trackId: "track-d",
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.resource.update).not.toHaveBeenCalled();
     });
 
     it("ignores schoolId/sequence updates for an EXAM resource", async () => {
@@ -1190,6 +1303,56 @@ describe("ResourcesService", () => {
       expect(prisma.resourceFavorite.deleteMany).toHaveBeenCalledWith({
         where: { resourceId: RESOURCE_ID, userId: TEACHER_ID },
       });
+    });
+  });
+
+  describe("listCatalog", () => {
+    it("assembles the national catalog with cycles, tracks, curriculums and curriculumSubjects", async () => {
+      prisma.nationalCycle.findMany.mockResolvedValue([
+        { id: "cycle-1", code: "SECONDARY", label: "Secondaire" },
+      ]);
+      prisma.academicLevel.findMany.mockResolvedValue([
+        { id: LEVEL_ID, code: "TLE", label: "Terminale", cycleId: "cycle-1" },
+      ]);
+      prisma.track.findMany.mockResolvedValue([
+        { id: "track-d", code: "D", label: "Serie D" },
+      ]);
+      prisma.curriculum.findMany.mockResolvedValue([
+        {
+          id: "curriculum-1",
+          academicLevelId: LEVEL_ID,
+          trackId: "track-d",
+          subjects: [{ subjectId: SUBJECT_ID }],
+        },
+      ]);
+      prisma.subject.findMany.mockResolvedValue([
+        { id: SUBJECT_ID, code: "MATH", name: "Mathematiques" },
+      ]);
+
+      const result = await service.listCatalog();
+
+      expect(prisma.nationalCycle.findMany).toHaveBeenCalled();
+      expect(prisma.academicLevel.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { schoolId: null } }),
+      );
+      expect(prisma.track.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { schoolId: null } }),
+      );
+      expect(prisma.curriculum.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { schoolId: null } }),
+      );
+      expect(result.cycles).toEqual([
+        { id: "cycle-1", code: "SECONDARY", label: "Secondaire" },
+      ]);
+      expect(result.curriculums).toEqual([
+        { id: "curriculum-1", academicLevelId: LEVEL_ID, trackId: "track-d" },
+      ]);
+      expect(result.curriculumSubjects).toEqual([
+        { curriculumId: "curriculum-1", subjectId: SUBJECT_ID },
+      ]);
+      expect(result.tracks).toEqual([
+        { id: "track-d", code: "D", label: "Serie D" },
+      ]);
     });
   });
 

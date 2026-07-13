@@ -29,6 +29,13 @@ const prisma = {
     upsert: jest.fn(),
     delete: jest.fn(),
   },
+  track: {
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
   nationalCycle: {
     findMany: jest.fn(),
     findUnique: jest.fn(),
@@ -249,6 +256,79 @@ describe("ManagementService — catalogue national : Subject", () => {
   });
 });
 
+describe("ManagementService — catalogue national : Track", () => {
+  it("liste uniquement les filières nationales et les marque isNational", async () => {
+    prisma.track.findMany.mockResolvedValue([
+      { id: "track-1", schoolId: null, code: "D", label: "Série D" },
+    ]);
+
+    const result = await service.listNationalTracks();
+
+    expect(prisma.track.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { schoolId: null } }),
+    );
+    expect(result[0].isNational).toBe(true);
+  });
+
+  it("crée une filière nationale avec schoolId: null", async () => {
+    prisma.track.create.mockResolvedValue({
+      id: "track-1",
+      schoolId: null,
+      code: "D",
+      label: "Série D",
+    });
+
+    await service.createNationalTrack({ code: "D", label: "Série D" });
+
+    expect(prisma.track.create).toHaveBeenCalledWith({
+      data: { schoolId: null, code: "D", label: "Série D" },
+    });
+  });
+
+  it("rejette la création d'une filière nationale sans code", async () => {
+    await expect(
+      service.createNationalTrack({ code: "", label: "Série D" }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.track.create).not.toHaveBeenCalled();
+  });
+
+  it("rejette la modification d'une filière qui n'est pas nationale", async () => {
+    prisma.track.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.updateNationalTrack("track-local", { label: "X" }),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.track.update).not.toHaveBeenCalled();
+  });
+
+  it("rejette la suppression d'une filière nationale encore utilisée", async () => {
+    prisma.track.findFirst.mockResolvedValue({
+      id: "track-1",
+      _count: { classes: 0, curriculums: 2 },
+    });
+
+    await expect(service.deleteNationalTrack("track-1")).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(prisma.track.delete).not.toHaveBeenCalled();
+  });
+
+  it("supprime une filière nationale non utilisée", async () => {
+    prisma.track.findFirst.mockResolvedValue({
+      id: "track-1",
+      _count: { classes: 0, curriculums: 0 },
+    });
+    prisma.track.delete.mockResolvedValue({ id: "track-1" });
+
+    const result = await service.deleteNationalTrack("track-1");
+
+    expect(prisma.track.delete).toHaveBeenCalledWith({
+      where: { id: "track-1" },
+    });
+    expect(result).toEqual({ success: true });
+  });
+});
+
 describe("ManagementService — catalogue national : Curriculum", () => {
   it("crée un curriculum national à partir d'un niveau national", async () => {
     prisma.academicLevel.findFirst.mockResolvedValue({
@@ -350,6 +430,85 @@ describe("ManagementService — catalogue national : Curriculum", () => {
         academicLevelId: "level-local",
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it("crée un curriculum national avec une filière et régénère le nom en conséquence", async () => {
+    prisma.academicLevel.findFirst.mockResolvedValue({
+      id: "level-1",
+      code: "TLE",
+    });
+    prisma.track.findFirst.mockResolvedValue({ id: "track-1", code: "D" });
+    prisma.curriculum.create.mockResolvedValue({
+      id: "curriculum-1",
+      schoolId: null,
+      name: "TLE - D",
+      academicLevelId: "level-1",
+      trackId: "track-1",
+    });
+
+    const result = await service.createNationalCurriculum({
+      academicLevelId: "level-1",
+      trackId: "track-1",
+    });
+
+    expect(prisma.curriculum.create).toHaveBeenCalledWith({
+      data: {
+        schoolId: null,
+        name: "TLE - D",
+        academicLevelId: "level-1",
+        trackId: "track-1",
+      },
+    });
+    expect(result.name).toBe("TLE - D");
+  });
+
+  it("rejette la création d'un curriculum national avec une filière non nationale", async () => {
+    prisma.academicLevel.findFirst.mockResolvedValue({
+      id: "level-1",
+      code: "TLE",
+    });
+    prisma.track.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.createNationalCurriculum({
+        academicLevelId: "level-1",
+        trackId: "track-local",
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.curriculum.create).not.toHaveBeenCalled();
+  });
+
+  it("met à jour uniquement la filière d'un curriculum national et régénère son nom", async () => {
+    prisma.curriculum.findFirst.mockResolvedValue({
+      id: "curriculum-1",
+      academicLevelId: "level-1",
+      trackId: null,
+    });
+    prisma.academicLevel.findFirst.mockResolvedValue({
+      id: "level-1",
+      code: "TLE",
+    });
+    prisma.track.findFirst.mockResolvedValue({ id: "track-1", code: "D" });
+    prisma.curriculum.update.mockResolvedValue({
+      id: "curriculum-1",
+      name: "TLE - D",
+      academicLevelId: "level-1",
+      trackId: "track-1",
+    });
+
+    const result = await service.updateNationalCurriculum("curriculum-1", {
+      trackId: "track-1",
+    });
+
+    expect(prisma.curriculum.update).toHaveBeenCalledWith({
+      where: { id: "curriculum-1" },
+      data: {
+        academicLevelId: "level-1",
+        trackId: "track-1",
+        name: "TLE - D",
+      },
+    });
+    expect(result.name).toBe("TLE - D");
   });
 
   it("affecte une matière nationale à un curriculum national", async () => {

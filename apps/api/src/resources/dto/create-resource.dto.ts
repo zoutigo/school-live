@@ -38,6 +38,10 @@ export class CreateResourceDto {
   @IsString()
   academicLevelId!: string;
 
+  @IsOptional()
+  @IsString()
+  trackId?: string;
+
   @IsString()
   subjectId!: string;
 

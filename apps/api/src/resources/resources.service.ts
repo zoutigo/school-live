@@ -32,6 +32,7 @@ const RESOURCE_LIST_SELECT = {
   kind: true,
   schoolId: true,
   academicLevelId: true,
+  trackId: true,
   subjectId: true,
   examType: true,
   sequence: true,
@@ -45,6 +46,7 @@ const RESOURCE_LIST_SELECT = {
   updatedAt: true,
   school: { select: { id: true, name: true } },
   academicLevel: { select: { id: true, code: true, label: true } },
+  track: { select: { id: true, code: true, label: true } },
   subject: { select: { id: true, name: true } },
   authorUser: { select: { id: true, firstName: true, lastName: true } },
 } satisfies Prisma.ResourceSelect;
@@ -103,24 +105,63 @@ export class ResourcesService {
     return resource;
   }
 
-  // Lecture seule du catalogue national (niveaux/matières), nécessaire à tout
-  // utilisateur du module pour filtrer la recherche ou soumettre une ressource —
-  // la gestion (create/update/delete) reste réservée à SUPER_ADMIN/ADMIN via
-  // `management.controller.ts` (`system/academic-levels` / `system/subjects`).
+  // Lecture seule du catalogue national (cycles/niveaux/filières/matières et
+  // leurs curriculums), nécessaire à tout utilisateur du module pour filtrer
+  // la recherche ou soumettre une ressource via la cascade cycle → niveau →
+  // filière → matière — la gestion (create/update/delete) reste réservée à
+  // SUPER_ADMIN/ADMIN via `management.controller.ts` (`system/cycles` /
+  // `system/academic-levels` / `system/tracks` / `system/subjects` /
+  // `system/curriculums`).
   async listCatalog() {
-    const [academicLevels, subjects] = await Promise.all([
-      this.prisma.academicLevel.findMany({
-        where: { schoolId: null },
-        orderBy: [{ code: "asc" }],
-        select: { id: true, code: true, label: true },
-      }),
-      this.prisma.subject.findMany({
-        where: { schoolId: null },
-        orderBy: [{ name: "asc" }],
-        select: { id: true, code: true, name: true },
-      }),
-    ]);
-    return { academicLevels, subjects };
+    const [cycles, academicLevels, tracks, curriculums, subjects] =
+      await Promise.all([
+        this.prisma.nationalCycle.findMany({
+          orderBy: [{ code: "asc" }],
+          select: { id: true, code: true, label: true },
+        }),
+        this.prisma.academicLevel.findMany({
+          where: { schoolId: null },
+          orderBy: [{ code: "asc" }],
+          select: { id: true, code: true, label: true, cycleId: true },
+        }),
+        this.prisma.track.findMany({
+          where: { schoolId: null },
+          orderBy: [{ code: "asc" }],
+          select: { id: true, code: true, label: true },
+        }),
+        this.prisma.curriculum.findMany({
+          where: { schoolId: null },
+          select: {
+            id: true,
+            academicLevelId: true,
+            trackId: true,
+            subjects: { select: { subjectId: true } },
+          },
+        }),
+        this.prisma.subject.findMany({
+          where: { schoolId: null },
+          orderBy: [{ name: "asc" }],
+          select: { id: true, code: true, name: true },
+        }),
+      ]);
+
+    return {
+      cycles,
+      academicLevels,
+      tracks,
+      curriculums: curriculums.map((curriculum) => ({
+        id: curriculum.id,
+        academicLevelId: curriculum.academicLevelId,
+        trackId: curriculum.trackId,
+      })),
+      curriculumSubjects: curriculums.flatMap((curriculum) =>
+        curriculum.subjects.map((entry) => ({
+          curriculumId: curriculum.id,
+          subjectId: entry.subjectId,
+        })),
+      ),
+      subjects,
+    };
   }
 
   // Écoles ayant au moins un assessment approuvé — alimente le filtre "établissement
@@ -167,6 +208,7 @@ export class ResourcesService {
       ...(query.academicLevelId
         ? { academicLevelId: query.academicLevelId }
         : {}),
+      ...(query.trackId ? { trackId: query.trackId } : {}),
       ...(query.subjectId ? { subjectId: query.subjectId } : {}),
       ...(query.examType ? { examType: query.examType } : {}),
       ...(query.sequence ? { sequence: query.sequence } : {}),
@@ -333,6 +375,7 @@ export class ResourcesService {
     user: AuthenticatedUser,
     academicLevelId: string,
     subjectId: string,
+    trackId?: string | null,
   ) {
     const locale = resourceLocaleFromUser(user);
     const [level, subject] = await Promise.all([
@@ -358,6 +401,28 @@ export class ResourcesService {
       throw new BadRequestException(
         translateResourceError(locale, "resources.errors.subjectNotNational"),
       );
+    }
+
+    if (trackId) {
+      const track = await this.prisma.track.findUnique({
+        where: { id: trackId },
+        select: { schoolId: true },
+      });
+      if (!track || track.schoolId !== null) {
+        throw new BadRequestException(
+          translateResourceError(locale, "resources.errors.trackNotNational"),
+        );
+      }
+
+      const curriculum = await this.prisma.curriculum.findFirst({
+        where: { schoolId: null, academicLevelId, trackId },
+        select: { id: true },
+      });
+      if (!curriculum) {
+        throw new BadRequestException(
+          translateResourceError(locale, "resources.errors.trackNotInLevel"),
+        );
+      }
     }
   }
 
@@ -407,6 +472,7 @@ export class ResourcesService {
       user,
       payload.academicLevelId,
       payload.subjectId,
+      payload.trackId,
     );
 
     if (!payload.confirmDuplicate) {
@@ -448,6 +514,7 @@ export class ResourcesService {
         kind: payload.kind,
         schoolId: payload.kind === "ASSESSMENT" ? payload.schoolId : null,
         academicLevelId: payload.academicLevelId,
+        trackId: payload.trackId,
         subjectId: payload.subjectId,
         examType: payload.examType,
         sequence: payload.kind === "ASSESSMENT" ? payload.sequence : null,
@@ -477,6 +544,7 @@ export class ResourcesService {
         kind: true,
         authorUserId: true,
         academicLevelId: true,
+        trackId: true,
         subjectId: true,
       },
     });
@@ -496,12 +564,14 @@ export class ResourcesService {
 
     if (
       payload.academicLevelId !== undefined ||
-      payload.subjectId !== undefined
+      payload.subjectId !== undefined ||
+      payload.trackId !== undefined
     ) {
       await this.assertNationalReferences(
         user,
         payload.academicLevelId ?? existing.academicLevelId,
         payload.subjectId ?? existing.subjectId,
+        payload.trackId !== undefined ? payload.trackId : existing.trackId,
       );
     }
 
@@ -511,6 +581,9 @@ export class ResourcesService {
     }
     if (payload.academicLevelId !== undefined) {
       data.academicLevelId = payload.academicLevelId;
+    }
+    if (payload.trackId !== undefined) {
+      data.trackId = payload.trackId;
     }
     if (payload.subjectId !== undefined) {
       data.subjectId = payload.subjectId;

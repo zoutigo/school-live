@@ -15,6 +15,10 @@ export class UpdateResourceDto {
 
   @IsOptional()
   @IsString()
+  trackId?: string;
+
+  @IsOptional()
+  @IsString()
   subjectId?: string;
 
   @IsOptional()
