@@ -54,6 +54,7 @@ model Resource {
   kind                      ResourceKind
   schoolId                  String?
   academicLevelId           String
+  trackId                   String?
   subjectId                 String
   examType                  ResourceExamType
   sequence                  Sequence?
@@ -75,6 +76,7 @@ model Resource {
 
   school                  School?             @relation(fields: [schoolId], references: [id], onDelete: SetNull)
   academicLevel           AcademicLevel       @relation(fields: [academicLevelId], references: [id], onDelete: Restrict)
+  track                   Track?              @relation(fields: [trackId], references: [id], onDelete: SetNull)
   subject                 Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
   authorUser               User               @relation("ResourceAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
   statementApprovedByUser   User?             @relation("ResourceStatementApprovedBy", fields: [statementApprovedByUserId], references: [id], onDelete: SetNull)
@@ -87,7 +89,7 @@ model Resource {
   auditLogs   ResourceAuditLog[]
   submissions ResourceSubmission[] @relation("ResourceSubmissions")
 
-  @@index([kind, academicLevelId, subjectId, sequence])
+  @@index([kind, academicLevelId, trackId, subjectId, sequence])
   @@index([kind, statementStatus])
   @@index([kind, academicYearLabel])
   @@index([schoolId])
