@@ -2691,6 +2691,49 @@ export default function SchoolsPage() {
                 "Verifier l'email du school admin avant creation pour eviter les doublons d'acces.",
                 "Traiter les suppressions uniquement apres audit des donnees rattachees.",
               ]}
+              workflowExample={{
+                title:
+                  "Exemple de bout en bout : du Cycle a la Filiere sont des choses distinctes",
+                intro:
+                  "Cas concret d'un lycee francophone secondaire (ex: Lycee de Yaounde). Chaque etape se fait dans son propre module, dans cet ordre.",
+                steps: [
+                  {
+                    title: "Creer l'ecole",
+                    description:
+                      "Dans ce module (Ecoles > Creer), renseigner nom, slug, puis choisir le Cycle (Primaire ou Secondaire) et le Systeme linguistique (Francophone, Anglophone ou Bilingue). Ce choix est le pivot : il determine automatiquement quels niveaux et curriculums du catalogue national seront visibles pour cette ecole, sans rien recreer.",
+                  },
+                  {
+                    title: "Rien a faire (automatique)",
+                    description:
+                      "Le catalogue national est deja structure par la plateforme : Cycle 'Secondaire' > Niveaux (6EME, 5EME, ... TLE) > Filieres (Scientifique, Litteraire, Tronc commun) > Curriculums (ex: '3EME - TRONC_COMMUN') > Matieres avec coefficients. Comme le cycle et la langue de l'ecole correspondent, ces elements nationaux apparaissent automatiquement dans l'onglet Curriculums de l'ecole (module Curriculums), marques 'national'.",
+                  },
+                  {
+                    title: "Cas standard : rien de plus a configurer",
+                    description:
+                      "Si le catalogue national couvre deja les besoins de l'ecole, il n'y a rien a creer : on peut directement passer a la creation des classes (etape 6) en s'appuyant sur les niveaux/filieres/curriculums nationaux.",
+                  },
+                  {
+                    title: "(Optionnel) Filiere propre a l'ecole",
+                    description:
+                      "Si l'ecole a besoin d'une filiere qui n'existe pas dans le catalogue national (ex: une option locale), la creer dans Curriculums > Filieres. Une filiere n'est rattachee a rien d'autre qu'a l'ecole : elle sera associee a un niveau uniquement au moment de creer un curriculum.",
+                  },
+                  {
+                    title: "(Optionnel) Curriculum propre a l'ecole",
+                    description:
+                      "Si le curriculum national ne convient pas exactement, creer dans Curriculums > Curriculums un curriculum propre en combinant un Niveau (national ou propre a l'ecole) et, si besoin, une Filiere (nationale ou propre). Puis rattacher les Matieres avec coefficient et volume horaire dans l'onglet Matieres du curriculum.",
+                  },
+                  {
+                    title: "Creer une annee scolaire",
+                    description:
+                      "Dans le module Annees scolaires, creer l'annee en cours pour l'ecole (ex: 2026-2027) et la definir comme active.",
+                  },
+                  {
+                    title: "Creer une classe",
+                    description:
+                      "Dans le module Classes, creer une classe en choisissant l'annee scolaire, puis le Niveau academique, la Filiere (si le niveau en a une) et le Curriculum : ces trois elements peuvent etre indifferemment nationaux ou propres a l'ecole, ils sont interchangeables dans ce formulaire. C'est cette combinaison qui determine les matieres et coefficients appliques aux eleves de la classe.",
+                  },
+                ],
+              }}
             />
           ) : null}
 

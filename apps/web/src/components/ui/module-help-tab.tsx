@@ -10,11 +10,23 @@ type ModuleHelpAction = {
   crossModuleImpact: string;
 };
 
+type ModuleHelpWorkflowStep = {
+  title: string;
+  description: string;
+};
+
+type ModuleHelpWorkflow = {
+  title: string;
+  intro?: string;
+  steps: ModuleHelpWorkflowStep[];
+};
+
 type ModuleHelpTabProps = {
   moduleName: string;
   moduleSummary: string;
   actions: ModuleHelpAction[];
   tips?: string[];
+  workflowExample?: ModuleHelpWorkflow;
 };
 
 export function ModuleHelpTab({
@@ -22,6 +34,7 @@ export function ModuleHelpTab({
   moduleSummary,
   actions,
   tips = [],
+  workflowExample,
 }: ModuleHelpTabProps) {
   const { t } = useTranslation();
 
@@ -81,6 +94,29 @@ export function ModuleHelpTab({
               <li key={tip}>- {tip}</li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {workflowExample ? (
+        <div className="content-panel p-4">
+          <p className="text-sm font-heading font-semibold text-text-primary">
+            {workflowExample.title}
+          </p>
+          {workflowExample.intro ? (
+            <p className="mt-2 text-sm text-text-secondary">
+              {workflowExample.intro}
+            </p>
+          ) : null}
+          <ol className="mt-3 grid gap-3">
+            {workflowExample.steps.map((step, index) => (
+              <li key={step.title} className="text-sm text-text-secondary">
+                <span className="font-medium text-text-primary">
+                  {index + 1}. {step.title}
+                </span>
+                <p className="mt-0.5">{step.description}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       ) : null}
     </div>
