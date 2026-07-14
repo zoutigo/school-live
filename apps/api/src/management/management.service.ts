@@ -1113,6 +1113,19 @@ export class ManagementService {
         activeSchoolYear: {
           select: { id: true, label: true, startsAt: true, endsAt: true },
         },
+        tracks: {
+          select: { id: true, code: true, label: true },
+          orderBy: { label: "asc" },
+        },
+        curriculums: {
+          select: {
+            id: true,
+            name: true,
+            academicLevel: { select: { label: true } },
+            track: { select: { label: true } },
+          },
+          orderBy: { name: "asc" },
+        },
         memberships: {
           where: { role: "SCHOOL_ADMIN" },
           include: {
@@ -1196,6 +1209,17 @@ export class ManagementService {
             endsAt: school.activeSchoolYear.endsAt,
           }
         : null,
+      tracks: school.tracks.map((track) => ({
+        id: track.id,
+        code: track.code,
+        label: track.label,
+      })),
+      curriculums: school.curriculums.map((curriculum) => ({
+        id: curriculum.id,
+        name: curriculum.name,
+        academicLevelLabel: curriculum.academicLevel?.label ?? null,
+        trackLabel: curriculum.track?.label ?? null,
+      })),
       stats: {
         usersCount: school._count.memberships,
         classesCount: school._count.classes,

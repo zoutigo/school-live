@@ -7,6 +7,7 @@ const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("../../components/layout/app-shell", () => ({

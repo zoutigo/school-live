@@ -88,6 +88,19 @@ type SchoolRoleBreakdown = {
   students: number;
 };
 
+type SchoolTrack = {
+  id: string;
+  code: string;
+  label: string;
+};
+
+type SchoolCurriculum = {
+  id: string;
+  name: string;
+  academicLevelLabel: string | null;
+  trackLabel: string | null;
+};
+
 type SchoolDetails = {
   id: string;
   slug: string;
@@ -101,6 +114,8 @@ type SchoolDetails = {
   createdAt: string;
   updatedAt: string;
   academicYear?: SchoolAcademicYear | null;
+  tracks: SchoolTrack[];
+  curriculums: SchoolCurriculum[];
   stats: {
     usersCount: number;
     classesCount: number;
@@ -1927,17 +1942,81 @@ export default function SchoolsPage() {
                   </div>
 
                   <div className="rounded-card border border-border bg-background p-3">
-                    <p className="mb-2 text-sm font-medium text-text-primary">
-                      {t("schools.details.academicYearTitle")}
-                    </p>
-                    {selectedSchool.academicYear ? (
-                      <p className="text-sm text-text-primary">
-                        {selectedSchool.academicYear.label}
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-text-primary">
+                        {t("schools.details.schoolSystemTitle")}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() =>
+                          router.push(
+                            `/curriculums?schoolSlug=${selectedSchool.slug}`,
+                          )
+                        }
+                      >
+                        {t("schools.details.schoolSystemViewFull")}
+                      </Button>
+                    </div>
+                    {selectedSchool.tracks.length === 0 &&
+                    selectedSchool.curriculums.length === 0 ? (
+                      <p className="text-sm text-text-secondary">
+                        {t("schools.details.schoolSystemEmpty")}
                       </p>
                     ) : (
-                      <p className="text-sm text-text-secondary">
-                        {t("schools.details.noAcademicYear")}
-                      </p>
+                      <div className="grid gap-3">
+                        <div>
+                          <p className="mb-1 text-xs font-medium uppercase text-text-secondary">
+                            {t("schools.details.schoolSystemTracksTitle")}
+                          </p>
+                          {selectedSchool.tracks.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {selectedSchool.tracks.map((track) => (
+                                <span
+                                  key={track.id}
+                                  className="rounded-full border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+                                >
+                                  {track.label}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-text-secondary">
+                              {t("schools.details.schoolSystemNoTracks")}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="mb-1 text-xs font-medium uppercase text-text-secondary">
+                            {t("schools.details.schoolSystemCurriculumsTitle")}
+                          </p>
+                          {selectedSchool.curriculums.length > 0 ? (
+                            <ul className="grid gap-1">
+                              {selectedSchool.curriculums.map((curriculum) => (
+                                <li
+                                  key={curriculum.id}
+                                  className="text-sm text-text-primary"
+                                >
+                                  {curriculum.name}
+                                  {curriculum.academicLevelLabel ||
+                                  curriculum.trackLabel
+                                    ? ` (${[
+                                        curriculum.academicLevelLabel,
+                                        curriculum.trackLabel,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ")})`
+                                    : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-text-secondary">
+                              {t("schools.details.schoolSystemNoCurriculums")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
 

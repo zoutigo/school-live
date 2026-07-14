@@ -1076,6 +1076,15 @@ describe("Schools page create form", () => {
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-01T00:00:00.000Z",
           academicYear: { id: "year-1", label: "2025-2026" },
+          tracks: [{ id: "track-1", code: "SCI", label: "Scientifique" }],
+          curriculums: [
+            {
+              id: "curriculum-1",
+              name: "Programme Terminale C",
+              academicLevelLabel: "Terminale",
+              trackLabel: "Scientifique",
+            },
+          ],
           stats: {
             usersCount: 10,
             classesCount: 4,
@@ -1103,8 +1112,9 @@ describe("Schools page create form", () => {
       ),
     );
 
-    expect(await screen.findByText("Annee academique")).toBeInTheDocument();
-    expect(screen.getByText("2025-2026")).toBeInTheDocument();
+    expect(await screen.findByText("Systeme scolaire")).toBeInTheDocument();
+    expect(screen.getByText("Scientifique")).toBeInTheDocument();
+    expect(screen.getByText(/Programme Terminale C/)).toBeInTheDocument();
     expect(
       screen.getByText("Utilisateurs (annee en cours)"),
     ).toBeInTheDocument();
@@ -1194,6 +1204,8 @@ describe("Schools page create form", () => {
             createdAt: "2026-01-01T00:00:00.000Z",
             updatedAt: "2026-01-01T00:00:00.000Z",
             academicYear: null,
+            tracks: [],
+            curriculums: [],
             stats: {
               usersCount: 10,
               classesCount: 4,
