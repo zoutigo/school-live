@@ -3043,6 +3043,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "curriculums.national.curriculumsTitle": "Curriculums nationaux",
     "curriculums.national.intro":
       "Geres par la plateforme, visibles en lecture par toutes les ecoles pour construire leurs curriculums locaux.",
+    "curriculums.national.guide.title": "Comment structurer le catalogue",
+    "curriculums.national.guide.subtitle":
+      "Six briques s'empilent dans cet ordre pour preparer une ecole, de la plus generale a la plus precise.",
+    "curriculums.national.guide.step1.title": "1. Cycle",
+    "curriculums.national.guide.step1.body":
+      "Creez d'abord un cycle (ex: Primaire, Secondaire). C'est le grand regroupement qui accueille les niveaux nationaux.",
+    "curriculums.national.guide.step2.title":
+      "2. Niveau + systeme linguistique",
+    "curriculums.national.guide.step2.body":
+      "Ajoutez les niveaux nationaux (ex: 6eme, Form 1), rattaches au cycle et a un systeme linguistique : francophone, anglophone ou bilingue.",
+    "curriculums.national.guide.step3.title": "3. Filiere (si besoin)",
+    "curriculums.national.guide.step3.body":
+      "Creez une filiere seulement si un niveau se scinde en parcours distincts (ex: Scientifique, Litteraire). Beaucoup de niveaux n'en ont pas besoin.",
+    "curriculums.national.guide.step4.title": "4. Curriculum",
+    "curriculums.national.guide.step4.body":
+      "Assemblez un niveau et, eventuellement, une filiere pour produire un curriculum. Son nom est genere automatiquement (ex: 6EME - TRONC_COMMUN).",
+    "curriculums.national.guide.step5.title": "5. Matieres",
+    "curriculums.national.guide.step5.body":
+      "Rattachez les matieres a chaque curriculum avec coefficient, volume horaire hebdomadaire et caractere obligatoire ou optionnel.",
+    "curriculums.national.guide.step6.title": "6. Cote ecole",
+    "curriculums.national.guide.step6.body":
+      "Chaque ecole pioche ensuite dans ce catalogue commun pour construire sa propre structure (niveaux, filieres, curriculums, matieres), sans tout ressaisir.",
     "curriculums.national.codeLabel": "Code",
     "curriculums.national.codePlaceholder": "Ex: 6EME",
     "curriculums.national.labelLabel": "Libelle",
@@ -6320,6 +6342,27 @@ export const translations: Record<Locale, Record<string, string>> = {
     "curriculums.national.curriculumsTitle": "National curriculums",
     "curriculums.national.intro":
       "Managed by the platform, visible read-only by every school to build their local curriculums.",
+    "curriculums.national.guide.title": "How the catalog is structured",
+    "curriculums.national.guide.subtitle":
+      "Six building blocks stack in this order to set up a school, from the most general to the most specific.",
+    "curriculums.national.guide.step1.title": "1. Cycle",
+    "curriculums.national.guide.step1.body":
+      "Start by creating a cycle (e.g. Primary, Secondary). It is the top-level grouping that hosts the national levels.",
+    "curriculums.national.guide.step2.title": "2. Level + language system",
+    "curriculums.national.guide.step2.body":
+      "Add national levels (e.g. 6th grade, Form 1), attached to a cycle and to a language system: francophone, anglophone or bilingual.",
+    "curriculums.national.guide.step3.title": "3. Track (if needed)",
+    "curriculums.national.guide.step3.body":
+      "Create a track only when a level splits into different paths (e.g. Science, Arts). Most levels do not need one.",
+    "curriculums.national.guide.step4.title": "4. Curriculum",
+    "curriculums.national.guide.step4.body":
+      "Combine a level and, if needed, a track to produce a curriculum. Its name is generated automatically (e.g. 6EME - TRONC_COMMUN).",
+    "curriculums.national.guide.step5.title": "5. Subjects",
+    "curriculums.national.guide.step5.body":
+      "Attach subjects to each curriculum with a coefficient, a weekly hour volume, and whether they are mandatory or optional.",
+    "curriculums.national.guide.step6.title": "6. On the school side",
+    "curriculums.national.guide.step6.body":
+      "Each school then reuses this shared catalog to build its own structure (levels, tracks, curriculums, subjects) without re-entering it.",
     "curriculums.national.codeLabel": "Code",
     "curriculums.national.codePlaceholder": "E.g. 6EME",
     "curriculums.national.labelLabel": "Label",
