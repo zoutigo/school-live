@@ -7,6 +7,7 @@ const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("../../components/layout/app-shell", () => ({
@@ -149,6 +150,29 @@ describe("Curriculums page — catalogue national", () => {
 
     expect((await screen.findAllByText("6eme")).length).toBeGreaterThan(0);
     expect(await screen.findByText("6EME - TRONC_COMMUN")).toBeInTheDocument();
+  });
+
+  it("shows the hierarchy guide with all six steps on the national catalog tab", async () => {
+    mockBaseRoutes();
+
+    render(<CurriculumsPage />);
+
+    const nationalTab = await screen.findByRole("button", {
+      name: "Catalogue national",
+    });
+    fireEvent.click(nationalTab);
+
+    expect(
+      await screen.findByText("Comment structurer le catalogue"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1. Cycle")).toBeInTheDocument();
+    expect(
+      screen.getByText("2. Niveau + systeme linguistique"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("3. Filiere (si besoin)")).toBeInTheDocument();
+    expect(screen.getByText("4. Curriculum")).toBeInTheDocument();
+    expect(screen.getByText("5. Matieres")).toBeInTheDocument();
+    expect(screen.getByText("6. Cote ecole")).toBeInTheDocument();
   });
 
   it("lands directly on the national catalog tab for SUPER_ADMIN, never on a specific school's curriculum", async () => {

@@ -611,6 +611,33 @@ describe("Management API e2e", () => {
 
     expect(upsertCurriculumSubject.response.status).toBe(201);
 
+    const schoolDetailsWithCurriculum = await apiJson(
+      `/api/system/schools/${createdSchoolId}`,
+      {
+        headers: { authorization: `Bearer ${bearerToken}` },
+      },
+    );
+
+    expect(schoolDetailsWithCurriculum.response.status).toBe(200);
+    const detailTracks = Array.isArray(schoolDetailsWithCurriculum.body?.tracks)
+      ? (schoolDetailsWithCurriculum.body?.tracks as JsonValue[])
+      : [];
+    expect(detailTracks.some((track) => String(track.id) === trackId)).toBe(
+      true,
+    );
+    const detailCurriculums = Array.isArray(
+      schoolDetailsWithCurriculum.body?.curriculums,
+    )
+      ? (schoolDetailsWithCurriculum.body?.curriculums as JsonValue[])
+      : [];
+    const detailCurriculum = detailCurriculums.find(
+      (curriculum) => String(curriculum.id) === createdCurriculumId,
+    );
+    expect(detailCurriculum).toMatchObject({
+      academicLevelLabel: "Terminale",
+      trackLabel: "Scientifique",
+    });
+
     const createOverride = await apiJson(
       `/api/schools/${createdSchoolSlug}/admin/classrooms/${createdClassId}/subject-overrides`,
       {

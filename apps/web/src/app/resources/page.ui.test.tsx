@@ -340,3 +340,366 @@ describe("ResourcesBrowsePage", () => {
     });
   });
 });
+
+const FULL_CATALOG = {
+  cycles: [{ id: "cycle-1", code: "COLLEGE", label: "College" }],
+  academicLevels: [
+    {
+      id: "level-1",
+      code: "6EME",
+      label: "6eme",
+      cycleId: "cycle-1",
+      languageSystem: null,
+    },
+  ],
+  tracks: [],
+  curriculums: [{ id: "curr-1", academicLevelId: "level-1", trackId: null }],
+  curriculumSubjects: [{ curriculumId: "curr-1", subjectId: "subject-1" }],
+  subjects: [{ id: "subject-1", code: "MATH", name: "Mathematiques" }],
+};
+
+const MINE_ITEM = {
+  id: "mine-1",
+  kind: "ASSESSMENT",
+  schoolId: "school-1",
+  academicLevelId: "level-1",
+  trackId: null,
+  subjectId: "subject-1",
+  examType: "SEQUENCE_TEST",
+  sequence: "SEQ_1",
+  academicYearLabel: "2025-2026",
+  title: "Ma ressource",
+  authorUserId: "me",
+  statementStatus: "PENDING",
+  correctionContent: null,
+  correctionStatus: "PENDING",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  school: { id: "school-1", name: "Ecole Test" },
+  academicLevel: { id: "level-1", code: "6EME", label: "6eme" },
+  track: null,
+  subject: { id: "subject-1", name: "Mathematiques" },
+  authorUser: { id: "me", firstName: "Prof", lastName: "Test" },
+  isFavorite: false,
+};
+
+function mineRouter({
+  myItems = [MINE_ITEM] as unknown[],
+  extra,
+}: {
+  myItems?: unknown[];
+  extra?: (url: string, method: string) => Promise<Response> | undefined;
+} = {}) {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = init?.method ?? "GET";
+
+    const extraResult = extra?.(url, method);
+    if (extraResult) return extraResult;
+
+    if (url.endsWith("/me")) return jsonResponse(ME);
+    if (url.includes("/resources/catalog")) return jsonResponse(FULL_CATALOG);
+    if (url.includes("/resources/schools/search"))
+      return jsonResponse([
+        {
+          id: "school-1",
+          name: "Ecole Test",
+          cycle: null,
+          languageSystem: null,
+        },
+      ]);
+    if (url.includes("/resources/schools")) return jsonResponse(SCHOOLS);
+    if (url.includes("/resources/mine"))
+      return jsonResponse({
+        items: myItems,
+        total: myItems.length,
+        page: 1,
+        limit: 20,
+      });
+    return jsonResponse({}, 404);
+  };
+}
+
+describe("ResourcesBrowsePage — Mes ressources", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+  });
+
+  it("switches to the mine tab and lists own resources", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(mineRouter());
+
+    render(<ResourcesBrowsePage />);
+    await screen.findByTestId("resources-tab-mine");
+    fireEvent.click(screen.getByTestId("resources-tab-mine"));
+
+    expect(
+      await screen.findByTestId("resources-mine-card-mine-1"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Ma ressource")).toBeInTheDocument();
+  });
+
+  it("shows the empty state when the teacher has no resource yet", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      mineRouter({ myItems: [] }),
+    );
+
+    render(<ResourcesBrowsePage />);
+    fireEvent.click(await screen.findByTestId("resources-tab-mine"));
+
+    expect(
+      await screen.findByTestId("resources-mine-empty"),
+    ).toBeInTheDocument();
+  });
+
+  it("creates a new assessment with the minimal required fields", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      mineRouter({
+        myItems: [],
+        extra: (url, method) => {
+          if (url.endsWith("/resources") && method === "POST") {
+            return jsonResponse(MINE_ITEM, 201);
+          }
+          return undefined;
+        },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+    fireEvent.click(await screen.findByTestId("resources-tab-mine"));
+    fireEvent.click(
+      await screen.findByTestId("resources-mine-create-assessment"),
+    );
+
+    fireEvent.change(await screen.findByTestId("resources-mine-form-title"), {
+      target: { value: "Devoir chapitre 3" },
+    });
+    fireEvent.change(screen.getByTestId("resources-mine-form-school"), {
+      target: { value: "school-1" },
+    });
+    fireEvent.change(screen.getByTestId("resources-mine-form-cycle"), {
+      target: { value: "cycle-1" },
+    });
+    fireEvent.change(screen.getByTestId("resources-mine-form-level"), {
+      target: { value: "level-1" },
+    });
+    fireEvent.change(screen.getByTestId("resources-mine-form-subject"), {
+      target: { value: "subject-1" },
+    });
+
+    fireEvent.click(screen.getByTestId("resources-mine-form-submit"));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(
+        ([u, init]) =>
+          String(u).endsWith("/resources") && init?.method === "POST",
+      );
+      expect(call).toBeDefined();
+      const body = JSON.parse(String(call?.[1]?.body));
+      expect(body).toMatchObject({
+        kind: "ASSESSMENT",
+        schoolId: "school-1",
+        academicLevelId: "level-1",
+        subjectId: "subject-1",
+        title: "Devoir chapitre 3",
+      });
+    });
+  });
+
+  it("opens the edit form prefilled and sends a PATCH without kind", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      mineRouter({
+        extra: (url, method) => {
+          if (url.endsWith("/resources/mine-1") && method === "PATCH") {
+            return jsonResponse(MINE_ITEM);
+          }
+          return undefined;
+        },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+    fireEvent.click(await screen.findByTestId("resources-tab-mine"));
+    fireEvent.click(
+      await screen.findByTestId("resources-mine-card-mine-1-edit"),
+    );
+
+    const titleInput = await screen.findByTestId("resources-mine-form-title");
+    expect(titleInput).toHaveValue("Ma ressource");
+
+    fireEvent.click(screen.getByTestId("resources-mine-form-submit"));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(
+        ([u, init]) =>
+          String(u).endsWith("/resources/mine-1") && init?.method === "PATCH",
+      );
+      expect(call).toBeDefined();
+      const body = JSON.parse(String(call?.[1]?.body));
+      expect(body).not.toHaveProperty("kind");
+    });
+  });
+
+  it("manages content: saves a statement draft then submits it for review", async () => {
+    let draftSaved = false;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      mineRouter({
+        extra: (url, method) => {
+          if (url.endsWith("/resources/mine-1") && method === "GET") {
+            return jsonResponse({
+              ...MINE_ITEM,
+              statementContent: null,
+              attachments: [],
+            });
+          }
+          if (url.includes("/resources/mine-1/submissions?part=statement")) {
+            return jsonResponse(
+              draftSaved
+                ? [
+                    {
+                      id: "sub-1",
+                      resourceId: "mine-1",
+                      part: "STATEMENT",
+                      status: "DRAFT",
+                      content: "<p>Enonce</p>",
+                      reason: null,
+                      createdAt: "2026-01-01T00:00:00.000Z",
+                      updatedAt: "2026-01-01T00:00:00.000Z",
+                      reviewedAt: null,
+                      authorUser: {
+                        id: "me",
+                        firstName: "Prof",
+                        lastName: "Test",
+                      },
+                      attachments: [],
+                    },
+                  ]
+                : [],
+            );
+          }
+          if (
+            url.includes("/resources/mine-1/statement/submissions") &&
+            method === "POST"
+          ) {
+            draftSaved = true;
+            return jsonResponse({
+              id: "sub-1",
+              resourceId: "mine-1",
+              part: "STATEMENT",
+              status: "DRAFT",
+              content: "<p>Enonce</p>",
+              reason: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              reviewedAt: null,
+              authorUser: { id: "me", firstName: "Prof", lastName: "Test" },
+              attachments: [],
+            });
+          }
+          if (
+            url.includes("/resources/mine-1/submissions/sub-1/submit") &&
+            method === "PATCH"
+          ) {
+            return jsonResponse({
+              id: "sub-1",
+              resourceId: "mine-1",
+              part: "STATEMENT",
+              status: "AWAITING",
+              content: "<p>Enonce</p>",
+              reason: null,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              reviewedAt: null,
+              authorUser: { id: "me", firstName: "Prof", lastName: "Test" },
+              attachments: [],
+            });
+          }
+          if (url.includes("/resources/mine-1/submissions?part=correction")) {
+            return jsonResponse([]);
+          }
+          return undefined;
+        },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+    fireEvent.click(await screen.findByTestId("resources-tab-mine"));
+    fireEvent.click(
+      await screen.findByTestId("resources-mine-card-mine-1-manage"),
+    );
+
+    await screen.findByTestId("resources-mine-contribution-statement");
+    const editorWrapper = screen.getByTestId(
+      "resources-mine-contribution-statement-editor",
+    );
+    const contentEditable = editorWrapper.querySelector(
+      "[contenteditable]",
+    ) as HTMLElement;
+    contentEditable.innerHTML = "<p>Enonce</p>";
+    fireEvent.input(contentEditable);
+
+    fireEvent.click(
+      screen.getByTestId("resources-mine-contribution-statement-save-draft"),
+    );
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(
+        ([u, init]) =>
+          String(u).includes("/resources/mine-1/statement/submissions") &&
+          init?.method === "POST",
+      );
+      expect(call).toBeDefined();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("resources-mine-contribution-statement-submit"),
+      ).not.toBeDisabled(),
+    );
+
+    fireEvent.click(
+      screen.getByTestId("resources-mine-contribution-statement-submit"),
+    );
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(
+        ([u, init]) =>
+          String(u).includes("/resources/mine-1/submissions/sub-1/submit") &&
+          init?.method === "PATCH",
+      );
+      expect(call).toBeDefined();
+    });
+  });
+
+  it("locks the correction section until the statement is approved", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      mineRouter({
+        extra: (url, method) => {
+          if (url.endsWith("/resources/mine-1") && method === "GET") {
+            return jsonResponse({
+              ...MINE_ITEM,
+              statementContent: null,
+              attachments: [],
+            });
+          }
+          if (url.includes("/resources/mine-1/submissions?part=statement")) {
+            return jsonResponse([]);
+          }
+          return undefined;
+        },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+    fireEvent.click(await screen.findByTestId("resources-tab-mine"));
+    fireEvent.click(
+      await screen.findByTestId("resources-mine-card-mine-1-manage"),
+    );
+
+    expect(
+      await screen.findByTestId(
+        "resources-mine-contribution-correction-locked",
+      ),
+    ).toBeInTheDocument();
+  });
+});

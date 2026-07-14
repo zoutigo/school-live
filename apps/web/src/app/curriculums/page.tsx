@@ -1,8 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
@@ -239,8 +239,18 @@ const nationalSubjectFormSchema = z.object({
 });
 
 export default function CurriculumsPage() {
+  return (
+    <Suspense fallback={null}>
+      <CurriculumsPageContent />
+    </Suspense>
+  );
+}
+
+function CurriculumsPageContent() {
   const router = useRouter();
   const { t } = useTranslation();
+  const searchParams = useSearchParams();
+  const schoolSlugParam = searchParams.get("schoolSlug");
 
   const [tab, setTab] = useState<Tab>("curriculums");
   const [loading, setLoading] = useState(true);
@@ -620,6 +630,18 @@ export default function CurriculumsPage() {
 
       const schoolRows = (await schoolsResponse.json()) as SchoolOption[];
       setSchools(schoolRows);
+
+      const requestedSchool = schoolSlugParam
+        ? schoolRows.find((row) => row.slug === schoolSlugParam)
+        : null;
+
+      if (requestedSchool) {
+        setSchoolSlug(requestedSchool.slug);
+        setTab("curriculums");
+        setLoading(false);
+        return;
+      }
+
       setSchoolSlug(schoolRows[0]?.slug ?? null);
       // Un compte plateforme (SUPER_ADMIN/ADMIN) gère le catalogue NATIONAL par
       // défaut : la gestion du catalogue d'une école précise reste accessible
@@ -3015,6 +3037,34 @@ export default function CurriculumsPage() {
               <p className="text-sm text-text-secondary">
                 {t("curriculums.national.intro")}
               </p>
+
+              <div className="grid gap-4 rounded-card border border-border bg-warm-surface p-5 shadow-card">
+                <div>
+                  <h3 className="font-heading text-base font-semibold text-primary">
+                    {t("curriculums.national.guide.title")}
+                  </h3>
+                  <p className="text-sm text-text-secondary">
+                    {t("curriculums.national.guide.subtitle")}
+                  </p>
+                </div>
+                <ol className="grid gap-3 md:grid-cols-2">
+                  {([1, 2, 3, 4, 5, 6] as const).map((step) => (
+                    <li key={step} className="flex gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                        {step}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-text-primary">
+                          {t(`curriculums.national.guide.step${step}.title`)}
+                        </p>
+                        <p className="text-sm text-text-secondary">
+                          {t(`curriculums.national.guide.step${step}.body`)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
 
               <div className="grid gap-3">
                 <h3 className="font-heading text-base font-semibold">
