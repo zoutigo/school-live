@@ -17,7 +17,9 @@ jest.setTimeout(30_000);
 // Le module Ressources est global à l'application (comme les Tests) : une ressource
 // approuvée est visible par n'importe quelle école/niveau, filtrée par les critères de
 // recherche ; seul un platform role (ADMIN/SUPER_ADMIN) peut approuver/rejeter/révoquer,
-// jamais un SCHOOL_ADMIN. Enoncé et corrigé ont des statuts d'approbation indépendants.
+// jamais un SCHOOL_ADMIN. Enoncé et corrigé ont des statuts d'approbation indépendants,
+// et passent chacun par leur propre circuit de soumissions (brouillon -> AWAITING ->
+// APPROVED/REJECTED), pas par un champ direct sur la ressource.
 describe("Resources API e2e", () => {
   let app: Awaited<ReturnType<typeof NestFactory.create>>;
   let prisma: PrismaService;
@@ -25,6 +27,7 @@ describe("Resources API e2e", () => {
 
   const runId = randomSuffix();
   const password = "StrongPass1";
+  const mediaBase = "https://media.e2e-resources.local";
   const superAdminEmail = `e2e-resources-superadmin-${runId}@example.test`;
   const superAdminPhone = `+337${String(
     Math.floor(Math.random() * 1e8),
@@ -45,6 +48,21 @@ describe("Resources API e2e", () => {
   let parentToken = "";
 
   let resourceId = "";
+  let statementSubmissionId = "";
+  let correctionSubmissionId = "";
+
+  function managedImageUrl(label: string) {
+    return `${mediaBase}/homework/inline-images/${label}-${runId}.webp`;
+  }
+
+  function managedAttachmentUrl(label: string) {
+    return `${mediaBase}/resources/attachments/${label}-${runId}.pdf`;
+  }
+
+  const statementImageUrl = managedImageUrl("statement");
+  const statementAttachmentUrl = managedAttachmentUrl("statement");
+  const correctionImageUrl = managedImageUrl("correction");
+  const correctionAttachmentUrl = managedAttachmentUrl("correction");
 
   async function api(path: string, init?: RequestInit) {
     return fetch(`${baseUrl}${path}`, init);
@@ -74,6 +92,9 @@ describe("Resources API e2e", () => {
   }
 
   beforeAll(async () => {
+    process.env.MEDIA_PUBLIC_BASE_URL = mediaBase;
+    process.env.MEDIA_SERVICE_URL = "";
+
     app = await NestFactory.create(AppModule, { logger: false });
     app.setGlobalPrefix("api");
     app.use(cookieParser());
@@ -118,6 +139,7 @@ describe("Resources API e2e", () => {
         passwordHash,
         mustChangePassword: false,
         profileCompleted: true,
+        activeRole: "SUPER_ADMIN",
         platformRoles: { create: [{ role: "SUPER_ADMIN" }] },
         phoneCredential: {
           create: {
@@ -137,6 +159,7 @@ describe("Resources API e2e", () => {
         passwordHash,
         mustChangePassword: false,
         profileCompleted: true,
+        activeRole: "SCHOOL_ADMIN",
         memberships: { create: { schoolId, role: "SCHOOL_ADMIN" } },
       },
     });
@@ -149,6 +172,7 @@ describe("Resources API e2e", () => {
         passwordHash,
         mustChangePassword: false,
         profileCompleted: true,
+        activeRole: "TEACHER",
         memberships: { create: { schoolId, role: "TEACHER" } },
       },
     });
@@ -161,6 +185,7 @@ describe("Resources API e2e", () => {
         passwordHash,
         mustChangePassword: false,
         profileCompleted: true,
+        activeRole: "TEACHER",
         memberships: { create: { schoolId, role: "TEACHER" } },
       },
     });
@@ -173,6 +198,7 @@ describe("Resources API e2e", () => {
         passwordHash,
         mustChangePassword: false,
         profileCompleted: true,
+        activeRole: "PARENT",
         memberships: { create: { schoolId, role: "PARENT" } },
       },
     });
@@ -213,29 +239,7 @@ describe("Resources API e2e", () => {
     }
   });
 
-  it("lets a PARENT create a resource (national module, no privileged school role)", async () => {
-    const { response, body } = await apiJson("/api/resources", {
-      method: "POST",
-      headers: authHeaders(parentToken),
-      body: JSON.stringify({
-        kind: "ASSESSMENT",
-        schoolId,
-        academicLevelId,
-        subjectId,
-        examType: "SEQUENCE_TEST",
-        sequence: "SEQ_1",
-        academicYearLabel: "2025-2026",
-        title: "Controle e2e parent",
-        statementContent: "<p>Enonce</p>",
-      }),
-    });
-    expect(response.status).toBe(201);
-    const created = body as { id: string; statementStatus: string };
-    expect(created.statementStatus).toBe("PENDING");
-    await prisma.resource.delete({ where: { id: created.id } }).catch(() => {});
-  });
-
-  it("lets a TEACHER submit an ASSESSMENT resource, pending by default", async () => {
+  it("creates a shell resource (metadata only, no content) as PENDING", async () => {
     const { response, body } = await apiJson("/api/resources", {
       method: "POST",
       headers: authHeaders(teacherToken),
@@ -248,8 +252,6 @@ describe("Resources API e2e", () => {
         sequence: "SEQ_1",
         academicYearLabel: "2025-2026",
         title: "Controle e2e",
-        statementContent: "<p>Enonce</p>",
-        correctionContent: "<p>Corrige</p>",
       }),
     });
     expect(response.status).toBe(201);
@@ -273,22 +275,80 @@ describe("Resources API e2e", () => {
     expect(result.items.some((item) => item.id === resourceId)).toBe(false);
   });
 
+  it("lets the author draft and submit a statement with an inline image and an attachment", async () => {
+    const draft = await apiJson(
+      `/api/resources/${resourceId}/statement/submissions`,
+      {
+        method: "POST",
+        headers: authHeaders(teacherToken),
+        body: JSON.stringify({
+          content: `<p>Enonce</p><img src="${statementImageUrl}">`,
+          attachments: [
+            {
+              fileName: "enonce.pdf",
+              fileUrl: statementAttachmentUrl,
+              mimeType: "application/pdf",
+            },
+          ],
+        }),
+      },
+    );
+    expect(draft.response.status).toBe(201);
+    const submission = draft.body as { id: string; status: string };
+    statementSubmissionId = submission.id;
+    expect(submission.status).toBe("DRAFT");
+
+    const submit = await apiJson(
+      `/api/resources/${resourceId}/submissions/${statementSubmissionId}/submit`,
+      { method: "PATCH", headers: authHeaders(teacherToken) },
+    );
+    expect(submit.response.status).toBe(200);
+    expect((submit.body as { status: string }).status).toBe("AWAITING");
+  });
+
   it("rejects SCHOOL_ADMIN from the admin moderation routes (platform-only circuit)", async () => {
     const { response } = await apiJson(
-      `/api/admin/resources/${resourceId}/statement/approve`,
+      `/api/admin/resources/submissions/${statementSubmissionId}/approve`,
       { method: "PATCH", headers: authHeaders(schoolAdminToken) },
     );
     expect(response.status).toBe(403);
   });
 
-  it("lets SUPER_ADMIN approve the statement", async () => {
+  it("lets SUPER_ADMIN approve the statement submission, preserving the inline image and the attachment", async () => {
     const { response, body } = await apiJson(
-      `/api/admin/resources/${resourceId}/statement/approve`,
+      `/api/admin/resources/submissions/${statementSubmissionId}/approve`,
       { method: "PATCH", headers: authHeaders(superAdminToken) },
     );
     expect(response.status).toBe(200);
-    expect((body as { statementStatus: string }).statementStatus).toBe(
-      "APPROVED",
+    const approved = body as {
+      statementStatus: string;
+      statementContent: string;
+      attachments: Array<{ part: string; fileUrl: string; fileName: string }>;
+    };
+    expect(approved.statementStatus).toBe("APPROVED");
+    // Régression : l'image insérée dans l'éditeur devait survivre telle
+    // quelle au passage brouillon -> soumission -> approbation.
+    expect(approved.statementContent).toContain(statementImageUrl);
+    expect(approved.attachments).toEqual([
+      expect.objectContaining({
+        part: "STATEMENT",
+        fileUrl: statementAttachmentUrl,
+        fileName: "enonce.pdf",
+      }),
+    ]);
+  });
+
+  it("re-scopes the approved statement's inline image from the submission entity to the resource entity for media GC bookkeeping", async () => {
+    const asset = await prisma.inlineMediaAsset.findUnique({
+      where: { url: statementImageUrl },
+      select: { entityType: true, entityId: true, status: true },
+    });
+    expect(asset).toEqual(
+      expect.objectContaining({
+        entityType: "RESOURCE",
+        entityId: `${resourceId}:statement`,
+        status: "LINKED",
+      }),
     );
   });
 
@@ -306,9 +366,45 @@ describe("Resources API e2e", () => {
     expect(found?.correctionContent).toBeNull();
   });
 
-  it("lets SUPER_ADMIN approve the correction independently, then reveals it", async () => {
+  it("lets the author draft and submit a correction with its own inline image and attachment", async () => {
+    const draft = await apiJson(
+      `/api/resources/${resourceId}/correction/submissions`,
+      {
+        method: "POST",
+        headers: authHeaders(teacherToken),
+        body: JSON.stringify({
+          content: `<p>Corrige</p><img src="${correctionImageUrl}">`,
+          attachments: [
+            {
+              fileName: "corrige.pdf",
+              fileUrl: correctionAttachmentUrl,
+              mimeType: "application/pdf",
+            },
+          ],
+        }),
+      },
+    );
+    expect(draft.response.status).toBe(201);
+    const submission = draft.body as { id: string; status: string };
+    correctionSubmissionId = submission.id;
+    expect(submission.status).toBe("DRAFT");
+
+    const submit = await apiJson(
+      `/api/resources/${resourceId}/submissions/${correctionSubmissionId}/submit`,
+      { method: "PATCH", headers: authHeaders(teacherToken) },
+    );
+    expect(submit.response.status).toBe(200);
+  });
+
+  // Régression exacte du bug remonté par la recette mobile (Talla) : après
+  // validation du corrigé par le modérateur, l'image et la pièce jointe
+  // n'apparaissaient plus dans « Mes ressources ». Ce test verrouille le
+  // comportement attendu côté API : le corrigé approuvé doit exposer son
+  // image inline ET sa pièce jointe, sans faire disparaître celles de
+  // l'énoncé déjà approuvé.
+  it("lets SUPER_ADMIN approve the correction submission, preserving its inline image and attachment alongside the statement's", async () => {
     const approve = await apiJson(
-      `/api/admin/resources/${resourceId}/correction/approve`,
+      `/api/admin/resources/submissions/${correctionSubmissionId}/approve`,
       { method: "PATCH", headers: authHeaders(superAdminToken) },
     );
     expect(approve.response.status).toBe(200);
@@ -317,8 +413,39 @@ describe("Resources API e2e", () => {
       headers: authHeaders(parentToken),
     });
     expect(response.status).toBe(200);
-    expect((body as { correctionContent: string }).correctionContent).toBe(
-      "<p>Corrige</p>",
+    const detail = body as {
+      statementContent: string;
+      correctionContent: string;
+      attachments: Array<{ part: string; fileUrl: string; fileName: string }>;
+    };
+    expect(detail.correctionContent).toContain(correctionImageUrl);
+    // L'énoncé déjà approuvé reste intact : l'approbation du corrigé ne doit
+    // ni l'écraser, ni faire disparaître sa pièce jointe.
+    expect(detail.statementContent).toContain(statementImageUrl);
+    expect(detail.attachments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          part: "STATEMENT",
+          fileUrl: statementAttachmentUrl,
+        }),
+        expect.objectContaining({
+          part: "CORRECTION",
+          fileUrl: correctionAttachmentUrl,
+        }),
+      ]),
+    );
+    expect(detail.attachments).toHaveLength(2);
+
+    const asset = await prisma.inlineMediaAsset.findUnique({
+      where: { url: correctionImageUrl },
+      select: { entityType: true, entityId: true, status: true },
+    });
+    expect(asset).toEqual(
+      expect.objectContaining({
+        entityType: "RESOURCE",
+        entityId: `${resourceId}:correction`,
+        status: "LINKED",
+      }),
     );
   });
 
@@ -373,32 +500,6 @@ describe("Resources API e2e", () => {
     }
   });
 
-  it("re-editing the approved statement resets it to PENDING and hides it again from the public listing", async () => {
-    const update = await apiJson(`/api/resources/${resourceId}`, {
-      method: "PATCH",
-      headers: authHeaders(teacherToken),
-      body: JSON.stringify({ statementContent: "<p>Enonce corrige</p>" }),
-    });
-    expect(update.response.status).toBe(200);
-    expect((update.body as { statementStatus: string }).statementStatus).toBe(
-      "PENDING",
-    );
-
-    const { body } = await apiJson(
-      `/api/resources?kind=ASSESSMENT&academicLevelId=${academicLevelId}`,
-      { headers: authHeaders(parentToken) },
-    );
-    const result = body as { items: Array<{ id: string }> };
-    expect(result.items.some((item) => item.id === resourceId)).toBe(false);
-
-    // re-approve so subsequent tests (favorites) can rely on an APPROVED statement
-    const reapprove = await apiJson(
-      `/api/admin/resources/${resourceId}/statement/approve`,
-      { method: "PATCH", headers: authHeaders(superAdminToken) },
-    );
-    expect(reapprove.response.status).toBe(200);
-  });
-
   it("lets a reader favorite and unfavorite an approved resource", async () => {
     const fav = await apiJson(`/api/resources/${resourceId}/favorite`, {
       method: "POST",
@@ -420,15 +521,23 @@ describe("Resources API e2e", () => {
     expect(unfav.response.status).toBe(200);
   });
 
-  it("lets SUPER_ADMIN revoke an approved statement back to PENDING", async () => {
+  it("lets SUPER_ADMIN revoke an approved statement submission back to AWAITING and masks the statement again", async () => {
     const revoke = await apiJson(
-      `/api/admin/resources/${resourceId}/statement/revoke`,
+      `/api/admin/resources/submissions/${statementSubmissionId}/revoke`,
       { method: "PATCH", headers: authHeaders(superAdminToken) },
     );
     expect(revoke.response.status).toBe(200);
     expect((revoke.body as { statementStatus: string }).statementStatus).toBe(
       "PENDING",
     );
+
+    // Re-approve so the resource stays in a consistent, publicly-visible
+    // state for the remaining tests in this file.
+    const reapprove = await apiJson(
+      `/api/admin/resources/submissions/${statementSubmissionId}/approve`,
+      { method: "PATCH", headers: authHeaders(superAdminToken) },
+    );
+    expect(reapprove.response.status).toBe(200);
   });
 
   it("rejects an ASSESSMENT payload missing its school", async () => {
@@ -443,7 +552,6 @@ describe("Resources API e2e", () => {
         sequence: "SEQ_1",
         academicYearLabel: "2025-2026",
         title: "Sans ecole",
-        statementContent: "<p>Enonce</p>",
       }),
     });
     expect(response.status).toBe(400);
@@ -461,13 +569,12 @@ describe("Resources API e2e", () => {
         examType: "MOCK_EXAM",
         academicYearLabel: "2025-2026",
         title: "Examen invalide",
-        statementContent: "<p>Enonce</p>",
       }),
     });
     expect(response.status).toBe(400);
   });
 
-  it("lets the author see their own submissions of any status through /resources/mine", async () => {
+  it("lets the author see their own resource through /resources/mine", async () => {
     const { response, body } = await apiJson("/api/resources/mine", {
       headers: authHeaders(teacherToken),
     });

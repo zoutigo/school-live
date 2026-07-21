@@ -74,6 +74,9 @@ jobs:
       - name: API E2E Inline Media Cleanup (isolated test DB)
         run: npm run -w @school-live/api test:e2e -- inline-media-cleanup.e2e-spec.ts
 
+      - name: API E2E Resources (isolated test DB)
+        run: npm run -w @school-live/api test:e2e -- resources.e2e-spec.ts
+
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 30
