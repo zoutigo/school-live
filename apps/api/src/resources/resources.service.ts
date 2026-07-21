@@ -1019,6 +1019,7 @@ export class ResourcesService {
       return {
         resourceId: submission.resourceId,
         part: submission.part,
+        content: submission.content,
         discarded: siblings,
       };
     });
@@ -1032,6 +1033,25 @@ export class ResourcesService {
         }),
       ),
     );
+
+    // Les images insérées dans l'éditeur pendant la rédaction sont encore
+    // rattachées à l'entité "submission:<id>" (cf. saveSubmissionDraft) : une
+    // fois approuvées, on les rattache à l'entité "<resourceId>:<part>" pour
+    // que le nettoyage GC (purgeExpiredTempUploads / removeEntityImages) les
+    // associe désormais à la ressource publiée plutôt qu'à une soumission qui
+    // n'a plus vocation à être modifiée.
+    await this.inlineMediaService.syncEntityImages({
+      schoolId: null,
+      uploadedByUserId: admin.id,
+      scope: "RESOURCE",
+      entityType: "RESOURCE",
+      entityId: this.inlineEntityId(
+        result.resourceId,
+        result.part === "STATEMENT" ? "statement" : "correction",
+      ),
+      nextBodyHtml: result.content,
+      deleteRemovedPhysically: false,
+    });
 
     return this.getResource(admin, result.resourceId);
   }

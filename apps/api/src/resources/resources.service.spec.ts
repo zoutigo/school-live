@@ -1146,6 +1146,16 @@ describe("ResourcesService", () => {
       expect(notifications.notifyDiscarded).toHaveBeenCalledWith(
         expect.objectContaining({ authorUserId: THIRD_TEACHER_ID }),
       );
+      // Régression : les images insérées pendant la rédaction restaient
+      // rattachées pour toujours à l'entité "submission:<id>" côté GC des
+      // médias inline, jamais migrées vers la ressource publiée.
+      expect(inlineMedia.syncEntityImages).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: "RESOURCE",
+          entityId: `${RESOURCE_ID}:statement`,
+          nextBodyHtml: "<p>Enonce propose</p>",
+        }),
+      );
     });
 
     it("fails with a conflict when the submission was already reviewed by someone else (race condition)", async () => {
