@@ -1,5 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { Term } from "@prisma/client";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { GradePublishedNotificationsService } from "../notifications/grade-published-notifications.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -345,6 +346,97 @@ describe("EvaluationsService", () => {
         expect(result[0].term).toBe(term);
         expect(result[0].countsForAverage).toBe(counts);
       }
+    });
+  });
+
+  describe("listStudentNotes — fusion des matières SEQ1/SEQ2", () => {
+    beforeEach(() => {
+      prisma.student.findFirst.mockResolvedValue({
+        id: "student-1",
+        firstName: "Ada",
+        lastName: "Lovelace",
+      });
+      prisma.enrollment.findMany.mockResolvedValue([
+        {
+          classId: "class-1",
+          schoolYearId: "year-1",
+          class: { id: "class-1", name: "6ème A", curriculumId: null },
+        },
+      ]);
+      prisma.studentTermReport.findMany.mockResolvedValue([]);
+      prisma.classSubjectOverride.findMany.mockResolvedValue([]);
+      prisma.curriculumSubject.findMany.mockResolvedValue([]);
+    });
+
+    it("ne renvoie qu'une seule entrée par matière évaluée dans SEQ1 et SEQ2, avec des ids uniques", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-seq1",
+          sequence: "SEQ_1",
+          subjectId: "subject-1",
+          subject: { id: "subject-1", name: "Maths" },
+          scores: [{ studentId: "student-1", score: 15, status: "ENTERED" }],
+        }),
+        makeEvaluation({
+          id: "eval-seq2",
+          sequence: "SEQ_2",
+          isFinalExam: true,
+          subjectId: "subject-1",
+          subject: { id: "subject-1", name: "Maths" },
+          scores: [{ studentId: "student-1", score: 17, status: "ENTERED" }],
+        }),
+      ]);
+
+      const result = await service.listStudentNotes(
+        makeUser(),
+        "school-1",
+        "student-1",
+        Term.TERM_1,
+      );
+
+      const term1 = result.find((snapshot) => snapshot.term === "TERM_1");
+      expect(term1).toBeDefined();
+
+      const subjectIds = term1!.subjects.map((subject) => subject.id);
+      expect(subjectIds).toEqual(["subject-1"]);
+      expect(new Set(subjectIds).size).toBe(subjectIds.length);
+
+      const mathsSubject = term1!.subjects[0];
+      expect(mathsSubject.evaluations.map((e) => e.id).sort()).toEqual([
+        "eval-seq1",
+        "eval-seq2",
+      ]);
+      expect(mathsSubject.studentAverage).toBe(16);
+    });
+
+    it("garde des matières distinctes si elles ne sont évaluées que dans une seule séquence", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-maths",
+          sequence: "SEQ_1",
+          subjectId: "subject-1",
+          subject: { id: "subject-1", name: "Maths" },
+          scores: [{ studentId: "student-1", score: 15, status: "ENTERED" }],
+        }),
+        makeEvaluation({
+          id: "eval-fr",
+          sequence: "SEQ_2",
+          subjectId: "subject-2",
+          subject: { id: "subject-2", name: "Français" },
+          scores: [{ studentId: "student-1", score: 12, status: "ENTERED" }],
+        }),
+      ]);
+
+      const result = await service.listStudentNotes(
+        makeUser(),
+        "school-1",
+        "student-1",
+        Term.TERM_1,
+      );
+
+      const term1 = result.find((snapshot) => snapshot.term === "TERM_1");
+      const subjectIds = term1!.subjects.map((subject) => subject.id).sort();
+      expect(subjectIds).toEqual(["subject-1", "subject-2"]);
     });
   });
 

@@ -969,8 +969,10 @@ export class EvaluationsService {
             : latestEvaluationUpdate
           : (publishedAt ?? latestEvaluationUpdate);
 
-      // Moyenne générale trimestrielle (seq1 + seq2) / 2
-      const allSubjects = sequenceSnapshots.flatMap((s) => s.subjects);
+      // Vue à plat des matières du trimestre : une entrée par matière,
+      // fusionnée entre SEQ1 et SEQ2 (une matière évaluée dans les deux
+      // séquences ne doit apparaître qu'une seule fois).
+      const allSubjects = this.mergeSubjectsAcrossSequences(sequenceSnapshots);
       const termGeneralAverage =
         sequenceSnapshots.length >= 2
           ? this.computeTermGeneralAverage(sequenceSnapshots)
@@ -1276,6 +1278,115 @@ export class EvaluationsService {
           ),
         };
       })
+      .sort((a, b) => a.subjectLabel.localeCompare(b.subjectLabel));
+  }
+
+  /**
+   * Fusionne les matières de SEQ1 et SEQ2 par `subjectId` pour produire la
+   * vue à plat "toutes évaluations du trimestre" (`subjects`). Sans cette
+   * fusion, une matière évaluée dans les deux séquences apparaît deux fois
+   * avec le même `id`, ce qui casse les listes clé-par-id côté mobile/web.
+   */
+  private mergeSubjectsAcrossSequences(
+    sequenceSnapshots: Array<{
+      subjects: ReturnType<EvaluationsService["groupStudentNotesBySubject"]>;
+    }>,
+  ) {
+    const bySubject = new Map<
+      string,
+      {
+        id: string;
+        subjectLabel: string;
+        teachers: string[];
+        coefficient: number;
+        appreciation: string | null;
+        evaluations: ReturnType<
+          EvaluationsService["groupStudentNotesBySubject"]
+        >[number]["evaluations"];
+        studentAverages: number[];
+        classAverages: number[];
+        classMins: number[];
+        classMaxs: number[];
+      }
+    >();
+
+    for (const { subjects } of sequenceSnapshots) {
+      for (const subject of subjects) {
+        const existing = bySubject.get(subject.id) ?? {
+          id: subject.id,
+          subjectLabel: subject.subjectLabel,
+          teachers: [],
+          coefficient: subject.coefficient,
+          appreciation: null,
+          evaluations: [],
+          studentAverages: [],
+          classAverages: [],
+          classMins: [],
+          classMaxs: [],
+        };
+
+        existing.teachers = Array.from(
+          new Set([...existing.teachers, ...subject.teachers]),
+        );
+        existing.appreciation = existing.appreciation ?? subject.appreciation;
+        existing.evaluations = [
+          ...existing.evaluations,
+          ...subject.evaluations,
+        ];
+        if (subject.studentAverage !== null) {
+          existing.studentAverages.push(subject.studentAverage);
+        }
+        if (subject.classAverage !== null) {
+          existing.classAverages.push(subject.classAverage);
+        }
+        if (subject.classMin !== null) {
+          existing.classMins.push(subject.classMin);
+        }
+        if (subject.classMax !== null) {
+          existing.classMaxs.push(subject.classMax);
+        }
+
+        bySubject.set(subject.id, existing);
+      }
+    }
+
+    return Array.from(bySubject.values())
+      .map((entry) => ({
+        id: entry.id,
+        subjectLabel: entry.subjectLabel,
+        teachers: entry.teachers,
+        coefficient: entry.coefficient,
+        studentAverage:
+          entry.studentAverages.length > 0
+            ? Number(
+                (
+                  entry.studentAverages.reduce((a, b) => a + b, 0) /
+                  entry.studentAverages.length
+                ).toFixed(2),
+              )
+            : null,
+        classAverage:
+          entry.classAverages.length > 0
+            ? Number(
+                (
+                  entry.classAverages.reduce((a, b) => a + b, 0) /
+                  entry.classAverages.length
+                ).toFixed(2),
+              )
+            : null,
+        classMin:
+          entry.classMins.length > 0
+            ? Number(Math.min(...entry.classMins).toFixed(2))
+            : null,
+        classMax:
+          entry.classMaxs.length > 0
+            ? Number(Math.max(...entry.classMaxs).toFixed(2))
+            : null,
+        appreciation: entry.appreciation,
+        evaluations: entry.evaluations.sort((a, b) =>
+          b.recordedAt.localeCompare(a.recordedAt),
+        ),
+      }))
       .sort((a, b) => a.subjectLabel.localeCompare(b.subjectLabel));
   }
 
