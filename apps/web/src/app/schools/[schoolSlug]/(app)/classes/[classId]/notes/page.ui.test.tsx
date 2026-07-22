@@ -800,4 +800,150 @@ describe("TeacherClassNotesPage evaluations tab", () => {
       screen.queryByRole("button", { name: "Page suivante" }),
     ).not.toBeInTheDocument();
   });
+
+  it("filters the list by search on title or subject", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("notes-evaluations-search-input"), {
+      target: { value: "Calcul mental" },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Calcul mental/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /Composition fractions/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters by evaluation type through the filter panel", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-toggle"));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("notes-evaluations-filter-panel"),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-type-type-1"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Composition fractions/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Problemes geometriques/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    // Le bouton filtre devient actif (teal plein)
+    expect(screen.getByTestId("notes-evaluations-filter-toggle")).toHaveClass(
+      "bg-accent-teal",
+    );
+  });
+
+  it("filters by sequence through the filter panel", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-toggle"));
+    fireEvent.click(
+      await screen.findByTestId("notes-evaluations-filter-sequence-SEQ_1"),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Composition fractions/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Problemes geometriques/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("filters by grade completion through the filter panel", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-toggle"));
+    fireEvent.click(
+      await screen.findByTestId("notes-evaluations-filter-completion-complete"),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Fractions avancees/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Composition fractions/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("resets the filters via the reset button", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-toggle"));
+    fireEvent.click(
+      await screen.findByTestId("notes-evaluations-filter-completion-complete"),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /Composition fractions/i }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-reset"));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Composition fractions/i }),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("colors the score progress badge according to grade completion", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    // eval-1 : 12/20 (incomplet) -> couleur "warm accent"
+    const incomplete = await screen.findByText("12/20");
+    expect(incomplete).toHaveClass("text-warm-accent-dark");
+
+    // eval-5 : 20/20 (complet) -> couleur teal
+    const complete = screen.getByText("20/20");
+    expect(complete).toHaveClass("text-accent-teal-dark");
+  });
 });

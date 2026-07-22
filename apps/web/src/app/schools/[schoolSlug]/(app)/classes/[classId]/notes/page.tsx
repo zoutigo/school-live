@@ -9,6 +9,8 @@ import {
   FileText,
   Pencil,
   Plus,
+  RotateCcw,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -33,12 +35,17 @@ import {
   type TranslateFn,
 } from "../../../../../../../i18n/useTranslation";
 import {
+  filterEvaluations,
   getCreateEvaluationDefaults,
   getEvaluationListMeta,
+  hasActiveEvaluationListFilters,
   hasMeaningfulRichTextContent,
+  isEvaluationComplete,
+  NO_EVALUATION_LIST_FILTERS,
   normalizeOptionalRichTextHtml,
   paginateEvaluations,
   type CreateEvaluationFormValues,
+  type EvaluationListFilters,
 } from "./page-logic";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -82,6 +89,15 @@ const SEQUENCE_KEY_MAP: Record<Sequence, SequenceKey> = {
   SEQ_4: "seq4",
   SEQ_5: "seq5",
   SEQ_6: "seq6",
+};
+
+const SEQUENCE_SHORT_LABEL_MAP: Record<Sequence, string> = {
+  SEQ_1: "T1-Seq1",
+  SEQ_2: "T1-Seq2",
+  SEQ_3: "T2-Seq3",
+  SEQ_4: "T2-Seq4",
+  SEQ_5: "T3-Seq5",
+  SEQ_6: "T3-Seq6",
 };
 
 type EvaluationRow = {
@@ -192,6 +208,10 @@ export default function TeacherClassNotesPage() {
   const [selectedEvaluation, setSelectedEvaluation] =
     useState<EvaluationDetail | null>(null);
   const [evaluationPage, setEvaluationPage] = useState(1);
+  const [evaluationSearch, setEvaluationSearch] = useState("");
+  const [evaluationFiltersOpen, setEvaluationFiltersOpen] = useState(false);
+  const [evaluationFilters, setEvaluationFilters] =
+    useState<EvaluationListFilters>(NO_EVALUATION_LIST_FILTERS);
   const [evaluationPanelMode, setEvaluationPanelMode] = useState<
     "details" | "create" | "edit"
   >("details");
@@ -776,19 +796,37 @@ export default function TeacherClassNotesPage() {
   );
   const evaluationsPerPage = 5;
   const studentCount = context?.students.length ?? 0;
+  const filteredEvaluations = useMemo(
+    () =>
+      filterEvaluations(
+        evaluations,
+        evaluationSearch,
+        evaluationFilters,
+        studentCount,
+      ),
+    [evaluations, evaluationSearch, evaluationFilters, studentCount],
+  );
   const totalEvaluationPages = Math.max(
     1,
-    Math.ceil(evaluations.length / evaluationsPerPage),
+    Math.ceil(filteredEvaluations.length / evaluationsPerPage),
   );
   const paginatedEvaluations = useMemo(() => {
-    return paginateEvaluations(evaluations, evaluationPage, evaluationsPerPage);
-  }, [evaluationPage, evaluations]);
+    return paginateEvaluations(
+      filteredEvaluations,
+      evaluationPage,
+      evaluationsPerPage,
+    );
+  }, [evaluationPage, filteredEvaluations]);
   const selectedEvaluationScoresCount =
     selectedEvaluation?._count?.scores ??
     selectedEvaluation?.students.filter(
       (student) => student.scoreStatus === "ENTERED",
     ).length ??
     0;
+
+  function resetEvaluationFilters() {
+    setEvaluationFilters(NO_EVALUATION_LIST_FILTERS);
+  }
 
   function startCreateEvaluation() {
     if (context) {
@@ -953,14 +991,205 @@ export default function TeacherClassNotesPage() {
                 </button>
               </div>
 
+              <div className="mb-3 flex items-center gap-2">
+                <FormTextInput
+                  value={evaluationSearch}
+                  onChange={(event) => setEvaluationSearch(event.target.value)}
+                  placeholder={t("notes.teacher.list.searchPlaceholder")}
+                  aria-label={t("notes.teacher.list.searchAria")}
+                  data-testid="notes-evaluations-search-input"
+                />
+                <button
+                  type="button"
+                  data-testid="notes-evaluations-filter-toggle"
+                  onClick={() =>
+                    setEvaluationFiltersOpen((current) => !current)
+                  }
+                  aria-label={t("notes.teacher.list.filterToggle")}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border transition ${
+                    hasActiveEvaluationListFilters(evaluationFilters)
+                      ? "border-accent-teal bg-accent-teal text-white"
+                      : "border-accent-teal/40 bg-surface text-accent-teal"
+                  }`}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                </button>
+              </div>
+
+              {evaluationFiltersOpen ? (
+                <div
+                  className="mb-4 grid gap-3 rounded-card border border-accent-teal/25 bg-background p-4"
+                  data-testid="notes-evaluations-filter-panel"
+                >
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.filterTypeLabel")}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEvaluationFilters((current) => ({
+                            ...current,
+                            evaluationTypeId: null,
+                          }))
+                        }
+                        data-testid="notes-evaluations-filter-type-all"
+                        className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                          evaluationFilters.evaluationTypeId == null
+                            ? "border-accent-teal bg-accent-teal text-white"
+                            : "border-border bg-surface text-text-secondary"
+                        }`}
+                      >
+                        {t("notes.teacher.list.filterAll")}
+                      </button>
+                      {(context?.evaluationTypes ?? []).map((type) => (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() =>
+                            setEvaluationFilters((current) => ({
+                              ...current,
+                              evaluationTypeId: type.id,
+                            }))
+                          }
+                          data-testid={`notes-evaluations-filter-type-${type.id}`}
+                          className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                            evaluationFilters.evaluationTypeId === type.id
+                              ? "border-accent-teal bg-accent-teal text-white"
+                              : "border-border bg-surface text-text-secondary"
+                          }`}
+                        >
+                          {type.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.filterSequenceLabel")}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEvaluationFilters((current) => ({
+                            ...current,
+                            sequence: null,
+                          }))
+                        }
+                        data-testid="notes-evaluations-filter-sequence-all"
+                        className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                          evaluationFilters.sequence == null
+                            ? "border-accent-teal bg-accent-teal text-white"
+                            : "border-border bg-surface text-text-secondary"
+                        }`}
+                      >
+                        {t("notes.teacher.list.filterAll")}
+                      </button>
+                      {(Object.keys(SEQUENCE_KEY_MAP) as Sequence[]).map(
+                        (seq) => (
+                          <button
+                            key={seq}
+                            type="button"
+                            onClick={() =>
+                              setEvaluationFilters((current) => ({
+                                ...current,
+                                sequence: seq,
+                              }))
+                            }
+                            data-testid={`notes-evaluations-filter-sequence-${seq}`}
+                            className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                              evaluationFilters.sequence === seq
+                                ? "border-accent-teal bg-accent-teal text-white"
+                                : "border-border bg-surface text-text-secondary"
+                            }`}
+                          >
+                            {SEQUENCE_SHORT_LABEL_MAP[seq]}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.filterCompletionLabel")}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(
+                        [
+                          {
+                            value: "all",
+                            label: t("notes.teacher.list.filterAll"),
+                          },
+                          {
+                            value: "complete",
+                            label: t("notes.teacher.list.filterComplete"),
+                          },
+                          {
+                            value: "incomplete",
+                            label: t("notes.teacher.list.filterIncomplete"),
+                          },
+                        ] as const
+                      ).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            setEvaluationFilters((current) => ({
+                              ...current,
+                              completion: option.value,
+                            }))
+                          }
+                          data-testid={`notes-evaluations-filter-completion-${option.value}`}
+                          className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                            evaluationFilters.completion === option.value
+                              ? "border-accent-teal bg-accent-teal text-white"
+                              : "border-border bg-surface text-text-secondary"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    data-testid="notes-evaluations-filter-reset"
+                    onClick={resetEvaluationFilters}
+                    disabled={
+                      !hasActiveEvaluationListFilters(evaluationFilters)
+                    }
+                    className="flex items-center justify-center gap-2 rounded-card border border-warm-accent px-3 py-2 text-sm font-semibold text-warm-accent-dark transition disabled:cursor-not-allowed disabled:border-border disabled:text-text-secondary"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    {t("notes.teacher.list.filterReset")}
+                  </button>
+                </div>
+              ) : null}
+
               <div className="grid gap-3">
                 {evaluations.length === 0 ? (
                   <div className="rounded-[18px] border border-dashed border-warm-border bg-warm-surface/70 p-4 text-sm text-text-secondary">
                     {t("notes.teacher.list.empty")}
                   </div>
+                ) : filteredEvaluations.length === 0 ? (
+                  <div
+                    className="rounded-[18px] border border-dashed border-warm-border bg-warm-surface/70 p-4 text-sm text-text-secondary"
+                    data-testid="notes-evaluations-empty-filtered"
+                  >
+                    {t("notes.teacher.list.emptyFiltered")}
+                  </div>
                 ) : (
                   paginatedEvaluations.map((evaluation) => {
                     const listMeta = getEvaluationListMeta(
+                      evaluation,
+                      studentCount,
+                    );
+                    const complete = isEvaluationComplete(
                       evaluation,
                       studentCount,
                     );
@@ -1003,7 +1232,15 @@ export default function TeacherClassNotesPage() {
                               : t("notes.teacher.status.draft")}
                           </span>
                           <span>{listMeta.dateLabel}</span>
-                          <span>{listMeta.scoreProgress}</span>
+                          <span
+                            className={`font-semibold ${
+                              complete
+                                ? "text-accent-teal-dark"
+                                : "text-warm-accent-dark"
+                            }`}
+                          >
+                            {listMeta.scoreProgress}
+                          </span>
                         </div>
                       </button>
                     );
@@ -1011,12 +1248,12 @@ export default function TeacherClassNotesPage() {
                 )}
               </div>
 
-              {evaluations.length > evaluationsPerPage ? (
+              {filteredEvaluations.length > evaluationsPerPage ? (
                 <div className="mt-3">
                   <PaginationControls
                     page={evaluationPage}
                     totalPages={totalEvaluationPages}
-                    totalItems={evaluations.length}
+                    totalItems={filteredEvaluations.length}
                     compact
                     onPageChange={setEvaluationPage}
                   />
