@@ -1,16 +1,16 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import NotesAdminEntryPage from "./page";
 import { useLocaleStore } from "../../../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../../../i18n/translations";
 
 const replaceMock = vi.fn();
+const pushMock = vi.fn();
+const routerMock = { replace: replaceMock, push: pushMock };
 let paramsMock = { schoolSlug: "college-vogt" };
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    replace: replaceMock,
-  }),
+  useRouter: () => routerMock,
   useParams: () => paramsMock,
 }));
 
@@ -25,11 +25,12 @@ describe("NotesAdminEntryPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
+    pushMock.mockReset();
     paramsMock = { schoolSlug: "college-vogt" };
     useLocaleStore.setState({ locale: DEFAULT_LOCALE });
   });
 
-  it("redirects to the first classroom's evaluations page for a school admin", async () => {
+  it("shows a level/class picker for a school admin, without auto-selecting a class", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
@@ -38,8 +39,16 @@ describe("NotesAdminEntryPage", () => {
       }
       if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
         return createJsonResponse([
-          { id: "class-9", name: "6e A" },
-          { id: "class-10", name: "6e B" },
+          {
+            id: "class-9",
+            name: "6e A",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+          {
+            id: "class-10",
+            name: "6e B",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
         ]);
       }
       return createJsonResponse({ message: "Not found" }, 404);
@@ -47,10 +56,47 @@ describe("NotesAdminEntryPage", () => {
 
     render(<NotesAdminEntryPage />);
 
-    await waitFor(() =>
-      expect(replaceMock).toHaveBeenCalledWith(
-        "/schools/college-vogt/classes/class-9/notes",
-      ),
+    expect(
+      await screen.findByTestId("notes-admin-entry-browse"),
+    ).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalledWith(
+      expect.stringContaining("/classes/"),
+    );
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("navigates to the chosen class's evaluations page once a class is picked and submitted", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return createJsonResponse([
+          {
+            id: "class-9",
+            name: "6e A",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+          {
+            id: "class-10",
+            name: "6e B",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+        ]);
+      }
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<NotesAdminEntryPage />);
+
+    const classSelect = await screen.findByTestId("notes-admin-entry-class");
+    fireEvent.change(classSelect, { target: { value: "class-10" } });
+    fireEvent.click(screen.getByTestId("notes-admin-entry-submit"));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/schools/college-vogt/classes/class-10/notes",
     );
   });
 
