@@ -55,6 +55,12 @@ const EVALUATION_ATTACHMENT_ACCEPT =
 
 type TabKey = "evaluations" | "scores" | "council" | "help";
 
+type AdminClassroomOption = {
+  id: string;
+  name: string;
+  academicLevel?: { id: string; code: string; label: string } | null;
+};
+
 type TeacherContext = {
   class: {
     id: string;
@@ -118,6 +124,8 @@ type EvaluationRow = {
   subject: { id: string; name: string };
   subjectBranch?: { id: string; name: string } | null;
   evaluationType: { id: string; code: string; label: string };
+  class: { id: string; name: string };
+  author: { id: string; firstName: string; lastName: string };
   attachments: Array<{
     id: string;
     fileName: string;
@@ -196,6 +204,11 @@ export default function TeacherClassNotesPage() {
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabKey>("evaluations");
+  const [role, setRole] = useState<string | null>(null);
+  const [adminClassrooms, setAdminClassrooms] = useState<AdminClassroomOption[]>(
+    [],
+  );
+  const [adminLevelFilter, setAdminLevelFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [savingScores, setSavingScores] = useState(false);
@@ -343,13 +356,33 @@ export default function TeacherClassNotesPage() {
         router.replace(`/schools/${schoolSlug}/dashboard`);
         return;
       }
+      setRole(me.role ?? null);
 
-      await Promise.all([loadContext(), loadEvaluations()]);
+      const tasks = [loadContext(), loadEvaluations()];
+      if (
+        me.role === "SCHOOL_ADMIN" ||
+        me.role === "SCHOOL_MANAGER" ||
+        me.role === "SUPERVISOR"
+      ) {
+        tasks.push(loadAdminClassrooms());
+      }
+      await Promise.all(tasks);
     } catch {
       setPageError(t("notes.teacher.errors.loadModule"));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadAdminClassrooms() {
+    const response = await fetch(
+      `${API_URL}/schools/${schoolSlug}/admin/classrooms`,
+      { credentials: "include" },
+    );
+    if (!response.ok) {
+      return;
+    }
+    setAdminClassrooms((await response.json()) as AdminClassroomOption[]);
   }
 
   async function loadContext() {
@@ -823,6 +856,31 @@ export default function TeacherClassNotesPage() {
     await persistCouncilReports(nextDrafts);
   }
 
+  const isAdminBrowsing =
+    role === "SCHOOL_ADMIN" ||
+    role === "SCHOOL_MANAGER" ||
+    role === "SUPERVISOR";
+  const adminLevelOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    adminClassrooms.forEach((entry) => {
+      if (entry.academicLevel && !seen.has(entry.academicLevel.id)) {
+        seen.set(entry.academicLevel.id, entry.academicLevel.label);
+      }
+    });
+    return Array.from(seen.entries()).map(([value, label]) => ({
+      value,
+      label,
+    }));
+  }, [adminClassrooms]);
+  const adminClassOptions = useMemo(() => {
+    const filtered = adminLevelFilter
+      ? adminClassrooms.filter(
+          (entry) => entry.academicLevel?.id === adminLevelFilter,
+        )
+      : adminClassrooms;
+    return filtered.map((entry) => ({ value: entry.id, label: entry.name }));
+  }, [adminClassrooms, adminLevelFilter]);
+
   const selectedSubject = useMemo(
     () =>
       context?.subjects.find((entry) => entry.id === watchedSubjectId) ?? null,
@@ -1024,6 +1082,72 @@ export default function TeacherClassNotesPage() {
                   </span>
                 </button>
               </div>
+
+              {isAdminBrowsing && adminClassrooms.length > 0 ? (
+                <div
+                  className="mb-3 grid gap-2 sm:grid-cols-2"
+                  data-testid="notes-admin-class-switcher"
+                >
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.adminLevelLabel")}
+                    </p>
+                    <FormSelect
+                      value={adminLevelFilter}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setAdminLevelFilter(value);
+                        const stillValid = adminClassrooms.find(
+                          (entry) => entry.id === classId,
+                        )?.academicLevel?.id;
+                        if (value && stillValid !== value) {
+                          const firstMatch = adminClassrooms.find(
+                            (entry) => entry.academicLevel?.id === value,
+                          );
+                          if (firstMatch) {
+                            router.push(
+                              `/schools/${schoolSlug}/classes/${firstMatch.id}/notes`,
+                            );
+                          }
+                        }
+                      }}
+                      data-testid="notes-admin-level-select"
+                    >
+                      <option value="">
+                        {t("notes.teacher.list.adminAllLevels")}
+                      </option>
+                      {adminLevelOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.adminClassLabel")}
+                    </p>
+                    <FormSelect
+                      value={classId}
+                      onChange={(event) => {
+                        const nextClassId = event.target.value;
+                        if (nextClassId && nextClassId !== classId) {
+                          router.push(
+                            `/schools/${schoolSlug}/classes/${nextClassId}/notes`,
+                          );
+                        }
+                      }}
+                      data-testid="notes-admin-class-select"
+                    >
+                      {adminClassOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="mb-3 flex items-center gap-2">
                 <FormTextInput
@@ -1250,6 +1374,12 @@ export default function TeacherClassNotesPage() {
                               ? ` - ${evaluation.subjectBranch.name}`
                               : ""}{" "}
                             • {evaluation.evaluationType.label}
+                            {evaluation.class?.name
+                              ? ` • ${evaluation.class.name}`
+                              : ""}
+                            {evaluation.author
+                              ? ` • ${evaluation.author.firstName} ${evaluation.author.lastName}`
+                              : ""}
                           </p>
                         </div>
 

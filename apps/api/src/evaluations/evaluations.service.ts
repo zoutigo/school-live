@@ -163,9 +163,11 @@ export class EvaluationsService {
         ...(subjectIds ? { subjectId: { in: subjectIds } } : {}),
       },
       include: {
+        class: { select: { id: true, name: true } },
         subject: { select: { id: true, name: true } },
         subjectBranch: { select: { id: true, name: true } },
         evaluationType: { select: { id: true, code: true, label: true } },
+        authorUser: { select: { id: true, firstName: true, lastName: true } },
         attachments: true,
         _count: { select: { scores: true } },
       },
@@ -176,8 +178,63 @@ export class EvaluationsService {
       ],
     });
 
-    return evaluations.map((evaluation) => ({
+    return evaluations.map(({ authorUser, ...evaluation }) => ({
       ...evaluation,
+      author: authorUser,
+      term: termFromSequence(evaluation.sequence),
+      countsForAverage: evaluationCountsForAverage(
+        evaluation.sequence,
+        evaluation.isFinalExam,
+      ),
+    }));
+  }
+
+  async listSchoolEvaluations(
+    user: AuthenticatedUser,
+    schoolId: string,
+    filters: { academicLevelId?: string; classId?: string },
+  ) {
+    const locale = evaluationsLocaleFromUser(user);
+    if (
+      !this.hasAnySchoolRole(user, schoolId, [
+        "SCHOOL_ADMIN",
+        "SCHOOL_MANAGER",
+        "SUPERVISOR",
+      ]) &&
+      !this.hasPlatformRole(user, "SUPER_ADMIN")
+    ) {
+      throw new ForbiddenException(
+        translateEvaluationsError(locale, "evaluations.errors.forbidden"),
+      );
+    }
+
+    const evaluations = await this.prisma.evaluation.findMany({
+      where: {
+        schoolId,
+        ...(filters.classId ? { classId: filters.classId } : {}),
+        ...(filters.academicLevelId
+          ? { class: { academicLevelId: filters.academicLevelId } }
+          : {}),
+      },
+      include: {
+        class: { select: { id: true, name: true } },
+        subject: { select: { id: true, name: true } },
+        subjectBranch: { select: { id: true, name: true } },
+        evaluationType: { select: { id: true, code: true, label: true } },
+        authorUser: { select: { id: true, firstName: true, lastName: true } },
+        attachments: true,
+        _count: { select: { scores: true } },
+      },
+      orderBy: [
+        { createdAt: "desc" },
+        { subject: { name: "asc" } },
+        { subjectBranch: { name: "asc" } },
+      ],
+    });
+
+    return evaluations.map(({ authorUser, ...evaluation }) => ({
+      ...evaluation,
+      author: authorUser,
       term: termFromSequence(evaluation.sequence),
       countsForAverage: evaluationCountsForAverage(
         evaluation.sequence,
@@ -319,8 +376,11 @@ export class EvaluationsService {
       },
     });
 
+    const { authorUser, ...evaluationRest } = evaluation;
+
     return {
-      ...evaluation,
+      ...evaluationRest,
+      author: authorUser,
       term: termFromSequence(evaluation.sequence),
       countsForAverage: evaluationCountsForAverage(
         evaluation.sequence,
@@ -437,9 +497,11 @@ export class EvaluationsService {
               },
       },
       include: {
+        class: { select: { id: true, name: true } },
         subject: { select: { id: true, name: true } },
         subjectBranch: { select: { id: true, name: true } },
         evaluationType: { select: { id: true, code: true, label: true } },
+        authorUser: { select: { id: true, firstName: true, lastName: true } },
         attachments: true,
       },
     });
@@ -459,8 +521,11 @@ export class EvaluationsService {
       });
     }
 
+    const { authorUser, ...updatedRest } = updated;
+
     return {
-      ...updated,
+      ...updatedRest,
+      author: authorUser,
       term: termFromSequence(updated.sequence),
       countsForAverage: evaluationCountsForAverage(
         updated.sequence,
@@ -1731,9 +1796,11 @@ export class EvaluationsService {
     const evaluation = await this.prisma.evaluation.findFirst({
       where: { id: evaluationId, schoolId, classId },
       include: {
+        class: { select: { id: true, name: true } },
         subject: { select: { id: true, name: true } },
         subjectBranch: { select: { id: true, name: true } },
         evaluationType: { select: { id: true, code: true, label: true } },
+        authorUser: { select: { id: true, firstName: true, lastName: true } },
         attachments: true,
         scores: true,
       },

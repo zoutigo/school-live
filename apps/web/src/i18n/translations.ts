@@ -1047,6 +1047,10 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Impossible de charger le module evaluations.",
     "notes.teacher.errors.uploadAttachment":
       "Impossible de televerser la piece jointe.",
+    "notes.adminEntry.loading": "Chargement...",
+    "notes.adminEntry.emptyTitle": "Aucune classe",
+    "notes.adminEntry.emptyMessage":
+      "Aucune classe disponible pour cette ecole.",
     "notes.teacher.errors.downloadAttachment":
       "Impossible de telecharger la piece jointe.",
     "notes.teacher.errors.createEvaluation": "Echec creation evaluation",
@@ -1111,6 +1115,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.list.filterComplete": "Toutes saisies",
     "notes.teacher.list.filterIncomplete": "Incompletes",
     "notes.teacher.list.filterReset": "Reinitialiser",
+    "notes.teacher.list.adminLevelLabel": "Niveau",
+    "notes.teacher.list.adminAllLevels": "Tous les niveaux",
+    "notes.teacher.list.adminClassLabel": "Classe",
     "notes.teacher.status.published": "Publiee",
     "notes.teacher.status.draft": "Brouillon",
 
@@ -4468,6 +4475,9 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Class not accessible with your assignments.",
     "notes.teacher.errors.loadModule": "Unable to load the evaluations module.",
     "notes.teacher.errors.uploadAttachment": "Unable to upload the attachment.",
+    "notes.adminEntry.loading": "Loading...",
+    "notes.adminEntry.emptyTitle": "No class",
+    "notes.adminEntry.emptyMessage": "No class available for this school.",
     "notes.teacher.errors.downloadAttachment":
       "Unable to download the attachment.",
     "notes.teacher.errors.createEvaluation": "Failed to create evaluation",
@@ -4530,6 +4540,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.list.filterComplete": "All entered",
     "notes.teacher.list.filterIncomplete": "Incomplete",
     "notes.teacher.list.filterReset": "Reset",
+    "notes.teacher.list.adminLevelLabel": "Level",
+    "notes.teacher.list.adminAllLevels": "All levels",
+    "notes.teacher.list.adminClassLabel": "Class",
     "notes.teacher.status.published": "Published",
     "notes.teacher.status.draft": "Draft",
 

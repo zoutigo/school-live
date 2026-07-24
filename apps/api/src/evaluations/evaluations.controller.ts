@@ -20,6 +20,7 @@ import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { MediaClientService } from "../media-client/media-client.service.js";
 import { CreateEvaluationDto } from "./dto/create-evaluation.dto.js";
+import { ListSchoolEvaluationsDto } from "./dto/list-school-evaluations.dto.js";
 import { ListStudentNotesDto } from "./dto/list-student-notes.dto.js";
 import { UpdateEvaluationDto } from "./dto/update-evaluation.dto.js";
 import { UpsertEvaluationScoresDto } from "./dto/upsert-evaluation-scores.dto.js";
@@ -68,6 +69,19 @@ export class EvaluationsController {
       schoolId,
       classId,
     );
+  }
+
+  @Get("schools/:schoolSlug/evaluations")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "SUPER_ADMIN")
+  listSchoolEvaluations(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Query() query: ListSchoolEvaluationsDto,
+  ) {
+    return this.evaluationsService.listSchoolEvaluations(user, schoolId, {
+      academicLevelId: query.academicLevelId,
+      classId: query.classId,
+    });
   }
 
   @Post("schools/:schoolSlug/classes/:classId/evaluations")

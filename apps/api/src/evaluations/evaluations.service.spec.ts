@@ -77,6 +77,8 @@ function makeEvaluation(
     evaluationType: { id: string; code: string; label: string };
     attachments: never[];
     _count: { scores: number };
+    class: { id: string; name: string };
+    authorUser: { id: string; firstName: string; lastName: string };
   }> = {},
 ) {
   return {
@@ -97,6 +99,8 @@ function makeEvaluation(
     evaluationType: { id: "type-1", code: "DEVOIR", label: "Devoir" },
     attachments: [],
     _count: { scores: 0 },
+    class: { id: "class-1", name: "6ème A" },
+    authorUser: { id: "teacher-1", firstName: "Awa", lastName: "Diallo" },
     ...overrides,
   };
 }
@@ -346,6 +350,158 @@ describe("EvaluationsService", () => {
         expect(result[0].term).toBe(term);
         expect(result[0].countsForAverage).toBe(counts);
       }
+    });
+
+    it("exposes class and author (teacher) instead of the raw authorUser relation", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          class: { id: "class-9", name: "5ème B" },
+          authorUser: {
+            id: "teacher-9",
+            firstName: "Jean",
+            lastName: "Kamga",
+          },
+        }),
+      ]);
+
+      const result = await service.listClassEvaluations(
+        makeUser(),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result[0].class).toEqual({ id: "class-9", name: "5ème B" });
+      expect(result[0].author).toEqual({
+        id: "teacher-9",
+        firstName: "Jean",
+        lastName: "Kamga",
+      });
+      expect((result[0] as { authorUser?: unknown }).authorUser).toBeUndefined();
+    });
+  });
+
+  describe("listSchoolEvaluations", () => {
+    it("autorise un SCHOOL_ADMIN et liste sans filtre par défaut", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([makeEvaluation()]);
+
+      const result = await service.listSchoolEvaluations(
+        makeUser(),
+        "school-1",
+        {},
+      );
+
+      expect(result).toHaveLength(1);
+      expect(prisma.evaluation.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { schoolId: "school-1" },
+        }),
+      );
+    });
+
+    it("filtre par classId quand fourni", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([makeEvaluation()]);
+
+      await service.listSchoolEvaluations(makeUser(), "school-1", {
+        classId: "class-9",
+      });
+
+      expect(prisma.evaluation.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { schoolId: "school-1", classId: "class-9" },
+        }),
+      );
+    });
+
+    it("filtre par academicLevelId quand fourni", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([makeEvaluation()]);
+
+      await service.listSchoolEvaluations(makeUser(), "school-1", {
+        academicLevelId: "level-9",
+      });
+
+      expect(prisma.evaluation.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            schoolId: "school-1",
+            class: { academicLevelId: "level-9" },
+          },
+        }),
+      );
+    });
+
+    it("combine classId et academicLevelId quand les deux sont fournis", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([makeEvaluation()]);
+
+      await service.listSchoolEvaluations(makeUser(), "school-1", {
+        classId: "class-9",
+        academicLevelId: "level-9",
+      });
+
+      expect(prisma.evaluation.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            schoolId: "school-1",
+            classId: "class-9",
+            class: { academicLevelId: "level-9" },
+          },
+        }),
+      );
+    });
+
+    it("expose class et author sur chaque évaluation", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          class: { id: "class-9", name: "5ème B" },
+          authorUser: {
+            id: "teacher-9",
+            firstName: "Jean",
+            lastName: "Kamga",
+          },
+        }),
+      ]);
+
+      const result = await service.listSchoolEvaluations(
+        makeUser(),
+        "school-1",
+        {},
+      );
+
+      expect(result[0].class).toEqual({ id: "class-9", name: "5ème B" });
+      expect(result[0].author).toEqual({
+        id: "teacher-9",
+        firstName: "Jean",
+        lastName: "Kamga",
+      });
+    });
+
+    it("refuse l'accès à un utilisateur sans rôle admin/manager/supervisor sur l'école", async () => {
+      await expect(
+        service.listSchoolEvaluations(
+          makeUser({
+            memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+          }),
+          "school-1",
+          {},
+        ),
+      ).rejects.toThrow(
+        translateEvaluationsError(
+          "fr" as EvaluationsLocale,
+          "evaluations.errors.forbidden",
+        ),
+      );
+      expect(prisma.evaluation.findMany).not.toHaveBeenCalled();
+    });
+
+    it("autorise un SUPER_ADMIN plateforme sans membership école", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.listSchoolEvaluations(
+          makeUser({ memberships: [], platformRoles: ["SUPER_ADMIN"] }),
+          "school-1",
+          {},
+        ),
+      ).resolves.toEqual([]);
     });
   });
 
@@ -742,5 +898,72 @@ describe("EvaluationsService", () => {
         expect(updateArgs.data.description).toContain("<img");
       },
     );
+  });
+
+  describe("getEvaluation — champs class et author", () => {
+    it("expose class et author (enseignant) au lieu de la relation brute authorUser", async () => {
+      prisma.evaluation.findFirst.mockResolvedValue(
+        makeEvaluation({
+          id: "eval-1",
+          class: { id: "class-9", name: "5ème B" },
+          authorUser: {
+            id: "teacher-9",
+            firstName: "Jean",
+            lastName: "Kamga",
+          },
+        }),
+      );
+      prisma.enrollment.findMany.mockResolvedValue([]);
+
+      const result = await service.getEvaluation(
+        makeUser(),
+        "school-1",
+        "class-1",
+        "eval-1",
+      );
+
+      expect(result.class).toEqual({ id: "class-9", name: "5ème B" });
+      expect(result.author).toEqual({
+        id: "teacher-9",
+        firstName: "Jean",
+        lastName: "Kamga",
+      });
+      expect((result as { authorUser?: unknown }).authorUser).toBeUndefined();
+    });
+  });
+
+  describe("updateEvaluation — champs class et author sur la réponse", () => {
+    it("expose class et author (enseignant) après mise à jour", async () => {
+      prisma.evaluation.findFirst.mockResolvedValue(
+        makeEvaluation({ id: "eval-1", subjectId: "subject-1" }),
+      );
+      prisma.evaluation.update.mockResolvedValue(
+        makeEvaluation({
+          id: "eval-1",
+          class: { id: "class-9", name: "5ème B" },
+          authorUser: {
+            id: "teacher-9",
+            firstName: "Jean",
+            lastName: "Kamga",
+          },
+        }),
+      );
+
+      const result = await service.updateEvaluation(
+        makeUser(),
+        "school-1",
+        "class-1",
+        "eval-1",
+        { title: "Titre modifié" },
+      );
+
+      expect(result.class).toEqual({ id: "class-9", name: "5ème B" });
+      expect(result.author).toEqual({
+        id: "teacher-9",
+        firstName: "Jean",
+        lastName: "Kamga",
+      });
+      expect((result as { authorUser?: unknown }).authorUser).toBeUndefined();
+    });
   });
 });

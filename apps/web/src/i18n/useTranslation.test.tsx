@@ -60,6 +60,44 @@ describe("resourcesModeration.* translations", () => {
   });
 });
 
+describe("notes.adminEntry.* translations", () => {
+  it("has matching fr/en keys with distinct, non-empty values", () => {
+    const frKeys = Object.keys(translations.fr).filter((key) =>
+      key.startsWith("notes.adminEntry."),
+    );
+    const enKeys = Object.keys(translations.en).filter((key) =>
+      key.startsWith("notes.adminEntry."),
+    );
+
+    expect(frKeys.length).toBeGreaterThan(0);
+    expect(new Set(enKeys)).toEqual(new Set(frKeys));
+
+    for (const key of frKeys) {
+      expect(translations.fr[key]).not.toBe("");
+      expect(translations.en[key]).not.toBe("");
+    }
+  });
+});
+
+describe("notes.teacher.list.admin* translations", () => {
+  it("has matching fr/en keys with distinct, non-empty values", () => {
+    const frKeys = Object.keys(translations.fr).filter((key) =>
+      key.startsWith("notes.teacher.list.admin"),
+    );
+    const enKeys = Object.keys(translations.en).filter((key) =>
+      key.startsWith("notes.teacher.list.admin"),
+    );
+
+    expect(frKeys.length).toBeGreaterThan(0);
+    expect(new Set(enKeys)).toEqual(new Set(frKeys));
+
+    for (const key of frKeys) {
+      expect(translations.fr[key]).not.toBe("");
+      expect(translations.en[key]).not.toBe("");
+    }
+  });
+});
+
 describe("useTranslation", () => {
   beforeEach(() => {
     window.localStorage.clear();

@@ -15,6 +15,7 @@ function setRichTextEditorHtml(container: HTMLElement, value: string) {
 }
 
 const replaceMock = vi.fn();
+const pushMock = vi.fn();
 const CREATED_EVALUATION_DATETIME = "2026-03-20T09:30";
 const CREATED_EVALUATION_ISO = new Date(
   CREATED_EVALUATION_DATETIME,
@@ -22,7 +23,7 @@ const CREATED_EVALUATION_ISO = new Date(
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ schoolSlug: "college-vogt", classId: "class-1" }),
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock, push: pushMock }),
 }));
 
 function jsonResponse(payload: unknown, status = 200) {
@@ -1072,5 +1073,154 @@ describe("TeacherClassNotesPage council tab", () => {
         });
       expect(patchCall).toBeDefined();
     });
+  });
+});
+
+describe("TeacherClassNotesPage admin class switcher", () => {
+  const ADMIN_CLASSROOMS = [
+    { id: "class-1", name: "6eC", academicLevel: { id: "level-6e", code: "6E", label: "6eme" } },
+    { id: "class-2", name: "6eD", academicLevel: { id: "level-6e", code: "6E", label: "6eme" } },
+    { id: "class-3", name: "5eA", academicLevel: { id: "level-5e", code: "5E", label: "5eme" } },
+  ];
+
+  function setupAdminFetchMock(
+    evaluations: Array<Record<string, unknown>> = EVALUATIONS,
+  ) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const request = input instanceof Request ? input : null;
+      const url = String(input);
+      const method =
+        request?.method ??
+        (typeof init === "object" && init !== null && "method" in init
+          ? init.method
+          : undefined);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return jsonResponse(ADMIN_CLASSROOMS);
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: { id: "class-1", name: "6eC", schoolYearId: "sy-1" },
+          subjects: [],
+          evaluationTypes: [],
+          students: [],
+        });
+      }
+      const evalDetailMatch = url.match(
+        /\/classes\/class-1\/evaluations\/(eval-[\w-]+)$/,
+      );
+      if (evalDetailMatch) {
+        const evaluation = evaluations.find(
+          (entry) => entry.id === evalDetailMatch[1],
+        );
+        return jsonResponse({ ...evaluation, students: [] });
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context")
+      ) {
+        if (method === "POST") return jsonResponse({ id: "eval-created" }, 201);
+        return jsonResponse(evaluations);
+      }
+      if (url.includes("/term-reports?term=")) {
+        return jsonResponse([]);
+      }
+
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+  }
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    pushMock.mockReset();
+  });
+
+  it("shows the class name and the author (teacher) on the same line as the subject", async () => {
+    setupAdminFetchMock([
+      {
+        ...EVALUATIONS[0],
+        class: { id: "class-1", name: "6eC" },
+        author: { id: "teacher-1", firstName: "Awa", lastName: "Diallo" },
+      },
+    ]);
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByText(
+        (_, element) =>
+          element?.textContent ===
+          "Mathematiques - Algebre • Composition • 6eC • Awa Diallo",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the Level and Class selectors for a school admin", async () => {
+    setupAdminFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByTestId("notes-admin-class-switcher"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("notes-admin-level-select")).toBeInTheDocument();
+    expect(screen.getByTestId("notes-admin-class-select")).toBeInTheDocument();
+  });
+
+  it("does not show the Level/Class selectors for a teacher", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    await screen.findByTestId("notes-evaluations-search-input");
+    expect(
+      screen.queryByTestId("notes-admin-class-switcher"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("limits the class options to the selected level", async () => {
+    setupAdminFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    const levelSelect = (await screen.findByTestId(
+      "notes-admin-level-select",
+    )) as HTMLSelectElement;
+    fireEvent.change(levelSelect, { target: { value: "level-5e" } });
+
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith(
+        "/schools/college-vogt/classes/class-3/notes",
+      ),
+    );
+
+    const classSelect = screen.getByTestId(
+      "notes-admin-class-select",
+    ) as HTMLSelectElement;
+    const optionLabels = Array.from(classSelect.options).map(
+      (option) => option.textContent,
+    );
+    expect(optionLabels).toEqual(["5eA"]);
+  });
+
+  it("navigates to the selected class's notes page when changing the class", async () => {
+    setupAdminFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    const classSelect = (await screen.findByTestId(
+      "notes-admin-class-select",
+    )) as HTMLSelectElement;
+    fireEvent.change(classSelect, { target: { value: "class-2" } });
+
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith(
+        "/schools/college-vogt/classes/class-2/notes",
+      ),
+    );
   });
 });

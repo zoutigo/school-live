@@ -24,6 +24,8 @@ const fr: TranslationDict = {
   "evaluations.errors.evaluationTypeNotFound": "Type d'evaluation introuvable.",
   "evaluations.errors.subjectBranchMismatch":
     "La sous-matiere n'appartient pas a cette matiere.",
+  "evaluations.errors.forbidden":
+    "Vous n'avez pas les droits pour consulter ces evaluations.",
 };
 
 const en: TranslationDict = {
@@ -48,6 +50,8 @@ const en: TranslationDict = {
   "evaluations.errors.evaluationTypeNotFound": "Evaluation type not found.",
   "evaluations.errors.subjectBranchMismatch":
     "Subject branch does not belong to subject.",
+  "evaluations.errors.forbidden":
+    "You do not have permission to view these evaluations.",
 };
 
 const translations: Record<EvaluationsLocale, TranslationDict> = {
