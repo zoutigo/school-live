@@ -1308,6 +1308,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.student.page.mobileSubtitleNoChild": "Evals et Moyennes",
     "notes.student.page.demoWarning":
       "Affichage temporaire des donnees de demonstration en attendant la publication des evaluations.",
+    "notes.student.page.tabNotes": "Notes",
+    "notes.student.page.tabReports": "Bulletins",
 
     "notes.student.tabs.evaluations.label": "Evaluations",
     "notes.student.tabs.evaluations.mobileLabel": "Eval",
@@ -4719,6 +4721,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.student.page.mobileSubtitleNoChild": "Grades and averages",
     "notes.student.page.demoWarning":
       "Showing demo data temporarily while evaluations are being published.",
+    "notes.student.page.tabNotes": "Notes",
+    "notes.student.page.tabReports": "Reports",
 
     "notes.student.tabs.evaluations.label": "Evaluations",
     "notes.student.tabs.evaluations.mobileLabel": "Eval",

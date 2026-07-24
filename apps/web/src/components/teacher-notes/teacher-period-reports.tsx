@@ -7,31 +7,20 @@ import {
   ChevronDown,
   ChevronUp,
   Medal,
-  MessageCircle,
   Search,
   Sparkles,
   TrendingUp,
   X,
 } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { FormTextarea } from "../ui/form-controls";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
+import {
+  AppreciationEditor,
+  SubjectReportCard,
+} from "../student-notes/subject-report-card";
 import type {
   StudentNotesTerm,
   StudentNotesTermSnapshot,
 } from "../student-notes/student-notes.types";
-
-function createAppreciationSchema(t: TranslateFn) {
-  return z.object({
-    value: z
-      .string()
-      .trim()
-      .min(1, t("notes.teacher.reports.appreciationRequired")),
-  });
-}
-type AppreciationFormInput = { value: string };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -199,118 +188,6 @@ function ReportHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
   );
 }
 
-function AppreciationEditor(props: {
-  value: string;
-  editing: boolean;
-  onStartEdit: () => void;
-  onCancel: () => void;
-  onSave: (value: string) => void | Promise<void>;
-  isSaving: boolean;
-  testIdPrefix: string;
-}) {
-  const { t } = useTranslation();
-  const schema = useMemo(() => createAppreciationSchema(t), [t]);
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<AppreciationFormInput>({
-    resolver: zodResolver(schema),
-    mode: "onChange",
-    reValidateMode: "onChange",
-    defaultValues: { value: props.value },
-  });
-
-  const editing = props.editing;
-  const value = props.value;
-  useEffect(() => {
-    if (editing) {
-      reset({ value });
-    }
-  }, [editing, reset]);
-
-  const onSubmit = handleSubmit(async (data) => {
-    try {
-      await props.onSave(data.value.trim());
-    } catch {
-      // L'erreur est déjà notifiée par le toast global de l'écran parent ;
-      // on garde le formulaire ouvert pour permettre une nouvelle tentative.
-    }
-  });
-
-  if (props.editing) {
-    return (
-      <form
-        data-testid={`${props.testIdPrefix}-editor`}
-        className="rounded-[14px] border border-primary bg-surface p-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void onSubmit();
-        }}
-      >
-        <FormTextarea
-          data-testid={`${props.testIdPrefix}-input`}
-          invalid={Boolean(errors.value)}
-          placeholder={t("notes.teacher.reports.appreciationPlaceholder")}
-          className="min-h-[80px]"
-          {...register("value")}
-        />
-        {errors.value?.message ? (
-          <p
-            data-testid={`${props.testIdPrefix}-error`}
-            className="mt-1 text-xs font-semibold text-mark-red"
-          >
-            {errors.value.message}
-          </p>
-        ) : null}
-        <div className="mt-2 flex justify-end gap-2">
-          <button
-            type="button"
-            data-testid={`${props.testIdPrefix}-cancel`}
-            onClick={props.onCancel}
-            className="rounded-[8px] border border-border px-3 py-1.5 text-sm font-semibold text-text-secondary"
-          >
-            {t("notes.teacher.reports.cancel")}
-          </button>
-          <button
-            type="submit"
-            data-testid={`${props.testIdPrefix}-save`}
-            disabled={props.isSaving}
-            className="rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {t("notes.teacher.reports.saveField")}
-          </button>
-        </div>
-      </form>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      data-testid={`${props.testIdPrefix}-display`}
-      onClick={props.onStartEdit}
-      className="flex w-full items-center justify-between gap-3 rounded-[14px] border border-border bg-background px-4 py-3 text-left"
-    >
-      <span className="line-clamp-2 text-sm text-text-primary">
-        {props.value || t("notes.teacher.reports.noAppreciation")}
-      </span>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface text-primary">
-        <MessageCircle className="h-5 w-5" />
-      </span>
-    </button>
-  );
-}
-
-function ReadOnlyAppreciation(props: { value: string; testId: string }) {
-  return (
-    <p data-testid={props.testId} className="text-sm text-text-primary">
-      {props.value}
-    </p>
-  );
-}
-
 export function TeacherPeriodReports({
   schoolSlug,
   className,
@@ -475,22 +352,16 @@ export function TeacherPeriodReports({
                 <p className="text-sm font-bold text-text-primary">
                   {t("notes.teacher.reports.generalTitle")}
                 </p>
-                {isReferentTeacher ? (
-                  <AppreciationEditor
-                    value={generalText}
-                    editing={editingGeneral}
-                    onStartEdit={() => setEditingGeneral(true)}
-                    onCancel={() => setEditingGeneral(false)}
-                    onSave={saveGeneral}
-                    isSaving={isSubmitting}
-                    testIdPrefix="teacher-reports-general"
-                  />
-                ) : (
-                  <ReadOnlyAppreciation
-                    value={generalText}
-                    testId="teacher-reports-general-readonly"
-                  />
-                )}
+                <AppreciationEditor
+                  value={generalText}
+                  editable={isReferentTeacher}
+                  editing={editingGeneral}
+                  onStartEdit={() => setEditingGeneral(true)}
+                  onCancel={() => setEditingGeneral(false)}
+                  onSave={saveGeneral}
+                  isSaving={isSubmitting}
+                  testIdPrefix="teacher-reports-general"
+                />
               </div>
             ) : null}
 
@@ -508,78 +379,26 @@ export function TeacherPeriodReports({
                   drafts[detail.studentId]?.subjects?.[subject.id] ?? "";
 
                 return (
-                  <div
+                  <SubjectReportCard
                     key={subject.id}
-                    data-testid={`teacher-reports-subject-card-${subject.id}`}
-                    className="content-panel grid gap-2.5 p-3.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="font-heading text-sm font-bold text-text-primary">
-                        {subject.subjectLabel.toUpperCase()}
-                      </p>
-                      <p className="text-xs font-semibold text-text-secondary">
-                        {t("notes.student.table.coefficient")}{" "}
-                        {subject.coefficient}
-                      </p>
-                    </div>
-
-                    {subject.rank != null && subject.classSize != null ? (
-                      <p
-                        data-testid={`teacher-reports-subject-${subject.id}-rank`}
-                        className="-mt-1.5 text-[10px] text-text-secondary opacity-75"
-                      >
-                        {t("notes.teacher.reports.rankAndClassAverage")
-                          .replace("{rank}", String(subject.rank))
-                          .replace("{total}", String(subject.classSize))
-                          .replace(
-                            "{classAverage}",
-                            formatScore(subject.classAverage),
-                          )}
-                      </p>
-                    ) : null}
-
-                    <div className="flex items-start justify-between gap-2 border-t border-warm-border pt-2">
-                      {sequenceRows.map((row) => (
-                        <div
-                          key={row.sequence}
-                          data-testid={`teacher-reports-subject-${subject.id}-sequence-${row.sequence}`}
-                          className="grid gap-0.5"
-                        >
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-secondary">
-                            {row.label}
-                          </span>
-                          <span className="text-sm font-bold text-text-primary">
-                            {formatScore(row.data?.studentAverage ?? null)}
-                          </span>
-                        </div>
-                      ))}
-                      <div className="grid justify-items-end gap-0.5">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-text-secondary">
-                          {t("notes.teacher.reports.termAverage")}
-                        </span>
-                        <span className="text-base font-bold text-primary">
-                          {formatScore(subject.studentAverage)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {isSubjectTeacher ? (
-                      <AppreciationEditor
-                        value={subjectAppreciationValue}
-                        editing={editingSubjectId === subject.id}
-                        onStartEdit={() => setEditingSubjectId(subject.id)}
-                        onCancel={() => setEditingSubjectId(null)}
-                        onSave={(value) => saveSubject(subject.id, value)}
-                        isSaving={isSubmitting}
-                        testIdPrefix={`teacher-reports-subject-${subject.id}`}
-                      />
-                    ) : subjectAppreciationValue ? (
-                      <ReadOnlyAppreciation
-                        value={subjectAppreciationValue}
-                        testId={`teacher-reports-subject-${subject.id}-readonly`}
-                      />
-                    ) : null}
-                  </div>
+                    subject={subject}
+                    sequenceRows={sequenceRows.map((row) => ({
+                      sequence: row.sequence,
+                      label: row.label,
+                      studentAverage: row.data?.studentAverage ?? null,
+                    }))}
+                    editable={isSubjectTeacher}
+                    editing={editingSubjectId === subject.id}
+                    onStartEdit={() => setEditingSubjectId(subject.id)}
+                    onCancelEdit={() => setEditingSubjectId(null)}
+                    onSaveAppreciation={(value) =>
+                      saveSubject(subject.id, value)
+                    }
+                    isSaving={isSubmitting}
+                    appreciationValue={subjectAppreciationValue}
+                    testId={`teacher-reports-subject-card-${subject.id}`}
+                    testIdPrefix={`teacher-reports-subject-${subject.id}`}
+                  />
                 );
               })}
             </div>

@@ -67,6 +67,8 @@ const API_PAYLOAD: StudentNotesTermSnapshot[] = [
         classAverage: 14.74,
         classMin: 11.8,
         classMax: 17.7,
+        rank: 1,
+        classSize: 24,
         appreciation: "Bonne participation et expression ecrite soignee.",
         evaluations: [
           {
@@ -350,7 +352,7 @@ describe("StudentNotesPage UI", () => {
     expect(rowScope.getAllByText(/17,70/).length).toBeGreaterThan(0);
   });
 
-  it("keeps the period bulletin below the active tab content on mobile", async () => {
+  it("does not duplicate the period bulletin in the Notes tab, only in the Bulletins tab", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
     const tabsSummary = await screen.findByText(
@@ -359,18 +361,23 @@ describe("StudentNotesPage UI", () => {
     const evaluationTable = screen.getByTestId(
       "evaluations-subject-row-anglais",
     );
-    const periodHeroHeading = screen.getByText(
-      translate("fr", "notes.student.hero.badge"),
-    );
 
     expect(
       tabsSummary.compareDocumentPosition(evaluationTable) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      evaluationTable.compareDocumentPosition(periodHeroHeading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+      screen.queryByText(translate("fr", "notes.student.hero.badge")),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("student-notes-page-tab-reports"));
+
+    expect(
+      screen.getByText(translate("fr", "notes.student.hero.badge")),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("student-reports-subject-card-anglais"),
+    ).toBeInTheDocument();
   });
 
   it("uses compact mobile view tabs without forcing wide subtitles", async () => {
@@ -568,5 +575,60 @@ describe("StudentNotesPage UI", () => {
         ),
       ),
     ).toBeInTheDocument();
+  });
+
+  describe("Onglet Bulletins — lecture seule", () => {
+    it("affiche le rang, la moyenne de classe et l'appréciation sans aucun bouton d'action", async () => {
+      render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
+
+      await screen.findByTestId("evaluations-subject-row-anglais");
+      fireEvent.click(screen.getByTestId("student-notes-page-tab-reports"));
+
+      const card = screen.getByTestId("student-reports-subject-card-anglais");
+      expect(card).toBeInTheDocument();
+      expect(
+        within(card).getByTestId("student-reports-subject-anglais-rank"),
+      ).toHaveTextContent("1");
+      expect(
+        within(card).getByTestId("student-reports-subject-anglais-readonly"),
+      ).toHaveTextContent("Bonne participation et expression ecrite soignee.");
+
+      // Aucun élément d'édition (réservé au bulletin enseignant) ne doit exister
+      expect(
+        screen.queryByTestId("student-reports-subject-anglais-display"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("student-reports-subject-anglais-editor"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("student-reports-subject-anglais-save"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("affiche les données publiées en bas du bulletin", async () => {
+      render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
+
+      await screen.findByTestId("evaluations-subject-row-anglais");
+      fireEvent.click(screen.getByTestId("student-notes-page-tab-reports"));
+
+      expect(screen.getByTestId("student-reports-published")).toHaveTextContent(
+        "Donnees publiees le 12/03/2026 16:56",
+      );
+    });
+
+    it("change de trimestre depuis l'onglet Bulletins", async () => {
+      render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
+
+      await screen.findByTestId("evaluations-subject-row-anglais");
+      fireEvent.click(screen.getByTestId("student-notes-page-tab-reports"));
+      fireEvent.click(screen.getByRole("button", { name: "2eme Trimestre" }));
+
+      expect(
+        screen.getByTestId("student-reports-subject-card-chimie"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("student-reports-subject-card-anglais"),
+      ).not.toBeInTheDocument();
+    });
   });
 });
