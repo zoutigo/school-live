@@ -164,7 +164,9 @@ describe("NotesAdminEntryPage", () => {
           },
         ]);
       }
-      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+      if (
+        url === "http://localhost:3001/api/schools/college-vogt/evaluations"
+      ) {
         return createJsonResponse([
           {
             id: "eval-1",
@@ -205,7 +207,9 @@ describe("NotesAdminEntryPage", () => {
           },
         ]);
       }
-      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+      if (
+        url === "http://localhost:3001/api/schools/college-vogt/evaluations"
+      ) {
         return createJsonResponse([
           {
             id: "eval-1",
@@ -292,7 +296,9 @@ describe("NotesAdminEntryPage", () => {
           },
         ]);
       }
-      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+      if (
+        url === "http://localhost:3001/api/schools/college-vogt/evaluations"
+      ) {
         return createJsonResponse([
           {
             id: "eval-1",
@@ -324,7 +330,9 @@ describe("NotesAdminEntryPage", () => {
     render(<NotesAdminEntryPage />);
 
     await screen.findByTestId("notes-admin-entry-row-eval-1");
-    expect(screen.getByTestId("notes-admin-entry-row-eval-2")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("notes-admin-entry-row-eval-2"),
+    ).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId("notes-admin-entry-search"), {
       target: { value: "maths" },
@@ -354,7 +362,9 @@ describe("NotesAdminEntryPage", () => {
           },
         ]);
       }
-      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+      if (
+        url === "http://localhost:3001/api/schools/college-vogt/evaluations"
+      ) {
         return createJsonResponse([]);
       }
       return createJsonResponse({ message: "Not found" }, 404);
@@ -383,7 +393,9 @@ describe("NotesAdminEntryPage", () => {
           },
         ]);
       }
-      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+      if (
+        url === "http://localhost:3001/api/schools/college-vogt/evaluations"
+      ) {
         return createJsonResponse({ message: "boom" }, 500);
       }
       return createJsonResponse({ message: "Not found" }, 404);

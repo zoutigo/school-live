@@ -42,9 +42,7 @@ export default function NotesAdminEntryPage() {
   const [classId, setClassId] = useState("");
   const [evaluations, setEvaluations] = useState<SchoolEvaluationRow[]>([]);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
-  const [evaluationsError, setEvaluationsError] = useState<string | null>(
-    null,
-  );
+  const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
