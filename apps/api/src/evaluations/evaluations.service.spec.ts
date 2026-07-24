@@ -440,6 +440,242 @@ describe("EvaluationsService", () => {
     });
   });
 
+  describe("listStudentNotes — rang et effectif par matière", () => {
+    beforeEach(() => {
+      prisma.student.findFirst.mockResolvedValue({
+        id: "student-1",
+        firstName: "Ada",
+        lastName: "Lovelace",
+      });
+      prisma.enrollment.findMany.mockResolvedValue([
+        {
+          classId: "class-1",
+          schoolYearId: "year-1",
+          class: { id: "class-1", name: "6ème A", curriculumId: null },
+        },
+      ]);
+      prisma.studentTermReport.findMany.mockResolvedValue([]);
+      prisma.classSubjectOverride.findMany.mockResolvedValue([]);
+      prisma.curriculumSubject.findMany.mockResolvedValue([]);
+    });
+
+    it("classe l'élève parmi ses camarades pour chaque matière (1 = meilleure moyenne)", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-1",
+          sequence: "SEQ_1",
+          subjectId: "subject-1",
+          subject: { id: "subject-1", name: "Maths" },
+          scores: [
+            { studentId: "student-1", score: 15, status: "ENTERED" },
+            { studentId: "student-2", score: 18, status: "ENTERED" },
+            { studentId: "student-3", score: 10, status: "ENTERED" },
+          ],
+        }),
+      ]);
+
+      const result = await service.listStudentNotes(
+        makeUser(),
+        "school-1",
+        "student-1",
+        Term.TERM_1,
+      );
+      const term1 = result.find((snapshot) => snapshot.term === "TERM_1");
+      const maths = term1!.subjects.find(
+        (subject) => subject.id === "subject-1",
+      );
+
+      expect(maths?.rank).toBe(2);
+      expect(maths?.classSize).toBe(3);
+    });
+
+    it("attribue le même rang aux élèves ex æquo", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-1",
+          sequence: "SEQ_1",
+          subjectId: "subject-1",
+          subject: { id: "subject-1", name: "Maths" },
+          scores: [
+            { studentId: "student-1", score: 15, status: "ENTERED" },
+            { studentId: "student-2", score: 15, status: "ENTERED" },
+            { studentId: "student-3", score: 10, status: "ENTERED" },
+          ],
+        }),
+      ]);
+
+      const result = await service.listStudentNotes(
+        makeUser(),
+        "school-1",
+        "student-1",
+        Term.TERM_1,
+      );
+      const term1 = result.find((snapshot) => snapshot.term === "TERM_1");
+      const maths = term1!.subjects.find(
+        (subject) => subject.id === "subject-1",
+      );
+
+      expect(maths?.rank).toBe(1);
+      expect(maths?.classSize).toBe(3);
+    });
+
+    it("renvoie rank=null quand l'élève n'a pas de moyenne dans la matière", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-1",
+          sequence: "SEQ_1",
+          subjectId: "subject-1",
+          subject: { id: "subject-1", name: "Maths" },
+          scores: [
+            { studentId: "student-1", score: null, status: "ABSENT" },
+            { studentId: "student-2", score: 18, status: "ENTERED" },
+          ],
+        }),
+      ]);
+
+      const result = await service.listStudentNotes(
+        makeUser(),
+        "school-1",
+        "student-1",
+        Term.TERM_1,
+      );
+      const term1 = result.find((snapshot) => snapshot.term === "TERM_1");
+      const maths = term1!.subjects.find(
+        (subject) => subject.id === "subject-1",
+      );
+
+      expect(maths?.rank).toBeNull();
+      expect(maths?.classSize).toBeNull();
+    });
+  });
+
+  describe("getTeacherContext — isReferentTeacher", () => {
+    const classEntity = {
+      id: "class-1",
+      name: "6ème A",
+      schoolYearId: "year-1",
+      referentTeacherUserId: "teacher-referent",
+    };
+
+    beforeEach(() => {
+      prisma.class.findFirst.mockResolvedValue(classEntity);
+      prisma.teacherClassSubject.findMany.mockResolvedValue([]);
+      prisma.subjectBranch.findMany.mockResolvedValue([]);
+      prisma.evaluationType.findMany.mockResolvedValue([]);
+      prisma.enrollment.findMany.mockResolvedValue([]);
+    });
+
+    it("isReferentTeacher=true quand l'utilisateur est l'enseignant référent de la classe", async () => {
+      const result = await service.getTeacherContext(
+        makeUser({ id: "teacher-referent" }),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result.class.isReferentTeacher).toBe(true);
+    });
+
+    it("isReferentTeacher=false pour un autre enseignant", async () => {
+      const result = await service.getTeacherContext(
+        makeUser({ id: "teacher-other" }),
+        "school-1",
+        "class-1",
+      );
+
+      expect(result.class.isReferentTeacher).toBe(false);
+    });
+  });
+
+  describe("upsertClassTermReports — appréciation générale réservée au référent", () => {
+    const classEntity = {
+      id: "class-1",
+      name: "6ème A",
+      schoolYearId: "year-1",
+      referentTeacherUserId: "teacher-referent",
+    };
+
+    beforeEach(() => {
+      prisma.class.findFirst.mockResolvedValue(classEntity);
+      prisma.teacherClassSubject.findMany.mockResolvedValue([
+        {
+          id: "assign-1",
+          subjectId: "subject-1",
+          subject: { id: "subject-1", name: "Maths" },
+        },
+      ]);
+      prisma.enrollment.findMany.mockResolvedValue([
+        {
+          studentId: "student-1",
+          student: { id: "student-1", firstName: "Ada", lastName: "Lovelace" },
+        },
+      ]);
+      prisma.evaluation.findMany.mockResolvedValue([]);
+      prisma.studentTermReport.findUnique.mockResolvedValue(null);
+      prisma.studentTermReport.upsert.mockResolvedValue({});
+      prisma.studentTermReport.findMany.mockResolvedValue([]);
+      prisma.subjectBranch.findMany.mockResolvedValue([]);
+      prisma.evaluationType.findMany.mockResolvedValue([]);
+      prisma.teacherClassSubject.findFirst.mockResolvedValue({
+        id: "assign-1",
+      });
+    });
+
+    function makeTeacher(id: string) {
+      return makeUser({
+        id,
+        memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+      });
+    }
+
+    it("ignore l'appréciation générale envoyée par un enseignant non référent", async () => {
+      await service.upsertClassTermReports(
+        makeTeacher("teacher-other"),
+        "school-1",
+        "class-1",
+        Term.TERM_1,
+        {
+          status: "DRAFT",
+          reports: [
+            {
+              studentId: "student-1",
+              generalAppreciation: "Tentative non autorisée",
+              subjects: [],
+            },
+          ],
+        } as never,
+      );
+
+      const upsertArgs = prisma.studentTermReport.upsert.mock.calls[0][0] as {
+        create: { generalAppreciation: string | null };
+      };
+      expect(upsertArgs.create.generalAppreciation).toBeNull();
+    });
+
+    it("applique l'appréciation générale envoyée par l'enseignant référent", async () => {
+      await service.upsertClassTermReports(
+        makeTeacher("teacher-referent"),
+        "school-1",
+        "class-1",
+        Term.TERM_1,
+        {
+          status: "DRAFT",
+          reports: [
+            {
+              studentId: "student-1",
+              generalAppreciation: "Bon trimestre",
+              subjects: [],
+            },
+          ],
+        } as never,
+      );
+
+      const upsertArgs = prisma.studentTermReport.upsert.mock.calls[0][0] as {
+        create: { generalAppreciation: string | null };
+      };
+      expect(upsertArgs.create.generalAppreciation).toBe("Bon trimestre");
+    });
+  });
+
   describe("createEvaluation / updateEvaluation — description avec image", () => {
     const classEntity = {
       id: "class-1",

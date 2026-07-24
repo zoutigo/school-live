@@ -54,6 +54,8 @@ const SNAPSHOT_TERM_2: StudentNotesTermSnapshot = {
       classAverage: 13.33,
       classMin: 9.5,
       classMax: 18,
+      rank: 3,
+      classSize: 24,
       evaluations: [],
     },
   ],
@@ -77,6 +79,8 @@ function baseProps() {
     schoolSlug: "college-vogt",
     className: "6eB",
     students: STUDENTS,
+    teacherSubjectIds: ["sub-1"],
+    isReferentTeacher: true,
     term: "TERM_1" as const,
     onTermChange: vi.fn(),
     drafts: {},
@@ -267,5 +271,179 @@ describe("TeacherPeriodReports", () => {
     render(<TeacherPeriodReports {...baseProps()} students={[]} />);
 
     expect(screen.getByTestId("teacher-reports-empty")).toBeInTheDocument();
+  });
+
+  it("shows the student's rank and the class average for the subject", async () => {
+    setupFetchMock();
+    render(<TeacherPeriodReports {...baseProps()} />);
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    expect(
+      screen.getByTestId("teacher-reports-subject-sub-1-rank"),
+    ).toHaveTextContent("Rang 3/24 · Moy. classe 13,33/20");
+  });
+
+  it("shows a validation error and keeps the form open on empty submit", async () => {
+    const props = baseProps();
+    setupFetchMock();
+    render(<TeacherPeriodReports {...props} />);
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("teacher-reports-general-display"));
+    fireEvent.change(screen.getByTestId("teacher-reports-general-input"), {
+      target: { value: "   " },
+    });
+    fireEvent.click(screen.getByTestId("teacher-reports-general-save"));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("teacher-reports-general-error"),
+      ).toBeInTheDocument(),
+    );
+    expect(props.onSaveAppreciation).not.toHaveBeenCalled();
+  });
+
+  it("keeps the form open when saving fails", async () => {
+    const props = baseProps();
+    props.onSaveAppreciation.mockRejectedValueOnce(new Error("network"));
+    setupFetchMock();
+    render(<TeacherPeriodReports {...props} />);
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("teacher-reports-general-display"));
+    fireEvent.change(screen.getByTestId("teacher-reports-general-input"), {
+      target: { value: "Tentative en echec" },
+    });
+    fireEvent.click(screen.getByTestId("teacher-reports-general-save"));
+
+    await waitFor(() => expect(props.onSaveAppreciation).toHaveBeenCalled());
+    expect(
+      screen.getByTestId("teacher-reports-general-editor"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the appreciation button for a subject the teacher does not teach", async () => {
+    setupFetchMock();
+    render(
+      <TeacherPeriodReports {...baseProps()} teacherSubjectIds={["sub-2"]} />,
+    );
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    expect(
+      screen.queryByTestId("teacher-reports-subject-sub-1-display"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("teacher-reports-subject-sub-1-readonly"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the appreciation read-only for a subject the teacher does not teach when it exists", async () => {
+    setupFetchMock();
+    render(
+      <TeacherPeriodReports
+        {...baseProps()}
+        teacherSubjectIds={["sub-2"]}
+        drafts={{
+          "student-1": {
+            generalAppreciation: "",
+            subjects: { "sub-1": "Bon travail" },
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    expect(
+      screen.queryByTestId("teacher-reports-subject-sub-1-display"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("teacher-reports-subject-sub-1-readonly"),
+    ).toHaveTextContent("Bon travail");
+  });
+
+  it("hides the general appreciation block for a non-referent teacher without an existing appreciation", async () => {
+    setupFetchMock();
+    render(<TeacherPeriodReports {...baseProps()} isReferentTeacher={false} />);
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    expect(
+      screen.queryByTestId("teacher-reports-general-display"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("teacher-reports-general-readonly"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the general appreciation read-only for a non-referent teacher when it exists", async () => {
+    setupFetchMock();
+    render(
+      <TeacherPeriodReports
+        {...baseProps()}
+        isReferentTeacher={false}
+        drafts={{
+          "student-1": {
+            generalAppreciation: "Eleve serieux",
+            subjects: {},
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    expect(
+      screen.queryByTestId("teacher-reports-general-display"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("teacher-reports-general-readonly"),
+    ).toHaveTextContent("Eleve serieux");
   });
 });

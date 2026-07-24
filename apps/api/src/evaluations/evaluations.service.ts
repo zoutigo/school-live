@@ -122,6 +122,7 @@ export class EvaluationsService {
         id: classEntity.id,
         name: classEntity.name,
         schoolYearId: classEntity.schoolYearId,
+        isReferentTeacher: classEntity.referentTeacherUserId === user.id,
       },
       subjects: assignments.map((assignment) => ({
         id: assignment.subjectId,
@@ -706,6 +707,19 @@ export class EvaluationsService {
       ).map((row) => row.studentId),
     );
 
+    // Seul l'enseignant référent de la classe (ou un administrateur école) peut
+    // renseigner/modifier l'appréciation générale. Les autres enseignants
+    // renvoient toujours la valeur courante dans le payload (round-trip du
+    // brouillon) : on l'ignore silencieusement plutôt que de la rejeter.
+    const canEditGeneralAppreciation =
+      classEntity.referentTeacherUserId === user.id ||
+      this.hasAnySchoolRole(user, schoolId, [
+        "SCHOOL_ADMIN",
+        "SCHOOL_MANAGER",
+        "SUPERVISOR",
+      ]) ||
+      this.hasPlatformRole(user, "SUPER_ADMIN");
+
     for (const report of payload.reports) {
       if (!enrolledStudentIds.has(report.studentId)) {
         throw new BadRequestException(
@@ -792,7 +806,8 @@ export class EvaluationsService {
                 ? new Date(payload.councilHeldAt)
                 : null,
           generalAppreciation:
-            report.generalAppreciation === undefined
+            report.generalAppreciation === undefined ||
+            !canEditGeneralAppreciation
               ? undefined
               : report.generalAppreciation.trim() || null,
           updatedByUserId: user.id,
@@ -818,7 +833,9 @@ export class EvaluationsService {
           councilHeldAt: payload.councilHeldAt
             ? new Date(payload.councilHeldAt)
             : null,
-          generalAppreciation: report.generalAppreciation?.trim() || null,
+          generalAppreciation: canEditGeneralAppreciation
+            ? report.generalAppreciation?.trim() || null
+            : null,
           publishedAt:
             nextStatus === TermReportStatus.PUBLISHED ? new Date() : null,
           updatedByUserId: user.id,
@@ -972,7 +989,26 @@ export class EvaluationsService {
       // Vue à plat des matières du trimestre : une entrée par matière,
       // fusionnée entre SEQ1 et SEQ2 (une matière évaluée dans les deux
       // séquences ne doit apparaître qu'une seule fois).
-      const allSubjects = this.mergeSubjectsAcrossSequences(sequenceSnapshots);
+      const allSubjectsRaw =
+        this.mergeSubjectsAcrossSequences(sequenceSnapshots);
+
+      // Rang de l'élève et effectif de la classe pour chaque matière du
+      // trimestre : calculé à partir de la moyenne par matière de chaque
+      // élève de la classe (même périmètre d'évaluations que classAverage).
+      const termSubjectStudentAverages = this.mergeStudentAverageMaps(
+        termSequences.map((seq) =>
+          this.buildSubjectAveragesByStudent(
+            evaluations.filter((e) => e.sequence === seq),
+          ),
+        ),
+      );
+      const allSubjects = allSubjectsRaw.map((subject) => {
+        const rankInfo = this.computeSubjectRank(
+          termSubjectStudentAverages.get(subject.id),
+          studentId,
+        );
+        return { ...subject, ...rankInfo };
+      });
       const termGeneralAverage =
         sequenceSnapshots.length >= 2
           ? this.computeTermGeneralAverage(sequenceSnapshots)
@@ -1279,6 +1315,102 @@ export class EvaluationsService {
         };
       })
       .sort((a, b) => a.subjectLabel.localeCompare(b.subjectLabel));
+  }
+
+  /** Moyenne pondérée par matière×élève, pour tous les élèves couverts par `evaluations`. */
+  private buildSubjectAveragesByStudent(
+    evaluations: Array<
+      Prisma.EvaluationGetPayload<{ include: { scores: true } }>
+    >,
+  ): Map<string, Map<string, number>> {
+    const bySubject = new Map<
+      string,
+      Map<string, { sum: number; coeff: number }>
+    >();
+
+    for (const evaluation of evaluations) {
+      if (
+        !evaluationCountsForAverage(evaluation.sequence, evaluation.isFinalExam)
+      ) {
+        continue;
+      }
+      const subjectMap =
+        bySubject.get(evaluation.subjectId) ??
+        new Map<string, { sum: number; coeff: number }>();
+      for (const score of evaluation.scores) {
+        if (score.status !== "ENTERED" || score.score === null) continue;
+        const current = subjectMap.get(score.studentId) ?? {
+          sum: 0,
+          coeff: 0,
+        };
+        current.sum +=
+          (score.score / evaluation.maxScore) * 20 * evaluation.coefficient;
+        current.coeff += evaluation.coefficient;
+        subjectMap.set(score.studentId, current);
+      }
+      bySubject.set(evaluation.subjectId, subjectMap);
+    }
+
+    const result = new Map<string, Map<string, number>>();
+    for (const [subjectId, studentMap] of bySubject) {
+      const averages = new Map<string, number>();
+      for (const [studentId, { sum, coeff }] of studentMap) {
+        if (coeff > 0) {
+          averages.set(studentId, Number((sum / coeff).toFixed(2)));
+        }
+      }
+      result.set(subjectId, averages);
+    }
+    return result;
+  }
+
+  /** Fusionne plusieurs maps matière→élève→moyenne en moyennant les valeurs présentes (ex. SEQ1 + SEQ2). */
+  private mergeStudentAverageMaps(
+    maps: Array<Map<string, Map<string, number>>>,
+  ): Map<string, Map<string, number>> {
+    const accumulator = new Map<
+      string,
+      Map<string, { sum: number; count: number }>
+    >();
+
+    for (const map of maps) {
+      for (const [subjectId, studentMap] of map) {
+        const subjectAcc =
+          accumulator.get(subjectId) ??
+          new Map<string, { sum: number; count: number }>();
+        for (const [studentId, value] of studentMap) {
+          const current = subjectAcc.get(studentId) ?? { sum: 0, count: 0 };
+          current.sum += value;
+          current.count += 1;
+          subjectAcc.set(studentId, current);
+        }
+        accumulator.set(subjectId, subjectAcc);
+      }
+    }
+
+    const result = new Map<string, Map<string, number>>();
+    for (const [subjectId, subjectAcc] of accumulator) {
+      const averages = new Map<string, number>();
+      for (const [studentId, { sum, count }] of subjectAcc) {
+        averages.set(studentId, Number((sum / count).toFixed(2)));
+      }
+      result.set(subjectId, averages);
+    }
+    return result;
+  }
+
+  /** Classement (1 = meilleure moyenne) de l'élève dans une matière, parmi les élèves ayant une moyenne. */
+  private computeSubjectRank(
+    studentAverages: Map<string, number> | undefined,
+    studentId: string,
+  ): { rank: number | null; classSize: number | null } {
+    if (!studentAverages) return { rank: null, classSize: null };
+    const studentValue = studentAverages.get(studentId);
+    if (studentValue === undefined) return { rank: null, classSize: null };
+
+    const values = Array.from(studentAverages.values());
+    const rank = 1 + values.filter((value) => value > studentValue).length;
+    return { rank, classSize: values.length };
   }
 
   /**
@@ -1634,7 +1766,12 @@ export class EvaluationsService {
     const locale = evaluationsLocaleFromUser(user);
     const classEntity = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
-      select: { id: true, name: true, schoolYearId: true },
+      select: {
+        id: true,
+        name: true,
+        schoolYearId: true,
+        referentTeacherUserId: true,
+      },
     });
     if (!classEntity) {
       throw new NotFoundException(

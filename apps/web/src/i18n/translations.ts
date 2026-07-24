@@ -1244,6 +1244,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.reports.termAverage": "Moyenne du trimestre",
     "notes.teacher.reports.loading": "Chargement du bulletin...",
     "notes.teacher.reports.published": "Donnees publiees",
+    "notes.teacher.reports.rankAndClassAverage":
+      "Rang {rank}/{total} · Moy. classe {classAverage}/20",
+    "notes.teacher.reports.appreciationPlaceholder":
+      "Saisir une appreciation...",
+    "notes.teacher.reports.appreciationRequired":
+      "L'appreciation ne peut pas etre vide.",
 
     "notes.admin.card.title": "Notes & Devoirs",
     "notes.admin.card.subtitle": "Saisie et historique des resultats",
@@ -4654,6 +4660,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.reports.termAverage": "Term average",
     "notes.teacher.reports.loading": "Loading report...",
     "notes.teacher.reports.published": "Published data",
+    "notes.teacher.reports.rankAndClassAverage":
+      "Rank {rank}/{total} · Class avg. {classAverage}/20",
+    "notes.teacher.reports.appreciationPlaceholder": "Enter an assessment...",
+    "notes.teacher.reports.appreciationRequired":
+      "The assessment cannot be empty.",
 
     "notes.admin.card.title": "Grades & Homework",
     "notes.admin.card.subtitle": "Entry and history of results",

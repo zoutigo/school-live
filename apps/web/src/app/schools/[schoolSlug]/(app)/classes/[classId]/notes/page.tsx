@@ -60,6 +60,7 @@ type TeacherContext = {
     id: string;
     name: string;
     schoolYearId: string;
+    isReferentTeacher: boolean;
   };
   subjects: Array<{
     id: string;
@@ -2151,6 +2152,8 @@ export default function TeacherClassNotesPage() {
               schoolSlug={schoolSlug}
               className={context.class.name}
               students={context.students}
+              teacherSubjectIds={context.subjects.map((subject) => subject.id)}
+              isReferentTeacher={context.class.isReferentTeacher}
               term={councilTerm as StudentNotesTerm}
               onTermChange={(nextTerm) => setCouncilTerm(nextTerm)}
               drafts={councilDrafts}

@@ -13,12 +13,25 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { FormTextarea } from "../ui/form-controls";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import type {
   StudentNotesTerm,
   StudentNotesTermSnapshot,
 } from "../student-notes/student-notes.types";
+
+function createAppreciationSchema(t: TranslateFn) {
+  return z.object({
+    value: z
+      .string()
+      .trim()
+      .min(1, t("notes.teacher.reports.appreciationRequired")),
+  });
+}
+type AppreciationFormInput = { value: string };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -35,6 +48,10 @@ type Props = {
   schoolSlug: string;
   className: string;
   students: Student[];
+  /** Matières que l'enseignant courant est habilité à enseigner dans cette classe. */
+  teacherSubjectIds: string[];
+  /** true si l'enseignant courant est l'enseignant référent de la classe. */
+  isReferentTeacher: boolean;
   term: StudentNotesTerm;
   onTermChange: (term: StudentNotesTerm) => void;
   drafts: CouncilDrafts;
@@ -185,28 +202,68 @@ function ReportHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
 function AppreciationEditor(props: {
   value: string;
   editing: boolean;
-  draft: string;
-  onDraftChange: (value: string) => void;
   onStartEdit: () => void;
   onCancel: () => void;
-  onSave: () => void | Promise<void>;
+  onSave: (value: string) => void | Promise<void>;
   isSaving: boolean;
   testIdPrefix: string;
 }) {
   const { t } = useTranslation();
+  const schema = useMemo(() => createAppreciationSchema(t), [t]);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<AppreciationFormInput>({
+    resolver: zodResolver(schema),
+    mode: "onChange",
+    reValidateMode: "onChange",
+    defaultValues: { value: props.value },
+  });
+
+  const editing = props.editing;
+  const value = props.value;
+  useEffect(() => {
+    if (editing) {
+      reset({ value });
+    }
+  }, [editing, reset]);
+
+  const onSubmit = handleSubmit(async (data) => {
+    try {
+      await props.onSave(data.value.trim());
+    } catch {
+      // L'erreur est déjà notifiée par le toast global de l'écran parent ;
+      // on garde le formulaire ouvert pour permettre une nouvelle tentative.
+    }
+  });
 
   if (props.editing) {
     return (
-      <div
+      <form
         data-testid={`${props.testIdPrefix}-editor`}
         className="rounded-[14px] border border-primary bg-surface p-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void onSubmit();
+        }}
       >
         <FormTextarea
           data-testid={`${props.testIdPrefix}-input`}
-          value={props.draft}
-          onChange={(event) => props.onDraftChange(event.target.value)}
+          invalid={Boolean(errors.value)}
+          placeholder={t("notes.teacher.reports.appreciationPlaceholder")}
           className="min-h-[80px]"
+          {...register("value")}
         />
+        {errors.value?.message ? (
+          <p
+            data-testid={`${props.testIdPrefix}-error`}
+            className="mt-1 text-xs font-semibold text-mark-red"
+          >
+            {errors.value.message}
+          </p>
+        ) : null}
         <div className="mt-2 flex justify-end gap-2">
           <button
             type="button"
@@ -217,16 +274,15 @@ function AppreciationEditor(props: {
             {t("notes.teacher.reports.cancel")}
           </button>
           <button
-            type="button"
+            type="submit"
             data-testid={`${props.testIdPrefix}-save`}
-            onClick={() => void props.onSave()}
             disabled={props.isSaving}
             className="rounded-[8px] bg-primary px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
           >
             {t("notes.teacher.reports.saveField")}
           </button>
         </div>
-      </div>
+      </form>
     );
   }
 
@@ -247,10 +303,20 @@ function AppreciationEditor(props: {
   );
 }
 
+function ReadOnlyAppreciation(props: { value: string; testId: string }) {
+  return (
+    <p data-testid={props.testId} className="text-sm text-text-primary">
+      {props.value}
+    </p>
+  );
+}
+
 export function TeacherPeriodReports({
   schoolSlug,
   className,
   students,
+  teacherSubjectIds,
+  isReferentTeacher,
   onTermChange,
   drafts,
   onSaveAppreciation,
@@ -280,9 +346,7 @@ export function TeacherPeriodReports({
   >({});
   const [loadingStudentId, setLoadingStudentId] = useState<string | null>(null);
   const [editingGeneral, setEditingGeneral] = useState(false);
-  const [generalDraft, setGeneralDraft] = useState("");
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
-  const [subjectDraft, setSubjectDraft] = useState("");
 
   useEffect(() => {
     if (!expandedStudentId || studentNotes[expandedStudentId]) {
@@ -346,30 +410,18 @@ export function TeacherPeriodReports({
     setEditingSubjectId(null);
   }
 
-  function startEditGeneral() {
-    setGeneralDraft(drafts[detail?.studentId ?? ""]?.generalAppreciation ?? "");
-    setEditingGeneral(true);
-  }
-
-  async function saveGeneral() {
+  async function saveGeneral(value: string) {
     if (!detail) return;
     await onSaveAppreciation(detail.studentId, {
-      generalAppreciation: generalDraft,
+      generalAppreciation: value,
     });
     setEditingGeneral(false);
   }
 
-  function startEditSubject(subjectId: string) {
-    setSubjectDraft(
-      drafts[detail?.studentId ?? ""]?.subjects?.[subjectId] ?? "",
-    );
-    setEditingSubjectId(subjectId);
-  }
-
-  async function saveSubject(subjectId: string) {
+  async function saveSubject(subjectId: string, value: string) {
     if (!detail) return;
     await onSaveAppreciation(detail.studentId, {
-      subject: { subjectId, value: subjectDraft },
+      subject: { subjectId, value },
     });
     setEditingSubjectId(null);
   }
@@ -418,22 +470,29 @@ export function TeacherPeriodReports({
           <>
             <ReportHero snapshot={snapshot} />
 
-            <div className="grid gap-2">
-              <p className="text-sm font-bold text-text-primary">
-                {t("notes.teacher.reports.generalTitle")}
-              </p>
-              <AppreciationEditor
-                value={generalText}
-                editing={editingGeneral}
-                draft={generalDraft}
-                onDraftChange={setGeneralDraft}
-                onStartEdit={startEditGeneral}
-                onCancel={() => setEditingGeneral(false)}
-                onSave={saveGeneral}
-                isSaving={isSubmitting}
-                testIdPrefix="teacher-reports-general"
-              />
-            </div>
+            {isReferentTeacher || generalText ? (
+              <div className="grid gap-2">
+                <p className="text-sm font-bold text-text-primary">
+                  {t("notes.teacher.reports.generalTitle")}
+                </p>
+                {isReferentTeacher ? (
+                  <AppreciationEditor
+                    value={generalText}
+                    editing={editingGeneral}
+                    onStartEdit={() => setEditingGeneral(true)}
+                    onCancel={() => setEditingGeneral(false)}
+                    onSave={saveGeneral}
+                    isSaving={isSubmitting}
+                    testIdPrefix="teacher-reports-general"
+                  />
+                ) : (
+                  <ReadOnlyAppreciation
+                    value={generalText}
+                    testId="teacher-reports-general-readonly"
+                  />
+                )}
+              </div>
+            ) : null}
 
             <div data-testid="teacher-reports-subjects" className="grid gap-3">
               {snapshot.subjects.map((subject) => {
@@ -444,6 +503,9 @@ export function TeacherPeriodReports({
                     data: seq.subjects.find((entry) => entry.id === subject.id),
                   }))
                   .filter((row) => row.data);
+                const isSubjectTeacher = teacherSubjectIds.includes(subject.id);
+                const subjectAppreciationValue =
+                  drafts[detail.studentId]?.subjects?.[subject.id] ?? "";
 
                 return (
                   <div
@@ -460,6 +522,21 @@ export function TeacherPeriodReports({
                         {subject.coefficient}
                       </p>
                     </div>
+
+                    {subject.rank != null && subject.classSize != null ? (
+                      <p
+                        data-testid={`teacher-reports-subject-${subject.id}-rank`}
+                        className="-mt-1.5 text-[10px] text-text-secondary opacity-75"
+                      >
+                        {t("notes.teacher.reports.rankAndClassAverage")
+                          .replace("{rank}", String(subject.rank))
+                          .replace("{total}", String(subject.classSize))
+                          .replace(
+                            "{classAverage}",
+                            formatScore(subject.classAverage),
+                          )}
+                      </p>
+                    ) : null}
 
                     <div className="flex items-start justify-between gap-2 border-t border-warm-border pt-2">
                       {sequenceRows.map((row) => (
@@ -486,19 +563,22 @@ export function TeacherPeriodReports({
                       </div>
                     </div>
 
-                    <AppreciationEditor
-                      value={
-                        drafts[detail.studentId]?.subjects?.[subject.id] ?? ""
-                      }
-                      editing={editingSubjectId === subject.id}
-                      draft={subjectDraft}
-                      onDraftChange={setSubjectDraft}
-                      onStartEdit={() => startEditSubject(subject.id)}
-                      onCancel={() => setEditingSubjectId(null)}
-                      onSave={() => saveSubject(subject.id)}
-                      isSaving={isSubmitting}
-                      testIdPrefix={`teacher-reports-subject-${subject.id}`}
-                    />
+                    {isSubjectTeacher ? (
+                      <AppreciationEditor
+                        value={subjectAppreciationValue}
+                        editing={editingSubjectId === subject.id}
+                        onStartEdit={() => setEditingSubjectId(subject.id)}
+                        onCancel={() => setEditingSubjectId(null)}
+                        onSave={(value) => saveSubject(subject.id, value)}
+                        isSaving={isSubmitting}
+                        testIdPrefix={`teacher-reports-subject-${subject.id}`}
+                      />
+                    ) : subjectAppreciationValue ? (
+                      <ReadOnlyAppreciation
+                        value={subjectAppreciationValue}
+                        testId={`teacher-reports-subject-${subject.id}-readonly`}
+                      />
+                    ) : null}
                   </div>
                 );
               })}
