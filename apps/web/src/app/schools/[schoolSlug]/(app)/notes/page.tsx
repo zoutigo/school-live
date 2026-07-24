@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
 import { Button } from "../../../../../components/ui/button";
-import { FormSelect } from "../../../../../components/ui/form-controls";
+import {
+  FormSelect,
+  FormTextInput,
+} from "../../../../../components/ui/form-controls";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -13,6 +16,18 @@ type ClassroomOption = {
   id: string;
   name: string;
   academicLevel?: { id: string; label: string } | null;
+};
+
+type SchoolEvaluationRow = {
+  id: string;
+  title: string;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  scheduledAt?: string | null;
+  createdAt: string;
+  subject: { id: string; name: string };
+  subjectBranch?: { id: string; name: string } | null;
+  class: { id: string; name: string };
+  _count: { scores: number };
 };
 
 export default function NotesAdminEntryPage() {
@@ -25,6 +40,12 @@ export default function NotesAdminEntryPage() {
   const [classrooms, setClassrooms] = useState<ClassroomOption[]>([]);
   const [levelId, setLevelId] = useState("");
   const [classId, setClassId] = useState("");
+  const [evaluations, setEvaluations] = useState<SchoolEvaluationRow[]>([]);
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  const [evaluationsError, setEvaluationsError] = useState<string | null>(
+    null,
+  );
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -86,6 +107,63 @@ export default function NotesAdminEntryPage() {
       cancelled = true;
     };
   }, [schoolSlug, router, t]);
+
+  // Un school admin n'est jamais scopé sur une classe : la liste ci-dessous
+  // montre par défaut les évaluations les plus récentes de toute l'école
+  // (endpoint GET /schools/:schoolSlug/evaluations), niveau/classe ne servant
+  // qu'à restreindre cette liste, jamais à la conditionner.
+  useEffect(() => {
+    if (loading || hasNoClass || error) return;
+    let cancelled = false;
+
+    async function loadEvaluations() {
+      setIsLoadingEvaluations(true);
+      setEvaluationsError(null);
+      try {
+        const params = new URLSearchParams();
+        if (levelId) params.set("academicLevelId", levelId);
+        if (classId) params.set("classId", classId);
+        const query = params.toString();
+        const response = await fetch(
+          `${API_URL}/schools/${schoolSlug}/evaluations${
+            query ? `?${query}` : ""
+          }`,
+          { credentials: "include" },
+        );
+        if (!response.ok) {
+          throw new Error("evaluations-error");
+        }
+        const rows = (await response.json()) as SchoolEvaluationRow[];
+        if (!cancelled) {
+          setEvaluations(rows);
+        }
+      } catch {
+        if (!cancelled) {
+          setEvaluationsError(t("notes.adminEntry.evaluationsError"));
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingEvaluations(false);
+        }
+      }
+    }
+
+    void loadEvaluations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug, levelId, classId, loading, hasNoClass, error, t]);
+
+  const filteredEvaluations = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return evaluations;
+    return evaluations.filter(
+      (evaluation) =>
+        evaluation.title.toLowerCase().includes(query) ||
+        evaluation.subject.name.toLowerCase().includes(query),
+    );
+  }, [evaluations, search]);
 
   const levelOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -207,6 +285,88 @@ export default function NotesAdminEntryPage() {
             </Button>
           </div>
         </form>
+
+        <div className="mt-6" data-testid="notes-admin-entry-list-section">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="font-heading text-base font-semibold text-text-primary">
+              {t("notes.adminEntry.listTitle")}
+            </p>
+            <FormTextInput
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("notes.adminEntry.searchPlaceholder")}
+              aria-label={t("notes.adminEntry.searchAria")}
+              data-testid="notes-admin-entry-search"
+            />
+          </div>
+
+          {isLoadingEvaluations ? (
+            <p
+              className="text-sm text-text-secondary"
+              data-testid="notes-admin-entry-list-loading"
+            >
+              {t("notes.adminEntry.loading")}
+            </p>
+          ) : evaluationsError ? (
+            <p
+              className="text-sm text-notification"
+              data-testid="notes-admin-entry-list-error"
+            >
+              {evaluationsError}
+            </p>
+          ) : filteredEvaluations.length === 0 ? (
+            <p
+              className="text-sm text-text-secondary"
+              data-testid="notes-admin-entry-list-empty"
+            >
+              {t("notes.adminEntry.listEmpty")}
+            </p>
+          ) : (
+            <ul className="grid gap-2" data-testid="notes-admin-entry-list">
+              {filteredEvaluations.map((evaluation) => (
+                <li key={evaluation.id}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/schools/${schoolSlug}/classes/${evaluation.class.id}/notes`,
+                      )
+                    }
+                    data-testid={`notes-admin-entry-row-${evaluation.id}`}
+                    className="flex w-full flex-col gap-1 rounded-card border border-border bg-surface p-3 text-left transition hover:border-accent-teal"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-text-primary">
+                        {evaluation.title}
+                      </span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                        {evaluation.status === "PUBLISHED"
+                          ? t("notes.teacher.status.published")
+                          : t("notes.teacher.status.draft")}
+                      </span>
+                    </div>
+                    <span className="text-xs text-text-secondary">
+                      {evaluation.subject.name}
+                      {evaluation.subjectBranch?.name
+                        ? ` • ${evaluation.subjectBranch.name}`
+                        : ""}
+                      {" • "}
+                      {evaluation.class.name}
+                    </span>
+                    <span className="text-xs text-text-secondary">
+                      {new Date(
+                        evaluation.scheduledAt ?? evaluation.createdAt,
+                      ).toLocaleDateString("fr-FR")}
+                      {" • "}
+                      {evaluation._count.scores}{" "}
+                      {t("notes.adminEntry.scoresCount")}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </Card>
     </div>
   );

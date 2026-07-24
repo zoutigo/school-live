@@ -1051,14 +1051,22 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.adminEntry.emptyTitle": "Aucune classe",
     "notes.adminEntry.emptyMessage":
       "Aucune classe disponible pour cette ecole.",
-    "notes.adminEntry.browseTitle": "Choisir une classe",
+    "notes.adminEntry.browseTitle": "Evaluations de l'ecole",
     "notes.adminEntry.browseSubtitle":
-      "Selectionnez un niveau puis une classe pour consulter ses evaluations.",
+      "La liste ci-dessous montre les evaluations les plus recentes de toute l'ecole. Filtrez par niveau ou par classe si besoin, ou choisissez une classe pour la gerer.",
     "notes.adminEntry.levelLabel": "Niveau",
     "notes.adminEntry.allLevels": "Tous les niveaux",
     "notes.adminEntry.classLabel": "Classe",
-    "notes.adminEntry.classPlaceholder": "Choisir une classe",
-    "notes.adminEntry.viewButton": "Voir les evaluations",
+    "notes.adminEntry.classPlaceholder": "Toutes les classes",
+    "notes.adminEntry.viewButton": "Gerer cette classe",
+    "notes.adminEntry.listTitle": "Evaluations recentes",
+    "notes.adminEntry.searchPlaceholder": "Rechercher une evaluation...",
+    "notes.adminEntry.searchAria": "Rechercher une evaluation",
+    "notes.adminEntry.listEmpty":
+      "Aucune evaluation ne correspond a ces criteres.",
+    "notes.adminEntry.evaluationsError":
+      "Impossible de charger les evaluations de l'ecole.",
+    "notes.adminEntry.scoresCount": "note(s) saisie(s)",
     "notes.teacher.errors.downloadAttachment":
       "Impossible de telecharger la piece jointe.",
     "notes.teacher.errors.createEvaluation": "Echec creation evaluation",
@@ -4486,14 +4494,21 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.adminEntry.loading": "Loading...",
     "notes.adminEntry.emptyTitle": "No class",
     "notes.adminEntry.emptyMessage": "No class available for this school.",
-    "notes.adminEntry.browseTitle": "Choose a class",
+    "notes.adminEntry.browseTitle": "School evaluations",
     "notes.adminEntry.browseSubtitle":
-      "Select a level then a class to view its evaluations.",
+      "The list below shows the most recent evaluations across the whole school. Narrow by level or class if needed, or pick a class to manage it.",
     "notes.adminEntry.levelLabel": "Level",
     "notes.adminEntry.allLevels": "All levels",
     "notes.adminEntry.classLabel": "Class",
-    "notes.adminEntry.classPlaceholder": "Choose a class",
-    "notes.adminEntry.viewButton": "View evaluations",
+    "notes.adminEntry.classPlaceholder": "All classes",
+    "notes.adminEntry.viewButton": "Manage this class",
+    "notes.adminEntry.listTitle": "Recent evaluations",
+    "notes.adminEntry.searchPlaceholder": "Search an evaluation...",
+    "notes.adminEntry.searchAria": "Search an evaluation",
+    "notes.adminEntry.listEmpty": "No evaluation matches these criteria.",
+    "notes.adminEntry.evaluationsError":
+      "Unable to load the school's evaluations.",
+    "notes.adminEntry.scoresCount": "grade(s) entered",
     "notes.teacher.errors.downloadAttachment":
       "Unable to download the attachment.",
     "notes.teacher.errors.createEvaluation": "Failed to create evaluation",

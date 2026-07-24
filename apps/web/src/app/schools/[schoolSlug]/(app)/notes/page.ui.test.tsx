@@ -148,6 +148,254 @@ describe("NotesAdminEntryPage", () => {
     );
   });
 
+  it("affiche par defaut les evaluations de toute l'ecole sans filtre ni classe choisie", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return createJsonResponse([
+          {
+            id: "class-9",
+            name: "6e A",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+        ]);
+      }
+      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+        return createJsonResponse([
+          {
+            id: "eval-1",
+            title: "Controle histoire",
+            status: "PUBLISHED",
+            scheduledAt: "2026-04-01T08:00:00.000Z",
+            createdAt: "2026-04-01T08:00:00.000Z",
+            subject: { id: "hist", name: "Histoire" },
+            subjectBranch: null,
+            class: { id: "class-9", name: "6e A" },
+            _count: { scores: 3 },
+          },
+        ]);
+      }
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<NotesAdminEntryPage />);
+
+    expect(
+      await screen.findByTestId("notes-admin-entry-row-eval-1"),
+    ).toBeInTheDocument();
+  });
+
+  it("navigue vers la classe de la ligne cliquee sans passer par le formulaire", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return createJsonResponse([
+          {
+            id: "class-9",
+            name: "6e A",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+        ]);
+      }
+      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+        return createJsonResponse([
+          {
+            id: "eval-1",
+            title: "Controle histoire",
+            status: "PUBLISHED",
+            scheduledAt: "2026-04-01T08:00:00.000Z",
+            createdAt: "2026-04-01T08:00:00.000Z",
+            subject: { id: "hist", name: "Histoire" },
+            subjectBranch: null,
+            class: { id: "class-9", name: "6e A" },
+            _count: { scores: 3 },
+          },
+        ]);
+      }
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<NotesAdminEntryPage />);
+
+    fireEvent.click(await screen.findByTestId("notes-admin-entry-row-eval-1"));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/schools/college-vogt/classes/class-9/notes",
+    );
+  });
+
+  it("transmet le niveau choisi comme simple filtre de narrowing, sans exiger de classe", async () => {
+    const evaluationsFetch = vi.fn();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return createJsonResponse([
+          {
+            id: "class-9",
+            name: "6e A",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+          {
+            id: "class-10",
+            name: "5e A",
+            academicLevel: { id: "level-5e", label: "5ème" },
+          },
+        ]);
+      }
+      if (url.includes("/schools/college-vogt/evaluations")) {
+        evaluationsFetch(url);
+        return createJsonResponse([]);
+      }
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<NotesAdminEntryPage />);
+
+    const levelSelect = await screen.findByTestId("notes-admin-entry-level");
+    fireEvent.change(levelSelect, { target: { value: "level-6e" } });
+
+    await waitFor(() => {
+      expect(evaluationsFetch).toHaveBeenCalledWith(
+        "http://localhost:3001/api/schools/college-vogt/evaluations?academicLevelId=level-6e",
+      );
+    });
+    // Aucune classe n'a été choisie : le bouton "Gérer cette classe" reste désactivé,
+    // mais la liste (via evaluationsFetch ci-dessus) n'attend jamais ce choix.
+    expect(screen.getByTestId("notes-admin-entry-submit")).toBeDisabled();
+  });
+
+  it("filtre la liste par recherche texte côté client", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return createJsonResponse([
+          {
+            id: "class-9",
+            name: "6e A",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+        ]);
+      }
+      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+        return createJsonResponse([
+          {
+            id: "eval-1",
+            title: "Controle histoire",
+            status: "PUBLISHED",
+            scheduledAt: "2026-04-01T08:00:00.000Z",
+            createdAt: "2026-04-01T08:00:00.000Z",
+            subject: { id: "hist", name: "Histoire" },
+            subjectBranch: null,
+            class: { id: "class-9", name: "6e A" },
+            _count: { scores: 3 },
+          },
+          {
+            id: "eval-2",
+            title: "Interro maths",
+            status: "DRAFT",
+            scheduledAt: "2026-04-02T08:00:00.000Z",
+            createdAt: "2026-04-02T08:00:00.000Z",
+            subject: { id: "math", name: "Mathématiques" },
+            subjectBranch: null,
+            class: { id: "class-9", name: "6e A" },
+            _count: { scores: 0 },
+          },
+        ]);
+      }
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<NotesAdminEntryPage />);
+
+    await screen.findByTestId("notes-admin-entry-row-eval-1");
+    expect(screen.getByTestId("notes-admin-entry-row-eval-2")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("notes-admin-entry-search"), {
+      target: { value: "maths" },
+    });
+
+    expect(
+      screen.queryByTestId("notes-admin-entry-row-eval-1"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("notes-admin-entry-row-eval-2"),
+    ).toBeInTheDocument();
+  });
+
+  it("affiche un état vide dédié quand aucune évaluation ne correspond", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return createJsonResponse([
+          {
+            id: "class-9",
+            name: "6e A",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+        ]);
+      }
+      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+        return createJsonResponse([]);
+      }
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<NotesAdminEntryPage />);
+
+    expect(
+      await screen.findByTestId("notes-admin-entry-list-empty"),
+    ).toBeInTheDocument();
+  });
+
+  it("affiche une erreur dédiée si le chargement des évaluations échoue", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return createJsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return createJsonResponse([
+          {
+            id: "class-9",
+            name: "6e A",
+            academicLevel: { id: "level-6e", label: "6ème" },
+          },
+        ]);
+      }
+      if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+        return createJsonResponse({ message: "boom" }, 500);
+      }
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<NotesAdminEntryPage />);
+
+    expect(
+      await screen.findByTestId("notes-admin-entry-list-error"),
+    ).toBeInTheDocument();
+  });
+
   it("redirects to login when the session is invalid", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
