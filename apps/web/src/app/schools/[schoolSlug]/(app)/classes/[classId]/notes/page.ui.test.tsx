@@ -1042,9 +1042,7 @@ describe("TeacherClassNotesPage council tab", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: /Conseil de classe/i }),
     );
-    fireEvent.click(
-      await screen.findByTestId("teacher-reports-row-student-1"),
-    );
+    fireEvent.click(await screen.findByTestId("teacher-reports-row-student-1"));
     fireEvent.click(
       screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
     );

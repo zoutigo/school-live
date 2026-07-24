@@ -94,12 +94,12 @@ describe("TeacherPeriodReports", () => {
     setupFetchMock();
     render(<TeacherPeriodReports {...baseProps()} />);
 
-    expect(screen.getByTestId("teacher-reports-row-student-1")).toHaveTextContent(
-      "Ntamack Lisa",
-    );
-    expect(screen.getByTestId("teacher-reports-row-student-2")).toHaveTextContent(
-      "Ateba Paul",
-    );
+    expect(
+      screen.getByTestId("teacher-reports-row-student-1"),
+    ).toHaveTextContent("Ntamack Lisa");
+    expect(
+      screen.getByTestId("teacher-reports-row-student-2"),
+    ).toHaveTextContent("Ateba Paul");
   });
 
   it("filters students by search query", () => {
@@ -204,7 +204,9 @@ describe("TeacherPeriodReports", () => {
       expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getByTestId("teacher-reports-subject-sub-1-display"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-subject-sub-1-display"),
+    );
     fireEvent.change(
       screen.getByTestId("teacher-reports-subject-sub-1-input"),
       { target: { value: "Peut mieux faire" } },

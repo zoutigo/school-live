@@ -278,14 +278,10 @@ export function TeacherPeriodReports({
   const [studentNotes, setStudentNotes] = useState<
     Record<string, StudentNotesTermSnapshot[]>
   >({});
-  const [loadingStudentId, setLoadingStudentId] = useState<string | null>(
-    null,
-  );
+  const [loadingStudentId, setLoadingStudentId] = useState<string | null>(null);
   const [editingGeneral, setEditingGeneral] = useState(false);
   const [generalDraft, setGeneralDraft] = useState("");
-  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(
-    null,
-  );
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [subjectDraft, setSubjectDraft] = useState("");
 
   useEffect(() => {
@@ -322,9 +318,7 @@ export function TeacherPeriodReports({
     const query = searchQuery.trim().toLowerCase();
     if (!query) return sortedStudents;
     return sortedStudents.filter((student) =>
-      `${student.lastName} ${student.firstName}`
-        .toLowerCase()
-        .includes(query),
+      `${student.lastName} ${student.firstName}`.toLowerCase().includes(query),
     );
   }, [sortedStudents, searchQuery]);
 
@@ -441,18 +435,13 @@ export function TeacherPeriodReports({
               />
             </div>
 
-            <div
-              data-testid="teacher-reports-subjects"
-              className="grid gap-3"
-            >
+            <div data-testid="teacher-reports-subjects" className="grid gap-3">
               {snapshot.subjects.map((subject) => {
                 const sequenceRows = snapshot.sequences
                   .map((seq) => ({
                     sequence: seq.sequence,
                     label: seq.sequenceLabel,
-                    data: seq.subjects.find(
-                      (entry) => entry.id === subject.id,
-                    ),
+                    data: seq.subjects.find((entry) => entry.id === subject.id),
                   }))
                   .filter((row) => row.data);
 

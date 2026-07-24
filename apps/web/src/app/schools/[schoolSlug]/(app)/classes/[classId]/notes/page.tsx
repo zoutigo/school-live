@@ -760,8 +760,7 @@ export default function TeacherClassNotesPage() {
             reports: context.students.map((student) => ({
               studentId: student.id,
               generalAppreciation:
-                nextDrafts[student.id]?.generalAppreciation.trim() ||
-                undefined,
+                nextDrafts[student.id]?.generalAppreciation.trim() || undefined,
               subjects: context.subjects.map((subject) => ({
                 subjectId: subject.id,
                 appreciation:
