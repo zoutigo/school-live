@@ -212,6 +212,48 @@ const DETAIL_BY_ID = {
   },
 } as const;
 
+const STUDENT_1_TERM_2_SNAPSHOT = {
+  term: "TERM_2",
+  label: "2eme Trimestre",
+  councilLabel: "Conseil de classe 6eC - publication 2eme trimestre",
+  generatedAtLabel: "Donnees publiees le 13/07/2026 09:08",
+  generalAverage: { student: 10.56, class: 13.33, min: 9.5, max: 18 },
+  sequences: [
+    {
+      sequence: "SEQ_3",
+      sequenceLabel: "Sequence 3",
+      isFirstSeq: true,
+      generalAverage: { student: 10.56, class: 13.33, min: 9.5, max: 18 },
+      subjects: [
+        {
+          id: "sub-1",
+          subjectLabel: "Mathematiques",
+          teachers: [],
+          coefficient: 2,
+          studentAverage: 10.56,
+          classAverage: 13.33,
+          classMin: 9.5,
+          classMax: 18,
+          evaluations: [],
+        },
+      ],
+    },
+  ],
+  subjects: [
+    {
+      id: "sub-1",
+      subjectLabel: "Mathematiques",
+      teachers: [],
+      coefficient: 2,
+      studentAverage: 10.56,
+      classAverage: 13.33,
+      classMin: 9.5,
+      classMax: 18,
+      evaluations: [],
+    },
+  ],
+};
+
 function setupFetchMock(evaluations = EVALUATIONS) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const request = input instanceof Request ? input : null;
@@ -285,6 +327,15 @@ function setupFetchMock(evaluations = EVALUATIONS) {
       );
     }
     if (url.includes("/term-reports?term=")) {
+      return jsonResponse([]);
+    }
+    if (url.includes("/term-reports/") && method === "PATCH") {
+      return jsonResponse({ ok: true });
+    }
+    if (url.includes("/students/student-1/notes")) {
+      return jsonResponse([STUDENT_1_TERM_2_SNAPSHOT]);
+    }
+    if (url.includes("/students/") && url.endsWith("/notes")) {
       return jsonResponse([]);
     }
 
@@ -945,5 +996,83 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     // eval-5 : 20/20 (complet) -> couleur teal
     const complete = screen.getByText("20/20");
     expect(complete).toHaveClass("text-accent-teal-dark");
+  });
+});
+
+describe("TeacherClassNotesPage council tab", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+  });
+
+  it("shows the bulletin search list and opens a student's term report", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Conseil de classe/i }),
+    );
+
+    expect(
+      await screen.findByTestId("teacher-reports-search-input"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("teacher-reports-row-student-1"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByTestId("teacher-reports-subject-card-sub-1"),
+    ).toBeInTheDocument();
+  });
+
+  it("saves a subject appreciation from the report through the class council endpoint", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Conseil de classe/i }),
+    );
+    fireEvent.click(
+      await screen.findByTestId("teacher-reports-row-student-1"),
+    );
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-subject-sub-1-display"),
+    );
+    fireEvent.change(
+      screen.getByTestId("teacher-reports-subject-sub-1-input"),
+      { target: { value: "Bon travail" } },
+    );
+    fireEvent.click(screen.getByTestId("teacher-reports-subject-sub-1-save"));
+
+    await waitFor(() => {
+      const patchCall = vi
+        .mocked(globalThis.fetch)
+        .mock.calls.find(([input, init]) => {
+          const url = String(input);
+          const method =
+            init && typeof init === "object" && "method" in init
+              ? init.method
+              : undefined;
+          return url.includes("/term-reports/TERM_2") && method === "PATCH";
+        });
+      expect(patchCall).toBeDefined();
+    });
   });
 });

@@ -1232,6 +1232,19 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.council.saveDraft": "Enregistrer le brouillon",
     "notes.teacher.council.saving": "Enregistrement...",
 
+    "notes.teacher.reports.search.placeholder": "Rechercher un eleve...",
+    "notes.teacher.reports.empty.title": "Aucun bulletin",
+    "notes.teacher.reports.empty.message":
+      "Aucun eleve n'est inscrit dans cette classe.",
+    "notes.teacher.reports.backToList": "Retour a la liste",
+    "notes.teacher.reports.generalTitle": "Appreciation generale",
+    "notes.teacher.reports.saveField": "Enregistrer",
+    "notes.teacher.reports.cancel": "Annuler",
+    "notes.teacher.reports.noAppreciation": "Aucune appreciation renseignee",
+    "notes.teacher.reports.termAverage": "Moyenne du trimestre",
+    "notes.teacher.reports.loading": "Chargement du bulletin...",
+    "notes.teacher.reports.published": "Donnees publiees",
+
     "notes.admin.card.title": "Notes & Devoirs",
     "notes.admin.card.subtitle": "Saisie et historique des resultats",
     "notes.admin.form.schoolYear": "Annee scolaire",
@@ -4628,6 +4641,19 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.council.publish": "Publish class council",
     "notes.teacher.council.saveDraft": "Save draft",
     "notes.teacher.council.saving": "Saving...",
+
+    "notes.teacher.reports.search.placeholder": "Search for a student...",
+    "notes.teacher.reports.empty.title": "No report",
+    "notes.teacher.reports.empty.message":
+      "No student is enrolled in this class.",
+    "notes.teacher.reports.backToList": "Back to list",
+    "notes.teacher.reports.generalTitle": "General assessment",
+    "notes.teacher.reports.saveField": "Save",
+    "notes.teacher.reports.cancel": "Cancel",
+    "notes.teacher.reports.noAppreciation": "No assessment yet",
+    "notes.teacher.reports.termAverage": "Term average",
+    "notes.teacher.reports.loading": "Loading report...",
+    "notes.teacher.reports.published": "Published data",
 
     "notes.admin.card.title": "Grades & Homework",
     "notes.admin.card.subtitle": "Entry and history of results",

@@ -23,12 +23,13 @@ import {
   FormSelect,
   FormSubmitHint,
   FormTextInput,
-  FormTextarea,
 } from "../../../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../../../components/ui/form-field";
 import { FormRichTextEditor } from "../../../../../../../components/ui/form-rich-text-editor";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { PaginationControls } from "../../../../../../../components/ui/pagination-controls";
+import { TeacherPeriodReports } from "../../../../../../../components/teacher-notes/teacher-period-reports";
+import type { StudentNotesTerm } from "../../../../../../../components/student-notes/student-notes.types";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
   useTranslation,
@@ -730,7 +731,9 @@ export default function TeacherClassNotesPage() {
     }
   }
 
-  async function handleSaveCouncilReports() {
+  async function persistCouncilReports(
+    nextDrafts: typeof councilDrafts,
+  ): Promise<void> {
     if (!context) {
       return;
     }
@@ -757,12 +760,12 @@ export default function TeacherClassNotesPage() {
             reports: context.students.map((student) => ({
               studentId: student.id,
               generalAppreciation:
-                councilDrafts[student.id]?.generalAppreciation.trim() ||
+                nextDrafts[student.id]?.generalAppreciation.trim() ||
                 undefined,
               subjects: context.subjects.map((subject) => ({
                 subjectId: subject.id,
                 appreciation:
-                  councilDrafts[student.id]?.subjects[subject.id]?.trim() ||
+                  nextDrafts[student.id]?.subjects[subject.id]?.trim() ||
                   undefined,
               })),
             })),
@@ -784,9 +787,40 @@ export default function TeacherClassNotesPage() {
       setError(
         err instanceof Error ? err.message : t("notes.common.networkError"),
       );
+      throw err;
     } finally {
       setSavingCouncil(false);
     }
+  }
+
+  async function handleSaveCouncilReports() {
+    await persistCouncilReports(councilDrafts).catch(() => {});
+  }
+
+  async function handleSaveAppreciation(
+    studentId: string,
+    patch: {
+      generalAppreciation?: string;
+      subject?: { subjectId: string; value: string };
+    },
+  ) {
+    const nextDrafts = {
+      ...councilDrafts,
+      [studentId]: {
+        generalAppreciation:
+          patch.generalAppreciation ??
+          councilDrafts[studentId]?.generalAppreciation ??
+          "",
+        subjects: {
+          ...(councilDrafts[studentId]?.subjects ?? {}),
+          ...(patch.subject
+            ? { [patch.subject.subjectId]: patch.subject.value }
+            : {}),
+        },
+      },
+    };
+    setCouncilDrafts(nextDrafts);
+    await persistCouncilReports(nextDrafts);
   }
 
   const selectedSubject = useMemo(
@@ -2095,89 +2129,6 @@ export default function TeacherClassNotesPage() {
               </label>
             </div>
 
-            <div className="grid gap-4">
-              {context.students.map((student) => (
-                <div key={student.id} className="content-panel p-4">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-heading text-lg font-semibold text-text-primary">
-                        {student.lastName} {student.firstName}
-                      </p>
-                      <p className="text-xs text-text-secondary">
-                        {t("notes.teacher.council.appreciationsSubtitle")}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        {t("notes.teacher.council.generalAppreciation")}
-                      </span>
-                      <FormTextarea
-                        value={
-                          councilDrafts[student.id]?.generalAppreciation ?? ""
-                        }
-                        onChange={(event) =>
-                          setCouncilDrafts((prev) => ({
-                            ...prev,
-                            [student.id]: {
-                              generalAppreciation: event.target.value,
-                              subjects:
-                                prev[student.id]?.subjects ??
-                                Object.fromEntries(
-                                  context.subjects.map((subject) => [
-                                    subject.id,
-                                    "",
-                                  ]),
-                                ),
-                            },
-                          }))
-                        }
-                        className="min-h-[90px]"
-                        placeholder={t(
-                          "notes.teacher.council.generalAppreciationPlaceholder",
-                        )}
-                      />
-                    </label>
-
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      {context.subjects.map((subject) => (
-                        <label key={subject.id} className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            {subject.name}
-                          </span>
-                          <FormTextarea
-                            value={
-                              councilDrafts[student.id]?.subjects[subject.id] ??
-                              ""
-                            }
-                            onChange={(event) =>
-                              setCouncilDrafts((prev) => ({
-                                ...prev,
-                                [student.id]: {
-                                  generalAppreciation:
-                                    prev[student.id]?.generalAppreciation ?? "",
-                                  subjects: {
-                                    ...(prev[student.id]?.subjects ?? {}),
-                                    [subject.id]: event.target.value,
-                                  },
-                                },
-                              }))
-                            }
-                            className="min-h-[88px]"
-                            placeholder={t(
-                              "notes.teacher.council.subjectAppreciationPlaceholder",
-                            ).replace("{subject}", subject.name.toLowerCase())}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {error ? (
               <p className="text-sm text-notification">{error}</p>
             ) : null}
@@ -2196,6 +2147,17 @@ export default function TeacherClassNotesPage() {
                   ? t("notes.teacher.council.publish")
                   : t("notes.teacher.council.saveDraft")}
             </button>
+
+            <TeacherPeriodReports
+              schoolSlug={schoolSlug}
+              className={context.class.name}
+              students={context.students}
+              term={councilTerm as StudentNotesTerm}
+              onTermChange={(nextTerm) => setCouncilTerm(nextTerm)}
+              drafts={councilDrafts}
+              onSaveAppreciation={handleSaveAppreciation}
+              isSubmitting={savingCouncil}
+            />
           </div>
         )}
       </Card>
