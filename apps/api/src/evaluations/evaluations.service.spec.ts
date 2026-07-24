@@ -376,7 +376,9 @@ describe("EvaluationsService", () => {
         firstName: "Jean",
         lastName: "Kamga",
       });
-      expect((result[0] as { authorUser?: unknown }).authorUser).toBeUndefined();
+      expect(
+        (result[0] as { authorUser?: unknown }).authorUser,
+      ).toBeUndefined();
     });
   });
 

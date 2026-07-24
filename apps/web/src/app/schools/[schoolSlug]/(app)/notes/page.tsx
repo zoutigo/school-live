@@ -66,9 +66,7 @@ export default function NotesAdminEntryPage() {
           return;
         }
 
-        router.replace(
-          `/schools/${schoolSlug}/classes/${firstClass.id}/notes`,
-        );
+        router.replace(`/schools/${schoolSlug}/classes/${firstClass.id}/notes`);
       } catch {
         if (!cancelled) {
           setError(t("notes.teacher.errors.loadModule"));

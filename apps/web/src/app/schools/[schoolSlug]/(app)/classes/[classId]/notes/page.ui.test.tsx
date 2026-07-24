@@ -1078,9 +1078,21 @@ describe("TeacherClassNotesPage council tab", () => {
 
 describe("TeacherClassNotesPage admin class switcher", () => {
   const ADMIN_CLASSROOMS = [
-    { id: "class-1", name: "6eC", academicLevel: { id: "level-6e", code: "6E", label: "6eme" } },
-    { id: "class-2", name: "6eD", academicLevel: { id: "level-6e", code: "6E", label: "6eme" } },
-    { id: "class-3", name: "5eA", academicLevel: { id: "level-5e", code: "5E", label: "5eme" } },
+    {
+      id: "class-1",
+      name: "6eC",
+      academicLevel: { id: "level-6e", code: "6E", label: "6eme" },
+    },
+    {
+      id: "class-2",
+      name: "6eD",
+      academicLevel: { id: "level-6e", code: "6E", label: "6eme" },
+    },
+    {
+      id: "class-3",
+      name: "5eA",
+      academicLevel: { id: "level-5e", code: "5E", label: "5eme" },
+    },
   ];
 
   function setupAdminFetchMock(

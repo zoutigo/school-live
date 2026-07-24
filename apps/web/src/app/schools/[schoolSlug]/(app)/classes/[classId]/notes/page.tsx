@@ -205,9 +205,9 @@ export default function TeacherClassNotesPage() {
 
   const [tab, setTab] = useState<TabKey>("evaluations");
   const [role, setRole] = useState<string | null>(null);
-  const [adminClassrooms, setAdminClassrooms] = useState<AdminClassroomOption[]>(
-    [],
-  );
+  const [adminClassrooms, setAdminClassrooms] = useState<
+    AdminClassroomOption[]
+  >([]);
   const [adminLevelFilter, setAdminLevelFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
