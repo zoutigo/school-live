@@ -1722,13 +1722,16 @@ export default function UtilisateursPage() {
       data-testid="utilisateurs-page"
     >
       {/* Top bar */}
-      <div className="shrink-0 border-b border-warm-border bg-surface px-6 py-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
+      <div className="shrink-0 border-b border-warm-border bg-surface px-4 py-3 sm:px-6 sm:py-4">
+        <div
+          data-testid="users-topbar"
+          className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap sm:gap-4"
+        >
+          <div className="min-w-0">
             <h1 className="font-heading text-xl font-bold text-text-primary">
               {t("users.title")}
             </h1>
-            <p className="mt-0.5 text-sm text-text-secondary">
+            <p className="mt-0.5 truncate text-sm text-text-secondary">
               {t("users.subtitle")}
             </p>
           </div>

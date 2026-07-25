@@ -239,6 +239,25 @@ describe("UtilisateursPage", () => {
     expect(await screen.findByTestId("users-total")).toHaveTextContent("42");
   });
 
+  it("l'entête reste lisible sur petit écran (parité xs/sm mobile)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([TEACHER_USER], 19)), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(<UtilisateursPage />);
+
+    const topbar = await screen.findByTestId("users-topbar");
+    // Le titre/sous-titre doivent pouvoir passer sur une ligne séparée du
+    // badge de compteur au lieu de l'écraser sur un viewport étroit —
+    // même défaut que celui corrigé côté mobile (compteur illisible).
+    expect(topbar.className).toContain("flex-wrap");
+
+    const badge = await screen.findByTestId("users-total");
+    expect(badge).toHaveTextContent("19");
+    expect(topbar).toContainElement(badge);
+  });
+
   it("affiche un état vide quand la liste est vide", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify(makeListResponse([])), {
@@ -432,17 +451,15 @@ describe("UtilisateursPage", () => {
   });
 
   it("active le filtre Année et envoie schoolYearId après sélection du rôle Élève", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
-      (input) => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
         const url = String(input);
         if (url.includes("/admin/school-years")) {
-          return jsonRes([
-            { id: "sy-1", label: "2025-2026", isActive: true },
-          ]);
+          return jsonRes([{ id: "sy-1", label: "2025-2026", isActive: true }]);
         }
         return jsonRes(makeListResponse([STUDENT_USER]));
-      },
-    );
+      });
 
     render(<UtilisateursPage />);
     fireEvent.click(await screen.findByTestId("role-filter-student"));
