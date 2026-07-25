@@ -1067,6 +1067,19 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.adminEntry.evaluationsError":
       "Impossible de charger les evaluations de l'ecole.",
     "notes.adminEntry.scoresCount": "note(s) saisie(s)",
+    "notes.adminEntry.tabEvaluations": "Evaluations",
+    "notes.adminEntry.tabNotes": "Notes",
+    "notes.adminEntry.studentSearchTitle": "Rechercher un eleve",
+    "notes.adminEntry.studentSearchSubtitle":
+      "Recherchez un eleve de l'ecole pour consulter ses notes. La classe est affichee a cote du nom pour distinguer les homonymes.",
+    "notes.adminEntry.studentSearchPlaceholder": "Rechercher un eleve...",
+    "notes.adminEntry.studentSearchAria": "Rechercher un eleve",
+    "notes.adminEntry.studentSearchEmpty":
+      "Aucun eleve ne correspond a cette recherche.",
+    "notes.adminEntry.studentSearchLoading": "Chargement des eleves...",
+    "notes.adminEntry.studentSearchNoStudent": "Aucun eleve dans cette ecole.",
+    "notes.adminEntry.studentNotesError":
+      "Impossible de charger les notes de cet eleve.",
     "notes.teacher.errors.downloadAttachment":
       "Impossible de telecharger la piece jointe.",
     "notes.teacher.errors.createEvaluation": "Echec creation evaluation",
@@ -4509,6 +4522,18 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.adminEntry.evaluationsError":
       "Unable to load the school's evaluations.",
     "notes.adminEntry.scoresCount": "grade(s) entered",
+    "notes.adminEntry.tabEvaluations": "Evaluations",
+    "notes.adminEntry.tabNotes": "Notes",
+    "notes.adminEntry.studentSearchTitle": "Search a student",
+    "notes.adminEntry.studentSearchSubtitle":
+      "Search for a student across the school to view their grades. The class is shown next to the name to tell homonyms apart.",
+    "notes.adminEntry.studentSearchPlaceholder": "Search a student...",
+    "notes.adminEntry.studentSearchAria": "Search a student",
+    "notes.adminEntry.studentSearchEmpty": "No student matches this search.",
+    "notes.adminEntry.studentSearchLoading": "Loading students...",
+    "notes.adminEntry.studentSearchNoStudent": "No student in this school.",
+    "notes.adminEntry.studentNotesError":
+      "Unable to load this student's grades.",
     "notes.teacher.errors.downloadAttachment":
       "Unable to download the attachment.",
     "notes.teacher.errors.createEvaluation": "Failed to create evaluation",

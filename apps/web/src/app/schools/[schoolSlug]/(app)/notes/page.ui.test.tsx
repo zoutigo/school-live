@@ -408,6 +408,188 @@ describe("NotesAdminEntryPage", () => {
     ).toBeInTheDocument();
   });
 
+  describe("Onglet Notes — recherche élève sur toute l'école", () => {
+    function mockClassroomsAndContexts() {
+      return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+
+        if (url.endsWith("/schools/college-vogt/me")) {
+          return createJsonResponse({ role: "SCHOOL_ADMIN" });
+        }
+        if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+          return createJsonResponse([
+            {
+              id: "class-1",
+              name: "6e A",
+              academicLevel: { id: "level-6e", label: "6ème" },
+            },
+            {
+              id: "class-2",
+              name: "6e B",
+              academicLevel: { id: "level-6e", label: "6ème" },
+            },
+          ]);
+        }
+        if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+          return createJsonResponse([]);
+        }
+        if (
+          url ===
+          "http://localhost:3001/api/schools/college-vogt/classes/class-1/evaluations/context"
+        ) {
+          return createJsonResponse({
+            students: [{ id: "stu-1", firstName: "Kevin", lastName: "Fouda" }],
+          });
+        }
+        if (
+          url ===
+          "http://localhost:3001/api/schools/college-vogt/classes/class-2/evaluations/context"
+        ) {
+          // Homonyme du stu-1 dans une autre classe : cas exact à désambiguïser.
+          return createJsonResponse({
+            students: [{ id: "stu-2", firstName: "Kevin", lastName: "Fouda" }],
+          });
+        }
+        if (
+          url ===
+          "http://localhost:3001/api/schools/college-vogt/students/stu-1/notes"
+        ) {
+          return createJsonResponse([
+            {
+              term: "TERM_1",
+              label: "1er Trimestre",
+              councilLabel: "",
+              generatedAtLabel: "",
+              generalAverage: { student: 14, class: 12, min: 8, max: 18 },
+              sequences: [],
+              subjects: [
+                {
+                  id: "sub-1",
+                  subjectLabel: "Anglais",
+                  teachers: ["Prof. Wome"],
+                  coefficient: 1,
+                  studentAverage: 17,
+                  classAverage: 12,
+                  classMin: 8,
+                  classMax: 18,
+                  appreciation: "Bon trimestre",
+                  evaluations: [],
+                },
+              ],
+            },
+          ]);
+        }
+        return createJsonResponse({ message: "Not found" }, 404);
+      });
+    }
+
+    it("n'appelle aucun contexte de classe tant que l'onglet Notes n'est pas ouvert", async () => {
+      mockClassroomsAndContexts();
+      render(<NotesAdminEntryPage />);
+
+      await screen.findByTestId("notes-admin-entry-browse");
+      expect(globalThis.fetch).not.toHaveBeenCalledWith(
+        expect.stringContaining("evaluations/context"),
+        expect.anything(),
+      );
+    });
+
+    it("agrège les élèves de toutes les classes et affiche la classe pour désambiguïser les homonymes", async () => {
+      mockClassroomsAndContexts();
+      render(<NotesAdminEntryPage />);
+
+      await screen.findByTestId("notes-admin-entry-browse");
+      fireEvent.click(screen.getByTestId("notes-admin-entry-tab-notes"));
+
+      const row1 = await screen.findByTestId(
+        "notes-admin-entry-student-row-stu-1",
+      );
+      const row2 = await screen.findByTestId(
+        "notes-admin-entry-student-row-stu-2",
+      );
+      expect(row1).toHaveTextContent("6e A");
+      expect(row2).toHaveTextContent("6e B");
+    });
+
+    it("filtre la recherche élève côté client", async () => {
+      mockClassroomsAndContexts();
+      render(<NotesAdminEntryPage />);
+
+      await screen.findByTestId("notes-admin-entry-browse");
+      fireEvent.click(screen.getByTestId("notes-admin-entry-tab-notes"));
+      await screen.findByTestId("notes-admin-entry-student-row-stu-1");
+
+      fireEvent.change(
+        screen.getByTestId("notes-admin-entry-student-search"),
+        { target: { value: "zzz-no-match" } },
+      );
+
+      expect(
+        await screen.findByTestId("notes-admin-entry-student-search-empty"),
+      ).toBeInTheDocument();
+    });
+
+    it("charge et affiche les notes de l'élève sélectionné", async () => {
+      mockClassroomsAndContexts();
+      render(<NotesAdminEntryPage />);
+
+      await screen.findByTestId("notes-admin-entry-browse");
+      fireEvent.click(screen.getByTestId("notes-admin-entry-tab-notes"));
+
+      fireEvent.click(
+        await screen.findByTestId("notes-admin-entry-student-row-stu-1"),
+      );
+
+      expect(
+        await screen.findByTestId("notes-admin-entry-student-notes"),
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("evaluations-subject-row-sub-1"),
+      ).toBeInTheDocument();
+    });
+
+    it("affiche une erreur dédiée si le chargement des notes de l'élève échoue", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.endsWith("/schools/college-vogt/me")) {
+          return createJsonResponse({ role: "SCHOOL_ADMIN" });
+        }
+        if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+          return createJsonResponse([
+            {
+              id: "class-1",
+              name: "6e A",
+              academicLevel: { id: "level-6e", label: "6ème" },
+            },
+          ]);
+        }
+        if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+          return createJsonResponse([]);
+        }
+        if (url.includes("/evaluations/context")) {
+          return createJsonResponse({
+            students: [{ id: "stu-1", firstName: "Kevin", lastName: "Fouda" }],
+          });
+        }
+        if (url.includes("/students/stu-1/notes")) {
+          return createJsonResponse({ message: "boom" }, 500);
+        }
+        return createJsonResponse({ message: "Not found" }, 404);
+      });
+
+      render(<NotesAdminEntryPage />);
+      await screen.findByTestId("notes-admin-entry-browse");
+      fireEvent.click(screen.getByTestId("notes-admin-entry-tab-notes"));
+      fireEvent.click(
+        await screen.findByTestId("notes-admin-entry-student-row-stu-1"),
+      );
+
+      expect(
+        await screen.findByTestId("notes-admin-entry-student-notes-error"),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("redirects to login when the session is invalid", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);

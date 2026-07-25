@@ -1370,7 +1370,7 @@ function SequenceView({
 }
 
 /** Vue trimestre : résumé général + sous-onglets séquence */
-function TermView({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
+export function TermView({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
   const { t } = useTranslation();
   const [activeSequence, setActiveSequence] = useState<string>(
     snapshot.sequences[0]?.sequence ?? "",
@@ -1432,7 +1432,7 @@ function TermView({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
 }
 
 /** Onglet Bulletins : bulletin de période en lecture seule, façon vue enseignant. */
-function PeriodReportView({
+export function PeriodReportView({
   snapshot,
 }: {
   snapshot: StudentNotesTermSnapshot;

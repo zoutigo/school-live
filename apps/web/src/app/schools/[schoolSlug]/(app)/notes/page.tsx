@@ -8,6 +8,11 @@ import {
   FormSelect,
   FormTextInput,
 } from "../../../../../components/ui/form-controls";
+import { TermView } from "../../../../../components/student-notes/student-notes-page";
+import type {
+  StudentNotesTerm,
+  StudentNotesTermSnapshot,
+} from "../../../../../components/student-notes/student-notes.types";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -30,6 +35,19 @@ type SchoolEvaluationRow = {
   _count: { scores: number };
 };
 
+type StudentSearchEntry = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  className: string;
+};
+
+type ClassroomEvaluationContext = {
+  students?: Array<{ id: string; firstName: string; lastName: string }>;
+};
+
+type NotesAdminTab = "evaluations" | "notes";
+
 export default function NotesAdminEntryPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
@@ -44,6 +62,26 @@ export default function NotesAdminEntryPage() {
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
   const [evaluationsError, setEvaluationsError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  // ── Onglet Notes : recherche élève sur toute l'école ────────────────────────
+  const [notesTab, setNotesTab] = useState<NotesAdminTab>("evaluations");
+  const [schoolWideStudents, setSchoolWideStudents] = useState<
+    StudentSearchEntry[]
+  >([]);
+  const [isLoadingSchoolWideStudents, setIsLoadingSchoolWideStudents] =
+    useState(false);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(
+    null,
+  );
+  const [studentSnapshots, setStudentSnapshots] = useState<
+    StudentNotesTermSnapshot[]
+  >([]);
+  const [selectedTerm, setSelectedTerm] = useState<StudentNotesTerm>("TERM_1");
+  const [isLoadingStudentNotes, setIsLoadingStudentNotes] = useState(false);
+  const [studentNotesError, setStudentNotesError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -153,6 +191,119 @@ export default function NotesAdminEntryPage() {
     };
   }, [schoolSlug, levelId, classId, loading, hasNoClass, error, t]);
 
+  // Élèves de toute l'école, avec leur classe, pour désambiguïser les
+  // homonymes dans la recherche de l'onglet Notes. Chargé une seule fois,
+  // à l'ouverture de l'onglet (comme le pattern mobile équivalent).
+  useEffect(() => {
+    if (
+      notesTab !== "notes" ||
+      classrooms.length === 0 ||
+      schoolWideStudents.length > 0
+    ) {
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingSchoolWideStudents(true);
+    Promise.all(
+      classrooms.map((classroom) =>
+        fetch(
+          `${API_URL}/schools/${schoolSlug}/classes/${classroom.id}/evaluations/context`,
+          { credentials: "include" },
+        )
+          .then((response) =>
+            response.ok
+              ? (response.json() as Promise<ClassroomEvaluationContext>)
+              : { students: [] },
+          )
+          .then((ctx) =>
+            (ctx.students ?? []).map((student) => ({
+              ...student,
+              className: classroom.name,
+            })),
+          )
+          .catch(() => [] as StudentSearchEntry[]),
+      ),
+    )
+      .then((lists) => {
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const students = lists.flat().filter((student) => {
+          if (seen.has(student.id)) return false;
+          seen.add(student.id);
+          return true;
+        });
+        setSchoolWideStudents(students);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSchoolWideStudents(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [notesTab, classrooms, schoolSlug, schoolWideStudents.length]);
+
+  // Notes de l'élève sélectionné dans l'onglet Notes.
+  useEffect(() => {
+    if (!selectedStudentId) return;
+    let cancelled = false;
+    setIsLoadingStudentNotes(true);
+    setStudentNotesError(null);
+    fetch(
+      `${API_URL}/schools/${schoolSlug}/students/${selectedStudentId}/notes`,
+      {
+        credentials: "include",
+      },
+    )
+      .then((response) => {
+        if (!response.ok) throw new Error("student-notes-error");
+        return response.json() as Promise<StudentNotesTermSnapshot[]>;
+      })
+      .then((payload) => {
+        if (cancelled) return;
+        setStudentSnapshots(payload);
+        setSelectedTerm((current) =>
+          payload.some((entry) => entry.term === current)
+            ? current
+            : (payload[0]?.term ?? current),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStudentSnapshots([]);
+          setStudentNotesError(t("notes.adminEntry.studentNotesError"));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingStudentNotes(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug, selectedStudentId, t]);
+
+  const filteredStudents = useMemo(() => {
+    const query = studentSearch.trim().toLowerCase();
+    if (!query) return schoolWideStudents;
+    return schoolWideStudents.filter((student) =>
+      `${student.lastName} ${student.firstName}`.toLowerCase().includes(query),
+    );
+  }, [schoolWideStudents, studentSearch]);
+
+  const selectedStudent = useMemo(
+    () =>
+      schoolWideStudents.find((student) => student.id === selectedStudentId) ??
+      null,
+    [schoolWideStudents, selectedStudentId],
+  );
+
+  const currentStudentSnapshot = useMemo(
+    () =>
+      studentSnapshots.find((entry) => entry.term === selectedTerm) ??
+      studentSnapshots[0] ??
+      null,
+    [studentSnapshots, selectedTerm],
+  );
+
   const filteredEvaluations = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return evaluations;
@@ -216,156 +367,312 @@ export default function NotesAdminEntryPage() {
 
   return (
     <div className="p-6" data-testid="notes-admin-entry-browse">
-      <Card title={t("notes.adminEntry.browseTitle")}>
-        <p className="mb-4 text-sm text-text-secondary">
-          {t("notes.adminEntry.browseSubtitle")}
-        </p>
-        <form
-          className="grid gap-4 sm:grid-cols-2 sm:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!classId) return;
-            router.push(`/schools/${schoolSlug}/classes/${classId}/notes`);
-          }}
+      <div
+        className="mb-4 flex gap-2 border-b border-border"
+        data-testid="notes-admin-entry-tabs"
+      >
+        <button
+          type="button"
+          onClick={() => setNotesTab("evaluations")}
+          data-testid="notes-admin-entry-tab-evaluations"
+          className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
+            notesTab === "evaluations"
+              ? "border-primary text-primary"
+              : "border-transparent text-text-secondary hover:text-primary"
+          }`}
         >
-          <label className="grid gap-1 text-sm">
-            <span className="text-text-secondary">
-              {t("notes.adminEntry.levelLabel")}
-            </span>
-            <FormSelect
-              value={levelId}
-              onChange={(event) => {
-                const nextLevelId = event.target.value;
-                setLevelId(nextLevelId);
-                setClassId((current) => {
-                  const stillValid = classrooms.find(
-                    (classroom) => classroom.id === current,
-                  )?.academicLevel?.id;
-                  return nextLevelId && stillValid !== nextLevelId
-                    ? ""
-                    : current;
-                });
-              }}
-              data-testid="notes-admin-entry-level"
-            >
-              <option value="">{t("notes.adminEntry.allLevels")}</option>
-              {levelOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </FormSelect>
-          </label>
-          <label className="grid gap-1 text-sm">
-            <span className="text-text-secondary">
-              {t("notes.adminEntry.classLabel")}
-            </span>
-            <FormSelect
-              value={classId}
-              onChange={(event) => setClassId(event.target.value)}
-              data-testid="notes-admin-entry-class"
-            >
-              <option value="">{t("notes.adminEntry.classPlaceholder")}</option>
-              {classOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </FormSelect>
-          </label>
-          <div className="sm:col-span-2">
-            <Button
-              type="submit"
-              disabled={!classId}
-              data-testid="notes-admin-entry-submit"
-            >
-              {t("notes.adminEntry.viewButton")}
-            </Button>
-          </div>
-        </form>
+          {t("notes.adminEntry.tabEvaluations")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setNotesTab("notes")}
+          data-testid="notes-admin-entry-tab-notes"
+          className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
+            notesTab === "notes"
+              ? "border-primary text-primary"
+              : "border-transparent text-text-secondary hover:text-primary"
+          }`}
+        >
+          {t("notes.adminEntry.tabNotes")}
+        </button>
+      </div>
 
-        <div className="mt-6" data-testid="notes-admin-entry-list-section">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="font-heading text-base font-semibold text-text-primary">
-              {t("notes.adminEntry.listTitle")}
-            </p>
-            <FormTextInput
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("notes.adminEntry.searchPlaceholder")}
-              aria-label={t("notes.adminEntry.searchAria")}
-              data-testid="notes-admin-entry-search"
-            />
-          </div>
+      {notesTab === "notes" ? (
+        <Card title={t("notes.adminEntry.studentSearchTitle")}>
+          <p className="mb-4 text-sm text-text-secondary">
+            {t("notes.adminEntry.studentSearchSubtitle")}
+          </p>
 
-          {isLoadingEvaluations ? (
+          <FormTextInput
+            value={studentSearch}
+            onChange={(event) => setStudentSearch(event.target.value)}
+            placeholder={t("notes.adminEntry.studentSearchPlaceholder")}
+            aria-label={t("notes.adminEntry.studentSearchAria")}
+            data-testid="notes-admin-entry-student-search"
+          />
+
+          {isLoadingSchoolWideStudents ? (
             <p
-              className="text-sm text-text-secondary"
-              data-testid="notes-admin-entry-list-loading"
+              className="mt-4 text-sm text-text-secondary"
+              data-testid="notes-admin-entry-student-list-loading"
             >
-              {t("notes.adminEntry.loading")}
+              {t("notes.adminEntry.studentSearchLoading")}
             </p>
-          ) : evaluationsError ? (
+          ) : schoolWideStudents.length === 0 ? (
             <p
-              className="text-sm text-notification"
-              data-testid="notes-admin-entry-list-error"
+              className="mt-4 text-sm text-text-secondary"
+              data-testid="notes-admin-entry-student-list-empty"
             >
-              {evaluationsError}
+              {t("notes.adminEntry.studentSearchNoStudent")}
             </p>
-          ) : filteredEvaluations.length === 0 ? (
+          ) : filteredStudents.length === 0 ? (
             <p
-              className="text-sm text-text-secondary"
-              data-testid="notes-admin-entry-list-empty"
+              className="mt-4 text-sm text-text-secondary"
+              data-testid="notes-admin-entry-student-search-empty"
             >
-              {t("notes.adminEntry.listEmpty")}
+              {t("notes.adminEntry.studentSearchEmpty")}
             </p>
           ) : (
-            <ul className="grid gap-2" data-testid="notes-admin-entry-list">
-              {filteredEvaluations.map((evaluation) => (
-                <li key={evaluation.id}>
+            <ul
+              className="mt-4 grid gap-2"
+              data-testid="notes-admin-entry-student-list"
+            >
+              {filteredStudents.map((student) => (
+                <li key={student.id}>
                   <button
                     type="button"
-                    onClick={() =>
-                      router.push(
-                        `/schools/${schoolSlug}/classes/${evaluation.class.id}/notes`,
-                      )
-                    }
-                    data-testid={`notes-admin-entry-row-${evaluation.id}`}
-                    className="flex w-full flex-col gap-1 rounded-card border border-border bg-surface p-3 text-left transition hover:border-accent-teal"
+                    onClick={() => setSelectedStudentId(student.id)}
+                    data-testid={`notes-admin-entry-student-row-${student.id}`}
+                    className={`flex w-full items-center justify-between gap-2 rounded-card border p-3 text-left transition hover:border-accent-teal ${
+                      selectedStudentId === student.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-surface"
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-text-primary">
-                        {evaluation.title}
-                      </span>
-                      <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                        {evaluation.status === "PUBLISHED"
-                          ? t("notes.teacher.status.published")
-                          : t("notes.teacher.status.draft")}
-                      </span>
-                    </div>
-                    <span className="text-xs text-text-secondary">
-                      {evaluation.subject.name}
-                      {evaluation.subjectBranch?.name
-                        ? ` • ${evaluation.subjectBranch.name}`
-                        : ""}
-                      {" • "}
-                      {evaluation.class.name}
+                    <span className="font-semibold text-text-primary">
+                      {student.lastName} {student.firstName}
                     </span>
-                    <span className="text-xs text-text-secondary">
-                      {new Date(
-                        evaluation.scheduledAt ?? evaluation.createdAt,
-                      ).toLocaleDateString("fr-FR")}
-                      {" • "}
-                      {evaluation._count.scores}{" "}
-                      {t("notes.adminEntry.scoresCount")}
+                    <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {student.className}
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
-        </div>
-      </Card>
+
+          {selectedStudent ? (
+            <div
+              className="mt-6 border-t border-border pt-6"
+              data-testid="notes-admin-entry-student-notes"
+            >
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="font-heading text-base font-semibold text-text-primary">
+                  {selectedStudent.lastName} {selectedStudent.firstName} •{" "}
+                  {selectedStudent.className}
+                </p>
+                {studentSnapshots.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {studentSnapshots.map((snapshot) => (
+                      <button
+                        key={snapshot.term}
+                        type="button"
+                        onClick={() => setSelectedTerm(snapshot.term)}
+                        data-testid={`notes-admin-entry-term-${snapshot.term}`}
+                        className={`shrink-0 rounded-[10px] border px-3 py-1.5 text-xs font-semibold transition ${
+                          selectedTerm === snapshot.term
+                            ? "border-primary bg-[linear-gradient(90deg,#0A62BF,#1182D8)] text-white"
+                            : "border-border bg-surface text-text-secondary hover:border-primary/30 hover:text-primary"
+                        }`}
+                      >
+                        {snapshot.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              {isLoadingStudentNotes ? (
+                <p
+                  className="text-sm text-text-secondary"
+                  data-testid="notes-admin-entry-student-notes-loading"
+                >
+                  {t("notes.adminEntry.loading")}
+                </p>
+              ) : studentNotesError ? (
+                <p
+                  className="text-sm text-notification"
+                  data-testid="notes-admin-entry-student-notes-error"
+                >
+                  {studentNotesError}
+                </p>
+              ) : currentStudentSnapshot ? (
+                <TermView snapshot={currentStudentSnapshot} />
+              ) : (
+                <p
+                  className="text-sm text-text-secondary"
+                  data-testid="notes-admin-entry-student-notes-empty"
+                >
+                  {t("notes.adminEntry.listEmpty")}
+                </p>
+              )}
+            </div>
+          ) : null}
+        </Card>
+      ) : (
+        <Card title={t("notes.adminEntry.browseTitle")}>
+          <p className="mb-4 text-sm text-text-secondary">
+            {t("notes.adminEntry.browseSubtitle")}
+          </p>
+          <form
+            className="grid gap-4 sm:grid-cols-2 sm:items-end"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!classId) return;
+              router.push(`/schools/${schoolSlug}/classes/${classId}/notes`);
+            }}
+          >
+            <label className="grid gap-1 text-sm">
+              <span className="text-text-secondary">
+                {t("notes.adminEntry.levelLabel")}
+              </span>
+              <FormSelect
+                value={levelId}
+                onChange={(event) => {
+                  const nextLevelId = event.target.value;
+                  setLevelId(nextLevelId);
+                  setClassId((current) => {
+                    const stillValid = classrooms.find(
+                      (classroom) => classroom.id === current,
+                    )?.academicLevel?.id;
+                    return nextLevelId && stillValid !== nextLevelId
+                      ? ""
+                      : current;
+                  });
+                }}
+                data-testid="notes-admin-entry-level"
+              >
+                <option value="">{t("notes.adminEntry.allLevels")}</option>
+                {levelOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </FormSelect>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="text-text-secondary">
+                {t("notes.adminEntry.classLabel")}
+              </span>
+              <FormSelect
+                value={classId}
+                onChange={(event) => setClassId(event.target.value)}
+                data-testid="notes-admin-entry-class"
+              >
+                <option value="">
+                  {t("notes.adminEntry.classPlaceholder")}
+                </option>
+                {classOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </FormSelect>
+            </label>
+            <div className="sm:col-span-2">
+              <Button
+                type="submit"
+                disabled={!classId}
+                data-testid="notes-admin-entry-submit"
+              >
+                {t("notes.adminEntry.viewButton")}
+              </Button>
+            </div>
+          </form>
+
+          <div className="mt-6" data-testid="notes-admin-entry-list-section">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="font-heading text-base font-semibold text-text-primary">
+                {t("notes.adminEntry.listTitle")}
+              </p>
+              <FormTextInput
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("notes.adminEntry.searchPlaceholder")}
+                aria-label={t("notes.adminEntry.searchAria")}
+                data-testid="notes-admin-entry-search"
+              />
+            </div>
+
+            {isLoadingEvaluations ? (
+              <p
+                className="text-sm text-text-secondary"
+                data-testid="notes-admin-entry-list-loading"
+              >
+                {t("notes.adminEntry.loading")}
+              </p>
+            ) : evaluationsError ? (
+              <p
+                className="text-sm text-notification"
+                data-testid="notes-admin-entry-list-error"
+              >
+                {evaluationsError}
+              </p>
+            ) : filteredEvaluations.length === 0 ? (
+              <p
+                className="text-sm text-text-secondary"
+                data-testid="notes-admin-entry-list-empty"
+              >
+                {t("notes.adminEntry.listEmpty")}
+              </p>
+            ) : (
+              <ul className="grid gap-2" data-testid="notes-admin-entry-list">
+                {filteredEvaluations.map((evaluation) => (
+                  <li key={evaluation.id}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(
+                          `/schools/${schoolSlug}/classes/${evaluation.class.id}/notes`,
+                        )
+                      }
+                      data-testid={`notes-admin-entry-row-${evaluation.id}`}
+                      className="flex w-full flex-col gap-1 rounded-card border border-border bg-surface p-3 text-left transition hover:border-accent-teal"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-text-primary">
+                          {evaluation.title}
+                        </span>
+                        <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                          {evaluation.status === "PUBLISHED"
+                            ? t("notes.teacher.status.published")
+                            : t("notes.teacher.status.draft")}
+                        </span>
+                      </div>
+                      <span className="text-xs text-text-secondary">
+                        {evaluation.subject.name}
+                        {evaluation.subjectBranch?.name
+                          ? ` • ${evaluation.subjectBranch.name}`
+                          : ""}
+                        {" • "}
+                        {evaluation.class.name}
+                      </span>
+                      <span className="text-xs text-text-secondary">
+                        {new Date(
+                          evaluation.scheduledAt ?? evaluation.createdAt,
+                        ).toLocaleDateString("fr-FR")}
+                        {" • "}
+                        {evaluation._count.scores}{" "}
+                        {t("notes.adminEntry.scoresCount")}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
