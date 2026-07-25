@@ -430,7 +430,9 @@ describe("NotesAdminEntryPage", () => {
             },
           ]);
         }
-        if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+        if (
+          url === "http://localhost:3001/api/schools/college-vogt/evaluations"
+        ) {
           return createJsonResponse([]);
         }
         if (
@@ -519,10 +521,9 @@ describe("NotesAdminEntryPage", () => {
       fireEvent.click(screen.getByTestId("notes-admin-entry-tab-notes"));
       await screen.findByTestId("notes-admin-entry-student-row-stu-1");
 
-      fireEvent.change(
-        screen.getByTestId("notes-admin-entry-student-search"),
-        { target: { value: "zzz-no-match" } },
-      );
+      fireEvent.change(screen.getByTestId("notes-admin-entry-student-search"), {
+        target: { value: "zzz-no-match" },
+      });
 
       expect(
         await screen.findByTestId("notes-admin-entry-student-search-empty"),
@@ -563,7 +564,9 @@ describe("NotesAdminEntryPage", () => {
             },
           ]);
         }
-        if (url === "http://localhost:3001/api/schools/college-vogt/evaluations") {
+        if (
+          url === "http://localhost:3001/api/schools/college-vogt/evaluations"
+        ) {
           return createJsonResponse([]);
         }
         if (url.includes("/evaluations/context")) {
