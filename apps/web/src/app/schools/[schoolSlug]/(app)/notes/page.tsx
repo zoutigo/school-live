@@ -9,6 +9,7 @@ import {
   FormTextInput,
 } from "../../../../../components/ui/form-controls";
 import { TermView } from "../../../../../components/student-notes/student-notes-page";
+import { SchoolPeriodReports } from "../../../../../components/school-notes/school-period-reports";
 import type {
   StudentNotesTerm,
   StudentNotesTermSnapshot,
@@ -40,13 +41,15 @@ type StudentSearchEntry = {
   firstName: string;
   lastName: string;
   className: string;
+  classId: string;
+  academicLevelId?: string;
 };
 
 type ClassroomEvaluationContext = {
   students?: Array<{ id: string; firstName: string; lastName: string }>;
 };
 
-type NotesAdminTab = "evaluations" | "notes";
+type NotesAdminTab = "evaluations" | "notes" | "reports";
 
 export default function NotesAdminEntryPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
@@ -196,7 +199,7 @@ export default function NotesAdminEntryPage() {
   // à l'ouverture de l'onglet (comme le pattern mobile équivalent).
   useEffect(() => {
     if (
-      notesTab !== "notes" ||
+      (notesTab !== "notes" && notesTab !== "reports") ||
       classrooms.length === 0 ||
       schoolWideStudents.length > 0
     ) {
@@ -219,6 +222,8 @@ export default function NotesAdminEntryPage() {
             (ctx.students ?? []).map((student) => ({
               ...student,
               className: classroom.name,
+              classId: classroom.id,
+              academicLevelId: classroom.academicLevel?.id,
             })),
           )
           .catch(() => [] as StudentSearchEntry[]),
@@ -395,9 +400,30 @@ export default function NotesAdminEntryPage() {
         >
           {t("notes.adminEntry.tabNotes")}
         </button>
+        <button
+          type="button"
+          onClick={() => setNotesTab("reports")}
+          data-testid="notes-admin-entry-tab-reports"
+          className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
+            notesTab === "reports"
+              ? "border-primary text-primary"
+              : "border-transparent text-text-secondary hover:text-primary"
+          }`}
+        >
+          {t("notes.adminEntry.tabReports")}
+        </button>
       </div>
 
-      {notesTab === "notes" ? (
+      {notesTab === "reports" ? (
+        <Card title={t("notes.adminEntry.tabReports")}>
+          <SchoolPeriodReports
+            schoolSlug={schoolSlug}
+            students={schoolWideStudents}
+            classrooms={classrooms}
+            isLoadingStudents={isLoadingSchoolWideStudents}
+          />
+        </Card>
+      ) : notesTab === "notes" ? (
         <Card title={t("notes.adminEntry.studentSearchTitle")}>
           <p className="mb-4 text-sm text-text-secondary">
             {t("notes.adminEntry.studentSearchSubtitle")}

@@ -593,6 +593,177 @@ describe("NotesAdminEntryPage", () => {
     });
   });
 
+  describe("Onglet Reports — bulletins à l'échelle de l'école", () => {
+    function mockClassroomsAndContexts() {
+      return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+
+        if (url.endsWith("/schools/college-vogt/me")) {
+          return createJsonResponse({ role: "SCHOOL_ADMIN" });
+        }
+        if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+          return createJsonResponse([
+            {
+              id: "class-1",
+              name: "6e A",
+              academicLevel: { id: "level-6e", label: "6ème" },
+            },
+            {
+              id: "class-2",
+              name: "6e B",
+              academicLevel: { id: "level-6e", label: "6ème" },
+            },
+            {
+              id: "class-3",
+              name: "5e A",
+              academicLevel: { id: "level-5e", label: "5ème" },
+            },
+          ]);
+        }
+        if (
+          url === "http://localhost:3001/api/schools/college-vogt/evaluations"
+        ) {
+          return createJsonResponse([]);
+        }
+        if (
+          url ===
+          "http://localhost:3001/api/schools/college-vogt/classes/class-1/evaluations/context"
+        ) {
+          return createJsonResponse({
+            students: [{ id: "stu-1", firstName: "Kevin", lastName: "Fouda" }],
+          });
+        }
+        if (
+          url ===
+          "http://localhost:3001/api/schools/college-vogt/classes/class-2/evaluations/context"
+        ) {
+          return createJsonResponse({
+            students: [{ id: "stu-2", firstName: "Paul", lastName: "Abega" }],
+          });
+        }
+        if (
+          url ===
+          "http://localhost:3001/api/schools/college-vogt/classes/class-3/evaluations/context"
+        ) {
+          return createJsonResponse({
+            students: [{ id: "stu-3", firstName: "Alice", lastName: "Owona" }],
+          });
+        }
+        if (
+          url ===
+          "http://localhost:3001/api/schools/college-vogt/students/stu-1/notes"
+        ) {
+          return createJsonResponse([
+            {
+              term: "TERM_1",
+              label: "1er Trimestre",
+              councilLabel: "6e A • 1er trimestre",
+              generatedAtLabel: "12/12/2025",
+              generalAverage: { student: 14, class: 12, min: 8, max: 18 },
+              sequences: [],
+              subjects: [
+                {
+                  id: "sub-1",
+                  subjectLabel: "Anglais",
+                  teachers: ["Prof. Wome"],
+                  coefficient: 1,
+                  studentAverage: 17,
+                  classAverage: 12,
+                  classMin: 8,
+                  classMax: 18,
+                  appreciation: "Bon trimestre",
+                  evaluations: [],
+                },
+              ],
+            },
+          ]);
+        }
+        return createJsonResponse({ message: "Not found" }, 404);
+      });
+    }
+
+    it("n'appelle aucun contexte de classe tant que l'onglet Reports n'est pas ouvert", async () => {
+      mockClassroomsAndContexts();
+      render(<NotesAdminEntryPage />);
+
+      await screen.findByTestId("notes-admin-entry-browse");
+      expect(globalThis.fetch).not.toHaveBeenCalledWith(
+        expect.stringContaining("evaluations/context"),
+        expect.anything(),
+      );
+    });
+
+    it("agrège les élèves de toutes les classes avec la classe affichée en face du nom", async () => {
+      mockClassroomsAndContexts();
+      render(<NotesAdminEntryPage />);
+
+      await screen.findByTestId("notes-admin-entry-browse");
+      fireEvent.click(screen.getByTestId("notes-admin-entry-tab-reports"));
+
+      const row1 = await screen.findByTestId("school-reports-row-stu-1");
+      const row2 = await screen.findByTestId("school-reports-row-stu-2");
+      const row3 = await screen.findByTestId("school-reports-row-stu-3");
+      expect(row1).toHaveTextContent("6e A");
+      expect(row2).toHaveTextContent("6e B");
+      expect(row3).toHaveTextContent("5e A");
+    });
+
+    it("propose les filtres Niveau/Classe en listes liées", async () => {
+      mockClassroomsAndContexts();
+      render(<NotesAdminEntryPage />);
+
+      await screen.findByTestId("notes-admin-entry-browse");
+      fireEvent.click(screen.getByTestId("notes-admin-entry-tab-reports"));
+      await screen.findByTestId("school-reports-row-stu-1");
+
+      fireEvent.click(screen.getByTestId("school-reports-filter-toggle"));
+      fireEvent.change(screen.getByTestId("school-reports-filter-level"), {
+        target: { value: "level-6e" },
+      });
+
+      const classSelect = screen.getByTestId(
+        "school-reports-filter-class",
+      ) as HTMLSelectElement;
+      const optionValues = Array.from(classSelect.options).map(
+        (option) => option.value,
+      );
+      expect(optionValues).toContain("class-1");
+      expect(optionValues).toContain("class-2");
+      expect(optionValues).not.toContain("class-3");
+
+      expect(screen.queryByTestId("school-reports-row-stu-3")).toBeNull();
+      expect(
+        await screen.findByTestId("school-reports-row-stu-1"),
+      ).toBeInTheDocument();
+    });
+
+    it("ouvre le bulletin d'un élève sur un trimestre, en lecture seule", async () => {
+      mockClassroomsAndContexts();
+      render(<NotesAdminEntryPage />);
+
+      await screen.findByTestId("notes-admin-entry-browse");
+      fireEvent.click(screen.getByTestId("notes-admin-entry-tab-reports"));
+
+      fireEvent.click(await screen.findByTestId("school-reports-row-stu-1"));
+      fireEvent.click(
+        await screen.findByTestId("school-reports-bulletin-stu-1-TERM_1"),
+      );
+
+      expect(
+        await screen.findByTestId("school-reports-detail"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("school-reports-subject-card-sub-1"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("school-reports-subject-sub-1-readonly"),
+      ).toHaveTextContent("Bon trimestre");
+      expect(
+        screen.queryByTestId("school-reports-subject-sub-1-display"),
+      ).toBeNull();
+    });
+  });
+
   it("redirects to login when the session is invalid", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);

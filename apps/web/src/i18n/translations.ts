@@ -1080,6 +1080,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.adminEntry.scoresCount": "note(s) saisie(s)",
     "notes.adminEntry.tabEvaluations": "Evaluations",
     "notes.adminEntry.tabNotes": "Notes",
+    "notes.adminEntry.tabReports": "Bulletins",
     "notes.adminEntry.studentSearchTitle": "Rechercher un eleve",
     "notes.adminEntry.studentSearchSubtitle":
       "Recherchez un eleve de l'ecole pour consulter ses notes. La classe est affichee a cote du nom pour distinguer les homonymes.",
@@ -4545,6 +4546,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.adminEntry.scoresCount": "grade(s) entered",
     "notes.adminEntry.tabEvaluations": "Evaluations",
     "notes.adminEntry.tabNotes": "Notes",
+    "notes.adminEntry.tabReports": "Reports",
     "notes.adminEntry.studentSearchTitle": "Search a student",
     "notes.adminEntry.studentSearchSubtitle":
       "Search for a student across the school to view their grades. The class is shown next to the name to tell homonyms apart.",
