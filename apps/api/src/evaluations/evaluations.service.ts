@@ -163,7 +163,7 @@ export class EvaluationsService {
         ...(subjectIds ? { subjectId: { in: subjectIds } } : {}),
       },
       include: {
-        class: { select: { id: true, name: true } },
+        class: { select: { id: true, name: true, schoolYearId: true } },
         subject: { select: { id: true, name: true } },
         subjectBranch: { select: { id: true, name: true } },
         evaluationType: { select: { id: true, code: true, label: true } },
@@ -178,7 +178,12 @@ export class EvaluationsService {
       ],
     });
 
-    return evaluations.map(({ authorUser, ...evaluation }) => ({
+    const withStudentsCounts = await this.attachStudentsCounts(
+      schoolId,
+      evaluations,
+    );
+
+    return withStudentsCounts.map(({ authorUser, ...evaluation }) => ({
       ...evaluation,
       author: authorUser,
       term: termFromSequence(evaluation.sequence),
@@ -187,6 +192,72 @@ export class EvaluationsService {
         evaluation.isFinalExam,
       ),
     }));
+  }
+
+  /**
+   * La complétude d'une évaluation (toutes les notes saisies ou non) dépend
+   * de l'effectif actif de sa classe. En navigation "toute l'école" (school
+   * admin sans classe engagée), aucun teacherContext n'est disponible côté
+   * client pour fournir ce total : on l'expose donc directement sur chaque
+   * ligne d'évaluation, dérivé des inscriptions ACTIVE de la classe pour
+   * l'année scolaire concernée.
+   */
+  private async attachStudentsCounts<
+    T extends { class: { id: string; name: string; schoolYearId: string } },
+  >(
+    schoolId: string,
+    evaluations: T[],
+  ): Promise<
+    Array<
+      Omit<T, "class"> & {
+        class: { id: string; name: string; studentsCount: number };
+      }
+    >
+  > {
+    const pairs = new Map<string, { classId: string; schoolYearId: string }>();
+    for (const evaluation of evaluations) {
+      const key = `${evaluation.class.id}:${evaluation.class.schoolYearId}`;
+      if (!pairs.has(key)) {
+        pairs.set(key, {
+          classId: evaluation.class.id,
+          schoolYearId: evaluation.class.schoolYearId,
+        });
+      }
+    }
+
+    const counts = new Map<string, number>();
+    await Promise.all(
+      Array.from(pairs.entries()).map(async ([key, pair]) => {
+        counts.set(
+          key,
+          await this.prisma.enrollment.count({
+            where: {
+              schoolId,
+              classId: pair.classId,
+              schoolYearId: pair.schoolYearId,
+              status: "ACTIVE",
+            },
+          }),
+        );
+      }),
+    );
+
+    return evaluations.map((evaluation) => {
+      const { class: classEntity, ...rest } = evaluation;
+      return {
+        ...rest,
+        class: {
+          id: classEntity.id,
+          name: classEntity.name,
+          studentsCount:
+            counts.get(`${classEntity.id}:${classEntity.schoolYearId}`) ?? 0,
+        },
+      };
+    }) as Array<
+      Omit<T, "class"> & {
+        class: { id: string; name: string; studentsCount: number };
+      }
+    >;
   }
 
   async listSchoolEvaluations(
@@ -217,7 +288,7 @@ export class EvaluationsService {
           : {}),
       },
       include: {
-        class: { select: { id: true, name: true } },
+        class: { select: { id: true, name: true, schoolYearId: true } },
         subject: { select: { id: true, name: true } },
         subjectBranch: { select: { id: true, name: true } },
         evaluationType: { select: { id: true, code: true, label: true } },
@@ -232,7 +303,12 @@ export class EvaluationsService {
       ],
     });
 
-    return evaluations.map(({ authorUser, ...evaluation }) => ({
+    const withStudentsCounts = await this.attachStudentsCounts(
+      schoolId,
+      evaluations,
+    );
+
+    return withStudentsCounts.map(({ authorUser, ...evaluation }) => ({
       ...evaluation,
       author: authorUser,
       term: termFromSequence(evaluation.sequence),

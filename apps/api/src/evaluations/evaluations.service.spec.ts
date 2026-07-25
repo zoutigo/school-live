@@ -41,7 +41,11 @@ const makePrismaMock = () => ({
   subject: { findFirst: jest.fn() },
   subjectBranch: { findFirst: jest.fn(), findMany: jest.fn() },
   teacherClassSubject: { findFirst: jest.fn(), findMany: jest.fn() },
-  enrollment: { findFirst: jest.fn(), findMany: jest.fn() },
+  enrollment: {
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
+  },
   student: { findFirst: jest.fn() },
   parentStudent: { findFirst: jest.fn() },
   studentTermReport: {
@@ -77,7 +81,7 @@ function makeEvaluation(
     evaluationType: { id: string; code: string; label: string };
     attachments: never[];
     _count: { scores: number };
-    class: { id: string; name: string };
+    class: { id: string; name: string; schoolYearId?: string };
     authorUser: { id: string; firstName: string; lastName: string };
   }> = {},
 ) {
@@ -99,7 +103,7 @@ function makeEvaluation(
     evaluationType: { id: "type-1", code: "DEVOIR", label: "Devoir" },
     attachments: [],
     _count: { scores: 0 },
-    class: { id: "class-1", name: "6ème A" },
+    class: { id: "class-1", name: "6ème A", schoolYearId: "year-1" },
     authorUser: { id: "teacher-1", firstName: "Awa", lastName: "Diallo" },
     ...overrides,
   };
@@ -355,7 +359,7 @@ describe("EvaluationsService", () => {
     it("exposes class and author (teacher) instead of the raw authorUser relation", async () => {
       prisma.evaluation.findMany.mockResolvedValue([
         makeEvaluation({
-          class: { id: "class-9", name: "5ème B" },
+          class: { id: "class-9", name: "5ème B", schoolYearId: "year-9" },
           authorUser: {
             id: "teacher-9",
             firstName: "Jean",
@@ -363,6 +367,7 @@ describe("EvaluationsService", () => {
           },
         }),
       ]);
+      prisma.enrollment.count.mockResolvedValue(27);
 
       const result = await service.listClassEvaluations(
         makeUser(),
@@ -370,7 +375,19 @@ describe("EvaluationsService", () => {
         "class-1",
       );
 
-      expect(result[0].class).toEqual({ id: "class-9", name: "5ème B" });
+      expect(result[0].class).toEqual({
+        id: "class-9",
+        name: "5ème B",
+        studentsCount: 27,
+      });
+      expect(prisma.enrollment.count).toHaveBeenCalledWith({
+        where: {
+          schoolId: "school-1",
+          classId: "class-9",
+          schoolYearId: "year-9",
+          status: "ACTIVE",
+        },
+      });
       expect(result[0].author).toEqual({
         id: "teacher-9",
         firstName: "Jean",
@@ -453,7 +470,7 @@ describe("EvaluationsService", () => {
     it("expose class et author sur chaque évaluation", async () => {
       prisma.evaluation.findMany.mockResolvedValue([
         makeEvaluation({
-          class: { id: "class-9", name: "5ème B" },
+          class: { id: "class-9", name: "5ème B", schoolYearId: "year-9" },
           authorUser: {
             id: "teacher-9",
             firstName: "Jean",
@@ -461,6 +478,7 @@ describe("EvaluationsService", () => {
           },
         }),
       ]);
+      prisma.enrollment.count.mockResolvedValue(18);
 
       const result = await service.listSchoolEvaluations(
         makeUser(),
@@ -468,12 +486,49 @@ describe("EvaluationsService", () => {
         {},
       );
 
-      expect(result[0].class).toEqual({ id: "class-9", name: "5ème B" });
+      expect(result[0].class).toEqual({
+        id: "class-9",
+        name: "5ème B",
+        studentsCount: 18,
+      });
       expect(result[0].author).toEqual({
         id: "teacher-9",
         firstName: "Jean",
         lastName: "Kamga",
       });
+    });
+
+    it("calcule l'effectif par classe (une seule requête par classe/année distincte), utile en navigation toute l'école", async () => {
+      prisma.evaluation.findMany.mockResolvedValue([
+        makeEvaluation({
+          id: "eval-a",
+          class: { id: "class-9", name: "5ème B", schoolYearId: "year-1" },
+        }),
+        makeEvaluation({
+          id: "eval-b",
+          class: { id: "class-9", name: "5ème B", schoolYearId: "year-1" },
+        }),
+        makeEvaluation({
+          id: "eval-c",
+          class: { id: "class-10", name: "5ème C", schoolYearId: "year-1" },
+        }),
+      ]);
+      prisma.enrollment.count.mockImplementation(
+        ({ where }: { where: { classId: string } }) =>
+          Promise.resolve(where.classId === "class-9" ? 24 : 30),
+      );
+
+      const result = await service.listSchoolEvaluations(
+        makeUser(),
+        "school-1",
+        {},
+      );
+
+      expect(result[0].class.studentsCount).toBe(24);
+      expect(result[1].class.studentsCount).toBe(24);
+      expect(result[2].class.studentsCount).toBe(30);
+      // Une classe partagée par plusieurs évaluations n'est comptée qu'une fois.
+      expect(prisma.enrollment.count).toHaveBeenCalledTimes(2);
     });
 
     it("refuse l'accès à un utilisateur sans rôle admin/manager/supervisor sur l'école", async () => {
