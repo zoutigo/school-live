@@ -12,6 +12,14 @@
 - Ne jamais utiliser de sous-agents ou de délégation pour réaliser le travail demandé.
 - Faire tout le travail soi-même, étape par étape si nécessaire.
 
+## Parité backend → mobile/web — règle absolue
+
+Toute modification apportée côté backend (API NestJS) doit être répercutée sur les clients qui en dépendent :
+
+- Identifier tous les écrans mobile et web concernés par le changement backend.
+- Appliquer les ajustements nécessaires sur ces écrans, à la fois sur `scolive-web` et sur `scolive-mobile`.
+- Ajouter les tests nécessaires pour consolider (backend, web, mobile) selon la nature du changement.
+
 ## Déploiement et VPS
 
 - Avant toute action de déploiement, d'infra ou d'exploitation VPS, lire `docs/ops/vps-deploy.md`.
