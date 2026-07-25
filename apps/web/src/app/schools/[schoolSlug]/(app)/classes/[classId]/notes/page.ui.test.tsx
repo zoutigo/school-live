@@ -1350,9 +1350,7 @@ describe("TeacherClassNotesPage notes tab", () => {
           class: { id: "class-1", name: "6eC", schoolYearId: "sy-1" },
           subjects: [],
           evaluationTypes: [],
-          students: [
-            { id: "student-1", firstName: "Lisa", lastName: "MBELE" },
-          ],
+          students: [{ id: "student-1", firstName: "Lisa", lastName: "MBELE" }],
         });
       }
       if (
