@@ -4,6 +4,10 @@
  * Tests for the hybrid listMembers path:
  * - no role filter => all school users + student-only
  * - role=STUDENT   => student users + student-only
+ *
+ * The hybrid branch no longer batches its four reads in a single
+ * $transaction (conditional skips per hasAccount can't be expressed as
+ * Prisma-native promises), so each Prisma call is mocked individually.
  */
 
 import { Test } from "@nestjs/testing";
@@ -42,27 +46,43 @@ function makeStudentOnlyRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-const makePrismaMock = () => ({
-  user: {
-    findMany: jest.fn(),
-    findUnique: jest.fn(),
-    count: jest.fn(),
-  },
-  student: {
-    findMany: jest.fn(),
-    count: jest.fn(),
-  },
-  school: {
-    findUnique: jest.fn().mockResolvedValue(null),
-  },
-  schoolMembership: {
-    findFirst: jest.fn(),
-    findMany: jest.fn(),
-    deleteMany: jest.fn(),
-    createMany: jest.fn(),
-  },
-  $transaction: jest.fn(),
-});
+function makePrismaMock() {
+  return {
+    user: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
+    },
+    student: {
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+    },
+    school: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
+    schoolMembership: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+}
+
+/** Programs the four hybrid-branch Prisma reads at once. */
+function mockHybridReads(
+  prisma: ReturnType<typeof makePrismaMock>,
+  users: unknown[],
+  usersCount: number,
+  studentsOnly: unknown[],
+  studentsOnlyCount: number,
+) {
+  prisma.user.findMany.mockResolvedValue(users);
+  prisma.user.count.mockResolvedValue(usersCount);
+  prisma.student.findMany.mockResolvedValue(studentsOnly);
+  prisma.student.count.mockResolvedValue(studentsOnlyCount);
+}
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -90,12 +110,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
       const userRow = makeUserRow({ memberships: [{ role: "TEACHER" }] });
       const studentRow = makeStudentOnlyRow();
 
-      prisma.$transaction.mockResolvedValue([
-        [userRow], // users with STUDENT membership
-        1, // usersCount
-        [studentRow], // students-only (userId null)
-        1, // studentsOnlyCount
-      ]);
+      mockHybridReads(prisma, [userRow], 1, [studentRow], 1);
 
       const result = await service.listMembers(SCHOOL_ID, {});
 
@@ -109,12 +124,13 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
     });
 
     it("les items user ont hasAccount=true", async () => {
-      prisma.$transaction.mockResolvedValue([
+      mockHybridReads(
+        prisma,
         [makeUserRow({ memberships: [{ role: "SCHOOL_ADMIN" }] })],
         1,
         [],
         0,
-      ]);
+      );
 
       const result = await service.listMembers(SCHOOL_ID, {});
       const userItem = result.data.find((item) => item.type === "user");
@@ -123,7 +139,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
     });
 
     it("les items student-only ont hasAccount=false et email/phone/gender/avatarUrl null", async () => {
-      prisma.$transaction.mockResolvedValue([[], 0, [makeStudentOnlyRow()], 1]);
+      mockHybridReads(prisma, [], 0, [makeStudentOnlyRow()], 1);
 
       const result = await service.listMembers(SCHOOL_ID, {});
       const item = result.data.find((item) => item.type === "student-only");
@@ -136,7 +152,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
     });
 
     it("total = somme des deux counts", async () => {
-      prisma.$transaction.mockResolvedValue([[], 3, [], 7]);
+      mockHybridReads(prisma, [], 3, [], 7);
       const result = await service.listMembers(SCHOOL_ID, {});
       expect(result.total).toBe(10);
     });
@@ -146,7 +162,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
       const users = Array.from({ length: 20 }, (_, i) =>
         makeUserRow({ id: `u-${i}` }),
       );
-      prisma.$transaction.mockResolvedValue([users, 20, [], 5]);
+      mockHybridReads(prisma, users, 20, [], 5);
 
       const result = await service.listMembers(SCHOOL_ID, {
         page: 1,
@@ -158,12 +174,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
     });
 
     it("hasMore est false quand tous les items tiennent dans la page", async () => {
-      prisma.$transaction.mockResolvedValue([
-        [makeUserRow()],
-        1,
-        [makeStudentOnlyRow()],
-        1,
-      ]);
+      mockHybridReads(prisma, [makeUserRow()], 1, [makeStudentOnlyRow()], 1);
 
       const result = await service.listMembers(SCHOOL_ID, {
         page: 1,
@@ -188,7 +199,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
         createdAt: new Date("2025-01-01"),
       });
 
-      prisma.$transaction.mockResolvedValue([[userRow], 1, [studentRow], 1]);
+      mockHybridReads(prisma, [userRow], 1, [studentRow], 1);
 
       const result = await service.listMembers(SCHOOL_ID, {
         page: 1,
@@ -204,12 +215,13 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
 
   describe("avec filtre role: 'STUDENT'", () => {
     it("retourne les deux types (user ET student-only)", async () => {
-      prisma.$transaction.mockResolvedValue([
+      mockHybridReads(
+        prisma,
         [makeUserRow({ memberships: [{ role: "STUDENT" }] })],
         1,
         [makeStudentOnlyRow()],
         1,
-      ]);
+      );
 
       const result = await service.listMembers(SCHOOL_ID, { role: "STUDENT" });
 
@@ -250,16 +262,13 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
   // ── Recherche ──────────────────────────────────────────────────────────────
 
   describe("recherche (search)", () => {
-    it("filtre sur firstName/lastName pour les deux types quand on cherche", async () => {
-      // The hybrid path builds two separate WHERE clauses; we just verify
-      // that $transaction is called (the merged result is empty here).
-      prisma.$transaction.mockResolvedValue([[], 0, [], 0]);
+    it("interroge les deux sources (user ET student) quand on cherche", async () => {
+      mockHybridReads(prisma, [], 0, [], 0);
 
       await service.listMembers(SCHOOL_ID, { search: "Atang" });
 
-      // $transaction receives an array of 4 promises in hybrid mode
-      const transactionArg = prisma.$transaction.mock.calls[0][0];
-      expect(transactionArg).toHaveLength(4);
+      expect(prisma.user.findMany).toHaveBeenCalled();
+      expect(prisma.student.findMany).toHaveBeenCalled();
     });
 
     it("retourne seulement les éléments correspondant à la recherche", async () => {
@@ -273,12 +282,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
         lastName: "Paul",
       });
 
-      prisma.$transaction.mockResolvedValue([
-        [matchingUser],
-        1,
-        [matchingStudent],
-        1,
-      ]);
+      mockHybridReads(prisma, [matchingUser], 1, [matchingStudent], 1);
 
       const result = await service.listMembers(SCHOOL_ID, {
         search: "Atangana",
@@ -295,7 +299,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
 
   describe("pagination", () => {
     it("total est la somme des deux counts peu importe la page", async () => {
-      prisma.$transaction.mockResolvedValue([[], 5, [], 8]);
+      mockHybridReads(prisma, [], 5, [], 8);
 
       const result = await service.listMembers(SCHOOL_ID, {
         page: 2,
@@ -309,7 +313,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
       const items = Array.from({ length: 5 }, (_, i) =>
         makeUserRow({ id: `u-${i}`, lastName: `Z${i}` }),
       );
-      prisma.$transaction.mockResolvedValue([items, 5, [], 3]);
+      mockHybridReads(prisma, items, 5, [], 3);
 
       const result = await service.listMembers(SCHOOL_ID, {
         page: 1,
@@ -325,7 +329,7 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
       const items = Array.from({ length: 8 }, (_, i) =>
         makeUserRow({ id: `u-${i}`, lastName: `A${i}` }),
       );
-      prisma.$transaction.mockResolvedValue([items, 8, [], 0]);
+      mockHybridReads(prisma, items, 8, [], 0);
 
       const result = await service.listMembers(SCHOOL_ID, {
         page: 2,
@@ -333,6 +337,92 @@ describe("SchoolUsersService.listMembers — mode hybride (STUDENT / sans filtre
       });
 
       expect(result.hasMore).toBe(false);
+    });
+
+    it("borne chaque source Prisma à (skip + limit) lignes, jamais la table entière", async () => {
+      mockHybridReads(prisma, [], 0, [], 0);
+
+      await service.listMembers(SCHOOL_ID, { page: 3, limit: 10 });
+      // page 3, limit 10 → skip = 20 → take = skip + limit = 30
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 30 }),
+      );
+      expect(prisma.student.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 30 }),
+      );
+    });
+  });
+
+  // ── Filtre hasAccount ──────────────────────────────────────────────────────
+
+  describe("filtre hasAccount", () => {
+    it("hasAccount=true n'interroge pas Student (aucun student-only possible)", async () => {
+      mockHybridReads(prisma, [makeUserRow()], 1, [], 0);
+
+      const result = await service.listMembers(SCHOOL_ID, { hasAccount: true });
+
+      expect(prisma.student.findMany).not.toHaveBeenCalled();
+      expect(prisma.student.count).not.toHaveBeenCalled();
+      expect(result.data.every((item) => item.type === "user")).toBe(true);
+    });
+
+    it("hasAccount=false n'interroge pas User (aucun compte possible)", async () => {
+      mockHybridReads(prisma, [], 0, [makeStudentOnlyRow()], 1);
+
+      const result = await service.listMembers(SCHOOL_ID, {
+        hasAccount: false,
+      });
+
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
+      expect(prisma.user.count).not.toHaveBeenCalled();
+      expect(result.data.every((item) => item.type === "student-only")).toBe(
+        true,
+      );
+    });
+
+    it("hasAccount=false avec un rôle non-STUDENT retourne une page vide sans requête Prisma", async () => {
+      const result = await service.listMembers(SCHOOL_ID, {
+        role: "TEACHER",
+        hasAccount: false,
+      });
+
+      expect(result).toEqual({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        hasMore: false,
+      });
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Filtre schoolYearId ────────────────────────────────────────────────────
+
+  describe("filtre schoolYearId", () => {
+    it("appliqué avec role=STUDENT, filtre les deux sources par enrollments", async () => {
+      mockHybridReads(prisma, [], 0, [], 0);
+
+      await service.listMembers(SCHOOL_ID, {
+        role: "STUDENT",
+        schoolYearId: "sy-1",
+      });
+
+      const userArgs = prisma.user.findMany.mock.calls[0][0];
+      expect(JSON.stringify(userArgs.where)).toContain("sy-1");
+      const studentArgs = prisma.student.findMany.mock.calls[0][0];
+      expect(JSON.stringify(studentArgs.where)).toContain("sy-1");
+    });
+
+    it("ignoré (no-op) quand aucun rôle n'est sélectionné (ALL)", async () => {
+      mockHybridReads(prisma, [], 0, [], 0);
+
+      await service.listMembers(SCHOOL_ID, { schoolYearId: "sy-1" });
+
+      const userArgs = prisma.user.findMany.mock.calls[0][0];
+      expect(JSON.stringify(userArgs.where)).not.toContain("sy-1");
     });
   });
 });

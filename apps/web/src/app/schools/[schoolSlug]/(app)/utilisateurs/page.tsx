@@ -170,8 +170,27 @@ const ROLE_FILTER_KEYS: { value: RoleFilter; tKey: string }[] = [
   { value: "STUDENT", tKey: "users.filter.students" },
   { value: "SCHOOL_ADMIN", tKey: "users.filter.admins" },
   { value: "SCHOOL_MANAGER", tKey: "users.filter.managers" },
+  { value: "SUPERVISOR", tKey: "users.filter.supervisors" },
+  { value: "SCHOOL_ACCOUNTANT", tKey: "users.filter.accountants" },
   { value: "SCHOOL_STAFF", tKey: "users.filter.staff" },
 ];
+
+type AccountFilter = "ALL" | "WITH_ACCOUNT" | "WITHOUT_ACCOUNT";
+
+const ACCOUNT_FILTER_KEYS: { value: AccountFilter; tKey: string }[] = [
+  { value: "ALL", tKey: "users.filter.all" },
+  { value: "WITH_ACCOUNT", tKey: "users.filter.withAccount" },
+  { value: "WITHOUT_ACCOUNT", tKey: "users.filter.withoutAccount" },
+];
+
+// Year only applies to enrollments (STUDENT) or teaching assignments
+// (TEACHER) — a mixed role list (ALL, or any other single role) has no
+// school-year relationship to filter on. Mirrors the mobile gating.
+function yearFilterApplies(role: RoleFilter) {
+  return role === "STUDENT" || role === "TEACHER";
+}
+
+type SchoolYearOption = { id: string; label: string; isActive: boolean };
 
 const ALL_ROLES: SchoolRole[] = [
   "TEACHER",
@@ -1605,12 +1624,27 @@ export default function UtilisateursPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
+  const [accountFilter, setAccountFilter] = useState<AccountFilter>("ALL");
+  const [schoolYearId, setSchoolYearId] = useState("");
+  const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
   const [selected, setSelected] = useState<SchoolMember | null>(null);
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Fetched lazily, once, the first time the year filter can actually
+    // apply — avoids an extra request on every page load for the common
+    // case (role ALL) where the field stays disabled anyway.
+    if (!schoolSlug) return;
+    if (!yearFilterApplies(roleFilter)) return;
+    if (schoolYears.length > 0) return;
+    apiFetch<SchoolYearOption[]>(`/schools/${schoolSlug}/admin/school-years`)
+      .then((res) => setSchoolYears(Array.isArray(res) ? res : []))
+      .catch(() => setSchoolYears([]));
+  }, [schoolSlug, roleFilter, schoolYears.length]);
 
   const loadUsers = useCallback(
     async (
@@ -1631,6 +1665,11 @@ export default function UtilisateursPage() {
         });
         if (effectiveSearch.trim()) q.set("search", effectiveSearch.trim());
         if (roleFilter !== "ALL") q.set("role", roleFilter);
+        if (accountFilter === "WITH_ACCOUNT") q.set("hasAccount", "true");
+        if (accountFilter === "WITHOUT_ACCOUNT") q.set("hasAccount", "false");
+        if (schoolYearId && yearFilterApplies(roleFilter)) {
+          q.set("schoolYearId", schoolYearId);
+        }
 
         const res = await apiFetch<{
           data: SchoolMember[];
@@ -1652,12 +1691,12 @@ export default function UtilisateursPage() {
         setLoadingMore(false);
       }
     },
-    [schoolSlug, roleFilter, search, t],
+    [schoolSlug, roleFilter, accountFilter, schoolYearId, search, t],
   );
 
   useEffect(() => {
     void loadUsers({ reset: true });
-  }, [roleFilter]);
+  }, [roleFilter, accountFilter, schoolYearId]);
 
   function handleSearchChange(val: string) {
     setSearch(val);
@@ -1753,6 +1792,42 @@ export default function UtilisateursPage() {
                   {t(f.tKey)}
                 </button>
               ))}
+            </div>
+
+            <div className="flex gap-1.5" data-testid="users-account-filter">
+              {ACCOUNT_FILTER_KEYS.map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  data-testid={`account-filter-${f.value.toLowerCase()}`}
+                  onClick={() => setAccountFilter(f.value)}
+                  className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition-all ${accountFilter === f.value ? "border-primary bg-primary text-white shadow-sm" : "border-warm-border bg-warm-surface text-text-secondary hover:border-primary/60 hover:text-primary"}`}
+                >
+                  {t(f.tKey)}
+                </button>
+              ))}
+            </div>
+
+            <div>
+              <select
+                data-testid="users-year-filter"
+                value={schoolYearId}
+                disabled={!yearFilterApplies(roleFilter)}
+                onChange={(e) => setSchoolYearId(e.target.value)}
+                className="w-full rounded-xl border border-warm-border bg-background px-3 py-2 text-xs text-text-primary disabled:opacity-50"
+              >
+                <option value="">{t("users.filter.allYears")}</option>
+                {schoolYears.map((y) => (
+                  <option key={y.id} value={y.id}>
+                    {y.label}
+                  </option>
+                ))}
+              </select>
+              {!yearFilterApplies(roleFilter) ? (
+                <p className="mt-1 text-[11px] text-text-secondary">
+                  {t("users.filter.yearHint")}
+                </p>
+              ) : null}
             </div>
           </div>
 

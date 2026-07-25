@@ -353,6 +353,124 @@ describe("UtilisateursPage", () => {
     expect(screen.getByText(t("users.filter.students"))).toBeInTheDocument();
   });
 
+  it("le filtre de rôle inclut Superviseurs et Comptables", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(<UtilisateursPage />);
+    await screen.findByTestId("users-role-filter");
+    expect(screen.getByTestId("role-filter-supervisor")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("role-filter-school_accountant"),
+    ).toBeInTheDocument();
+  });
+
+  // ── Account filter ────────────────────────────────────────────────────────
+
+  it("filtre par compte en cliquant sur 'Sans compte'", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([STUDENT_ONLY])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    render(<UtilisateursPage />);
+    await screen.findByTestId("users-account-filter");
+
+    fireEvent.click(screen.getByTestId("account-filter-without_account"));
+
+    await waitFor(() => {
+      const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+      expect(String(lastCall[0])).toContain("hasAccount=false");
+    });
+  });
+
+  it("filtre par compte en cliquant sur 'Avec compte'", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    render(<UtilisateursPage />);
+    await screen.findByTestId("users-account-filter");
+
+    fireEvent.click(screen.getByTestId("account-filter-with_account"));
+
+    await waitFor(() => {
+      const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+      expect(String(lastCall[0])).toContain("hasAccount=true");
+    });
+  });
+
+  it("n'envoie pas hasAccount quand le filtre compte est 'Tous'", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(<UtilisateursPage />);
+    await waitFor(() => {
+      const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+      expect(String(lastCall[0])).not.toContain("hasAccount=");
+    });
+  });
+
+  // ── School year filter ────────────────────────────────────────────────────
+
+  it("le filtre Année est désactivé tant que le rôle n'est pas Élève ou Enseignant", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(<UtilisateursPage />);
+    const yearSelect = await screen.findByTestId("users-year-filter");
+    expect(yearSelect).toBeDisabled();
+  });
+
+  it("active le filtre Année et envoie schoolYearId après sélection du rôle Élève", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(
+      (input) => {
+        const url = String(input);
+        if (url.includes("/admin/school-years")) {
+          return jsonRes([
+            { id: "sy-1", label: "2025-2026", isActive: true },
+          ]);
+        }
+        return jsonRes(makeListResponse([STUDENT_USER]));
+      },
+    );
+
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId("role-filter-student"));
+
+    const yearSelect = await screen.findByTestId("users-year-filter");
+    await waitFor(() => expect(yearSelect).not.toBeDisabled());
+
+    fireEvent.change(yearSelect, { target: { value: "sy-1" } });
+
+    await waitFor(() => {
+      const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+      expect(String(lastCall[0])).toContain("schoolYearId=sy-1");
+    });
+  });
+
+  it("n'envoie pas schoolYearId quand le rôle appliqué n'est ni Élève ni Enseignant", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify(makeListResponse([TEACHER_USER])), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(<UtilisateursPage />);
+    await waitFor(() => {
+      const lastCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+      expect(String(lastCall[0])).not.toContain("schoolYearId=");
+    });
+  });
+
   // ── User detail panel ─────────────────────────────────────────────────────
 
   it("ouvre le panneau de détail au clic sur une carte", async () => {

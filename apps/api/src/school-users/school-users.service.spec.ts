@@ -32,14 +32,14 @@ function makePrismaUser(overrides: Record<string, unknown> = {}) {
 
 const makePrismaMock = () => ({
   user: {
-    findMany: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
     findUnique: jest.fn(),
-    count: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
   },
   student: {
-    findMany: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn(),
-    count: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
   },
   school: {
     findUnique: jest.fn().mockResolvedValue(null),
@@ -56,6 +56,23 @@ const makePrismaMock = () => ({
   },
   $transaction: jest.fn(),
 });
+
+/**
+ * Programs the hybrid-branch reads (role ALL / STUDENT): these no longer go
+ * through $transaction, each Prisma call is mocked directly.
+ */
+function mockHybridReads(
+  prisma: ReturnType<typeof makePrismaMock>,
+  users: unknown[],
+  usersCount: number,
+  studentsOnly: unknown[] = [],
+  studentsOnlyCount = 0,
+) {
+  prisma.user.findMany.mockResolvedValue(users);
+  prisma.user.count.mockResolvedValue(usersCount);
+  prisma.student.findMany.mockResolvedValue(studentsOnly);
+  prisma.student.count.mockResolvedValue(studentsOnlyCount);
+}
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -89,7 +106,7 @@ describe("SchoolUsersService", () => {
           memberships: [{ role: "PARENT" }],
         }),
       ];
-      prisma.$transaction.mockResolvedValue([users, 2, [], 0]);
+      mockHybridReads(prisma, users, 2);
 
       const result = await service.listMembers(SCHOOL_ID, {
         page: 1,
@@ -118,7 +135,7 @@ describe("SchoolUsersService", () => {
       const users = Array.from({ length: 20 }, (_, i) =>
         makePrismaUser({ id: `u-${i}` }),
       );
-      prisma.$transaction.mockResolvedValue([users, 42, [], 0]);
+      mockHybridReads(prisma, users, 42);
 
       const result = await service.listMembers(SCHOOL_ID, {
         page: 1,
@@ -143,7 +160,7 @@ describe("SchoolUsersService", () => {
     });
 
     it("retourne une liste vide si aucun membre", async () => {
-      prisma.$transaction.mockResolvedValue([[], 0, [], 0]);
+      mockHybridReads(prisma, [], 0);
 
       const result = await service.listMembers(SCHOOL_ID, {});
 
@@ -155,11 +172,10 @@ describe("SchoolUsersService", () => {
     // ── Intégration : vérification des appels Prisma ─────────────────────────
 
     it("filtre par schoolId dans le membership", async () => {
-      prisma.$transaction.mockResolvedValue([[], 0, [], 0]);
+      mockHybridReads(prisma, [], 0);
 
       await service.listMembers(SCHOOL_ID, {});
 
-      // $transaction reçoit [findMany, count] — on vérifie l'arg de findMany
       // on vérifie que prisma.user.findMany a été appelé avec le bon where
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -171,7 +187,7 @@ describe("SchoolUsersService", () => {
     });
 
     it("ajoute le filtre de recherche sur nom, prénom, email, téléphone", async () => {
-      prisma.$transaction.mockResolvedValue([[], 0, [], 0]);
+      mockHybridReads(prisma, [], 0);
 
       await service.listMembers(SCHOOL_ID, { search: "Kouam" });
 
@@ -222,7 +238,7 @@ describe("SchoolUsersService", () => {
     });
 
     it("ne sélectionne que les memberships de l'école dans le select", async () => {
-      prisma.$transaction.mockResolvedValue([[], 0, [], 0]);
+      mockHybridReads(prisma, [], 0);
 
       await service.listMembers(SCHOOL_ID, {});
 
@@ -243,7 +259,7 @@ describe("SchoolUsersService", () => {
         makePrismaUser({ id: "s-1", memberships: [{ role: "STUDENT" }] }),
         makePrismaUser({ id: "s-2", memberships: [{ role: "STUDENT" }] }),
       ];
-      prisma.$transaction.mockResolvedValue([students, 2, [], 0]);
+      mockHybridReads(prisma, students, 2);
 
       const result = await service.listMembers(SCHOOL_ID, { role: "STUDENT" });
 
@@ -265,7 +281,7 @@ describe("SchoolUsersService", () => {
         makePrismaUser({ id: "u-2", memberships: [{ role: "PARENT" }] }),
         makePrismaUser({ id: "u-3", memberships: [{ role: "STUDENT" }] }),
       ];
-      prisma.$transaction.mockResolvedValue([mixed, 3, [], 0]);
+      mockHybridReads(prisma, mixed, 3);
 
       const result = await service.listMembers(SCHOOL_ID, {});
 
