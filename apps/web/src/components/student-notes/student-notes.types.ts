@@ -30,6 +30,10 @@ export type StudentSubjectNotes = {
   classAverage: number | null;
   classMin: number | null;
   classMax: number | null;
+  /** Rang de l'élève dans la matière pour la période (1 = meilleure moyenne). */
+  rank?: number | null;
+  /** Nombre d'élèves ayant une moyenne dans la matière pour la période. */
+  classSize?: number | null;
   appreciation?: string | null;
   evaluations: StudentEvaluation[];
 };

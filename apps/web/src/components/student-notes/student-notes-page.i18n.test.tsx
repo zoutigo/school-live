@@ -133,6 +133,8 @@ describe("StudentNotesPage i18n", () => {
     expect(
       screen.getByText(translate("fr", "notes.student.tabs.charts.label")),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("student-notes-page-tab-reports"));
     expect(
       screen.getByText(translate("fr", "notes.student.hero.badge")),
     ).toBeInTheDocument();
@@ -164,13 +166,14 @@ describe("StudentNotesPage i18n", () => {
         translate("en", "notes.student.tabs.charts.label"),
       ).length,
     ).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId("student-notes-page-tab-reports"));
     expect(
       screen.getByText(translate("en", "notes.student.hero.badge")),
     ).toBeInTheDocument();
-
     expect(
       screen.queryByText(translate("fr", "notes.student.hero.badge")),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("student-notes-page-tab-notes"));
 
     const absentBadge = (
       await screen.findAllByRole("button", {

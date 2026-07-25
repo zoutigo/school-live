@@ -22,6 +22,12 @@ export class SchoolUsersService {
       return this.listMembersHybrid(schoolId, query, page, limit, skip);
     }
 
+    // Non-student role: only accounts exist for these roles, so an explicit
+    // "no account" filter can never match anything here.
+    if (query.hasAccount === false) {
+      return { data: [], total: 0, page, limit, hasMore: false };
+    }
+
     // Non-student role: existing behaviour
     const membershipFilter = {
       schoolId,
@@ -29,6 +35,14 @@ export class SchoolUsersService {
     };
 
     const andFilters: object[] = [{ memberships: { some: membershipFilter } }];
+
+    if (query.role === "TEACHER" && query.schoolYearId) {
+      andFilters.push({
+        teachingAssignments: {
+          some: { schoolId, schoolYearId: query.schoolYearId },
+        },
+      });
+    }
 
     if (query.search?.trim()) {
       const s = query.search.trim();
@@ -107,6 +121,11 @@ export class SchoolUsersService {
   ) {
     const searchTrim = query.search?.trim() ?? null;
 
+    // hasAccount gates which of the two sources is queried at all: an
+    // explicit true/false means only one side of the union can ever match.
+    const includeUsers = query.hasAccount !== false;
+    const includeStudentsOnly = query.hasAccount !== true;
+
     // Query 1: all users in school when no role filter, or only STUDENT users
     // when the explicit STUDENT filter is selected.
     const userMembershipFilter = query.role
@@ -127,6 +146,19 @@ export class SchoolUsersService {
       });
     }
 
+    // Year filter only makes sense once the role is narrowed down to
+    // STUDENT — for ALL it would silently exclude every non-student member.
+    if (query.role === "STUDENT" && query.schoolYearId) {
+      userAndFilters.push({
+        studentProfiles: {
+          some: {
+            schoolId,
+            enrollments: { some: { schoolYearId: query.schoolYearId } },
+          },
+        },
+      });
+    }
+
     const userWhere =
       userAndFilters.length === 1 ? userAndFilters[0] : { AND: userAndFilters };
 
@@ -142,49 +174,75 @@ export class SchoolUsersService {
       });
     }
 
+    if (query.role === "STUDENT" && query.schoolYearId) {
+      studentAndFilters.push({
+        enrollments: { some: { schoolYearId: query.schoolYearId } },
+      });
+    }
+
     const studentWhere =
       studentAndFilters.length === 1
         ? studentAndFilters[0]
         : { AND: studentAndFilters };
 
+    // Bound each source to (skip + limit) rows instead of loading the full
+    // table: for a merge of two already-sorted streams, the rows ranked
+    // [skip, skip + limit) globally can only come from the first
+    // (skip + limit) rows of each individual stream.
+    const perSourceTake = skip + limit;
+
+    // Not a single $transaction: batching requires every element to be a
+    // Prisma-native promise, which conditional skips (Promise.resolve(...))
+    // are not. This is a read-only listing endpoint, so per-query
+    // consistency is an acceptable trade-off.
     const [users, usersCount, studentsOnly, studentsOnlyCount] =
-      await this.prisma.$transaction([
-        this.prisma.user.findMany({
-          where: userWhere,
-          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            gender: true,
-            avatarUrl: true,
-            activationStatus: true,
-            profileCompleted: true,
-            createdAt: true,
-            memberships: {
-              where: { schoolId },
-              select: { role: true },
-            },
-            studentProfiles: {
-              where: { schoolId },
-              select: { id: true },
-            },
-          },
-        }),
-        this.prisma.user.count({ where: userWhere }),
-        this.prisma.student.findMany({
-          where: studentWhere,
-          orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            createdAt: true,
-          },
-        }),
-        this.prisma.student.count({ where: studentWhere }),
+      await Promise.all([
+        includeUsers
+          ? this.prisma.user.findMany({
+              where: userWhere,
+              orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+              take: perSourceTake,
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                gender: true,
+                avatarUrl: true,
+                activationStatus: true,
+                profileCompleted: true,
+                createdAt: true,
+                memberships: {
+                  where: { schoolId },
+                  select: { role: true },
+                },
+                studentProfiles: {
+                  where: { schoolId },
+                  select: { id: true },
+                },
+              },
+            })
+          : Promise.resolve([]),
+        includeUsers
+          ? this.prisma.user.count({ where: userWhere })
+          : Promise.resolve(0),
+        includeStudentsOnly
+          ? this.prisma.student.findMany({
+              where: studentWhere,
+              orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+              take: perSourceTake,
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                createdAt: true,
+              },
+            })
+          : Promise.resolve([]),
+        includeStudentsOnly
+          ? this.prisma.student.count({ where: studentWhere })
+          : Promise.resolve(0),
       ]);
 
     // Merge and sort combined list

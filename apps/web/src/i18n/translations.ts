@@ -1038,15 +1038,60 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.card.defaultClassName": "Classe",
     "notes.teacher.card.subtitle": "Creation, publication et saisie des notes",
     "notes.teacher.tabs.evaluations": "Evaluations",
+    "notes.teacher.tabs.notes": "Notes",
     "notes.teacher.tabs.scores": "Saisie des notes",
     "notes.teacher.tabs.council": "Conseil de classe",
     "notes.teacher.tabs.help": "Aide",
+    "notes.teacher.notesTab.subtitle":
+      "Recherchez un eleve de la classe pour consulter ses notes.",
+    "notes.teacher.notesTab.searchPlaceholder": "Rechercher un eleve...",
+    "notes.teacher.notesTab.searchAria": "Rechercher un eleve",
+    "notes.teacher.notesTab.searchEmpty":
+      "Aucun eleve ne correspond a cette recherche.",
+    "notes.teacher.notesTab.noStudent": "Aucun eleve dans cette classe.",
+    "notes.teacher.notesTab.noSnapshot": "Aucune note disponible.",
+    "notes.teacher.notesTab.studentNotesError":
+      "Impossible de charger les notes de cet eleve.",
     "notes.teacher.page.classNotAccessible":
       "Classe non accessible avec vos affectations.",
     "notes.teacher.errors.loadModule":
       "Impossible de charger le module evaluations.",
     "notes.teacher.errors.uploadAttachment":
       "Impossible de televerser la piece jointe.",
+    "notes.adminEntry.loading": "Chargement...",
+    "notes.adminEntry.emptyTitle": "Aucune classe",
+    "notes.adminEntry.emptyMessage":
+      "Aucune classe disponible pour cette ecole.",
+    "notes.adminEntry.browseTitle": "Evaluations de l'ecole",
+    "notes.adminEntry.browseSubtitle":
+      "La liste ci-dessous montre les evaluations les plus recentes de toute l'ecole. Filtrez par niveau ou par classe si besoin, ou choisissez une classe pour la gerer.",
+    "notes.adminEntry.levelLabel": "Niveau",
+    "notes.adminEntry.allLevels": "Tous les niveaux",
+    "notes.adminEntry.classLabel": "Classe",
+    "notes.adminEntry.classPlaceholder": "Toutes les classes",
+    "notes.adminEntry.viewButton": "Gerer cette classe",
+    "notes.adminEntry.listTitle": "Evaluations recentes",
+    "notes.adminEntry.searchPlaceholder": "Rechercher une evaluation...",
+    "notes.adminEntry.searchAria": "Rechercher une evaluation",
+    "notes.adminEntry.listEmpty":
+      "Aucune evaluation ne correspond a ces criteres.",
+    "notes.adminEntry.evaluationsError":
+      "Impossible de charger les evaluations de l'ecole.",
+    "notes.adminEntry.scoresCount": "note(s) saisie(s)",
+    "notes.adminEntry.tabEvaluations": "Evaluations",
+    "notes.adminEntry.tabNotes": "Notes",
+    "notes.adminEntry.tabReports": "Bulletins",
+    "notes.adminEntry.studentSearchTitle": "Rechercher un eleve",
+    "notes.adminEntry.studentSearchSubtitle":
+      "Recherchez un eleve de l'ecole pour consulter ses notes. La classe est affichee a cote du nom pour distinguer les homonymes.",
+    "notes.adminEntry.studentSearchPlaceholder": "Rechercher un eleve...",
+    "notes.adminEntry.studentSearchAria": "Rechercher un eleve",
+    "notes.adminEntry.studentSearchEmpty":
+      "Aucun eleve ne correspond a cette recherche.",
+    "notes.adminEntry.studentSearchLoading": "Chargement des eleves...",
+    "notes.adminEntry.studentSearchNoStudent": "Aucun eleve dans cette ecole.",
+    "notes.adminEntry.studentNotesError":
+      "Impossible de charger les notes de cet eleve.",
     "notes.teacher.errors.downloadAttachment":
       "Impossible de telecharger la piece jointe.",
     "notes.teacher.errors.createEvaluation": "Echec creation evaluation",
@@ -1099,6 +1144,21 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.list.addAria": "Ajouter une evaluation",
     "notes.teacher.list.addLabel": "Ajouter une evaluation",
     "notes.teacher.list.empty": "Aucune evaluation pour cette classe.",
+    "notes.teacher.list.emptyFiltered":
+      "Aucune evaluation ne correspond a la recherche ou aux filtres.",
+    "notes.teacher.list.searchPlaceholder": "Rechercher une evaluation...",
+    "notes.teacher.list.searchAria": "Rechercher une evaluation",
+    "notes.teacher.list.filterToggle": "Filtres",
+    "notes.teacher.list.filterTypeLabel": "Type d'evaluation",
+    "notes.teacher.list.filterSequenceLabel": "Sequence",
+    "notes.teacher.list.filterCompletionLabel": "Notes saisies",
+    "notes.teacher.list.filterAll": "Toutes",
+    "notes.teacher.list.filterComplete": "Toutes saisies",
+    "notes.teacher.list.filterIncomplete": "Incompletes",
+    "notes.teacher.list.filterReset": "Reinitialiser",
+    "notes.teacher.list.adminLevelLabel": "Niveau",
+    "notes.teacher.list.adminAllLevels": "Tous les niveaux",
+    "notes.teacher.list.adminClassLabel": "Classe",
     "notes.teacher.status.published": "Publiee",
     "notes.teacher.status.draft": "Brouillon",
 
@@ -1220,6 +1280,25 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.council.saveDraft": "Enregistrer le brouillon",
     "notes.teacher.council.saving": "Enregistrement...",
 
+    "notes.teacher.reports.search.placeholder": "Rechercher un eleve...",
+    "notes.teacher.reports.empty.title": "Aucun bulletin",
+    "notes.teacher.reports.empty.message":
+      "Aucun eleve n'est inscrit dans cette classe.",
+    "notes.teacher.reports.backToList": "Retour a la liste",
+    "notes.teacher.reports.generalTitle": "Appreciation generale",
+    "notes.teacher.reports.saveField": "Enregistrer",
+    "notes.teacher.reports.cancel": "Annuler",
+    "notes.teacher.reports.noAppreciation": "Aucune appreciation renseignee",
+    "notes.teacher.reports.termAverage": "Moyenne du trimestre",
+    "notes.teacher.reports.loading": "Chargement du bulletin...",
+    "notes.teacher.reports.published": "Donnees publiees",
+    "notes.teacher.reports.rankAndClassAverage":
+      "Rang {rank}/{total} · Moy. classe {classAverage}/20",
+    "notes.teacher.reports.appreciationPlaceholder":
+      "Saisir une appreciation...",
+    "notes.teacher.reports.appreciationRequired":
+      "L'appreciation ne peut pas etre vide.",
+
     "notes.admin.card.title": "Notes & Devoirs",
     "notes.admin.card.subtitle": "Saisie et historique des resultats",
     "notes.admin.form.schoolYear": "Annee scolaire",
@@ -1277,6 +1356,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.student.page.mobileSubtitleNoChild": "Evals et Moyennes",
     "notes.student.page.demoWarning":
       "Affichage temporaire des donnees de demonstration en attendant la publication des evaluations.",
+    "notes.student.page.tabNotes": "Notes",
+    "notes.student.page.tabReports": "Bulletins",
 
     "notes.student.tabs.evaluations.label": "Evaluations",
     "notes.student.tabs.evaluations.mobileLabel": "Eval",
@@ -3352,7 +3433,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.filter.students": "Élèves",
     "users.filter.admins": "Admins",
     "users.filter.managers": "Directeurs",
+    "users.filter.supervisors": "Superviseurs",
+    "users.filter.accountants": "Comptables",
     "users.filter.staff": "Personnel",
+    "users.filter.withAccount": "Avec compte",
+    "users.filter.withoutAccount": "Sans compte",
+    "users.filter.allYears": "Toutes les années",
+    "users.filter.yearHint":
+      "Disponible uniquement pour les rôles Élève et Enseignant.",
     "users.count.one": "utilisateur",
     "users.count.many": "utilisateurs",
     "users.empty.title": "Aucun résultat",
@@ -4428,13 +4516,54 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.card.defaultClassName": "Class",
     "notes.teacher.card.subtitle": "Creation, publishing and grade entry",
     "notes.teacher.tabs.evaluations": "Evaluations",
+    "notes.teacher.tabs.notes": "Notes",
     "notes.teacher.tabs.scores": "Grade entry",
     "notes.teacher.tabs.council": "Class council",
     "notes.teacher.tabs.help": "Help",
+    "notes.teacher.notesTab.subtitle":
+      "Search a student in this class to view their notes.",
+    "notes.teacher.notesTab.searchPlaceholder": "Search a student...",
+    "notes.teacher.notesTab.searchAria": "Search a student",
+    "notes.teacher.notesTab.searchEmpty": "No student matches this search.",
+    "notes.teacher.notesTab.noStudent": "No student in this class.",
+    "notes.teacher.notesTab.noSnapshot": "No note available.",
+    "notes.teacher.notesTab.studentNotesError":
+      "Unable to load this student's notes.",
     "notes.teacher.page.classNotAccessible":
       "Class not accessible with your assignments.",
     "notes.teacher.errors.loadModule": "Unable to load the evaluations module.",
     "notes.teacher.errors.uploadAttachment": "Unable to upload the attachment.",
+    "notes.adminEntry.loading": "Loading...",
+    "notes.adminEntry.emptyTitle": "No class",
+    "notes.adminEntry.emptyMessage": "No class available for this school.",
+    "notes.adminEntry.browseTitle": "School evaluations",
+    "notes.adminEntry.browseSubtitle":
+      "The list below shows the most recent evaluations across the whole school. Narrow by level or class if needed, or pick a class to manage it.",
+    "notes.adminEntry.levelLabel": "Level",
+    "notes.adminEntry.allLevels": "All levels",
+    "notes.adminEntry.classLabel": "Class",
+    "notes.adminEntry.classPlaceholder": "All classes",
+    "notes.adminEntry.viewButton": "Manage this class",
+    "notes.adminEntry.listTitle": "Recent evaluations",
+    "notes.adminEntry.searchPlaceholder": "Search an evaluation...",
+    "notes.adminEntry.searchAria": "Search an evaluation",
+    "notes.adminEntry.listEmpty": "No evaluation matches these criteria.",
+    "notes.adminEntry.evaluationsError":
+      "Unable to load the school's evaluations.",
+    "notes.adminEntry.scoresCount": "grade(s) entered",
+    "notes.adminEntry.tabEvaluations": "Evaluations",
+    "notes.adminEntry.tabNotes": "Notes",
+    "notes.adminEntry.tabReports": "Reports",
+    "notes.adminEntry.studentSearchTitle": "Search a student",
+    "notes.adminEntry.studentSearchSubtitle":
+      "Search for a student across the school to view their grades. The class is shown next to the name to tell homonyms apart.",
+    "notes.adminEntry.studentSearchPlaceholder": "Search a student...",
+    "notes.adminEntry.studentSearchAria": "Search a student",
+    "notes.adminEntry.studentSearchEmpty": "No student matches this search.",
+    "notes.adminEntry.studentSearchLoading": "Loading students...",
+    "notes.adminEntry.studentSearchNoStudent": "No student in this school.",
+    "notes.adminEntry.studentNotesError":
+      "Unable to load this student's grades.",
     "notes.teacher.errors.downloadAttachment":
       "Unable to download the attachment.",
     "notes.teacher.errors.createEvaluation": "Failed to create evaluation",
@@ -4485,6 +4614,21 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.list.addAria": "Add an evaluation",
     "notes.teacher.list.addLabel": "Add an evaluation",
     "notes.teacher.list.empty": "No evaluation for this class.",
+    "notes.teacher.list.emptyFiltered":
+      "No evaluation matches the search or filters.",
+    "notes.teacher.list.searchPlaceholder": "Search for an evaluation...",
+    "notes.teacher.list.searchAria": "Search for an evaluation",
+    "notes.teacher.list.filterToggle": "Filters",
+    "notes.teacher.list.filterTypeLabel": "Evaluation type",
+    "notes.teacher.list.filterSequenceLabel": "Sequence",
+    "notes.teacher.list.filterCompletionLabel": "Grades entered",
+    "notes.teacher.list.filterAll": "All",
+    "notes.teacher.list.filterComplete": "All entered",
+    "notes.teacher.list.filterIncomplete": "Incomplete",
+    "notes.teacher.list.filterReset": "Reset",
+    "notes.teacher.list.adminLevelLabel": "Level",
+    "notes.teacher.list.adminAllLevels": "All levels",
+    "notes.teacher.list.adminClassLabel": "Class",
     "notes.teacher.status.published": "Published",
     "notes.teacher.status.draft": "Draft",
 
@@ -4605,6 +4749,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.council.saveDraft": "Save draft",
     "notes.teacher.council.saving": "Saving...",
 
+    "notes.teacher.reports.search.placeholder": "Search for a student...",
+    "notes.teacher.reports.empty.title": "No report",
+    "notes.teacher.reports.empty.message":
+      "No student is enrolled in this class.",
+    "notes.teacher.reports.backToList": "Back to list",
+    "notes.teacher.reports.generalTitle": "General assessment",
+    "notes.teacher.reports.saveField": "Save",
+    "notes.teacher.reports.cancel": "Cancel",
+    "notes.teacher.reports.noAppreciation": "No assessment yet",
+    "notes.teacher.reports.termAverage": "Term average",
+    "notes.teacher.reports.loading": "Loading report...",
+    "notes.teacher.reports.published": "Published data",
+    "notes.teacher.reports.rankAndClassAverage":
+      "Rank {rank}/{total} · Class avg. {classAverage}/20",
+    "notes.teacher.reports.appreciationPlaceholder": "Enter an assessment...",
+    "notes.teacher.reports.appreciationRequired":
+      "The assessment cannot be empty.",
+
     "notes.admin.card.title": "Grades & Homework",
     "notes.admin.card.subtitle": "Entry and history of results",
     "notes.admin.form.schoolYear": "School year",
@@ -4658,6 +4820,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.student.page.mobileSubtitleNoChild": "Grades and averages",
     "notes.student.page.demoWarning":
       "Showing demo data temporarily while evaluations are being published.",
+    "notes.student.page.tabNotes": "Notes",
+    "notes.student.page.tabReports": "Reports",
 
     "notes.student.tabs.evaluations.label": "Evaluations",
     "notes.student.tabs.evaluations.mobileLabel": "Eval",
@@ -6645,7 +6809,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.filter.students": "Students",
     "users.filter.admins": "Admins",
     "users.filter.managers": "Managers",
+    "users.filter.supervisors": "Supervisors",
+    "users.filter.accountants": "Accountants",
     "users.filter.staff": "Staff",
+    "users.filter.withAccount": "With account",
+    "users.filter.withoutAccount": "Without account",
+    "users.filter.allYears": "All years",
+    "users.filter.yearHint":
+      "Only available for the Student and Teacher roles.",
     "users.count.one": "user",
     "users.count.many": "users",
     "users.empty.title": "No results",

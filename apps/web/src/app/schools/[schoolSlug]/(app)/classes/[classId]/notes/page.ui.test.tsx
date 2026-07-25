@@ -15,6 +15,7 @@ function setRichTextEditorHtml(container: HTMLElement, value: string) {
 }
 
 const replaceMock = vi.fn();
+const pushMock = vi.fn();
 const CREATED_EVALUATION_DATETIME = "2026-03-20T09:30";
 const CREATED_EVALUATION_ISO = new Date(
   CREATED_EVALUATION_DATETIME,
@@ -22,7 +23,7 @@ const CREATED_EVALUATION_ISO = new Date(
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ schoolSlug: "college-vogt", classId: "class-1" }),
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock, push: pushMock }),
 }));
 
 function jsonResponse(payload: unknown, status = 200) {
@@ -212,6 +213,48 @@ const DETAIL_BY_ID = {
   },
 } as const;
 
+const STUDENT_1_TERM_2_SNAPSHOT = {
+  term: "TERM_2",
+  label: "2eme Trimestre",
+  councilLabel: "Conseil de classe 6eC - publication 2eme trimestre",
+  generatedAtLabel: "Donnees publiees le 13/07/2026 09:08",
+  generalAverage: { student: 10.56, class: 13.33, min: 9.5, max: 18 },
+  sequences: [
+    {
+      sequence: "SEQ_3",
+      sequenceLabel: "Sequence 3",
+      isFirstSeq: true,
+      generalAverage: { student: 10.56, class: 13.33, min: 9.5, max: 18 },
+      subjects: [
+        {
+          id: "sub-1",
+          subjectLabel: "Mathematiques",
+          teachers: [],
+          coefficient: 2,
+          studentAverage: 10.56,
+          classAverage: 13.33,
+          classMin: 9.5,
+          classMax: 18,
+          evaluations: [],
+        },
+      ],
+    },
+  ],
+  subjects: [
+    {
+      id: "sub-1",
+      subjectLabel: "Mathematiques",
+      teachers: [],
+      coefficient: 2,
+      studentAverage: 10.56,
+      classAverage: 13.33,
+      classMin: 9.5,
+      classMax: 18,
+      evaluations: [],
+    },
+  ],
+};
+
 function setupFetchMock(evaluations = EVALUATIONS) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const request = input instanceof Request ? input : null;
@@ -285,6 +328,15 @@ function setupFetchMock(evaluations = EVALUATIONS) {
       );
     }
     if (url.includes("/term-reports?term=")) {
+      return jsonResponse([]);
+    }
+    if (url.includes("/term-reports/") && method === "PATCH") {
+      return jsonResponse({ ok: true });
+    }
+    if (url.includes("/students/student-1/notes")) {
+      return jsonResponse([STUDENT_1_TERM_2_SNAPSHOT]);
+    }
+    if (url.includes("/students/") && url.endsWith("/notes")) {
       return jsonResponse([]);
     }
 
@@ -799,5 +851,533 @@ describe("TeacherClassNotesPage evaluations tab", () => {
     expect(
       screen.queryByRole("button", { name: "Page suivante" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("filters the list by search on title or subject", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("notes-evaluations-search-input"), {
+      target: { value: "Calcul mental" },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Calcul mental/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /Composition fractions/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters by evaluation type through the filter panel", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-toggle"));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("notes-evaluations-filter-panel"),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-type-type-1"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Composition fractions/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Problemes geometriques/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    // Le bouton filtre devient actif (teal plein)
+    expect(screen.getByTestId("notes-evaluations-filter-toggle")).toHaveClass(
+      "bg-accent-teal",
+    );
+  });
+
+  it("filters by sequence through the filter panel", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-toggle"));
+    fireEvent.click(
+      await screen.findByTestId("notes-evaluations-filter-sequence-SEQ_1"),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Composition fractions/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Problemes geometriques/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("filters by grade completion through the filter panel", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-toggle"));
+    fireEvent.click(
+      await screen.findByTestId("notes-evaluations-filter-completion-complete"),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Fractions avancees/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Composition fractions/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("resets the filters via the reset button", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByRole("button", { name: /Composition fractions/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-toggle"));
+    fireEvent.click(
+      await screen.findByTestId("notes-evaluations-filter-completion-complete"),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /Composition fractions/i }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("notes-evaluations-filter-reset"));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Composition fractions/i }),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("colors the score progress badge according to grade completion", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    // eval-1 : 12/20 (incomplet) -> couleur "warm accent"
+    const incomplete = await screen.findByText("12/20");
+    expect(incomplete).toHaveClass("text-warm-accent-dark");
+
+    // eval-5 : 20/20 (complet) -> couleur teal
+    const complete = screen.getByText("20/20");
+    expect(complete).toHaveClass("text-accent-teal-dark");
+  });
+});
+
+describe("TeacherClassNotesPage council tab", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+  });
+
+  it("shows the bulletin search list and opens a student's term report", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Conseil de classe/i }),
+    );
+
+    expect(
+      await screen.findByTestId("teacher-reports-search-input"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("teacher-reports-row-student-1"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByTestId("teacher-reports-subject-card-sub-1"),
+    ).toBeInTheDocument();
+  });
+
+  it("saves a subject appreciation from the report through the class council endpoint", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Conseil de classe/i }),
+    );
+    fireEvent.click(await screen.findByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-TERM_2"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-subject-sub-1-display"),
+    );
+    fireEvent.change(
+      screen.getByTestId("teacher-reports-subject-sub-1-input"),
+      { target: { value: "Bon travail" } },
+    );
+    fireEvent.click(screen.getByTestId("teacher-reports-subject-sub-1-save"));
+
+    await waitFor(() => {
+      const patchCall = vi
+        .mocked(globalThis.fetch)
+        .mock.calls.find(([input, init]) => {
+          const url = String(input);
+          const method =
+            init && typeof init === "object" && "method" in init
+              ? init.method
+              : undefined;
+          return url.includes("/term-reports/TERM_2") && method === "PATCH";
+        });
+      expect(patchCall).toBeDefined();
+    });
+  });
+});
+
+describe("TeacherClassNotesPage admin class switcher", () => {
+  const ADMIN_CLASSROOMS = [
+    {
+      id: "class-1",
+      name: "6eC",
+      academicLevel: { id: "level-6e", code: "6E", label: "6eme" },
+    },
+    {
+      id: "class-2",
+      name: "6eD",
+      academicLevel: { id: "level-6e", code: "6E", label: "6eme" },
+    },
+    {
+      id: "class-3",
+      name: "5eA",
+      academicLevel: { id: "level-5e", code: "5E", label: "5eme" },
+    },
+  ];
+
+  function setupAdminFetchMock(
+    evaluations: Array<Record<string, unknown>> = EVALUATIONS,
+  ) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const request = input instanceof Request ? input : null;
+      const url = String(input);
+      const method =
+        request?.method ??
+        (typeof init === "object" && init !== null && "method" in init
+          ? init.method
+          : undefined);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.endsWith("/schools/college-vogt/admin/classrooms")) {
+        return jsonResponse(ADMIN_CLASSROOMS);
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: { id: "class-1", name: "6eC", schoolYearId: "sy-1" },
+          subjects: [],
+          evaluationTypes: [],
+          students: [],
+        });
+      }
+      const evalDetailMatch = url.match(
+        /\/classes\/class-1\/evaluations\/(eval-[\w-]+)$/,
+      );
+      if (evalDetailMatch) {
+        const evaluation = evaluations.find(
+          (entry) => entry.id === evalDetailMatch[1],
+        );
+        return jsonResponse({ ...evaluation, students: [] });
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context")
+      ) {
+        if (method === "POST") return jsonResponse({ id: "eval-created" }, 201);
+        return jsonResponse(evaluations);
+      }
+      if (url.includes("/term-reports?term=")) {
+        return jsonResponse([]);
+      }
+
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+  }
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    pushMock.mockReset();
+  });
+
+  it("shows the class name and the author (teacher) on the same line as the subject", async () => {
+    setupAdminFetchMock([
+      {
+        ...EVALUATIONS[0],
+        class: { id: "class-1", name: "6eC" },
+        author: { id: "teacher-1", firstName: "Awa", lastName: "Diallo" },
+      },
+    ]);
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByText(
+        (_, element) =>
+          element?.textContent ===
+          "Mathematiques - Algebre • Composition • 6eC • Awa Diallo",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the Level and Class selectors for a school admin", async () => {
+    setupAdminFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    expect(
+      await screen.findByTestId("notes-admin-class-switcher"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("notes-admin-level-select")).toBeInTheDocument();
+    expect(screen.getByTestId("notes-admin-class-select")).toBeInTheDocument();
+  });
+
+  it("does not show the Level/Class selectors for a teacher", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    await screen.findByTestId("notes-evaluations-search-input");
+    expect(
+      screen.queryByTestId("notes-admin-class-switcher"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("limits the class options to the selected level", async () => {
+    setupAdminFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    const levelSelect = (await screen.findByTestId(
+      "notes-admin-level-select",
+    )) as HTMLSelectElement;
+    fireEvent.change(levelSelect, { target: { value: "level-5e" } });
+
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith(
+        "/schools/college-vogt/classes/class-3/notes",
+      ),
+    );
+
+    const classSelect = screen.getByTestId(
+      "notes-admin-class-select",
+    ) as HTMLSelectElement;
+    const optionLabels = Array.from(classSelect.options).map(
+      (option) => option.textContent,
+    );
+    expect(optionLabels).toEqual(["5eA"]);
+  });
+
+  it("navigates to the selected class's notes page when changing the class", async () => {
+    setupAdminFetchMock();
+
+    render(<TeacherClassNotesPage />);
+
+    const classSelect = (await screen.findByTestId(
+      "notes-admin-class-select",
+    )) as HTMLSelectElement;
+    fireEvent.change(classSelect, { target: { value: "class-2" } });
+
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith(
+        "/schools/college-vogt/classes/class-2/notes",
+      ),
+    );
+  });
+});
+
+describe("TeacherClassNotesPage notes tab", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    pushMock.mockReset();
+  });
+
+  async function openNotesTab() {
+    render(<TeacherClassNotesPage />);
+    await screen.findByRole("button", { name: /Composition fractions/i });
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    return screen.findByTestId("teacher-notes-tab");
+  }
+
+  it("does not fetch any student's notes before the Notes tab is opened", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+    await screen.findByRole("button", { name: /Composition fractions/i });
+
+    expect(globalThis.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/notes"),
+      expect.anything(),
+    );
+  });
+
+  it("lists every student of the class, scoped to this class only", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    expect(
+      screen.getByTestId("teacher-notes-search-result-student-1"),
+    ).toHaveTextContent("MBELE Eleve1");
+    expect(
+      screen.getByTestId("teacher-notes-search-result-student-20"),
+    ).toHaveTextContent("MBELE Eleve20");
+  });
+
+  it("filters the student list client-side as the user types", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    fireEvent.change(screen.getByTestId("teacher-notes-search-input"), {
+      target: { value: "Eleve5" },
+    });
+
+    expect(
+      screen.getByTestId("teacher-notes-search-result-student-5"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("teacher-notes-search-result-student-1"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state when no student matches the search", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    fireEvent.change(screen.getByTestId("teacher-notes-search-input"), {
+      target: { value: "zzz-no-match" },
+    });
+
+    expect(
+      await screen.findByTestId("teacher-notes-search-empty"),
+    ).toBeInTheDocument();
+  });
+
+  it("loads and displays the selected student's notes for the current term", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    fireEvent.click(
+      screen.getByTestId("teacher-notes-search-result-student-1"),
+    );
+
+    expect(
+      await screen.findByTestId("teacher-notes-student-notes"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("evaluations-subject-row-sub-1"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("teacher-notes-term-TERM_2")).toBeInTheDocument();
+  });
+
+  it("shows an empty snapshot state when the student has no notes", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    fireEvent.click(
+      screen.getByTestId("teacher-notes-search-result-student-2"),
+    );
+
+    expect(
+      await screen.findByTestId("teacher-notes-student-notes-empty"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a dedicated error state if loading the student's notes fails", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER" });
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: { id: "class-1", name: "6eC", schoolYearId: "sy-1" },
+          subjects: [],
+          evaluationTypes: [],
+          students: [{ id: "student-1", firstName: "Lisa", lastName: "MBELE" }],
+        });
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/term-reports?term=")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/students/student-1/notes")) {
+        return jsonResponse({ message: "boom" }, 500);
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<TeacherClassNotesPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Notes" }));
+    await screen.findByTestId("teacher-notes-tab");
+
+    fireEvent.click(
+      screen.getByTestId("teacher-notes-search-result-student-1"),
+    );
+
+    expect(
+      await screen.findByTestId("teacher-notes-student-notes-error"),
+    ).toBeInTheDocument();
   });
 });

@@ -14,6 +14,7 @@ import { ChildModulePage } from "../family/child-module-page";
 import { Card } from "../ui/card";
 import { FormSelect } from "../ui/form-controls";
 import { STUDENT_NOTES_DEMO_DATA } from "./student-notes-demo-data";
+import { SubjectReportCard } from "./subject-report-card";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import type {
   StudentEvaluation,
@@ -1364,21 +1365,12 @@ function SequenceView({
           />
         ) : null}
       </div>
-      <div className="order-3">
-        <PeriodHero
-          generalAverage={snapshot.generalAverage}
-          label={snapshot.sequenceLabel}
-          councilLabel=""
-          generatedAtLabel=""
-          subjects={snapshot.subjects}
-        />
-      </div>
     </div>
   );
 }
 
 /** Vue trimestre : résumé général + sous-onglets séquence */
-function TermView({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
+export function TermView({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
   const { t } = useTranslation();
   const [activeSequence, setActiveSequence] = useState<string>(
     snapshot.sequences[0]?.sequence ?? "",
@@ -1435,7 +1427,20 @@ function TermView({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
 
+/** Onglet Bulletins : bulletin de période en lecture seule, façon vue enseignant. */
+export function PeriodReportView({
+  snapshot,
+}: {
+  snapshot: StudentNotesTermSnapshot;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="grid gap-4">
       <PeriodHero
         generalAverage={snapshot.generalAverage}
         label={snapshot.label}
@@ -1443,6 +1448,57 @@ function TermView({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
         generatedAtLabel={snapshot.generatedAtLabel}
         subjects={snapshot.subjects}
       />
+
+      {snapshot.subjects.length === 0 ? (
+        <div className="rounded-card border border-dashed border-border bg-background p-8 text-sm text-text-secondary">
+          {t("notes.student.table.empty")}
+        </div>
+      ) : (
+        <div
+          data-testid="student-reports-subjects"
+          className="grid gap-3 sm:grid-cols-2"
+        >
+          {snapshot.subjects.map((subject) => {
+            const sequenceRows = snapshot.sequences
+              .map((seq) => ({
+                sequence: seq.sequence,
+                label: seq.sequenceLabel,
+                data: seq.subjects.find((entry) => entry.id === subject.id),
+              }))
+              .filter((row) => row.data);
+
+            return (
+              <SubjectReportCard
+                key={subject.id}
+                subject={subject}
+                sequenceRows={sequenceRows.map((row) => ({
+                  sequence: row.sequence,
+                  label: row.label,
+                  studentAverage: row.data?.studentAverage ?? null,
+                }))}
+                editable={false}
+                appreciationValue={subject.appreciation ?? ""}
+                testId={`student-reports-subject-card-${subject.id}`}
+                testIdPrefix={`student-reports-subject-${subject.id}`}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {snapshot.generatedAtLabel ? (
+        <div
+          data-testid="student-reports-published"
+          className="rounded-[14px] border border-warm-border bg-surface px-4 py-2.5"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
+            {t("notes.teacher.reports.published")}
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-text-primary">
+            {snapshot.generatedAtLabel}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1452,6 +1508,7 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
   const [selectedTerm, setSelectedTerm] = useState<StudentNotesTerm>("TERM_1");
   const [snapshots, setSnapshots] = useState(STUDENT_NOTES_DEMO_DATA);
   const [warning, setWarning] = useState<string | null>(null);
+  const [pageTab, setPageTab] = useState<"notes" | "reports">("notes");
 
   useEffect(() => {
     let active = true;
@@ -1564,6 +1621,36 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
             </div>
           ) : null}
 
+          <div
+            data-testid="student-notes-page-tabs"
+            className="flex gap-2 border-b border-border"
+          >
+            <button
+              type="button"
+              data-testid="student-notes-page-tab-notes"
+              onClick={() => setPageTab("notes")}
+              className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
+                pageTab === "notes"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-secondary hover:text-primary"
+              }`}
+            >
+              {t("notes.student.page.tabNotes")}
+            </button>
+            <button
+              type="button"
+              data-testid="student-notes-page-tab-reports"
+              onClick={() => setPageTab("reports")}
+              className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
+                pageTab === "reports"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-secondary hover:text-primary"
+              }`}
+            >
+              {t("notes.student.page.tabReports")}
+            </button>
+          </div>
+
           <div className="hidden min-[360px]:flex min-[360px]:flex-wrap min-[360px]:gap-2">
             {snapshots.map((term) => (
               <button
@@ -1581,7 +1668,13 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
             ))}
           </div>
 
-          {snapshot ? <TermView snapshot={snapshot} /> : null}
+          {snapshot ? (
+            pageTab === "notes" ? (
+              <TermView snapshot={snapshot} />
+            ) : (
+              <PeriodReportView snapshot={snapshot} />
+            )
+          ) : null}
         </div>
       )}
     />

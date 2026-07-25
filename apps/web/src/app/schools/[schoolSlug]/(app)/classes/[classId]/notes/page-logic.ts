@@ -101,6 +101,80 @@ export function getEvaluationListMeta(
   };
 }
 
+export function isEvaluationComplete(
+  evaluation: Pick<EvaluationRow, "_count">,
+  studentCount: number,
+) {
+  return studentCount > 0 && evaluation._count.scores >= studentCount;
+}
+
+export type EvaluationCompletionFilter = "all" | "complete" | "incomplete";
+
+export type EvaluationListFilters = {
+  evaluationTypeId: string | null;
+  sequence: Sequence | null;
+  completion: EvaluationCompletionFilter;
+};
+
+export const NO_EVALUATION_LIST_FILTERS: EvaluationListFilters = {
+  evaluationTypeId: null,
+  sequence: null,
+  completion: "all",
+};
+
+export function hasActiveEvaluationListFilters(filters: EvaluationListFilters) {
+  return (
+    filters.evaluationTypeId != null ||
+    filters.sequence != null ||
+    filters.completion !== "all"
+  );
+}
+
+type FilterableEvaluation = Pick<EvaluationRow, "_count"> & {
+  title: string;
+  subject: { name: string };
+  evaluationType: { id: string };
+  sequence: Sequence;
+};
+
+export function filterEvaluations<T extends FilterableEvaluation>(
+  items: T[],
+  search: string,
+  filters: EvaluationListFilters,
+  studentCount: number,
+): T[] {
+  const query = search.trim().toLowerCase();
+  return items.filter((item) => {
+    if (query) {
+      const matchesSearch =
+        item.title.toLowerCase().includes(query) ||
+        item.subject.name.toLowerCase().includes(query);
+      if (!matchesSearch) {
+        return false;
+      }
+    }
+    if (
+      filters.evaluationTypeId &&
+      item.evaluationType.id !== filters.evaluationTypeId
+    ) {
+      return false;
+    }
+    if (filters.sequence && item.sequence !== filters.sequence) {
+      return false;
+    }
+    if (filters.completion !== "all") {
+      const complete = isEvaluationComplete(item, studentCount);
+      if (filters.completion === "complete" && !complete) {
+        return false;
+      }
+      if (filters.completion === "incomplete" && complete) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 export function hasMeaningfulRichTextContent(input: string | null | undefined) {
   if (!input) {
     return false;

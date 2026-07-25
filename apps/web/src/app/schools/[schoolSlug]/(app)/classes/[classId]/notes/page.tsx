@@ -9,6 +9,8 @@ import {
   FileText,
   Pencil,
   Plus,
+  RotateCcw,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -21,37 +23,54 @@ import {
   FormSelect,
   FormSubmitHint,
   FormTextInput,
-  FormTextarea,
 } from "../../../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../../../components/ui/form-field";
 import { FormRichTextEditor } from "../../../../../../../components/ui/form-rich-text-editor";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { PaginationControls } from "../../../../../../../components/ui/pagination-controls";
+import { TeacherPeriodReports } from "../../../../../../../components/teacher-notes/teacher-period-reports";
+import { TermView } from "../../../../../../../components/student-notes/student-notes-page";
+import type {
+  StudentNotesTerm,
+  StudentNotesTermSnapshot,
+} from "../../../../../../../components/student-notes/student-notes.types";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
   useTranslation,
   type TranslateFn,
 } from "../../../../../../../i18n/useTranslation";
 import {
+  filterEvaluations,
   getCreateEvaluationDefaults,
   getEvaluationListMeta,
+  hasActiveEvaluationListFilters,
   hasMeaningfulRichTextContent,
+  isEvaluationComplete,
+  NO_EVALUATION_LIST_FILTERS,
   normalizeOptionalRichTextHtml,
   paginateEvaluations,
   type CreateEvaluationFormValues,
+  type EvaluationListFilters,
 } from "./page-logic";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const EVALUATION_ATTACHMENT_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
 
-type TabKey = "evaluations" | "scores" | "council" | "help";
+type TabKey = "evaluations" | "notes" | "scores" | "council" | "help";
+
+type AdminClassroomOption = {
+  id: string;
+  name: string;
+  academicLevel?: { id: string; code: string; label: string } | null;
+};
 
 type TeacherContext = {
   class: {
     id: string;
     name: string;
     schoolYearId: string;
+    isReferentTeacher: boolean;
   };
   subjects: Array<{
     id: string;
@@ -84,6 +103,15 @@ const SEQUENCE_KEY_MAP: Record<Sequence, SequenceKey> = {
   SEQ_6: "seq6",
 };
 
+const SEQUENCE_SHORT_LABEL_MAP: Record<Sequence, string> = {
+  SEQ_1: "T1-Seq1",
+  SEQ_2: "T1-Seq2",
+  SEQ_3: "T2-Seq3",
+  SEQ_4: "T2-Seq4",
+  SEQ_5: "T3-Seq5",
+  SEQ_6: "T3-Seq6",
+};
+
 type EvaluationRow = {
   id: string;
   title: string;
@@ -100,6 +128,8 @@ type EvaluationRow = {
   subject: { id: string; name: string };
   subjectBranch?: { id: string; name: string } | null;
   evaluationType: { id: string; code: string; label: string };
+  class: { id: string; name: string };
+  author: { id: string; firstName: string; lastName: string };
   attachments: Array<{
     id: string;
     fileName: string;
@@ -178,6 +208,11 @@ export default function TeacherClassNotesPage() {
   const { t } = useTranslation();
 
   const [tab, setTab] = useState<TabKey>("evaluations");
+  const [role, setRole] = useState<string | null>(null);
+  const [adminClassrooms, setAdminClassrooms] = useState<
+    AdminClassroomOption[]
+  >([]);
+  const [adminLevelFilter, setAdminLevelFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [savingScores, setSavingScores] = useState(false);
@@ -192,6 +227,10 @@ export default function TeacherClassNotesPage() {
   const [selectedEvaluation, setSelectedEvaluation] =
     useState<EvaluationDetail | null>(null);
   const [evaluationPage, setEvaluationPage] = useState(1);
+  const [evaluationSearch, setEvaluationSearch] = useState("");
+  const [evaluationFiltersOpen, setEvaluationFiltersOpen] = useState(false);
+  const [evaluationFilters, setEvaluationFilters] =
+    useState<EvaluationListFilters>(NO_EVALUATION_LIST_FILTERS);
   const [evaluationPanelMode, setEvaluationPanelMode] = useState<
     "details" | "create" | "edit"
   >("details");
@@ -217,6 +256,20 @@ export default function TeacherClassNotesPage() {
   const [scoreDrafts, setScoreDrafts] = useState<
     Record<string, { score: string; status: string; comment: string }>
   >({});
+
+  // ── Onglet Notes : recherche élève dans la classe (parité mobile) ─────────
+  const [studentSearch, setStudentSearch] = useState("");
+  const [selectedNotesStudentId, setSelectedNotesStudentId] = useState<
+    string | null
+  >(null);
+  const [studentSnapshots, setStudentSnapshots] = useState<
+    StudentNotesTermSnapshot[]
+  >([]);
+  const [selectedTerm, setSelectedTerm] = useState<StudentNotesTerm>("TERM_1");
+  const [isLoadingStudentNotes, setIsLoadingStudentNotes] = useState(false);
+  const [studentNotesError, setStudentNotesError] = useState<string | null>(
+    null,
+  );
   const evaluationSchema = useMemo(() => createEvaluationSchema(t), [t]);
   const createEvaluationForm = useForm<CreateEvaluationFormValues>({
     resolver: zodResolver(evaluationSchema),
@@ -297,6 +350,47 @@ export default function TeacherClassNotesPage() {
     void loadCouncilReports(councilTerm);
   }, [context, councilTerm]);
 
+  // Notes de l'élève sélectionné dans l'onglet Notes.
+  useEffect(() => {
+    if (!selectedNotesStudentId) {
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingStudentNotes(true);
+    setStudentNotesError(null);
+    fetch(
+      `${API_URL}/schools/${schoolSlug}/students/${selectedNotesStudentId}/notes`,
+      { credentials: "include" },
+    )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("student-notes-error");
+        }
+        return response.json() as Promise<StudentNotesTermSnapshot[]>;
+      })
+      .then((payload) => {
+        if (cancelled) return;
+        setStudentSnapshots(payload);
+        setSelectedTerm((current) =>
+          payload.some((entry) => entry.term === current)
+            ? current
+            : (payload[0]?.term ?? current),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStudentSnapshots([]);
+          setStudentNotesError(t("notes.teacher.notesTab.studentNotesError"));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingStudentNotes(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug, selectedNotesStudentId, t]);
+
   async function bootstrap() {
     setLoading(true);
     setPageError(null);
@@ -321,13 +415,33 @@ export default function TeacherClassNotesPage() {
         router.replace(`/schools/${schoolSlug}/dashboard`);
         return;
       }
+      setRole(me.role ?? null);
 
-      await Promise.all([loadContext(), loadEvaluations()]);
+      const tasks = [loadContext(), loadEvaluations()];
+      if (
+        me.role === "SCHOOL_ADMIN" ||
+        me.role === "SCHOOL_MANAGER" ||
+        me.role === "SUPERVISOR"
+      ) {
+        tasks.push(loadAdminClassrooms());
+      }
+      await Promise.all(tasks);
     } catch {
       setPageError(t("notes.teacher.errors.loadModule"));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function loadAdminClassrooms() {
+    const response = await fetch(
+      `${API_URL}/schools/${schoolSlug}/admin/classrooms`,
+      { credentials: "include" },
+    );
+    if (!response.ok) {
+      return;
+    }
+    setAdminClassrooms((await response.json()) as AdminClassroomOption[]);
   }
 
   async function loadContext() {
@@ -710,7 +824,9 @@ export default function TeacherClassNotesPage() {
     }
   }
 
-  async function handleSaveCouncilReports() {
+  async function persistCouncilReports(
+    nextDrafts: typeof councilDrafts,
+  ): Promise<void> {
     if (!context) {
       return;
     }
@@ -737,12 +853,11 @@ export default function TeacherClassNotesPage() {
             reports: context.students.map((student) => ({
               studentId: student.id,
               generalAppreciation:
-                councilDrafts[student.id]?.generalAppreciation.trim() ||
-                undefined,
+                nextDrafts[student.id]?.generalAppreciation.trim() || undefined,
               subjects: context.subjects.map((subject) => ({
                 subjectId: subject.id,
                 appreciation:
-                  councilDrafts[student.id]?.subjects[subject.id]?.trim() ||
+                  nextDrafts[student.id]?.subjects[subject.id]?.trim() ||
                   undefined,
               })),
             })),
@@ -764,10 +879,91 @@ export default function TeacherClassNotesPage() {
       setError(
         err instanceof Error ? err.message : t("notes.common.networkError"),
       );
+      throw err;
     } finally {
       setSavingCouncil(false);
     }
   }
+
+  async function handleSaveCouncilReports() {
+    await persistCouncilReports(councilDrafts).catch(() => {});
+  }
+
+  async function handleSaveAppreciation(
+    studentId: string,
+    patch: {
+      generalAppreciation?: string;
+      subject?: { subjectId: string; value: string };
+    },
+  ) {
+    const nextDrafts = {
+      ...councilDrafts,
+      [studentId]: {
+        generalAppreciation:
+          patch.generalAppreciation ??
+          councilDrafts[studentId]?.generalAppreciation ??
+          "",
+        subjects: {
+          ...(councilDrafts[studentId]?.subjects ?? {}),
+          ...(patch.subject
+            ? { [patch.subject.subjectId]: patch.subject.value }
+            : {}),
+        },
+      },
+    };
+    setCouncilDrafts(nextDrafts);
+    await persistCouncilReports(nextDrafts);
+  }
+
+  const isAdminBrowsing =
+    role === "SCHOOL_ADMIN" ||
+    role === "SCHOOL_MANAGER" ||
+    role === "SUPERVISOR";
+  const adminLevelOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    adminClassrooms.forEach((entry) => {
+      if (entry.academicLevel && !seen.has(entry.academicLevel.id)) {
+        seen.set(entry.academicLevel.id, entry.academicLevel.label);
+      }
+    });
+    return Array.from(seen.entries()).map(([value, label]) => ({
+      value,
+      label,
+    }));
+  }, [adminClassrooms]);
+  const adminClassOptions = useMemo(() => {
+    const filtered = adminLevelFilter
+      ? adminClassrooms.filter(
+          (entry) => entry.academicLevel?.id === adminLevelFilter,
+        )
+      : adminClassrooms;
+    return filtered.map((entry) => ({ value: entry.id, label: entry.name }));
+  }, [adminClassrooms, adminLevelFilter]);
+
+  const filteredNotesStudents = useMemo(() => {
+    const query = studentSearch.trim().toLowerCase();
+    const students = context?.students ?? [];
+    if (!query) return students;
+    return students.filter((student) =>
+      `${student.lastName} ${student.firstName}`.toLowerCase().includes(query),
+    );
+  }, [context, studentSearch]);
+
+  const selectedNotesStudent = useMemo(
+    () =>
+      (context?.students ?? []).find(
+        (student) => student.id === selectedNotesStudentId,
+      ) ?? null,
+    [context, selectedNotesStudentId],
+  );
+
+  const currentStudentSnapshot = useMemo(
+    () =>
+      studentSnapshots.find((entry) => entry.term === selectedTerm) ??
+      studentSnapshots[0] ??
+      null,
+    [studentSnapshots, selectedTerm],
+  );
 
   const selectedSubject = useMemo(
     () =>
@@ -776,19 +972,37 @@ export default function TeacherClassNotesPage() {
   );
   const evaluationsPerPage = 5;
   const studentCount = context?.students.length ?? 0;
+  const filteredEvaluations = useMemo(
+    () =>
+      filterEvaluations(
+        evaluations,
+        evaluationSearch,
+        evaluationFilters,
+        studentCount,
+      ),
+    [evaluations, evaluationSearch, evaluationFilters, studentCount],
+  );
   const totalEvaluationPages = Math.max(
     1,
-    Math.ceil(evaluations.length / evaluationsPerPage),
+    Math.ceil(filteredEvaluations.length / evaluationsPerPage),
   );
   const paginatedEvaluations = useMemo(() => {
-    return paginateEvaluations(evaluations, evaluationPage, evaluationsPerPage);
-  }, [evaluationPage, evaluations]);
+    return paginateEvaluations(
+      filteredEvaluations,
+      evaluationPage,
+      evaluationsPerPage,
+    );
+  }, [evaluationPage, filteredEvaluations]);
   const selectedEvaluationScoresCount =
     selectedEvaluation?._count?.scores ??
     selectedEvaluation?.students.filter(
       (student) => student.scoreStatus === "ENTERED",
     ).length ??
     0;
+
+  function resetEvaluationFilters() {
+    setEvaluationFilters(NO_EVALUATION_LIST_FILTERS);
+  }
 
   function startCreateEvaluation() {
     if (context) {
@@ -869,6 +1083,7 @@ export default function TeacherClassNotesPage() {
         <div className="section-tabs mb-4">
           {[
             { key: "evaluations", label: t("notes.teacher.tabs.evaluations") },
+            { key: "notes", label: t("notes.teacher.tabs.notes") },
             { key: "scores", label: t("notes.teacher.tabs.scores") },
             { key: "council", label: t("notes.teacher.tabs.council") },
             { key: "help", label: t("notes.teacher.tabs.help") },
@@ -953,14 +1168,271 @@ export default function TeacherClassNotesPage() {
                 </button>
               </div>
 
+              {isAdminBrowsing && adminClassrooms.length > 0 ? (
+                <div
+                  className="mb-3 grid gap-2 sm:grid-cols-2"
+                  data-testid="notes-admin-class-switcher"
+                >
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.adminLevelLabel")}
+                    </p>
+                    <FormSelect
+                      value={adminLevelFilter}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setAdminLevelFilter(value);
+                        const stillValid = adminClassrooms.find(
+                          (entry) => entry.id === classId,
+                        )?.academicLevel?.id;
+                        if (value && stillValid !== value) {
+                          const firstMatch = adminClassrooms.find(
+                            (entry) => entry.academicLevel?.id === value,
+                          );
+                          if (firstMatch) {
+                            router.push(
+                              `/schools/${schoolSlug}/classes/${firstMatch.id}/notes`,
+                            );
+                          }
+                        }
+                      }}
+                      data-testid="notes-admin-level-select"
+                    >
+                      <option value="">
+                        {t("notes.teacher.list.adminAllLevels")}
+                      </option>
+                      {adminLevelOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.adminClassLabel")}
+                    </p>
+                    <FormSelect
+                      value={classId}
+                      onChange={(event) => {
+                        const nextClassId = event.target.value;
+                        if (nextClassId && nextClassId !== classId) {
+                          router.push(
+                            `/schools/${schoolSlug}/classes/${nextClassId}/notes`,
+                          );
+                        }
+                      }}
+                      data-testid="notes-admin-class-select"
+                    >
+                      {adminClassOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </FormSelect>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mb-3 flex items-center gap-2">
+                <FormTextInput
+                  value={evaluationSearch}
+                  onChange={(event) => setEvaluationSearch(event.target.value)}
+                  placeholder={t("notes.teacher.list.searchPlaceholder")}
+                  aria-label={t("notes.teacher.list.searchAria")}
+                  data-testid="notes-evaluations-search-input"
+                />
+                <button
+                  type="button"
+                  data-testid="notes-evaluations-filter-toggle"
+                  onClick={() =>
+                    setEvaluationFiltersOpen((current) => !current)
+                  }
+                  aria-label={t("notes.teacher.list.filterToggle")}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border transition ${
+                    hasActiveEvaluationListFilters(evaluationFilters)
+                      ? "border-accent-teal bg-accent-teal text-white"
+                      : "border-accent-teal/40 bg-surface text-accent-teal"
+                  }`}
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                </button>
+              </div>
+
+              {evaluationFiltersOpen ? (
+                <div
+                  className="mb-4 grid gap-3 rounded-card border border-accent-teal/25 bg-background p-4"
+                  data-testid="notes-evaluations-filter-panel"
+                >
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.filterTypeLabel")}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEvaluationFilters((current) => ({
+                            ...current,
+                            evaluationTypeId: null,
+                          }))
+                        }
+                        data-testid="notes-evaluations-filter-type-all"
+                        className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                          evaluationFilters.evaluationTypeId == null
+                            ? "border-accent-teal bg-accent-teal text-white"
+                            : "border-border bg-surface text-text-secondary"
+                        }`}
+                      >
+                        {t("notes.teacher.list.filterAll")}
+                      </button>
+                      {(context?.evaluationTypes ?? []).map((type) => (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() =>
+                            setEvaluationFilters((current) => ({
+                              ...current,
+                              evaluationTypeId: type.id,
+                            }))
+                          }
+                          data-testid={`notes-evaluations-filter-type-${type.id}`}
+                          className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                            evaluationFilters.evaluationTypeId === type.id
+                              ? "border-accent-teal bg-accent-teal text-white"
+                              : "border-border bg-surface text-text-secondary"
+                          }`}
+                        >
+                          {type.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.filterSequenceLabel")}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEvaluationFilters((current) => ({
+                            ...current,
+                            sequence: null,
+                          }))
+                        }
+                        data-testid="notes-evaluations-filter-sequence-all"
+                        className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                          evaluationFilters.sequence == null
+                            ? "border-accent-teal bg-accent-teal text-white"
+                            : "border-border bg-surface text-text-secondary"
+                        }`}
+                      >
+                        {t("notes.teacher.list.filterAll")}
+                      </button>
+                      {(Object.keys(SEQUENCE_KEY_MAP) as Sequence[]).map(
+                        (seq) => (
+                          <button
+                            key={seq}
+                            type="button"
+                            onClick={() =>
+                              setEvaluationFilters((current) => ({
+                                ...current,
+                                sequence: seq,
+                              }))
+                            }
+                            data-testid={`notes-evaluations-filter-sequence-${seq}`}
+                            className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                              evaluationFilters.sequence === seq
+                                ? "border-accent-teal bg-accent-teal text-white"
+                                : "border-border bg-surface text-text-secondary"
+                            }`}
+                          >
+                            {SEQUENCE_SHORT_LABEL_MAP[seq]}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      {t("notes.teacher.list.filterCompletionLabel")}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(
+                        [
+                          {
+                            value: "all",
+                            label: t("notes.teacher.list.filterAll"),
+                          },
+                          {
+                            value: "complete",
+                            label: t("notes.teacher.list.filterComplete"),
+                          },
+                          {
+                            value: "incomplete",
+                            label: t("notes.teacher.list.filterIncomplete"),
+                          },
+                        ] as const
+                      ).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() =>
+                            setEvaluationFilters((current) => ({
+                              ...current,
+                              completion: option.value,
+                            }))
+                          }
+                          data-testid={`notes-evaluations-filter-completion-${option.value}`}
+                          className={`rounded-[8px] border px-3 py-1.5 text-xs font-semibold transition ${
+                            evaluationFilters.completion === option.value
+                              ? "border-accent-teal bg-accent-teal text-white"
+                              : "border-border bg-surface text-text-secondary"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    data-testid="notes-evaluations-filter-reset"
+                    onClick={resetEvaluationFilters}
+                    disabled={
+                      !hasActiveEvaluationListFilters(evaluationFilters)
+                    }
+                    className="flex items-center justify-center gap-2 rounded-card border border-warm-accent px-3 py-2 text-sm font-semibold text-warm-accent-dark transition disabled:cursor-not-allowed disabled:border-border disabled:text-text-secondary"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    {t("notes.teacher.list.filterReset")}
+                  </button>
+                </div>
+              ) : null}
+
               <div className="grid gap-3">
                 {evaluations.length === 0 ? (
                   <div className="rounded-[18px] border border-dashed border-warm-border bg-warm-surface/70 p-4 text-sm text-text-secondary">
                     {t("notes.teacher.list.empty")}
                   </div>
+                ) : filteredEvaluations.length === 0 ? (
+                  <div
+                    className="rounded-[18px] border border-dashed border-warm-border bg-warm-surface/70 p-4 text-sm text-text-secondary"
+                    data-testid="notes-evaluations-empty-filtered"
+                  >
+                    {t("notes.teacher.list.emptyFiltered")}
+                  </div>
                 ) : (
                   paginatedEvaluations.map((evaluation) => {
                     const listMeta = getEvaluationListMeta(
+                      evaluation,
+                      studentCount,
+                    );
+                    const complete = isEvaluationComplete(
                       evaluation,
                       studentCount,
                     );
@@ -987,6 +1459,12 @@ export default function TeacherClassNotesPage() {
                               ? ` - ${evaluation.subjectBranch.name}`
                               : ""}{" "}
                             • {evaluation.evaluationType.label}
+                            {evaluation.class?.name
+                              ? ` • ${evaluation.class.name}`
+                              : ""}
+                            {evaluation.author
+                              ? ` • ${evaluation.author.firstName} ${evaluation.author.lastName}`
+                              : ""}
                           </p>
                         </div>
 
@@ -1003,7 +1481,15 @@ export default function TeacherClassNotesPage() {
                               : t("notes.teacher.status.draft")}
                           </span>
                           <span>{listMeta.dateLabel}</span>
-                          <span>{listMeta.scoreProgress}</span>
+                          <span
+                            className={`font-semibold ${
+                              complete
+                                ? "text-accent-teal-dark"
+                                : "text-warm-accent-dark"
+                            }`}
+                          >
+                            {listMeta.scoreProgress}
+                          </span>
                         </div>
                       </button>
                     );
@@ -1011,12 +1497,12 @@ export default function TeacherClassNotesPage() {
                 )}
               </div>
 
-              {evaluations.length > evaluationsPerPage ? (
+              {filteredEvaluations.length > evaluationsPerPage ? (
                 <div className="mt-3">
                   <PaginationControls
                     page={evaluationPage}
                     totalPages={totalEvaluationPages}
-                    totalItems={evaluations.length}
+                    totalItems={filteredEvaluations.length}
                     compact
                     onPageChange={setEvaluationPage}
                   />
@@ -1620,6 +2106,118 @@ export default function TeacherClassNotesPage() {
               )}
             </section>
           </div>
+        ) : tab === "notes" ? (
+          <div data-testid="teacher-notes-tab">
+            <p className="mb-4 text-sm text-text-secondary">
+              {t("notes.teacher.notesTab.subtitle")}
+            </p>
+
+            <FormTextInput
+              value={studentSearch}
+              onChange={(event) => setStudentSearch(event.target.value)}
+              placeholder={t("notes.teacher.notesTab.searchPlaceholder")}
+              aria-label={t("notes.teacher.notesTab.searchAria")}
+              data-testid="teacher-notes-search-input"
+            />
+
+            {context.students.length === 0 ? (
+              <p
+                className="mt-4 text-sm text-text-secondary"
+                data-testid="teacher-notes-list-empty"
+              >
+                {t("notes.teacher.notesTab.noStudent")}
+              </p>
+            ) : filteredNotesStudents.length === 0 ? (
+              <p
+                className="mt-4 text-sm text-text-secondary"
+                data-testid="teacher-notes-search-empty"
+              >
+                {t("notes.teacher.notesTab.searchEmpty")}
+              </p>
+            ) : (
+              <ul
+                className="mt-4 grid gap-2"
+                data-testid="teacher-notes-search-results"
+              >
+                {filteredNotesStudents.map((student) => (
+                  <li key={student.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedNotesStudentId(student.id)}
+                      data-testid={`teacher-notes-search-result-${student.id}`}
+                      className={`flex w-full items-center justify-between gap-2 rounded-card border p-3 text-left transition hover:border-accent-teal ${
+                        selectedNotesStudentId === student.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-surface"
+                      }`}
+                    >
+                      <span className="font-semibold text-text-primary">
+                        {student.lastName} {student.firstName}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {selectedNotesStudent ? (
+              <div
+                className="mt-6 border-t border-border pt-6"
+                data-testid="teacher-notes-student-notes"
+              >
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-heading text-base font-semibold text-text-primary">
+                    {selectedNotesStudent.lastName}{" "}
+                    {selectedNotesStudent.firstName}
+                  </p>
+                  {studentSnapshots.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {studentSnapshots.map((snapshot) => (
+                        <button
+                          key={snapshot.term}
+                          type="button"
+                          onClick={() => setSelectedTerm(snapshot.term)}
+                          data-testid={`teacher-notes-term-${snapshot.term}`}
+                          className={`shrink-0 rounded-[10px] border px-3 py-1.5 text-xs font-semibold transition ${
+                            selectedTerm === snapshot.term
+                              ? "border-primary bg-[linear-gradient(90deg,#0A62BF,#1182D8)] text-white"
+                              : "border-border bg-surface text-text-secondary hover:border-primary/30 hover:text-primary"
+                          }`}
+                        >
+                          {snapshot.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                {isLoadingStudentNotes ? (
+                  <p
+                    className="text-sm text-text-secondary"
+                    data-testid="teacher-notes-student-notes-loading"
+                  >
+                    {t("notes.common.loading")}
+                  </p>
+                ) : studentNotesError ? (
+                  <p
+                    className="text-sm text-notification"
+                    data-testid="teacher-notes-student-notes-error"
+                  >
+                    {studentNotesError}
+                  </p>
+                ) : currentStudentSnapshot ? (
+                  <TermView snapshot={currentStudentSnapshot} />
+                ) : (
+                  <p
+                    className="text-sm text-text-secondary"
+                    data-testid="teacher-notes-student-notes-empty"
+                  >
+                    {t("notes.teacher.notesTab.noSnapshot")}
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
         ) : tab === "scores" ? (
           <div className="grid gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -1858,89 +2456,6 @@ export default function TeacherClassNotesPage() {
               </label>
             </div>
 
-            <div className="grid gap-4">
-              {context.students.map((student) => (
-                <div key={student.id} className="content-panel p-4">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-heading text-lg font-semibold text-text-primary">
-                        {student.lastName} {student.firstName}
-                      </p>
-                      <p className="text-xs text-text-secondary">
-                        {t("notes.teacher.council.appreciationsSubtitle")}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <label className="grid gap-1 text-sm">
-                      <span className="text-text-secondary">
-                        {t("notes.teacher.council.generalAppreciation")}
-                      </span>
-                      <FormTextarea
-                        value={
-                          councilDrafts[student.id]?.generalAppreciation ?? ""
-                        }
-                        onChange={(event) =>
-                          setCouncilDrafts((prev) => ({
-                            ...prev,
-                            [student.id]: {
-                              generalAppreciation: event.target.value,
-                              subjects:
-                                prev[student.id]?.subjects ??
-                                Object.fromEntries(
-                                  context.subjects.map((subject) => [
-                                    subject.id,
-                                    "",
-                                  ]),
-                                ),
-                            },
-                          }))
-                        }
-                        className="min-h-[90px]"
-                        placeholder={t(
-                          "notes.teacher.council.generalAppreciationPlaceholder",
-                        )}
-                      />
-                    </label>
-
-                    <div className="grid gap-3 lg:grid-cols-2">
-                      {context.subjects.map((subject) => (
-                        <label key={subject.id} className="grid gap-1 text-sm">
-                          <span className="text-text-secondary">
-                            {subject.name}
-                          </span>
-                          <FormTextarea
-                            value={
-                              councilDrafts[student.id]?.subjects[subject.id] ??
-                              ""
-                            }
-                            onChange={(event) =>
-                              setCouncilDrafts((prev) => ({
-                                ...prev,
-                                [student.id]: {
-                                  generalAppreciation:
-                                    prev[student.id]?.generalAppreciation ?? "",
-                                  subjects: {
-                                    ...(prev[student.id]?.subjects ?? {}),
-                                    [subject.id]: event.target.value,
-                                  },
-                                },
-                              }))
-                            }
-                            className="min-h-[88px]"
-                            placeholder={t(
-                              "notes.teacher.council.subjectAppreciationPlaceholder",
-                            ).replace("{subject}", subject.name.toLowerCase())}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {error ? (
               <p className="text-sm text-notification">{error}</p>
             ) : null}
@@ -1959,6 +2474,19 @@ export default function TeacherClassNotesPage() {
                   ? t("notes.teacher.council.publish")
                   : t("notes.teacher.council.saveDraft")}
             </button>
+
+            <TeacherPeriodReports
+              schoolSlug={schoolSlug}
+              className={context.class.name}
+              students={context.students}
+              teacherSubjectIds={context.subjects.map((subject) => subject.id)}
+              isReferentTeacher={context.class.isReferentTeacher}
+              term={councilTerm as StudentNotesTerm}
+              onTermChange={(nextTerm) => setCouncilTerm(nextTerm)}
+              drafts={councilDrafts}
+              onSaveAppreciation={handleSaveAppreciation}
+              isSubmitting={savingCouncil}
+            />
           </div>
         )}
       </Card>

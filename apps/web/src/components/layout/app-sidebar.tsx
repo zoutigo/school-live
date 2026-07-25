@@ -271,9 +271,9 @@ function buildItems(
       },
       {
         label: t("sidebar.nav.grades"),
-        href: `${schoolBase}/student-grades`,
+        href: `${schoolBase}/notes`,
         icon: BookOpen,
-        matchPrefix: `${schoolBase}/student-grades`,
+        matchPrefix: `${schoolBase}/notes`,
       },
       {
         label: t("messaging.nav.title"),

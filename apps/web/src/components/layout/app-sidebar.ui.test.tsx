@@ -710,6 +710,15 @@ describe("AppSidebar messaging link for platform roles", () => {
     });
   }
 
+  it("points the Notes link to the evaluations module for SCHOOL_ADMIN (not the legacy student-grades page)", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
+
+    const link = await screen.findByRole("link", { name: "Notes" });
+    expect(link.getAttribute("href")).toBe("/schools/college-vogt/notes");
+  });
+
   it("shows a Messagerie link pointing to /messagerie for SUPER_ADMIN", async () => {
     mockUnreadCount(0);
 
