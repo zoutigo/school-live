@@ -29,7 +29,11 @@ import { FormRichTextEditor } from "../../../../../../../components/ui/form-rich
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { PaginationControls } from "../../../../../../../components/ui/pagination-controls";
 import { TeacherPeriodReports } from "../../../../../../../components/teacher-notes/teacher-period-reports";
-import type { StudentNotesTerm } from "../../../../../../../components/student-notes/student-notes.types";
+import { TermView } from "../../../../../../../components/student-notes/student-notes-page";
+import type {
+  StudentNotesTerm,
+  StudentNotesTermSnapshot,
+} from "../../../../../../../components/student-notes/student-notes.types";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
   useTranslation,
@@ -53,7 +57,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const EVALUATION_ATTACHMENT_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
 
-type TabKey = "evaluations" | "scores" | "council" | "help";
+type TabKey = "evaluations" | "notes" | "scores" | "council" | "help";
 
 type AdminClassroomOption = {
   id: string;
@@ -252,6 +256,20 @@ export default function TeacherClassNotesPage() {
   const [scoreDrafts, setScoreDrafts] = useState<
     Record<string, { score: string; status: string; comment: string }>
   >({});
+
+  // ── Onglet Notes : recherche élève dans la classe (parité mobile) ─────────
+  const [studentSearch, setStudentSearch] = useState("");
+  const [selectedNotesStudentId, setSelectedNotesStudentId] = useState<
+    string | null
+  >(null);
+  const [studentSnapshots, setStudentSnapshots] = useState<
+    StudentNotesTermSnapshot[]
+  >([]);
+  const [selectedTerm, setSelectedTerm] = useState<StudentNotesTerm>("TERM_1");
+  const [isLoadingStudentNotes, setIsLoadingStudentNotes] = useState(false);
+  const [studentNotesError, setStudentNotesError] = useState<string | null>(
+    null,
+  );
   const evaluationSchema = useMemo(() => createEvaluationSchema(t), [t]);
   const createEvaluationForm = useForm<CreateEvaluationFormValues>({
     resolver: zodResolver(evaluationSchema),
@@ -331,6 +349,47 @@ export default function TeacherClassNotesPage() {
 
     void loadCouncilReports(councilTerm);
   }, [context, councilTerm]);
+
+  // Notes de l'élève sélectionné dans l'onglet Notes.
+  useEffect(() => {
+    if (!selectedNotesStudentId) {
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingStudentNotes(true);
+    setStudentNotesError(null);
+    fetch(
+      `${API_URL}/schools/${schoolSlug}/students/${selectedNotesStudentId}/notes`,
+      { credentials: "include" },
+    )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("student-notes-error");
+        }
+        return response.json() as Promise<StudentNotesTermSnapshot[]>;
+      })
+      .then((payload) => {
+        if (cancelled) return;
+        setStudentSnapshots(payload);
+        setSelectedTerm((current) =>
+          payload.some((entry) => entry.term === current)
+            ? current
+            : (payload[0]?.term ?? current),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStudentSnapshots([]);
+          setStudentNotesError(t("notes.teacher.notesTab.studentNotesError"));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingStudentNotes(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolSlug, selectedNotesStudentId, t]);
 
   async function bootstrap() {
     setLoading(true);
@@ -881,6 +940,31 @@ export default function TeacherClassNotesPage() {
     return filtered.map((entry) => ({ value: entry.id, label: entry.name }));
   }, [adminClassrooms, adminLevelFilter]);
 
+  const filteredNotesStudents = useMemo(() => {
+    const query = studentSearch.trim().toLowerCase();
+    const students = context?.students ?? [];
+    if (!query) return students;
+    return students.filter((student) =>
+      `${student.lastName} ${student.firstName}`.toLowerCase().includes(query),
+    );
+  }, [context, studentSearch]);
+
+  const selectedNotesStudent = useMemo(
+    () =>
+      (context?.students ?? []).find(
+        (student) => student.id === selectedNotesStudentId,
+      ) ?? null,
+    [context, selectedNotesStudentId],
+  );
+
+  const currentStudentSnapshot = useMemo(
+    () =>
+      studentSnapshots.find((entry) => entry.term === selectedTerm) ??
+      studentSnapshots[0] ??
+      null,
+    [studentSnapshots, selectedTerm],
+  );
+
   const selectedSubject = useMemo(
     () =>
       context?.subjects.find((entry) => entry.id === watchedSubjectId) ?? null,
@@ -999,6 +1083,7 @@ export default function TeacherClassNotesPage() {
         <div className="section-tabs mb-4">
           {[
             { key: "evaluations", label: t("notes.teacher.tabs.evaluations") },
+            { key: "notes", label: t("notes.teacher.tabs.notes") },
             { key: "scores", label: t("notes.teacher.tabs.scores") },
             { key: "council", label: t("notes.teacher.tabs.council") },
             { key: "help", label: t("notes.teacher.tabs.help") },
@@ -2020,6 +2105,118 @@ export default function TeacherClassNotesPage() {
                 </div>
               )}
             </section>
+          </div>
+        ) : tab === "notes" ? (
+          <div data-testid="teacher-notes-tab">
+            <p className="mb-4 text-sm text-text-secondary">
+              {t("notes.teacher.notesTab.subtitle")}
+            </p>
+
+            <FormTextInput
+              value={studentSearch}
+              onChange={(event) => setStudentSearch(event.target.value)}
+              placeholder={t("notes.teacher.notesTab.searchPlaceholder")}
+              aria-label={t("notes.teacher.notesTab.searchAria")}
+              data-testid="teacher-notes-search-input"
+            />
+
+            {context.students.length === 0 ? (
+              <p
+                className="mt-4 text-sm text-text-secondary"
+                data-testid="teacher-notes-list-empty"
+              >
+                {t("notes.teacher.notesTab.noStudent")}
+              </p>
+            ) : filteredNotesStudents.length === 0 ? (
+              <p
+                className="mt-4 text-sm text-text-secondary"
+                data-testid="teacher-notes-search-empty"
+              >
+                {t("notes.teacher.notesTab.searchEmpty")}
+              </p>
+            ) : (
+              <ul
+                className="mt-4 grid gap-2"
+                data-testid="teacher-notes-search-results"
+              >
+                {filteredNotesStudents.map((student) => (
+                  <li key={student.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedNotesStudentId(student.id)}
+                      data-testid={`teacher-notes-search-result-${student.id}`}
+                      className={`flex w-full items-center justify-between gap-2 rounded-card border p-3 text-left transition hover:border-accent-teal ${
+                        selectedNotesStudentId === student.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-surface"
+                      }`}
+                    >
+                      <span className="font-semibold text-text-primary">
+                        {student.lastName} {student.firstName}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {selectedNotesStudent ? (
+              <div
+                className="mt-6 border-t border-border pt-6"
+                data-testid="teacher-notes-student-notes"
+              >
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-heading text-base font-semibold text-text-primary">
+                    {selectedNotesStudent.lastName}{" "}
+                    {selectedNotesStudent.firstName}
+                  </p>
+                  {studentSnapshots.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {studentSnapshots.map((snapshot) => (
+                        <button
+                          key={snapshot.term}
+                          type="button"
+                          onClick={() => setSelectedTerm(snapshot.term)}
+                          data-testid={`teacher-notes-term-${snapshot.term}`}
+                          className={`shrink-0 rounded-[10px] border px-3 py-1.5 text-xs font-semibold transition ${
+                            selectedTerm === snapshot.term
+                              ? "border-primary bg-[linear-gradient(90deg,#0A62BF,#1182D8)] text-white"
+                              : "border-border bg-surface text-text-secondary hover:border-primary/30 hover:text-primary"
+                          }`}
+                        >
+                          {snapshot.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                {isLoadingStudentNotes ? (
+                  <p
+                    className="text-sm text-text-secondary"
+                    data-testid="teacher-notes-student-notes-loading"
+                  >
+                    {t("notes.common.loading")}
+                  </p>
+                ) : studentNotesError ? (
+                  <p
+                    className="text-sm text-notification"
+                    data-testid="teacher-notes-student-notes-error"
+                  >
+                    {studentNotesError}
+                  </p>
+                ) : currentStudentSnapshot ? (
+                  <TermView snapshot={currentStudentSnapshot} />
+                ) : (
+                  <p
+                    className="text-sm text-text-secondary"
+                    data-testid="teacher-notes-student-notes-empty"
+                  >
+                    {t("notes.teacher.notesTab.noSnapshot")}
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
         ) : tab === "scores" ? (
           <div className="grid gap-4">

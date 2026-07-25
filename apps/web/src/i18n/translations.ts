@@ -1038,9 +1038,20 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.card.defaultClassName": "Classe",
     "notes.teacher.card.subtitle": "Creation, publication et saisie des notes",
     "notes.teacher.tabs.evaluations": "Evaluations",
+    "notes.teacher.tabs.notes": "Notes",
     "notes.teacher.tabs.scores": "Saisie des notes",
     "notes.teacher.tabs.council": "Conseil de classe",
     "notes.teacher.tabs.help": "Aide",
+    "notes.teacher.notesTab.subtitle":
+      "Recherchez un eleve de la classe pour consulter ses notes.",
+    "notes.teacher.notesTab.searchPlaceholder": "Rechercher un eleve...",
+    "notes.teacher.notesTab.searchAria": "Rechercher un eleve",
+    "notes.teacher.notesTab.searchEmpty":
+      "Aucun eleve ne correspond a cette recherche.",
+    "notes.teacher.notesTab.noStudent": "Aucun eleve dans cette classe.",
+    "notes.teacher.notesTab.noSnapshot": "Aucune note disponible.",
+    "notes.teacher.notesTab.studentNotesError":
+      "Impossible de charger les notes de cet eleve.",
     "notes.teacher.page.classNotAccessible":
       "Classe non accessible avec vos affectations.",
     "notes.teacher.errors.loadModule":
@@ -4497,9 +4508,19 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.card.defaultClassName": "Class",
     "notes.teacher.card.subtitle": "Creation, publishing and grade entry",
     "notes.teacher.tabs.evaluations": "Evaluations",
+    "notes.teacher.tabs.notes": "Notes",
     "notes.teacher.tabs.scores": "Grade entry",
     "notes.teacher.tabs.council": "Class council",
     "notes.teacher.tabs.help": "Help",
+    "notes.teacher.notesTab.subtitle":
+      "Search a student in this class to view their notes.",
+    "notes.teacher.notesTab.searchPlaceholder": "Search a student...",
+    "notes.teacher.notesTab.searchAria": "Search a student",
+    "notes.teacher.notesTab.searchEmpty": "No student matches this search.",
+    "notes.teacher.notesTab.noStudent": "No student in this class.",
+    "notes.teacher.notesTab.noSnapshot": "No note available.",
+    "notes.teacher.notesTab.studentNotesError":
+      "Unable to load this student's notes.",
     "notes.teacher.page.classNotAccessible":
       "Class not accessible with your assignments.",
     "notes.teacher.errors.loadModule": "Unable to load the evaluations module.",

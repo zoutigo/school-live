@@ -1236,3 +1236,150 @@ describe("TeacherClassNotesPage admin class switcher", () => {
     );
   });
 });
+
+describe("TeacherClassNotesPage notes tab", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    pushMock.mockReset();
+  });
+
+  async function openNotesTab() {
+    render(<TeacherClassNotesPage />);
+    await screen.findByRole("button", { name: /Composition fractions/i });
+    fireEvent.click(screen.getByRole("button", { name: "Notes" }));
+    return screen.findByTestId("teacher-notes-tab");
+  }
+
+  it("does not fetch any student's notes before the Notes tab is opened", async () => {
+    setupFetchMock();
+
+    render(<TeacherClassNotesPage />);
+    await screen.findByRole("button", { name: /Composition fractions/i });
+
+    expect(globalThis.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/notes"),
+      expect.anything(),
+    );
+  });
+
+  it("lists every student of the class, scoped to this class only", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    expect(
+      screen.getByTestId("teacher-notes-search-result-student-1"),
+    ).toHaveTextContent("MBELE Eleve1");
+    expect(
+      screen.getByTestId("teacher-notes-search-result-student-20"),
+    ).toHaveTextContent("MBELE Eleve20");
+  });
+
+  it("filters the student list client-side as the user types", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    fireEvent.change(screen.getByTestId("teacher-notes-search-input"), {
+      target: { value: "Eleve5" },
+    });
+
+    expect(
+      screen.getByTestId("teacher-notes-search-result-student-5"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("teacher-notes-search-result-student-1"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state when no student matches the search", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    fireEvent.change(screen.getByTestId("teacher-notes-search-input"), {
+      target: { value: "zzz-no-match" },
+    });
+
+    expect(
+      await screen.findByTestId("teacher-notes-search-empty"),
+    ).toBeInTheDocument();
+  });
+
+  it("loads and displays the selected student's notes for the current term", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    fireEvent.click(
+      screen.getByTestId("teacher-notes-search-result-student-1"),
+    );
+
+    expect(
+      await screen.findByTestId("teacher-notes-student-notes"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("evaluations-subject-row-sub-1"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("teacher-notes-term-TERM_2")).toBeInTheDocument();
+  });
+
+  it("shows an empty snapshot state when the student has no notes", async () => {
+    setupFetchMock();
+
+    await openNotesTab();
+
+    fireEvent.click(
+      screen.getByTestId("teacher-notes-search-result-student-2"),
+    );
+
+    expect(
+      await screen.findByTestId("teacher-notes-student-notes-empty"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a dedicated error state if loading the student's notes fails", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER" });
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: { id: "class-1", name: "6eC", schoolYearId: "sy-1" },
+          subjects: [],
+          evaluationTypes: [],
+          students: [
+            { id: "student-1", firstName: "Lisa", lastName: "MBELE" },
+          ],
+        });
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/term-reports?term=")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/students/student-1/notes")) {
+        return jsonResponse({ message: "boom" }, 500);
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<TeacherClassNotesPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Notes" }));
+    await screen.findByTestId("teacher-notes-tab");
+
+    fireEvent.click(
+      screen.getByTestId("teacher-notes-search-result-student-1"),
+    );
+
+    expect(
+      await screen.findByTestId("teacher-notes-student-notes-error"),
+    ).toBeInTheDocument();
+  });
+});
