@@ -21,6 +21,7 @@ import { CreateClassTimetableOneOffSlotDto } from "./dto/create-class-timetable-
 import { CreateClassTimetableSlotExceptionDto } from "./dto/create-class-timetable-slot-exception.dto.js";
 import { CreateSchoolCalendarEventDto } from "./dto/create-school-calendar-event.dto.js";
 import { ClassTimetableContextQueryDto } from "./dto/class-timetable-context-query.dto.js";
+import { ListAdminClassesQueryDto } from "./dto/list-admin-classes-query.dto.js";
 import { ListClassTimetableQueryDto } from "./dto/list-class-timetable-query.dto.js";
 import { ListMyTimetableQueryDto } from "./dto/list-my-timetable-query.dto.js";
 import { ListSchoolCalendarEventsQueryDto } from "./dto/list-school-calendar-events-query.dto.js";
@@ -74,9 +75,9 @@ export class TimetableController {
   listAdminClasses(
     @CurrentUser() user: AuthenticatedUser,
     @CurrentSchoolId() schoolId: string,
-    @Query("schoolYearId") schoolYearId?: string,
+    @Query() query: ListAdminClassesQueryDto,
   ) {
-    return this.timetableService.listAdminClasses(user, schoolId, schoolYearId);
+    return this.timetableService.listAdminClasses(user, schoolId, query);
   }
 
   @Get("classes/:classId/context")

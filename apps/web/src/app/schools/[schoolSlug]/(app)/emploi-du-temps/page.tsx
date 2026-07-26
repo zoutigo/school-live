@@ -7,6 +7,7 @@ import {
   TimetableViews,
   type TimetableDisplaySlot,
 } from "../../../../../components/timetable/timetable-views";
+import { AdminScheduleBrowser } from "../../../../../components/timetable/AdminScheduleBrowser";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -24,6 +25,8 @@ type Role =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
+
+const ADMIN_ROLES: Role[] = ["SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR"];
 
 type MeResponse = {
   firstName: string;
@@ -325,6 +328,7 @@ export default function StudentTimetablePage() {
   const childIdFromQuery = searchParams.get("childId");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [activeChildLabel, setActiveChildLabel] = useState<string | null>(null);
   const [activeChildClassName, setActiveChildClassName] = useState<
     string | null
@@ -377,6 +381,11 @@ export default function StudentTimetablePage() {
       }
 
       const payload = (await meResponse.json()) as MeResponse;
+
+      if (ADMIN_ROLES.includes(payload.role)) {
+        setIsAdmin(true);
+        return;
+      }
 
       if (payload.role === "PARENT") {
         const linkedStudents = payload.linkedStudents ?? [];
@@ -512,6 +521,14 @@ export default function StudentTimetablePage() {
 
     return rows;
   }, [activeRange.from, activeRange.to, classSlots, oneOffSlots]);
+
+  if (isAdmin) {
+    return (
+      <div className="grid gap-4" data-testid="emploi-du-temps-admin">
+        <AdminScheduleBrowser schoolSlug={schoolSlug} />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-4">
