@@ -5,6 +5,11 @@ export class ListMyTimetableQueryDto {
   @IsString()
   childId?: string;
 
+  /** Admin (SCHOOL_ADMIN/SCHOOL_MANAGER/SUPERVISOR/SUPER_ADMIN) viewing an arbitrary student's schedule. */
+  @IsOptional()
+  @IsString()
+  studentId?: string;
+
   @IsOptional()
   @IsString()
   teacherUserId?: string;

@@ -16,6 +16,7 @@ import type { CreateClassTimetableOneOffSlotDto } from "./dto/create-class-timet
 import type { CreateClassTimetableSlotDto } from "./dto/create-class-timetable-slot.dto.js";
 import type { CreateClassTimetableSlotExceptionDto } from "./dto/create-class-timetable-slot-exception.dto.js";
 import type { CreateSchoolCalendarEventDto } from "./dto/create-school-calendar-event.dto.js";
+import type { ListAdminClassesQueryDto } from "./dto/list-admin-classes-query.dto.js";
 import type { ListClassTimetableQueryDto } from "./dto/list-class-timetable-query.dto.js";
 import type { ListMyTimetableQueryDto } from "./dto/list-my-timetable-query.dto.js";
 import type { ListSchoolCalendarEventsQueryDto } from "./dto/list-school-calendar-events-query.dto.js";
@@ -94,7 +95,7 @@ export class TimetableService {
   async listAdminClasses(
     user: AuthenticatedUser,
     schoolId: string,
-    schoolYearId?: string,
+    query: ListAdminClassesQueryDto = {},
   ) {
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
     const school = await this.prisma.school.findUnique({
@@ -102,31 +103,55 @@ export class TimetableService {
       select: { activeSchoolYearId: true },
     });
     const selectedSchoolYearId =
-      schoolYearId ?? school?.activeSchoolYearId ?? undefined;
+      query.schoolYearId ?? school?.activeSchoolYearId ?? undefined;
 
-    const classes = await this.prisma.class.findMany({
-      where: {
-        schoolId: effectiveSchoolId,
-        ...(selectedSchoolYearId ? { schoolYearId: selectedSchoolYearId } : {}),
-      },
-      select: {
-        id: true,
-        name: true,
-        schoolYearId: true,
-        schoolYear: { select: { id: true, label: true } },
-      },
-      orderBy: { name: "asc" },
-    });
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const search = query.search?.trim();
+    const where: Prisma.ClassWhereInput = {
+      schoolId: effectiveSchoolId,
+      ...(selectedSchoolYearId ? { schoolYearId: selectedSchoolYearId } : {}),
+      ...(query.academicLevelId
+        ? { academicLevelId: query.academicLevelId }
+        : {}),
+      ...(search ? { name: { contains: search, mode: "insensitive" } } : {}),
+    };
+
+    const [classes, total] = await this.prisma.$transaction([
+      this.prisma.class.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          schoolYearId: true,
+          academicLevelId: true,
+          schoolYear: { select: { id: true, label: true } },
+          academicLevel: { select: { id: true, label: true } },
+        },
+        orderBy: { name: "asc" },
+        skip,
+        take: limit,
+      }),
+      this.prisma.class.count({ where }),
+    ]);
 
     return {
-      classes: classes.map((c) => ({
+      data: classes.map((c) => ({
         classId: c.id,
         className: c.name,
         schoolYearId: c.schoolYearId,
         schoolYearLabel: c.schoolYear?.label ?? "",
+        academicLevelId: c.academicLevelId,
+        academicLevelName: c.academicLevel?.label ?? null,
         studentCount: 0,
         subjects: [],
       })),
+      total,
+      page,
+      limit,
+      hasMore: skip + classes.length < total,
     };
   }
 
@@ -292,24 +317,35 @@ export class TimetableService {
   ) {
     const locale = timetableLocaleFromUser(user);
     const effectiveSchoolId = this.getEffectiveSchoolId(user, schoolId);
-    const role = this.resolveRoleForMyTimetable(
-      user,
-      effectiveSchoolId,
-      query.childId,
-    );
-    if (!role) {
-      throw new ForbiddenException(
-        translateTimetableError(locale, "timetable.errors.insufficientRole"),
-      );
-    }
 
-    const targetStudent = await this.resolveTargetStudentForMyTimetable({
-      schoolId: effectiveSchoolId,
-      user,
-      role,
-      childId: query.childId,
-      locale,
-    });
+    let targetStudent: { id: string; firstName: string; lastName: string };
+    if (query.studentId?.trim()) {
+      targetStudent = await this.resolveStudentTargetForAdminTimetable({
+        schoolId: effectiveSchoolId,
+        user,
+        studentId: query.studentId.trim(),
+        locale,
+      });
+    } else {
+      const role = this.resolveRoleForMyTimetable(
+        user,
+        effectiveSchoolId,
+        query.childId,
+      );
+      if (!role) {
+        throw new ForbiddenException(
+          translateTimetableError(locale, "timetable.errors.insufficientRole"),
+        );
+      }
+
+      targetStudent = await this.resolveTargetStudentForMyTimetable({
+        schoolId: effectiveSchoolId,
+        user,
+        role,
+        childId: query.childId,
+        locale,
+      });
+    }
 
     const schoolYearId = query.schoolYearId
       ? await this.ensureAccessibleEnrollmentForStudent({
@@ -4023,6 +4059,46 @@ export class TimetableService {
     if (activeRole === "STUDENT") return "STUDENT";
     if (activeRole === "PARENT") return "PARENT";
     return null;
+  }
+
+  private async resolveStudentTargetForAdminTimetable(input: {
+    schoolId: string;
+    user: AuthenticatedUser;
+    studentId: string;
+    locale: TimetableLocale;
+  }) {
+    const activeRole = input.user.activeRole;
+    const canReadOtherStudentAgenda =
+      this.hasPlatformRole(input.user, "SUPER_ADMIN") ||
+      this.hasPlatformRole(input.user, "ADMIN") ||
+      activeRole === "SCHOOL_ADMIN" ||
+      activeRole === "SCHOOL_MANAGER" ||
+      activeRole === "SUPERVISOR";
+
+    if (!canReadOtherStudentAgenda) {
+      throw new ForbiddenException(
+        translateTimetableError(
+          input.locale,
+          "timetable.errors.insufficientRole",
+        ),
+      );
+    }
+
+    const student = await this.prisma.student.findFirst({
+      where: { id: input.studentId, schoolId: input.schoolId },
+      select: { id: true, firstName: true, lastName: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException(
+        translateTimetableError(
+          input.locale,
+          "timetable.errors.studentProfileNotFound",
+        ),
+      );
+    }
+
+    return student;
   }
 
   private resolveTeacherTargetForMyTimetable(input: {

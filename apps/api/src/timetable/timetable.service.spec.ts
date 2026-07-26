@@ -1,4 +1,4 @@
-import { ForbiddenException } from "@nestjs/common";
+import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { TimetableChangeNotificationsService } from "../notifications/timetable-change-notifications.service.js";
@@ -64,6 +64,9 @@ const makePrismaMock = () => ({
   classTimetableSlotException: { findMany: jest.fn() },
   schoolCalendarEvent: { findMany: jest.fn() },
   room: { findFirst: jest.fn() },
+  student: { findFirst: jest.fn() },
+  parentStudent: { findMany: jest.fn() },
+  enrollment: { findFirst: jest.fn() },
 });
 
 // ─── Suite ───────────────────────────────────────────────────────────────────
@@ -469,5 +472,351 @@ describe("TimetableService.classTimetable", () => {
     ).rejects.toThrow(ForbiddenException);
 
     expect(prisma.teacherClassSubject.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe("TimetableService.listAdminClasses", () => {
+  let service: TimetableService;
+  let prisma: {
+    class: { findMany: jest.Mock; count: jest.Mock };
+    school: { findUnique: jest.Mock };
+    $transaction: jest.Mock;
+  };
+
+  const ADMIN_USER = makeUser({
+    activeRole: "SCHOOL_ADMIN",
+    memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" }],
+  });
+
+  const CLASS_ROW = {
+    id: "class-1",
+    name: "6e B",
+    schoolYearId: "sy-1",
+    academicLevelId: "lvl-1",
+    schoolYear: { id: "sy-1", label: "2025-2026" },
+    academicLevel: { id: "lvl-1", label: "6e" },
+  };
+
+  beforeEach(async () => {
+    prisma = {
+      class: { findMany: jest.fn(), count: jest.fn() },
+      school: { findUnique: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    prisma.school.findUnique.mockResolvedValue({
+      activeSchoolYearId: "sy-1",
+    });
+
+    const module = await Test.createTestingModule({
+      providers: [
+        TimetableService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: TimetableChangeNotificationsService,
+          useValue: NOOP_NOTIFICATIONS,
+        },
+      ],
+    }).compile();
+
+    service = module.get(TimetableService);
+  });
+
+  it("retourne les classes de l'année active avec pagination par défaut", async () => {
+    prisma.$transaction.mockResolvedValue([[CLASS_ROW], 1]);
+
+    const result = await service.listAdminClasses(ADMIN_USER, "school-1", {});
+
+    expect(result).toEqual({
+      data: [
+        {
+          classId: "class-1",
+          className: "6e B",
+          schoolYearId: "sy-1",
+          schoolYearLabel: "2025-2026",
+          academicLevelId: "lvl-1",
+          academicLevelName: "6e",
+          studentCount: 0,
+          subjects: [],
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+      hasMore: false,
+    });
+  });
+
+  it("applique le filtre academicLevelId dans le where Prisma", async () => {
+    prisma.$transaction.mockResolvedValue([[], 0]);
+
+    await service.listAdminClasses(ADMIN_USER, "school-1", {
+      academicLevelId: "lvl-2",
+    });
+
+    expect(prisma.class.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ academicLevelId: "lvl-2" }),
+      }),
+    );
+  });
+
+  it("applique une recherche insensible à la casse sur le nom de classe", async () => {
+    prisma.$transaction.mockResolvedValue([[], 0]);
+
+    await service.listAdminClasses(ADMIN_USER, "school-1", {
+      search: "  6e  ",
+    });
+
+    expect(prisma.class.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          name: { contains: "6e", mode: "insensitive" },
+        }),
+      }),
+    );
+  });
+
+  it("calcule hasMore correctement sur la dernière page", async () => {
+    prisma.$transaction.mockResolvedValue([[CLASS_ROW], 21]);
+
+    const result = await service.listAdminClasses(ADMIN_USER, "school-1", {
+      page: 2,
+      limit: 20,
+    });
+
+    expect(result.hasMore).toBe(false);
+    expect(prisma.class.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 20 }),
+    );
+  });
+
+  it("calcule hasMore=true quand il reste des résultats", async () => {
+    prisma.$transaction.mockResolvedValue([[CLASS_ROW], 25]);
+
+    const result = await service.listAdminClasses(ADMIN_USER, "school-1", {
+      page: 1,
+      limit: 20,
+    });
+
+    expect(result.hasMore).toBe(true);
+  });
+
+  it("utilise l'année scolaire active de l'école si schoolYearId n'est pas fourni", async () => {
+    prisma.$transaction.mockResolvedValue([[], 0]);
+
+    await service.listAdminClasses(ADMIN_USER, "school-1", {});
+
+    expect(prisma.class.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ schoolYearId: "sy-1" }),
+      }),
+    );
+  });
+
+  it("ignore l'année active quand un schoolYearId explicite est fourni", async () => {
+    prisma.$transaction.mockResolvedValue([[], 0]);
+
+    await service.listAdminClasses(ADMIN_USER, "school-1", {
+      schoolYearId: "sy-2",
+    });
+
+    expect(prisma.class.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ schoolYearId: "sy-2" }),
+      }),
+    );
+  });
+});
+
+describe("TimetableService.myTimetable", () => {
+  let service: TimetableService;
+  let prisma: ReturnType<typeof makePrismaMock>;
+
+  const STUDENT_ROW = {
+    id: "student-1",
+    firstName: "Léa",
+    lastName: "Ngo",
+  };
+
+  beforeEach(async () => {
+    prisma = makePrismaMock();
+
+    const module = await Test.createTestingModule({
+      providers: [
+        TimetableService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: TimetableChangeNotificationsService,
+          useValue: NOOP_NOTIFICATIONS,
+        },
+      ],
+    }).compile();
+
+    service = module.get(TimetableService);
+  });
+
+  function setupHappyPath() {
+    // ensureAccessibleEnrollmentForStudent + classId lookup share the same mock
+    prisma.enrollment.findFirst.mockResolvedValue({
+      schoolYearId: "sy-1",
+      classId: "class-1",
+    });
+    prisma.class.findFirst.mockResolvedValue(CLASS_ENTITY);
+    prisma.classTimetableSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableOneOffSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableSlotException.findMany.mockResolvedValue([]);
+    prisma.classTimetableSubjectStyle.findMany.mockResolvedValue([]);
+    prisma.schoolCalendarEvent.findMany.mockResolvedValue([]);
+  }
+
+  const QUERY = { schoolYearId: "sy-1", studentId: "student-1" };
+
+  // ── Admin consultant l'agenda d'un élève via studentId ───────────────────
+
+  it("SCHOOL_ADMIN + studentId → retourne l'agenda de l'élève ciblé", async () => {
+    setupHappyPath();
+    prisma.student.findFirst.mockResolvedValue(STUDENT_ROW);
+    const user = makeUser({
+      activeRole: "SCHOOL_ADMIN",
+      memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" }],
+    });
+
+    const result = await service.myTimetable(user, "school-1", QUERY);
+
+    expect(result.class.id).toBe("class-1");
+    expect(prisma.student.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "student-1", schoolId: "school-1" },
+      }),
+    );
+    expect(prisma.parentStudent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("SCHOOL_MANAGER + studentId → retourne l'agenda de l'élève ciblé", async () => {
+    setupHappyPath();
+    prisma.student.findFirst.mockResolvedValue(STUDENT_ROW);
+    const user = makeUser({
+      activeRole: "SCHOOL_MANAGER",
+      memberships: [{ schoolId: "school-1", role: "SCHOOL_MANAGER" }],
+    });
+
+    const result = await service.myTimetable(user, "school-1", QUERY);
+
+    expect(result.class.id).toBe("class-1");
+  });
+
+  it("SUPERVISOR + studentId → retourne l'agenda de l'élève ciblé", async () => {
+    setupHappyPath();
+    prisma.student.findFirst.mockResolvedValue(STUDENT_ROW);
+    const user = makeUser({
+      activeRole: "SUPERVISOR",
+      memberships: [{ schoolId: "school-1", role: "SUPERVISOR" }],
+    });
+
+    const result = await service.myTimetable(user, "school-1", QUERY);
+
+    expect(result.class.id).toBe("class-1");
+  });
+
+  it("SUPER_ADMIN plateforme + studentId → retourne l'agenda de l'élève ciblé", async () => {
+    setupHappyPath();
+    prisma.student.findFirst.mockResolvedValue(STUDENT_ROW);
+    const user = makeUser({
+      activeRole: undefined,
+      platformRoles: ["SUPER_ADMIN"],
+      memberships: [],
+    });
+
+    const result = await service.myTimetable(user, "school-1", QUERY);
+
+    expect(result.class.id).toBe("class-1");
+  });
+
+  it("studentId inconnu dans l'école → NotFoundException", async () => {
+    prisma.student.findFirst.mockResolvedValue(null);
+    const user = makeUser({
+      activeRole: "SCHOOL_ADMIN",
+      memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" }],
+    });
+
+    await expect(service.myTimetable(user, "school-1", QUERY)).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it("TEACHER tentant studentId → ForbiddenException (pas de droit admin)", async () => {
+    const user = makeUser({
+      activeRole: "TEACHER",
+      memberships: [{ schoolId: "school-1", role: "TEACHER" }],
+    });
+
+    await expect(service.myTimetable(user, "school-1", QUERY)).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.student.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("PARENT tentant studentId → ForbiddenException (pas de droit admin)", async () => {
+    const user = makeUser({
+      activeRole: "PARENT",
+      memberships: [{ schoolId: "school-1", role: "PARENT" }],
+    });
+
+    await expect(service.myTimetable(user, "school-1", QUERY)).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.student.findFirst).not.toHaveBeenCalled();
+  });
+
+  // ── Régression : parcours STUDENT/PARENT existants toujours fonctionnels ──
+
+  it("STUDENT activeRole sans studentId → retourne son propre agenda (régression)", async () => {
+    setupHappyPath();
+    prisma.student.findFirst.mockResolvedValue(STUDENT_ROW);
+    const user = makeUser({
+      id: "student-user-1",
+      activeRole: "STUDENT",
+      memberships: [{ schoolId: "school-1", role: "STUDENT" }],
+    });
+
+    const result = await service.myTimetable(user, "school-1", {
+      schoolYearId: "sy-1",
+    });
+
+    expect(result.class.id).toBe("class-1");
+    expect(prisma.student.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { schoolId: "school-1", userId: "student-user-1" },
+      }),
+    );
+  });
+
+  it("PARENT activeRole avec childId → retourne l'agenda de l'enfant lié (régression)", async () => {
+    setupHappyPath();
+    prisma.parentStudent.findMany.mockResolvedValue([{ student: STUDENT_ROW }]);
+    const user = makeUser({
+      id: "parent-user-1",
+      activeRole: "PARENT",
+      memberships: [{ schoolId: "school-1", role: "PARENT" }],
+    });
+
+    const result = await service.myTimetable(user, "school-1", {
+      schoolYearId: "sy-1",
+      childId: "student-1",
+    });
+
+    expect(result.class.id).toBe("class-1");
+  });
+
+  it("PARENT sans enfant lié → NotFoundException (régression)", async () => {
+    prisma.parentStudent.findMany.mockResolvedValue([]);
+    const user = makeUser({
+      activeRole: "PARENT",
+      memberships: [{ schoolId: "school-1", role: "PARENT" }],
+    });
+
+    await expect(
+      service.myTimetable(user, "school-1", { schoolYearId: "sy-1" }),
+    ).rejects.toThrow();
   });
 });
