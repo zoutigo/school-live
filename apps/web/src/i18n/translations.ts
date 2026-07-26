@@ -1825,6 +1825,32 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.myTimetable.errors.loadFailed":
       "Impossible de charger l'emploi du temps.",
 
+    "timetable.adminSchedule.title": "Emploi du temps",
+    "timetable.adminSchedule.loading": "Chargement...",
+    "timetable.adminSchedule.emptyDay":
+      "Aucun cours programme pour cette journee.",
+    "timetable.adminSchedule.emptySelectionMessage":
+      "Choisissez un utilisateur ou une classe dans le panneau de gauche pour afficher son emploi du temps.",
+    "timetable.adminSchedule.noAgendaMessage":
+      "Ce profil ne dispose pas d'emploi du temps (personnel administratif).",
+    "timetable.adminSchedule.errors.loadAgenda":
+      "Impossible de charger cet emploi du temps.",
+    "timetable.adminSchedule.filters.title": "Recherche",
+    "timetable.adminSchedule.filters.modeUser": "Utilisateurs",
+    "timetable.adminSchedule.filters.modeClass": "Classes",
+    "timetable.adminSchedule.filters.searchUserPlaceholder":
+      "Rechercher un utilisateur...",
+    "timetable.adminSchedule.filters.searchClassPlaceholder":
+      "Rechercher une classe...",
+    "timetable.adminSchedule.filters.clearSearch": "Effacer la recherche",
+    "timetable.adminSchedule.filters.allLevels": "Tous les niveaux",
+    "timetable.adminSchedule.filters.loading": "Chargement...",
+    "timetable.adminSchedule.filters.noResult": "Aucun resultat.",
+    "timetable.adminSchedule.filters.roleTeacher": "Enseignant",
+    "timetable.adminSchedule.filters.roleStudent": "Eleve",
+    "timetable.adminSchedule.filters.roleStaff": "Personnel",
+    "timetable.adminSchedule.filters.loadMore": "Charger plus",
+
     "timetable.views.today": "Aujourd'hui",
     "timetable.views.thisWeek": "Cette semaine",
     "timetable.views.thisMonth": "Ce mois",
@@ -5270,6 +5296,30 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.myTimetable.errors.noLinkedStudent":
       "No student is linked to this parent account.",
     "timetable.myTimetable.errors.loadFailed": "Unable to load the timetable.",
+
+    "timetable.adminSchedule.title": "Schedule",
+    "timetable.adminSchedule.loading": "Loading...",
+    "timetable.adminSchedule.emptyDay": "No class scheduled for this day.",
+    "timetable.adminSchedule.emptySelectionMessage":
+      "Choose a user or a class in the left panel to display their schedule.",
+    "timetable.adminSchedule.noAgendaMessage":
+      "This profile has no schedule (administrative staff).",
+    "timetable.adminSchedule.errors.loadAgenda":
+      "Unable to load this schedule.",
+    "timetable.adminSchedule.filters.title": "Search",
+    "timetable.adminSchedule.filters.modeUser": "Users",
+    "timetable.adminSchedule.filters.modeClass": "Classes",
+    "timetable.adminSchedule.filters.searchUserPlaceholder": "Search a user...",
+    "timetable.adminSchedule.filters.searchClassPlaceholder":
+      "Search a class...",
+    "timetable.adminSchedule.filters.clearSearch": "Clear search",
+    "timetable.adminSchedule.filters.allLevels": "All levels",
+    "timetable.adminSchedule.filters.loading": "Loading...",
+    "timetable.adminSchedule.filters.noResult": "No results.",
+    "timetable.adminSchedule.filters.roleTeacher": "Teacher",
+    "timetable.adminSchedule.filters.roleStudent": "Student",
+    "timetable.adminSchedule.filters.roleStaff": "Staff",
+    "timetable.adminSchedule.filters.loadMore": "Load more",
 
     "timetable.views.today": "Today",
     "timetable.views.thisWeek": "This week",

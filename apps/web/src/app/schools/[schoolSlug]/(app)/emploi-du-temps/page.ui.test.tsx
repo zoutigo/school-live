@@ -618,4 +618,219 @@ describe("StudentTimetablePage UI", () => {
       expect(screen.getAllByText(/Salle/i).length).toBeGreaterThan(0);
     });
   });
+
+  describe("admin schedule browser", () => {
+    function jsonResponse(payload: unknown, status = 200) {
+      return new Response(JSON.stringify(payload), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    type AdminFetchOverrides = {
+      members?: unknown;
+      classes?: unknown;
+      levels?: unknown;
+      teacherTimetable?: unknown;
+      studentTimetable?: unknown;
+      classTimetable?: unknown;
+    };
+
+    function mockAdminFetch(overrides: AdminFetchOverrides = {}) {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = String(input);
+        if (url.includes("/timetable/me/teacher")) {
+          return jsonResponse(
+            overrides.teacherTimetable ?? {
+              occurrences: [],
+              occurrenceContexts: [],
+              subjectStyles: [],
+            },
+          );
+        }
+        if (url.includes("/timetable/me?")) {
+          return jsonResponse(
+            overrides.studentTimetable ?? {
+              class: { id: "class-x" },
+              occurrences: [],
+              subjectStyles: [],
+            },
+          );
+        }
+        if (/\/timetable\/classes\/[^/?]+/.test(url)) {
+          return jsonResponse(
+            overrides.classTimetable ?? { occurrences: [], subjectStyles: [] },
+          );
+        }
+        if (url.includes("/timetable/classes?")) {
+          return jsonResponse(
+            overrides.classes ?? { data: [], page: 1, limit: 20, total: 0 },
+          );
+        }
+        if (url.includes("/admin/academic-levels")) {
+          return jsonResponse(overrides.levels ?? []);
+        }
+        if (url.includes("/users?")) {
+          return jsonResponse(
+            overrides.members ?? { data: [], page: 1, limit: 20, total: 0 },
+          );
+        }
+        if (url.endsWith("/me")) {
+          return jsonResponse({
+            firstName: "Sophie",
+            lastName: "Ngomo",
+            role: "SCHOOL_ADMIN",
+          });
+        }
+        return jsonResponse({}, 404);
+      });
+    }
+
+    const TEACHER_MEMBER = {
+      id: "u1",
+      studentId: null,
+      firstName: "Albert",
+      lastName: "Mvondo",
+      roles: ["TEACHER"],
+    };
+    const STUDENT_MEMBER = {
+      id: "u3",
+      studentId: "student-3",
+      firstName: "Chloe",
+      lastName: "Fotso",
+      roles: ["STUDENT"],
+    };
+    const STAFF_MEMBER = {
+      id: "u4",
+      studentId: null,
+      firstName: "Bella",
+      lastName: "Owona",
+      roles: ["SCHOOL_STAFF"],
+    };
+    const CLASS_6EC = {
+      classId: "class-6eC",
+      className: "6eC",
+      schoolYearId: "sy1",
+      academicLevelId: "lvl-6e",
+      academicLevelName: "6e",
+    };
+
+    it("SCHOOL_ADMIN ne redirige pas et affiche le panneau de recherche au lieu de l'agenda eleve", async () => {
+      mockAdminFetch();
+
+      render(<StudentTimetablePage />);
+
+      await screen.findByTestId("emploi-du-temps-admin");
+      expect(replaceMock).not.toHaveBeenCalled();
+      expect(screen.getByTestId("admin-schedule-search-input")).toBeTruthy();
+      expect(screen.getByTestId("admin-schedule-empty-selection")).toBeTruthy();
+    });
+
+    it("selectionner un enseignant appelle /timetable/me/teacher avec son id", async () => {
+      mockAdminFetch({
+        members: { data: [TEACHER_MEMBER], page: 1, limit: 20, total: 1 },
+      });
+
+      render(<StudentTimetablePage />);
+      await screen.findByTestId("admin-schedule-user-u1");
+      fireEvent.click(screen.getByTestId("admin-schedule-user-u1"));
+
+      await waitFor(() => {
+        const calledTeacher = vi
+          .mocked(globalThis.fetch)
+          .mock.calls.some(([input]) =>
+            String(input).includes("/timetable/me/teacher?teacherUserId=u1"),
+          );
+        expect(calledTeacher).toBe(true);
+      });
+    });
+
+    it("selectionner un eleve appelle /timetable/me avec son studentId", async () => {
+      mockAdminFetch({
+        members: { data: [STUDENT_MEMBER], page: 1, limit: 20, total: 1 },
+      });
+
+      render(<StudentTimetablePage />);
+      await screen.findByTestId("admin-schedule-user-u3");
+      fireEvent.click(screen.getByTestId("admin-schedule-user-u3"));
+
+      await waitFor(() => {
+        const calledStudent = vi
+          .mocked(globalThis.fetch)
+          .mock.calls.some(([input]) =>
+            String(input).includes("/timetable/me?studentId=student-3"),
+          );
+        expect(calledStudent).toBe(true);
+      });
+    });
+
+    it("selectionner un membre du staff n'appelle aucun endpoint d'agenda et affiche un message dedie", async () => {
+      mockAdminFetch({
+        members: { data: [STAFF_MEMBER], page: 1, limit: 20, total: 1 },
+      });
+
+      render(<StudentTimetablePage />);
+      await screen.findByTestId("admin-schedule-user-u4");
+      fireEvent.click(screen.getByTestId("admin-schedule-user-u4"));
+
+      await screen.findByTestId("admin-schedule-no-agenda");
+      const calledAgenda = vi
+        .mocked(globalThis.fetch)
+        .mock.calls.some(
+          ([input]) =>
+            String(input).includes("/timetable/me/teacher") ||
+            String(input).includes("/timetable/me?"),
+        );
+      expect(calledAgenda).toBe(false);
+    });
+
+    it("mode Classes charge les niveaux et les classes, la selection appelle le detail de classe", async () => {
+      mockAdminFetch({
+        levels: [{ id: "lvl-6e", code: "6E", label: "6e" }],
+        classes: { data: [CLASS_6EC], page: 1, limit: 20, total: 1 },
+      });
+
+      render(<StudentTimetablePage />);
+      await screen.findByTestId("emploi-du-temps-admin");
+      fireEvent.click(screen.getByTestId("admin-schedule-mode-class"));
+
+      await screen.findByTestId("admin-schedule-level-lvl-6e");
+      await screen.findByTestId("admin-schedule-class-class-6eC");
+      fireEvent.click(screen.getByTestId("admin-schedule-class-class-6eC"));
+
+      await waitFor(() => {
+        const calledClass = vi
+          .mocked(globalThis.fetch)
+          .mock.calls.some(([input]) =>
+            String(input).includes("/timetable/classes/class-6eC?"),
+          );
+        expect(calledClass).toBe(true);
+      });
+    });
+
+    it("la recherche relance la liste des utilisateurs apres le debounce", async () => {
+      mockAdminFetch({
+        members: { data: [TEACHER_MEMBER], page: 1, limit: 20, total: 1 },
+      });
+
+      render(<StudentTimetablePage />);
+      await screen.findByTestId("admin-schedule-search-input");
+
+      vi.mocked(globalThis.fetch).mockClear();
+      fireEvent.change(screen.getByTestId("admin-schedule-search-input"), {
+        target: { value: "albert" },
+      });
+
+      await vi.advanceTimersByTimeAsync(350);
+
+      await waitFor(() => {
+        const calledSearch = vi
+          .mocked(globalThis.fetch)
+          .mock.calls.some(([input]) =>
+            String(input).includes("search=albert"),
+          );
+        expect(calledSearch).toBe(true);
+      });
+    });
+  });
 });
