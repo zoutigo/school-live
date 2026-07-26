@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, XCircle } from "lucide-react";
+import { Search, School, UserCircle, XCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import {
@@ -10,7 +10,7 @@ import {
   type TimetableDisplaySlot,
   type TimetableViewMode,
 } from "./timetable-views";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const SEARCH_DEBOUNCE_MS = 300;
@@ -101,6 +101,16 @@ function memberHasRole(member: SchoolMemberRow, role: "TEACHER" | "STUDENT") {
   return member.roles.includes(role);
 }
 
+function memberRoleLabel(member: SchoolMemberRow, t: TranslateFn): string {
+  if (memberHasRole(member, "TEACHER")) {
+    return t("timetable.adminSchedule.filters.roleTeacher");
+  }
+  if (memberHasRole(member, "STUDENT")) {
+    return t("timetable.adminSchedule.filters.roleStudent");
+  }
+  return t("timetable.adminSchedule.filters.roleStaff");
+}
+
 function computeHasMore(meta: PageMeta | null): boolean {
   if (!meta) return false;
   return meta.page < Math.max(1, Math.ceil(meta.total / meta.limit));
@@ -174,6 +184,11 @@ export function AdminScheduleBrowser({ schoolSlug }: { schoolSlug: string }) {
     setSelectedMember(null);
     setSelectedClass(null);
     setLevelId(null);
+  }
+
+  function clearSelection() {
+    setSelectedMember(null);
+    setSelectedClass(null);
   }
 
   // ── Users picker ─────────────────────────────────────────────────────────
@@ -621,6 +636,44 @@ export function AdminScheduleBrowser({ schoolSlug }: { schoolSlug: string }) {
       {/* RIGHT — agenda du profil/classe sélectionné */}
       <div className="min-w-0 flex-1">
         <Card title={t("timetable.adminSchedule.title")}>
+          {hasSelection ? (
+            <div
+              className="mb-3 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2"
+              data-testid="admin-schedule-selection-banner"
+            >
+              {mode === "CLASS" ? (
+                <School size={16} className="shrink-0 text-primary" />
+              ) : (
+                <UserCircle size={16} className="shrink-0 text-primary" />
+              )}
+              <p
+                className="min-w-0 flex-1 truncate text-sm font-semibold text-primary"
+                data-testid="admin-schedule-selection-banner-label"
+              >
+                {mode === "CLASS" && selectedClass
+                  ? `${t("timetable.adminSchedule.selectionBanner.classPrefix")} : ${selectedClass.className}${
+                      selectedClass.academicLevelName
+                        ? ` · ${selectedClass.academicLevelName}`
+                        : ""
+                    }`
+                  : selectedMember
+                    ? `${t("timetable.adminSchedule.selectionBanner.userPrefix")} : ${
+                        selectedMember.lastName
+                      } ${selectedMember.firstName} · ${memberRoleLabel(selectedMember, t)}`
+                    : ""}
+              </p>
+              <button
+                type="button"
+                onClick={clearSelection}
+                data-testid="admin-schedule-selection-banner-clear"
+                aria-label={t("timetable.adminSchedule.selectionBanner.clear")}
+                className="shrink-0 text-primary hover:text-primary/70"
+              >
+                <XCircle size={16} />
+              </button>
+            </div>
+          ) : null}
+
           {!hasSelection ? (
             <p
               className="py-8 text-center text-sm text-text-secondary"

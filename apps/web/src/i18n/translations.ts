@@ -1850,6 +1850,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.filters.roleStudent": "Eleve",
     "timetable.adminSchedule.filters.roleStaff": "Personnel",
     "timetable.adminSchedule.filters.loadMore": "Charger plus",
+    "timetable.adminSchedule.selectionBanner.userPrefix": "Agenda de",
+    "timetable.adminSchedule.selectionBanner.classPrefix": "Classe",
+    "timetable.adminSchedule.selectionBanner.clear": "Effacer la sélection",
 
     "timetable.views.today": "Aujourd'hui",
     "timetable.views.thisWeek": "Cette semaine",
@@ -5320,6 +5323,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.filters.roleStudent": "Student",
     "timetable.adminSchedule.filters.roleStaff": "Staff",
     "timetable.adminSchedule.filters.loadMore": "Load more",
+    "timetable.adminSchedule.selectionBanner.userPrefix": "Schedule for",
+    "timetable.adminSchedule.selectionBanner.classPrefix": "Class",
+    "timetable.adminSchedule.selectionBanner.clear": "Clear selection",
 
     "timetable.views.today": "Today",
     "timetable.views.thisWeek": "This week",

@@ -832,5 +832,87 @@ describe("StudentTimetablePage UI", () => {
         expect(calledSearch).toBe(true);
       });
     });
+
+    describe("bandeau de sélection", () => {
+      it("n'affiche aucun bandeau tant qu'aucune sélection n'est faite", async () => {
+        mockAdminFetch();
+        render(<StudentTimetablePage />);
+        await screen.findByTestId("admin-schedule-empty-selection");
+        expect(
+          screen.queryByTestId("admin-schedule-selection-banner"),
+        ).toBeNull();
+      });
+
+      it("affiche 'Agenda de : <nom> · <rôle>' après sélection d'un enseignant", async () => {
+        mockAdminFetch({
+          members: { data: [TEACHER_MEMBER], page: 1, limit: 20, total: 1 },
+        });
+        render(<StudentTimetablePage />);
+        await screen.findByTestId("admin-schedule-user-u1");
+        fireEvent.click(screen.getByTestId("admin-schedule-user-u1"));
+
+        await waitFor(() =>
+          expect(
+            screen.getByTestId("admin-schedule-selection-banner-label")
+              .textContent,
+          ).toBe("Agenda de : Mvondo Albert · Enseignant"),
+        );
+      });
+
+      it("affiche 'Classe : <nom> · <niveau>' après sélection d'une classe", async () => {
+        mockAdminFetch({
+          levels: [{ id: "lvl-6e", code: "6E", label: "6e" }],
+          classes: { data: [CLASS_6EC], page: 1, limit: 20, total: 1 },
+        });
+        render(<StudentTimetablePage />);
+        await screen.findByTestId("emploi-du-temps-admin");
+        fireEvent.click(screen.getByTestId("admin-schedule-mode-class"));
+        await screen.findByTestId("admin-schedule-class-class-6eC");
+        fireEvent.click(screen.getByTestId("admin-schedule-class-class-6eC"));
+
+        await waitFor(() =>
+          expect(
+            screen.getByTestId("admin-schedule-selection-banner-label")
+              .textContent,
+          ).toBe("Classe : 6eC · 6e"),
+        );
+      });
+
+      it("reste visible avec la sélection même quand le profil n'a pas d'agenda (staff)", async () => {
+        mockAdminFetch({
+          members: { data: [STAFF_MEMBER], page: 1, limit: 20, total: 1 },
+        });
+        render(<StudentTimetablePage />);
+        await screen.findByTestId("admin-schedule-user-u4");
+        fireEvent.click(screen.getByTestId("admin-schedule-user-u4"));
+
+        await screen.findByTestId("admin-schedule-no-agenda");
+        expect(
+          screen.getByTestId("admin-schedule-selection-banner-label")
+            .textContent,
+        ).toBe("Agenda de : Owona Bella · Personnel");
+      });
+
+      it("le bouton d'effacement du bandeau réinitialise la sélection", async () => {
+        mockAdminFetch({
+          members: { data: [TEACHER_MEMBER], page: 1, limit: 20, total: 1 },
+        });
+        render(<StudentTimetablePage />);
+        await screen.findByTestId("admin-schedule-user-u1");
+        fireEvent.click(screen.getByTestId("admin-schedule-user-u1"));
+        await screen.findByTestId("admin-schedule-selection-banner");
+
+        fireEvent.click(
+          screen.getByTestId("admin-schedule-selection-banner-clear"),
+        );
+
+        expect(
+          screen.queryByTestId("admin-schedule-selection-banner"),
+        ).toBeNull();
+        expect(
+          screen.getByTestId("admin-schedule-empty-selection"),
+        ).toBeTruthy();
+      });
+    });
   });
 });
