@@ -30,6 +30,7 @@ import type { CreateClassroomDto } from "./dto/create-classroom.dto.js";
 import type { CreateRoomDto } from "./dto/create-room.dto.js";
 import type { UpdateRoomDto } from "./dto/update-room.dto.js";
 import type { ListAvailableRoomsQueryDto } from "./dto/list-available-rooms-query.dto.js";
+import type { ListRoomsQueryDto } from "./dto/list-rooms-query.dto.js";
 import type { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import type { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
 import type { AddSchoolAdminDto } from "./dto/add-school-admin.dto.js";
@@ -2467,11 +2468,211 @@ export class ManagementService {
     return { success: true };
   }
 
-  async listRooms(schoolId: string) {
-    return this.prisma.room.findMany({
-      where: { schoolId },
-      orderBy: [{ name: "asc" }],
-    });
+  async listRooms(schoolId: string, query: ListRoomsQueryDto = {}) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const andFilters: Array<Record<string, unknown>> = [];
+
+    if (query.search?.trim()) {
+      const search = query.search.trim();
+      andFilters.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
+
+    if (query.status) {
+      andFilters.push({ status: query.status });
+    }
+
+    if (query.simultaneity === "SINGLE") {
+      andFilters.push({ maxConcurrentSlots: 1 });
+    } else if (query.simultaneity === "MULTIPLE") {
+      andFilters.push({ maxConcurrentSlots: { gt: 1 } });
+    }
+
+    const where = {
+      schoolId,
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
+    };
+
+    if (!query.availabilityFromDate) {
+      const [rooms, total] = await this.prisma.$transaction([
+        this.prisma.room.findMany({
+          where,
+          orderBy: [{ name: "asc" }],
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.room.count({ where }),
+      ]);
+      return { items: rooms, page, limit, total };
+    }
+
+    const fromDateIso = query.availabilityFromDate;
+    const toDateIso = query.availabilityToDate ?? fromDateIso;
+    const startMinute = query.availabilityStartMinute ?? 0;
+    const endMinute = query.availabilityEndMinute ?? 1440;
+
+    const fromDate = new Date(`${fromDateIso}T00:00:00.000Z`);
+    const toDate = new Date(`${toDateIso}T00:00:00.000Z`);
+    if (
+      Number.isNaN(fromDate.getTime()) ||
+      Number.isNaN(toDate.getTime()) ||
+      toDate < fromDate
+    ) {
+      throw new BadRequestException("Invalid availability date range");
+    }
+    if (endMinute <= startMinute) {
+      throw new BadRequestException("Invalid availability time range");
+    }
+
+    const dateKeys: string[] = [];
+    for (
+      let cursor = new Date(fromDate);
+      cursor <= toDate;
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000)
+    ) {
+      dateKeys.push(cursor.toISOString().slice(0, 10));
+    }
+
+    const [allRooms, occupancy] = await Promise.all([
+      this.prisma.room.findMany({ where, orderBy: [{ name: "asc" }] }),
+      this.computeRoomOccupancyByDate(
+        schoolId,
+        dateKeys,
+        startMinute,
+        endMinute,
+      ),
+    ]);
+
+    const availableRooms = allRooms.filter((room) =>
+      dateKeys.every((dateKey) => {
+        const occupied = occupancy.get(room.id)?.get(dateKey) ?? 0;
+        return occupied < room.maxConcurrentSlots;
+      }),
+    );
+
+    const total = availableRooms.length;
+    const start = (page - 1) * limit;
+    const items = availableRooms.slice(start, start + limit);
+    return { items, page, limit, total };
+  }
+
+  private async computeRoomOccupancyByDate(
+    schoolId: string,
+    dateKeys: string[],
+    startMinute: number,
+    endMinute: number,
+  ): Promise<Map<string, Map<string, number>>> {
+    const dates = dateKeys.map((key) => new Date(`${key}T00:00:00.000Z`));
+    const weekdays = Array.from(
+      new Set(dates.map((d) => (d.getUTCDay() === 0 ? 7 : d.getUTCDay()))),
+    );
+    const minDate = dates[0];
+    const maxDate = dates[dates.length - 1];
+
+    const [recurringSlots, oneOffSlots, overrideExceptions, cancelExceptions] =
+      await Promise.all([
+        this.prisma.classTimetableSlot.findMany({
+          where: {
+            schoolId,
+            weekday: { in: weekdays },
+            startMinute: { lt: endMinute },
+            endMinute: { gt: startMinute },
+            roomId: { not: null },
+          },
+          select: {
+            id: true,
+            roomId: true,
+            weekday: true,
+            activeFromDate: true,
+            activeToDate: true,
+          },
+        }),
+        this.prisma.classTimetableOneOffSlot.findMany({
+          where: {
+            schoolId,
+            status: "PLANNED",
+            occurrenceDate: { gte: minDate, lte: maxDate },
+            startMinute: { lt: endMinute },
+            endMinute: { gt: startMinute },
+            roomId: { not: null },
+          },
+          select: { roomId: true, occurrenceDate: true },
+        }),
+        this.prisma.classTimetableSlotException.findMany({
+          where: {
+            schoolId,
+            type: "OVERRIDE",
+            occurrenceDate: { gte: minDate, lte: maxDate },
+            roomId: { not: null },
+          },
+          select: {
+            roomId: true,
+            occurrenceDate: true,
+            startMinute: true,
+            endMinute: true,
+            slot: { select: { startMinute: true, endMinute: true } },
+          },
+        }),
+        this.prisma.classTimetableSlotException.findMany({
+          where: {
+            schoolId,
+            type: { in: ["CANCEL", "OVERRIDE"] },
+            occurrenceDate: { gte: minDate, lte: maxDate },
+          },
+          select: { slotId: true, occurrenceDate: true },
+        }),
+      ]);
+
+    const suppressedRecurring = new Set(
+      cancelExceptions.map(
+        (entry) =>
+          `${entry.slotId}-${entry.occurrenceDate.toISOString().slice(0, 10)}`,
+      ),
+    );
+
+    const occupancy = new Map<string, Map<string, number>>();
+    const increment = (roomId: string | null, dateKey: string) => {
+      if (!roomId) return;
+      if (!occupancy.has(roomId)) occupancy.set(roomId, new Map());
+      const byDate = occupancy.get(roomId)!;
+      byDate.set(dateKey, (byDate.get(dateKey) ?? 0) + 1);
+    };
+
+    for (const dateKey of dateKeys) {
+      const cursor = new Date(`${dateKey}T00:00:00.000Z`);
+      const weekday = cursor.getUTCDay() === 0 ? 7 : cursor.getUTCDay();
+      for (const slot of recurringSlots) {
+        if (slot.weekday !== weekday) continue;
+        if (slot.activeFromDate && cursor < slot.activeFromDate) continue;
+        if (slot.activeToDate && cursor > slot.activeToDate) continue;
+        if (suppressedRecurring.has(`${slot.id}-${dateKey}`)) continue;
+        increment(slot.roomId, dateKey);
+      }
+    }
+
+    for (const slot of oneOffSlots) {
+      increment(slot.roomId, slot.occurrenceDate.toISOString().slice(0, 10));
+    }
+
+    for (const exception of overrideExceptions) {
+      const effectiveStart =
+        exception.startMinute ?? exception.slot.startMinute;
+      const effectiveEnd = exception.endMinute ?? exception.slot.endMinute;
+      if (effectiveStart < endMinute && effectiveEnd > startMinute) {
+        increment(
+          exception.roomId,
+          exception.occurrenceDate.toISOString().slice(0, 10),
+        );
+      }
+    }
+
+    return occupancy;
   }
 
   async createRoom(schoolId: string, payload: CreateRoomDto) {
@@ -2687,6 +2888,16 @@ export class ManagementService {
         isAvailable,
       };
     });
+  }
+
+  async getRoom(schoolId: string, roomId: string) {
+    const room = await this.prisma.room.findFirst({
+      where: { id: roomId, schoolId },
+    });
+    if (!room) {
+      throw new NotFoundException("Room not found");
+    }
+    return room;
   }
 
   async getRoomCalendar(

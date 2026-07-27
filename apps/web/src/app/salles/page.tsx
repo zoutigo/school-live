@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -18,8 +18,11 @@ import { DateInput } from "../../components/ui/date-input";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { PaginationControls } from "../../components/ui/pagination-controls";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation } from "../../i18n/useTranslation";
+
+const ROOMS_PAGE_SIZE = 20;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -72,6 +75,55 @@ type RoomCalendarEntry = {
   subjectName: string;
   teacherName: string;
 };
+
+type RoomSimultaneity = "SINGLE" | "MULTIPLE";
+
+type RoomsListFilters = {
+  status: RoomStatus | null;
+  simultaneity: RoomSimultaneity | null;
+  availabilityFromDate: string | null;
+  availabilityToDate: string | null;
+  availabilityStartMinute: number | null;
+  availabilityEndMinute: number | null;
+};
+
+const NO_ROOM_FILTERS: RoomsListFilters = {
+  status: null,
+  simultaneity: null,
+  availabilityFromDate: null,
+  availabilityToDate: null,
+  availabilityStartMinute: null,
+  availabilityEndMinute: null,
+};
+
+function hasActiveRoomFilters(filters: RoomsListFilters) {
+  return (
+    filters.status != null ||
+    filters.simultaneity != null ||
+    filters.availabilityFromDate != null
+  );
+}
+
+type RoomsListResult = {
+  items: RoomRow[];
+  page: number;
+  limit: number;
+  total: number;
+};
+
+function timeToMinutes(value: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function minutesToTimeInput(minutes: number | null): string {
+  if (minutes == null) return "";
+  return minutesToTime(minutes);
+}
 
 function minutesToTime(totalMinutes: number) {
   const hours = Math.floor(totalMinutes / 60)
@@ -139,6 +191,17 @@ export default function RoomsPage() {
   const [schools, setSchools] = useState<SchoolOption[]>([]);
 
   const [rooms, setRooms] = useState<RoomRow[]>([]);
+  const [allRoomOptions, setAllRoomOptions] = useState<RoomRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [limit, setLimit] = useState(ROOMS_PAGE_SIZE);
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [draftFilters, setDraftFilters] =
+    useState<RoomsListFilters>(NO_ROOM_FILTERS);
+  const [appliedFilters, setAppliedFilters] =
+    useState<RoomsListFilters>(NO_ROOM_FILTERS);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -200,14 +263,22 @@ export default function RoomsPage() {
     if (!schoolSlug) {
       return;
     }
-    void loadData(schoolSlug);
-  }, [schoolSlug]);
+    void loadRooms(schoolSlug, 1, appliedFilters, appliedSearch);
+    void loadAllRoomOptions(schoolSlug);
+  }, [schoolSlug, appliedFilters, appliedSearch]);
 
   useEffect(() => {
-    if (!calendarRoomId && rooms.length > 0) {
-      setCalendarRoomId(rooms[0].id);
+    const handle = setTimeout(() => {
+      setAppliedSearch(searchInput.trim());
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+
+  useEffect(() => {
+    if (!calendarRoomId && allRoomOptions.length > 0) {
+      setCalendarRoomId(allRoomOptions[0].id);
     }
-  }, [rooms, calendarRoomId]);
+  }, [allRoomOptions, calendarRoomId]);
 
   useEffect(() => {
     if (
@@ -287,14 +358,52 @@ export default function RoomsPage() {
     }
   }
 
-  async function loadData(currentSchoolSlug: string) {
+  function buildRoomsQuery(
+    targetPage: number,
+    filters: RoomsListFilters,
+    search: string,
+  ) {
+    const params = new URLSearchParams();
+    params.set("page", String(targetPage));
+    params.set("limit", String(ROOMS_PAGE_SIZE));
+    if (search.trim()) params.set("search", search.trim());
+    if (filters.status) params.set("status", filters.status);
+    if (filters.simultaneity) params.set("simultaneity", filters.simultaneity);
+    if (filters.availabilityFromDate) {
+      params.set("availabilityFromDate", filters.availabilityFromDate);
+    }
+    if (filters.availabilityToDate) {
+      params.set("availabilityToDate", filters.availabilityToDate);
+    }
+    if (filters.availabilityStartMinute != null) {
+      params.set(
+        "availabilityStartMinute",
+        String(filters.availabilityStartMinute),
+      );
+    }
+    if (filters.availabilityEndMinute != null) {
+      params.set(
+        "availabilityEndMinute",
+        String(filters.availabilityEndMinute),
+      );
+    }
+    return params.toString();
+  }
+
+  async function loadRooms(
+    currentSchoolSlug: string,
+    targetPage: number,
+    filters: RoomsListFilters,
+    search: string,
+  ) {
     setLoadingData(true);
     setError(null);
     setSuccess(null);
 
     try {
+      const query = buildRoomsQuery(targetPage, filters, search);
       const roomsResponse = await fetch(
-        buildAdminPath(currentSchoolSlug, "rooms"),
+        `${buildAdminPath(currentSchoolSlug, "rooms")}?${query}`,
         { credentials: "include" },
       );
 
@@ -303,12 +412,36 @@ export default function RoomsPage() {
         return;
       }
 
-      const roomsPayload = (await roomsResponse.json()) as RoomRow[];
-      setRooms(roomsPayload);
+      const result = (await roomsResponse.json()) as RoomsListResult;
+      setRooms(result.items);
+      setPage(result.page);
+      setLimit(result.limit);
+      setTotal(result.total);
     } catch {
       setError("Erreur reseau.");
     } finally {
       setLoadingData(false);
+    }
+  }
+
+  async function reloadAfterMutation(currentSchoolSlug: string) {
+    await Promise.all([
+      loadRooms(currentSchoolSlug, 1, appliedFilters, appliedSearch),
+      loadAllRoomOptions(currentSchoolSlug),
+    ]);
+  }
+
+  async function loadAllRoomOptions(currentSchoolSlug: string) {
+    try {
+      const response = await fetch(
+        `${buildAdminPath(currentSchoolSlug, "rooms")}?limit=200`,
+        { credentials: "include" },
+      );
+      if (!response.ok) return;
+      const result = (await response.json()) as RoomsListResult;
+      setAllRoomOptions(result.items);
+    } catch {
+      // Le selecteur du tab calendrier reste vide, non bloquant.
     }
   }
 
@@ -382,7 +515,7 @@ export default function RoomsPage() {
 
       createForm.reset(defaultValues);
       setSuccess("Salle creee.");
-      await loadData(schoolSlug);
+      await reloadAfterMutation(schoolSlug);
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -448,7 +581,7 @@ export default function RoomsPage() {
 
       setEditingRoomId(null);
       setSuccess("Salle modifiee.");
-      await loadData(schoolSlug);
+      await reloadAfterMutation(schoolSlug);
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -502,7 +635,7 @@ export default function RoomsPage() {
 
       setDeleteTarget(null);
       setSuccess("Salle supprimee.");
-      await loadData(schoolSlug);
+      await reloadAfterMutation(schoolSlug);
     } catch {
       setError("Erreur reseau.");
     } finally {
@@ -510,10 +643,24 @@ export default function RoomsPage() {
     }
   }
 
-  const sortedRooms = useMemo(
-    () => [...rooms].sort((a, b) => a.name.localeCompare(b.name)),
-    [rooms],
-  );
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  function openFilters() {
+    setDraftFilters(appliedFilters);
+    setFiltersOpen(true);
+  }
+  function closeFilters() {
+    setDraftFilters(appliedFilters);
+    setFiltersOpen(false);
+  }
+  function applyFilters() {
+    setAppliedFilters(draftFilters);
+    setFiltersOpen(false);
+  }
+  function resetFilters() {
+    setDraftFilters(NO_ROOM_FILTERS);
+    setAppliedFilters(NO_ROOM_FILTERS);
+  }
 
   return (
     <AppShell schoolSlug={schoolSlug} schoolName={t("salles.shellName")}>
@@ -621,7 +768,7 @@ export default function RoomsPage() {
                     value={calendarRoomId}
                     onChange={(event) => setCalendarRoomId(event.target.value)}
                   >
-                    {rooms.map((room) => (
+                    {allRoomOptions.map((room) => (
                       <option key={room.id} value={room.id}>
                         {room.name}
                       </option>
@@ -813,6 +960,195 @@ export default function RoomsPage() {
                 </div>
               </form>
 
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="grid min-w-[220px] flex-1 gap-1 text-sm">
+                  <span className="font-medium text-text-secondary">
+                    {t("salles.search.placeholder")}
+                  </span>
+                  <FormTextInput
+                    aria-label={t("salles.search.placeholder")}
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                    placeholder={t("salles.search.placeholder")}
+                    data-testid="salles-search-input"
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant={
+                    hasActiveRoomFilters(appliedFilters)
+                      ? "primary"
+                      : "secondary"
+                  }
+                  onClick={() => (filtersOpen ? closeFilters() : openFilters())}
+                  data-testid="salles-filter-toggle"
+                >
+                  {t("salles.filters.toggle")}
+                </Button>
+              </div>
+
+              {filtersOpen ? (
+                <div
+                  className="grid gap-3 rounded-card border border-border p-3 md:grid-cols-3"
+                  data-testid="salles-filter-panel"
+                >
+                  <label className="grid gap-1 text-sm">
+                    <span className="font-medium text-text-secondary">
+                      {t("salles.filters.statusLabel")}
+                    </span>
+                    <FormSelect
+                      aria-label={t("salles.filters.statusLabel")}
+                      value={draftFilters.status ?? ""}
+                      onChange={(event) =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          status: (event.target.value ||
+                            null) as RoomStatus | null,
+                        }))
+                      }
+                      data-testid="salles-filter-status"
+                    >
+                      <option value="">{t("salles.filters.allOption")}</option>
+                      <option value="AVAILABLE">
+                        {t("salles.status.AVAILABLE")}
+                      </option>
+                      <option value="UNAVAILABLE">
+                        {t("salles.status.UNAVAILABLE")}
+                      </option>
+                      <option value="MAINTENANCE">
+                        {t("salles.status.MAINTENANCE")}
+                      </option>
+                    </FormSelect>
+                  </label>
+
+                  <label className="grid gap-1 text-sm">
+                    <span className="font-medium text-text-secondary">
+                      {t("salles.filters.simultaneityLabel")}
+                    </span>
+                    <FormSelect
+                      aria-label={t("salles.filters.simultaneityLabel")}
+                      value={draftFilters.simultaneity ?? ""}
+                      onChange={(event) =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          simultaneity: (event.target.value ||
+                            null) as RoomSimultaneity | null,
+                        }))
+                      }
+                      data-testid="salles-filter-simultaneity"
+                    >
+                      <option value="">{t("salles.filters.allOption")}</option>
+                      <option value="SINGLE">
+                        {t("salles.filters.simultaneity.SINGLE")}
+                      </option>
+                      <option value="MULTIPLE">
+                        {t("salles.filters.simultaneity.MULTIPLE")}
+                      </option>
+                    </FormSelect>
+                  </label>
+
+                  <div />
+
+                  <label className="grid gap-1 text-sm">
+                    <span className="font-medium text-text-secondary">
+                      {t("salles.filters.availabilityFromLabel")}
+                    </span>
+                    <DateInput
+                      aria-label={t("salles.filters.availabilityFromLabel")}
+                      value={draftFilters.availabilityFromDate ?? ""}
+                      onChange={(event) =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          availabilityFromDate: event.target.value || null,
+                        }))
+                      }
+                      data-testid="salles-filter-availability-from"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    <span className="font-medium text-text-secondary">
+                      {t("salles.filters.availabilityToLabel")}
+                    </span>
+                    <DateInput
+                      aria-label={t("salles.filters.availabilityToLabel")}
+                      value={
+                        draftFilters.availabilityToDate ??
+                        draftFilters.availabilityFromDate ??
+                        ""
+                      }
+                      onChange={(event) =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          availabilityToDate: event.target.value || null,
+                        }))
+                      }
+                      data-testid="salles-filter-availability-to"
+                    />
+                  </label>
+                  <div />
+                  <label className="grid gap-1 text-sm">
+                    <span className="font-medium text-text-secondary">
+                      {t("salles.filters.availabilityStartLabel")}
+                    </span>
+                    <FormTextInput
+                      aria-label={t("salles.filters.availabilityStartLabel")}
+                      type="time"
+                      value={minutesToTimeInput(
+                        draftFilters.availabilityStartMinute,
+                      )}
+                      onChange={(event) =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          availabilityStartMinute: timeToMinutes(
+                            event.target.value,
+                          ),
+                        }))
+                      }
+                      data-testid="salles-filter-availability-start"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    <span className="font-medium text-text-secondary">
+                      {t("salles.filters.availabilityEndLabel")}
+                    </span>
+                    <FormTextInput
+                      aria-label={t("salles.filters.availabilityEndLabel")}
+                      type="time"
+                      value={minutesToTimeInput(
+                        draftFilters.availabilityEndMinute,
+                      )}
+                      onChange={(event) =>
+                        setDraftFilters((current) => ({
+                          ...current,
+                          availabilityEndMinute: timeToMinutes(
+                            event.target.value,
+                          ),
+                        }))
+                      }
+                      data-testid="salles-filter-availability-end"
+                    />
+                  </label>
+
+                  <div className="flex gap-2 md:col-span-3">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={resetFilters}
+                      data-testid="salles-filter-reset"
+                    >
+                      {t("salles.filters.reset")}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={applyFilters}
+                      data-testid="salles-filter-apply"
+                    >
+                      {t("salles.filters.apply")}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
@@ -832,6 +1168,9 @@ export default function RoomsPage() {
                       <th className="px-3 py-2 font-medium">
                         {t("salles.list.colStatus")}
                       </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("salles.list.colDetail")}
+                      </th>
                       <th className="px-3 py-2 font-medium text-right">
                         {t("salles.list.colActions")}
                       </th>
@@ -842,7 +1181,7 @@ export default function RoomsPage() {
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={6}
+                          colSpan={7}
                         >
                           {t("common.loading")}
                         </td>
@@ -851,9 +1190,16 @@ export default function RoomsPage() {
 
                     {!loading &&
                       !loadingData &&
-                      sortedRooms.map((room) => (
+                      rooms.map((room) => (
                         <Fragment key={room.id}>
-                          <tr className="border-b border-border text-text-primary">
+                          <tr
+                            className={`border-b border-border text-text-primary border-l-4 ${
+                              room.status === "AVAILABLE"
+                                ? "border-l-warm-accent"
+                                : "border-l-notification"
+                            }`}
+                            data-testid={`salles-room-row-${room.id}`}
+                          >
                             <td className="px-3 py-2">{room.name}</td>
                             <td className="px-3 py-2">
                               {room.description ?? "-"}
@@ -866,6 +1212,20 @@ export default function RoomsPage() {
                             </td>
                             <td className="px-3 py-2">
                               {t(`salles.status.${room.status}`)}
+                            </td>
+                            <td className="px-3 py-2">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() =>
+                                  router.push(
+                                    `/salles/${room.id}?schoolSlug=${schoolSlug ?? ""}`,
+                                  )
+                                }
+                                data-testid={`salles-room-view-${room.id}`}
+                              >
+                                {t("salles.list.viewDetail")}
+                              </Button>
                             </td>
                             <td className="px-3 py-2 text-right">
                               <div className="inline-flex gap-2">
@@ -888,7 +1248,7 @@ export default function RoomsPage() {
                           </tr>
                           {editingRoomId === room.id ? (
                             <tr className="border-b border-border bg-background">
-                              <td className="px-3 py-3" colSpan={6}>
+                              <td className="px-3 py-3" colSpan={7}>
                                 <div className="grid gap-3 md:grid-cols-5">
                                   <FormField
                                     label={t("salles.form.nameLabel")}
@@ -1033,11 +1393,11 @@ export default function RoomsPage() {
                         </Fragment>
                       ))}
 
-                    {!loading && !loadingData && sortedRooms.length === 0 ? (
+                    {!loading && !loadingData && rooms.length === 0 ? (
                       <tr>
                         <td
                           className="px-3 py-6 text-text-secondary"
-                          colSpan={6}
+                          colSpan={7}
                         >
                           {t("salles.list.empty")}
                         </td>
@@ -1046,6 +1406,22 @@ export default function RoomsPage() {
                   </tbody>
                 </table>
               </div>
+
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                totalItems={total}
+                disabled={loadingData}
+                onPageChange={(nextPage) => {
+                  if (!schoolSlug) return;
+                  void loadRooms(
+                    schoolSlug,
+                    nextPage,
+                    appliedFilters,
+                    appliedSearch,
+                  );
+                }}
+              />
             </div>
           )}
 

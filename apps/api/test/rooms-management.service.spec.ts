@@ -6,6 +6,7 @@ const prisma = {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     findFirst: jest.fn(),
+    count: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
@@ -13,6 +14,7 @@ const prisma = {
   classTimetableSlot: { findMany: jest.fn() },
   classTimetableOneOffSlot: { findMany: jest.fn() },
   classTimetableSlotException: { findMany: jest.fn() },
+  $transaction: jest.fn((ops: Array<Promise<unknown>>) => Promise.all(ops)),
 };
 
 const mailService = {};
@@ -35,6 +37,9 @@ const currentUser = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  prisma.$transaction.mockImplementation((ops: Array<Promise<unknown>>) =>
+    Promise.all(ops),
+  );
 });
 
 describe("ManagementService — Room CRUD", () => {
@@ -310,6 +315,304 @@ describe("ManagementService — listAvailableRooms", () => {
     });
 
     expect(result[0].isAvailable).toBe(false);
+  });
+});
+
+describe("ManagementService — listRooms (pagination/search/filtres)", () => {
+  it("applique page=1/limit=20 par défaut et retourne items + meta via schoolId seul", async () => {
+    prisma.room.findMany.mockResolvedValue([{ id: "room-1", name: "B14" }]);
+    prisma.room.count.mockResolvedValue(1);
+
+    const result = await service.listRooms("school-1", {});
+
+    expect(prisma.room.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { schoolId: "school-1" },
+        orderBy: [{ name: "asc" }],
+        skip: 0,
+        take: 20,
+      }),
+    );
+    expect(prisma.room.count).toHaveBeenCalledWith({
+      where: { schoolId: "school-1" },
+    });
+    expect(result).toEqual({
+      items: [{ id: "room-1", name: "B14" }],
+      page: 1,
+      limit: 20,
+      total: 1,
+    });
+  });
+
+  it("applique page/limit demandés et calcule skip", async () => {
+    prisma.room.findMany.mockResolvedValue([]);
+    prisma.room.count.mockResolvedValue(0);
+
+    await service.listRooms("school-1", { page: 3, limit: 10 });
+
+    expect(prisma.room.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 20, take: 10 }),
+    );
+  });
+
+  it("filtre par recherche sur le nom OU la description", async () => {
+    prisma.room.findMany.mockResolvedValue([]);
+    prisma.room.count.mockResolvedValue(0);
+
+    await service.listRooms("school-1", { search: "gym" });
+
+    const where = prisma.room.findMany.mock.calls[0][0].where;
+    expect(where).toEqual({
+      schoolId: "school-1",
+      AND: [
+        {
+          OR: [
+            { name: { contains: "gym", mode: "insensitive" } },
+            { description: { contains: "gym", mode: "insensitive" } },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("filtre par statut", async () => {
+    prisma.room.findMany.mockResolvedValue([]);
+    prisma.room.count.mockResolvedValue(0);
+
+    await service.listRooms("school-1", { status: "MAINTENANCE" });
+
+    const where = prisma.room.findMany.mock.calls[0][0].where;
+    expect(where).toEqual({
+      schoolId: "school-1",
+      AND: [{ status: "MAINTENANCE" }],
+    });
+  });
+
+  it("filtre par simultanéité SINGLE (maxConcurrentSlots = 1)", async () => {
+    prisma.room.findMany.mockResolvedValue([]);
+    prisma.room.count.mockResolvedValue(0);
+
+    await service.listRooms("school-1", { simultaneity: "SINGLE" });
+
+    const where = prisma.room.findMany.mock.calls[0][0].where;
+    expect(where).toEqual({
+      schoolId: "school-1",
+      AND: [{ maxConcurrentSlots: 1 }],
+    });
+  });
+
+  it("filtre par simultanéité MULTIPLE (maxConcurrentSlots > 1)", async () => {
+    prisma.room.findMany.mockResolvedValue([]);
+    prisma.room.count.mockResolvedValue(0);
+
+    await service.listRooms("school-1", { simultaneity: "MULTIPLE" });
+
+    const where = prisma.room.findMany.mock.calls[0][0].where;
+    expect(where).toEqual({
+      schoolId: "school-1",
+      AND: [{ maxConcurrentSlots: { gt: 1 } }],
+    });
+  });
+
+  it("lève BadRequestException si la plage de disponibilité est invalide (toDate < fromDate)", async () => {
+    await expect(
+      service.listRooms("school-1", {
+        availabilityFromDate: "2026-01-11",
+        availabilityToDate: "2026-01-05",
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it("lève BadRequestException si la plage horaire de disponibilité est invalide", async () => {
+    await expect(
+      service.listRooms("school-1", {
+        availabilityFromDate: "2026-01-05",
+        availabilityStartMinute: 600,
+        availabilityEndMinute: 500,
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it("exclut une salle occupée sur le créneau demandé (disponibilité date unique)", async () => {
+    // 2026-01-05 est un lundi (weekday=1)
+    prisma.room.findMany.mockResolvedValue([
+      { id: "room-1", name: "B14", maxConcurrentSlots: 1 },
+    ]);
+    prisma.classTimetableSlot.findMany.mockResolvedValue([
+      {
+        id: "slot-1",
+        roomId: "room-1",
+        weekday: 1,
+        activeFromDate: null,
+        activeToDate: null,
+      },
+    ]);
+    prisma.classTimetableOneOffSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableSlotException.findMany
+      .mockResolvedValueOnce([]) // override détaillées
+      .mockResolvedValueOnce([]); // cancel/override (suppression)
+
+    const result = await service.listRooms("school-1", {
+      availabilityFromDate: "2026-01-05",
+      availabilityStartMinute: 480,
+      availabilityEndMinute: 570,
+    });
+
+    expect(result.items).toHaveLength(0);
+    expect(result.total).toBe(0);
+  });
+
+  it("inclut une salle libre sur le créneau demandé (disponibilité date unique)", async () => {
+    prisma.room.findMany.mockResolvedValue([
+      { id: "room-1", name: "B14", maxConcurrentSlots: 1 },
+    ]);
+    prisma.classTimetableSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableOneOffSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableSlotException.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.listRooms("school-1", {
+      availabilityFromDate: "2026-01-05",
+      availabilityStartMinute: 480,
+      availabilityEndMinute: 570,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(1);
+  });
+
+  it("exclut une salle qui n'est libre qu'un jour sur une plage de dates (règle : libre sur toute la plage)", async () => {
+    // 2026-01-05 (lundi, weekday=1) occupé, 2026-01-06 (mardi, weekday=2) libre
+    prisma.room.findMany.mockResolvedValue([
+      { id: "room-1", name: "B14", maxConcurrentSlots: 1 },
+    ]);
+    prisma.classTimetableSlot.findMany.mockResolvedValue([
+      {
+        id: "slot-1",
+        roomId: "room-1",
+        weekday: 1,
+        activeFromDate: null,
+        activeToDate: null,
+      },
+    ]);
+    prisma.classTimetableOneOffSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableSlotException.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.listRooms("school-1", {
+      availabilityFromDate: "2026-01-05",
+      availabilityToDate: "2026-01-06",
+      availabilityStartMinute: 480,
+      availabilityEndMinute: 570,
+    });
+
+    expect(result.items).toHaveLength(0);
+    expect(result.total).toBe(0);
+  });
+
+  it("inclut une salle libre chaque jour d'une plage de dates", async () => {
+    prisma.room.findMany.mockResolvedValue([
+      { id: "room-1", name: "B14", maxConcurrentSlots: 1 },
+    ]);
+    prisma.classTimetableSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableOneOffSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableSlotException.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.listRooms("school-1", {
+      availabilityFromDate: "2026-01-05",
+      availabilityToDate: "2026-01-06",
+      availabilityStartMinute: 480,
+      availabilityEndMinute: 570,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.total).toBe(1);
+  });
+
+  it("respecte maxConcurrentSlots > 1 : occupation partielle reste disponible", async () => {
+    prisma.room.findMany.mockResolvedValue([
+      { id: "room-gym", name: "Gymnase", maxConcurrentSlots: 2 },
+    ]);
+    prisma.classTimetableSlot.findMany.mockResolvedValue([
+      {
+        id: "slot-1",
+        roomId: "room-gym",
+        weekday: 1,
+        activeFromDate: null,
+        activeToDate: null,
+      },
+    ]);
+    prisma.classTimetableOneOffSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableSlotException.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.listRooms("school-1", {
+      availabilityFromDate: "2026-01-05",
+      availabilityStartMinute: 480,
+      availabilityEndMinute: 570,
+    });
+
+    expect(result.items).toHaveLength(1);
+  });
+
+  it("pagine en mémoire les résultats filtrés par disponibilité", async () => {
+    prisma.room.findMany.mockResolvedValue([
+      { id: "room-1", name: "Salle A", maxConcurrentSlots: 1 },
+      { id: "room-2", name: "Salle B", maxConcurrentSlots: 1 },
+      { id: "room-3", name: "Salle C", maxConcurrentSlots: 1 },
+    ]);
+    prisma.classTimetableSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableOneOffSlot.findMany.mockResolvedValue([]);
+    prisma.classTimetableSlotException.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await service.listRooms("school-1", {
+      availabilityFromDate: "2026-01-05",
+      availabilityStartMinute: 480,
+      availabilityEndMinute: 570,
+      page: 2,
+      limit: 1,
+    });
+
+    expect(result.total).toBe(3);
+    expect(result.items).toEqual([
+      { id: "room-2", name: "Salle B", maxConcurrentSlots: 1 },
+    ]);
+  });
+});
+
+describe("ManagementService — getRoom", () => {
+  it("retourne la salle si elle existe dans l'école", async () => {
+    prisma.room.findFirst.mockResolvedValue({
+      id: "room-1",
+      name: "B14",
+      status: "AVAILABLE",
+    });
+
+    const result = await service.getRoom("school-1", "room-1");
+
+    expect(prisma.room.findFirst).toHaveBeenCalledWith({
+      where: { id: "room-1", schoolId: "school-1" },
+    });
+    expect(result).toEqual({
+      id: "room-1",
+      name: "B14",
+      status: "AVAILABLE",
+    });
+  });
+
+  it("lève NotFoundException si la salle n'existe pas dans l'école", async () => {
+    prisma.room.findFirst.mockResolvedValue(null);
+
+    await expect(service.getRoom("school-1", "room-unknown")).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });
 

@@ -30,6 +30,7 @@ import { CreateClassroomDto } from "./dto/create-classroom.dto.js";
 import { CreateRoomDto } from "./dto/create-room.dto.js";
 import { UpdateRoomDto } from "./dto/update-room.dto.js";
 import { ListAvailableRoomsQueryDto } from "./dto/list-available-rooms-query.dto.js";
+import { ListRoomsQueryDto } from "./dto/list-rooms-query.dto.js";
 import { GetRoomCalendarQueryDto } from "./dto/get-room-calendar-query.dto.js";
 import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
@@ -524,8 +525,11 @@ export class ManagementController {
     "SUPER_ADMIN",
     "TEACHER",
   )
-  listRooms(@CurrentSchoolId() schoolId: string) {
-    return this.managementService.listRooms(schoolId);
+  listRooms(
+    @CurrentSchoolId() schoolId: string,
+    @Query() query: ListRoomsQueryDto,
+  ) {
+    return this.managementService.listRooms(schoolId, query);
   }
 
   @Get("schools/:schoolSlug/admin/rooms/available")
@@ -543,6 +547,23 @@ export class ManagementController {
     @Query() query: ListAvailableRoomsQueryDto,
   ) {
     return this.managementService.listAvailableRooms(schoolId, query);
+  }
+
+  @Get("schools/:schoolSlug/admin/rooms/:roomId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "ADMIN",
+    "SUPER_ADMIN",
+    "TEACHER",
+  )
+  getRoom(
+    @CurrentSchoolId() schoolId: string,
+    @Param("roomId") roomId: string,
+  ) {
+    return this.managementService.getRoom(schoolId, roomId);
   }
 
   @Get("schools/:schoolSlug/admin/rooms/:roomId/calendar")
