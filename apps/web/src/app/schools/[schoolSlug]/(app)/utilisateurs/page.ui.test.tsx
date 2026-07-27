@@ -1111,4 +1111,238 @@ describe("UtilisateursPage", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  // ── Création d'utilisateur ────────────────────────────────────────────────
+
+  describe("Création d'utilisateur", () => {
+    it("ouvre le sélecteur de type au clic sur le bouton, sans SCHOOL_ADMIN", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/users?")) return jsonRes(makeListResponse([]));
+        return jsonRes({}, 404);
+      });
+
+      render(<UtilisateursPage />);
+      fireEvent.click(await screen.findByTestId("create-user-button"));
+
+      expect(
+        await screen.findByTestId("create-user-type-teacher"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("create-user-type-student"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("create-user-type-parent")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("create-user-type-school_manager"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("create-user-type-supervisor"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("create-user-type-school_accountant"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("create-user-type-school_staff"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("create-user-type-school_admin"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("crée un enseignant par téléphone puis affiche sa fiche détail", async () => {
+      const fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation((input, init) => {
+          const url = String(input);
+          const method = init?.method ?? "GET";
+          if (url.includes("/users?")) return jsonRes(makeListResponse([]));
+          if (url.endsWith("/admin/teachers") && method === "POST") {
+            return jsonRes({
+              user: { id: "new-teacher-1" },
+              userExisted: false,
+            });
+          }
+          if (url.includes("/users/new-teacher-1")) {
+            return jsonRes({ ...TEACHER_DETAIL, id: "new-teacher-1" });
+          }
+          return jsonRes({}, 404);
+        });
+
+      render(<UtilisateursPage />);
+      fireEvent.click(await screen.findByTestId("create-user-button"));
+      fireEvent.click(await screen.findByTestId("create-user-type-teacher"));
+
+      fireEvent.change(await screen.findByTestId("create-user-phone"), {
+        target: { value: "699001122" },
+      });
+      fireEvent.change(screen.getByTestId("create-user-pin"), {
+        target: { value: "123456" },
+      });
+      fireEvent.click(screen.getByTestId("create-user-submit"));
+
+      await waitFor(() => {
+        const postCall = fetchMock.mock.calls.find(
+          ([url, init]) =>
+            String(url).endsWith("/admin/teachers") && init?.method === "POST",
+        );
+        expect(postCall).toBeDefined();
+        expect(String(postCall?.[1]?.body ?? "")).toContain(
+          '"phone":"699001122"',
+        );
+        expect(String(postCall?.[1]?.body ?? "")).toContain('"pin":"123456"');
+      });
+
+      expect(
+        await screen.findByTestId("user-detail-panel"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("create-user-modal")).not.toBeInTheDocument();
+    });
+
+    it("erreur de création → message affiché, modale toujours ouverte", async () => {
+      vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("/users?")) return jsonRes(makeListResponse([]));
+        if (url.endsWith("/admin/teachers") && method === "POST") {
+          return jsonRes({ message: "Teacher already exists" }, 400);
+        }
+        return jsonRes({}, 404);
+      });
+
+      render(<UtilisateursPage />);
+      fireEvent.click(await screen.findByTestId("create-user-button"));
+      fireEvent.click(await screen.findByTestId("create-user-type-teacher"));
+
+      fireEvent.change(await screen.findByTestId("create-user-phone"), {
+        target: { value: "699001122" },
+      });
+      fireEvent.change(screen.getByTestId("create-user-pin"), {
+        target: { value: "123456" },
+      });
+      fireEvent.click(screen.getByTestId("create-user-submit"));
+
+      expect(
+        await screen.findByText("Teacher already exists"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("create-user-modal")).toBeInTheDocument();
+    });
+
+    it("charge les classes au choix du type Élève et crée l'élève sans compte", async () => {
+      const fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation((input, init) => {
+          const url = String(input);
+          const method = init?.method ?? "GET";
+          if (url.includes("/users?")) return jsonRes(makeListResponse([]));
+          if (url.endsWith("/admin/classrooms") && method === "GET") {
+            return jsonRes([
+              {
+                id: "class-1",
+                name: "6eC",
+                academicLevel: { id: "lvl-1", code: "6E", label: "6ème" },
+              },
+            ]);
+          }
+          if (url.endsWith("/admin/students") && method === "POST") {
+            return jsonRes({ id: "student-new-1" }, 201);
+          }
+          return jsonRes({}, 404);
+        });
+
+      render(<UtilisateursPage />);
+      fireEvent.click(await screen.findByTestId("create-user-button"));
+      fireEvent.click(await screen.findByTestId("create-user-type-student"));
+
+      await waitFor(() => {
+        const call = fetchMock.mock.calls.find(([url]) =>
+          String(url).endsWith("/admin/classrooms"),
+        );
+        expect(call).toBeDefined();
+      });
+
+      fireEvent.change(await screen.findByTestId("create-user-first-name"), {
+        target: { value: "Jean" },
+      });
+      fireEvent.change(screen.getByTestId("create-user-last-name"), {
+        target: { value: "Dupont" },
+      });
+      fireEvent.change(screen.getByTestId("create-user-level"), {
+        target: { value: "lvl-1" },
+      });
+      fireEvent.change(screen.getByTestId("create-user-class"), {
+        target: { value: "class-1" },
+      });
+      fireEvent.click(screen.getByTestId("create-user-submit"));
+
+      await waitFor(() => {
+        const postCall = fetchMock.mock.calls.find(
+          ([url, init]) =>
+            String(url).endsWith("/admin/students") && init?.method === "POST",
+        );
+        expect(postCall).toBeDefined();
+        expect(String(postCall?.[1]?.body ?? "")).toContain(
+          '"classId":"class-1"',
+        );
+      });
+    });
+
+    it("charge les fonctions au choix d'un type personnel et crée le membre", async () => {
+      const fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation((input, init) => {
+          const url = String(input);
+          const method = init?.method ?? "GET";
+          if (url.includes("/users?")) return jsonRes(makeListResponse([]));
+          if (url.endsWith("/admin/staff-functions") && method === "GET") {
+            return jsonRes([
+              { id: "fn-1", name: "Économe", description: null },
+            ]);
+          }
+          if (url.endsWith("/admin/staff-members") && method === "POST") {
+            return jsonRes({ user: { id: "staff-new-1" } }, 201);
+          }
+          if (url.includes("/users/staff-new-1")) {
+            return jsonRes({ ...TEACHER_DETAIL, id: "staff-new-1" });
+          }
+          return jsonRes({}, 404);
+        });
+
+      render(<UtilisateursPage />);
+      fireEvent.click(await screen.findByTestId("create-user-button"));
+      fireEvent.click(
+        await screen.findByTestId("create-user-type-school_accountant"),
+      );
+
+      await waitFor(() => {
+        const call = fetchMock.mock.calls.find(([url]) =>
+          String(url).endsWith("/admin/staff-functions"),
+        );
+        expect(call).toBeDefined();
+      });
+
+      fireEvent.change(await screen.findByTestId("create-user-phone"), {
+        target: { value: "699001122" },
+      });
+      fireEvent.change(screen.getByTestId("create-user-pin"), {
+        target: { value: "123456" },
+      });
+      fireEvent.click(screen.getByTestId("create-user-submit"));
+
+      await waitFor(() => {
+        const postCall = fetchMock.mock.calls.find(
+          ([url, init]) =>
+            String(url).endsWith("/admin/staff-members") &&
+            init?.method === "POST",
+        );
+        expect(postCall).toBeDefined();
+        expect(String(postCall?.[1]?.body ?? "")).toContain(
+          '"role":"SCHOOL_ACCOUNTANT"',
+        );
+      });
+
+      expect(
+        await screen.findByTestId("user-detail-panel"),
+      ).toBeInTheDocument();
+    });
+  });
 });

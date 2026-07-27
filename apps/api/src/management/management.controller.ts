@@ -30,6 +30,7 @@ import { CreateClassroomDto } from "./dto/create-classroom.dto.js";
 import { CreateRoomDto } from "./dto/create-room.dto.js";
 import { UpdateRoomDto } from "./dto/update-room.dto.js";
 import { ListAvailableRoomsQueryDto } from "./dto/list-available-rooms-query.dto.js";
+import { ListRoomsQueryDto } from "./dto/list-rooms-query.dto.js";
 import { GetRoomCalendarQueryDto } from "./dto/get-room-calendar-query.dto.js";
 import { CreateClassSubjectOverrideDto } from "./dto/create-class-subject-override.dto.js";
 import { CreateCurriculumDto } from "./dto/create-curriculum.dto.js";
@@ -48,6 +49,7 @@ import { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
 import { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
 import { CreateSchoolStaffAssignmentDto } from "./dto/create-school-staff-assignment.dto.js";
 import { CreateSchoolStaffFunctionDto } from "./dto/create-school-staff-function.dto.js";
+import { CreateSchoolStaffMemberDto } from "./dto/create-school-staff-member.dto.js";
 import { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
 import { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
 import { CreateStudentLifeEventDto } from "./dto/create-student-life-event.dto.js";
@@ -524,8 +526,11 @@ export class ManagementController {
     "SUPER_ADMIN",
     "TEACHER",
   )
-  listRooms(@CurrentSchoolId() schoolId: string) {
-    return this.managementService.listRooms(schoolId);
+  listRooms(
+    @CurrentSchoolId() schoolId: string,
+    @Query() query: ListRoomsQueryDto,
+  ) {
+    return this.managementService.listRooms(schoolId, query);
   }
 
   @Get("schools/:schoolSlug/admin/rooms/available")
@@ -543,6 +548,23 @@ export class ManagementController {
     @Query() query: ListAvailableRoomsQueryDto,
   ) {
     return this.managementService.listAvailableRooms(schoolId, query);
+  }
+
+  @Get("schools/:schoolSlug/admin/rooms/:roomId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "ADMIN",
+    "SUPER_ADMIN",
+    "TEACHER",
+  )
+  getRoom(
+    @CurrentSchoolId() schoolId: string,
+    @Param("roomId") roomId: string,
+  ) {
+    return this.managementService.getRoom(schoolId, roomId);
   }
 
   @Get("schools/:schoolSlug/admin/rooms/:roomId/calendar")
@@ -1151,6 +1173,16 @@ export class ManagementController {
     @Body() payload: CreateTeacherDto,
   ) {
     return this.managementService.createTeacher(schoolId, payload);
+  }
+
+  @Post("schools/:schoolSlug/admin/staff-members")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SUPER_ADMIN")
+  createSchoolStaffMember(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: CreateSchoolStaffMemberDto,
+  ) {
+    return this.managementService.createSchoolStaffMember(schoolId, payload);
   }
 
   @Post("schools/:schoolSlug/admin/students")

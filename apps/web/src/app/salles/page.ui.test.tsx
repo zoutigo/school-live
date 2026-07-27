@@ -53,7 +53,7 @@ describe("Rooms page forms", () => {
           if (method === "POST") {
             return jsonResponse({ id: "room-1" }, 201);
           }
-          return jsonResponse([]);
+          return jsonResponse({ items: [], page: 1, limit: 20, total: 0 });
         }
 
         return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
@@ -101,7 +101,7 @@ describe("Rooms page forms", () => {
         });
       }
       if (url.includes("/admin/rooms")) {
-        return jsonResponse([]);
+        return jsonResponse({ items: [], page: 1, limit: 20, total: 0 });
       }
       return jsonResponse({ message: "Unhandled" }, 404);
     });
@@ -144,19 +144,24 @@ describe("Rooms page forms", () => {
         }
         if (url.includes("/admin/rooms")) {
           if (method === "GET") {
-            return jsonResponse([
-              {
-                id: "room-1",
-                schoolId: "school-1",
-                name: "Gymnase",
-                description: null,
-                capacity: 60,
-                maxConcurrentSlots: 3,
-                status: "AVAILABLE",
-                createdAt: "2026-01-01T00:00:00.000Z",
-                updatedAt: "2026-01-01T00:00:00.000Z",
-              },
-            ]);
+            return jsonResponse({
+              items: [
+                {
+                  id: "room-1",
+                  schoolId: "school-1",
+                  name: "Gymnase",
+                  description: null,
+                  capacity: 60,
+                  maxConcurrentSlots: 3,
+                  status: "AVAILABLE",
+                  createdAt: "2026-01-01T00:00:00.000Z",
+                  updatedAt: "2026-01-01T00:00:00.000Z",
+                },
+              ],
+              page: 1,
+              limit: 20,
+              total: 1,
+            });
           }
         }
 
@@ -215,19 +220,24 @@ describe("Rooms page forms", () => {
         ]);
       }
       if (url.includes("/admin/rooms")) {
-        return jsonResponse([
-          {
-            id: "room-1",
-            schoolId: "school-1",
-            name: "Gymnase",
-            description: null,
-            capacity: 60,
-            maxConcurrentSlots: 3,
-            status: "AVAILABLE",
-            createdAt: "2026-01-01T00:00:00.000Z",
-            updatedAt: "2026-01-01T00:00:00.000Z",
-          },
-        ]);
+        return jsonResponse({
+          items: [
+            {
+              id: "room-1",
+              schoolId: "school-1",
+              name: "Gymnase",
+              description: null,
+              capacity: 60,
+              maxConcurrentSlots: 3,
+              status: "AVAILABLE",
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+          page: 1,
+          limit: 20,
+          total: 1,
+        });
       }
 
       return jsonResponse({ message: "Unhandled" }, 404);
@@ -240,5 +250,189 @@ describe("Rooms page forms", () => {
     expect(await screen.findByText("6eme A")).toBeInTheDocument();
     expect(screen.getByText("Maths")).toBeInTheDocument();
     expect(screen.getByText("Alice Martin")).toBeInTheDocument();
+  });
+
+  it("requests page=1&limit=20 on the initial rooms load", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/rooms")) {
+          return jsonResponse({ items: [], page: 1, limit: 20, total: 0 });
+        }
+        return jsonResponse({ message: "Unhandled" }, 404);
+      });
+
+    render(<RoomsPage />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringMatching(/\/admin\/rooms\?page=1&limit=20/),
+        expect.anything(),
+      );
+    });
+  });
+
+  it("sends the search term to the API after the debounce", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/rooms")) {
+          return jsonResponse({ items: [], page: 1, limit: 20, total: 0 });
+        }
+        return jsonResponse({ message: "Unhandled" }, 404);
+      });
+
+    render(<RoomsPage />);
+    await screen.findByTestId("salles-search-input");
+    fetchMock.mockClear();
+
+    fireEvent.change(screen.getByTestId("salles-search-input"), {
+      target: { value: "gym" },
+    });
+
+    await waitFor(
+      () => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.stringContaining("search=gym"),
+          expect.anything(),
+        );
+      },
+      { timeout: 1000 },
+    );
+  });
+
+  it("applies the status filter and reloads the list with it", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/rooms")) {
+          return jsonResponse({ items: [], page: 1, limit: 20, total: 0 });
+        }
+        return jsonResponse({ message: "Unhandled" }, 404);
+      });
+
+    render(<RoomsPage />);
+    await screen.findByTestId("salles-filter-toggle");
+    fireEvent.click(screen.getByTestId("salles-filter-toggle"));
+    fireEvent.change(await screen.findByTestId("salles-filter-status"), {
+      target: { value: "MAINTENANCE" },
+    });
+    fetchMock.mockClear();
+    fireEvent.click(screen.getByTestId("salles-filter-apply"));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("status=MAINTENANCE"),
+        expect.anything(),
+      );
+    });
+    expect(screen.queryByTestId("salles-filter-panel")).not.toBeInTheDocument();
+  });
+
+  it("clicking next page requests page=2", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+        if (url.endsWith("/api/me")) {
+          return jsonResponse({
+            role: "SCHOOL_ADMIN",
+            schoolSlug: "college-vogt",
+          });
+        }
+        if (url.includes("/admin/rooms")) {
+          return jsonResponse({
+            items: [
+              {
+                id: "room-1",
+                schoolId: "school-1",
+                name: "Gymnase",
+                description: null,
+                capacity: 60,
+                maxConcurrentSlots: 3,
+                status: "AVAILABLE",
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+              },
+            ],
+            page: 1,
+            limit: 1,
+            total: 2,
+          });
+        }
+        return jsonResponse({ message: "Unhandled" }, 404);
+      });
+
+    render(<RoomsPage />);
+    await screen.findByText("Gymnase");
+    fetchMock.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: /suivant|next/i }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("page=2"),
+        expect.anything(),
+      );
+    });
+  });
+
+  it("shows a red left border on the row for a non-AVAILABLE room", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (url.includes("/admin/rooms")) {
+        return jsonResponse({
+          items: [
+            {
+              id: "room-1",
+              schoolId: "school-1",
+              name: "Gymnase",
+              description: null,
+              capacity: 60,
+              maxConcurrentSlots: 3,
+              status: "MAINTENANCE",
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+          page: 1,
+          limit: 20,
+          total: 1,
+        });
+      }
+      return jsonResponse({ message: "Unhandled" }, 404);
+    });
+
+    render(<RoomsPage />);
+
+    const row = await screen.findByTestId("salles-room-row-room-1");
+    expect(row.className).toContain("border-l-notification");
   });
 });

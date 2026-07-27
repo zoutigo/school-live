@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from "class-validator";
+import { IsInt, IsOptional, IsString, Min } from "class-validator";
 
 export class UpdateClassroomDto {
   @IsOptional()
@@ -24,4 +24,9 @@ export class UpdateClassroomDto {
   @IsOptional()
   @IsString()
   curriculumId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  capacity?: number | null;
 }
