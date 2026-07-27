@@ -137,10 +137,7 @@ export class TimetableService {
             select: { enrollments: { where: { status: "ACTIVE" } } },
           },
         },
-        orderBy: [
-          { academicLevel: { createdAt: "asc" } },
-          { name: "asc" },
-        ],
+        orderBy: [{ academicLevel: { createdAt: "asc" } }, { name: "asc" }],
         skip,
         take: limit,
       }),

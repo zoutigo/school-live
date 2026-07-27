@@ -62,9 +62,9 @@ describe("ManagementService.getClassroom", () => {
   it("scope la recherche à l'école (n'expose pas une classe d'une autre école)", async () => {
     prisma.class.findFirst.mockResolvedValue(null);
 
-    await expect(
-      service.getClassroom("school-2", "class-1"),
-    ).rejects.toThrow(NotFoundException);
+    await expect(service.getClassroom("school-2", "class-1")).rejects.toThrow(
+      NotFoundException,
+    );
     expect(prisma.class.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "class-1", schoolId: "school-2" },
