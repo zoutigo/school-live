@@ -49,6 +49,7 @@ import { CreateSubjectBranchDto } from "./dto/create-subject-branch.dto.js";
 import { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
 import { CreateSchoolStaffAssignmentDto } from "./dto/create-school-staff-assignment.dto.js";
 import { CreateSchoolStaffFunctionDto } from "./dto/create-school-staff-function.dto.js";
+import { CreateSchoolStaffMemberDto } from "./dto/create-school-staff-member.dto.js";
 import { CreateParentStudentLinkDto } from "./dto/create-parent-student-link.dto.js";
 import { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
 import { CreateStudentLifeEventDto } from "./dto/create-student-life-event.dto.js";
@@ -1172,6 +1173,16 @@ export class ManagementController {
     @Body() payload: CreateTeacherDto,
   ) {
     return this.managementService.createTeacher(schoolId, payload);
+  }
+
+  @Post("schools/:schoolSlug/admin/staff-members")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SUPER_ADMIN")
+  createSchoolStaffMember(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: CreateSchoolStaffMemberDto,
+  ) {
+    return this.managementService.createSchoolStaffMember(schoolId, payload);
   }
 
   @Post("schools/:schoolSlug/admin/students")

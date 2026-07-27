@@ -3043,6 +3043,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "classes.list.yearLabel": "Annee scolaire",
     "classes.list.curriculumLabel": "Curriculum",
     "classes.list.curriculumNone": "Aucun",
+    "classes.list.capacityLabel": "Capacite (optionnel)",
+    "classes.list.capacityPlaceholder": "Ex: 40",
     "classes.list.add": "Ajouter",
     "classes.list.creating": "Creation...",
     "classes.list.saving": "Enregistrement...",
@@ -3586,6 +3588,46 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.gender.F": "Féminin",
     "users.gender.OTHER": "Autre",
     "users.toast.error": "Erreur",
+    "users.create.button": "Nouvel utilisateur",
+    "users.create.eyebrow": "Nouvel utilisateur",
+    "users.create.chooseType.title": "Choisir le type de compte",
+    "users.create.hero.TEACHER.subtitle":
+      "Téléphone + PIN ou email + mot de passe initial.",
+    "users.create.hero.STUDENT.subtitle":
+      "Identité et classe obligatoires ; l'accès au compte est optionnel.",
+    "users.create.hero.PARENT.subtitle":
+      "Rattachez le parent à un élève, puis renseignez son contact.",
+    "users.create.hero.SCHOOL_MANAGER.subtitle":
+      "Téléphone + PIN ou email + mot de passe initial.",
+    "users.create.hero.SUPERVISOR.subtitle":
+      "Téléphone + PIN ou email + mot de passe initial.",
+    "users.create.hero.SCHOOL_ACCOUNTANT.subtitle":
+      "Téléphone + PIN ou email + mot de passe initial.",
+    "users.create.hero.SCHOOL_STAFF.subtitle":
+      "Téléphone + PIN ou email + mot de passe initial.",
+    "users.create.contactMode.phone": "Téléphone + PIN",
+    "users.create.contactMode.email": "Email + mot de passe",
+    "users.create.field.phone": "Téléphone",
+    "users.create.field.pin": "PIN initial",
+    "users.create.field.email": "Email",
+    "users.create.field.password": "Mot de passe initial",
+    "users.create.field.firstName": "Prénom",
+    "users.create.field.lastName": "Nom",
+    "users.create.field.level": "Niveau",
+    "users.create.field.class": "Classe",
+    "users.create.field.accessSection": "Accès (optionnel)",
+    "users.create.field.accessHint":
+      "Sans email ni mot de passe, l'élève est créé sans compte.",
+    "users.create.field.student": "Élève à rattacher",
+    "users.create.field.studentSearch": "Rechercher un élève…",
+    "users.create.field.studentNoResult": "Aucun élève trouvé.",
+    "users.create.field.function": "Fonction (optionnel)",
+    "users.create.submit": "Créer",
+    "users.create.success": "Utilisateur créé avec succès.",
+    "users.create.error.contactRequired":
+      "Téléphone + PIN ou email + mot de passe requis.",
+    "users.create.error.studentRequired": "L'élève est obligatoire.",
+    "users.create.error.classRequired": "La classe est obligatoire.",
   },
   en: {
     "common.save": "Save",
@@ -6486,6 +6528,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "classes.list.yearLabel": "School year",
     "classes.list.curriculumLabel": "Curriculum",
     "classes.list.curriculumNone": "None",
+    "classes.list.capacityLabel": "Capacity (optional)",
+    "classes.list.capacityPlaceholder": "E.g. 40",
     "classes.list.add": "Add",
     "classes.list.creating": "Creating...",
     "classes.list.saving": "Saving...",
@@ -7011,5 +7055,45 @@ export const translations: Record<Locale, Record<string, string>> = {
     "users.gender.F": "Female",
     "users.gender.OTHER": "Other",
     "users.toast.error": "Error",
+    "users.create.button": "New user",
+    "users.create.eyebrow": "New user",
+    "users.create.chooseType.title": "Choose account type",
+    "users.create.hero.TEACHER.subtitle":
+      "Phone + PIN or email + initial password.",
+    "users.create.hero.STUDENT.subtitle":
+      "Identity and class are required; account access is optional.",
+    "users.create.hero.PARENT.subtitle":
+      "Link the parent to a student, then enter their contact details.",
+    "users.create.hero.SCHOOL_MANAGER.subtitle":
+      "Phone + PIN or email + initial password.",
+    "users.create.hero.SUPERVISOR.subtitle":
+      "Phone + PIN or email + initial password.",
+    "users.create.hero.SCHOOL_ACCOUNTANT.subtitle":
+      "Phone + PIN or email + initial password.",
+    "users.create.hero.SCHOOL_STAFF.subtitle":
+      "Phone + PIN or email + initial password.",
+    "users.create.contactMode.phone": "Phone + PIN",
+    "users.create.contactMode.email": "Email + password",
+    "users.create.field.phone": "Phone",
+    "users.create.field.pin": "Initial PIN",
+    "users.create.field.email": "Email",
+    "users.create.field.password": "Initial password",
+    "users.create.field.firstName": "First name",
+    "users.create.field.lastName": "Last name",
+    "users.create.field.level": "Level",
+    "users.create.field.class": "Class",
+    "users.create.field.accessSection": "Access (optional)",
+    "users.create.field.accessHint":
+      "Without an email or password, the student is created without an account.",
+    "users.create.field.student": "Student to link",
+    "users.create.field.studentSearch": "Search for a student…",
+    "users.create.field.studentNoResult": "No student found.",
+    "users.create.field.function": "Function (optional)",
+    "users.create.submit": "Create",
+    "users.create.success": "User created successfully.",
+    "users.create.error.contactRequired":
+      "Phone + PIN or email + password required.",
+    "users.create.error.studentRequired": "Student is required.",
+    "users.create.error.classRequired": "Class is required.",
   },
 };

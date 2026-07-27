@@ -90,6 +90,7 @@ type ClassroomRow = {
   _count: {
     enrollments: number;
   };
+  capacity: number | null;
 };
 
 type SubjectRow = {
@@ -196,16 +197,26 @@ type TimetableClassReadResponse = {
   }>;
 };
 
+const capacityFieldSchema = z
+  .string()
+  .trim()
+  .optional()
+  .refine((value) => !value || /^[1-9]\d*$/.test(value), {
+    message: "La capacite doit etre un nombre entier positif.",
+  });
+
 const createClassroomSchema = z.object({
   name: z.string().trim().min(1, "Le nom de la classe est obligatoire."),
   schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
   curriculumId: z.string().trim().min(1, "Le curriculum est obligatoire."),
+  capacity: capacityFieldSchema,
 });
 
 const updateClassroomSchema = z.object({
   name: z.string().trim().min(1, "Le nom de la classe est obligatoire."),
   schoolYearId: z.string().trim().min(1, "L'annee scolaire est obligatoire."),
   curriculumId: z.string().trim().optional(),
+  capacity: capacityFieldSchema,
 });
 
 const createTeacherAssignmentSchema = z.object({
@@ -227,6 +238,11 @@ const classReferentSchema = z.object({
 
 function optionalId(value: string) {
   return value.trim() === "" ? undefined : value;
+}
+
+function optionalCapacity(value: string) {
+  const trimmed = value.trim();
+  return trimmed === "" ? undefined : Number(trimmed);
 }
 
 const SUBJECT_COLOR_FALLBACK_PALETTE = [
@@ -399,6 +415,7 @@ export default function ClassesPage() {
       name: "",
       schoolYearId: "",
       curriculumId: "",
+      capacity: "",
     },
   });
   const editClassValues = editClassForm.watch();
@@ -438,6 +455,7 @@ export default function ClassesPage() {
       name: "",
       schoolYearId: "",
       curriculumId: "",
+      capacity: "",
     },
   });
   const createClassValues = createClassForm.watch();
@@ -787,6 +805,7 @@ export default function ClassesPage() {
         body: JSON.stringify({
           ...values,
           curriculumId: optionalId(values.curriculumId ?? ""),
+          capacity: optionalCapacity(values.capacity ?? ""),
         }),
       });
 
@@ -806,6 +825,7 @@ export default function ClassesPage() {
         name: "",
         schoolYearId: createClassForm.getValues("schoolYearId") ?? "",
         curriculumId: "",
+        capacity: "",
       });
       setSuccess(t("classes.success.created"));
       await loadData(schoolSlug);
@@ -822,6 +842,7 @@ export default function ClassesPage() {
       name: entry.name,
       schoolYearId: entry.schoolYear.id,
       curriculumId: entry.curriculum?.id ?? "",
+      capacity: entry.capacity != null ? String(entry.capacity) : "",
     });
   }
 
@@ -855,6 +876,7 @@ export default function ClassesPage() {
           body: JSON.stringify({
             ...values,
             curriculumId: optionalId(values.curriculumId ?? ""),
+            capacity: optionalCapacity(values.capacity ?? ""),
           }),
         },
       );
@@ -1624,6 +1646,19 @@ export default function ClassesPage() {
                   </FormSelect>
                 </FormField>
 
+                <FormField
+                  label={t("classes.list.capacityLabel")}
+                  error={createClassForm.formState.errors.capacity?.message}
+                >
+                  <FormTextInput
+                    aria-label={t("classes.list.capacityLabel")}
+                    inputMode="numeric"
+                    {...createClassForm.register("capacity")}
+                    placeholder={t("classes.list.capacityPlaceholder")}
+                    invalid={Boolean(createClassForm.formState.errors.capacity)}
+                  />
+                </FormField>
+
                 <div className="md:col-span-6">
                   <FormSubmitHint
                     visible={!createClassForm.formState.isValid}
@@ -1713,7 +1748,9 @@ export default function ClassesPage() {
                               {entry.schoolYear.label}
                             </td>
                             <td className="px-3 py-2">
-                              {entry._count.enrollments}
+                              {entry.capacity != null
+                                ? `${entry._count.enrollments} / ${entry.capacity}`
+                                : entry._count.enrollments}
                             </td>
                             <td className="px-3 py-2 text-right">
                               <div className="inline-flex gap-2">
@@ -1843,6 +1880,24 @@ export default function ClassesPage() {
                                         </option>
                                       ))}
                                     </FormSelect>
+                                  </FormField>
+                                  <FormField
+                                    label={t("classes.list.capacityLabel")}
+                                    error={
+                                      editClassForm.formState.errors.capacity
+                                        ?.message
+                                    }
+                                  >
+                                    <FormTextInput
+                                      inputMode="numeric"
+                                      {...editClassForm.register("capacity")}
+                                      placeholder={t(
+                                        "classes.list.capacityPlaceholder",
+                                      )}
+                                      invalid={Boolean(
+                                        editClassForm.formState.errors.capacity,
+                                      )}
+                                    />
                                   </FormField>
                                   <div className="flex gap-2 md:col-span-3">
                                     <FormSubmitHint

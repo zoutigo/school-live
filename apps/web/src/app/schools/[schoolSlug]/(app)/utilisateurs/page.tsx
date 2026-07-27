@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
+import { PasswordInput } from "../../../../../components/ui/password-input";
+import { PinInput } from "../../../../../components/ui/pin-input";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -131,6 +133,55 @@ type AdminStudentRow = {
     schoolYear: { id: string; label: string };
   } | null;
 };
+
+type AdminClassroomOption = {
+  id: string;
+  name: string;
+  academicLevel: { id: string; code: string; label: string } | null;
+};
+
+type StaffFunctionOption = {
+  id: string;
+  name: string;
+  description: string | null;
+};
+
+type CreatableRole =
+  | "TEACHER"
+  | "STUDENT"
+  | "PARENT"
+  | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
+  | "SCHOOL_ACCOUNTANT"
+  | "SCHOOL_STAFF";
+
+const CREATABLE_ROLES: CreatableRole[] = [
+  "TEACHER",
+  "STUDENT",
+  "PARENT",
+  "SCHOOL_MANAGER",
+  "SUPERVISOR",
+  "SCHOOL_ACCOUNTANT",
+  "SCHOOL_STAFF",
+];
+
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+function isContactModeValid(input: {
+  mode: "phone" | "email";
+  phone: string;
+  pin: string;
+  email: string;
+  password: string;
+}) {
+  if (input.mode === "phone") {
+    return /^\d{9}$/.test(input.phone) && /^\d{6}$/.test(input.pin);
+  }
+  return (
+    /\S+@\S+\.\S+/.test(input.email) &&
+    PASSWORD_COMPLEXITY_REGEX.test(input.password)
+  );
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -800,6 +851,556 @@ function AssignChildToParentModal({
         submitting={submitting}
         testId="assign-child"
       />
+    </ModalOverlay>
+  );
+}
+
+// ── CreateUserModal ───────────────────────────────────────────────────────────
+
+function CreateUserModal({
+  schoolSlug,
+  onClose,
+  onSuccess,
+  t,
+}: {
+  schoolSlug: string;
+  onClose: () => void;
+  onSuccess: (member: SchoolMember) => void;
+  t: (k: string) => string;
+}) {
+  const [roleType, setRoleType] = useState<CreatableRole | null>(null);
+  const [mode, setMode] = useState<"phone" | "email">("phone");
+  const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [levelId, setLevelId] = useState("");
+  const [classId, setClassId] = useState("");
+  const [functionId, setFunctionId] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [studentLabel, setStudentLabel] = useState("");
+  const [studentQuery, setStudentQuery] = useState("");
+  const [studentResults, setStudentResults] = useState<AdminStudentRow[]>([]);
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [classrooms, setClassrooms] = useState<AdminClassroomOption[]>([]);
+  const [staffFunctions, setStaffFunctions] = useState<StaffFunctionOption[]>(
+    [],
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function resetContactFields() {
+    setMode("phone");
+    setPhone("");
+    setPin("");
+    setEmail("");
+    setPassword("");
+  }
+
+  function selectRoleType(type: CreatableRole) {
+    setRoleType(type);
+    setError(null);
+    resetContactFields();
+    setFirstName("");
+    setLastName("");
+    setLevelId("");
+    setClassId("");
+    setFunctionId("");
+    setStudentId("");
+    setStudentLabel("");
+    if (type === "STUDENT" && classrooms.length === 0) {
+      apiFetch<AdminClassroomOption[]>(
+        `/schools/${schoolSlug}/admin/classrooms`,
+      )
+        .then(setClassrooms)
+        .catch(() => setClassrooms([]));
+    }
+    if (
+      (type === "SCHOOL_MANAGER" ||
+        type === "SUPERVISOR" ||
+        type === "SCHOOL_ACCOUNTANT" ||
+        type === "SCHOOL_STAFF") &&
+      staffFunctions.length === 0
+    ) {
+      apiFetch<StaffFunctionOption[]>(
+        `/schools/${schoolSlug}/admin/staff-functions`,
+      )
+        .then(setStaffFunctions)
+        .catch(() => setStaffFunctions([]));
+    }
+  }
+
+  useEffect(() => {
+    if (roleType !== "PARENT") return;
+    setStudentLoading(true);
+    const timer = setTimeout(() => {
+      const q = new URLSearchParams({
+        search: studentQuery,
+        page: "1",
+        limit: "20",
+      });
+      apiFetch<{ students: AdminStudentRow[] }>(
+        `/schools/${schoolSlug}/admin/students?${q.toString()}`,
+      )
+        .then((res) => setStudentResults(res.students ?? []))
+        .catch(() => setStudentResults([]))
+        .finally(() => setStudentLoading(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [roleType, studentQuery, schoolSlug]);
+
+  const levelOptions = Array.from(
+    new Map(
+      classrooms
+        .filter((room) => room.academicLevel)
+        .map((room) => [room.academicLevel!.id, room.academicLevel!.label]),
+    ).entries(),
+  ).map(([value, label]) => ({ value, label }));
+
+  const classOptions = classrooms.filter(
+    (room) => !levelId || room.academicLevel?.id === levelId,
+  );
+
+  const contactValid = isContactModeValid({
+    mode,
+    phone,
+    pin,
+    email,
+    password,
+  });
+  const hasAccessFields = Boolean(email.trim() || password.trim());
+
+  const canSubmit = (() => {
+    if (!roleType) return false;
+    if (roleType === "TEACHER") return contactValid;
+    if (roleType === "PARENT") return Boolean(studentId) && contactValid;
+    if (roleType === "STUDENT") {
+      const identityValid = firstName.trim() && lastName.trim() && classId;
+      if (!identityValid) return false;
+      if (!hasAccessFields) return true;
+      return (
+        /\S+@\S+\.\S+/.test(email) && PASSWORD_COMPLEXITY_REGEX.test(password)
+      );
+    }
+    return contactValid;
+  })();
+
+  function buildContactPayload() {
+    return mode === "phone"
+      ? { phone, pin }
+      : { email: email.trim().toLowerCase(), password };
+  }
+
+  async function handleSubmit() {
+    if (!roleType || !canSubmit) return;
+    setError(null);
+    setSubmitting(true);
+    const csrf = getCsrfTokenCookie();
+    try {
+      if (roleType === "TEACHER") {
+        const result = await apiFetch<{ user: { id: string } }>(
+          `/schools/${schoolSlug}/admin/teachers`,
+          {
+            method: "POST",
+            headers: { "X-CSRF-Token": csrf ?? "" },
+            body: JSON.stringify(buildContactPayload()),
+          },
+        );
+        onSuccess({
+          type: "user",
+          id: result.user.id,
+          studentId: null,
+          hasAccount: true,
+          firstName: "",
+          lastName: "",
+          email: null,
+          phone: null,
+          gender: null,
+          roles: ["TEACHER"],
+          activationStatus: "PENDING",
+          profileCompleted: false,
+          createdAt: new Date().toISOString(),
+        });
+      } else if (roleType === "STUDENT") {
+        const result = await apiFetch<{
+          id?: string;
+          user?: { id: string };
+          student?: { id: string };
+        }>(`/schools/${schoolSlug}/admin/students`, {
+          method: "POST",
+          headers: { "X-CSRF-Token": csrf ?? "" },
+          body: JSON.stringify({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            classId,
+            email: email.trim() || undefined,
+            password: password.trim() || undefined,
+          }),
+        });
+        const createdUserId = result.user?.id;
+        const createdStudentId = result.student?.id ?? result.id;
+        if (createdUserId) {
+          onSuccess({
+            type: "user",
+            id: createdUserId,
+            studentId: createdStudentId ?? null,
+            hasAccount: true,
+            firstName: "",
+            lastName: "",
+            email: null,
+            phone: null,
+            gender: null,
+            roles: ["STUDENT"],
+            activationStatus: "PENDING",
+            profileCompleted: false,
+            createdAt: new Date().toISOString(),
+          });
+        } else if (createdStudentId) {
+          onSuccess({
+            type: "student-only",
+            id: createdStudentId,
+            studentId: createdStudentId,
+            hasAccount: false,
+            firstName: "",
+            lastName: "",
+            email: null,
+            phone: null,
+            roles: ["STUDENT"],
+            activationStatus: null,
+            profileCompleted: false,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      } else if (roleType === "PARENT") {
+        const result = await apiFetch<{ parentUserId: string }>(
+          `/schools/${schoolSlug}/admin/parent-students`,
+          {
+            method: "POST",
+            headers: { "X-CSRF-Token": csrf ?? "" },
+            body: JSON.stringify({
+              studentId,
+              ...buildContactPayload(),
+            }),
+          },
+        );
+        onSuccess({
+          type: "user",
+          id: result.parentUserId,
+          studentId: null,
+          hasAccount: true,
+          firstName: "",
+          lastName: "",
+          email: null,
+          phone: null,
+          gender: null,
+          roles: ["PARENT"],
+          activationStatus: "PENDING",
+          profileCompleted: false,
+          createdAt: new Date().toISOString(),
+        });
+      } else {
+        const result = await apiFetch<{ user: { id: string } }>(
+          `/schools/${schoolSlug}/admin/staff-members`,
+          {
+            method: "POST",
+            headers: { "X-CSRF-Token": csrf ?? "" },
+            body: JSON.stringify({
+              role: roleType,
+              functionId: functionId || undefined,
+              ...buildContactPayload(),
+            }),
+          },
+        );
+        onSuccess({
+          type: "user",
+          id: result.user.id,
+          studentId: null,
+          hasAccount: true,
+          firstName: "",
+          lastName: "",
+          email: null,
+          phone: null,
+          gender: null,
+          roles: [roleType],
+          activationStatus: "PENDING",
+          profileCompleted: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      onClose();
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const isStaffType =
+    roleType === "SCHOOL_MANAGER" ||
+    roleType === "SUPERVISOR" ||
+    roleType === "SCHOOL_ACCOUNTANT" ||
+    roleType === "SCHOOL_STAFF";
+
+  return (
+    <ModalOverlay onClose={onClose} testId="create-user-modal">
+      <ModalHeader
+        eyebrow={t("users.create.eyebrow")}
+        title={
+          roleType
+            ? t(ROLE_TRANSLATION_KEYS[roleType])
+            : t("users.create.chooseType.title")
+        }
+        subtitle={
+          roleType ? t(`users.create.hero.${roleType}.subtitle`) : undefined
+        }
+        onClose={onClose}
+      />
+
+      {!roleType ? (
+        <div
+          className="grid grid-cols-2 gap-2"
+          data-testid="create-user-type-list"
+        >
+          {CREATABLE_ROLES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              data-testid={`create-user-type-${type.toLowerCase()}`}
+              onClick={() => selectRoleType(type)}
+              className="rounded-xl border border-warm-border bg-warm-surface px-3 py-2.5 text-left text-sm font-semibold text-text-primary transition-colors hover:border-primary/60 hover:text-primary"
+            >
+              {t(ROLE_TRANSLATION_KEYS[type])}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {roleType === "PARENT" ? (
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-text-secondary">
+                {t("users.create.field.student")}
+              </label>
+              {studentId ? (
+                <div className="flex items-center justify-between rounded-xl border border-primary bg-blue-50 px-3 py-2">
+                  <span className="text-sm font-semibold text-primary">
+                    {studentLabel}
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="create-user-student-clear"
+                    onClick={() => {
+                      setStudentId("");
+                      setStudentLabel("");
+                    }}
+                    className="text-primary"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <ModalSearchInput
+                    value={studentQuery}
+                    onChange={setStudentQuery}
+                    placeholder={t("users.create.field.studentSearch")}
+                    testId="create-user-student-search"
+                  />
+                  <div
+                    className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1"
+                    data-testid="create-user-student-list"
+                  >
+                    {studentLoading ? (
+                      <p className="py-2 text-center text-sm text-text-secondary">
+                        Chargement…
+                      </p>
+                    ) : studentResults.length === 0 ? (
+                      <p className="py-2 text-center text-sm text-text-secondary">
+                        {t("users.create.field.studentNoResult")}
+                      </p>
+                    ) : (
+                      studentResults.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          data-testid={`create-user-student-option-${s.id}`}
+                          onClick={() => {
+                            setStudentId(s.id);
+                            setStudentLabel(
+                              `${s.lastName} ${s.firstName}`.trim(),
+                            );
+                          }}
+                          className="w-full rounded-xl border border-warm-border bg-warm-surface px-3 py-2 text-left text-sm hover:bg-warm-highlight"
+                        >
+                          {s.lastName} {s.firstName}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
+
+          {roleType === "STUDENT" ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  data-testid="create-user-first-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder={t("users.create.field.firstName")}
+                  className="rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                />
+                <input
+                  data-testid="create-user-last-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder={t("users.create.field.lastName")}
+                  className="rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  data-testid="create-user-level"
+                  value={levelId}
+                  onChange={(e) => {
+                    setLevelId(e.target.value);
+                    setClassId("");
+                  }}
+                  className="rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">{t("users.create.field.level")}</option>
+                  {levelOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  data-testid="create-user-class"
+                  value={classId}
+                  onChange={(e) => setClassId(e.target.value)}
+                  className="rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">{t("users.create.field.class")}</option>
+                  {classOptions.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {room.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="pt-1 text-xs font-semibold uppercase text-text-secondary">
+                {t("users.create.field.accessSection")}
+              </p>
+              <p className="text-xs text-text-secondary">
+                {t("users.create.field.accessHint")}
+              </p>
+              <input
+                data-testid="create-user-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t("users.create.field.email")}
+                className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+              />
+              <PasswordInput
+                data-testid="create-user-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t("users.create.field.password")}
+                className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+              />
+            </>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  data-testid="create-user-mode-phone"
+                  onClick={() => setMode("phone")}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${mode === "phone" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+                >
+                  {t("users.create.contactMode.phone")}
+                </button>
+                <button
+                  type="button"
+                  data-testid="create-user-mode-email"
+                  onClick={() => setMode("email")}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${mode === "email" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+                >
+                  {t("users.create.contactMode.email")}
+                </button>
+              </div>
+              {mode === "phone" ? (
+                <>
+                  <input
+                    data-testid="create-user-phone"
+                    value={phone}
+                    onChange={(e) =>
+                      setPhone(e.target.value.replace(/\D/g, "").slice(0, 9))
+                    }
+                    placeholder={t("users.create.field.phone")}
+                    className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                  />
+                  <PinInput
+                    data-testid="create-user-pin"
+                    value={pin}
+                    onChange={(e) =>
+                      setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    placeholder={t("users.create.field.pin")}
+                    className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                  />
+                </>
+              ) : (
+                <>
+                  <input
+                    data-testid="create-user-email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t("users.create.field.email")}
+                    className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                  />
+                  <PasswordInput
+                    data-testid="create-user-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t("users.create.field.password")}
+                    className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                  />
+                </>
+              )}
+              {isStaffType ? (
+                <select
+                  data-testid="create-user-function"
+                  value={functionId}
+                  onChange={(e) => setFunctionId(e.target.value)}
+                  className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">{t("users.create.field.function")}</option>
+                  {staffFunctions.map((fn) => (
+                    <option key={fn.id} value={fn.id}>
+                      {fn.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </>
+          )}
+
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          <ModalActions
+            onCancel={() => setRoleType(null)}
+            onSubmit={() => void handleSubmit()}
+            submitLabel={t("users.create.submit")}
+            submitDisabled={!canSubmit}
+            submitting={submitting}
+            testId="create-user"
+          />
+        </div>
+      )}
     </ModalOverlay>
   );
 }
@@ -1628,6 +2229,7 @@ export default function UtilisateursPage() {
   const [schoolYearId, setSchoolYearId] = useState("");
   const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
   const [selected, setSelected] = useState<SchoolMember | null>(null);
+  const [creating, setCreating] = useState(false);
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
@@ -1735,14 +2337,26 @@ export default function UtilisateursPage() {
               {t("users.subtitle")}
             </p>
           </div>
-          {total > 0 ? (
-            <span
-              className="shrink-0 rounded-full border border-warm-border bg-warm-surface px-3 py-1 text-xs font-semibold text-text-secondary"
-              data-testid="users-total"
+          <div className="flex shrink-0 items-center gap-2">
+            {total > 0 ? (
+              <span
+                className="rounded-full border border-warm-border bg-warm-surface px-3 py-1 text-xs font-semibold text-text-secondary"
+                data-testid="users-total"
+              >
+                {total}{" "}
+                {total > 1 ? t("users.count.many") : t("users.count.one")}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              data-testid="create-user-button"
+              onClick={() => setCreating(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary/90"
             >
-              {total} {total > 1 ? t("users.count.many") : t("users.count.one")}
-            </span>
-          ) : null}
+              <UserPlus size={14} />
+              {t("users.create.button")}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1959,6 +2573,19 @@ export default function UtilisateursPage() {
           message={toast.msg}
           type={toast.type}
           onClose={() => setToast(null)}
+        />
+      ) : null}
+
+      {creating ? (
+        <CreateUserModal
+          schoolSlug={schoolSlug}
+          onClose={() => setCreating(false)}
+          onSuccess={(member) => {
+            showToast(t("users.create.success"), "success");
+            setSelected(member);
+            void loadUsers({ reset: true });
+          }}
+          t={t}
         />
       ) : null}
     </div>

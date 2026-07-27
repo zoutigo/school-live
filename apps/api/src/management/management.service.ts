@@ -50,6 +50,7 @@ import type { CreateSchoolDto } from "./dto/create-school.dto.js";
 import type { CreateSchoolYearDto } from "./dto/create-school-year.dto.js";
 import type { CreateSchoolStaffAssignmentDto } from "./dto/create-school-staff-assignment.dto.js";
 import type { CreateSchoolStaffFunctionDto } from "./dto/create-school-staff-function.dto.js";
+import type { CreateSchoolStaffMemberDto } from "./dto/create-school-staff-member.dto.js";
 import type { CreateStudentEnrollmentDto } from "./dto/create-student-enrollment.dto.js";
 import type { CreateStudentLifeEventDto } from "./dto/create-student-life-event.dto.js";
 import type { CreateStudentDto } from "./dto/create-student.dto.js";
@@ -92,6 +93,15 @@ const SCHOOL_ROLES = [
   "PARENT",
   "STUDENT",
 ] as const;
+const STAFF_ROLE_PLACEHOLDER_NAMES: Record<
+  "SCHOOL_MANAGER" | "SUPERVISOR" | "SCHOOL_ACCOUNTANT" | "SCHOOL_STAFF",
+  string
+> = {
+  SCHOOL_MANAGER: "Responsable",
+  SUPERVISOR: "Surveillant",
+  SCHOOL_ACCOUNTANT: "Comptable",
+  SCHOOL_STAFF: "Personnel",
+};
 const CREATABLE_ROLES = [
   "ADMIN",
   "SALES",
@@ -242,6 +252,7 @@ const createClassroomSchema = z.object({
   trackId: z.string().trim().min(1).optional(),
   referentTeacherUserId: z.string().trim().min(1).optional(),
   curriculumId: z.string().trim().min(1),
+  capacity: z.number().int().min(1).optional(),
 });
 
 const updateClassroomSchema = z.object({
@@ -251,6 +262,7 @@ const updateClassroomSchema = z.object({
   trackId: z.string().trim().min(1).optional(),
   referentTeacherUserId: z.string().trim().min(1).optional(),
   curriculumId: z.string().trim().min(1).optional(),
+  capacity: z.number().int().min(1).nullable().optional(),
 });
 
 const roomStatusEnum = z.enum(["AVAILABLE", "UNAVAILABLE", "MAINTENANCE"]);
@@ -2305,6 +2317,7 @@ export class ManagementService {
         trackId: academicReferences.trackId,
         curriculumId: academicReferences.curriculumId,
         referentTeacherUserId: parsed.referentTeacherUserId,
+        capacity: parsed.capacity,
       },
       include: {
         schoolYear: {
@@ -2363,7 +2376,8 @@ export class ManagementService {
       parsed.academicLevelId === undefined &&
       parsed.trackId === undefined &&
       parsed.referentTeacherUserId === undefined &&
-      parsed.curriculumId === undefined
+      parsed.curriculumId === undefined &&
+      parsed.capacity === undefined
     ) {
       throw new BadRequestException("No fields to update");
     }
@@ -2412,6 +2426,7 @@ export class ManagementService {
         trackId: academicReferences.trackId,
         curriculumId: academicReferences.curriculumId,
         referentTeacherUserId: parsed.referentTeacherUserId,
+        capacity: parsed.capacity,
       },
       include: {
         schoolYear: {
@@ -5874,6 +5889,208 @@ export class ManagementService {
     };
   }
 
+  async createSchoolStaffMember(
+    schoolId: string,
+    payload: CreateSchoolStaffMemberDto,
+  ) {
+    const normalizedEmail = payload.email?.trim().toLowerCase() ?? null;
+    const normalizedPhone = payload.phone
+      ? this.normalizePhone(payload.phone)
+      : null;
+    const hasEmail = Boolean(normalizedEmail);
+    const hasPhone = Boolean(normalizedPhone);
+
+    if (!hasEmail && !hasPhone) {
+      throw new BadRequestException("Email ou numero de telephone requis");
+    }
+
+    if (payload.functionId) {
+      await this.ensureSchoolStaffFunctionInSchool(
+        payload.functionId,
+        schoolId,
+      );
+    }
+
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { slug: true },
+    });
+
+    const existingUser = await this.findUserByContact({
+      email: normalizedEmail,
+      phone: normalizedPhone,
+    });
+
+    if (existingUser) {
+      const result = await this.prisma.$transaction(async (tx) => {
+        await tx.schoolMembership.upsert({
+          where: {
+            userId_schoolId_role: {
+              userId: existingUser.id,
+              schoolId,
+              role: payload.role,
+            },
+          },
+          create: {
+            userId: existingUser.id,
+            schoolId,
+            role: payload.role,
+          },
+          update: {},
+        });
+
+        const staffAssignment = payload.functionId
+          ? await tx.schoolStaffAssignment.upsert({
+              where: {
+                schoolId_functionId_userId: {
+                  schoolId,
+                  functionId: payload.functionId,
+                  userId: existingUser.id,
+                },
+              },
+              create: {
+                schoolId,
+                functionId: payload.functionId,
+                userId: existingUser.id,
+              },
+              update: {},
+            })
+          : null;
+
+        return {
+          user: existingUser,
+          staffAssignment,
+          userExisted: true,
+          onboardingEmailSent: false,
+          activationRequired: false,
+        };
+      });
+
+      return result;
+    }
+
+    if (hasPhone && !hasEmail && !payload.pin?.trim()) {
+      throw new BadRequestException(
+        "PIN initial requis pour une creation par telephone",
+      );
+    }
+
+    if (hasEmail && !payload.password?.trim()) {
+      throw new BadRequestException(
+        "Mot de passe initial requis pour une creation par email",
+      );
+    }
+
+    const placeholderName = STAFF_ROLE_PLACEHOLDER_NAMES[payload.role];
+
+    if (hasPhone && !hasEmail) {
+      const initialPin = payload.pin!.trim();
+      const passwordHash = await bcrypt.hash(initialPin, 10);
+      const technicalEmail = this.buildTechnicalEmailFromPhone(
+        normalizedPhone!,
+        "staff",
+      );
+
+      const created = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            firstName: placeholderName,
+            lastName: normalizedPhone!.slice(-4),
+            email: technicalEmail,
+            phone: normalizedPhone!,
+            passwordHash,
+            mustChangePassword: false,
+            profileCompleted: false,
+            activationStatus: "PENDING",
+            memberships: {
+              create: {
+                schoolId,
+                role: payload.role,
+              },
+            },
+          },
+        });
+
+        const staffAssignment = payload.functionId
+          ? await tx.schoolStaffAssignment.create({
+              data: {
+                schoolId,
+                functionId: payload.functionId,
+                userId: user.id,
+              },
+            })
+          : null;
+
+        return { user, staffAssignment };
+      });
+
+      const activationCode = await this.issueActivationCode(
+        created.user.id,
+        schoolId,
+        undefined,
+      );
+
+      return {
+        ...created,
+        userExisted: false,
+        onboardingEmailSent: false,
+        activationRequired: true,
+        activationCode,
+      };
+    }
+
+    const staffEmail = normalizedEmail!;
+    const derivedName = this.deriveNameFromEmail(staffEmail);
+    const initialPassword = payload.password!.trim();
+    const passwordHash = await bcrypt.hash(initialPassword, 10);
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          firstName: derivedName.firstName,
+          lastName: derivedName.lastName,
+          email: staffEmail,
+          phone: normalizedPhone,
+          passwordHash,
+          mustChangePassword: true,
+          profileCompleted: false,
+          memberships: {
+            create: {
+              schoolId,
+              role: payload.role,
+            },
+          },
+        },
+      });
+
+      const staffAssignment = payload.functionId
+        ? await tx.schoolStaffAssignment.create({
+            data: {
+              schoolId,
+              functionId: payload.functionId,
+              userId: user.id,
+            },
+          })
+        : null;
+
+      return { user, staffAssignment };
+    });
+
+    await this.mailService.sendTemporaryPasswordEmail({
+      to: staffEmail,
+      firstName: created.user.firstName,
+      temporaryPassword: initialPassword,
+      schoolSlug: school?.slug ?? null,
+    });
+
+    return {
+      ...created,
+      userExisted: false,
+      onboardingEmailSent: true,
+      activationRequired: false,
+    };
+  }
+
   async createStudent(schoolId: string, payload: CreateStudentDto) {
     const classEntity = await this.prisma.class.findFirst({
       where: { id: payload.classId, schoolId },
@@ -5883,6 +6100,11 @@ export class ManagementService {
     if (!classEntity) {
       throw new NotFoundException("Classroom not found");
     }
+
+    await this.ensureClassHasCapacity(
+      payload.classId,
+      classEntity.schoolYearId,
+    );
 
     if (payload.email && payload.password) {
       const studentEmail = payload.email.toLowerCase();
@@ -6557,6 +6779,23 @@ export class ManagementService {
 
     const status = parsed.status ?? "ACTIVE";
 
+    const existingEnrollment = await this.prisma.enrollment.findUnique({
+      where: {
+        schoolYearId_studentId: {
+          schoolYearId: classEntity.schoolYearId,
+          studentId,
+        },
+      },
+      select: { classId: true },
+    });
+
+    if (status === "ACTIVE" && existingEnrollment?.classId !== classEntity.id) {
+      await this.ensureClassHasCapacity(
+        classEntity.id,
+        classEntity.schoolYearId,
+      );
+    }
+
     const enrollment = await this.prisma.enrollment.upsert({
       where: {
         schoolYearId_studentId: {
@@ -6626,11 +6865,31 @@ export class ManagementService {
           in: parsed.enrollmentIds,
         },
       },
-      select: { id: true },
+      select: { id: true, classId: true, schoolYearId: true, status: true },
     });
 
     if (existingRows.length !== parsed.enrollmentIds.length) {
       throw new NotFoundException("One or more enrollments were not found");
+    }
+
+    if (parsed.status === "ACTIVE") {
+      const incomingCountByClass = new Map<
+        string,
+        { schoolYearId: string; count: number }
+      >();
+      for (const row of existingRows) {
+        if (row.status === "ACTIVE") continue;
+        const entry = incomingCountByClass.get(row.classId);
+        if (entry) entry.count += 1;
+        else
+          incomingCountByClass.set(row.classId, {
+            schoolYearId: row.schoolYearId,
+            count: 1,
+          });
+      }
+      for (const [classId, { schoolYearId, count }] of incomingCountByClass) {
+        await this.ensureClassHasCapacity(classId, schoolYearId, count);
+      }
     }
 
     const result = await this.prisma.enrollment.updateMany({
@@ -6679,11 +6938,21 @@ export class ManagementService {
       },
       select: {
         id: true,
+        classId: true,
+        schoolYearId: true,
+        status: true,
       },
     });
 
     if (!existing) {
       throw new NotFoundException("Enrollment not found");
+    }
+
+    if (parsed.status === "ACTIVE" && existing.status !== "ACTIVE") {
+      await this.ensureClassHasCapacity(
+        existing.classId,
+        existing.schoolYearId,
+      );
     }
 
     const enrollment = await this.prisma.enrollment.update({
@@ -6956,7 +7225,7 @@ export class ManagementService {
 
   private buildTechnicalEmailFromPhone(
     normalizedPhone: string,
-    scope: "teacher" | "parent" | "school-admin",
+    scope: "teacher" | "parent" | "school-admin" | "staff",
   ) {
     const compact = normalizedPhone.replace(/\D/g, "");
     return `${scope}-${compact}-${this.generateShortToken()}${AUTO_GENERATED_EMAIL_DOMAIN}`;
@@ -7090,6 +7359,29 @@ export class ManagementService {
     }
 
     return classEntity;
+  }
+
+  private async ensureClassHasCapacity(
+    classId: string,
+    schoolYearId: string,
+    incomingCount = 1,
+  ) {
+    const classEntity = await this.prisma.class.findUnique({
+      where: { id: classId },
+      select: { name: true, capacity: true },
+    });
+
+    if (!classEntity || classEntity.capacity == null) return;
+
+    const activeCount = await this.prisma.enrollment.count({
+      where: { classId, schoolYearId, status: "ACTIVE" },
+    });
+
+    if (activeCount + incomingCount > classEntity.capacity) {
+      throw new BadRequestException(
+        `La classe ${classEntity.name} a atteint sa capacite maximale (${classEntity.capacity} eleves).`,
+      );
+    }
   }
 
   private async ensureStudentInSchool(studentId: string, schoolId: string) {
