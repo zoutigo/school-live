@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ClassesPage from "./page";
 
@@ -440,9 +446,7 @@ describe("Classes page subject color UI", () => {
       });
 
     render(<ClassesPage />);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Affectations" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
     fireEvent.change(screen.getByLabelText("Classe"), {
       target: { value: "class-1" },
     });
@@ -472,6 +476,95 @@ describe("Classes page subject color UI", () => {
         '"referentTeacherUserId":"teacher-1"',
       );
     });
+  });
+
+  it("shows the class hero (name, referent, effectif/capacity) on the Eleves tab", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (
+        url.includes("/admin/classrooms") &&
+        !url.includes("subject-overrides")
+      ) {
+        return jsonResponse([
+          {
+            id: "class-1",
+            schoolId: "school-1",
+            name: "6eB",
+            referentTeacher: {
+              id: "teacher-1",
+              firstName: "Valery",
+              lastName: "MBELE",
+              email: "valery@school.test",
+            },
+            capacity: 30,
+            schoolYear: { id: "sy-1", label: "2025-2026" },
+            academicLevel: { id: "lvl-1", code: "6EME", label: "6eme" },
+            track: null,
+            curriculum: { id: "cur-1", name: "6EME - TRONC_COMMUN" },
+            _count: { enrollments: 24 },
+          },
+        ]);
+      }
+      if (url.includes("/admin/school-years"))
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      if (url.includes("/admin/curriculums") && !url.includes("/subjects"))
+        return jsonResponse([{ id: "cur-1", name: "6EME - TRONC_COMMUN" }]);
+      if (url.includes("/admin/teachers"))
+        return jsonResponse([
+          {
+            userId: "teacher-1",
+            firstName: "Valery",
+            lastName: "MBELE",
+            email: "valery@school.test",
+          },
+        ]);
+      if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
+        return jsonResponse([]);
+      if (url.includes("/admin/students")) return jsonResponse([]);
+      if (url.includes("/admin/teacher-assignments?classId=class-1"))
+        return jsonResponse([]);
+      if (url.includes("/admin/classrooms/class-1/subject-overrides"))
+        return jsonResponse([]);
+      if (url.includes("/admin/curriculums/cur-1/subjects"))
+        return jsonResponse([]);
+      if (
+        url.includes("/api/schools/college-vogt/timetable/classes/class-1") &&
+        method === "GET"
+      ) {
+        return jsonResponse({
+          class: {
+            id: "class-1",
+            schoolYearId: "sy-1",
+            academicLevelId: "lvl-1",
+          },
+          slots: [],
+          calendarEvents: [],
+          subjectStyles: [],
+        });
+      }
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+
+    render(<ClassesPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
+    fireEvent.change(screen.getByLabelText("Classe"), {
+      target: { value: "class-1" },
+    });
+
+    const hero = await screen.findByTestId("class-students-hero");
+    expect(within(hero).getByText("6eB")).toBeInTheDocument();
+    expect(within(hero).getByText("MBELE Valery")).toBeInTheDocument();
+    expect(within(hero).getByText(/24 \/ 30/)).toBeInTheDocument();
   });
 
   it("keeps class creation submit disabled until the form is valid and submits valid values", async () => {
@@ -806,9 +899,7 @@ describe("Classes page subject color UI", () => {
       });
 
     render(<ClassesPage />);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Affectations" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
     fireEvent.change(screen.getByLabelText("Classe"), {
       target: { value: "class-1" },
     });
@@ -921,9 +1012,7 @@ describe("Classes page subject color UI", () => {
       });
 
     render(<ClassesPage />);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Affectations" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
     fireEvent.change(screen.getByLabelText("Classe"), {
       target: { value: "class-1" },
     });
@@ -1093,6 +1182,108 @@ describe("Classes page subject color UI", () => {
           "Vous devez remplir correctement les champs obligatoires.",
         ),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  it("groups the mobile card list by level, with search and a level filter", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (
+        url.includes("/admin/classrooms") &&
+        !url.includes("subject-overrides")
+      ) {
+        return jsonResponse([
+          {
+            id: "class-1",
+            schoolId: "school-1",
+            name: "6eB",
+            referentTeacher: null,
+            capacity: 30,
+            schoolYear: { id: "sy-1", label: "2025-2026" },
+            academicLevel: { id: "lvl-6e", code: "6EME", label: "6eme" },
+            track: null,
+            curriculum: { id: "cur-1", name: "6EME - TRONC_COMMUN" },
+            _count: { enrollments: 24 },
+          },
+          {
+            id: "class-2",
+            schoolId: "school-1",
+            name: "5eA",
+            referentTeacher: null,
+            capacity: 28,
+            schoolYear: { id: "sy-1", label: "2025-2026" },
+            academicLevel: { id: "lvl-5e", code: "5EME", label: "5eme" },
+            track: null,
+            curriculum: { id: "cur-2", name: "5EME - TRONC_COMMUN" },
+            _count: { enrollments: 20 },
+          },
+        ]);
+      }
+      if (url.includes("/admin/school-years"))
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      if (url.includes("/admin/curriculums") && !url.includes("/subjects"))
+        return jsonResponse([
+          { id: "cur-1", name: "6EME - TRONC_COMMUN" },
+          { id: "cur-2", name: "5EME - TRONC_COMMUN" },
+        ]);
+      if (url.includes("/admin/teachers")) return jsonResponse([]);
+      if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
+        return jsonResponse([]);
+      if (url.includes("/admin/students")) return jsonResponse([]);
+
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+
+    render(<ClassesPage />);
+
+    const cards = await screen.findByTestId("classes-list-cards");
+    await waitFor(() => {
+      expect(within(cards).getByText("6eB")).toBeInTheDocument();
+    });
+    expect(within(cards).getByText("5eA")).toBeInTheDocument();
+    expect(
+      within(cards).getByText("6EME - 6eme", {
+        selector: "p.uppercase",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(cards).getByText("5EME - 5eme", {
+        selector: "p.uppercase",
+      }),
+    ).toBeInTheDocument();
+    expect(within(cards).getByText("24 / 30 eleves")).toBeInTheDocument();
+
+    fireEvent.change(within(cards).getByLabelText("Rechercher une classe"), {
+      target: { value: "5eA" },
+    });
+    await waitFor(() => {
+      expect(within(cards).queryByText("6eB")).not.toBeInTheDocument();
+      expect(within(cards).getByText("5eA")).toBeInTheDocument();
+    });
+
+    fireEvent.change(within(cards).getByLabelText("Rechercher une classe"), {
+      target: { value: "" },
+    });
+    fireEvent.click(within(cards).getByRole("button", { name: "6EME - 6eme" }));
+    await waitFor(() => {
+      expect(within(cards).getByText("6eB")).toBeInTheDocument();
+      expect(within(cards).queryByText("5eA")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(within(cards).getByRole("button", { name: "Tous" }));
+    await waitFor(() => {
+      expect(within(cards).getByText("6eB")).toBeInTheDocument();
+      expect(within(cards).getByText("5eA")).toBeInTheDocument();
     });
   });
 });

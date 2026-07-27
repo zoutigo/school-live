@@ -35,7 +35,7 @@ type Role =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
-type Tab = "list" | "details" | "assignments" | "help";
+type Tab = "list" | "details" | "students" | "assignments" | "help";
 
 type MeResponse = {
   role: Role;
@@ -318,6 +318,8 @@ export default function ClassesPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("list");
+  const [cardSearch, setCardSearch] = useState("");
+  const [cardLevelFilter, setCardLevelFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [loadingClassDetails, setLoadingClassDetails] = useState(false);
@@ -1322,6 +1324,46 @@ export default function ClassesPage() {
     [classrooms],
   );
 
+  const cardLevelOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const entry of sortedClasses) {
+      if (entry.academicLevel && !seen.has(entry.academicLevel.id)) {
+        seen.set(
+          entry.academicLevel.id,
+          `${entry.academicLevel.code} - ${entry.academicLevel.label}`,
+        );
+      }
+    }
+    return Array.from(seen, ([id, label]) => ({ id, label }));
+  }, [sortedClasses]);
+
+  const cardGroups = useMemo(() => {
+    const needle = cardSearch.trim().toLowerCase();
+    const filtered = sortedClasses.filter((entry) => {
+      if (needle && !entry.name.toLowerCase().includes(needle)) {
+        return false;
+      }
+      if (cardLevelFilter && entry.academicLevel?.id !== cardLevelFilter) {
+        return false;
+      }
+      return true;
+    });
+
+    const groups = new Map<
+      string,
+      { id: string; label: string; items: ClassroomRow[] }
+    >();
+    for (const entry of filtered) {
+      const key = entry.academicLevel?.id ?? "__none__";
+      const label = entry.academicLevel
+        ? `${entry.academicLevel.code} - ${entry.academicLevel.label}`
+        : t("classes.list.noLevel");
+      if (!groups.has(key)) groups.set(key, { id: key, label, items: [] });
+      groups.get(key)!.items.push(entry);
+    }
+    return Array.from(groups.values());
+  }, [sortedClasses, cardSearch, cardLevelFilter, t]);
+
   const sortedTeachers = useMemo(
     () =>
       [...teachers].sort((a, b) =>
@@ -1465,6 +1507,13 @@ export default function ClassesPage() {
               className={`section-tab ${tab === "details" ? "section-tab-active" : ""}`}
             >
               {t("classes.tab.details")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("students")}
+              className={`section-tab ${tab === "students" ? "section-tab-active" : ""}`}
+            >
+              {t("classes.tab.students")}
             </button>
             <button
               type="button"
@@ -1675,7 +1724,98 @@ export default function ClassesPage() {
                 </div>
               </form>
 
-              <div className="overflow-x-auto">
+              <div
+                className="grid gap-3 md:hidden"
+                data-testid="classes-list-cards"
+              >
+                <div className="flex items-center gap-2">
+                  <FormTextInput
+                    aria-label={t("classes.list.searchLabel")}
+                    value={cardSearch}
+                    onChange={(event) => setCardSearch(event.target.value)}
+                    placeholder={t("classes.list.searchPlaceholder")}
+                    className="flex-1"
+                  />
+                </div>
+
+                {cardLevelOptions.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCardLevelFilter(null)}
+                      className={`rounded-card border px-3 py-1.5 text-xs font-semibold transition ${
+                        cardLevelFilter === null
+                          ? "border-primary bg-primary text-surface"
+                          : "border-border bg-background text-text-secondary"
+                      }`}
+                    >
+                      {t("classes.list.allLevels")}
+                    </button>
+                    {cardLevelOptions.map((level) => (
+                      <button
+                        key={level.id}
+                        type="button"
+                        onClick={() => setCardLevelFilter(level.id)}
+                        className={`rounded-card border px-3 py-1.5 text-xs font-semibold transition ${
+                          cardLevelFilter === level.id
+                            ? "border-primary bg-primary text-surface"
+                            : "border-border bg-background text-text-secondary"
+                        }`}
+                      >
+                        {level.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {loading || loadingData ? (
+                  <p className="text-sm text-text-secondary">
+                    {t("common.loading")}
+                  </p>
+                ) : cardGroups.length === 0 ? (
+                  <p className="rounded-card border border-dashed border-border px-4 py-8 text-center text-sm text-text-secondary">
+                    {t("classes.list.empty")}
+                  </p>
+                ) : (
+                  cardGroups.map((group) => (
+                    <div key={group.id} className="grid gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                        {group.label}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {group.items.map((entry) => (
+                          <button
+                            key={entry.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedClassId(entry.id);
+                              setTab("details");
+                            }}
+                            className="rounded-card border border-border bg-surface p-3 text-left transition hover:border-primary/60"
+                          >
+                            <p className="truncate text-sm font-semibold text-text-primary">
+                              {entry.name}
+                            </p>
+                            <p className="mt-1 text-xs text-text-secondary">
+                              {entry.capacity != null
+                                ? `${entry._count.enrollments} / ${entry.capacity}`
+                                : entry._count.enrollments}{" "}
+                              {t("classes.students.hero.studentsSuffix")}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-text-secondary">
+                              {entry.referentTeacher
+                                ? `${entry.referentTeacher.lastName} ${entry.referentTeacher.firstName}`
+                                : t("classes.students.hero.noReferent")}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
                 <table className="min-w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-text-secondary">
@@ -2110,81 +2250,29 @@ export default function ClassesPage() {
                   </table>
                 </div>
               </div>
-
-              <div className="rounded-card border border-border bg-background p-3">
-                <p className="mb-2 text-sm font-medium text-text-primary">
-                  {t("classes.details.studentsParents")}
-                </p>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-collapse text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left text-text-secondary">
-                        <th className="px-3 py-2 font-medium">
-                          {t("classes.details.colStudent")}
-                        </th>
-                        <th className="px-3 py-2 font-medium">
-                          {t("classes.details.colEnrollmentStatus")}
-                        </th>
-                        <th className="px-3 py-2 font-medium">
-                          {t("classes.details.colParents")}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loadingClassDetails ? (
-                        <tr>
-                          <td
-                            className="px-3 py-6 text-text-secondary"
-                            colSpan={3}
-                          >
-                            {t("common.loading")}
-                          </td>
-                        </tr>
-                      ) : classStudents.length === 0 ? (
-                        <tr>
-                          <td
-                            className="px-3 py-6 text-text-secondary"
-                            colSpan={3}
-                          >
-                            {t("classes.details.noStudents")}
-                          </td>
-                        </tr>
-                      ) : (
-                        classStudents.map((student) => {
-                          const enrollment =
-                            student.enrollments[0] ?? student.currentEnrollment;
-                          return (
-                            <tr
-                              key={student.id}
-                              className="border-b border-border text-text-primary"
-                            >
-                              <td className="px-3 py-2">
-                                {student.lastName} {student.firstName}
-                              </td>
-                              <td className="px-3 py-2">
-                                {enrollment?.status ?? "-"}
-                              </td>
-                              <td className="px-3 py-2">
-                                {student.parentLinks.length === 0
-                                  ? "-"
-                                  : student.parentLinks
-                                      .map(
-                                        (link) =>
-                                          `${link.parent.lastName} ${link.parent.firstName} (${link.parent.email ?? link.parent.phone ?? "-"})`,
-                                      )
-                                      .join(", ")}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </div>
-          ) : (
+          ) : tab === "students" ? (
             <div className="grid gap-4">
+              <div
+                className="rounded-card border border-primary/30 bg-primary/5 p-4"
+                data-testid="class-students-hero"
+              >
+                <p className="font-heading text-lg font-semibold text-text-primary">
+                  {selectedClass.name}
+                </p>
+                <p className="mt-1 text-sm text-text-secondary">
+                  {selectedClass.referentTeacher
+                    ? `${selectedClass.referentTeacher.lastName} ${selectedClass.referentTeacher.firstName}`
+                    : t("classes.students.hero.noReferent")}
+                </p>
+                <p className="mt-1 text-sm font-medium text-primary">
+                  {selectedClass.capacity != null
+                    ? `${selectedClass._count.enrollments} / ${selectedClass.capacity}`
+                    : selectedClass._count.enrollments}{" "}
+                  {t("classes.students.hero.studentsSuffix")}
+                </p>
+              </div>
+
               <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3">
                 <FormField
                   label={t("classes.assignments.referentLabel")}
@@ -2311,6 +2399,125 @@ export default function ClassesPage() {
                 </div>
               </div>
 
+              <div className="overflow-x-auto rounded-card border border-border bg-background p-3">
+                <p className="mb-2 text-sm font-medium text-text-primary">
+                  {t("classes.assignments.studentAssignments")}
+                </p>
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-text-secondary">
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.details.colStudent")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.details.colParents")}
+                      </th>
+                      <th className="px-3 py-2 font-medium">
+                        {t("classes.assignments.colStatus")}
+                      </th>
+                      <th className="px-3 py-2 font-medium text-right">
+                        {t("classes.assignments.colAction")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingClassDetails ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={4}
+                        >
+                          {t("common.loading")}
+                        </td>
+                      </tr>
+                    ) : classStudents.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-3 py-6 text-text-secondary"
+                          colSpan={4}
+                        >
+                          {t("classes.assignments.noStudents")}
+                        </td>
+                      </tr>
+                    ) : (
+                      classStudents.map((student) => {
+                        const enrollment =
+                          student.enrollments[0] ?? student.currentEnrollment;
+                        if (!enrollment) {
+                          return null;
+                        }
+
+                        return (
+                          <tr
+                            key={student.id}
+                            className="border-b border-border text-text-primary"
+                          >
+                            <td className="px-3 py-2">
+                              {student.lastName} {student.firstName}
+                            </td>
+                            <td className="px-3 py-2">
+                              {student.parentLinks.length === 0
+                                ? "-"
+                                : student.parentLinks
+                                    .map(
+                                      (link) =>
+                                        `${link.parent.lastName} ${link.parent.firstName}`,
+                                    )
+                                    .join(", ")}
+                            </td>
+                            <td className="px-3 py-2">
+                              <FormSelect
+                                value={
+                                  statusDraftByEnrollmentId[enrollment.id] ??
+                                  enrollment.status
+                                }
+                                onChange={(event) =>
+                                  setStatusDraftByEnrollmentId((current) => ({
+                                    ...current,
+                                    [enrollment.id]: event.target.value as
+                                      | "ACTIVE"
+                                      | "TRANSFERRED"
+                                      | "WITHDRAWN"
+                                      | "GRADUATED",
+                                  }))
+                                }
+                                className="px-2 py-1"
+                              >
+                                <option value="ACTIVE">ACTIVE</option>
+                                <option value="TRANSFERRED">TRANSFERRED</option>
+                                <option value="WITHDRAWN">WITHDRAWN</option>
+                                <option value="GRADUATED">GRADUATED</option>
+                              </FormSelect>
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={
+                                  updatingEnrollmentId === enrollment.id
+                                }
+                                onClick={() => {
+                                  void updateOneEnrollmentStatus(
+                                    student.id,
+                                    enrollment.id,
+                                  );
+                                }}
+                              >
+                                {updatingEnrollmentId === enrollment.id
+                                  ? "..."
+                                  : t("classes.assignments.updateStatus")}
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4">
               <form
                 className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-3"
                 onSubmit={createTeacherAssignmentForm.handleSubmit(
@@ -2621,123 +2828,6 @@ export default function ClassesPage() {
                           ) : null}
                         </Fragment>
                       ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="overflow-x-auto rounded-card border border-border bg-background p-3">
-                <p className="mb-2 text-sm font-medium text-text-primary">
-                  {t("classes.assignments.studentAssignments")}
-                </p>
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">
-                        {t("classes.details.colStudent")}
-                      </th>
-                      <th className="px-3 py-2 font-medium">
-                        {t("classes.details.colParents")}
-                      </th>
-                      <th className="px-3 py-2 font-medium">
-                        {t("classes.assignments.colStatus")}
-                      </th>
-                      <th className="px-3 py-2 font-medium text-right">
-                        {t("classes.assignments.colAction")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loadingClassDetails ? (
-                      <tr>
-                        <td
-                          className="px-3 py-6 text-text-secondary"
-                          colSpan={4}
-                        >
-                          {t("common.loading")}
-                        </td>
-                      </tr>
-                    ) : classStudents.length === 0 ? (
-                      <tr>
-                        <td
-                          className="px-3 py-6 text-text-secondary"
-                          colSpan={4}
-                        >
-                          {t("classes.assignments.noStudents")}
-                        </td>
-                      </tr>
-                    ) : (
-                      classStudents.map((student) => {
-                        const enrollment =
-                          student.enrollments[0] ?? student.currentEnrollment;
-                        if (!enrollment) {
-                          return null;
-                        }
-
-                        return (
-                          <tr
-                            key={student.id}
-                            className="border-b border-border text-text-primary"
-                          >
-                            <td className="px-3 py-2">
-                              {student.lastName} {student.firstName}
-                            </td>
-                            <td className="px-3 py-2">
-                              {student.parentLinks.length === 0
-                                ? "-"
-                                : student.parentLinks
-                                    .map(
-                                      (link) =>
-                                        `${link.parent.lastName} ${link.parent.firstName}`,
-                                    )
-                                    .join(", ")}
-                            </td>
-                            <td className="px-3 py-2">
-                              <FormSelect
-                                value={
-                                  statusDraftByEnrollmentId[enrollment.id] ??
-                                  enrollment.status
-                                }
-                                onChange={(event) =>
-                                  setStatusDraftByEnrollmentId((current) => ({
-                                    ...current,
-                                    [enrollment.id]: event.target.value as
-                                      | "ACTIVE"
-                                      | "TRANSFERRED"
-                                      | "WITHDRAWN"
-                                      | "GRADUATED",
-                                  }))
-                                }
-                                className="px-2 py-1"
-                              >
-                                <option value="ACTIVE">ACTIVE</option>
-                                <option value="TRANSFERRED">TRANSFERRED</option>
-                                <option value="WITHDRAWN">WITHDRAWN</option>
-                                <option value="GRADUATED">GRADUATED</option>
-                              </FormSelect>
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                disabled={
-                                  updatingEnrollmentId === enrollment.id
-                                }
-                                onClick={() => {
-                                  void updateOneEnrollmentStatus(
-                                    student.id,
-                                    enrollment.id,
-                                  );
-                                }}
-                              >
-                                {updatingEnrollmentId === enrollment.id
-                                  ? "..."
-                                  : t("classes.assignments.updateStatus")}
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })
                     )}
                   </tbody>
                 </table>

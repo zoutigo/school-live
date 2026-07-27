@@ -493,8 +493,15 @@ describe("TimetableService.listAdminClasses", () => {
     name: "6e B",
     schoolYearId: "sy-1",
     academicLevelId: "lvl-1",
+    capacity: 30,
     schoolYear: { id: "sy-1", label: "2025-2026" },
     academicLevel: { id: "lvl-1", label: "6e" },
+    referentTeacher: {
+      id: "teacher-1",
+      firstName: "Amina",
+      lastName: "Fouda",
+    },
+    _count: { enrollments: 24 },
   };
 
   beforeEach(async () => {
@@ -535,7 +542,13 @@ describe("TimetableService.listAdminClasses", () => {
           schoolYearLabel: "2025-2026",
           academicLevelId: "lvl-1",
           academicLevelName: "6e",
-          studentCount: 0,
+          studentCount: 24,
+          capacity: 30,
+          referentTeacher: {
+            id: "teacher-1",
+            firstName: "Amina",
+            lastName: "Fouda",
+          },
           subjects: [],
         },
       ],
@@ -544,6 +557,30 @@ describe("TimetableService.listAdminClasses", () => {
       limit: 20,
       hasMore: false,
     });
+  });
+
+  it("renvoie capacity null et referentTeacher null quand non définis", async () => {
+    prisma.$transaction.mockResolvedValue([
+      [
+        {
+          ...CLASS_ROW,
+          capacity: null,
+          referentTeacher: null,
+          _count: { enrollments: 0 },
+        },
+      ],
+      1,
+    ]);
+
+    const result = await service.listAdminClasses(ADMIN_USER, "school-1", {});
+
+    expect(result.data[0]).toEqual(
+      expect.objectContaining({
+        studentCount: 0,
+        capacity: null,
+        referentTeacher: null,
+      }),
+    );
   });
 
   it("applique le filtre academicLevelId dans le where Prisma", async () => {
@@ -609,6 +646,22 @@ describe("TimetableService.listAdminClasses", () => {
     expect(prisma.class.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ schoolYearId: "sy-1" }),
+      }),
+    );
+  });
+
+  it("compte uniquement les inscriptions actives pour studentCount", async () => {
+    prisma.$transaction.mockResolvedValue([[], 0]);
+
+    await service.listAdminClasses(ADMIN_USER, "school-1", {});
+
+    expect(prisma.class.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          _count: {
+            select: { enrollments: { where: { status: "ACTIVE" } } },
+          },
+        }),
       }),
     );
   });

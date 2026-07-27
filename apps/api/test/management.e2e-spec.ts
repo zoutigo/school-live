@@ -391,13 +391,39 @@ describe("Management API e2e", () => {
       },
     );
     expect(listStudentsWithEnrollments.response.status).toBe(200);
-    const listedStudents = Array.isArray(listStudentsWithEnrollments.body)
-      ? (listStudentsWithEnrollments.body as JsonValue[])
-      : [];
+    const listStudentsBody = listStudentsWithEnrollments.body as {
+      students?: JsonValue[];
+      total?: number;
+      page?: number;
+      hasMore?: boolean;
+    };
+    expect(Array.isArray(listStudentsBody.students)).toBe(true);
+    expect(typeof listStudentsBody.total).toBe("number");
+    expect(listStudentsBody.page).toBe(1);
+    expect(typeof listStudentsBody.hasMore).toBe("boolean");
+    const listedStudents = listStudentsBody.students ?? [];
     const listedCreatedStudent = listedStudents.find(
       (entry) => String(entry.id) === createdStudentId,
     );
     expect(listedCreatedStudent).toBeDefined();
+
+    const searchedStudents = await apiJson(
+      `/api/schools/${createdSchoolSlug}/admin/students?search=${encodeURIComponent(
+        String(listedCreatedStudent?.lastName ?? ""),
+      )}`,
+      {
+        headers: {
+          authorization: `Bearer ${bearerToken}`,
+        },
+      },
+    );
+    expect(searchedStudents.response.status).toBe(200);
+    const searchedBody = searchedStudents.body as { students?: JsonValue[] };
+    expect(
+      (searchedBody.students ?? []).some(
+        (entry) => String(entry.id) === createdStudentId,
+      ),
+    ).toBe(true);
 
     const markTransferred = await apiJson(
       `/api/schools/${createdSchoolSlug}/admin/students/${createdStudentId}/enrollments/${String(

@@ -316,6 +316,8 @@ const listStudentEnrollmentsQuerySchema = z.object({
     .enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"])
     .optional(),
   search: z.string().trim().optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });
 
 const listStudentLifeEventsQuerySchema = z.object({
@@ -2280,6 +2282,59 @@ export class ManagementService {
         },
       },
     });
+  }
+
+  async getClassroom(schoolId: string, classId: string) {
+    const classroom = await this.prisma.class.findFirst({
+      where: { id: classId, schoolId },
+      include: {
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        academicLevel: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        track: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        curriculum: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        referentTeacher: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: { where: { status: "ACTIVE" } },
+          },
+        },
+      },
+    });
+
+    if (!classroom) {
+      throw new NotFoundException("Classroom not found");
+    }
+
+    return classroom;
   }
 
   async createClassroom(schoolId: string, payload: CreateClassroomDto) {
@@ -6346,7 +6401,7 @@ export class ManagementService {
       parsed.schoolYearId || parsed.classId || parsed.status,
     );
 
-    return students
+    const mapped = students
       .map((student) => ({
         ...student,
         parentLinks: student.parentLinks.map((link) => ({
@@ -6369,6 +6424,19 @@ export class ManagementService {
       .filter(
         (student) => student.enrollments.length > 0 || !hasEnrollmentFilter,
       );
+
+    const total = mapped.length;
+    const page = parsed.page;
+    const limit = parsed.limit;
+    const start = (page - 1) * limit;
+    const pageItems = mapped.slice(start, start + limit);
+
+    return {
+      students: pageItems,
+      total,
+      page,
+      hasMore: start + pageItems.length < total,
+    };
   }
 
   async listStudentEnrollments(schoolId: string, studentId: string) {
