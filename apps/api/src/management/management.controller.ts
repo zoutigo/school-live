@@ -485,6 +485,16 @@ export class ManagementController {
     return this.managementService.listClassrooms(schoolId);
   }
 
+  @Get("schools/:schoolSlug/admin/classrooms/:classId")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  getClassroom(
+    @CurrentSchoolId() schoolId: string,
+    @Param("classId") classId: string,
+  ) {
+    return this.managementService.getClassroom(schoolId, classId);
+  }
+
   @Patch("schools/:schoolSlug/admin/classrooms/:classId")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
   @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")

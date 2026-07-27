@@ -2284,6 +2284,59 @@ export class ManagementService {
     });
   }
 
+  async getClassroom(schoolId: string, classId: string) {
+    const classroom = await this.prisma.class.findFirst({
+      where: { id: classId, schoolId },
+      include: {
+        schoolYear: {
+          select: {
+            id: true,
+            label: true,
+          },
+        },
+        academicLevel: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        track: {
+          select: {
+            id: true,
+            code: true,
+            label: true,
+          },
+        },
+        curriculum: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        referentTeacher: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        _count: {
+          select: {
+            enrollments: { where: { status: "ACTIVE" } },
+          },
+        },
+      },
+    });
+
+    if (!classroom) {
+      throw new NotFoundException("Classroom not found");
+    }
+
+    return classroom;
+  }
+
   async createClassroom(schoolId: string, payload: CreateClassroomDto) {
     const parsedResult = createClassroomSchema.safeParse(payload);
     if (!parsedResult.success) {

@@ -127,10 +127,20 @@ export class TimetableService {
           name: true,
           schoolYearId: true,
           academicLevelId: true,
+          capacity: true,
           schoolYear: { select: { id: true, label: true } },
           academicLevel: { select: { id: true, label: true } },
+          referentTeacher: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+          _count: {
+            select: { enrollments: { where: { status: "ACTIVE" } } },
+          },
         },
-        orderBy: { name: "asc" },
+        orderBy: [
+          { academicLevel: { createdAt: "asc" } },
+          { name: "asc" },
+        ],
         skip,
         take: limit,
       }),
@@ -145,7 +155,15 @@ export class TimetableService {
         schoolYearLabel: c.schoolYear?.label ?? "",
         academicLevelId: c.academicLevelId,
         academicLevelName: c.academicLevel?.label ?? null,
-        studentCount: 0,
+        studentCount: c._count.enrollments,
+        capacity: c.capacity,
+        referentTeacher: c.referentTeacher
+          ? {
+              id: c.referentTeacher.id,
+              firstName: c.referentTeacher.firstName,
+              lastName: c.referentTeacher.lastName,
+            }
+          : null,
         subjects: [],
       })),
       total,
