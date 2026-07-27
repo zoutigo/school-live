@@ -316,6 +316,8 @@ const listStudentEnrollmentsQuerySchema = z.object({
     .enum(["ACTIVE", "TRANSFERRED", "WITHDRAWN", "GRADUATED"])
     .optional(),
   search: z.string().trim().optional(),
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });
 
 const listStudentLifeEventsQuerySchema = z.object({
@@ -6346,7 +6348,7 @@ export class ManagementService {
       parsed.schoolYearId || parsed.classId || parsed.status,
     );
 
-    return students
+    const mapped = students
       .map((student) => ({
         ...student,
         parentLinks: student.parentLinks.map((link) => ({
@@ -6369,6 +6371,19 @@ export class ManagementService {
       .filter(
         (student) => student.enrollments.length > 0 || !hasEnrollmentFilter,
       );
+
+    const total = mapped.length;
+    const page = parsed.page;
+    const limit = parsed.limit;
+    const start = (page - 1) * limit;
+    const pageItems = mapped.slice(start, start + limit);
+
+    return {
+      students: pageItems,
+      total,
+      page,
+      hasMore: start + pageItems.length < total,
+    };
   }
 
   async listStudentEnrollments(schoolId: string, studentId: string) {

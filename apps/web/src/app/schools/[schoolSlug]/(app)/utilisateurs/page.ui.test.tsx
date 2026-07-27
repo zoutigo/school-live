@@ -778,6 +778,84 @@ describe("UtilisateursPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("le toggle Nouveau parent affiche un formulaire inline et masque la recherche", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/users?")) {
+        if (url.includes("role=PARENT")) {
+          return jsonRes(makeListResponse([PARENT_USER]));
+        }
+        return jsonRes(makeListResponse([STUDENT_USER]));
+      }
+      if (url.includes(`/users/${STUDENT_USER.id}`))
+        return jsonRes(STUDENT_DETAIL);
+      return jsonRes({}, 404);
+    });
+
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-assign-parent"));
+    await screen.findByTestId("assign-parent-modal");
+
+    fireEvent.click(screen.getByTestId("assign-parent-submode-new"));
+
+    expect(
+      screen.queryByTestId("assign-parent-search"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("assign-parent-new-form")).toBeInTheDocument();
+    expect(screen.getByTestId("assign-parent-new-phone")).toBeInTheDocument();
+    expect(screen.getByTestId("assign-parent-new-pin")).toBeInTheDocument();
+  });
+
+  it("le formulaire Nouveau parent (téléphone) POST studentId + contact vers admin/parent-students", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/users?")) {
+          if (url.includes("role=PARENT")) {
+            return jsonRes(makeListResponse([PARENT_USER]));
+          }
+          return jsonRes(makeListResponse([STUDENT_USER]));
+        }
+        if (url.includes(`/users/${STUDENT_USER.id}`))
+          return jsonRes(STUDENT_DETAIL);
+        if (url.includes("/admin/parent-students")) return jsonRes({}, 201);
+        return jsonRes({}, 404);
+      });
+
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-assign-parent"));
+    await screen.findByTestId("assign-parent-modal");
+
+    fireEvent.click(screen.getByTestId("assign-parent-submode-new"));
+    fireEvent.change(screen.getByTestId("assign-parent-new-phone"), {
+      target: { value: "699001122" },
+    });
+    fireEvent.change(screen.getByTestId("assign-parent-new-pin"), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(screen.getByTestId("assign-parent-new-submit"));
+
+    await waitFor(() => {
+      const postCalls = fetchMock.mock.calls.filter(
+        (c) =>
+          String(c[0]).includes("/admin/parent-students") &&
+          c[1]?.method === "POST",
+      );
+      expect(postCalls).toHaveLength(1);
+      const body = JSON.parse(postCalls[0][1]?.body as string) as {
+        studentId: string;
+        phone: string;
+        pin: string;
+      };
+      expect(body.studentId).toBe(STUDENT_USER.id);
+      expect(body.phone).toBe("699001122");
+      expect(body.pin).toBe("123456");
+    });
+  });
+
   // ── Student-only (sans compte) ────────────────────────────────────────────
 
   it("affiche 'Créer un accès' pour un élève sans compte", async () => {

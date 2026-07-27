@@ -592,12 +592,19 @@ function AssignParentToStudentModal({
   onSuccess: () => void;
   t: (k: string) => string;
 }) {
+  const [subMode, setSubMode] = useState<"existing" | "new">("existing");
   const [query, setQuery] = useState("");
   const [parents, setParents] = useState<SchoolUserItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<SchoolUserItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<"phone" | "email">("phone");
+  const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const load = useCallback(
     async (search: string) => {
@@ -632,7 +639,15 @@ function AssignParentToStudentModal({
     return () => clearTimeout(timer);
   }, [query, load]);
 
-  async function handleSubmit() {
+  const newParentValid = isContactModeValid({
+    mode,
+    phone,
+    pin,
+    email,
+    password,
+  });
+
+  async function handleSubmitExisting() {
     if (!selected) return;
     setError(null);
     setSubmitting(true);
@@ -652,6 +667,29 @@ function AssignParentToStudentModal({
     }
   }
 
+  async function handleSubmitNew() {
+    if (!newParentValid) return;
+    setError(null);
+    setSubmitting(true);
+    const csrf = getCsrfTokenCookie();
+    try {
+      await apiFetch(`/schools/${schoolSlug}/admin/parent-students`, {
+        method: "POST",
+        headers: { "X-CSRF-Token": csrf ?? "" },
+        body: JSON.stringify({
+          studentId,
+          ...(mode === "phone" ? { phone, pin } : { email, password }),
+        }),
+      });
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <ModalOverlay onClose={onClose} testId="assign-parent-modal">
       <ModalHeader
@@ -660,63 +698,155 @@ function AssignParentToStudentModal({
         subtitle={t("users.assignParent.subtitle")}
         onClose={onClose}
       />
-      <ModalSearchInput
-        value={query}
-        onChange={setQuery}
-        placeholder={t("users.assignParent.search")}
-        testId="assign-parent-search"
-      />
-      <div
-        className="mt-3 max-h-56 space-y-1.5 overflow-y-auto pr-1"
-        data-testid="assign-parent-list"
-      >
-        {loading ? (
-          <p className="py-4 text-center text-sm text-text-secondary">
-            Chargement…
-          </p>
-        ) : parents.length === 0 ? (
-          <p className="py-4 text-center text-sm text-text-secondary">
-            {t("users.assignParent.noResult")}
-          </p>
-        ) : (
-          parents.map((p) => {
-            const isSelected = selected?.id === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                data-testid={`assign-parent-user-${p.id}`}
-                onClick={() => setSelected(isSelected ? null : p)}
-                className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${isSelected ? "border-primary bg-blue-50" : "border-warm-border bg-warm-surface hover:bg-warm-highlight"}`}
-              >
-                <p
-                  className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}
-                >
-                  {p.lastName} {p.firstName}
-                </p>
-                {p.phone ? (
-                  <p className="mt-0.5 text-xs text-text-secondary">
-                    {p.phone}
-                  </p>
-                ) : p.email ? (
-                  <p className="mt-0.5 text-xs text-text-secondary">
-                    {p.email}
-                  </p>
-                ) : null}
-              </button>
-            );
-          })
-        )}
+      <div className="mt-3 flex gap-2" data-testid="assign-parent-submode">
+        <button
+          type="button"
+          data-testid="assign-parent-submode-existing"
+          onClick={() => setSubMode("existing")}
+          className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${subMode === "existing" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+        >
+          {t("users.assignParent.mode.existing")}
+        </button>
+        <button
+          type="button"
+          data-testid="assign-parent-submode-new"
+          onClick={() => setSubMode("new")}
+          className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${subMode === "new" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+        >
+          {t("users.assignParent.mode.new")}
+        </button>
       </div>
-      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-      <ModalActions
-        onCancel={onClose}
-        onSubmit={() => void handleSubmit()}
-        submitLabel={t("users.assignParent.submit")}
-        submitDisabled={!selected}
-        submitting={submitting}
-        testId="assign-parent"
-      />
+
+      {subMode === "existing" ? (
+        <>
+          <ModalSearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder={t("users.assignParent.search")}
+            testId="assign-parent-search"
+          />
+          <div
+            className="mt-3 max-h-56 space-y-1.5 overflow-y-auto pr-1"
+            data-testid="assign-parent-list"
+          >
+            {loading ? (
+              <p className="py-4 text-center text-sm text-text-secondary">
+                Chargement…
+              </p>
+            ) : parents.length === 0 ? (
+              <p className="py-4 text-center text-sm text-text-secondary">
+                {t("users.assignParent.noResult")}
+              </p>
+            ) : (
+              parents.map((p) => {
+                const isSelected = selected?.id === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    data-testid={`assign-parent-user-${p.id}`}
+                    onClick={() => setSelected(isSelected ? null : p)}
+                    className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${isSelected ? "border-primary bg-blue-50" : "border-warm-border bg-warm-surface hover:bg-warm-highlight"}`}
+                  >
+                    <p
+                      className={`text-sm font-semibold ${isSelected ? "text-primary" : "text-text-primary"}`}
+                    >
+                      {p.lastName} {p.firstName}
+                    </p>
+                    {p.phone ? (
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        {p.phone}
+                      </p>
+                    ) : p.email ? (
+                      <p className="mt-0.5 text-xs text-text-secondary">
+                        {p.email}
+                      </p>
+                    ) : null}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+          <ModalActions
+            onCancel={onClose}
+            onSubmit={() => void handleSubmitExisting()}
+            submitLabel={t("users.assignParent.submit")}
+            submitDisabled={!selected}
+            submitting={submitting}
+            testId="assign-parent"
+          />
+        </>
+      ) : (
+        <div className="mt-3 space-y-2" data-testid="assign-parent-new-form">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-testid="assign-parent-new-mode-phone"
+              onClick={() => setMode("phone")}
+              className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${mode === "phone" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+            >
+              {t("users.create.contactMode.phone")}
+            </button>
+            <button
+              type="button"
+              data-testid="assign-parent-new-mode-email"
+              onClick={() => setMode("email")}
+              className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${mode === "email" ? "border-primary bg-primary text-white" : "border-warm-border bg-warm-surface text-text-secondary"}`}
+            >
+              {t("users.create.contactMode.email")}
+            </button>
+          </div>
+          {mode === "phone" ? (
+            <>
+              <input
+                data-testid="assign-parent-new-phone"
+                value={phone}
+                onChange={(e) =>
+                  setPhone(e.target.value.replace(/\D/g, "").slice(0, 9))
+                }
+                placeholder={t("users.create.field.phone")}
+                className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+              />
+              <PinInput
+                data-testid="assign-parent-new-pin"
+                value={pin}
+                onChange={(e) =>
+                  setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                placeholder={t("users.create.field.pin")}
+                className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+              />
+            </>
+          ) : (
+            <>
+              <input
+                data-testid="assign-parent-new-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t("users.create.field.email")}
+                className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+              />
+              <PasswordInput
+                data-testid="assign-parent-new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t("users.create.field.password")}
+                className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+              />
+            </>
+          )}
+          {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+          <ModalActions
+            onCancel={onClose}
+            onSubmit={() => void handleSubmitNew()}
+            submitLabel={t("users.assignParent.newSubmit")}
+            submitDisabled={!newParentValid}
+            submitting={submitting}
+            testId="assign-parent-new"
+          />
+        </div>
+      )}
     </ModalOverlay>
   );
 }
