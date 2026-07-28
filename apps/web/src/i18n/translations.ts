@@ -2027,6 +2027,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.detail.noAttachments": "Aucune piece jointe.",
     "messaging.detail.reply": "Repondre",
     "messaging.detail.forward": "Transferer",
+    "messaging.detail.editDraft": "Modifier le brouillon",
 
     "messaging.actions.markAsRead": "Marquer comme lu",
     "messaging.actions.markAsUnread": "Marquer comme non lu",
@@ -5571,6 +5572,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.detail.noAttachments": "No attachment.",
     "messaging.detail.reply": "Reply",
     "messaging.detail.forward": "Forward",
+    "messaging.detail.editDraft": "Edit draft",
 
     "messaging.actions.markAsRead": "Mark as read",
     "messaging.actions.markAsUnread": "Mark as unread",

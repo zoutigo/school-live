@@ -27,6 +27,7 @@ import {
   canSendMessage,
   hasUnsavedDraftChanges,
 } from "./messaging-compose-logic";
+import type { MessageAttachment } from "./types";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type RecipientOption = {
@@ -62,6 +63,7 @@ type Props = {
   initialSubject?: string;
   initialBody?: string;
   initialRecipientUserIds?: string[];
+  initialAttachments?: MessageAttachment[];
   onCancel: () => void;
   onRequestBackToList?: () => void;
   onUnsavedChange?: (hasUnsavedChanges: boolean) => void;
@@ -70,12 +72,14 @@ type Props = {
     body: string;
     recipientUserIds: string[];
     attachments: File[];
+    existingAttachments: MessageAttachment[];
   }) => Promise<void>;
   onSaveDraft?: (payload: {
     subject: string;
     body: string;
     recipientUserIds: string[];
     attachments: File[];
+    existingAttachments: MessageAttachment[];
   }) => Promise<void>;
   onUploadInlineImage?: (file: File) => Promise<string>;
   /**
@@ -103,6 +107,7 @@ export function MessagingComposer({
   initialSubject = "",
   initialBody = "",
   initialRecipientUserIds = [],
+  initialAttachments = [],
   onCancel,
   onRequestBackToList,
   onUnsavedChange,
@@ -123,6 +128,8 @@ export function MessagingComposer({
   const [editorText, setEditorText] = useState("");
   const [editorHtml, setEditorHtml] = useState(initialBody);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] =
+    useState<MessageAttachment[]>(initialAttachments);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -384,6 +391,7 @@ export function MessagingComposer({
         body: editorHtml,
         recipientUserIds,
         attachments,
+        existingAttachments,
       });
       setInfo(t("messaging.compose.info.sent"));
     } catch {
@@ -417,6 +425,7 @@ export function MessagingComposer({
         body: editorHtml,
         recipientUserIds,
         attachments,
+        existingAttachments,
       });
       setLastSavedDraftSnapshot(currentDraftSnapshot);
       setInfo(t("messaging.compose.info.draftSaved"));
@@ -640,6 +649,35 @@ export function MessagingComposer({
                   onChange={(event) => addFiles(event.target.files)}
                 />
               </div>
+
+              {existingAttachments.length > 0 ? (
+                <ul className="mt-3 grid gap-2">
+                  {existingAttachments.map((attachment) => (
+                    <li
+                      key={attachment.id}
+                      className="flex items-center justify-between rounded-[14px] border border-warm-border bg-surface px-3 py-2"
+                    >
+                      <span className="inline-flex items-center gap-2 text-sm text-text-primary">
+                        <Paperclip className="h-4 w-4 text-primary" />
+                        {attachment.fileName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExistingAttachments((current) =>
+                            current.filter(
+                              (entry) => entry.id !== attachment.id,
+                            ),
+                          )
+                        }
+                        className="rounded border border-warm-border px-2 py-1 text-xs text-text-secondary transition hover:bg-notification/10 hover:text-notification"
+                      >
+                        {t("messaging.compose.removeAttachment")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
 
               {attachments.length > 0 ? (
                 <ul className="mt-3 grid gap-2">

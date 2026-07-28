@@ -6,8 +6,16 @@ export type MessageAttachment = {
   id: string;
   fileName: string;
   sizeLabel: string;
+  sizeBytes?: number;
   mimeType: string;
   downloadUrl?: string;
+};
+
+export type MessageRecipient = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 };
 
 export type MessagingMessage = {
@@ -22,6 +30,8 @@ export type MessagingMessage = {
   body: string[];
   bodyHtml?: string;
   attachments: MessageAttachment[];
+  status?: "DRAFT" | "SENT";
+  recipients?: MessageRecipient[];
 };
 
 export type MessagingFolder = {

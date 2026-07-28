@@ -56,6 +56,11 @@ export default function SchoolMessagerieMessagePage() {
           `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
         );
       }}
+      onEditDraft={(message) =>
+        router.push(
+          `/schools/${schoolSlug}/messagerie/nouveau?draftId=${message.id}`,
+        )
+      }
     />
   );
 }

@@ -30,6 +30,16 @@ type MessageListItemResponse = {
   attachments?: AttachmentResponse[];
 };
 
+type MessageRecipientResponse = {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  readAt: string | null;
+  archivedAt: string | null;
+};
+
 type MessageDetailResponse = {
   id: string;
   subject: string;
@@ -39,6 +49,7 @@ type MessageDetailResponse = {
   sentAt: string | null;
   sender: UserSummary | null;
   attachments?: AttachmentResponse[];
+  recipients?: MessageRecipientResponse[];
 };
 
 type ListMessagesResponse = {
@@ -114,6 +125,7 @@ function mapAttachmentToUi(item: AttachmentResponse) {
     id: item.id,
     fileName: item.fileName,
     sizeLabel: toSizeLabel(item.sizeBytes),
+    sizeBytes: item.sizeBytes,
     mimeType: item.mimeType,
     downloadUrl: item.url.startsWith("http")
       ? item.url
@@ -149,6 +161,13 @@ function mapDetailToUi(item: MessageDetailResponse): MessagingMessage {
     body: splitBodyLines(item.body),
     bodyHtml: item.body,
     attachments: (item.attachments ?? []).map(mapAttachmentToUi),
+    status: item.status,
+    recipients: (item.recipients ?? []).map((entry) => ({
+      userId: entry.userId,
+      firstName: entry.firstName,
+      lastName: entry.lastName,
+      email: entry.email,
+    })),
   };
 }
 
@@ -323,6 +342,116 @@ export async function deleteSchoolMessage(
   if (!response.ok) {
     throw new Error("DELETE_MESSAGE_FAILED");
   }
+}
+
+export type UploadedMessageAttachment = {
+  fileName: string;
+  fileUrl: string;
+  mimeType: string;
+  sizeBytes: number;
+};
+
+export async function uploadSchoolMessageAttachment(
+  schoolSlug: string,
+  file: File,
+): Promise<UploadedMessageAttachment> {
+  const csrfToken = getCsrfTokenCookie();
+  if (!csrfToken) {
+    throw new Error("CSRF_TOKEN_MISSING");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_URL}/schools/${schoolSlug}/messages/uploads/attachment`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "X-CSRF-Token": csrfToken,
+      },
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("ATTACHMENT_UPLOAD_FAILED");
+  }
+
+  const payload = (await response.json()) as {
+    url: string;
+    size: number;
+    mimeType: string;
+  };
+  return {
+    fileName: file.name,
+    fileUrl: payload.url,
+    mimeType: payload.mimeType,
+    sizeBytes: payload.size,
+  };
+}
+
+export async function updateSchoolMessageDraft(
+  schoolSlug: string,
+  messageId: string,
+  payload: {
+    subject: string;
+    body: string;
+    recipientUserIds: string[];
+    attachments: UploadedMessageAttachment[];
+  },
+) {
+  const csrfToken = getCsrfTokenCookie();
+  if (!csrfToken) {
+    throw new Error("CSRF_TOKEN_MISSING");
+  }
+  const response = await fetch(
+    `${API_URL}/schools/${schoolSlug}/messages/${messageId}/draft`,
+    {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message =
+      typeof body?.message === "string" ? body.message : "UPDATE_DRAFT_FAILED";
+    throw new Error(message);
+  }
+  return (await response.json()) as MessageDetailResponse;
+}
+
+export async function sendSchoolMessageDraft(
+  schoolSlug: string,
+  messageId: string,
+) {
+  const csrfToken = getCsrfTokenCookie();
+  if (!csrfToken) {
+    throw new Error("CSRF_TOKEN_MISSING");
+  }
+  const response = await fetch(
+    `${API_URL}/schools/${schoolSlug}/messages/${messageId}/send`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "X-CSRF-Token": csrfToken,
+      },
+    },
+  );
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message =
+      typeof body?.message === "string" ? body.message : "SEND_DRAFT_FAILED";
+    throw new Error(message);
+  }
+  return (await response.json()) as MessageDetailResponse;
 }
 
 export async function uploadSchoolMessagingInlineImage(

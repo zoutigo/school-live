@@ -6,8 +6,13 @@ import { Card } from "../../../../../../components/ui/card";
 import { BackButton } from "../../../../../../components/ui/form-buttons";
 import {
   createSchoolMessage,
+  getSchoolMessage,
+  sendSchoolMessageDraft,
+  updateSchoolMessageDraft,
+  uploadSchoolMessageAttachment,
   uploadSchoolMessagingInlineImage,
 } from "../../../../../../components/messaging/messaging-api";
+import type { MessageAttachment } from "../../../../../../components/messaging/types";
 import { getLeaveComposerConfirmMessage } from "../../../../../../components/messaging/messaging-compose-logic";
 import { MessagingComposer } from "../../../../../../components/messaging/messaging-composer";
 import { ConfirmDialog } from "../../../../../../components/ui/confirm-dialog";
@@ -74,15 +79,31 @@ export default function SchoolNewMessagePage() {
   const params = useParams<{ schoolSlug: string }>();
   const schoolSlug = params.schoolSlug;
   const composeMode = searchParams.get("mode");
-  const initialSubject = searchParams.get("subject") ?? "";
-  const initialBody = searchParams.get("body") ?? "";
-  const initialRecipientUserIds = (searchParams.get("recipientUserIds") ?? "")
+  const draftId = searchParams.get("draftId");
+  const queryInitialSubject = searchParams.get("subject") ?? "";
+  const queryInitialBody = searchParams.get("body") ?? "";
+  const queryInitialRecipientUserIds = (
+    searchParams.get("recipientUserIds") ?? ""
+  )
     .split(",")
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [draftSubject, setDraftSubject] = useState<string | null>(null);
+  const [draftBodyHtml, setDraftBodyHtml] = useState<string | null>(null);
+  const [draftRecipientUserIds, setDraftRecipientUserIds] = useState<
+    string[] | null
+  >(null);
+  const [draftAttachments, setDraftAttachments] = useState<MessageAttachment[]>(
+    [],
+  );
+
+  const initialSubject = draftSubject ?? queryInitialSubject;
+  const initialBody = draftBodyHtml ?? queryInitialBody;
+  const initialRecipientUserIds =
+    draftRecipientUserIds ?? queryInitialRecipientUserIds;
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [role, setRole] = useState<SchoolRole | null>(null);
   const [teacherRecipients, setTeacherRecipients] = useState<
@@ -111,7 +132,7 @@ export default function SchoolNewMessagePage() {
       return;
     }
     void loadProfile(schoolSlug);
-  }, [schoolSlug]);
+  }, [schoolSlug, draftId]);
 
   async function loadProfile(currentSchoolSlug: string) {
     setLoading(true);
@@ -161,6 +182,16 @@ export default function SchoolNewMessagePage() {
           })),
         );
       }
+
+      if (draftId) {
+        const draft = await getSchoolMessage(currentSchoolSlug, draftId);
+        setDraftSubject(draft.subject);
+        setDraftBodyHtml(draft.bodyHtml ?? "");
+        setDraftRecipientUserIds(
+          (draft.recipients ?? []).map((entry) => entry.userId),
+        );
+        setDraftAttachments(draft.attachments);
+      }
     } catch {
       setError(t("messaging.compose.loadError"));
     } finally {
@@ -193,19 +224,47 @@ export default function SchoolNewMessagePage() {
     setLeaveConfirmOpen(true);
   }
 
+  async function uploadNewAttachments(files: File[]) {
+    const uploaded = [];
+    for (const file of files) {
+      uploaded.push(await uploadSchoolMessageAttachment(schoolSlug, file));
+    }
+    return uploaded;
+  }
+
   async function sendMessage(payload: {
     subject: string;
     body: string;
     recipientUserIds: string[];
     attachments: File[];
+    existingAttachments: MessageAttachment[];
   }) {
-    await createSchoolMessage(schoolSlug, {
-      subject: payload.subject,
-      body: payload.body,
-      recipientUserIds: payload.recipientUserIds,
-      isDraft: false,
-      attachments: payload.attachments,
-    });
+    if (draftId) {
+      const newAttachments = await uploadNewAttachments(payload.attachments);
+      await updateSchoolMessageDraft(schoolSlug, draftId, {
+        subject: payload.subject,
+        body: payload.body,
+        recipientUserIds: payload.recipientUserIds,
+        attachments: [
+          ...payload.existingAttachments.map((attachment) => ({
+            fileName: attachment.fileName,
+            fileUrl: attachment.downloadUrl ?? "",
+            mimeType: attachment.mimeType,
+            sizeBytes: attachment.sizeBytes ?? 0,
+          })),
+          ...newAttachments,
+        ],
+      });
+      await sendSchoolMessageDraft(schoolSlug, draftId);
+    } else {
+      await createSchoolMessage(schoolSlug, {
+        subject: payload.subject,
+        body: payload.body,
+        recipientUserIds: payload.recipientUserIds,
+        isDraft: false,
+        attachments: payload.attachments,
+      });
+    }
     router.push(backUrl);
   }
 
@@ -214,14 +273,33 @@ export default function SchoolNewMessagePage() {
     body: string;
     recipientUserIds: string[];
     attachments: File[];
+    existingAttachments: MessageAttachment[];
   }) {
-    await createSchoolMessage(schoolSlug, {
-      subject: payload.subject,
-      body: payload.body,
-      recipientUserIds: payload.recipientUserIds,
-      isDraft: true,
-      attachments: payload.attachments,
-    });
+    if (draftId) {
+      const newAttachments = await uploadNewAttachments(payload.attachments);
+      await updateSchoolMessageDraft(schoolSlug, draftId, {
+        subject: payload.subject,
+        body: payload.body,
+        recipientUserIds: payload.recipientUserIds,
+        attachments: [
+          ...payload.existingAttachments.map((attachment) => ({
+            fileName: attachment.fileName,
+            fileUrl: attachment.downloadUrl ?? "",
+            mimeType: attachment.mimeType,
+            sizeBytes: attachment.sizeBytes ?? 0,
+          })),
+          ...newAttachments,
+        ],
+      });
+    } else {
+      await createSchoolMessage(schoolSlug, {
+        subject: payload.subject,
+        body: payload.body,
+        recipientUserIds: payload.recipientUserIds,
+        isDraft: true,
+        attachments: payload.attachments,
+      });
+    }
   }
 
   return (
@@ -259,6 +337,7 @@ export default function SchoolNewMessagePage() {
             initialSubject={initialSubject}
             initialBody={initialBody}
             initialRecipientUserIds={initialRecipientUserIds}
+            initialAttachments={draftAttachments}
             onCancel={() => router.push(backUrl)}
             onRequestBackToList={requestBackToList}
             onUnsavedChange={setHasUnsavedChanges}
