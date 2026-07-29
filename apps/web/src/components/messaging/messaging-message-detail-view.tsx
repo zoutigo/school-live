@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Forward, Reply } from "lucide-react";
+import { Forward, Pencil, Reply } from "lucide-react";
 import { Card } from "../ui/card";
 import { MessagingAttachmentPreviewModal } from "./messaging-attachment-preview-modal";
 import { MessagingMessageActions } from "./messaging-message-actions";
@@ -26,6 +26,7 @@ type Props = {
   onBack: () => void;
   onArchivedRedirect: (targetFolder: "inbox" | "sent") => void;
   onOpenCompose: (mode: "reply" | "forward", message: MessagingMessage) => void;
+  onEditDraft?: (message: MessagingMessage) => void;
 };
 
 export function MessagingMessageDetailView({
@@ -36,6 +37,7 @@ export function MessagingMessageDetailView({
   onBack,
   onArchivedRedirect,
   onOpenCompose,
+  onEditDraft,
 }: Props) {
   const { t } = useTranslation();
 
@@ -138,6 +140,19 @@ export function MessagingMessageDetailView({
               message ? (
                 <div className="flex w-full flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
+                    {message.status === "DRAFT" && onEditDraft ? (
+                      <Button
+                        type="button"
+                        onClick={() => onEditDraft(message)}
+                        iconLeft={<Pencil className="h-4 w-4" />}
+                        aria-label={t("messaging.detail.editDraft")}
+                        className="px-2.5 min-[360px]:px-4"
+                      >
+                        <span className="hidden min-[360px]:inline">
+                          {t("messaging.detail.editDraft")}
+                        </span>
+                      </Button>
+                    ) : null}
                     <Button
                       type="button"
                       onClick={() => onOpenCompose("reply", message)}

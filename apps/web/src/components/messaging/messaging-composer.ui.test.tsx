@@ -79,6 +79,7 @@ describe("MessagingComposer", () => {
       subject: "Nouveau message test",
       body: expect.stringContaining("Contenu du message"),
       attachments: [],
+      existingAttachments: [],
     });
     await waitFor(() =>
       expect(screen.getByText("Message envoye.")).toBeInTheDocument(),
@@ -162,6 +163,7 @@ describe("MessagingComposer", () => {
       subject: "Brouillon",
       body: expect.stringContaining("Corps brouillon"),
       attachments: [],
+      existingAttachments: [],
     });
     await waitFor(() =>
       expect(screen.getByText("Brouillon enregistre.")).toBeInTheDocument(),

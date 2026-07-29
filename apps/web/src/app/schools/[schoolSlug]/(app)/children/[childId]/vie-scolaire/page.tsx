@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AlertTriangle, Clock3, ShieldAlert } from "lucide-react";
 import { Card } from "../../../../../../../components/ui/card";
 import { lifeEventTypeLabel } from "../../../../../../../components/life-events/life-events-list";
+import { markBadgeRead } from "../../../../../../../components/layout/badges-api";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -138,6 +139,15 @@ export default function ChildVieScolairePage() {
       return;
     }
     void loadParentContext(schoolSlug, childId);
+  }, [schoolSlug, childId]);
+
+  useEffect(() => {
+    if (!schoolSlug || !childId) {
+      return;
+    }
+    markBadgeRead(schoolSlug, "DISCIPLINE", childId).catch(() => {
+      // Silencieux : ne bloque jamais la consultation pour un souci réseau.
+    });
   }, [schoolSlug, childId]);
 
   async function loadParentContext(
