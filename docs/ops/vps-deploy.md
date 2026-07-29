@@ -1,6 +1,6 @@
 # VPS Deployment Reference (SchoolLive)
 
-Last verified: 2026-03-07 (via `ssh vps-ovh`)
+Last verified: 2026-07-29 (via `ssh vps-ovh`)
 Server hostname: `vps-0e0e21b7`
 Main user: `ubuntu`
 
@@ -59,9 +59,10 @@ Nginx compose:
 
 Nginx vhost for SchoolLive:
 
-- `/home/ubuntu/infra/nginx/conf.d/scolive.lisaweb.fr.conf`
+- `/home/ubuntu/infra/nginx/conf.d/scolive.cm.conf` (canonical domain, apex serves the app, `www.scolive.cm` 301s to apex)
+- `/home/ubuntu/infra/nginx/conf.d/scolive.lisaweb.fr.conf` (legacy domain, 301s entirely to `https://scolive.cm`)
 
-Routing behavior for `scolive.lisaweb.fr`:
+Routing behavior for `scolive.cm`:
 
 - `/api/auth/(sso/login|login|login-phone|refresh|logout)` -> `api:3001`
 - `/api/auth/(providers|session|csrf|signin*|signout*|callback*)` -> `web:3000`
