@@ -3639,6 +3639,256 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Téléphone + PIN ou email + mot de passe requis.",
     "users.create.error.studentRequired": "L'élève est obligatoire.",
     "users.create.error.classRequired": "La classe est obligatoire.",
+
+    "nav.ariaLabel": "Navigation principale",
+    "nav.features": "Fonctionnalités",
+    "nav.pricing": "Tarifs",
+    "nav.blog": "Blog",
+    "nav.contact": "Contact",
+
+    "footer.tagline":
+      "La plateforme scolaire tout-en-un, pensée pour les écoles du Cameroun.",
+    "footer.product.title": "Produit",
+    "footer.resources.title": "Ressources",
+    "footer.legal.title": "Légal",
+    "footer.legalMentions": "Mentions légales",
+    "footer.terms": "CGU",
+    "footer.privacy": "Confidentialité",
+    "footer.rights": "Tous droits réservés.",
+
+    "featuresPage.hero.eyebrow": "Fonctionnalités",
+    "featuresPage.hero.title":
+      "Tout ce dont votre école a besoin, en un seul endroit",
+    "featuresPage.hero.subtitle":
+      "Notes, emploi du temps, devoirs, vie scolaire, messagerie et ressources : Scolive réunit les outils du quotidien scolaire dans une seule plateforme, pensée pour le Cameroun.",
+
+    "featuresPage.items.notes.title": "Notes & bulletins",
+    "featuresPage.items.notes.description":
+      "Suivez les moyennes, bulletins et appréciations en temps réel, trimestre après trimestre.",
+    "featuresPage.items.notes.bullet1": "Notes saisies par matière",
+    "featuresPage.items.notes.bullet2": "Bulletins générés automatiquement",
+    "featuresPage.items.notes.bullet3": "Historique complet de la scolarité",
+
+    "featuresPage.items.schedule.title": "Emploi du temps",
+    "featuresPage.items.schedule.description":
+      "Un emploi du temps clair pour chaque classe, chaque enseignant et chaque salle.",
+    "featuresPage.items.schedule.bullet1":
+      "Créneaux et salles gérés simplement",
+    "featuresPage.items.schedule.bullet2":
+      "Changements visibles instantanément",
+    "featuresPage.items.schedule.bullet3": "Vue par classe ou par enseignant",
+
+    "featuresPage.items.homework.title": "Devoirs",
+    "featuresPage.items.homework.description":
+      "Devoirs et évaluations centralisés, avec consignes et échéances toujours à portée de main.",
+    "featuresPage.items.homework.bullet1": "Dépôt de documents et consignes",
+    "featuresPage.items.homework.bullet2": "Rappels avant échéance",
+    "featuresPage.items.homework.bullet3": "Suivi par matière",
+
+    "featuresPage.items.schoolLife.title": "Vie scolaire",
+    "featuresPage.items.schoolLife.description":
+      "Absences, retards, sanctions et félicitations suivis avec justesse et transparence.",
+    "featuresPage.items.schoolLife.bullet1": "Journal de vie scolaire",
+    "featuresPage.items.schoolLife.bullet2":
+      "Notifications automatiques aux familles",
+    "featuresPage.items.schoolLife.bullet3": "Historique disciplinaire",
+
+    "featuresPage.items.messaging.title": "Messagerie",
+    "featuresPage.items.messaging.description":
+      "Un seul fil de discussion entre école, enseignants et familles, sans passer par WhatsApp.",
+    "featuresPage.items.messaging.bullet1":
+      "Messages par classe ou individuels",
+    "featuresPage.items.messaging.bullet2": "Annonces officielles de l'école",
+    "featuresPage.items.messaging.bullet3": "Notifications immédiates",
+
+    "featuresPage.items.resources.title": "Ressources pédagogiques",
+    "featuresPage.items.resources.description":
+      "Cours, fiches et supports pédagogiques rangés et accessibles à tout moment.",
+    "featuresPage.items.resources.bullet1":
+      "Bibliothèque par matière et niveau",
+    "featuresPage.items.resources.bullet2": "Partage simple aux élèves",
+    "featuresPage.items.resources.bullet3": "Organisé par année scolaire",
+
+    "featuresPage.cta.title": "Envie de voir Scolive en action ?",
+    "featuresPage.cta.subtitle":
+      "Découvrez nos offres et démarrez avec votre établissement.",
+    "featuresPage.cta.button": "Voir les tarifs",
+
+    "pricingPage.hero.eyebrow": "Tarifs",
+    "pricingPage.hero.title": "Une offre adaptée à votre établissement",
+    "pricingPage.hero.subtitle":
+      "Chaque école est différente. Nos offres s'adaptent à la taille et aux besoins de votre établissement, où que vous soyez au Cameroun.",
+
+    "pricingPage.tiers.priceLabel": "Sur devis",
+    "pricingPage.tiers.cta": "Demander un devis",
+
+    "pricingPage.tiers.school.title": "École",
+    "pricingPage.tiers.school.subtitle":
+      "Pour un établissement indépendant, du primaire au secondaire.",
+    "pricingPage.tiers.school.feature1": "Gestion complète de l'établissement",
+    "pricingPage.tiers.school.feature2":
+      "Notes, emploi du temps et vie scolaire",
+    "pricingPage.tiers.school.feature3": "Application mobile pour les familles",
+    "pricingPage.tiers.school.feature4": "Support par email",
+
+    "pricingPage.tiers.group.title": "Groupe scolaire",
+    "pricingPage.tiers.group.subtitle":
+      "Pour plusieurs établissements gérés sous une même structure.",
+    "pricingPage.tiers.group.feature1": "Tout ce qui est inclus dans École",
+    "pricingPage.tiers.group.feature2":
+      "Tableaux de bord consolidés multi-écoles",
+    "pricingPage.tiers.group.feature3":
+      "Accompagnement dédié à la mise en place",
+    "pricingPage.tiers.group.feature4": "Support prioritaire",
+
+    "pricingPage.tiers.custom.title": "Sur mesure",
+    "pricingPage.tiers.custom.subtitle":
+      "Pour les besoins spécifiques et les grandes structures.",
+    "pricingPage.tiers.custom.feature1":
+      "Fonctionnalités et intégrations spécifiques",
+    "pricingPage.tiers.custom.feature2": "Formation de vos équipes",
+    "pricingPage.tiers.custom.feature3": "Accompagnement au démarrage",
+    "pricingPage.tiers.custom.feature4": "Interlocuteur dédié",
+
+    "pricingPage.note.title": "Pourquoi pas de prix fixes ?",
+    "pricingPage.note.body":
+      "Le juste prix dépend du nombre d'élèves, du nombre d'établissements et de vos besoins. Nous préférons en discuter avec vous plutôt que d'afficher un tarif générique.",
+
+    "pricingPage.cta.title": "Discutons de votre projet",
+    "pricingPage.cta.subtitle":
+      "Notre équipe vous répond rapidement pour construire l'offre qui vous convient.",
+    "pricingPage.cta.button": "Nous contacter",
+
+    "blogPage.hero.eyebrow": "Blog",
+    "blogPage.hero.title": "Idées et retours d'expérience pour votre école",
+    "blogPage.hero.subtitle":
+      "Digitalisation, pédagogie et organisation scolaire : nos réflexions pour accompagner les écoles du Cameroun.",
+
+    "blogPage.articles.article1.category": "Digitalisation",
+    "blogPage.articles.article1.title":
+      "Pourquoi digitaliser la vie scolaire au Cameroun ?",
+    "blogPage.articles.article1.excerpt":
+      "Notes, absences, communication : ce que le numérique change concrètement pour les écoles et les familles.",
+    "blogPage.articles.article1.meta": "5 min de lecture",
+
+    "blogPage.articles.article2.category": "Pédagogie",
+    "blogPage.articles.article2.title":
+      "Bulletins scolaires : gagner du temps chaque trimestre",
+    "blogPage.articles.article2.excerpt":
+      "Comment automatiser le calcul des moyennes et la génération des bulletins sans perdre en rigueur.",
+    "blogPage.articles.article2.meta": "4 min de lecture",
+
+    "blogPage.articles.article3.category": "Communication",
+    "blogPage.articles.article3.title":
+      "Rester connecté avec les familles, sans WhatsApp",
+    "blogPage.articles.article3.excerpt":
+      "Pourquoi une messagerie scolaire dédiée facilite le suivi et rassure les parents.",
+    "blogPage.articles.article3.meta": "3 min de lecture",
+
+    "blogPage.articles.article4.category": "Organisation",
+    "blogPage.articles.article4.title":
+      "Emploi du temps : éviter les conflits de salles et d'enseignants",
+    "blogPage.articles.article4.excerpt":
+      "Les bonnes pratiques pour construire un emploi du temps fiable, trimestre après trimestre.",
+    "blogPage.articles.article4.meta": "4 min de lecture",
+
+    "blogPage.comingSoon":
+      "De nouveaux articles arrivent bientôt. Revenez régulièrement !",
+
+    "contactPage.hero.eyebrow": "Contact",
+    "contactPage.hero.title": "Parlons de votre école",
+    "contactPage.hero.subtitle":
+      "Une question, un projet de digitalisation ? Ecrivez-nous, notre équipe vous répond rapidement.",
+
+    "contactPage.info.emailLabel": "Email",
+    "contactPage.info.phoneLabel": "Téléphone",
+    "contactPage.info.locationLabel": "Localisation",
+    "contactPage.info.locationValue": "Cameroun",
+
+    "contactPage.form.name": "Nom complet",
+    "contactPage.form.email": "Email",
+    "contactPage.form.subject": "Sujet",
+    "contactPage.form.message": "Message",
+    "contactPage.form.submit": "Envoyer le message",
+    "contactPage.form.error.name":
+      "Le nom doit contenir au moins 2 caractères.",
+    "contactPage.form.error.email": "Adresse email invalide.",
+    "contactPage.form.error.subject":
+      "Le sujet doit contenir au moins 3 caractères.",
+    "contactPage.form.error.message":
+      "Le message doit contenir au moins 10 caractères.",
+    "contactPage.form.success.title": "Message envoyé !",
+    "contactPage.form.success.body":
+      "Merci, nous revenons vers vous très vite.",
+    "contactPage.form.success.again": "Envoyer un autre message",
+
+    "legal.lastUpdated": "Dernière mise à jour :",
+    "legal.updatedDate": "30 juillet 2026",
+    "legal.placeholderNotice":
+      "Ce contenu est un modèle à personnaliser avec les informations légales exactes de votre structure (raison sociale, immatriculation, adresse du siège) avant publication officielle.",
+
+    "legalNoticePage.title": "Mentions légales",
+    "legalNoticePage.intro":
+      "Informations relatives à l'édition et à l'hébergement de la plateforme Scolive.",
+    "legalNoticePage.section1.heading": "Éditeur du site",
+    "legalNoticePage.section1.body":
+      "Scolive est édité par [Raison sociale à compléter], [forme juridique], dont le siège social est situé au Cameroun. Contact : contact@scolive.cm.",
+    "legalNoticePage.section2.heading": "Hébergement",
+    "legalNoticePage.section2.body":
+      "La plateforme est hébergée par OVH SAS, 2 rue Kellermann, 59100 Roubaix, France.",
+    "legalNoticePage.section3.heading": "Propriété intellectuelle",
+    "legalNoticePage.section3.body":
+      "L'ensemble des contenus, marques et éléments graphiques de Scolive sont protégés et ne peuvent être reproduits sans autorisation.",
+    "legalNoticePage.section4.heading": "Responsabilité",
+    "legalNoticePage.section4.body":
+      "Scolive met tout en œuvre pour assurer la disponibilité et l'exactitude des informations, sans garantie d'absence d'erreur ou d'interruption du service.",
+    "legalNoticePage.section5.heading": "Droit applicable",
+    "legalNoticePage.section5.body":
+      "Les présentes mentions légales sont soumises au droit camerounais.",
+
+    "termsPage.title": "Conditions générales d'utilisation",
+    "termsPage.intro":
+      "Les présentes CGU définissent les règles d'utilisation de la plateforme Scolive par les écoles, enseignants et familles.",
+    "termsPage.section1.heading": "Objet",
+    "termsPage.section1.body":
+      "Scolive est une plateforme de gestion de la vie scolaire (notes, emploi du temps, devoirs, communication) destinée aux écoles, à leurs enseignants et aux familles.",
+    "termsPage.section2.heading": "Accès au service",
+    "termsPage.section2.body":
+      "L'accès à Scolive se fait via un compte créé par l'établissement scolaire. Chaque utilisateur est responsable de la confidentialité de ses identifiants.",
+    "termsPage.section3.heading": "Comptes et rôles",
+    "termsPage.section3.body":
+      "Les droits d'accès varient selon le rôle (administration, enseignant, parent, élève) et sont définis par l'établissement.",
+    "termsPage.section4.heading": "Utilisation autorisée",
+    "termsPage.section4.body":
+      "Le service doit être utilisé conformément à sa destination pédagogique et administrative, dans le respect des autres utilisateurs.",
+    "termsPage.section5.heading": "Responsabilités",
+    "termsPage.section5.body":
+      "Scolive fournit l'outil ; les établissements restent responsables de l'exactitude des informations qu'ils y publient.",
+    "termsPage.section6.heading": "Modification des CGU et droit applicable",
+    "termsPage.section6.body":
+      "Ces CGU peuvent évoluer ; les utilisateurs seront informés des changements. Elles sont soumises au droit camerounais.",
+
+    "privacyPage.title": "Politique de confidentialité",
+    "privacyPage.intro":
+      "Comment Scolive collecte, utilise et protège les données personnelles des écoles, enseignants et familles.",
+    "privacyPage.section1.heading": "Données collectées",
+    "privacyPage.section1.body":
+      "Nom, contact, rôle et données de scolarité (notes, absences, messages) nécessaires au fonctionnement de la plateforme.",
+    "privacyPage.section2.heading": "Finalités du traitement",
+    "privacyPage.section2.body":
+      "Ces données sont utilisées uniquement pour assurer le suivi scolaire, la communication école-famille et le bon fonctionnement du service.",
+    "privacyPage.section3.heading": "Partage des données",
+    "privacyPage.section3.body":
+      "Les données ne sont jamais revendues. Elles ne sont partagées qu'avec les acteurs nécessaires au fonctionnement du service (hébergement, envoi d'emails).",
+    "privacyPage.section4.heading": "Sécurité et hébergement",
+    "privacyPage.section4.body":
+      "Les données sont hébergées sur des serveurs sécurisés (OVH) avec des mesures techniques adaptées pour en limiter l'accès.",
+    "privacyPage.section5.heading": "Droits des utilisateurs",
+    "privacyPage.section5.body":
+      "Chaque utilisateur peut demander l'accès, la rectification ou la suppression de ses données en nous contactant via la page Contact.",
+    "privacyPage.section6.heading": "Conservation des données",
+    "privacyPage.section6.body":
+      "Les données sont conservées pendant la durée de la scolarité de l'élève et selon les obligations légales applicables.",
   },
   en: {
     "common.save": "Save",
@@ -7117,5 +7367,240 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Phone + PIN or email + password required.",
     "users.create.error.studentRequired": "Student is required.",
     "users.create.error.classRequired": "Class is required.",
+
+    "nav.ariaLabel": "Main navigation",
+    "nav.features": "Features",
+    "nav.pricing": "Pricing",
+    "nav.blog": "Blog",
+    "nav.contact": "Contact",
+
+    "footer.tagline":
+      "The all-in-one school platform, built for schools in Cameroon.",
+    "footer.product.title": "Product",
+    "footer.resources.title": "Resources",
+    "footer.legal.title": "Legal",
+    "footer.legalMentions": "Legal notice",
+    "footer.terms": "Terms of service",
+    "footer.privacy": "Privacy",
+    "footer.rights": "All rights reserved.",
+
+    "featuresPage.hero.eyebrow": "Features",
+    "featuresPage.hero.title": "Everything your school needs, in one place",
+    "featuresPage.hero.subtitle":
+      "Grades, timetable, homework, school life, messaging and resources: Scolive brings together the tools schools use every day, built for Cameroon.",
+
+    "featuresPage.items.notes.title": "Grades & report cards",
+    "featuresPage.items.notes.description":
+      "Track averages, report cards and remarks in real time, term after term.",
+    "featuresPage.items.notes.bullet1": "Grades entered by subject",
+    "featuresPage.items.notes.bullet2": "Report cards generated automatically",
+    "featuresPage.items.notes.bullet3": "Full academic history",
+
+    "featuresPage.items.schedule.title": "Timetable",
+    "featuresPage.items.schedule.description":
+      "A clear timetable for every class, teacher and room.",
+    "featuresPage.items.schedule.bullet1": "Slots and rooms managed easily",
+    "featuresPage.items.schedule.bullet2": "Changes visible instantly",
+    "featuresPage.items.schedule.bullet3": "View by class or by teacher",
+
+    "featuresPage.items.homework.title": "Homework",
+    "featuresPage.items.homework.description":
+      "Homework and assessments centralised, with instructions and deadlines always at hand.",
+    "featuresPage.items.homework.bullet1": "Upload documents and instructions",
+    "featuresPage.items.homework.bullet2": "Reminders before the deadline",
+    "featuresPage.items.homework.bullet3": "Tracking by subject",
+
+    "featuresPage.items.schoolLife.title": "School life",
+    "featuresPage.items.schoolLife.description":
+      "Absences, lateness, sanctions and commendations tracked fairly and transparently.",
+    "featuresPage.items.schoolLife.bullet1": "School life log",
+    "featuresPage.items.schoolLife.bullet2":
+      "Automatic notifications to families",
+    "featuresPage.items.schoolLife.bullet3": "Disciplinary history",
+
+    "featuresPage.items.messaging.title": "Messaging",
+    "featuresPage.items.messaging.description":
+      "A single thread between school, teachers and families, no more WhatsApp.",
+    "featuresPage.items.messaging.bullet1": "Messages by class or one-to-one",
+    "featuresPage.items.messaging.bullet2": "Official school announcements",
+    "featuresPage.items.messaging.bullet3": "Instant notifications",
+
+    "featuresPage.items.resources.title": "Learning resources",
+    "featuresPage.items.resources.description":
+      "Lessons, worksheets and teaching materials, organised and available anytime.",
+    "featuresPage.items.resources.bullet1": "Library by subject and level",
+    "featuresPage.items.resources.bullet2": "Simple sharing with students",
+    "featuresPage.items.resources.bullet3": "Organised by school year",
+
+    "featuresPage.cta.title": "Want to see Scolive in action?",
+    "featuresPage.cta.subtitle":
+      "Explore our plans and get your school started.",
+    "featuresPage.cta.button": "See pricing",
+
+    "pricingPage.hero.eyebrow": "Pricing",
+    "pricingPage.hero.title": "A plan that fits your school",
+    "pricingPage.hero.subtitle":
+      "Every school is different. Our plans adapt to the size and needs of your institution, anywhere in Cameroon.",
+
+    "pricingPage.tiers.priceLabel": "Custom quote",
+    "pricingPage.tiers.cta": "Request a quote",
+
+    "pricingPage.tiers.school.title": "School",
+    "pricingPage.tiers.school.subtitle":
+      "For a single institution, from primary to secondary.",
+    "pricingPage.tiers.school.feature1": "Full school management",
+    "pricingPage.tiers.school.feature2": "Grades, timetable and school life",
+    "pricingPage.tiers.school.feature3": "Mobile app for families",
+    "pricingPage.tiers.school.feature4": "Email support",
+
+    "pricingPage.tiers.group.title": "School group",
+    "pricingPage.tiers.group.subtitle":
+      "For several institutions managed under one structure.",
+    "pricingPage.tiers.group.feature1": "Everything in School",
+    "pricingPage.tiers.group.feature2": "Consolidated multi-school dashboards",
+    "pricingPage.tiers.group.feature3": "Dedicated rollout support",
+    "pricingPage.tiers.group.feature4": "Priority support",
+
+    "pricingPage.tiers.custom.title": "Custom",
+    "pricingPage.tiers.custom.subtitle":
+      "For specific needs and larger organisations.",
+    "pricingPage.tiers.custom.feature1": "Specific features and integrations",
+    "pricingPage.tiers.custom.feature2": "Training for your teams",
+    "pricingPage.tiers.custom.feature3": "Onboarding support",
+    "pricingPage.tiers.custom.feature4": "Dedicated contact",
+
+    "pricingPage.note.title": "Why no fixed prices?",
+    "pricingPage.note.body":
+      "The right price depends on the number of students, the number of schools and your needs. We'd rather talk it through with you than show a generic rate.",
+
+    "pricingPage.cta.title": "Let's talk about your project",
+    "pricingPage.cta.subtitle":
+      "Our team gets back to you quickly to build the plan that fits.",
+    "pricingPage.cta.button": "Contact us",
+
+    "blogPage.hero.eyebrow": "Blog",
+    "blogPage.hero.title": "Ideas and insights for your school",
+    "blogPage.hero.subtitle":
+      "Digitalisation, teaching practice and school organisation: our thoughts on supporting schools in Cameroon.",
+
+    "blogPage.articles.article1.category": "Digitalisation",
+    "blogPage.articles.article1.title":
+      "Why digitalise school life in Cameroon?",
+    "blogPage.articles.article1.excerpt":
+      "Grades, attendance, communication: what going digital really changes for schools and families.",
+    "blogPage.articles.article1.meta": "5 min read",
+
+    "blogPage.articles.article2.category": "Teaching",
+    "blogPage.articles.article2.title": "Report cards: saving time every term",
+    "blogPage.articles.article2.excerpt":
+      "How to automate average calculations and report card generation without losing rigour.",
+    "blogPage.articles.article2.meta": "4 min read",
+
+    "blogPage.articles.article3.category": "Communication",
+    "blogPage.articles.article3.title":
+      "Staying connected with families, without WhatsApp",
+    "blogPage.articles.article3.excerpt":
+      "Why a dedicated school messaging tool makes follow-up easier and reassures parents.",
+    "blogPage.articles.article3.meta": "3 min read",
+
+    "blogPage.articles.article4.category": "Organisation",
+    "blogPage.articles.article4.title":
+      "Timetables: avoiding room and teacher conflicts",
+    "blogPage.articles.article4.excerpt":
+      "Best practices for building a reliable timetable, term after term.",
+    "blogPage.articles.article4.meta": "4 min read",
+
+    "blogPage.comingSoon": "New articles are coming soon. Check back often!",
+
+    "contactPage.hero.eyebrow": "Contact",
+    "contactPage.hero.title": "Let's talk about your school",
+    "contactPage.hero.subtitle":
+      "A question, a digitalisation project? Write to us, our team gets back to you quickly.",
+
+    "contactPage.info.emailLabel": "Email",
+    "contactPage.info.phoneLabel": "Phone",
+    "contactPage.info.locationLabel": "Location",
+    "contactPage.info.locationValue": "Cameroon",
+
+    "contactPage.form.name": "Full name",
+    "contactPage.form.email": "Email",
+    "contactPage.form.subject": "Subject",
+    "contactPage.form.message": "Message",
+    "contactPage.form.submit": "Send message",
+    "contactPage.form.error.name": "Name must be at least 2 characters.",
+    "contactPage.form.error.email": "Invalid email address.",
+    "contactPage.form.error.subject": "Subject must be at least 3 characters.",
+    "contactPage.form.error.message": "Message must be at least 10 characters.",
+    "contactPage.form.success.title": "Message sent!",
+    "contactPage.form.success.body": "Thanks, we'll get back to you shortly.",
+    "contactPage.form.success.again": "Send another message",
+
+    "legal.lastUpdated": "Last updated:",
+    "legal.updatedDate": "July 30, 2026",
+    "legal.placeholderNotice":
+      "This content is a template to customise with your organisation's exact legal details (registered name, registration number, registered address) before official publication.",
+
+    "legalNoticePage.title": "Legal notice",
+    "legalNoticePage.intro":
+      "Information about the publisher and hosting of the Scolive platform.",
+    "legalNoticePage.section1.heading": "Publisher",
+    "legalNoticePage.section1.body":
+      "Scolive is published by [Company name to complete], [legal form], headquartered in Cameroon. Contact: contact@scolive.cm.",
+    "legalNoticePage.section2.heading": "Hosting",
+    "legalNoticePage.section2.body":
+      "The platform is hosted by OVH SAS, 2 rue Kellermann, 59100 Roubaix, France.",
+    "legalNoticePage.section3.heading": "Intellectual property",
+    "legalNoticePage.section3.body":
+      "All Scolive content, trademarks and graphic elements are protected and may not be reproduced without authorisation.",
+    "legalNoticePage.section4.heading": "Liability",
+    "legalNoticePage.section4.body":
+      "Scolive strives to keep information accurate and available, without guaranteeing an error-free or uninterrupted service.",
+    "legalNoticePage.section5.heading": "Governing law",
+    "legalNoticePage.section5.body":
+      "This legal notice is governed by the laws of Cameroon.",
+
+    "termsPage.title": "Terms of service",
+    "termsPage.intro":
+      "These terms define how schools, teachers and families may use the Scolive platform.",
+    "termsPage.section1.heading": "Purpose",
+    "termsPage.section1.body":
+      "Scolive is a school life management platform (grades, timetable, homework, communication) for schools, their teachers and families.",
+    "termsPage.section2.heading": "Access to the service",
+    "termsPage.section2.body":
+      "Access to Scolive is granted through an account created by the school. Each user is responsible for keeping their credentials confidential.",
+    "termsPage.section3.heading": "Accounts and roles",
+    "termsPage.section3.body":
+      "Access rights vary by role (administration, teacher, parent, student) and are defined by the school.",
+    "termsPage.section4.heading": "Permitted use",
+    "termsPage.section4.body":
+      "The service must be used for its intended educational and administrative purpose, with respect for other users.",
+    "termsPage.section5.heading": "Responsibilities",
+    "termsPage.section5.body":
+      "Scolive provides the tool; schools remain responsible for the accuracy of the information they publish on it.",
+    "termsPage.section6.heading": "Changes to these terms and governing law",
+    "termsPage.section6.body":
+      "These terms may evolve; users will be informed of changes. They are governed by the laws of Cameroon.",
+
+    "privacyPage.title": "Privacy policy",
+    "privacyPage.intro":
+      "How Scolive collects, uses and protects personal data of schools, teachers and families.",
+    "privacyPage.section1.heading": "Data collected",
+    "privacyPage.section1.body":
+      "Name, contact details, role and school data (grades, absences, messages) needed to operate the platform.",
+    "privacyPage.section2.heading": "Purpose of processing",
+    "privacyPage.section2.body":
+      "This data is used only to support academic follow-up, school-family communication and the proper functioning of the service.",
+    "privacyPage.section3.heading": "Data sharing",
+    "privacyPage.section3.body":
+      "Data is never sold. It is only shared with parties necessary to operate the service (hosting, email delivery).",
+    "privacyPage.section4.heading": "Security and hosting",
+    "privacyPage.section4.body":
+      "Data is hosted on secure servers (OVH) with technical measures in place to limit access.",
+    "privacyPage.section5.heading": "User rights",
+    "privacyPage.section5.body":
+      "Every user can request access to, correction of, or deletion of their data by reaching out via the Contact page.",
+    "privacyPage.section6.heading": "Data retention",
+    "privacyPage.section6.body":
+      "Data is kept for the duration of the student's enrolment and in line with applicable legal obligations.",
   },
 };

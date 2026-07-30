@@ -1,52 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button } from "../components/ui/button";
+import { Reveal } from "../components/marketing/reveal";
+import { SiteHeader } from "../components/marketing/site-header";
+import { SiteFooter } from "../components/marketing/site-footer";
 import { useTranslation } from "../i18n/useTranslation";
-
-function Reveal({
-  children,
-  className = "",
-  delay = 0,
-}: {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const node = ref.current;
-    if (!node || typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry?.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.15 },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`landing-reveal ${visible ? "landing-reveal-visible" : ""} ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
 
 export default function LandingPage() {
   const { t } = useTranslation();
@@ -149,16 +108,7 @@ export default function LandingPage() {
           className="animate-blob-slow absolute -right-20 -top-10 h-80 w-80 rounded-full bg-accent-teal/20 blur-3xl"
         />
 
-        <header className="absolute inset-x-0 top-0 z-10 mx-auto flex w-full max-w-[1400px] items-center px-6 py-8 lg:px-16">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-card bg-surface font-heading text-lg font-bold text-primary shadow-card">
-              SL
-            </span>
-            <span className="font-heading text-2xl font-bold tracking-tight text-surface drop-shadow-sm md:text-3xl">
-              Scolive
-            </span>
-          </div>
-        </header>
+        <SiteHeader variant="transparent" />
 
         <div className="relative z-10 mx-auto w-full max-w-[1400px] px-6 py-32 lg:px-16">
           <div className="max-w-3xl lg:max-w-5xl xl:max-w-6xl">
@@ -451,11 +401,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-border bg-surface">
-        <div className="site-inline-gutter mx-auto w-full max-w-6xl py-6 text-sm text-text-secondary">
-          © {new Date().getFullYear()} Scolive
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
