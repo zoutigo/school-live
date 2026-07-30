@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import PlatformMessageriePage from "./page";
 
 const pushMock = vi.fn();
+const replaceMock = vi.fn();
 let searchParamsStore: Record<string, string> = {};
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/messagerie",
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({ push: pushMock, replace: replaceMock }),
   useSearchParams: () => ({
     get: (key: string) => searchParamsStore[key] ?? null,
   }),
@@ -60,11 +61,22 @@ function jsonResponse(payload: unknown, status = 200) {
 function makeFetchMock(options: {
   messages?: unknown[];
   archiveSuccess?: boolean;
+  me?: { role: string; schoolSlug: string | null } | "unauthenticated";
 }) {
-  const { messages = [INBOX_MESSAGE], archiveSuccess = true } = options;
+  const {
+    messages = [INBOX_MESSAGE],
+    archiveSuccess = true,
+    me = { role: "ADMIN", schoolSlug: null },
+  } = options;
 
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = String(input);
+
+    if (url.endsWith("/me")) {
+      return me === "unauthenticated"
+        ? jsonResponse({ message: "Unauthorized" }, 401)
+        : jsonResponse(me);
+    }
 
     if (url.includes("/admin/messages/unread-count")) {
       return jsonResponse({ unread: 1 });
@@ -108,6 +120,7 @@ describe("PlatformMessageriePage — mailbox agrégée admin/super-admin", () =>
   beforeEach(() => {
     vi.restoreAllMocks();
     pushMock.mockReset();
+    replaceMock.mockReset();
     searchParamsStore = {};
   });
 
@@ -150,5 +163,67 @@ describe("PlatformMessageriePage — mailbox agrégée admin/super-admin", () =>
     fireEvent.click(composeButtons[0]);
 
     expect(pushMock).toHaveBeenCalledWith("/messagerie/nouveau");
+  });
+});
+
+describe("PlatformMessageriePage — contrôle d'accès par rôle", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    pushMock.mockReset();
+    replaceMock.mockReset();
+    searchParamsStore = {};
+  });
+
+  it("redirige un admin d'école (non plateforme) vers son dashboard sans appeler l'API admin/messages", async () => {
+    const fetchSpy = makeFetchMock({
+      me: { role: "SCHOOL_ADMIN", schoolSlug: "college-vogt" },
+    });
+    render(<PlatformMessageriePage />);
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith(
+        expect.stringContaining("/schools/college-vogt"),
+      );
+    });
+
+    const adminMessagesCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes("/admin/messages"),
+    );
+    expect(adminMessagesCalls).toHaveLength(0);
+  });
+
+  it("redirige un rôle non-plateforme sans schoolSlug vers l'accueil", async () => {
+    makeFetchMock({ me: { role: "TEACHER", schoolSlug: null } });
+    render(<PlatformMessageriePage />);
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/");
+    });
+  });
+
+  it("redirige vers l'accueil si /me répond en erreur (session invalide)", async () => {
+    makeFetchMock({ me: "unauthenticated" });
+    render(<PlatformMessageriePage />);
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/");
+    });
+  });
+
+  it("redirige vers l'accueil si /me échoue (erreur réseau)", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network"));
+    render(<PlatformMessageriePage />);
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/");
+    });
+  });
+
+  it("charge la messagerie pour un SUPER_ADMIN une fois l'accès validé", async () => {
+    makeFetchMock({ me: { role: "SUPER_ADMIN", schoolSlug: null } });
+    render(<PlatformMessageriePage />);
+
+    await screen.findByText("Question école A");
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 });
