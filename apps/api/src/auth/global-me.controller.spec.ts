@@ -50,6 +50,7 @@ const makeServiceMock = () => ({
   setActiveRole: jest.fn().mockResolvedValue(GLOBAL_ME_RESULT),
   setActiveSchool: jest.fn().mockResolvedValue(GLOBAL_ME_RESULT),
   updatePersonalProfile: jest.fn().mockResolvedValue(GLOBAL_ME_RESULT),
+  updateOnboardingHelpEnabled: jest.fn().mockResolvedValue(GLOBAL_ME_RESULT),
 });
 
 describe("GlobalMeController", () => {
@@ -172,6 +173,46 @@ describe("GlobalMeController", () => {
         payload,
       );
       expect(result).toEqual(GLOBAL_ME_RESULT);
+    });
+  });
+
+  // ── PUT /me/onboarding-help ───────────────────────────────────────────────
+
+  describe("PUT /me/onboarding-help", () => {
+    it("active l'aide guidée et retourne le profil mis à jour", async () => {
+      const user = makeUser();
+      const result = await controller.updateOnboardingHelp(user, {
+        onboardingHelpEnabled: true,
+      });
+
+      expect(service.updateOnboardingHelpEnabled).toHaveBeenCalledWith(
+        "user-1",
+        true,
+      );
+      expect(result).toEqual(GLOBAL_ME_RESULT);
+    });
+
+    it("désactive l'aide guidée", async () => {
+      const user = makeUser();
+      await controller.updateOnboardingHelp(user, {
+        onboardingHelpEnabled: false,
+      });
+
+      expect(service.updateOnboardingHelpEnabled).toHaveBeenCalledWith(
+        "user-1",
+        false,
+      );
+    });
+
+    it("propage l'erreur si AuthService.updateOnboardingHelpEnabled échoue", async () => {
+      service.updateOnboardingHelpEnabled.mockRejectedValue(
+        new Error("User not found"),
+      );
+      const user = makeUser();
+
+      await expect(
+        controller.updateOnboardingHelp(user, { onboardingHelpEnabled: true }),
+      ).rejects.toThrow("User not found");
     });
   });
 });

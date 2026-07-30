@@ -9,6 +9,11 @@ import {
 } from "../../../../../components/timetable/timetable-views";
 import { AdminScheduleBrowser } from "../../../../../components/timetable/AdminScheduleBrowser";
 import { useTranslation } from "../../../../../i18n/useTranslation";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import {
+  TIMETABLE_TOUR_ID,
+  TIMETABLE_TOUR_STEPS,
+} from "../../../../../components/timetable/timetable-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -32,6 +37,7 @@ type MeResponse = {
   firstName: string;
   lastName: string;
   role: Role;
+  onboardingHelpEnabled?: boolean;
   linkedStudents?: Array<{
     id: string;
     firstName: string;
@@ -392,6 +398,19 @@ export default function StudentTimetablePage() {
         if (linkedStudents.length === 0) {
           setError(t("timetable.myTimetable.errors.noLinkedStudent"));
           return;
+        }
+
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          payload.onboardingHelpEnabled !== false &&
+          !tourStore.isCompleted("parent", TIMETABLE_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            TIMETABLE_TOUR_ID,
+            "parent",
+            TIMETABLE_TOUR_STEPS,
+          );
         }
       }
 

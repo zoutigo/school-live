@@ -1854,6 +1854,18 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.selectionBanner.classPrefix": "Classe",
     "timetable.adminSchedule.selectionBanner.clear": "Effacer la sélection",
 
+    "onboardingTour.common.next": "Suivant",
+    "onboardingTour.common.skip": "Passer",
+    "onboardingTour.common.finish": "Terminer",
+    "onboardingTour.childTimetable.controlsTitle": "Changez de vue et naviguez",
+    "onboardingTour.childTimetable.controlsBody":
+      "Cliquez sur Jour, Semaine ou Mois pour changer l'affichage, et utilisez les flèches pour changer de période.",
+    "onboardingTour.childTimetable.dayListTitle": "Consultez un cours",
+    "onboardingTour.childTimetable.dayListBody":
+      "Chaque ligne affiche l'horaire, la matière, l'enseignant et la salle du cours.",
+    "settings.onboardingHelp.title": "Aide guidée",
+    "settings.onboardingHelp.subtitle":
+      "Affiche une visite guidée à la première découverte d'un module",
     "timetable.views.today": "Aujourd'hui",
     "timetable.views.thisWeek": "Cette semaine",
     "timetable.views.thisMonth": "Ce mois",
@@ -5657,6 +5669,18 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.selectionBanner.classPrefix": "Class",
     "timetable.adminSchedule.selectionBanner.clear": "Clear selection",
 
+    "onboardingTour.common.next": "Next",
+    "onboardingTour.common.skip": "Skip",
+    "onboardingTour.common.finish": "Finish",
+    "onboardingTour.childTimetable.controlsTitle": "Switch views and navigate",
+    "onboardingTour.childTimetable.controlsBody":
+      "Click Day, Week or Month to change the display, and use the arrows to move between periods.",
+    "onboardingTour.childTimetable.dayListTitle": "Check a course",
+    "onboardingTour.childTimetable.dayListBody":
+      "Each row shows the time, subject, teacher and room for the course.",
+    "settings.onboardingHelp.title": "Guided help",
+    "settings.onboardingHelp.subtitle":
+      "Show a guided tour the first time you open a module",
     "timetable.views.today": "Today",
     "timetable.views.thisWeek": "This week",
     "timetable.views.thisMonth": "This month",
