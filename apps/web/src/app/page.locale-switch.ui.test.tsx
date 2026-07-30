@@ -20,8 +20,8 @@ describe("LandingPage language switch", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Suivi des notes")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Se connecter" }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("link", { name: "Se connecter" }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("renders the English copy when the locale is set to en", () => {
@@ -32,7 +32,9 @@ describe("LandingPage language switch", () => {
       screen.getByText("Your child's school life, connected and effortless."),
     ).toBeInTheDocument();
     expect(screen.getByText("Grade tracking")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "Sign in" }).length,
+    ).toBeGreaterThan(0);
     expect(
       screen.queryByText(
         "La vie scolaire de votre enfant, connectee et sereine.",

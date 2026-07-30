@@ -25,10 +25,11 @@ describe("LandingPage", () => {
   it("renders a link to the login page for the Se connecter CTA", () => {
     render(<LandingPage />);
 
-    expect(screen.getByRole("link", { name: "Se connecter" })).toHaveAttribute(
-      "href",
-      "/login",
-    );
+    const links = screen.getAllByRole("link", { name: "Se connecter" });
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", "/login");
+    }
   });
 
   it("traduit le contenu de la page en anglais quand la langue EN est active", () => {
@@ -36,7 +37,9 @@ describe("LandingPage", () => {
     render(<LandingPage />);
 
     expect(screen.getByText("Grade tracking")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "Sign in" }).length,
+    ).toBeGreaterThan(0);
     const links = screen.getAllByRole("link", {
       name: "Download the Android APK",
     });
