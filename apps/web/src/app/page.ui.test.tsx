@@ -1,15 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import LandingPage from "./page";
-import { useLocaleStore } from "../i18n/locale-store";
-import { DEFAULT_LOCALE } from "../i18n/translations";
+import LandingPageEn from "./en/page";
 
 describe("LandingPage", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
-  });
-
   it("renders the Android APK download link", () => {
     render(<LandingPage />);
 
@@ -32,9 +26,8 @@ describe("LandingPage", () => {
     }
   });
 
-  it("traduit le contenu de la page en anglais quand la langue EN est active", () => {
-    useLocaleStore.setState({ locale: "en" });
-    render(<LandingPage />);
+  it("renders the English copy on the /en page", () => {
+    render(<LandingPageEn />);
 
     expect(screen.getByText("Grade tracking")).toBeInTheDocument();
     expect(

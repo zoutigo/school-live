@@ -1,41 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useFixedTranslation } from "../../i18n/useTranslation";
+import { localizedPath, type MarketingLocale } from "../../lib/seo";
 
-function useFooterColumns() {
-  const { t } = useTranslation();
+function useFooterColumns(locale: MarketingLocale) {
+  const { t } = useFixedTranslation(locale);
 
   return [
     {
       title: t("footer.product.title"),
       links: [
-        { href: "/fonctionnalites", label: t("nav.features") },
-        { href: "/tarifs", label: t("nav.pricing") },
+        {
+          href: localizedPath(locale, "/fonctionnalites"),
+          label: t("nav.features"),
+        },
+        { href: localizedPath(locale, "/tarifs"), label: t("nav.pricing") },
         { href: "/login", label: t("landing.hero.loginCta") },
       ],
     },
     {
       title: t("footer.resources.title"),
       links: [
-        { href: "/blog", label: t("nav.blog") },
-        { href: "/contact", label: t("nav.contact") },
+        { href: localizedPath(locale, "/blog"), label: t("nav.blog") },
+        { href: localizedPath(locale, "/contact"), label: t("nav.contact") },
       ],
     },
     {
       title: t("footer.legal.title"),
       links: [
-        { href: "/mentions-legales", label: t("footer.legalMentions") },
-        { href: "/cgu", label: t("footer.terms") },
-        { href: "/confidentialite", label: t("footer.privacy") },
+        {
+          href: localizedPath(locale, "/mentions-legales"),
+          label: t("footer.legalMentions"),
+        },
+        { href: localizedPath(locale, "/cgu"), label: t("footer.terms") },
+        {
+          href: localizedPath(locale, "/confidentialite"),
+          label: t("footer.privacy"),
+        },
       ],
     },
   ];
 }
 
-export function SiteFooter() {
-  const { t } = useTranslation();
-  const columns = useFooterColumns();
+export function SiteFooter({ locale = "fr" }: { locale?: MarketingLocale }) {
+  const { t } = useFixedTranslation(locale);
+  const columns = useFooterColumns(locale);
 
   return (
     <footer className="border-t border-border bg-surface">

@@ -3,7 +3,8 @@
 import { Reveal } from "../../components/marketing/reveal";
 import { SiteHeader } from "../../components/marketing/site-header";
 import { SiteFooter } from "../../components/marketing/site-footer";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useFixedTranslation } from "../../i18n/useTranslation";
+import type { MarketingLocale } from "../../lib/seo";
 
 const ARTICLES = [
   { key: "article1", image: "/images/camer-school1.png", tone: "primary" },
@@ -27,12 +28,12 @@ const CATEGORY_STYLES: Record<string, string> = {
   metal: "bg-metal-500/10 text-metal-600",
 };
 
-export function BlogContent() {
-  const { t } = useTranslation();
+export function BlogContent({ locale = "fr" }: { locale?: MarketingLocale }) {
+  const { t } = useFixedTranslation(locale);
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
-      <SiteHeader />
+      <SiteHeader locale={locale} />
 
       <main>
         <section className="relative overflow-hidden bg-teal-surface py-20">
@@ -105,7 +106,7 @@ export function BlogContent() {
         </section>
       </main>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

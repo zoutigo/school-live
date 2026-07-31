@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "../ui/button";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useFixedTranslation } from "../../i18n/useTranslation";
+import { localizedPath, type MarketingLocale } from "../../lib/seo";
 
 type Variant = "transparent" | "solid";
 
@@ -15,6 +16,13 @@ const NAV_ITEMS: { href: string; key: string }[] = [
   { href: "/blog", key: "nav.blog" },
   { href: "/contact", key: "nav.contact" },
 ];
+
+/** Strips a leading /en so a pathname can be re-localized to either locale. */
+function toBasePath(pathname: string | null): string {
+  if (!pathname || pathname === "/en") return "/";
+  if (pathname.startsWith("/en/")) return pathname.slice(3);
+  return pathname;
+}
 
 function NavLink({
   href,
@@ -45,8 +53,55 @@ function NavLink({
   );
 }
 
-export function SiteHeader({ variant = "solid" }: { variant?: Variant }) {
-  const { t } = useTranslation();
+function LanguageSwitchLink({
+  locale,
+  transparent,
+  pathname,
+  onClick,
+}: {
+  locale: MarketingLocale;
+  transparent: boolean;
+  pathname: string | null;
+  onClick?: () => void;
+}) {
+  const basePath = toBasePath(pathname);
+  const tone = transparent
+    ? "border-surface/40 text-surface/90 hover:bg-surface/10"
+    : "border-border text-text-secondary hover:bg-warm-highlight/40";
+
+  return (
+    <div
+      className={`inline-flex overflow-hidden rounded-full border text-xs font-semibold uppercase tracking-wide ${tone}`}
+    >
+      {(["fr", "en"] as const).map((option) => (
+        <Link
+          key={option}
+          href={localizedPath(option, basePath)}
+          onClick={onClick}
+          aria-current={option === locale ? "true" : undefined}
+          className={`px-2.5 py-1 transition-colors ${
+            option === locale
+              ? transparent
+                ? "bg-surface/20 text-surface"
+                : "bg-warm-highlight/70 text-primary"
+              : ""
+          }`}
+        >
+          {option.toUpperCase()}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export function SiteHeader({
+  variant = "solid",
+  locale = "fr",
+}: {
+  variant?: Variant;
+  locale?: MarketingLocale;
+}) {
+  const { t } = useFixedTranslation(locale);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const transparent = variant === "transparent";
@@ -62,7 +117,11 @@ export function SiteHeader({ variant = "solid" }: { variant?: Variant }) {
       }
     >
       <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-6 py-5 lg:px-16">
-        <Link href="/" className="flex items-center gap-3" onClick={close}>
+        <Link
+          href={localizedPath(locale, "/")}
+          className="flex items-center gap-3"
+          onClick={close}
+        >
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-card bg-surface font-heading text-base font-bold text-primary shadow-card">
             SL
           </span>
@@ -79,18 +138,26 @@ export function SiteHeader({ variant = "solid" }: { variant?: Variant }) {
           aria-label={t("nav.ariaLabel")}
           className="hidden items-center gap-8 md:flex"
         >
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              label={t(item.key)}
-              active={pathname === item.href}
-              transparent={transparent}
-            />
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const href = localizedPath(locale, item.href);
+            return (
+              <NavLink
+                key={item.href}
+                href={href}
+                label={t(item.key)}
+                active={pathname === href}
+                transparent={transparent}
+              />
+            );
+          })}
         </nav>
 
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-4 md:flex">
+          <LanguageSwitchLink
+            locale={locale}
+            transparent={transparent}
+            pathname={pathname}
+          />
           <Link href="/login">
             <Button>{t("landing.hero.loginCta")}</Button>
           </Link>
@@ -116,20 +183,31 @@ export function SiteHeader({ variant = "solid" }: { variant?: Variant }) {
           aria-label={t("nav.ariaLabel")}
           className="site-inline-gutter mx-auto flex w-full max-w-[1400px] flex-col gap-1 border-t border-border bg-surface px-6 pb-6 pt-4 shadow-card md:hidden"
         >
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
+          {NAV_ITEMS.map((item) => {
+            const href = localizedPath(locale, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={href}
+                onClick={close}
+                className={`rounded-card px-3 py-3 text-base font-semibold ${
+                  pathname === href
+                    ? "bg-warm-highlight/60 text-primary"
+                    : "text-text-primary hover:bg-warm-highlight/40"
+                }`}
+              >
+                {t(item.key)}
+              </Link>
+            );
+          })}
+          <div className="mt-2 px-3">
+            <LanguageSwitchLink
+              locale={locale}
+              transparent={false}
+              pathname={pathname}
               onClick={close}
-              className={`rounded-card px-3 py-3 text-base font-semibold ${
-                pathname === item.href
-                  ? "bg-warm-highlight/60 text-primary"
-                  : "text-text-primary hover:bg-warm-highlight/40"
-              }`}
-            >
-              {t(item.key)}
-            </Link>
-          ))}
+            />
+          </div>
           <Link href="/login" onClick={close} className="mt-3">
             <Button className="w-full">{t("landing.hero.loginCta")}</Button>
           </Link>

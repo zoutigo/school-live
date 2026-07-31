@@ -12,7 +12,8 @@ import { Button } from "../../components/ui/button";
 import { Reveal } from "../../components/marketing/reveal";
 import { SiteHeader } from "../../components/marketing/site-header";
 import { SiteFooter } from "../../components/marketing/site-footer";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useFixedTranslation } from "../../i18n/useTranslation";
+import { localizedPath, type MarketingLocale } from "../../lib/seo";
 
 const TIERS: { key: string; icon: LucideIcon; highlight?: boolean }[] = [
   { key: "school", icon: School },
@@ -20,12 +21,16 @@ const TIERS: { key: string; icon: LucideIcon; highlight?: boolean }[] = [
   { key: "custom", icon: Sparkles },
 ];
 
-export function PricingContent() {
-  const { t } = useTranslation();
+export function PricingContent({
+  locale = "fr",
+}: {
+  locale?: MarketingLocale;
+}) {
+  const { t } = useFixedTranslation(locale);
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
-      <SiteHeader />
+      <SiteHeader locale={locale} />
 
       <main>
         <section className="relative overflow-hidden bg-warm-ivory py-20">
@@ -104,7 +109,10 @@ export function PricingContent() {
                         ))}
                       </ul>
 
-                      <Link href="/contact" className="mt-8">
+                      <Link
+                        href={localizedPath(locale, "/contact")}
+                        className="mt-8"
+                      >
                         <Button
                           variant={tier.highlight ? "primary" : "secondary"}
                           className="w-full"
@@ -144,7 +152,7 @@ export function PricingContent() {
               {t("pricingPage.cta.subtitle")}
             </p>
             <div className="mt-8 flex justify-center">
-              <Link href="/contact">
+              <Link href={localizedPath(locale, "/contact")}>
                 <Button className="px-7 py-3.5 text-base">
                   {t("pricingPage.cta.button")}
                 </Button>
@@ -154,7 +162,7 @@ export function PricingContent() {
         </section>
       </main>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

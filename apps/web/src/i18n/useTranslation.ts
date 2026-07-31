@@ -24,3 +24,14 @@ export function useTranslation() {
     t,
   };
 }
+
+/**
+ * Same shape as useTranslation(), but bound to a fixed locale instead of the
+ * client-only locale store. Used by the public marketing pages, whose locale
+ * comes from the URL (/en/...) so it must be deterministic during SSR.
+ */
+export function useFixedTranslation(locale: Locale) {
+  const t = useCallback((key: string) => translate(locale, key), [locale]);
+
+  return { locale, t };
+}

@@ -1,16 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import LandingPage from "./page";
-import { useLocaleStore } from "../i18n/locale-store";
-import { DEFAULT_LOCALE } from "../i18n/translations";
+import LandingPageEn from "./en/page";
 
-describe("LandingPage language switch", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
-  });
-
-  it("renders the French copy by default", () => {
+describe("Marketing landing pages per locale", () => {
+  it("renders the French copy on the unprefixed / page", () => {
     render(<LandingPage />);
 
     expect(
@@ -24,9 +18,8 @@ describe("LandingPage language switch", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("renders the English copy when the locale is set to en", () => {
-    useLocaleStore.setState({ locale: "en" });
-    render(<LandingPage />);
+  it("renders the English copy on the /en page", () => {
+    render(<LandingPageEn />);
 
     expect(
       screen.getByText("Your child's school life, connected and effortless."),
@@ -44,12 +37,11 @@ describe("LandingPage language switch", () => {
 
   it("keeps the Scolive brand name unchanged in both languages", () => {
     render(<LandingPage />);
-
     expect(screen.getAllByText("Scolive").length).toBeGreaterThan(0);
+  });
 
-    useLocaleStore.setState({ locale: "en" });
-    render(<LandingPage />);
-
+  it("keeps the Scolive brand name unchanged on the English page", () => {
+    render(<LandingPageEn />);
     expect(screen.getAllByText("Scolive").length).toBeGreaterThan(0);
   });
 });

@@ -1,10 +1,11 @@
 "use client";
 
 import { LegalPageLayout } from "../../components/marketing/legal-page-layout";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useFixedTranslation } from "../../i18n/useTranslation";
+import type { MarketingLocale } from "../../lib/seo";
 
-export function TermsContent() {
-  const { t } = useTranslation();
+export function TermsContent({ locale = "fr" }: { locale?: MarketingLocale }) {
+  const { t } = useFixedTranslation(locale);
 
   const sections = [1, 2, 3, 4, 5, 6].map((n) => ({
     heading: t(`termsPage.section${n}.heading`),
@@ -17,6 +18,7 @@ export function TermsContent() {
       updatedAt={t("legal.updatedDate")}
       intro={t("termsPage.intro")}
       sections={sections}
+      locale={locale}
     />
   );
 }
