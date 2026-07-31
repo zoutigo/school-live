@@ -75,40 +75,6 @@ describe("Settings page language tab", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the onboarding-help switch enabled by default and disables it on click", async () => {
-    document.cookie = "school_live_csrf_token=test-csrf-token";
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      const url = String(input);
-      if (url.endsWith("/api/me")) {
-        return jsonResponse({
-          role: "PARENT",
-          activeRole: "PARENT",
-          schoolSlug: "college-vogt",
-          platformRoles: [],
-          memberships: [{ schoolId: "school-1", role: "PARENT" }],
-        });
-      }
-      if (url.endsWith("/api/me/onboarding-help") && init?.method === "PUT") {
-        return jsonResponse({});
-      }
-      return jsonResponse({ message: `Unhandled ${url}` }, 404);
-    });
-
-    render(<SettingsPage />);
-
-    const languageTab = await screen.findByRole("button", { name: "Langue" });
-    fireEvent.click(languageTab);
-
-    const toggle = await screen.findByTestId("settings-onboarding-help-switch");
-    expect(toggle).toHaveAttribute("aria-checked", "true");
-
-    fireEvent.click(toggle);
-
-    await waitFor(() => {
-      expect(toggle).toHaveAttribute("aria-checked", "false");
-    });
-  });
-
   it("keeps the previously persisted locale across a re-mount", async () => {
     window.localStorage.setItem(
       LOCALE_STORAGE_KEY,

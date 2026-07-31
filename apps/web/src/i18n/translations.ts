@@ -1866,6 +1866,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "settings.onboardingHelp.title": "Aide guidée",
     "settings.onboardingHelp.subtitle":
       "Affiche une visite guidée à la première découverte d'un module",
+    "settings.form.resetOnboardingTours.title": "Rejouer les aides guidées",
+    "settings.form.resetOnboardingTours.subtitle":
+      "Efface la mémoire des visites guidées déjà vues pour les revoir au prochain passage sur chaque écran.",
+    "settings.form.resetOnboardingTours.action": "Réinitialiser",
+    "settings.form.resetOnboardingTours.successMessage":
+      "Les visites guidées réapparaîtront au prochain passage sur chaque écran concerné.",
     "timetable.views.today": "Aujourd'hui",
     "timetable.views.thisWeek": "Cette semaine",
     "timetable.views.thisMonth": "Ce mois",
@@ -5681,6 +5687,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "settings.onboardingHelp.title": "Guided help",
     "settings.onboardingHelp.subtitle":
       "Show a guided tour the first time you open a module",
+    "settings.form.resetOnboardingTours.title": "Replay guided tours",
+    "settings.form.resetOnboardingTours.subtitle":
+      "Clears the memory of already-seen guided tours so they show again next time you visit each screen.",
+    "settings.form.resetOnboardingTours.action": "Reset",
+    "settings.form.resetOnboardingTours.successMessage":
+      "Guided tours will reappear next time you visit each relevant screen.",
     "timetable.views.today": "Today",
     "timetable.views.thisWeek": "This week",
     "timetable.views.thisMonth": "This month",

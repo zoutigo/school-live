@@ -41,6 +41,7 @@ type OnboardingTourState = {
   skip: () => void;
   finish: () => void;
   setTargetRect: (rect: TargetRect | null) => void;
+  resetAllCompleted: () => void;
 };
 
 export const useOnboardingTourStore = create<OnboardingTourState>()(
@@ -106,6 +107,8 @@ export const useOnboardingTourStore = create<OnboardingTourState>()(
       },
 
       setTargetRect: (rect) => set({ targetRect: rect }),
+
+      resetAllCompleted: () => set({ completedTours: {} }),
     }),
     {
       name: ONBOARDING_TOUR_STORAGE_KEY,

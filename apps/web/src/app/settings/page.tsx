@@ -140,7 +140,6 @@ export default function SettingsPage() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [savingSchool, setSavingSchool] = useState(false);
-  const [savingOnboardingHelp, setSavingOnboardingHelp] = useState(false);
   const [staffFunctions, setStaffFunctions] = useState<StaffFunctionRow[]>([]);
   const [staffAssignments, setStaffAssignments] = useState<
     StaffAssignmentRow[]
@@ -279,44 +278,6 @@ export default function SettingsPage() {
       setError("Impossible d'enregistrer le role actif.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function onToggleOnboardingHelp(nextValue: boolean) {
-    setSavingOnboardingHelp(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const csrfToken = getCsrfTokenCookie();
-      if (!csrfToken) {
-        setError("Session CSRF invalide. Reconnectez-vous.");
-        router.replace("/");
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/me/onboarding-help`, {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken,
-        },
-        body: JSON.stringify({ onboardingHelpEnabled: nextValue }),
-      });
-
-      if (!response.ok) {
-        setError("Impossible de mettre a jour l'aide guidee.");
-        return;
-      }
-
-      setMe((prev) =>
-        prev ? { ...prev, onboardingHelpEnabled: nextValue } : prev,
-      );
-      setSuccess("Preference d'aide guidee enregistree.");
-    } catch {
-      setError("Impossible de mettre a jour l'aide guidee.");
-    } finally {
-      setSavingOnboardingHelp(false);
     }
   }
 
@@ -764,42 +725,6 @@ export default function SettingsPage() {
               <p className="text-sm text-text-secondary">
                 {t("settings.language.hint")}
               </p>
-
-              <div className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-text-primary">
-                    {t("settings.onboardingHelp.title")}
-                  </h3>
-                  <p className="text-sm text-text-secondary">
-                    {t("settings.onboardingHelp.subtitle")}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={me?.onboardingHelpEnabled ?? true}
-                  disabled={savingOnboardingHelp}
-                  onClick={() =>
-                    void onToggleOnboardingHelp(
-                      !(me?.onboardingHelpEnabled ?? true),
-                    )
-                  }
-                  data-testid="settings-onboarding-help-switch"
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-60 ${
-                    (me?.onboardingHelpEnabled ?? true)
-                      ? "bg-primary"
-                      : "bg-border"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
-                      (me?.onboardingHelpEnabled ?? true)
-                        ? "left-[22px]"
-                        : "left-0.5"
-                    }`}
-                  />
-                </button>
-              </div>
             </div>
           ) : tab === "staff" ? (
             !canReadStaff ? (

@@ -115,6 +115,23 @@ describe("onboarding-tour store", () => {
     });
   });
 
+  it("resetAllCompleted clears every completed tour regardless of role", () => {
+    useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
+    useOnboardingTourStore.getState().skip();
+    useOnboardingTourStore.getState().startTour("discipline", "teacher", STEPS);
+    useOnboardingTourStore.getState().skip();
+
+    useOnboardingTourStore.getState().resetAllCompleted();
+
+    expect(useOnboardingTourStore.getState().completedTours).toEqual({});
+    expect(
+      useOnboardingTourStore.getState().isCompleted("parent", "agenda"),
+    ).toBe(false);
+    expect(
+      useOnboardingTourStore.getState().isCompleted("teacher", "discipline"),
+    ).toBe(false);
+  });
+
   it("restores persisted completedTours on rehydration", async () => {
     window.localStorage.setItem(
       ONBOARDING_TOUR_STORAGE_KEY,

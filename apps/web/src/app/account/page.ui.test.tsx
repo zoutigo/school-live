@@ -751,4 +751,169 @@ describe("AccountPage recovery settings UI", () => {
       }),
     );
   });
+
+  it("affiche le contenu d'aide au bas de l'onglet Securite", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SUPER_ADMIN",
+              schoolSlug: null,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      if (url.endsWith("/auth/recovery/options")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              schoolRoles: ["SUPER_ADMIN"],
+              birthDate: "",
+              selectedQuestions: [],
+              questions: [],
+              classes: [],
+              students: [],
+              parentClassId: null,
+              parentStudentId: null,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Securite" }));
+
+    expect(
+      await screen.findByText(
+        /ce module centralise vos informations personnelles et la securite/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("n'affiche plus le contenu d'aide dans l'onglet Aide (deplace dans l'onglet Securite)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SUPER_ADMIN",
+              schoolSlug: null,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Aide" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("account-onboarding-help-switch"),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(
+        /ce module centralise vos informations personnelles et la securite/,
+      ),
+    ).toBeNull();
+  });
+
+  it("affiche le toggle d'aide guidee et le bouton de rejeu dans l'onglet Aide, ouverts a tous les comptes", async () => {
+    document.cookie = "school_live_csrf_token=test-csrf-token";
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "PARENT",
+              schoolSlug: null,
+              onboardingHelpEnabled: true,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      if (url.endsWith("/me/onboarding-help") && init?.method === "PUT") {
+        return Promise.resolve(
+          new Response(JSON.stringify({}), { status: 200 }),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Aide" }));
+
+    const toggle = await screen.findByTestId("account-onboarding-help-switch");
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(toggle).toHaveAttribute("aria-checked", "false");
+    });
+
+    expect(
+      screen.getByTestId("account-reset-tours-action"),
+    ).toBeInTheDocument();
+  });
+
+  it("reinitialise les visites guidees depuis l'onglet Aide", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "PARENT",
+              schoolSlug: null,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    const { useOnboardingTourStore } =
+      await import("../../store/onboarding-tour");
+    useOnboardingTourStore.setState({
+      completedTours: { "parent:agenda": true },
+    });
+
+    render(<AccountPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Aide" }));
+
+    const resetButton = await screen.findByTestId("account-reset-tours-action");
+    fireEvent.click(resetButton);
+
+    expect(useOnboardingTourStore.getState().completedTours).toEqual({});
+  });
 });
