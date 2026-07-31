@@ -5,6 +5,7 @@ export const TIMETABLE_TOUR_ID = "child-timetable";
 export const TIMETABLE_TOUR_TARGETS = {
   controls: "timetable-tour-controls",
   dayList: "timetable-tour-day-list",
+  helpBlock: "timetable-tour-help-block",
 } as const;
 
 // Web deliberately has fewer steps than mobile: the desktop layout merges
@@ -21,5 +22,10 @@ export const TIMETABLE_TOUR_STEPS: OnboardingTourStep[] = [
     targetKey: TIMETABLE_TOUR_TARGETS.dayList,
     titleKey: "onboardingTour.childTimetable.dayListTitle",
     bodyKey: "onboardingTour.childTimetable.dayListBody",
+  },
+  {
+    targetKey: TIMETABLE_TOUR_TARGETS.helpBlock,
+    titleKey: "onboardingTour.childTimetable.helpBlockTitle",
+    bodyKey: "onboardingTour.childTimetable.helpBlockBody",
   },
 ];

@@ -13,7 +13,10 @@ import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
 import {
   TIMETABLE_TOUR_ID,
   TIMETABLE_TOUR_STEPS,
+  TIMETABLE_TOUR_TARGETS,
 } from "../../../../../components/timetable/timetable-tour.config";
+import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
+import { PageHelpBlock } from "../../../../../components/help/page-help-block";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -335,6 +338,7 @@ export default function StudentTimetablePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<Role | null>(null);
   const [activeChildLabel, setActiveChildLabel] = useState<string | null>(null);
   const [activeChildClassName, setActiveChildClassName] = useState<
     string | null
@@ -387,6 +391,7 @@ export default function StudentTimetablePage() {
       }
 
       const payload = (await meResponse.json()) as MeResponse;
+      setRole(payload.role);
 
       if (ADMIN_ROLES.includes(payload.role)) {
         setIsAdmin(true);
@@ -587,6 +592,22 @@ export default function StudentTimetablePage() {
           </div>
         )}
       </Card>
+
+      {role === "PARENT" ? (
+        <OnboardingTarget id={TIMETABLE_TOUR_TARGETS.helpBlock}>
+          <PageHelpBlock
+            title={t("timetable.myTimetable.help.title")}
+            body={[
+              t("timetable.myTimetable.help.body1"),
+              t("timetable.myTimetable.help.body2"),
+              t("timetable.myTimetable.help.body3"),
+            ]}
+            toggleOpenLabel={t("timetable.myTimetable.help.toggleOpen")}
+            toggleCloseLabel={t("timetable.myTimetable.help.toggleClose")}
+            testId="timetable-help-block"
+          />
+        </OnboardingTarget>
+      ) : null}
     </div>
   );
 }

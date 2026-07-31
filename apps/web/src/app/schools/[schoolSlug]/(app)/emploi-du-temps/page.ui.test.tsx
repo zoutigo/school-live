@@ -505,6 +505,44 @@ describe("StudentTimetablePage UI", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
+  it("shows a collapsed help block for a parent, expandable on click", async () => {
+    mockTimetableFlow({
+      firstName: "Parent",
+      lastName: "Account",
+      role: "PARENT",
+      linkedStudents: [{ id: "child-1", firstName: "Lisa", lastName: "MBELE" }],
+    });
+
+    render(<StudentTimetablePage />);
+    await screen.findByText("Lisa MBELE - 6eme N3");
+
+    expect(screen.getByTestId("timetable-help-block")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("timetable-help-block-content"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("timetable-help-block-toggle"));
+
+    expect(
+      screen.getByTestId("timetable-help-block-content"),
+    ).toHaveTextContent("Comment utiliser cette page");
+  });
+
+  it("does not show the help block for a student", async () => {
+    mockTimetableFlow({
+      firstName: "Student",
+      lastName: "Account",
+      role: "STUDENT",
+    });
+
+    render(<StudentTimetablePage />);
+    await screen.findByText(/Emploi du temps/i);
+
+    expect(
+      screen.queryByTestId("timetable-help-block"),
+    ).not.toBeInTheDocument();
+  });
+
   it("starts the child-timetable onboarding tour for a parent by default", async () => {
     mockTimetableFlow({
       firstName: "Parent",

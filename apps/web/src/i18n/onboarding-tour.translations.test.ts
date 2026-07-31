@@ -28,6 +28,8 @@ describe("onboardingTour.* translations", () => {
       "onboardingTour.childTimetable.controlsBody",
       "onboardingTour.childTimetable.dayListTitle",
       "onboardingTour.childTimetable.dayListBody",
+      "onboardingTour.childTimetable.helpBlockTitle",
+      "onboardingTour.childTimetable.helpBlockBody",
     ];
 
     for (const key of requiredKeys) {
