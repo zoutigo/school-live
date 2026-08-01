@@ -3938,6 +3938,7 @@ export class AuthService {
       activeRole: PlatformRole | SchoolRole | null;
       gender?: "M" | "F" | "OTHER" | null;
       preferredLocale: "FR" | "EN";
+      onboardingHelpEnabled: boolean;
       hasPassword: boolean;
       hasPhoneCredential: boolean;
     }
@@ -3958,6 +3959,7 @@ export class AuthService {
         lastName: true,
         gender: true,
         preferredLocale: true,
+        onboardingHelpEnabled: true,
         passwordHash: true,
         platformRoles: {
           select: { role: true },
@@ -4009,6 +4011,7 @@ export class AuthService {
       lastName: user.lastName,
       gender: user.gender,
       preferredLocale: user.preferredLocale,
+      onboardingHelpEnabled: user.onboardingHelpEnabled,
       schoolSlug: this.resolveDefaultSchoolSlug(user),
       activeSchoolId: user.activeSchoolId,
       schools: Array.from(
@@ -4051,6 +4054,18 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: userId },
       data: { preferredLocale },
+    });
+
+    return this.getGlobalMe(userId);
+  }
+
+  async updateOnboardingHelpEnabled(
+    userId: string,
+    onboardingHelpEnabled: boolean,
+  ) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { onboardingHelpEnabled },
     });
 
     return this.getGlobalMe(userId);

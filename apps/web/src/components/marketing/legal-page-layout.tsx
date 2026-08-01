@@ -3,7 +3,8 @@
 import { FileText } from "lucide-react";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useFixedTranslation } from "../../i18n/useTranslation";
+import type { MarketingLocale } from "../../lib/seo";
 
 export type LegalSection = {
   heading: string;
@@ -15,17 +16,19 @@ export function LegalPageLayout({
   updatedAt,
   intro,
   sections,
+  locale = "fr",
 }: {
   title: string;
   updatedAt: string;
   intro: string;
   sections: LegalSection[];
+  locale?: MarketingLocale;
 }) {
-  const { t } = useTranslation();
+  const { t } = useFixedTranslation(locale);
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
-      <SiteHeader />
+      <SiteHeader locale={locale} />
 
       <main>
         <section className="relative overflow-hidden bg-warm-ivory py-16">
@@ -65,7 +68,7 @@ export function LegalPageLayout({
         </section>
       </main>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

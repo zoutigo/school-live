@@ -47,6 +47,7 @@ function makeGlobalMeUser(overrides: Record<string, unknown> = {}) {
     lastName: "Mbarga",
     gender: null,
     preferredLocale: "FR",
+    onboardingHelpEnabled: true,
     passwordHash: "hash",
     platformRoles: [],
     memberships: [
@@ -179,6 +180,59 @@ describe("AuthService — école active", () => {
         service.setActiveSchool(USER_ID, "school-not-mine"),
       ).rejects.toThrow(ForbiddenException);
       expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateOnboardingHelpEnabled", () => {
+    it("active l'aide guidée puis retourne le profil rafraîchi", async () => {
+      prisma.user.update.mockResolvedValue({});
+      prisma.user.findUnique.mockResolvedValue(
+        makeGlobalMeUser({ onboardingHelpEnabled: true }),
+      );
+
+      const result = await service.updateOnboardingHelpEnabled(USER_ID, true);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: USER_ID },
+        data: { onboardingHelpEnabled: true },
+      });
+      expect(result.onboardingHelpEnabled).toBe(true);
+    });
+
+    it("désactive l'aide guidée puis retourne le profil rafraîchi", async () => {
+      prisma.user.update.mockResolvedValue({});
+      prisma.user.findUnique.mockResolvedValue(
+        makeGlobalMeUser({ onboardingHelpEnabled: false }),
+      );
+
+      const result = await service.updateOnboardingHelpEnabled(USER_ID, false);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: USER_ID },
+        data: { onboardingHelpEnabled: false },
+      });
+      expect(result.onboardingHelpEnabled).toBe(false);
+    });
+
+    it("lève UnauthorizedException si l'utilisateur n'existe pas au moment du refresh", async () => {
+      prisma.user.update.mockResolvedValue({});
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.updateOnboardingHelpEnabled(USER_ID, true),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe("getGlobalMe — onboardingHelpEnabled", () => {
+    it("expose onboardingHelpEnabled dans le profil global", async () => {
+      prisma.user.findUnique.mockResolvedValue(
+        makeGlobalMeUser({ onboardingHelpEnabled: false }),
+      );
+
+      const result = await service.getGlobalMe(USER_ID);
+
+      expect(result.onboardingHelpEnabled).toBe(false);
     });
   });
 });

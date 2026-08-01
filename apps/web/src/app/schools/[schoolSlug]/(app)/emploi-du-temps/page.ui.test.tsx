@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StudentTimetablePage from "./page";
 import { useLocaleStore } from "../../../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../../../i18n/translations";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import { TIMETABLE_TOUR_ID } from "../../../../../components/timetable/timetable-tour.config";
 
 const replaceMock = vi.fn();
 let paramsMock: { schoolSlug: string; childId?: string } = {
@@ -225,6 +227,14 @@ describe("StudentTimetablePage UI", () => {
     searchParamsMock = new URLSearchParams();
     window.localStorage.clear();
     useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    useOnboardingTourStore.setState({
+      completedTours: {},
+      activeTourId: null,
+      activeRole: null,
+      steps: [],
+      stepIndex: 0,
+      targetRect: null,
+    });
   });
 
   afterEach(() => {
@@ -493,6 +503,93 @@ describe("StudentTimetablePage UI", () => {
 
     expect(await screen.findByText("Paul MBELE - 5eme A")).toBeInTheDocument();
     expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a collapsed help block for a parent, expandable on click", async () => {
+    mockTimetableFlow({
+      firstName: "Parent",
+      lastName: "Account",
+      role: "PARENT",
+      linkedStudents: [{ id: "child-1", firstName: "Lisa", lastName: "MBELE" }],
+    });
+
+    render(<StudentTimetablePage />);
+    await screen.findByText("Lisa MBELE - 6eme N3");
+
+    expect(screen.getByTestId("timetable-help-block")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("timetable-help-block-content"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("timetable-help-block-toggle"));
+
+    expect(
+      screen.getByTestId("timetable-help-block-content"),
+    ).toHaveTextContent("Comment utiliser cette page");
+  });
+
+  it("does not show the help block for a student", async () => {
+    mockTimetableFlow({
+      firstName: "Student",
+      lastName: "Account",
+      role: "STUDENT",
+    });
+
+    render(<StudentTimetablePage />);
+    await screen.findByText(/Emploi du temps/i);
+
+    expect(
+      screen.queryByTestId("timetable-help-block"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("starts the child-timetable onboarding tour for a parent by default", async () => {
+    mockTimetableFlow({
+      firstName: "Parent",
+      lastName: "Account",
+      role: "PARENT",
+      linkedStudents: [{ id: "child-1", firstName: "Lisa", lastName: "MBELE" }],
+    });
+
+    render(<StudentTimetablePage />);
+    await screen.findByText("Lisa MBELE - 6eme N3");
+
+    expect(useOnboardingTourStore.getState().activeTourId).toBe(
+      TIMETABLE_TOUR_ID,
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("parent");
+  });
+
+  it("does not start the tour when onboardingHelpEnabled is false", async () => {
+    mockTimetableFlow({
+      firstName: "Parent",
+      lastName: "Account",
+      role: "PARENT",
+      onboardingHelpEnabled: false,
+      linkedStudents: [{ id: "child-1", firstName: "Lisa", lastName: "MBELE" }],
+    });
+
+    render(<StudentTimetablePage />);
+    await screen.findByText("Lisa MBELE - 6eme N3");
+
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  it("does not restart the tour once it has already been completed", async () => {
+    useOnboardingTourStore.setState({
+      completedTours: { [`parent:${TIMETABLE_TOUR_ID}`]: true },
+    });
+    mockTimetableFlow({
+      firstName: "Parent",
+      lastName: "Account",
+      role: "PARENT",
+      linkedStudents: [{ id: "child-1", firstName: "Lisa", lastName: "MBELE" }],
+    });
+
+    render(<StudentTimetablePage />);
+    await screen.findByText("Lisa MBELE - 6eme N3");
+
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
   it("redirects non-student/non-parent roles to dashboard", async () => {

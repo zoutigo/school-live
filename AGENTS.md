@@ -12,6 +12,16 @@
 - Ne jamais utiliser de sous-agents ou de délégation pour réaliser le travail demandé.
 - Faire tout le travail soi-même, étape par étape si nécessaire.
 
+## Aide guidée (onboarding tour) — règle absolue
+
+Toute création ou modification d'UI qui introduit un contrôle, un filtre ou une fonctionnalité non évident à découvrir au premier coup d'œil doit créer ou mettre à jour une aide guidée ("onboarding tour" en spotlight) pour le(s) rôle(s) concerné(s), avec le skill `create-help`.
+
+- **Maximum 5 étapes par tour** — au-delà, sélectionner les 5 éléments les plus utiles plutôt que de tout montrer.
+- Infrastructure existante à réutiliser sans la dupliquer : `apps/web/src/store/onboarding-tour.ts`, `apps/web/src/components/onboarding/onboarding-target.tsx`, `apps/web/src/components/onboarding/onboarding-tour-overlay.tsx`. Module pilote de référence : `apps/web/src/components/timetable/timetable-tour.config.ts` + `emploi-du-temps/page.tsx` + `timetable-views.tsx`.
+- Cette règle est transverse à la règle de parité backend → mobile/web ci-dessous : toute aide guidée créée côté web doit avoir son équivalent côté mobile (`scolive-mobile`), voir `CLAUDE.md` et le skill `create-help` pour le détail.
+- Préférence utilisateur globale : `onboardingHelpEnabled` (champ `User` Prisma, activé par défaut, `PUT /me/onboarding-help`), modifiable dans Paramètres → onglet Langue. Ne jamais ignorer cette préférence dans un nouveau déclenchement de tour.
+- Attention aux écrans avec layout responsive distinct (branches `isCompactViewport ? ... : ...` ou équivalent) : la même cible logique doit porter le même `targetKey` dans les deux branches ; si les deux layouts ne partagent pas la même granularité de contrôles, fusionner les étapes plutôt que de forcer un découpage artificiel (voir le skill `create-help` pour le détail).
+
 ## Parité backend → mobile/web — règle absolue
 
 Toute modification apportée côté backend (API NestJS) doit être répercutée sur les clients qui en dépendent :

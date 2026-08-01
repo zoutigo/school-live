@@ -375,6 +375,7 @@ model User {
   lastName           String                   @map("lastname")
   gender             Gender?
   preferredLocale    Locale                   @default(FR)
+  onboardingHelpEnabled Boolean               @default(true)
   isTester           Boolean                  @default(false)
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt

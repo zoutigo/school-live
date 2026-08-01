@@ -12,7 +12,11 @@ import {
   FormSubmitHint,
 } from "../ui/form-controls";
 import { Button } from "../ui/button";
-import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
+import {
+  useFixedTranslation,
+  type TranslateFn,
+} from "../../i18n/useTranslation";
+import type { MarketingLocale } from "../../lib/seo";
 
 function buildSchema(t: TranslateFn) {
   return z.object({
@@ -25,8 +29,8 @@ function buildSchema(t: TranslateFn) {
 
 type ContactValues = z.infer<ReturnType<typeof buildSchema>>;
 
-export function ContactForm() {
-  const { t } = useTranslation();
+export function ContactForm({ locale = "fr" }: { locale?: MarketingLocale }) {
+  const { t } = useFixedTranslation(locale);
   const [submitted, setSubmitted] = useState(false);
   const [showRequiredHint, setShowRequiredHint] = useState(false);
 

@@ -3,6 +3,8 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
+import { TIMETABLE_TOUR_TARGETS } from "./timetable-tour.config";
 
 export type TimetableViewMode = "day" | "week" | "month";
 
@@ -608,7 +610,10 @@ export function TimetableViews({
   return (
     <section className="grid gap-3 rounded-card border border-border bg-background p-3">
       {isCompactViewport ? (
-        <div className="grid min-w-0 gap-2">
+        <OnboardingTarget
+          id={TIMETABLE_TOUR_TARGETS.controls}
+          className="grid min-w-0 gap-2"
+        >
           <div className="grid min-w-0 grid-cols-3 gap-1 rounded-[8px] border border-[#DCE8F7] bg-[#F8FBFF] p-1">
             {(
               [
@@ -671,9 +676,12 @@ export function TimetableViews({
               <ChevronRight className="h-5 w-5" strokeWidth={2.6} />
             </button>
           </div>
-        </div>
+        </OnboardingTarget>
       ) : (
-        <div className="grid grid-cols-3 gap-2 rounded-[6px] border border-[#D4E4F6] bg-white p-1">
+        <OnboardingTarget
+          id={TIMETABLE_TOUR_TARGETS.controls}
+          className="grid grid-cols-3 gap-2 rounded-[6px] border border-[#D4E4F6] bg-white p-1"
+        >
           {(
             [
               { key: "day", label: dayTabLabel },
@@ -732,11 +740,14 @@ export function TimetableViews({
               </button>
             </div>
           ))}
-        </div>
+        </OnboardingTarget>
       )}
 
       {viewMode === "day" ? (
-        <div className="grid gap-2">
+        <OnboardingTarget
+          id={TIMETABLE_TOUR_TARGETS.dayList}
+          className="grid gap-2"
+        >
           {daySlots.length === 0 ? (
             <p className="rounded-card border border-dashed border-border bg-surface px-3 py-3 text-sm text-text-secondary">
               {resolvedDayEmptyLabel}
@@ -806,7 +817,7 @@ export function TimetableViews({
               );
             })
           )}
-        </div>
+        </OnboardingTarget>
       ) : null}
 
       {viewMode === "week" ? (

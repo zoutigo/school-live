@@ -27,6 +27,7 @@ import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useLocaleStore } from "../../i18n/locale-store";
 import { SUPPORTED_LOCALES, type Locale } from "../../i18n/translations";
 import { useTranslation } from "../../i18n/useTranslation";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -199,6 +200,7 @@ type MeResponse = {
   hasPassword: boolean;
   hasPhoneCredential: boolean;
   preferredLocale?: "FR" | "EN";
+  onboardingHelpEnabled?: boolean;
 };
 
 type RecoveryOption = {
@@ -309,6 +311,16 @@ export default function AccountPage() {
   const [openSecuritySection, setOpenSecuritySection] = useState<
     "password" | "create-password" | "pin" | "add-phone" | "recovery" | null
   >(null);
+  const [savingOnboardingHelp, setSavingOnboardingHelp] = useState(false);
+  const [onboardingHelpError, setOnboardingHelpError] = useState<string | null>(
+    null,
+  );
+  const [onboardingHelpSuccess, setOnboardingHelpSuccess] = useState<
+    string | null
+  >(null);
+  const resetAllCompletedTours = useOnboardingTourStore(
+    (state) => state.resetAllCompleted,
+  );
   const personalForm = useForm<
     z.input<typeof personalProfileSchema>,
     unknown,
@@ -996,6 +1008,52 @@ export default function AccountPage() {
     } finally {
       setUpdatingRecovery(false);
     }
+  }
+
+  async function onToggleOnboardingHelp(nextValue: boolean) {
+    setSavingOnboardingHelp(true);
+    setOnboardingHelpError(null);
+    setOnboardingHelpSuccess(null);
+    try {
+      const csrfToken = getCsrfTokenCookie();
+      if (!csrfToken) {
+        setOnboardingHelpError("Session CSRF invalide. Reconnectez-vous.");
+        router.replace("/");
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/me/onboarding-help`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ onboardingHelpEnabled: nextValue }),
+      });
+
+      if (!response.ok) {
+        setOnboardingHelpError("Impossible de mettre a jour l'aide guidee.");
+        return;
+      }
+
+      setMe((prev) =>
+        prev ? { ...prev, onboardingHelpEnabled: nextValue } : prev,
+      );
+      setOnboardingHelpSuccess("Preference d'aide guidee enregistree.");
+    } catch {
+      setOnboardingHelpError("Impossible de mettre a jour l'aide guidee.");
+    } finally {
+      setSavingOnboardingHelp(false);
+    }
+  }
+
+  function onResetOnboardingTours() {
+    resetAllCompletedTours();
+    setOnboardingHelpError(null);
+    setOnboardingHelpSuccess(
+      t("settings.form.resetOnboardingTours.successMessage"),
+    );
   }
 
   return (
@@ -2404,37 +2462,103 @@ export default function AccountPage() {
                   </form>
                 ) : null}
               </section>
+
+              <ModuleHelpTab
+                moduleName="Mon compte"
+                moduleSummary="ce module centralise vos informations personnelles et la securite de votre acces."
+                actions={[
+                  {
+                    name: "Consulter",
+                    purpose:
+                      "verifier rapidement vos informations de profil et votre role actif.",
+                    howTo: "utiliser l'onglet Informations personnelles.",
+                    moduleImpact: "aucune modification, simple verification.",
+                    crossModuleImpact:
+                      "permet de confirmer votre perimetre d'action dans les autres modules.",
+                  },
+                  {
+                    name: "Modifier mot de passe",
+                    purpose:
+                      "renforcer la securite de votre compte ou repondre a une politique interne.",
+                    howTo:
+                      "renseigner l'ancien mot de passe puis le nouveau dans l'onglet Securite.",
+                    moduleImpact:
+                      "votre secret d'authentification est remplace immediatement.",
+                    crossModuleImpact:
+                      "les futures connexions sur tous les modules utilisent ce nouveau mot de passe.",
+                  },
+                ]}
+                tips={[
+                  "Quand vous reprenez le projet, cet onglet aide a verifier tout de suite votre contexte utilisateur.",
+                ]}
+              />
             </div>
           ) : (
-            <ModuleHelpTab
-              moduleName="Mon compte"
-              moduleSummary="ce module centralise vos informations personnelles et la securite de votre acces."
-              actions={[
-                {
-                  name: "Consulter",
-                  purpose:
-                    "verifier rapidement vos informations de profil et votre role actif.",
-                  howTo: "utiliser l'onglet Informations personnelles.",
-                  moduleImpact: "aucune modification, simple verification.",
-                  crossModuleImpact:
-                    "permet de confirmer votre perimetre d'action dans les autres modules.",
-                },
-                {
-                  name: "Modifier mot de passe",
-                  purpose:
-                    "renforcer la securite de votre compte ou repondre a une politique interne.",
-                  howTo:
-                    "renseigner l'ancien mot de passe puis le nouveau dans l'onglet Securite.",
-                  moduleImpact:
-                    "votre secret d'authentification est remplace immediatement.",
-                  crossModuleImpact:
-                    "les futures connexions sur tous les modules utilisent ce nouveau mot de passe.",
-                },
-              ]}
-              tips={[
-                "Quand vous reprenez le projet, cet onglet aide a verifier tout de suite votre contexte utilisateur.",
-              ]}
-            />
+            <div className="grid gap-4">
+              <div className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary">
+                    {t("settings.onboardingHelp.title")}
+                  </h3>
+                  <p className="text-sm text-text-secondary">
+                    {t("settings.onboardingHelp.subtitle")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={me?.onboardingHelpEnabled ?? true}
+                  disabled={savingOnboardingHelp}
+                  onClick={() =>
+                    void onToggleOnboardingHelp(
+                      !(me?.onboardingHelpEnabled ?? true),
+                    )
+                  }
+                  data-testid="account-onboarding-help-switch"
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-60 ${
+                    (me?.onboardingHelpEnabled ?? true)
+                      ? "bg-primary"
+                      : "bg-border"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
+                      (me?.onboardingHelpEnabled ?? true)
+                        ? "left-[22px]"
+                        : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {onboardingHelpError ? (
+                <p className="text-sm text-notification">
+                  {onboardingHelpError}
+                </p>
+              ) : null}
+              {onboardingHelpSuccess ? (
+                <p className="text-sm text-primary">{onboardingHelpSuccess}</p>
+              ) : null}
+
+              <div className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary">
+                    {t("settings.form.resetOnboardingTours.title")}
+                  </h3>
+                  <p className="text-sm text-text-secondary">
+                    {t("settings.form.resetOnboardingTours.subtitle")}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={onResetOnboardingTours}
+                  data-testid="account-reset-tours-action"
+                >
+                  {t("settings.form.resetOnboardingTours.action")}
+                </Button>
+              </div>
+            </div>
           )}
         </Card>
       </div>

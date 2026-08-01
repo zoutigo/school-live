@@ -14,7 +14,8 @@ import { Button } from "../../components/ui/button";
 import { Reveal } from "../../components/marketing/reveal";
 import { SiteHeader } from "../../components/marketing/site-header";
 import { SiteFooter } from "../../components/marketing/site-footer";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useFixedTranslation } from "../../i18n/useTranslation";
+import { localizedPath, type MarketingLocale } from "../../lib/seo";
 
 type Tone = "primary" | "teal" | "warm" | "metal";
 
@@ -34,12 +35,16 @@ const MODULES: { key: string; icon: LucideIcon; tone: Tone }[] = [
   { key: "resources", icon: FolderOpen, tone: "teal" },
 ];
 
-export function FeaturesContent() {
-  const { t } = useTranslation();
+export function FeaturesContent({
+  locale = "fr",
+}: {
+  locale?: MarketingLocale;
+}) {
+  const { t } = useFixedTranslation(locale);
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
-      <SiteHeader />
+      <SiteHeader locale={locale} />
 
       <main>
         <section className="relative overflow-hidden bg-teal-surface py-20">
@@ -138,7 +143,7 @@ export function FeaturesContent() {
               {t("featuresPage.cta.subtitle")}
             </p>
             <div className="mt-8 flex justify-center">
-              <Link href="/tarifs">
+              <Link href={localizedPath(locale, "/tarifs")}>
                 <Button className="px-7 py-3.5 text-base">
                   {t("featuresPage.cta.button")}
                 </Button>
@@ -148,7 +153,7 @@ export function FeaturesContent() {
         </section>
       </main>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

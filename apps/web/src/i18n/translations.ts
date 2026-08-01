@@ -1824,6 +1824,15 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Aucun eleve lie a ce compte parent.",
     "timetable.myTimetable.errors.loadFailed":
       "Impossible de charger l'emploi du temps.",
+    "timetable.myTimetable.help.toggleOpen": "Besoin d'aide sur cette page ?",
+    "timetable.myTimetable.help.toggleClose": "Masquer l'aide",
+    "timetable.myTimetable.help.title": "Comment utiliser cette page",
+    "timetable.myTimetable.help.body1":
+      "Basculez entre Jour, Semaine et Mois pour changer la façon d'afficher l'emploi du temps.",
+    "timetable.myTimetable.help.body2":
+      "Utilisez les flèches ou cliquez sur le libellé de la période pour naviguer dans le temps : avancez de plusieurs mois pour retrouver un créneau précis, ou revenez à « aujourd'hui » pour consulter l'agenda du jour ou de demain.",
+    "timetable.myTimetable.help.body3":
+      "Cliquez sur une carte de cours pour voir en un coup d'œil son horaire, l'enseignant et la salle.",
 
     "timetable.adminSchedule.title": "Emploi du temps",
     "timetable.adminSchedule.loading": "Chargement...",
@@ -1854,6 +1863,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.selectionBanner.classPrefix": "Classe",
     "timetable.adminSchedule.selectionBanner.clear": "Effacer la sélection",
 
+    "onboardingTour.common.next": "Suivant",
+    "onboardingTour.common.skip": "Passer",
+    "onboardingTour.common.finish": "Terminer",
+    "onboardingTour.childTimetable.controlsTitle": "Changez de vue et naviguez",
+    "onboardingTour.childTimetable.controlsBody":
+      "Cliquez sur Jour, Semaine ou Mois pour changer l'affichage, et utilisez les flèches pour changer de période.",
+    "onboardingTour.childTimetable.dayListTitle": "Consultez un cours",
+    "onboardingTour.childTimetable.dayListBody":
+      "Chaque ligne affiche l'horaire, la matière, l'enseignant et la salle du cours.",
+    "onboardingTour.childTimetable.helpBlockTitle":
+      "Une aide toujours disponible",
+    "onboardingTour.childTimetable.helpBlockBody":
+      "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
+    "settings.onboardingHelp.title": "Aide guidée",
+    "settings.onboardingHelp.subtitle":
+      "Affiche une visite guidée à la première découverte d'un module",
+    "settings.form.resetOnboardingTours.title": "Rejouer les aides guidées",
+    "settings.form.resetOnboardingTours.subtitle":
+      "Efface la mémoire des visites guidées déjà vues pour les revoir au prochain passage sur chaque écran.",
+    "settings.form.resetOnboardingTours.action": "Réinitialiser",
+    "settings.form.resetOnboardingTours.successMessage":
+      "Les visites guidées réapparaîtront au prochain passage sur chaque écran concerné.",
     "timetable.views.today": "Aujourd'hui",
     "timetable.views.thisWeek": "Cette semaine",
     "timetable.views.thisMonth": "Ce mois",
@@ -5629,6 +5660,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.myTimetable.errors.noLinkedStudent":
       "No student is linked to this parent account.",
     "timetable.myTimetable.errors.loadFailed": "Unable to load the timetable.",
+    "timetable.myTimetable.help.toggleOpen": "Need help with this page?",
+    "timetable.myTimetable.help.toggleClose": "Hide help",
+    "timetable.myTimetable.help.title": "How to use this page",
+    "timetable.myTimetable.help.body1":
+      "Switch between Day, Week and Month to change how the timetable is displayed.",
+    "timetable.myTimetable.help.body2":
+      "Use the arrows or click the period label to move through time: jump several months ahead to find a specific slot, or return to \"today\" for today's or tomorrow's agenda.",
+    "timetable.myTimetable.help.body3":
+      "Click a course card to see its time, teacher and room at a glance.",
 
     "timetable.adminSchedule.title": "Schedule",
     "timetable.adminSchedule.loading": "Loading...",
@@ -5657,6 +5697,27 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.selectionBanner.classPrefix": "Class",
     "timetable.adminSchedule.selectionBanner.clear": "Clear selection",
 
+    "onboardingTour.common.next": "Next",
+    "onboardingTour.common.skip": "Skip",
+    "onboardingTour.common.finish": "Finish",
+    "onboardingTour.childTimetable.controlsTitle": "Switch views and navigate",
+    "onboardingTour.childTimetable.controlsBody":
+      "Click Day, Week or Month to change the display, and use the arrows to move between periods.",
+    "onboardingTour.childTimetable.dayListTitle": "Check a course",
+    "onboardingTour.childTimetable.dayListBody":
+      "Each row shows the time, subject, teacher and room for the course.",
+    "onboardingTour.childTimetable.helpBlockTitle": "Help is always available",
+    "onboardingTour.childTimetable.helpBlockBody":
+      "Click this button anytime for a reminder on how to use this page.",
+    "settings.onboardingHelp.title": "Guided help",
+    "settings.onboardingHelp.subtitle":
+      "Show a guided tour the first time you open a module",
+    "settings.form.resetOnboardingTours.title": "Replay guided tours",
+    "settings.form.resetOnboardingTours.subtitle":
+      "Clears the memory of already-seen guided tours so they show again next time you visit each screen.",
+    "settings.form.resetOnboardingTours.action": "Reset",
+    "settings.form.resetOnboardingTours.successMessage":
+      "Guided tours will reappear next time you visit each relevant screen.",
     "timetable.views.today": "Today",
     "timetable.views.thisWeek": "This week",
     "timetable.views.thisMonth": "This month",

@@ -5,14 +5,19 @@ import { Reveal } from "../../components/marketing/reveal";
 import { SiteHeader } from "../../components/marketing/site-header";
 import { SiteFooter } from "../../components/marketing/site-footer";
 import { ContactForm } from "../../components/marketing/contact-form";
-import { useTranslation } from "../../i18n/useTranslation";
+import { useFixedTranslation } from "../../i18n/useTranslation";
+import type { MarketingLocale } from "../../lib/seo";
 
-export function ContactContent() {
-  const { t } = useTranslation();
+export function ContactContent({
+  locale = "fr",
+}: {
+  locale?: MarketingLocale;
+}) {
+  const { t } = useFixedTranslation(locale);
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
-      <SiteHeader />
+      <SiteHeader locale={locale} />
 
       <main>
         <section className="relative overflow-hidden bg-warm-ivory py-20">
@@ -92,13 +97,13 @@ export function ContactContent() {
             </Reveal>
 
             <Reveal delay={100} className="lg:col-span-3">
-              <ContactForm />
+              <ContactForm locale={locale} />
             </Reveal>
           </div>
         </section>
       </main>
 
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </div>
   );
 }

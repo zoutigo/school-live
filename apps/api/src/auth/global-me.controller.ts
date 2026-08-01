@@ -7,6 +7,7 @@ import { SetActiveRoleDto } from "./dto/set-active-role.dto.js";
 import { SetActiveSchoolDto } from "./dto/set-active-school.dto.js";
 import { UpdatePersonalProfileDto } from "./dto/update-personal-profile.dto.js";
 import { UpdatePreferredLocaleDto } from "./dto/update-preferred-locale.dto.js";
+import { UpdateOnboardingHelpDto } from "./dto/update-onboarding-help.dto.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
 import { AuthService } from "./auth.service.js";
 
@@ -56,6 +57,18 @@ export class GlobalMeController {
     return this.authService.updatePreferredLocale(
       user.id,
       payload.preferredLocale,
+    );
+  }
+
+  @Put("me/onboarding-help")
+  @UseGuards(JwtAuthGuard)
+  updateOnboardingHelp(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: UpdateOnboardingHelpDto,
+  ) {
+    return this.authService.updateOnboardingHelpEnabled(
+      user.id,
+      payload.onboardingHelpEnabled,
     );
   }
 

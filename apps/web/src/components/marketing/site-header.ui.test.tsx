@@ -55,4 +55,31 @@ describe("SiteHeader", () => {
       2,
     );
   });
+
+  it("renders English nav links prefixed with /en when locale is en", () => {
+    render(<SiteHeader locale="en" />);
+
+    expect(screen.getByRole("link", { name: "Features" })).toHaveAttribute(
+      "href",
+      "/en/fonctionnalites",
+    );
+    expect(screen.getByRole("link", { name: "Pricing" })).toHaveAttribute(
+      "href",
+      "/en/tarifs",
+    );
+    expect(screen.getAllByRole("link", { name: "Sign in" })[0]).toHaveAttribute(
+      "href",
+      "/login",
+    );
+  });
+
+  it("exposes an FR/EN language switch pointing to the counterpart URL", () => {
+    render(<SiteHeader locale="fr" />);
+
+    const enLinks = screen.getAllByRole("link", { name: "EN" });
+    expect(enLinks[0]).toHaveAttribute("href", "/en/fonctionnalites");
+
+    const frLinks = screen.getAllByRole("link", { name: "FR" });
+    expect(frLinks[0]).toHaveAttribute("aria-current", "true");
+  });
 });

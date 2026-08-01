@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppHeader } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
 import { ConfirmDialog } from "../ui/confirm-dialog";
+import { OnboardingTourOverlay } from "../onboarding/onboarding-tour-overlay";
 import {
   extractAvailableRoles,
   isPlatformRole,
@@ -303,6 +304,8 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
           </main>
         </div>
       </div>
+
+      <OnboardingTourOverlay />
 
       <ConfirmDialog
         open={logoutConfirmOpen}

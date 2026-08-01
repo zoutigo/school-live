@@ -49,6 +49,7 @@ type SchoolMembershipRole =
 type MeResponse = {
   role: Role | null;
   activeRole?: Role | null;
+  onboardingHelpEnabled?: boolean;
   schoolSlug: string | null;
   activeSchoolId?: string | null;
   schools?: Array<{
