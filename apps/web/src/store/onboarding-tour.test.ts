@@ -124,6 +124,38 @@ describe("onboarding-tour store", () => {
     ).toBe(false);
   });
 
+  it("advanceIfTarget advances only when the current step matches the target and opts into advanceOnTargetPress", () => {
+    const stepsWithPress: OnboardingTourStep[] = [
+      {
+        targetKey: "a",
+        titleKey: "t1",
+        bodyKey: "b1",
+        advanceOnTargetPress: true,
+      },
+      { targetKey: "b", titleKey: "t2", bodyKey: "b2" },
+    ];
+    useOnboardingTourStore
+      .getState()
+      .startTour("agenda", "parent", stepsWithPress);
+
+    // Wrong target key: no-op.
+    useOnboardingTourStore.getState().advanceIfTarget("b");
+    expect(useOnboardingTourStore.getState().stepIndex).toBe(0);
+
+    // Correct target key, step opts in: advances.
+    useOnboardingTourStore.getState().advanceIfTarget("a");
+    expect(useOnboardingTourStore.getState().stepIndex).toBe(1);
+
+    // Current step ("b") does not opt into advanceOnTargetPress: no-op.
+    useOnboardingTourStore.getState().advanceIfTarget("b");
+    expect(useOnboardingTourStore.getState().stepIndex).toBe(1);
+  });
+
+  it("advanceIfTarget is a no-op when there is no active tour", () => {
+    useOnboardingTourStore.getState().advanceIfTarget("a");
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
   it("restores persisted completedTours on rehydration", async () => {
     window.localStorage.setItem(
       ONBOARDING_TOUR_STORAGE_KEY,

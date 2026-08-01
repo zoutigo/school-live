@@ -38,10 +38,24 @@ type Props = {
   bullets: string[];
   content?:
     | ReactNode
-    | ((ctx: { child: ParentChild | null; loading: boolean }) => ReactNode);
+    | ((ctx: {
+        child: ParentChild | null;
+        loading: boolean;
+        onboardingHelpEnabled: boolean;
+      }) => ReactNode);
   hidePrimaryTabs?: boolean;
   hideSecondaryTabs?: boolean;
   hideModuleHeader?: boolean;
+  /**
+   * Fires once, after the parent/child context has loaded successfully —
+   * the right moment for a caller to conditionally start an onboarding
+   * tour (respecting `onboardingHelpEnabled`, exactly as the mobile
+   * equivalent screens do via `useOnboardingTourTrigger`).
+   */
+  onReady?: (ctx: {
+    child: ParentChild | null;
+    onboardingHelpEnabled: boolean;
+  }) => void;
 };
 
 const TAB_ITEMS: Array<{ key: TabKey; label: string }> = [
@@ -67,6 +81,7 @@ export function ChildModulePage({
   hidePrimaryTabs = false,
   hideSecondaryTabs = false,
   hideModuleHeader = false,
+  onReady,
 }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -74,6 +89,7 @@ export function ChildModulePage({
   const [tab, setTab] = useState<"content" | "help">("content");
   const [children, setChildren] = useState<ParentChild[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [onboardingHelpEnabled, setOnboardingHelpEnabled] = useState(true);
 
   useEffect(() => {
     void loadParentChildren();
@@ -94,6 +110,7 @@ export function ChildModulePage({
 
       const payload = (await response.json()) as {
         role?: string;
+        onboardingHelpEnabled?: boolean;
         linkedStudents?: Array<{
           id: string;
           firstName: string;
@@ -111,6 +128,8 @@ export function ChildModulePage({
         router.replace(`/schools/${schoolSlug}/dashboard`);
         return;
       }
+
+      setOnboardingHelpEnabled(payload.onboardingHelpEnabled !== false);
 
       const list: ParentChild[] = (payload.linkedStudents ?? []).map(
         (entry) => ({
@@ -190,6 +209,14 @@ export function ChildModulePage({
     () => children.find((entry) => entry.id === childId) ?? null,
     [children, childId],
   );
+
+  // Fire once per successful load, deliberately not depending on
+  // onReady/currentChild identity — those change on unrelated parent
+  // re-renders and would otherwise re-fire the tour-start check.
+  useEffect(() => {
+    if (loading) return;
+    onReady?.({ child: currentChild, onboardingHelpEnabled });
+  }, [loading]);
 
   return (
     <div className="grid gap-4">
@@ -276,7 +303,11 @@ export function ChildModulePage({
           />
         ) : (
           ((typeof content === "function"
-            ? content({ child: currentChild, loading })
+            ? content({
+                child: currentChild,
+                loading,
+                onboardingHelpEnabled,
+              })
             : content) ?? (
             <div className="content-panel p-4 text-sm">
               <p className="font-medium text-text-primary">{summary}</p>

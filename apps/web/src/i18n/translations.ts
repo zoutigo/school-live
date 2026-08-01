@@ -1866,6 +1866,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.common.next": "Suivant",
     "onboardingTour.common.skip": "Passer",
     "onboardingTour.common.finish": "Terminer",
+    "onboardingTour.common.tapTarget":
+      "Cliquez sur l'élément en surbrillance pour continuer.",
+    "onboardingTour.common.gotIt": "J'ai compris",
     "onboardingTour.childTimetable.controlsTitle": "Changez de vue et naviguez",
     "onboardingTour.childTimetable.controlsBody":
       "Cliquez sur Jour, Semaine ou Mois pour changer l'affichage, et utilisez les flèches pour changer de période.",
@@ -2110,8 +2113,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.help.toggle": "Aide",
     "feed.help.close": "J'ai compris",
     "feed.help.title": "Rechercher et filtrer",
-    "feed.help.body":
-      "Utilisez la barre de recherche pour retrouver une publication par mot-cle. Le bouton filtre ouvre un panneau ou vous pouvez combiner plusieurs types de publication (a la une, sondages) et n'afficher que vos propres publications.",
+    "feed.help.body1":
+      "Utilisez la barre de recherche pour retrouver une publication par mot-clé.",
+    "feed.help.body2":
+      "Le bouton filtre ouvre un panneau où vous pouvez combiner plusieurs types de publication (à la une, sondages) et n'afficher que vos propres publications.",
+    "feed.help.body3":
+      "Une fois votre sélection faite, validez avec Appliquer pour mettre à jour la liste.",
+    "onboardingTour.feedFilters.step1Title": "Ouvrez les filtres",
+    "onboardingTour.feedFilters.step1Body":
+      "Cliquez sur ce bouton pour ouvrir le panneau de filtres du fil.",
+    "onboardingTour.feedFilters.step2Title": "Combinez les types",
+    "onboardingTour.feedFilters.step2Body":
+      "Sélectionnez un ou plusieurs types de publication : ils se combinent entre eux.",
+    "onboardingTour.feedFilters.step3Title": "Validez votre sélection",
+    "onboardingTour.feedFilters.step3Body":
+      "Cliquez sur Appliquer : le panneau se ferme et la liste affiche directement le résultat filtré.",
+    "onboardingTour.feedFilters.step4Title": "Une aide toujours disponible",
+    "onboardingTour.feedFilters.step4Body":
+      "Cliquez sur ce bouton à tout moment pour retrouver l'explication de la recherche et des filtres.",
     "feed.staffFilters.all": "Tous",
     "feed.staffFilters.parents": "Parents/eleves",
     "feed.staffFilters.staff": "Staff",
@@ -5708,6 +5727,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.common.next": "Next",
     "onboardingTour.common.skip": "Skip",
     "onboardingTour.common.finish": "Finish",
+    "onboardingTour.common.tapTarget":
+      "Click the highlighted element to continue.",
+    "onboardingTour.common.gotIt": "Got it",
     "onboardingTour.childTimetable.controlsTitle": "Switch views and navigate",
     "onboardingTour.childTimetable.controlsBody":
       "Click Day, Week or Month to change the display, and use the arrows to move between periods.",
@@ -5942,8 +5964,23 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.help.toggle": "Help",
     "feed.help.close": "Got it",
     "feed.help.title": "Search and filter",
-    "feed.help.body":
-      "Use the search bar to find a post by keyword. The filter button opens a panel where you can combine several post types (featured, polls) and show only your own posts.",
+    "feed.help.body1": "Use the search bar to find a post by keyword.",
+    "feed.help.body2":
+      "The filter button opens a panel where you can combine several post types (featured, polls) and show only your own posts.",
+    "feed.help.body3":
+      "Once you've made your selection, confirm with Apply to update the list.",
+    "onboardingTour.feedFilters.step1Title": "Open the filters",
+    "onboardingTour.feedFilters.step1Body":
+      "Click this button to open the feed's filter panel.",
+    "onboardingTour.feedFilters.step2Title": "Combine post types",
+    "onboardingTour.feedFilters.step2Body":
+      "Select one or more post types: they combine with each other.",
+    "onboardingTour.feedFilters.step3Title": "Confirm your selection",
+    "onboardingTour.feedFilters.step3Body":
+      "Click Apply: the panel closes and the list shows the filtered result right away.",
+    "onboardingTour.feedFilters.step4Title": "Help is always available",
+    "onboardingTour.feedFilters.step4Body":
+      "Click this button anytime to see the search and filters explanation again.",
     "feed.staffFilters.all": "All",
     "feed.staffFilters.parents": "Parents/students",
     "feed.staffFilters.staff": "Staff",

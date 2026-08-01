@@ -36,6 +36,11 @@ export function OnboardingTourOverlay() {
   }
 
   const isLastStep = stepIndex >= steps.length - 1;
+  const advanceOnTargetPress = !!step.advanceOnTargetPress;
+  const finishLabel =
+    isLastStep && step.finishLabelKey
+      ? t(step.finishLabelKey)
+      : t("onboardingTour.common.finish");
   const { height: screenHeight } = windowSize;
 
   const spaceBelow =
@@ -132,26 +137,33 @@ export function OnboardingTourOverlay() {
         >
           {t(step.bodyKey)}
         </p>
-        <div className="mt-2 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={next}
-            className="px-2 py-2 text-sm font-semibold text-text-secondary"
-            data-testid="onboarding-tour-skip"
+        {advanceOnTargetPress ? (
+          <p
+            className="text-xs font-semibold italic text-text-secondary"
+            data-testid="onboarding-tour-hint"
           >
-            {t("onboardingTour.common.skip")}
-          </button>
-          <button
-            type="button"
-            onClick={next}
-            className="rounded-card bg-primary px-4 py-2 text-sm font-bold text-white"
-            data-testid="onboarding-tour-next"
-          >
-            {isLastStep
-              ? t("onboardingTour.common.finish")
-              : t("onboardingTour.common.next")}
-          </button>
-        </div>
+            {t("onboardingTour.common.tapTarget")}
+          </p>
+        ) : (
+          <div className="mt-2 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={next}
+              className="px-2 py-2 text-sm font-semibold text-text-secondary"
+              data-testid="onboarding-tour-skip"
+            >
+              {t("onboardingTour.common.skip")}
+            </button>
+            <button
+              type="button"
+              onClick={next}
+              className="rounded-card bg-primary px-4 py-2 text-sm font-bold text-white"
+              data-testid="onboarding-tour-next"
+            >
+              {isLastStep ? finishLabel : t("onboardingTour.common.next")}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

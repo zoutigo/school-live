@@ -25,6 +25,9 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { HelpDialog } from "../ui/help-dialog";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { FEED_FILTERS_TOUR_TARGETS } from "./feed-filters-tour.config";
 import {
   FormFileInput,
   FormSelect,
@@ -168,6 +171,9 @@ export function FamilyFeedPage({
   const [mine, setMine] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const advanceOnboardingTourTarget = useOnboardingTourStore(
+    (state) => state.advanceIfTarget,
+  );
   const [search, setSearch] = useState("");
 
   const [openComposerMode, setOpenComposerMode] = useState<ComposerMode | null>(
@@ -1041,29 +1047,50 @@ export function FamilyFeedPage({
                 className="h-10 w-full bg-background pl-9 text-sm"
               />
             </div>
-            <button
-              type="button"
-              data-testid="family-feed-filter-toggle"
-              aria-label={t("feed.filters.toggleAccessibilityLabel")}
-              onClick={() => setFiltersOpen((value) => !value)}
-              className={`flex h-10 items-center gap-2 rounded-card border px-3 text-sm font-medium transition-colors ${
-                types.length > 0 || mine
-                  ? "border-primary bg-primary text-white"
-                  : "border-border bg-background text-text-secondary hover:bg-surface"
-              }`}
-            >
-              <AlignJustify className="h-4 w-4" />
-              {t("feed.filters.toggleAccessibilityLabel")}
-            </button>
-            <button
-              type="button"
-              data-testid="family-feed-help-toggle"
-              aria-label={t("feed.help.toggle")}
-              onClick={() => setHelpOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-card border border-border bg-background text-text-secondary hover:bg-surface"
-            >
-              <HelpCircle className="h-4 w-4" />
-            </button>
+            <OnboardingTarget id={FEED_FILTERS_TOUR_TARGETS.filterToggle}>
+              <button
+                type="button"
+                data-testid="family-feed-filter-toggle"
+                aria-label={t("feed.filters.toggleAccessibilityLabel")}
+                onClick={() => {
+                  setFiltersOpen((value) => !value);
+                  advanceOnboardingTourTarget(
+                    FEED_FILTERS_TOUR_TARGETS.filterToggle,
+                  );
+                }}
+                className={`flex h-10 items-center gap-2 rounded-card border px-3 text-sm font-medium transition-colors ${
+                  types.length > 0 || mine
+                    ? "border-primary bg-primary text-white"
+                    : "border-border bg-background text-text-secondary hover:bg-surface"
+                }`}
+              >
+                <AlignJustify className="h-4 w-4" />
+                {t("feed.filters.toggleAccessibilityLabel")}
+                {filteredPosts.length > 0 ? (
+                  <span
+                    data-testid="family-feed-filter-total"
+                    className={`ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                      types.length > 0 || mine
+                        ? "bg-white/25 text-white"
+                        : "bg-primary text-white"
+                    }`}
+                  >
+                    {filteredPosts.length > 99 ? "99+" : filteredPosts.length}
+                  </span>
+                ) : null}
+              </button>
+            </OnboardingTarget>
+            <OnboardingTarget id={FEED_FILTERS_TOUR_TARGETS.helpToggle}>
+              <button
+                type="button"
+                data-testid="family-feed-help-toggle"
+                aria-label={t("feed.help.toggle")}
+                onClick={() => setHelpOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-card border border-border bg-background text-text-secondary hover:bg-surface"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </OnboardingTarget>
           </div>
 
           {filtersOpen ? (
@@ -1071,7 +1098,10 @@ export function FamilyFeedPage({
               data-testid="family-feed-filter-panel"
               className="grid gap-3 rounded-card border border-primary/30 bg-background p-3"
             >
-              <div className="flex flex-wrap gap-2">
+              <OnboardingTarget
+                id={FEED_FILTERS_TOUR_TARGETS.typeChips}
+                className="flex flex-wrap gap-2"
+              >
                 <FilterButton
                   label={t("feed.filters.all")}
                   active={types.length === 0}
@@ -1100,7 +1130,7 @@ export function FamilyFeedPage({
                   icon={<UserRound className="h-4 w-4" />}
                   iconOnly
                 />
-              </div>
+              </OnboardingTarget>
               <div className="flex justify-end gap-2 border-t border-border pt-3">
                 <Button
                   type="button"
@@ -1113,13 +1143,20 @@ export function FamilyFeedPage({
                 >
                   {t("feed.filters.reset")}
                 </Button>
-                <Button
-                  type="button"
-                  onClick={() => setFiltersOpen(false)}
-                  data-testid="family-feed-filter-apply"
-                >
-                  {t("feed.filters.apply")}
-                </Button>
+                <OnboardingTarget id={FEED_FILTERS_TOUR_TARGETS.apply}>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setFiltersOpen(false);
+                      advanceOnboardingTourTarget(
+                        FEED_FILTERS_TOUR_TARGETS.apply,
+                      );
+                    }}
+                    data-testid="family-feed-filter-apply"
+                  >
+                    {t("feed.filters.apply")}
+                  </Button>
+                </OnboardingTarget>
               </div>
             </div>
           ) : null}
@@ -1850,7 +1887,11 @@ export function FamilyFeedPage({
       <HelpDialog
         open={helpOpen}
         title={t("feed.help.title")}
-        body={t("feed.help.body")}
+        body={[
+          t("feed.help.body1"),
+          t("feed.help.body2"),
+          t("feed.help.body3"),
+        ]}
         onClose={() => setHelpOpen(false)}
       />
     </div>

@@ -3669,6 +3669,7 @@ export class AuthService {
       gender?: "M" | "F" | "OTHER" | null;
       schoolName: string | null;
       referentClass: { name: string } | null;
+      onboardingHelpEnabled: boolean;
       linkedStudents?: Array<{
         id: string;
         firstName: string;
@@ -3697,6 +3698,7 @@ export class AuthService {
         firstName: true,
         lastName: true,
         gender: true,
+        onboardingHelpEnabled: true,
         platformRoles: { select: { role: true } },
         memberships: {
           where: { schoolId },
@@ -3785,6 +3787,7 @@ export class AuthService {
       gender: user.gender,
       schoolName: user.memberships[0]?.school?.name ?? null,
       referentClass: user.referentOfClasses?.[0] ?? null,
+      onboardingHelpEnabled: user.onboardingHelpEnabled,
       linkedStudents: user.parentLinks.map((link) => ({
         id: link.student.id,
         firstName: link.student.firstName,

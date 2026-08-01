@@ -580,6 +580,16 @@ describe("FamilyFeedPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the current post count as a badge on the filter toggle", () => {
+    render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    const badge = screen.getByTestId("family-feed-filter-total");
+    expect(badge).toBeInTheDocument();
+    expect(badge.textContent).toMatch(/^\d+(\+)?$/);
+  });
+
   it("opens and closes the help dialog from the header", () => {
     render(
       <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,

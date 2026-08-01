@@ -9,7 +9,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 type Props = {
   open: boolean;
   title: string;
-  body: string;
+  body: string[];
   onClose: () => void;
 };
 
@@ -50,16 +50,24 @@ export function HelpDialog({ open, title, body, onClose }: Props) {
         data-testid="help-dialog"
         className="relative w-full max-w-md rounded-[24px] border border-warm-border bg-[linear-gradient(180deg,rgba(255,253,252,1)_0%,rgba(255,248,240,1)_100%)] p-6 shadow-[0_24px_60px_rgba(47,36,24,0.18)]"
       >
-        <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#efcfaa] bg-[#fff3e4] text-[#b7793a]">
-          <HelpCircle className="h-5 w-5" />
+        <div className="mb-4 flex items-center gap-3">
+          <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#efcfaa] bg-[#fff3e4] text-[#b7793a]">
+            <HelpCircle className="h-5 w-5" />
+          </div>
+          <h2
+            id="help-dialog-title"
+            className="font-heading text-lg font-semibold text-text-primary"
+          >
+            {title}
+          </h2>
         </div>
-        <h2
-          id="help-dialog-title"
-          className="font-heading text-lg font-semibold text-text-primary"
-        >
-          {title}
-        </h2>
-        <p className="mt-2 text-sm text-text-secondary">{body}</p>
+        <div className="grid gap-2" data-testid="help-dialog-body">
+          {body.map((paragraph, index) => (
+            <p key={index} className="text-justify text-sm text-text-secondary">
+              {paragraph}
+            </p>
+          ))}
+        </div>
         <div className="mt-5 flex justify-end">
           <Button
             type="button"

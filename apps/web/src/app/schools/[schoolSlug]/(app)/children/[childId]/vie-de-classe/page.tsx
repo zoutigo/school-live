@@ -3,6 +3,11 @@
 import { useParams } from "next/navigation";
 import { FamilyFeedPage } from "../../../../../../../components/feed/family-feed-page";
 import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
+import {
+  FEED_FILTERS_TOUR_ID,
+  FEED_FILTERS_TOUR_STEPS,
+} from "../../../../../../../components/feed/feed-filters-tour.config";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
 
 export default function ChildVieDeClassePage() {
@@ -28,6 +33,20 @@ export default function ChildVieDeClassePage() {
       hideModuleHeader
       hidePrimaryTabs
       hideSecondaryTabs
+      onReady={({ onboardingHelpEnabled }) => {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          onboardingHelpEnabled &&
+          !tourStore.isCompleted("parent", FEED_FILTERS_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            FEED_FILTERS_TOUR_ID,
+            "parent",
+            FEED_FILTERS_TOUR_STEPS,
+          );
+        }
+      }}
       content={({ child }) => {
         const studentLabel = child
           ? `${child.lastName.toUpperCase()} ${child.firstName}`
