@@ -70,7 +70,20 @@ export async function getPublicContactInfo(): Promise<PublicContactInfo> {
     const response = await fetch(`${API_URL}/public/site-content/contact`, {
       next: { revalidate: REVALIDATE_SECONDS },
     });
-    return (await response.json()) as PublicContactInfo;
+    if (!response.ok) {
+      return BUILD_TIME_CONTACT_FALLBACK;
+    }
+    const data = (await response.json()) as Partial<PublicContactInfo>;
+    if (typeof data.email !== "string" || typeof data.phone !== "string") {
+      return BUILD_TIME_CONTACT_FALLBACK;
+    }
+    return {
+      email: data.email,
+      phone: data.phone,
+      address: data.address ?? "",
+      legalRepresentativeFirstName: data.legalRepresentativeFirstName ?? "",
+      legalRepresentativeLastName: data.legalRepresentativeLastName ?? "",
+    };
   } catch {
     return BUILD_TIME_CONTACT_FALLBACK;
   }
@@ -85,7 +98,24 @@ export async function getPublicLegalDocument(
       `${API_URL}/public/site-content/legal/${slug}/${locale}`,
       { next: { revalidate: REVALIDATE_SECONDS } },
     );
-    return (await response.json()) as PublicLegalDocument;
+    if (!response.ok) {
+      return buildTimeLegalFallback(slug, locale);
+    }
+    const data = (await response.json()) as Partial<PublicLegalDocument>;
+    if (
+      typeof data.contentHtml !== "string" ||
+      typeof data.updatedAt !== "string" ||
+      Number.isNaN(new Date(data.updatedAt).getTime())
+    ) {
+      return buildTimeLegalFallback(slug, locale);
+    }
+    return {
+      slug,
+      locale,
+      title: data.title ?? buildTimeLegalFallback(slug, locale).title,
+      contentHtml: data.contentHtml,
+      updatedAt: data.updatedAt,
+    };
   } catch {
     return buildTimeLegalFallback(slug, locale);
   }
