@@ -35,6 +35,25 @@ export type LegalDocumentItem = {
   updatedAt: string;
 };
 
+export type ContactSubmission = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  readAt: string | null;
+  readById: string | null;
+  createdAt: string;
+};
+
+export type ContactSubmissionsPage = {
+  items: ContactSubmission[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, { credentials: "include" });
   if (!response.ok) {
@@ -137,5 +156,21 @@ export const siteContentApi = {
 
   deleteLegalDocument(id: string) {
     return mutate<void>(`/site-content/admin/legal-documents/${id}`, "DELETE");
+  },
+
+  listContactSubmissions(params: { page: number; limit: number }) {
+    const query = new URLSearchParams({
+      page: String(params.page),
+      limit: String(params.limit),
+    });
+    return getJson<ContactSubmissionsPage>(
+      `/site-content/admin/contact-submissions?${query.toString()}`,
+    );
+  },
+
+  getContactSubmission(id: string) {
+    return getJson<ContactSubmission>(
+      `/site-content/admin/contact-submissions/${id}`,
+    );
   },
 };

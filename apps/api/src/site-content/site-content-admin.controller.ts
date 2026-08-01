@@ -14,7 +14,9 @@ import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
 import { ContactInfoService } from "./contact-info.service.js";
+import { ContactSubmissionService } from "./contact-submission.service.js";
 import { CreateLegalDocumentDto } from "./dto/create-legal-document.dto.js";
+import { ListContactSubmissionsDto } from "./dto/list-contact-submissions.dto.js";
 import { ListLegalDocumentsDto } from "./dto/list-legal-documents.dto.js";
 import { UpdateContactInfoDto } from "./dto/update-contact-info.dto.js";
 import { UpdateLegalDocumentDto } from "./dto/update-legal-document.dto.js";
@@ -26,6 +28,7 @@ export class SiteContentAdminController {
   constructor(
     private readonly contactInfoService: ContactInfoService,
     private readonly legalDocumentsService: LegalDocumentsService,
+    private readonly contactSubmissionService: ContactSubmissionService,
   ) {}
 
   @Get("contact")
@@ -81,5 +84,21 @@ export class SiteContentAdminController {
     @Param("id") id: string,
   ) {
     return this.legalDocumentsService.delete(user, id);
+  }
+
+  @Get("contact-submissions")
+  listContactSubmissions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: ListContactSubmissionsDto,
+  ) {
+    return this.contactSubmissionService.list(user, query);
+  }
+
+  @Get("contact-submissions/:id")
+  getContactSubmission(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+  ) {
+    return this.contactSubmissionService.getOne(user, id);
   }
 }

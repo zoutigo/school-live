@@ -4,7 +4,11 @@ import SiteContentPage from "./page";
 import { useLocaleStore } from "../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../i18n/translations";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
-import { ContactInfo, LegalDocumentItem } from "./site-content-api";
+import {
+  ContactInfo,
+  ContactSubmission,
+  LegalDocumentItem,
+} from "./site-content-api";
 import { SITE_CONTENT_TOUR_ID } from "./site-content-tour.config";
 
 const replaceMock = vi.fn();
@@ -46,12 +50,41 @@ const LEGAL_ITEMS: LegalDocumentItem[] = [
   },
 ];
 
+const CONTACT_SUBMISSIONS: ContactSubmission[] = [
+  {
+    id: "sub-1",
+    name: "Awa Ngono",
+    email: "awa@example.cm",
+    phone: "690000000",
+    subject: "Demande de devis",
+    message: "Bonjour, je souhaite en savoir plus sur Scolive.",
+    readAt: null,
+    readById: null,
+    createdAt: "2026-08-01T10:00:00.000Z",
+  },
+];
+
 function mockSiteContentFlow(mePayload: unknown) {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
 
     if (url.endsWith("/me")) {
       return jsonResponse(mePayload);
+    }
+    if (url.includes("/site-content/admin/contact-submissions/sub-1")) {
+      return jsonResponse({
+        ...CONTACT_SUBMISSIONS[0],
+        readAt: "2026-08-01T12:00:00.000Z",
+        readById: "user-1",
+      });
+    }
+    if (url.includes("/site-content/admin/contact-submissions")) {
+      return jsonResponse({
+        items: CONTACT_SUBMISSIONS,
+        total: CONTACT_SUBMISSIONS.length,
+        page: 1,
+        limit: 20,
+      });
     }
     if (url.includes("/site-content/admin/contact")) {
       return jsonResponse(CONTACT_PAYLOAD);
@@ -186,5 +219,52 @@ describe("SiteContentPage UI", () => {
 
     await screen.findByText("CGU");
     expect(screen.getByText(/Publié/)).toBeInTheDocument();
+  });
+
+  it("lists contact submissions and marks one as read on open", async () => {
+    mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
+
+    render(<SiteContentPage />);
+    await screen.findByDisplayValue("contact@scolive.cm");
+
+    fireEvent.click(screen.getByText("Messages"));
+
+    await screen.findByTestId("message-item-sub-1");
+    expect(screen.getByText("Awa Ngono")).toBeInTheDocument();
+    expect(screen.getByText("Demande de devis")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("message-item-sub-1"));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("awa@example.cm");
+    await waitFor(() => expect(dialog).toHaveTextContent("Message lu"));
+  });
+
+  it("shows the empty state when there are no contact submissions", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return jsonResponse({ activeRole: "SUPER_ADMIN" });
+      }
+      if (url.includes("/site-content/admin/contact-submissions")) {
+        return jsonResponse({ items: [], total: 0, page: 1, limit: 20 });
+      }
+      if (url.includes("/site-content/admin/contact")) {
+        return jsonResponse(CONTACT_PAYLOAD);
+      }
+      if (url.includes("/site-content/admin/legal-documents")) {
+        return jsonResponse(LEGAL_ITEMS);
+      }
+      return jsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<SiteContentPage />);
+    await screen.findByDisplayValue("contact@scolive.cm");
+
+    fireEvent.click(screen.getByText("Messages"));
+
+    expect(
+      await screen.findByText("Aucune prise de contact"),
+    ).toBeInTheDocument();
   });
 });

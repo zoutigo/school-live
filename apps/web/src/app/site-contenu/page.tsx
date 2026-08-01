@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Controller, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Mail, MailOpen, Phone, User, X } from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -25,6 +25,7 @@ import {
   LEGAL_DOCUMENT_LOCALES,
   LEGAL_DOCUMENT_SLUGS,
   siteContentApi,
+  type ContactSubmission,
   type LegalDocumentItem,
   type LegalDocumentLocale,
   type LegalDocumentSlug,
@@ -37,7 +38,7 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
-type Tab = "contact" | "legal";
+type Tab = "contact" | "legal" | "messages";
 
 function buildContactSchema(t: TranslateFn) {
   return z.object({
@@ -178,13 +179,26 @@ export default function SiteContentPage() {
               >
                 {t("siteContent.tabs.legal")}
               </button>
+              <button
+                type="button"
+                onClick={() => setTab("messages")}
+                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                  tab === "messages"
+                    ? "border border-border border-b-surface bg-surface text-primary"
+                    : "text-text-secondary"
+                }`}
+              >
+                {t("siteContent.tabs.messages")}
+              </button>
             </div>
           </OnboardingTarget>
 
           {tab === "contact" ? (
             <ContactTab t={t} />
-          ) : (
+          ) : tab === "legal" ? (
             <LegalDocumentsTab t={t} locale={locale} />
+          ) : (
+            <MessagesTab t={t} />
           )}
         </Card>
       </div>
@@ -683,6 +697,238 @@ function LegalDocumentsTab({ t, locale }: { t: TranslateFn; locale: string }) {
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
       />
+    </div>
+  );
+}
+
+const MESSAGES_PAGE_SIZE = 20;
+
+function formatSubmissionDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function MessagesTab({ t }: { t: TranslateFn }) {
+  const [items, setItems] = useState<ContactSubmission[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ContactSubmission | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  useEffect(() => {
+    void load();
+  }, [page]);
+
+  async function load() {
+    setLoading(true);
+    setListError(null);
+    try {
+      const result = await siteContentApi.listContactSubmissions({
+        page,
+        limit: MESSAGES_PAGE_SIZE,
+      });
+      setItems(result.items);
+      setTotal(result.total);
+    } catch {
+      setListError(t("siteContent.messages.listError"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function openSubmission(item: ContactSubmission) {
+    setDetailLoading(true);
+    setSelected(item);
+    try {
+      const detail = await siteContentApi.getContactSubmission(item.id);
+      setSelected(detail);
+      if (!item.readAt) {
+        setItems((prev) =>
+          prev.map((current) => (current.id === detail.id ? detail : current)),
+        );
+      }
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(total / MESSAGES_PAGE_SIZE));
+
+  return (
+    <div className="grid gap-5">
+      {loading ? (
+        <p className="text-sm text-text-secondary">
+          {t("siteContent.messages.loading")}
+        </p>
+      ) : listError ? (
+        <p className="text-sm text-notification">{listError}</p>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-[16px] border border-dashed border-border py-12 text-center text-sm text-text-secondary">
+          <Mail className="h-8 w-8 opacity-30" />
+          <p className="font-medium">{t("siteContent.messages.empty.title")}</p>
+          <p className="text-xs">{t("siteContent.messages.empty.hint")}</p>
+        </div>
+      ) : (
+        <>
+          <ul className="grid gap-3 sm:grid-cols-2" data-testid="messages-list">
+            {items.map((item) => {
+              const unread = !item.readAt;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    data-testid={`message-item-${item.id}`}
+                    onClick={() => void openSubmission(item)}
+                    className={`w-full rounded-[16px] border px-4 py-3 text-left transition ${
+                      unread
+                        ? "border-primary/30 bg-primary/5 hover:bg-primary/10"
+                        : "border-border bg-surface hover:bg-warm-highlight/40"
+                    }`}
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <p className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                        {unread ? (
+                          <span
+                            aria-label={t("siteContent.messages.unread")}
+                            className="h-2 w-2 shrink-0 rounded-full bg-primary"
+                          />
+                        ) : null}
+                        {item.name}
+                      </p>
+                      <span className="shrink-0 text-[11px] text-text-secondary">
+                        {formatSubmissionDate(item.createdAt)}
+                      </span>
+                    </div>
+                    <p className="mb-1 line-clamp-1 text-sm font-medium text-text-secondary">
+                      {item.subject}
+                    </p>
+                    <p className="line-clamp-2 text-xs text-text-secondary">
+                      {item.message}
+                    </p>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {totalPages > 1 ? (
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                {t("siteContent.messages.pagination.prev")}
+              </Button>
+              <span className="text-sm text-text-secondary">
+                {page} / {totalPages}
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                {t("siteContent.messages.pagination.next")}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {selected ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label={t("siteContent.messages.detail.close")}
+            className="absolute inset-0 bg-[#2f2418]/40 backdrop-blur-[3px]"
+            onClick={() => setSelected(null)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="message-detail-title"
+            className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_24px_60px_rgba(47,36,24,0.18)]"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-border p-6 pb-4">
+              <div>
+                <h2
+                  id="message-detail-title"
+                  className="font-heading text-lg font-semibold text-text-primary"
+                >
+                  {selected.subject}
+                </h2>
+                <p className="mt-1 text-xs text-text-secondary">
+                  {formatSubmissionDate(selected.createdAt)}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={t("siteContent.messages.detail.close")}
+                onClick={() => setSelected(null)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-card text-text-secondary hover:bg-background"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 overflow-y-auto p-6">
+              <div className="flex flex-col gap-2 rounded-[14px] border border-border bg-background p-4 text-sm">
+                <div className="flex items-center gap-2 text-text-primary">
+                  <User className="h-4 w-4 text-text-secondary" />
+                  <span className="font-medium">{selected.name}</span>
+                </div>
+                <a
+                  href={`mailto:${selected.email}`}
+                  className="flex items-center gap-2 text-primary hover:underline"
+                >
+                  <Mail className="h-4 w-4" />
+                  {selected.email}
+                </a>
+                <div className="flex items-center gap-2 text-text-secondary">
+                  <Phone className="h-4 w-4" />
+                  {selected.phone}
+                </div>
+              </div>
+
+              <p className="whitespace-pre-line text-sm text-text-primary">
+                {selected.message}
+              </p>
+
+              {detailLoading ? (
+                <p className="text-xs text-text-secondary">
+                  {t("siteContent.messages.loading")}
+                </p>
+              ) : selected.readAt ? (
+                <p className="flex items-center gap-1.5 text-xs text-text-secondary">
+                  <MailOpen className="h-3.5 w-3.5" />
+                  {t("siteContent.messages.detail.read")}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border p-4">
+              <a
+                href={`mailto:${selected.email}`}
+                className="inline-flex items-center justify-center gap-2 rounded-card border border-warm-border bg-warm-surface px-4 py-2 text-sm font-heading font-semibold text-primary transition-all duration-200 hover:bg-warm-highlight"
+              >
+                {t("siteContent.messages.detail.reply")}
+              </a>
+              <Button type="button" onClick={() => setSelected(null)}>
+                {t("siteContent.messages.detail.close")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

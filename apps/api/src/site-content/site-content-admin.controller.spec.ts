@@ -2,6 +2,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { ContactInfoService } from "./contact-info.service.js";
+import { ContactSubmissionService } from "./contact-submission.service.js";
 import { LegalDocumentsService } from "./legal-documents.service.js";
 import { SiteContentAdminController } from "./site-content-admin.controller.js";
 
@@ -34,6 +35,10 @@ describe("SiteContentAdminController", () => {
     publish: jest.Mock;
     delete: jest.Mock;
   };
+  let contactSubmissionService: {
+    list: jest.Mock;
+    getOne: jest.Mock;
+  };
 
   beforeEach(async () => {
     contactInfoService = {
@@ -62,12 +67,22 @@ describe("SiteContentAdminController", () => {
         .mockResolvedValue({ id: "doc-1", status: "PUBLISHED" }),
       delete: jest.fn().mockResolvedValue(undefined),
     };
+    contactSubmissionService = {
+      list: jest
+        .fn()
+        .mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 }),
+      getOne: jest.fn().mockResolvedValue({ id: "sub-1" }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SiteContentAdminController],
       providers: [
         { provide: ContactInfoService, useValue: contactInfoService },
         { provide: LegalDocumentsService, useValue: legalDocumentsService },
+        {
+          provide: ContactSubmissionService,
+          useValue: contactSubmissionService,
+        },
       ],
     }).compile();
 
@@ -121,5 +136,18 @@ describe("SiteContentAdminController", () => {
     );
     expect(legalDocumentsService.publish).toHaveBeenCalledWith(user, "doc-1");
     expect(legalDocumentsService.delete).toHaveBeenCalledWith(user, "doc-1");
+  });
+
+  it("délègue la liste et le détail des prises de contact au service", async () => {
+    const user = makeUser();
+
+    await controller.listContactSubmissions(user, { page: 1, limit: 20 });
+    await controller.getContactSubmission(user, "sub-1");
+
+    expect(contactSubmissionService.list).toHaveBeenCalledWith(user, {
+      page: 1,
+      limit: 20,
+    });
+    expect(contactSubmissionService.getOne).toHaveBeenCalledWith(user, "sub-1");
   });
 });

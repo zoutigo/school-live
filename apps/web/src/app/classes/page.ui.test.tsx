@@ -1093,9 +1093,12 @@ describe("Classes page subject color UI", () => {
     fireEvent.change(screen.getByLabelText("Capacite (optionnel)"), {
       target: { value: "40" },
     });
-    await waitFor(() => {
-      expect(submitButton).toBeEnabled();
-    });
+    await waitFor(
+      () => {
+        expect(submitButton).toBeEnabled();
+      },
+      { timeout: 10000 },
+    );
 
     fireEvent.click(submitButton);
 

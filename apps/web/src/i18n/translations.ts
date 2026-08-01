@@ -1880,9 +1880,9 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Une aide toujours disponible",
     "onboardingTour.childTimetable.helpBlockBody":
       "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
-    "onboardingTour.siteContent.tabsTitle": "Deux sections distinctes",
+    "onboardingTour.siteContent.tabsTitle": "Trois sections distinctes",
     "onboardingTour.siteContent.tabsBody":
-      "L'onglet Contact gère les coordonnées affichées sur le site. L'onglet Documents légaux gère les CGU, mentions légales et politique de confidentialité.",
+      "L'onglet Contact gère les coordonnées affichées sur le site. L'onglet Documents légaux gère les CGU, mentions légales et politique de confidentialité. L'onglet Messages liste les prises de contact reçues via le formulaire public.",
     "onboardingTour.siteContent.selectorsTitle":
       "Choisissez le document et la langue",
     "onboardingTour.siteContent.selectorsBody":
@@ -3877,18 +3877,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "contactPage.info.locationLabel": "Localisation",
     "contactPage.info.locationValue": "Cameroun",
 
+    "contactPage.form.title": "Envoyez-nous un message",
+    "contactPage.form.subtitle": "Notre équipe vous répond sous 24h ouvrées.",
     "contactPage.form.name": "Nom complet",
     "contactPage.form.email": "Email",
+    "contactPage.form.phone": "Téléphone",
     "contactPage.form.subject": "Sujet",
     "contactPage.form.message": "Message",
     "contactPage.form.submit": "Envoyer le message",
+    "contactPage.form.sending": "Envoi en cours...",
     "contactPage.form.error.name":
       "Le nom doit contenir au moins 2 caractères.",
     "contactPage.form.error.email": "Adresse email invalide.",
+    "contactPage.form.error.phone":
+      "Numéro de téléphone invalide (9 chiffres attendus).",
     "contactPage.form.error.subject":
       "Le sujet doit contenir au moins 3 caractères.",
     "contactPage.form.error.message":
       "Le message doit contenir au moins 10 caractères.",
+    "contactPage.form.error.server":
+      "Une erreur est survenue lors de l'envoi. Merci de réessayer.",
+    "contactPage.form.error.rateLimited":
+      "Trop de messages envoyés récemment. Merci de réessayer dans quelques minutes.",
     "contactPage.form.success.title": "Message envoyé !",
     "contactPage.form.success.body":
       "Merci, nous revenons vers vous très vite.",
@@ -3968,6 +3978,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Coordonnées publiques et documents légaux affichés sur le site vitrine.",
     "siteContent.tabs.contact": "Contact",
     "siteContent.tabs.legal": "Documents légaux",
+    "siteContent.tabs.messages": "Messages",
     "siteContent.contact.emailLabel": "Email",
     "siteContent.contact.phoneLabel": "Téléphone",
     "siteContent.contact.addressLabel": "Adresse",
@@ -4020,14 +4031,27 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.legal.version": "Version",
     "siteContent.legal.error.title": "Le titre est obligatoire.",
     "siteContent.legal.error.content": "Le contenu est obligatoire.",
+    "siteContent.messages.loading": "Chargement...",
+    "siteContent.messages.listError":
+      "Impossible de charger les prises de contact.",
+    "siteContent.messages.empty.title": "Aucune prise de contact",
+    "siteContent.messages.empty.hint":
+      "Les messages envoyés depuis le formulaire de contact du site apparaîtront ici.",
+    "siteContent.messages.unread": "Non lu",
+    "siteContent.messages.pagination.prev": "Précédent",
+    "siteContent.messages.pagination.next": "Suivant",
+    "siteContent.messages.detail.close": "Fermer",
+    "siteContent.messages.detail.reply": "Répondre par email",
+    "siteContent.messages.detail.read": "Message lu",
+
     "siteContent.help.toggle": "Aide",
     "siteContent.help.title": "Contenu du site",
     "siteContent.help.body1":
-      "Cette page gère le contenu public du site vitrine : les coordonnées de contact et les documents légaux (CGU, mentions légales, confidentialité).",
+      "Cette page gère le contenu public du site vitrine : les coordonnées de contact, les documents légaux (CGU, mentions légales, confidentialité) et les prises de contact reçues.",
     "siteContent.help.body2":
       "Pour un document légal, choisissez d'abord la langue puis créez un nouveau brouillon depuis le bouton dédié. Un brouillon peut être modifié librement tant qu'il n'est pas publié.",
     "siteContent.help.body3":
-      "Publier un brouillon remplace immédiatement la version visible sur le site pour cette langue et ce document. Les anciennes versions publiées restent visibles dans l'historique.",
+      "Publier un brouillon remplace immédiatement la version visible sur le site pour cette langue et ce document. Les anciennes versions publiées restent visibles dans l'historique. L'onglet Messages liste les demandes reçues via le formulaire de contact public.",
   },
   en: {
     "common.save": "Save",
@@ -5821,9 +5845,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childTimetable.helpBlockTitle": "Help is always available",
     "onboardingTour.childTimetable.helpBlockBody":
       "Click this button anytime for a reminder on how to use this page.",
-    "onboardingTour.siteContent.tabsTitle": "Two distinct sections",
+    "onboardingTour.siteContent.tabsTitle": "Three distinct sections",
     "onboardingTour.siteContent.tabsBody":
-      "The Contact tab manages the details shown on the website. The Legal documents tab manages the Terms of Service, Legal Notice and Privacy Policy.",
+      "The Contact tab manages the details shown on the website. The Legal documents tab manages the Terms of Service, Legal Notice and Privacy Policy. The Messages tab lists submissions received through the public contact form.",
     "onboardingTour.siteContent.selectorsTitle":
       "Pick the document and language",
     "onboardingTour.siteContent.selectorsBody":
@@ -7731,14 +7755,23 @@ export const translations: Record<Locale, Record<string, string>> = {
     "contactPage.info.locationLabel": "Location",
     "contactPage.info.locationValue": "Cameroon",
 
+    "contactPage.form.title": "Send us a message",
+    "contactPage.form.subtitle": "Our team replies within 24 business hours.",
     "contactPage.form.name": "Full name",
     "contactPage.form.email": "Email",
+    "contactPage.form.phone": "Phone",
     "contactPage.form.subject": "Subject",
     "contactPage.form.message": "Message",
     "contactPage.form.submit": "Send message",
+    "contactPage.form.sending": "Sending...",
     "contactPage.form.error.name": "Name must be at least 2 characters.",
     "contactPage.form.error.email": "Invalid email address.",
+    "contactPage.form.error.phone": "Invalid phone number (9 digits expected).",
     "contactPage.form.error.subject": "Subject must be at least 3 characters.",
+    "contactPage.form.error.server":
+      "Something went wrong while sending. Please try again.",
+    "contactPage.form.error.rateLimited":
+      "Too many messages sent recently. Please try again in a few minutes.",
     "contactPage.form.error.message": "Message must be at least 10 characters.",
     "contactPage.form.success.title": "Message sent!",
     "contactPage.form.success.body": "Thanks, we'll get back to you shortly.",
@@ -7818,6 +7851,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Public contact details and legal documents shown on the marketing site.",
     "siteContent.tabs.contact": "Contact",
     "siteContent.tabs.legal": "Legal documents",
+    "siteContent.tabs.messages": "Messages",
     "siteContent.contact.emailLabel": "Email",
     "siteContent.contact.phoneLabel": "Phone",
     "siteContent.contact.addressLabel": "Address",
@@ -7867,13 +7901,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.legal.version": "Version",
     "siteContent.legal.error.title": "Title is required.",
     "siteContent.legal.error.content": "Content is required.",
+    "siteContent.messages.loading": "Loading...",
+    "siteContent.messages.listError": "Could not load contact submissions.",
+    "siteContent.messages.empty.title": "No contact submissions",
+    "siteContent.messages.empty.hint":
+      "Messages sent from the site's contact form will appear here.",
+    "siteContent.messages.unread": "Unread",
+    "siteContent.messages.pagination.prev": "Previous",
+    "siteContent.messages.pagination.next": "Next",
+    "siteContent.messages.detail.close": "Close",
+    "siteContent.messages.detail.reply": "Reply by email",
+    "siteContent.messages.detail.read": "Message read",
     "siteContent.help.toggle": "Help",
     "siteContent.help.title": "Site content",
     "siteContent.help.body1":
-      "This page manages the public showcase site content: contact details and legal documents (Terms of Service, Legal Notice, Privacy Policy).",
+      "This page manages the public showcase site content: contact details, legal documents (Terms of Service, Legal Notice, Privacy Policy) and received contact submissions.",
     "siteContent.help.body2":
       "For a legal document, first pick the language, then start a new draft from the dedicated button. A draft can be freely edited until it is published.",
     "siteContent.help.body3":
-      "Publishing a draft immediately replaces the version visible on the site for that language and document. Previously published versions stay visible in the history.",
+      "Publishing a draft immediately replaces the version visible on the site for that language and document. Previously published versions stay visible in the history. The Messages tab lists submissions received through the public contact form.",
   },
 };
