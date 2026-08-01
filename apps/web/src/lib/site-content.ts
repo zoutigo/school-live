@@ -12,6 +12,8 @@ export type PublicContactInfo = {
   email: string;
   phone: string;
   address: string;
+  legalRepresentativeFirstName: string;
+  legalRepresentativeLastName: string;
 };
 
 export type PublicLegalDocument = {

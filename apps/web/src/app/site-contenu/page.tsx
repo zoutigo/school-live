@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Controller, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { HelpCircle } from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -16,6 +17,7 @@ import {
 } from "../../components/ui/form-controls";
 import { FormRichTextEditor } from "../../components/ui/form-rich-text-editor";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { HelpDialog } from "../../components/ui/help-dialog";
 import { OnboardingTarget } from "../../components/onboarding/onboarding-target";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
@@ -42,6 +44,8 @@ function buildContactSchema(t: TranslateFn) {
     email: z.string().email(t("siteContent.contact.error.email")),
     phone: z.string().min(1, t("siteContent.contact.error.phone")),
     address: z.string().min(1, t("siteContent.contact.error.address")),
+    legalRepresentativeFirstName: z.string(),
+    legalRepresentativeLastName: z.string(),
   });
 }
 
@@ -66,6 +70,7 @@ export default function SiteContentPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("contact");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const activeTourId = useOnboardingTourStore((state) => state.activeTourId);
   const tourSteps = useOnboardingTourStore((state) => state.steps);
@@ -135,6 +140,19 @@ export default function SiteContentPage() {
         <Card
           title={t("siteContent.title")}
           subtitle={t("siteContent.subtitle")}
+          actions={
+            <OnboardingTarget id={SITE_CONTENT_TOUR_TARGETS.helpToggle}>
+              <button
+                type="button"
+                data-testid="site-content-help-toggle"
+                aria-label={t("siteContent.help.toggle")}
+                onClick={() => setHelpOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-card border border-border bg-background text-text-secondary hover:bg-surface"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </OnboardingTarget>
+          }
         >
           <OnboardingTarget id={SITE_CONTENT_TOUR_TARGETS.tabs}>
             <div className="mb-4 flex items-end gap-2 border-b border-border">
@@ -170,6 +188,17 @@ export default function SiteContentPage() {
           )}
         </Card>
       </div>
+
+      <HelpDialog
+        open={helpOpen}
+        title={t("siteContent.help.title")}
+        body={[
+          t("siteContent.help.body1"),
+          t("siteContent.help.body2"),
+          t("siteContent.help.body3"),
+        ]}
+        onClose={() => setHelpOpen(false)}
+      />
     </AppShell>
   );
 }
@@ -188,7 +217,13 @@ function ContactTab({ t }: { t: TranslateFn }) {
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(schema),
     mode: "onChange",
-    defaultValues: { email: "", phone: "", address: "" },
+    defaultValues: {
+      email: "",
+      phone: "",
+      address: "",
+      legalRepresentativeFirstName: "",
+      legalRepresentativeLastName: "",
+    },
   });
 
   useEffect(() => {
@@ -288,6 +323,26 @@ function ContactTab({ t }: { t: TranslateFn }) {
           id="site-contact-address"
           invalid={!!form.formState.errors.address}
           {...form.register("address")}
+        />
+      </FormField>
+
+      <FormField
+        label={t("siteContent.contact.legalRepresentativeFirstNameLabel")}
+        htmlFor="site-contact-legal-rep-first-name"
+      >
+        <FormTextInput
+          id="site-contact-legal-rep-first-name"
+          {...form.register("legalRepresentativeFirstName")}
+        />
+      </FormField>
+
+      <FormField
+        label={t("siteContent.contact.legalRepresentativeLastNameLabel")}
+        htmlFor="site-contact-legal-rep-last-name"
+      >
+        <FormTextInput
+          id="site-contact-legal-rep-last-name"
+          {...form.register("legalRepresentativeLastName")}
         />
       </FormField>
 

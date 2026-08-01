@@ -11,11 +11,14 @@ export function LegalPageLayout({
   updatedAt,
   bodyHtml,
   locale = "fr",
+  publisherName,
 }: {
   title: string;
   updatedAt: string;
   bodyHtml: string;
   locale?: MarketingLocale;
+  /** Legal representative's full name, shown only when non-empty (mentions légales only). */
+  publisherName?: string;
 }) {
   const { t } = useFixedTranslation(locale);
 
@@ -44,6 +47,15 @@ export function LegalPageLayout({
               className="legal-content flex flex-col gap-4 text-sm text-text-secondary md:text-base [&_h2]:font-heading [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-text-primary [&_p]:leading-relaxed"
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
+
+            {publisherName ? (
+              <p
+                className="mt-6 border-t border-border pt-4 text-sm text-text-secondary"
+                data-testid="legal-publisher-name"
+              >
+                {t("legal.publisherLabel")} {publisherName}
+              </p>
+            ) : null}
 
             <div className="mt-8 rounded-[16px] border border-warm-border bg-warm-surface p-5 text-sm text-text-secondary">
               {t("legal.placeholderNotice")}

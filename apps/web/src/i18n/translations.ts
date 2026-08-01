@@ -1890,6 +1890,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.siteContent.newDraftTitle": "Créer une nouvelle version",
     "onboardingTour.siteContent.newDraftBody":
       "Créez un brouillon, modifiez-le, puis publiez-le quand il est prêt. Publier une nouvelle version archive automatiquement l'ancienne version publiée.",
+    "onboardingTour.siteContent.helpToggleTitle": "Besoin d'aide ?",
+    "onboardingTour.siteContent.helpToggleBody":
+      "Retrouvez à tout moment un rappel de l'usage de cette page via ce bouton.",
     "settings.onboardingHelp.title": "Aide guidée",
     "settings.onboardingHelp.subtitle":
       "Affiche une visite guidée à la première découverte d'un module",
@@ -3893,6 +3896,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "legal.lastUpdated": "Dernière mise à jour :",
     "legal.updatedDate": "30 juillet 2026",
+    "legal.publisherLabel": "Responsable de publication :",
     "legal.placeholderNotice":
       "Ce contenu est un modèle à personnaliser avec les informations légales exactes de votre structure (raison sociale, immatriculation, adresse du siège) avant publication officielle.",
 
@@ -3967,6 +3971,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.contact.emailLabel": "Email",
     "siteContent.contact.phoneLabel": "Téléphone",
     "siteContent.contact.addressLabel": "Adresse",
+    "siteContent.contact.legalRepresentativeFirstNameLabel":
+      "Responsable légal — Prénom",
+    "siteContent.contact.legalRepresentativeLastNameLabel":
+      "Responsable légal — Nom",
     "siteContent.contact.save": "Enregistrer",
     "siteContent.contact.saveSuccess": "Coordonnées mises à jour.",
     "siteContent.contact.saveError":
@@ -4012,6 +4020,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.legal.version": "Version",
     "siteContent.legal.error.title": "Le titre est obligatoire.",
     "siteContent.legal.error.content": "Le contenu est obligatoire.",
+    "siteContent.help.toggle": "Aide",
+    "siteContent.help.title": "Contenu du site",
+    "siteContent.help.body1":
+      "Cette page gère le contenu public du site vitrine : les coordonnées de contact et les documents légaux (CGU, mentions légales, confidentialité).",
+    "siteContent.help.body2":
+      "Pour un document légal, choisissez d'abord la langue puis créez un nouveau brouillon depuis le bouton dédié. Un brouillon peut être modifié librement tant qu'il n'est pas publié.",
+    "siteContent.help.body3":
+      "Publier un brouillon remplace immédiatement la version visible sur le site pour cette langue et ce document. Les anciennes versions publiées restent visibles dans l'historique.",
   },
   en: {
     "common.save": "Save",
@@ -5815,6 +5831,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.siteContent.newDraftTitle": "Create a new version",
     "onboardingTour.siteContent.newDraftBody":
       "Create a draft, edit it, then publish it when ready. Publishing a new version automatically archives the previously published one.",
+    "onboardingTour.siteContent.helpToggleTitle": "Need help?",
+    "onboardingTour.siteContent.helpToggleBody":
+      "Come back to this button any time for a reminder of how this page works.",
     "settings.onboardingHelp.title": "Guided help",
     "settings.onboardingHelp.subtitle":
       "Show a guided tour the first time you open a module",
@@ -7727,6 +7746,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "legal.lastUpdated": "Last updated:",
     "legal.updatedDate": "July 30, 2026",
+    "legal.publisherLabel": "Publication director:",
     "legal.placeholderNotice":
       "This content is a template to customise with your organisation's exact legal details (registered name, registration number, registered address) before official publication.",
 
@@ -7801,6 +7821,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.contact.emailLabel": "Email",
     "siteContent.contact.phoneLabel": "Phone",
     "siteContent.contact.addressLabel": "Address",
+    "siteContent.contact.legalRepresentativeFirstNameLabel":
+      "Legal representative — First name",
+    "siteContent.contact.legalRepresentativeLastNameLabel":
+      "Legal representative — Last name",
     "siteContent.contact.save": "Save",
     "siteContent.contact.saveSuccess": "Contact details updated.",
     "siteContent.contact.saveError": "Could not save contact details.",
@@ -7843,5 +7867,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.legal.version": "Version",
     "siteContent.legal.error.title": "Title is required.",
     "siteContent.legal.error.content": "Content is required.",
+    "siteContent.help.toggle": "Help",
+    "siteContent.help.title": "Site content",
+    "siteContent.help.body1":
+      "This page manages the public showcase site content: contact details and legal documents (Terms of Service, Legal Notice, Privacy Policy).",
+    "siteContent.help.body2":
+      "For a legal document, first pick the language, then start a new draft from the dedicated button. A draft can be freely edited until it is published.",
+    "siteContent.help.body3":
+      "Publishing a draft immediately replaces the version visible on the site for that language and document. Previously published versions stay visible in the history.",
   },
 };

@@ -6,6 +6,8 @@ export type ContactInfo = {
   email: string;
   phone: string;
   address: string;
+  legalRepresentativeFirstName: string;
+  legalRepresentativeLastName: string;
 };
 
 export type LegalDocumentStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";

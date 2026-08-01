@@ -8,11 +8,13 @@ export function LegalNoticeContent({
   title,
   bodyHtml,
   updatedAt,
+  publisherName,
 }: {
   locale?: MarketingLocale;
   title: string;
   bodyHtml: string;
   updatedAt: string;
+  publisherName?: string;
 }) {
   return (
     <LegalPageLayout
@@ -20,6 +22,7 @@ export function LegalNoticeContent({
       updatedAt={updatedAt}
       bodyHtml={bodyHtml}
       locale={locale}
+      publisherName={publisherName}
     />
   );
 }

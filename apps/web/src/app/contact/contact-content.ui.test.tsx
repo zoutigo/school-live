@@ -14,6 +14,8 @@ const CONTACT_INFO: PublicContactInfo = {
   email: "contact@scolive.cm",
   phone: "+237 690000000",
   address: "Yaoundé, Cameroun",
+  legalRepresentativeFirstName: "",
+  legalRepresentativeLastName: "",
 };
 
 describe("ContactContent", () => {

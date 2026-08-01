@@ -10,6 +10,8 @@ export type ContactInfo = {
   email: string;
   phone: string;
   address: string;
+  legalRepresentativeFirstName: string;
+  legalRepresentativeLastName: string;
 };
 
 // Filet de sécurité SEO : seule valeur "en dur" du dispositif, utilisée
@@ -18,9 +20,18 @@ const CONTACT_INFO_FALLBACK: ContactInfo = {
   email: "contact@scolive.cm",
   phone: "+237 6XX XXX XXX",
   address: "Cameroun",
+  legalRepresentativeFirstName: "",
+  legalRepresentativeLastName: "",
 };
 
-function isContactInfo(value: unknown): value is ContactInfo {
+// Les champs "responsable légal" ont été ajoutés après la mise en prod :
+// une ligne SiteSetting existante peut donc ne contenir que email/phone/
+// address. On ne les exige pas dans le type guard pour rester compatible
+// avec ces lignes, et on les complète à "" à la lecture (voir getContactInfo).
+function isContactInfo(
+  value: unknown,
+): value is Pick<ContactInfo, "email" | "phone" | "address"> &
+  Partial<ContactInfo> {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -48,7 +59,14 @@ export class ContactInfoService {
     });
 
     if (setting && isContactInfo(setting.value)) {
-      return setting.value;
+      const stored = setting.value;
+      return {
+        email: stored.email,
+        phone: stored.phone,
+        address: stored.address,
+        legalRepresentativeFirstName: stored.legalRepresentativeFirstName ?? "",
+        legalRepresentativeLastName: stored.legalRepresentativeLastName ?? "",
+      };
     }
 
     return CONTACT_INFO_FALLBACK;
@@ -64,6 +82,10 @@ export class ContactInfoService {
       email: dto.email.trim(),
       phone: dto.phone.trim(),
       address: dto.address.trim(),
+      legalRepresentativeFirstName:
+        dto.legalRepresentativeFirstName?.trim() ?? "",
+      legalRepresentativeLastName:
+        dto.legalRepresentativeLastName?.trim() ?? "",
     };
 
     await this.prisma.siteSetting.upsert({

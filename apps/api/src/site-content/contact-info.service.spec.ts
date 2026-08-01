@@ -50,6 +50,8 @@ describe("ContactInfoService", () => {
       email: "contact@scolive.cm",
       phone: "+237 6XX XXX XXX",
       address: "Cameroun",
+      legalRepresentativeFirstName: "",
+      legalRepresentativeLastName: "",
     });
   });
 
@@ -80,7 +82,43 @@ describe("ContactInfoService", () => {
       email: "hello@scolive.cm",
       phone: "+237 690000000",
       address: "Yaoundé, Cameroun",
+      legalRepresentativeFirstName: "",
+      legalRepresentativeLastName: "",
     });
+  });
+
+  it('complète le responsable légal à "" quand une ligne existante ne le contient pas encore', async () => {
+    prisma.siteSetting.findUnique.mockResolvedValue({
+      key: "contact",
+      value: {
+        email: "hello@scolive.cm",
+        phone: "+237 690000000",
+        address: "Yaoundé, Cameroun",
+      },
+    });
+
+    const result = await service.getContactInfo();
+
+    expect(result.legalRepresentativeFirstName).toBe("");
+    expect(result.legalRepresentativeLastName).toBe("");
+  });
+
+  it("retourne le responsable légal persisté quand il existe", async () => {
+    prisma.siteSetting.findUnique.mockResolvedValue({
+      key: "contact",
+      value: {
+        email: "hello@scolive.cm",
+        phone: "+237 690000000",
+        address: "Yaoundé, Cameroun",
+        legalRepresentativeFirstName: "Jean",
+        legalRepresentativeLastName: "Dupont",
+      },
+    });
+
+    const result = await service.getContactInfo();
+
+    expect(result.legalRepresentativeFirstName).toBe("Jean");
+    expect(result.legalRepresentativeLastName).toBe("Dupont");
   });
 
   it("refuse la mise à jour pour un utilisateur non SUPER_ADMIN/ADMIN", async () => {
@@ -110,6 +148,8 @@ describe("ContactInfoService", () => {
       email: "admin@b.cm",
       phone: "+237 690000001",
       address: "Yaoundé",
+      legalRepresentativeFirstName: "",
+      legalRepresentativeLastName: "",
     });
   });
 
@@ -121,12 +161,16 @@ describe("ContactInfoService", () => {
       email: " a@b.cm ",
       phone: " +237 690000000 ",
       address: " Douala ",
+      legalRepresentativeFirstName: " Jean ",
+      legalRepresentativeLastName: " Dupont ",
     });
 
     expect(result).toEqual({
       email: "a@b.cm",
       phone: "+237 690000000",
       address: "Douala",
+      legalRepresentativeFirstName: "Jean",
+      legalRepresentativeLastName: "Dupont",
     });
     expect(prisma.siteSetting.upsert).toHaveBeenCalledWith({
       where: { key: "contact" },

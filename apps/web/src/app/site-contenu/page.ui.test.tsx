@@ -27,6 +27,8 @@ const CONTACT_PAYLOAD: ContactInfo = {
   email: "contact@scolive.cm",
   phone: "+237 690000000",
   address: "Yaoundé, Cameroun",
+  legalRepresentativeFirstName: "",
+  legalRepresentativeLastName: "",
 };
 
 const LEGAL_ITEMS: LegalDocumentItem[] = [
@@ -153,6 +155,25 @@ describe("SiteContentPage UI", () => {
     await screen.findByDisplayValue("contact@scolive.cm");
 
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  it("opens and closes the help dialog via the header button", async () => {
+    mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
+
+    render(<SiteContentPage />);
+    await screen.findByDisplayValue("contact@scolive.cm");
+
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("site-content-help-toggle"));
+    const dialog = await screen.findByTestId("help-dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("Contenu du site");
+
+    fireEvent.click(screen.getByTestId("help-dialog-close"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument(),
+    );
   });
 
   it("lists legal document versions after switching tabs", async () => {
