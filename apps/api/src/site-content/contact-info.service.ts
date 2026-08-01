@@ -2,7 +2,7 @@ import { ForbiddenException, Injectable } from "@nestjs/common";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type { UpdateContactInfoDto } from "./dto/update-contact-info.dto.js";
-import { isSuperAdmin } from "./site-content-access.js";
+import { isPlatformAdmin } from "./site-content-access.js";
 
 const CONTACT_SETTING_KEY = "contact";
 
@@ -37,7 +37,7 @@ export class ContactInfoService {
   constructor(private readonly prisma: PrismaService) {}
 
   assertCanManage(user: AuthenticatedUser) {
-    if (!isSuperAdmin(user)) {
+    if (!isPlatformAdmin(user)) {
       throw new ForbiddenException("Réservé aux administrateurs plateforme");
     }
   }

@@ -100,7 +100,7 @@ export default function SiteContentPage() {
         activeRole?: string | null;
         onboardingHelpEnabled?: boolean;
       };
-      if (me.activeRole !== "SUPER_ADMIN") {
+      if (me.activeRole !== "SUPER_ADMIN" && me.activeRole !== "ADMIN") {
         router.replace("/acceuil");
         return;
       }

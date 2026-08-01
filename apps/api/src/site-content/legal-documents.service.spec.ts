@@ -87,7 +87,7 @@ describe("LegalDocumentsService", () => {
   });
 
   describe("gestion admin", () => {
-    it("refuse list/create/update/publish/delete pour un non SUPER_ADMIN", async () => {
+    it("refuse list/create/update/publish/delete pour un non SUPER_ADMIN/ADMIN", async () => {
       const user = makeUser({ activeRole: "SCHOOL_ADMIN" });
 
       await expect(service.list(user, {})).rejects.toBeInstanceOf(
@@ -101,6 +101,23 @@ describe("LegalDocumentsService", () => {
           contentHtml: "<p>x</p>",
         }),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it("autorise list/create pour un ADMIN", async () => {
+      const user = makeUser({ activeRole: "ADMIN", platformRoles: ["ADMIN"] });
+      prisma.legalDocument.findMany.mockResolvedValue([]);
+      prisma.legalDocument.findFirst.mockResolvedValue(null);
+      prisma.legalDocument.create.mockResolvedValue({ id: "doc-1" });
+
+      await expect(service.list(user, {})).resolves.toEqual([]);
+      await expect(
+        service.create(user, {
+          slug: "cgu",
+          locale: "fr",
+          title: "t",
+          contentHtml: "<p>x</p>",
+        }),
+      ).resolves.toEqual({ id: "doc-1" });
     });
 
     it("crée la première version en DRAFT avec version=1", async () => {

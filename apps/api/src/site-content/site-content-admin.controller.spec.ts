@@ -48,7 +48,7 @@ describe("SiteContentAdminController", () => {
         address: "Douala",
       }),
       assertCanManage: jest.fn((user: AuthenticatedUser) => {
-        if (user.activeRole !== "SUPER_ADMIN") {
+        if (user.activeRole !== "SUPER_ADMIN" && user.activeRole !== "ADMIN") {
           throw new ForbiddenException();
         }
       }),
@@ -74,10 +74,16 @@ describe("SiteContentAdminController", () => {
     controller = module.get(SiteContentAdminController);
   });
 
-  it("refuse getContactInfo pour un utilisateur non SUPER_ADMIN", () => {
+  it("refuse getContactInfo pour un utilisateur non SUPER_ADMIN/ADMIN", () => {
     const user = makeUser({ activeRole: "SCHOOL_ADMIN" });
 
     expect(() => controller.getContactInfo(user)).toThrow(ForbiddenException);
+  });
+
+  it("autorise getContactInfo pour un utilisateur ADMIN", () => {
+    const user = makeUser({ activeRole: "ADMIN", platformRoles: ["ADMIN"] });
+
+    expect(() => controller.getContactInfo(user)).not.toThrow();
   });
 
   it("délègue la mise à jour du contact au service", async () => {

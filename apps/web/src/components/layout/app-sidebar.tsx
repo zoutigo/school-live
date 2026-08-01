@@ -183,10 +183,6 @@ function buildItems(
               matchPrefix: "/messagerie",
               unread: toUnread(platformMessagesUnread),
             },
-          ]
-        : []),
-      ...(role === "SUPER_ADMIN"
-        ? [
             {
               label: t("sidebar.nav.siteContent"),
               href: "/site-contenu",

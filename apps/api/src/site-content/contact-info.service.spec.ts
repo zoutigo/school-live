@@ -83,7 +83,7 @@ describe("ContactInfoService", () => {
     });
   });
 
-  it("refuse la mise à jour pour un utilisateur non SUPER_ADMIN", async () => {
+  it("refuse la mise à jour pour un utilisateur non SUPER_ADMIN/ADMIN", async () => {
     const user = makeUser({ activeRole: "SCHOOL_ADMIN", platformRoles: [] });
 
     await expect(
@@ -94,6 +94,23 @@ describe("ContactInfoService", () => {
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.siteSetting.upsert).not.toHaveBeenCalled();
+  });
+
+  it("persiste la nouvelle valeur pour un ADMIN", async () => {
+    const user = makeUser({ activeRole: "ADMIN", platformRoles: ["ADMIN"] });
+    prisma.siteSetting.upsert.mockResolvedValue({});
+
+    const result = await service.updateContactInfo(user, {
+      email: "admin@b.cm",
+      phone: "+237 690000001",
+      address: "Yaoundé",
+    });
+
+    expect(result).toEqual({
+      email: "admin@b.cm",
+      phone: "+237 690000001",
+      address: "Yaoundé",
+    });
   });
 
   it("persiste la nouvelle valeur pour un SUPER_ADMIN", async () => {

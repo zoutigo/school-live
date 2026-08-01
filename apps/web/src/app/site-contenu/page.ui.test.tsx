@@ -92,12 +92,21 @@ describe("SiteContentPage UI", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/"));
   });
 
-  it("redirects a non SUPER_ADMIN user to the platform home", async () => {
-    mockSiteContentFlow({ activeRole: "ADMIN" });
+  it("redirects a non SUPER_ADMIN/ADMIN user to the platform home", async () => {
+    mockSiteContentFlow({ activeRole: "SCHOOL_ADMIN" });
 
     render(<SiteContentPage />);
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/acceuil"));
+  });
+
+  it("renders the contact form pre-filled for an ADMIN", async () => {
+    mockSiteContentFlow({ activeRole: "ADMIN" });
+
+    render(<SiteContentPage />);
+
+    const emailInput = await screen.findByDisplayValue("contact@scolive.cm");
+    expect(emailInput).toBeInTheDocument();
   });
 
   it("renders the contact form pre-filled for a SUPER_ADMIN", async () => {

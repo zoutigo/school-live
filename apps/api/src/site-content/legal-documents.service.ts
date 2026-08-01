@@ -9,7 +9,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import type { CreateLegalDocumentDto } from "./dto/create-legal-document.dto.js";
 import type { ListLegalDocumentsDto } from "./dto/list-legal-documents.dto.js";
 import type { UpdateLegalDocumentDto } from "./dto/update-legal-document.dto.js";
-import { isSuperAdmin } from "./site-content-access.js";
+import { isPlatformAdmin } from "./site-content-access.js";
 
 export type PublicLegalDocument = {
   slug: string;
@@ -59,7 +59,7 @@ export class LegalDocumentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   assertCanManage(user: AuthenticatedUser) {
-    if (!isSuperAdmin(user)) {
+    if (!isPlatformAdmin(user)) {
       throw new ForbiddenException("Réservé aux administrateurs plateforme");
     }
   }
