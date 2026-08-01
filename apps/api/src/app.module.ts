@@ -18,6 +18,7 @@ import { PrismaModule } from "./prisma/prisma.module.js";
 import { ResourcesModule } from "./resources/resources.module.js";
 import { SchoolUsersModule } from "./school-users/school-users.module.js";
 import { SchoolsModule } from "./schools/schools.module.js";
+import { SiteContentModule } from "./site-content/site-content.module.js";
 import { StudentManagementModule } from "./student-management/student-management.module.js";
 import { TimetableModule } from "./timetable/timetable.module.js";
 import { TicketsModule } from "./tickets/tickets.module.js";
@@ -49,6 +50,7 @@ import { TestsModule } from "./tests/tests.module.js";
     ResourcesModule,
     SchoolsModule,
     SchoolUsersModule,
+    SiteContentModule,
     StudentManagementModule,
     TimetableModule,
     TicketsModule,

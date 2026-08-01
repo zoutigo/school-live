@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "../../lib/seo";
+import { getPublicLegalDocument } from "../../lib/site-content";
 import { LegalNoticeContent } from "./legal-notice-content";
 
 export const metadata: Metadata = buildMetadata({
@@ -8,6 +9,18 @@ export const metadata: Metadata = buildMetadata({
   basePath: "/mentions-legales",
 });
 
-export default function LegalNoticePage() {
-  return <LegalNoticeContent locale="fr" />;
+export default async function LegalNoticePage() {
+  const doc = await getPublicLegalDocument("mentions-legales", "fr");
+  const updatedAt = new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "long",
+  }).format(new Date(doc.updatedAt));
+
+  return (
+    <LegalNoticeContent
+      locale="fr"
+      title={doc.title}
+      bodyHtml={doc.contentHtml}
+      updatedAt={updatedAt}
+    />
+  );
 }

@@ -6,22 +6,15 @@ import { SiteFooter } from "./site-footer";
 import { useFixedTranslation } from "../../i18n/useTranslation";
 import type { MarketingLocale } from "../../lib/seo";
 
-export type LegalSection = {
-  heading: string;
-  body: string;
-};
-
 export function LegalPageLayout({
   title,
   updatedAt,
-  intro,
-  sections,
+  bodyHtml,
   locale = "fr",
 }: {
   title: string;
   updatedAt: string;
-  intro: string;
-  sections: LegalSection[];
+  bodyHtml: string;
   locale?: MarketingLocale;
 }) {
   const { t } = useFixedTranslation(locale);
@@ -42,26 +35,17 @@ export function LegalPageLayout({
             <p className="mt-3 text-sm font-medium text-text-secondary">
               {t("legal.lastUpdated")} {updatedAt}
             </p>
-            <p className="mx-auto mt-5 max-w-xl text-sm text-text-secondary">
-              {intro}
-            </p>
           </div>
         </section>
 
         <section className="bg-surface py-16">
-          <div className="mx-auto flex w-full max-w-[800px] flex-col gap-8 px-6 lg:px-16">
-            {sections.map((section) => (
-              <div key={section.heading}>
-                <h2 className="font-heading text-lg font-semibold text-text-primary">
-                  {section.heading}
-                </h2>
-                <p className="mt-2 text-sm text-text-secondary md:text-base">
-                  {section.body}
-                </p>
-              </div>
-            ))}
+          <div className="mx-auto w-full max-w-[800px] px-6 lg:px-16">
+            <div
+              className="legal-content flex flex-col gap-4 text-sm text-text-secondary md:text-base [&_h2]:font-heading [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-text-primary [&_p]:leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: bodyHtml }}
+            />
 
-            <div className="rounded-[16px] border border-warm-border bg-warm-surface p-5 text-sm text-text-secondary">
+            <div className="mt-8 rounded-[16px] border border-warm-border bg-warm-surface p-5 text-sm text-text-secondary">
               {t("legal.placeholderNotice")}
             </div>
           </div>

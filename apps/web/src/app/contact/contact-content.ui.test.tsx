@@ -4,10 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ContactContent } from "./contact-content";
 import { useLocaleStore } from "../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../i18n/translations";
+import type { PublicContactInfo } from "../../lib/site-content";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/contact",
 }));
+
+const CONTACT_INFO: PublicContactInfo = {
+  email: "contact@scolive.cm",
+  phone: "+237 690000000",
+  address: "Yaoundé, Cameroun",
+};
 
 describe("ContactContent", () => {
   beforeEach(() => {
@@ -17,7 +24,7 @@ describe("ContactContent", () => {
 
   it("shows inline validation errors and keeps the submit button enabled", async () => {
     const user = userEvent.setup();
-    render(<ContactContent />);
+    render(<ContactContent contactInfo={CONTACT_INFO} />);
 
     await user.click(
       screen.getByRole("button", { name: "Envoyer le message" }),
@@ -33,7 +40,7 @@ describe("ContactContent", () => {
 
   it("submits successfully once all fields are valid", async () => {
     const user = userEvent.setup();
-    render(<ContactContent />);
+    render(<ContactContent contactInfo={CONTACT_INFO} />);
 
     await user.type(screen.getByLabelText("Nom complet"), "Awa Ngono");
     await user.type(screen.getByLabelText("Email"), "awa@example.cm");

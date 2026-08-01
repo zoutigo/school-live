@@ -898,6 +898,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Le contenu est obligatoire.",
 
     "sidebar.nav.settings": "Parametres",
+    "sidebar.nav.siteContent": "Contenu du site",
     "sidebar.nav.home": "Accueil",
     "sidebar.nav.newsFeed": "Fil d'actualite",
     "sidebar.nav.teachers": "Enseignants",
@@ -1879,6 +1880,16 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Une aide toujours disponible",
     "onboardingTour.childTimetable.helpBlockBody":
       "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
+    "onboardingTour.siteContent.tabsTitle": "Deux sections distinctes",
+    "onboardingTour.siteContent.tabsBody":
+      "L'onglet Contact gère les coordonnées affichées sur le site. L'onglet Documents légaux gère les CGU, mentions légales et politique de confidentialité.",
+    "onboardingTour.siteContent.selectorsTitle":
+      "Choisissez le document et la langue",
+    "onboardingTour.siteContent.selectorsBody":
+      "Chaque document légal est géré séparément par langue (français/anglais). Sélectionnez d'abord le document puis la langue à modifier.",
+    "onboardingTour.siteContent.newDraftTitle": "Créer une nouvelle version",
+    "onboardingTour.siteContent.newDraftBody":
+      "Créez un brouillon, modifiez-le, puis publiez-le quand il est prêt. Publier une nouvelle version archive automatiquement l'ancienne version publiée.",
     "settings.onboardingHelp.title": "Aide guidée",
     "settings.onboardingHelp.subtitle":
       "Affiche une visite guidée à la première découverte d'un module",
@@ -3947,6 +3958,60 @@ export const translations: Record<Locale, Record<string, string>> = {
     "privacyPage.section6.heading": "Conservation des données",
     "privacyPage.section6.body":
       "Les données sont conservées pendant la durée de la scolarité de l'élève et selon les obligations légales applicables.",
+
+    "siteContent.title": "Contenu du site",
+    "siteContent.subtitle":
+      "Coordonnées publiques et documents légaux affichés sur le site vitrine.",
+    "siteContent.tabs.contact": "Contact",
+    "siteContent.tabs.legal": "Documents légaux",
+    "siteContent.contact.emailLabel": "Email",
+    "siteContent.contact.phoneLabel": "Téléphone",
+    "siteContent.contact.addressLabel": "Adresse",
+    "siteContent.contact.save": "Enregistrer",
+    "siteContent.contact.saveSuccess": "Coordonnées mises à jour.",
+    "siteContent.contact.saveError":
+      "Impossible d'enregistrer les coordonnées.",
+    "siteContent.contact.loadError": "Impossible de charger les coordonnées.",
+    "siteContent.contact.error.email": "Adresse email invalide.",
+    "siteContent.contact.error.phone": "Le téléphone est obligatoire.",
+    "siteContent.contact.error.address": "L'adresse est obligatoire.",
+    "siteContent.legal.slugLabel": "Document",
+    "siteContent.legal.localeLabel": "Langue",
+    "siteContent.legal.slug.cgu": "CGU",
+    "siteContent.legal.slug.mentions-legales": "Mentions légales",
+    "siteContent.legal.slug.confidentialite": "Confidentialité",
+    "siteContent.legal.locale.fr": "Français",
+    "siteContent.legal.locale.en": "Anglais",
+    "siteContent.legal.newDraftTitle": "Nouvelle version (brouillon)",
+    "siteContent.legal.titleLabel": "Titre",
+    "siteContent.legal.contentLabel": "Contenu",
+    "siteContent.legal.createDraft": "Créer un brouillon",
+    "siteContent.legal.createSuccess": "Brouillon créé.",
+    "siteContent.legal.createError": "Impossible de créer le brouillon.",
+    "siteContent.legal.saveDraft": "Enregistrer le brouillon",
+    "siteContent.legal.saveDraftSuccess": "Brouillon enregistré.",
+    "siteContent.legal.saveDraftError":
+      "Impossible d'enregistrer le brouillon.",
+    "siteContent.legal.publish": "Publier",
+    "siteContent.legal.publishConfirm":
+      "Publier cette version ? La version publiée actuelle sera archivée.",
+    "siteContent.legal.publishSuccess": "Version publiée.",
+    "siteContent.legal.publishError": "Impossible de publier cette version.",
+    "siteContent.legal.delete": "Supprimer",
+    "siteContent.legal.deleteConfirm": "Supprimer ce brouillon ?",
+    "siteContent.legal.deleteSuccess": "Brouillon supprimé.",
+    "siteContent.legal.deleteError": "Impossible de supprimer ce brouillon.",
+    "siteContent.legal.edit": "Modifier",
+    "siteContent.legal.cancel": "Annuler",
+    "siteContent.legal.listError": "Impossible de charger les versions.",
+    "siteContent.legal.empty":
+      "Aucune version pour ce document et cette langue.",
+    "siteContent.legal.status.DRAFT": "Brouillon",
+    "siteContent.legal.status.PUBLISHED": "Publié",
+    "siteContent.legal.status.ARCHIVED": "Archivé",
+    "siteContent.legal.version": "Version",
+    "siteContent.legal.error.title": "Le titre est obligatoire.",
+    "siteContent.legal.error.content": "Le contenu est obligatoire.",
   },
   en: {
     "common.save": "Save",
@@ -4796,6 +4861,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesMine.contribution.errors.contentRequired": "Content is required.",
 
     "sidebar.nav.settings": "Settings",
+    "sidebar.nav.siteContent": "Site content",
     "sidebar.nav.home": "Home",
     "sidebar.nav.newsFeed": "News feed",
     "sidebar.nav.teachers": "Teachers",
@@ -5739,6 +5805,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childTimetable.helpBlockTitle": "Help is always available",
     "onboardingTour.childTimetable.helpBlockBody":
       "Click this button anytime for a reminder on how to use this page.",
+    "onboardingTour.siteContent.tabsTitle": "Two distinct sections",
+    "onboardingTour.siteContent.tabsBody":
+      "The Contact tab manages the details shown on the website. The Legal documents tab manages the Terms of Service, Legal Notice and Privacy Policy.",
+    "onboardingTour.siteContent.selectorsTitle":
+      "Pick the document and language",
+    "onboardingTour.siteContent.selectorsBody":
+      "Each legal document is managed separately by language (French/English). Select the document, then the language you want to edit.",
+    "onboardingTour.siteContent.newDraftTitle": "Create a new version",
+    "onboardingTour.siteContent.newDraftBody":
+      "Create a draft, edit it, then publish it when ready. Publishing a new version automatically archives the previously published one.",
     "settings.onboardingHelp.title": "Guided help",
     "settings.onboardingHelp.subtitle":
       "Show a guided tour the first time you open a module",
@@ -7716,5 +7792,56 @@ export const translations: Record<Locale, Record<string, string>> = {
     "privacyPage.section6.heading": "Data retention",
     "privacyPage.section6.body":
       "Data is kept for the duration of the student's enrolment and in line with applicable legal obligations.",
+
+    "siteContent.title": "Site content",
+    "siteContent.subtitle":
+      "Public contact details and legal documents shown on the marketing site.",
+    "siteContent.tabs.contact": "Contact",
+    "siteContent.tabs.legal": "Legal documents",
+    "siteContent.contact.emailLabel": "Email",
+    "siteContent.contact.phoneLabel": "Phone",
+    "siteContent.contact.addressLabel": "Address",
+    "siteContent.contact.save": "Save",
+    "siteContent.contact.saveSuccess": "Contact details updated.",
+    "siteContent.contact.saveError": "Could not save contact details.",
+    "siteContent.contact.loadError": "Could not load contact details.",
+    "siteContent.contact.error.email": "Invalid email address.",
+    "siteContent.contact.error.phone": "Phone is required.",
+    "siteContent.contact.error.address": "Address is required.",
+    "siteContent.legal.slugLabel": "Document",
+    "siteContent.legal.localeLabel": "Language",
+    "siteContent.legal.slug.cgu": "Terms of Service",
+    "siteContent.legal.slug.mentions-legales": "Legal Notice",
+    "siteContent.legal.slug.confidentialite": "Privacy Policy",
+    "siteContent.legal.locale.fr": "French",
+    "siteContent.legal.locale.en": "English",
+    "siteContent.legal.newDraftTitle": "New version (draft)",
+    "siteContent.legal.titleLabel": "Title",
+    "siteContent.legal.contentLabel": "Content",
+    "siteContent.legal.createDraft": "Create draft",
+    "siteContent.legal.createSuccess": "Draft created.",
+    "siteContent.legal.createError": "Could not create the draft.",
+    "siteContent.legal.saveDraft": "Save draft",
+    "siteContent.legal.saveDraftSuccess": "Draft saved.",
+    "siteContent.legal.saveDraftError": "Could not save the draft.",
+    "siteContent.legal.publish": "Publish",
+    "siteContent.legal.publishConfirm":
+      "Publish this version? The current published version will be archived.",
+    "siteContent.legal.publishSuccess": "Version published.",
+    "siteContent.legal.publishError": "Could not publish this version.",
+    "siteContent.legal.delete": "Delete",
+    "siteContent.legal.deleteConfirm": "Delete this draft?",
+    "siteContent.legal.deleteSuccess": "Draft deleted.",
+    "siteContent.legal.deleteError": "Could not delete this draft.",
+    "siteContent.legal.edit": "Edit",
+    "siteContent.legal.cancel": "Cancel",
+    "siteContent.legal.listError": "Could not load versions.",
+    "siteContent.legal.empty": "No version yet for this document and language.",
+    "siteContent.legal.status.DRAFT": "Draft",
+    "siteContent.legal.status.PUBLISHED": "Published",
+    "siteContent.legal.status.ARCHIVED": "Archived",
+    "siteContent.legal.version": "Version",
+    "siteContent.legal.error.title": "Title is required.",
+    "siteContent.legal.error.content": "Content is required.",
   },
 };

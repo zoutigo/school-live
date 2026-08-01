@@ -185,6 +185,16 @@ function buildItems(
             },
           ]
         : []),
+      ...(role === "SUPER_ADMIN"
+        ? [
+            {
+              label: t("sidebar.nav.siteContent"),
+              href: "/site-contenu",
+              icon: FileText,
+              matchPrefix: "/site-contenu",
+            },
+          ]
+        : []),
       {
         label: t("sidebar.nav.settings"),
         href: "/settings",

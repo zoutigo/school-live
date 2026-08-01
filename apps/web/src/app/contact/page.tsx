@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "../../lib/seo";
+import { getPublicContactInfo } from "../../lib/site-content";
 import { ContactContent } from "./contact-content";
 
 export const metadata: Metadata = buildMetadata({
@@ -9,6 +10,7 @@ export const metadata: Metadata = buildMetadata({
   basePath: "/contact",
 });
 
-export default function ContactPage() {
-  return <ContactContent locale="fr" />;
+export default async function ContactPage() {
+  const contactInfo = await getPublicContactInfo();
+  return <ContactContent locale="fr" contactInfo={contactInfo} />;
 }
