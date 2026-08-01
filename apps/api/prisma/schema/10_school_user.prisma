@@ -153,6 +153,7 @@ model User {
   siteSettingsUpdated   SiteSetting[]           @relation("SiteSettingUpdatedBy")
   legalDocumentsCreated LegalDocument[]         @relation("LegalDocumentCreatedBy")
   legalDocumentsUpdated LegalDocument[]         @relation("LegalDocumentUpdatedBy")
+  contactSubmissionsRead ContactSubmission[]    @relation("ContactSubmissionReadBy")
   testCampaignsCreated  TestCampaign[]          @relation("TestCampaignCreatedBy")
   testCampaignsUpdated  TestCampaign[]          @relation("TestCampaignUpdatedBy")
   testCampaignAssignmentsAsTester TestCampaignAssignment[] @relation("TestCampaignAssignmentTester")

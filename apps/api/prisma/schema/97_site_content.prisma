@@ -32,3 +32,23 @@ model LegalDocument {
   @@unique([slug, locale, version])
   @@index([slug, locale, status])
 }
+
+// Prises de contact soumises via le formulaire public "Contact".
+// ipHash sert uniquement à la limitation de fréquence anti-spam, jamais
+// affiché ni exploité pour autre chose.
+model ContactSubmission {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  subject   String
+  message   String
+  ipHash    String?
+  readAt    DateTime?
+  readById  String?
+  readBy    User?     @relation("ContactSubmissionReadBy", fields: [readById], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([ipHash, createdAt])
+}
