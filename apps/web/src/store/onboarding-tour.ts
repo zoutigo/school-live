@@ -38,7 +38,6 @@ type OnboardingTourState = {
     steps: OnboardingTourStep[],
   ) => void;
   next: () => void;
-  skip: () => void;
   finish: () => void;
   setTargetRect: (rect: TargetRect | null) => void;
   resetAllCompleted: () => void;
@@ -75,10 +74,6 @@ export const useOnboardingTourStore = create<OnboardingTourState>()(
           return;
         }
         set({ stepIndex: stepIndex + 1, targetRect: null });
-      },
-
-      skip: () => {
-        get().finish();
       },
 
       finish: () => {

@@ -14,7 +14,6 @@ export function OnboardingTourOverlay() {
   const stepIndex = useOnboardingTourStore((state) => state.stepIndex);
   const targetRect = useOnboardingTourStore((state) => state.targetRect);
   const next = useOnboardingTourStore((state) => state.next);
-  const skip = useOnboardingTourStore((state) => state.skip);
 
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
 
@@ -136,7 +135,7 @@ export function OnboardingTourOverlay() {
         <div className="mt-2 flex justify-end gap-3">
           <button
             type="button"
-            onClick={skip}
+            onClick={next}
             className="px-2 py-2 text-sm font-semibold text-text-secondary"
             data-testid="onboarding-tour-skip"
           >
