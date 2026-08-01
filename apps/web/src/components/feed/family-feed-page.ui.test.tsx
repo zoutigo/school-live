@@ -101,6 +101,47 @@ describe("FamilyFeedPage", () => {
     expect(screen.queryByRole("article")).not.toBeInTheDocument();
   });
 
+  it("requests page=1&limit=12 initially and resets to page 1 when a type filter is applied", async () => {
+    document.cookie = "school_live_csrf_token=csrf-token";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [],
+        meta: { page: 1, totalPages: 1, total: 0, limit: 12 },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <FamilyFeedPage
+        schoolSlug="college-vogt"
+        childFullName="Lisa MBELE"
+        viewScope="CLASS"
+        currentClassId="class-6ec"
+        useDemoSeed={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    const [initialUrl] = fetchMock.mock.calls[0] as [string];
+    expect(initialUrl).toContain("page=1");
+    expect(initialUrl).toContain("limit=12");
+    expect(initialUrl).not.toContain("types=");
+
+    fetchMock.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Filtres" }));
+    fireEvent.click(screen.getByRole("button", { name: "A la une" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    const [filteredUrl] = fetchMock.mock.calls[0] as [string];
+    expect(filteredUrl).toContain("page=1");
+    expect(filteredUrl).toContain("types=featured");
+  });
+
   it("does not render the audience badge on feed cards", () => {
     render(
       <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
@@ -449,6 +490,7 @@ describe("FamilyFeedPage", () => {
       expect(screen.getAllByText("Mon post perso")[0]).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Filtres" }));
     fireEvent.click(screen.getByRole("button", { name: "Mes posts" }));
 
     expect(screen.getByText("Mon post perso")).toBeInTheDocument();
@@ -473,6 +515,7 @@ describe("FamilyFeedPage", () => {
       expect(screen.getAllByText("Post personnel")[0]).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "Filtres" }));
     fireEvent.click(screen.getByRole("button", { name: "Mes posts" }));
 
     expect(getArticleIndex("Post personnel")).toBe(0);
@@ -499,5 +542,65 @@ describe("FamilyFeedPage", () => {
       "grid",
     );
     assertNoHorizontalOverflowAt320(screen.getByTestId("family-feed-header"));
+  });
+
+  it("combines the featured and polls type chips (union, not exclusive)", () => {
+    render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtres" }));
+    fireEvent.click(screen.getByRole("button", { name: "A la une" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sondages" }));
+
+    expect(
+      screen.getAllByText("Semaine culturelle - programme final").length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Sondage sortie pedagogique")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Rappel echeance frais de cantine"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("resets the type filter when 'Tous' is clicked after selecting chips", () => {
+    render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtres" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sondages" }));
+    expect(
+      screen.queryByText("Organisation covoiturage de fin de semaine"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tous" }));
+
+    expect(
+      screen.getByText("Organisation covoiturage de fin de semaine"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the current post count as a badge on the filter toggle", () => {
+    render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    const badge = screen.getByTestId("family-feed-filter-total");
+    expect(badge).toBeInTheDocument();
+    expect(badge.textContent).toMatch(/^\d+(\+)?$/);
+  });
+
+  it("opens and closes the help dialog from the header", () => {
+    render(
+      <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
+    );
+
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Aide" }));
+    expect(screen.getByTestId("help-dialog")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("help-dialog-close"));
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
   });
 });

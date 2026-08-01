@@ -16,6 +16,8 @@ export const MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION =
   "send-room-status-change-notification";
 export const MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION =
   "send-grade-published-notification";
+export const MAIL_JOB_SEND_CONTACT_FORM_SUBMISSION_NOTIFICATION =
+  "send-contact-form-submission-notification";
 
 export type TemporaryPasswordMailPayload = {
   to: string;
@@ -109,6 +111,16 @@ export type RoomStatusChangeMailPayload = {
   title: string;
   summary: string;
   details: string[];
+};
+
+export type ContactFormSubmissionMailPayload = {
+  to: string;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  submittedAt: string;
 };
 
 export type GradePublishedMailPayload = {

@@ -8,6 +8,7 @@ import {
   type QueuePort,
 } from "../infrastructure/messaging/queue.port.js";
 import {
+  MAIL_JOB_SEND_CONTACT_FORM_SUBMISSION_NOTIFICATION,
   MAIL_JOB_SEND_EMAIL_VERIFICATION,
   MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION,
   MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION,
@@ -19,6 +20,7 @@ import {
   MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
+  type ContactFormSubmissionMailPayload,
   type EmailVerificationMailPayload,
   type GradePublishedMailPayload,
   type HomeworkCreatedMailPayload,
@@ -187,6 +189,24 @@ export class MailService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.emailPort.sendRoomStatusChangeNotification(payload);
+    }
+  }
+
+  async sendContactFormSubmissionNotification(
+    payload: ContactFormSubmissionMailPayload,
+  ) {
+    try {
+      await this.queue.add(
+        MAIL_QUEUE_NAME,
+        MAIL_JOB_SEND_CONTACT_FORM_SUBMISSION_NOTIFICATION,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous email sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.emailPort.sendContactFormSubmissionNotification(payload);
     }
   }
 

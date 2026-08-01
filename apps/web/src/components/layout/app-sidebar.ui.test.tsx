@@ -737,6 +737,35 @@ describe("AppSidebar messaging link for platform roles", () => {
     expect(link).toHaveTextContent("4");
   });
 
+  it("shows a Contenu du site link for SUPER_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SUPER_ADMIN" />);
+
+    const link = await screen.findByRole("link", { name: /Contenu du site/ });
+    expect(link.getAttribute("href")).toBe("/site-contenu");
+  });
+
+  it("shows a Contenu du site link for ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="ADMIN" />);
+
+    const link = await screen.findByRole("link", { name: /Contenu du site/ });
+    expect(link.getAttribute("href")).toBe("/site-contenu");
+  });
+
+  it("does not show a Contenu du site link for SALES", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SALES" />);
+
+    await screen.findByRole("link", { name: /Ecoles|Schools/ });
+    expect(
+      screen.queryByRole("link", { name: /Contenu du site/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not show a Messagerie link for SALES", async () => {
     mockUnreadCount(0);
 

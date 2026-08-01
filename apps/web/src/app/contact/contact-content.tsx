@@ -7,11 +7,14 @@ import { SiteFooter } from "../../components/marketing/site-footer";
 import { ContactForm } from "../../components/marketing/contact-form";
 import { useFixedTranslation } from "../../i18n/useTranslation";
 import type { MarketingLocale } from "../../lib/seo";
+import type { PublicContactInfo } from "../../lib/site-content";
 
 export function ContactContent({
   locale = "fr",
+  contactInfo,
 }: {
   locale?: MarketingLocale;
+  contactInfo: PublicContactInfo;
 }) {
   const { t } = useFixedTranslation(locale);
 
@@ -61,7 +64,7 @@ export function ContactContent({
                       {t("contactPage.info.emailLabel")}
                     </p>
                     <p className="text-sm text-text-secondary">
-                      contact@scolive.cm
+                      {contactInfo.email}
                     </p>
                   </div>
                 </div>
@@ -75,7 +78,7 @@ export function ContactContent({
                       {t("contactPage.info.phoneLabel")}
                     </p>
                     <p className="text-sm text-text-secondary">
-                      +237 6XX XXX XXX
+                      {contactInfo.phone}
                     </p>
                   </div>
                 </div>
@@ -89,7 +92,7 @@ export function ContactContent({
                       {t("contactPage.info.locationLabel")}
                     </p>
                     <p className="text-sm text-text-secondary">
-                      {t("contactPage.info.locationValue")}
+                      {contactInfo.address}
                     </p>
                   </div>
                 </div>

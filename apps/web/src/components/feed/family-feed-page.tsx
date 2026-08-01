@@ -9,10 +9,12 @@ import {
   Crown,
   FileText,
   Heart,
+  HelpCircle,
   MessageCircle,
   Paperclip,
   Pencil,
   Plus,
+  Search,
   Send,
   Sparkles,
   Trash2,
@@ -22,6 +24,10 @@ import {
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
+import { HelpDialog } from "../ui/help-dialog";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { FEED_FILTERS_TOUR_TARGETS } from "./feed-filters-tour.config";
 import {
   FormFileInput,
   FormSelect,
@@ -45,7 +51,7 @@ import {
   voteFeedPoll,
 } from "./feed-api";
 import { isFeedFormValid } from "./feed-validation";
-import type { FeedFilter, FeedPost } from "./types";
+import type { FeedTypeFilter, FeedPost } from "./types";
 import type { FeedAudience, FeedAudienceScope, FeedViewerRole } from "./types";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import type { Locale } from "../../i18n/translations";
@@ -161,7 +167,13 @@ export function FamilyFeedPage({
   const [posts, setPosts] = useState<FeedPost[]>(() =>
     useDemoSeed ? buildDemoFeed(schoolSlug) : [],
   );
-  const [filter, setFilter] = useState<FeedFilter>("all");
+  const [types, setTypes] = useState<FeedTypeFilter[]>([]);
+  const [mine, setMine] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const advanceOnboardingTourTarget = useOnboardingTourStore(
+    (state) => state.advanceIfTarget,
+  );
   const [search, setSearch] = useState("");
 
   const [openComposerMode, setOpenComposerMode] = useState<ComposerMode | null>(
@@ -246,7 +258,7 @@ export function FamilyFeedPage({
         viewScope,
         classId: currentClassId,
         levelId: currentLevelId,
-        filter,
+        types,
         q: search.trim() || undefined,
         page,
         limit: FEED_PAGE_SIZE,
@@ -263,7 +275,7 @@ export function FamilyFeedPage({
         return Array.from(byId.values());
       });
     },
-    [schoolSlug, viewScope, currentClassId, currentLevelId, filter, search],
+    [schoolSlug, viewScope, currentClassId, currentLevelId, types, search],
   );
 
   useEffect(() => {
@@ -297,7 +309,8 @@ export function FamilyFeedPage({
     viewScope,
     currentClassId,
     currentLevelId,
-    filter,
+    types,
+    mine,
     search,
     loadFeedPage,
     locale,
@@ -353,16 +366,12 @@ export function FamilyFeedPage({
       }),
     );
     const byFilter = byVisibility.filter((post) => {
-      if (filter === "featured") {
-        return isFeatured(post);
-      }
-      if (filter === "polls") {
-        return post.type === "POLL";
-      }
-      if (filter === "mine") {
-        return Boolean(post.authoredByViewer);
-      }
-      return true;
+      const matchesType =
+        types.length === 0 ||
+        (types.includes("featured") && isFeatured(post)) ||
+        (types.includes("polls") && post.type === "POLL");
+      const matchesMine = !mine || Boolean(post.authoredByViewer);
+      return matchesType && matchesMine;
     });
 
     const byStaffScope = byFilter.filter((post) =>
@@ -398,7 +407,8 @@ export function FamilyFeedPage({
       promotedFeaturedIds: promotedSet,
     };
   }, [
-    filter,
+    types,
+    mine,
     posts,
     search,
     viewerRole,
@@ -409,6 +419,14 @@ export function FamilyFeedPage({
     staffFilterLevelId,
     staffFilterClassId,
   ]);
+
+  function toggleTypeFilter(type: FeedTypeFilter) {
+    setTypes((current) =>
+      current.includes(type)
+        ? current.filter((entry) => entry !== type)
+        : [...current, type],
+    );
+  }
 
   function resetComposer() {
     setTitle("");
@@ -1018,45 +1036,130 @@ export function FamilyFeedPage({
 
           <div
             data-testid="family-feed-toolbar"
-            className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+            className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
           >
-            <FormTextInput
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("feed.search.placeholder")}
-              className="h-10 min-w-0 w-full bg-background text-sm"
-            />
-            <div className="-mx-1 flex min-w-0 items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
-              <FilterButton
-                label={t("feed.filters.all")}
-                active={filter === "all"}
-                onClick={() => setFilter("all")}
-                icon={<AlignJustify className="h-4 w-4" />}
-                iconOnly
-              />
-              <FilterButton
-                label={t("feed.filters.featured")}
-                active={filter === "featured"}
-                onClick={() => setFilter("featured")}
-                icon={<Crown className="h-4 w-4" />}
-                iconOnly
-              />
-              <FilterButton
-                label={t("feed.filters.polls")}
-                active={filter === "polls"}
-                onClick={() => setFilter("polls")}
-                icon={<Vote className="h-4 w-4" />}
-                iconOnly
-              />
-              <FilterButton
-                label={t("feed.filters.mine")}
-                active={filter === "mine"}
-                onClick={() => setFilter("mine")}
-                icon={<UserRound className="h-4 w-4" />}
-                iconOnly
+            <div className="relative min-w-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
+              <FormTextInput
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("feed.search.placeholder")}
+                className="h-10 w-full bg-background pl-9 text-sm"
               />
             </div>
+            <OnboardingTarget id={FEED_FILTERS_TOUR_TARGETS.filterToggle}>
+              <button
+                type="button"
+                data-testid="family-feed-filter-toggle"
+                aria-label={t("feed.filters.toggleAccessibilityLabel")}
+                onClick={() => {
+                  setFiltersOpen((value) => !value);
+                  advanceOnboardingTourTarget(
+                    FEED_FILTERS_TOUR_TARGETS.filterToggle,
+                  );
+                }}
+                className={`flex h-10 items-center gap-2 rounded-card border px-3 text-sm font-medium transition-colors ${
+                  types.length > 0 || mine
+                    ? "border-primary bg-primary text-white"
+                    : "border-border bg-background text-text-secondary hover:bg-surface"
+                }`}
+              >
+                <AlignJustify className="h-4 w-4" />
+                {t("feed.filters.toggleAccessibilityLabel")}
+                {filteredPosts.length > 0 ? (
+                  <span
+                    data-testid="family-feed-filter-total"
+                    className={`ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                      types.length > 0 || mine
+                        ? "bg-white/25 text-white"
+                        : "bg-primary text-white"
+                    }`}
+                  >
+                    {filteredPosts.length > 99 ? "99+" : filteredPosts.length}
+                  </span>
+                ) : null}
+              </button>
+            </OnboardingTarget>
+            <OnboardingTarget id={FEED_FILTERS_TOUR_TARGETS.helpToggle}>
+              <button
+                type="button"
+                data-testid="family-feed-help-toggle"
+                aria-label={t("feed.help.toggle")}
+                onClick={() => setHelpOpen(true)}
+                className="flex h-10 w-10 items-center justify-center rounded-card border border-border bg-background text-text-secondary hover:bg-surface"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </OnboardingTarget>
           </div>
+
+          {filtersOpen ? (
+            <div
+              data-testid="family-feed-filter-panel"
+              className="grid gap-3 rounded-card border border-primary/30 bg-background p-3"
+            >
+              <OnboardingTarget
+                id={FEED_FILTERS_TOUR_TARGETS.typeChips}
+                className="flex flex-wrap gap-2"
+              >
+                <FilterButton
+                  label={t("feed.filters.all")}
+                  active={types.length === 0}
+                  onClick={() => setTypes([])}
+                  icon={<AlignJustify className="h-4 w-4" />}
+                  iconOnly
+                />
+                <FilterButton
+                  label={t("feed.filters.featured")}
+                  active={types.includes("featured")}
+                  onClick={() => toggleTypeFilter("featured")}
+                  icon={<Crown className="h-4 w-4" />}
+                  iconOnly
+                />
+                <FilterButton
+                  label={t("feed.filters.polls")}
+                  active={types.includes("polls")}
+                  onClick={() => toggleTypeFilter("polls")}
+                  icon={<Vote className="h-4 w-4" />}
+                  iconOnly
+                />
+                <FilterButton
+                  label={t("feed.filters.mine")}
+                  active={mine}
+                  onClick={() => setMine((value) => !value)}
+                  icon={<UserRound className="h-4 w-4" />}
+                  iconOnly
+                />
+              </OnboardingTarget>
+              <div className="flex justify-end gap-2 border-t border-border pt-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setTypes([]);
+                    setMine(false);
+                  }}
+                  data-testid="family-feed-filter-reset"
+                >
+                  {t("feed.filters.reset")}
+                </Button>
+                <OnboardingTarget id={FEED_FILTERS_TOUR_TARGETS.apply}>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setFiltersOpen(false);
+                      advanceOnboardingTourTarget(
+                        FEED_FILTERS_TOUR_TARGETS.apply,
+                      );
+                    }}
+                    data-testid="family-feed-filter-apply"
+                  >
+                    {t("feed.filters.apply")}
+                  </Button>
+                </OnboardingTarget>
+              </div>
+            </div>
+          ) : null}
 
           {isStaff(viewerRole) && viewScope === "GENERAL" ? (
             <div className="grid gap-2 rounded-card border border-border bg-background p-2 sm:grid-cols-[auto_180px_220px] sm:items-center">
@@ -1779,6 +1882,17 @@ export function FamilyFeedPage({
           }
         }}
         onConfirm={confirmDeletePost}
+      />
+
+      <HelpDialog
+        open={helpOpen}
+        title={t("feed.help.title")}
+        body={[
+          t("feed.help.body1"),
+          t("feed.help.body2"),
+          t("feed.help.body3"),
+        ]}
+        onClose={() => setHelpOpen(false)}
       />
     </div>
   );

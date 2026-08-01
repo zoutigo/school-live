@@ -10,6 +10,14 @@ export type OnboardingTourStep = {
   targetKey: string;
   titleKey: string;
   bodyKey: string;
+  /**
+   * When true, this step advances by the user clicking the highlighted
+   * target itself (its normal action still fires) instead of the
+   * "Suivant" button in the tooltip.
+   */
+  advanceOnTargetPress?: boolean;
+  /** Overrides the default "Terminer" label when this is the last step. */
+  finishLabelKey?: string;
 };
 
 export type TargetRect = {
@@ -38,9 +46,9 @@ type OnboardingTourState = {
     steps: OnboardingTourStep[],
   ) => void;
   next: () => void;
-  skip: () => void;
   finish: () => void;
   setTargetRect: (rect: TargetRect | null) => void;
+  advanceIfTarget: (targetKey: string) => void;
   resetAllCompleted: () => void;
 };
 
@@ -77,10 +85,6 @@ export const useOnboardingTourStore = create<OnboardingTourState>()(
         set({ stepIndex: stepIndex + 1, targetRect: null });
       },
 
-      skip: () => {
-        get().finish();
-      },
-
       finish: () => {
         const { activeTourId, activeRole, completedTours } = get();
         if (!activeTourId || !activeRole) {
@@ -107,6 +111,20 @@ export const useOnboardingTourStore = create<OnboardingTourState>()(
       },
 
       setTargetRect: (rect) => set({ targetRect: rect }),
+
+      advanceIfTarget: (targetKey) => {
+        const { activeTourId, steps, stepIndex } = get();
+        if (!activeTourId) return;
+        const step = steps[stepIndex];
+        if (
+          !step ||
+          step.targetKey !== targetKey ||
+          !step.advanceOnTargetPress
+        ) {
+          return;
+        }
+        get().next();
+      },
 
       resetAllCompleted: () => set({ completedTours: {} }),
     }),

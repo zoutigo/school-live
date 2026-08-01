@@ -430,6 +430,10 @@ model User {
   helpFaqThemesUpdated  HelpFaqTheme[]          @relation("HelpFaqThemeUpdatedBy")
   helpFaqItemsCreated   HelpFaqItem[]           @relation("HelpFaqItemCreatedBy")
   helpFaqItemsUpdated   HelpFaqItem[]           @relation("HelpFaqItemUpdatedBy")
+  siteSettingsUpdated   SiteSetting[]           @relation("SiteSettingUpdatedBy")
+  legalDocumentsCreated LegalDocument[]         @relation("LegalDocumentCreatedBy")
+  legalDocumentsUpdated LegalDocument[]         @relation("LegalDocumentUpdatedBy")
+  contactSubmissionsRead ContactSubmission[]    @relation("ContactSubmissionReadBy")
   testCampaignsCreated  TestCampaign[]          @relation("TestCampaignCreatedBy")
   testCampaignsUpdated  TestCampaign[]          @relation("TestCampaignUpdatedBy")
   testCampaignAssignmentsAsTester TestCampaignAssignment[] @relation("TestCampaignAssignmentTester")
@@ -2194,6 +2198,62 @@ model TestExecutionAttachment {
   createdAt   DateTime      @default(now())
 
   @@index([executionId])
+}
+
+
+// Réglages plateforme génériques (clé/valeur JSON) : infos de contact,
+// liens réseaux sociaux, etc. Le fallback si une clé est absente vit
+// côté service NestJS, jamais dans le frontend.
+model SiteSetting {
+  key         String   @id
+  value       Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation("SiteSettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+// Contenus légaux versionnés (CGU, mentions légales, confidentialité...).
+// Seule la version PUBLISHED la plus récente pour (slug, locale) est
+// exposée publiquement ; le fallback si aucune version publiée n'existe
+// vit côté service NestJS.
+model LegalDocument {
+  id          String                @id @default(cuid())
+  slug        String
+  locale      String
+  version     Int
+  title       String
+  contentHtml String
+  status      HelpPublicationStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdById String
+  createdBy   User                  @relation("LegalDocumentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedById String
+  updatedBy   User                  @relation("LegalDocumentUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@unique([slug, locale, version])
+  @@index([slug, locale, status])
+}
+
+// Prises de contact soumises via le formulaire public "Contact".
+// ipHash sert uniquement à la limitation de fréquence anti-spam, jamais
+// affiché ni exploité pour autre chose.
+model ContactSubmission {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  subject   String
+  message   String
+  ipHash    String?
+  readAt    DateTime?
+  readById  String?
+  readBy    User?     @relation("ContactSubmissionReadBy", fields: [readById], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([ipHash, createdAt])
 }
 
 

@@ -130,6 +130,34 @@ describe("AuthService.getMe", () => {
     ]);
   });
 
+  it("sélectionne et retourne onboardingHelpEnabled (régression : absent du /schools/:schoolSlug/me alors que les pages web s'y fient pour ne pas relancer un tour désactivé)", async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: "parent-1",
+      activeRole: "PARENT",
+      profileCompleted: true,
+      activationStatus: "ACTIVE",
+      email: "parent@example.com",
+      phone: null,
+      avatarUrl: null,
+      firstName: "Robert",
+      lastName: "Ntamack",
+      gender: null,
+      onboardingHelpEnabled: false,
+      platformRoles: [],
+      memberships: [{ schoolId: "school-1", role: "PARENT" }],
+      parentLinks: [],
+    });
+
+    const result = await service.getMe("parent-1", "school-1");
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({ onboardingHelpEnabled: true }),
+      }),
+    );
+    expect(result.onboardingHelpEnabled).toBe(false);
+  });
+
   it("rejette si l'utilisateur n'a aucun accès sur l'école (getMe)", async () => {
     prisma.user.findUnique.mockResolvedValue({
       id: "parent-1",

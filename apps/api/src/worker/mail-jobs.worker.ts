@@ -13,6 +13,7 @@ import {
 } from "../infrastructure/email/email.port.js";
 import { buildRedisConnection } from "../infrastructure/messaging/redis-connection.js";
 import {
+  MAIL_JOB_SEND_CONTACT_FORM_SUBMISSION_NOTIFICATION,
   MAIL_JOB_SEND_EMAIL_VERIFICATION,
   MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION,
   MAIL_JOB_SEND_HOMEWORK_CREATED_NOTIFICATION,
@@ -24,6 +25,7 @@ import {
   MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
   MAIL_JOB_SEND_TEMPORARY_PASSWORD,
   MAIL_QUEUE_NAME,
+  type ContactFormSubmissionMailPayload,
   type EmailVerificationMailPayload,
   type GradePublishedMailPayload,
   type HomeworkCreatedMailPayload,
@@ -107,6 +109,12 @@ export class MailJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION) {
           await this.emailPort.sendGradePublishedNotification(
             job.data as GradePublishedMailPayload,
+          );
+          return;
+        }
+        if (job.name === MAIL_JOB_SEND_CONTACT_FORM_SUBMISSION_NOTIFICATION) {
+          await this.emailPort.sendContactFormSubmissionNotification(
+            job.data as ContactFormSubmissionMailPayload,
           );
           return;
         }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "../../../lib/seo";
+import { getPublicLegalDocument } from "../../../lib/site-content";
 import { TermsContent } from "../../cgu/terms-content";
 
 export const metadata: Metadata = buildMetadata({
@@ -9,6 +10,18 @@ export const metadata: Metadata = buildMetadata({
   locale: "en",
 });
 
-export default function TermsPageEn() {
-  return <TermsContent locale="en" />;
+export default async function TermsPageEn() {
+  const doc = await getPublicLegalDocument("cgu", "en");
+  const updatedAt = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "long",
+  }).format(new Date(doc.updatedAt));
+
+  return (
+    <TermsContent
+      locale="en"
+      title={doc.title}
+      bodyHtml={doc.contentHtml}
+      updatedAt={updatedAt}
+    />
+  );
 }

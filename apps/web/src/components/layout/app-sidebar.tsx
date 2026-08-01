@@ -183,6 +183,12 @@ function buildItems(
               matchPrefix: "/messagerie",
               unread: toUnread(platformMessagesUnread),
             },
+            {
+              label: t("sidebar.nav.siteContent"),
+              href: "/site-contenu",
+              icon: FileText,
+              matchPrefix: "/site-contenu",
+            },
           ]
         : []),
       {

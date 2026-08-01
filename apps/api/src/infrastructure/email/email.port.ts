@@ -1,4 +1,5 @@
 import type {
+  ContactFormSubmissionMailPayload,
   EmailVerificationMailPayload,
   GradePublishedMailPayload,
   HomeworkCreatedMailPayload,
@@ -39,5 +40,8 @@ export type EmailPort = {
   ): Promise<void>;
   sendGradePublishedNotification(
     payload: GradePublishedMailPayload,
+  ): Promise<void>;
+  sendContactFormSubmissionNotification(
+    payload: ContactFormSubmissionMailPayload,
   ): Promise<void>;
 };

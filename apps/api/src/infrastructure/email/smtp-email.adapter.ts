@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import nodemailer from "nodemailer";
 import type {
+  ContactFormSubmissionMailPayload,
   EmailVerificationMailPayload,
   GradePublishedMailPayload,
   HomeworkCreatedMailPayload,
@@ -827,6 +828,83 @@ export class SmtpEmailAdapter implements EmailPort {
                 <a href="${notesUrl}" style="display:inline-block;background:#0A62BF;color:#FFFFFF;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">
                   Voir les notes
                 </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`,
+    });
+  }
+
+  async sendContactFormSubmissionNotification(
+    payload: ContactFormSubmissionMailPayload,
+  ) {
+    const { host, port, user, pass, secure, from } = this.getMailerConfig();
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    });
+
+    await transporter.sendMail({
+      from,
+      to: payload.to,
+      replyTo: payload.email,
+      subject: `Scolive - Nouvelle prise de contact: ${payload.subject}`,
+      text: [
+        `Nouveau message depuis le formulaire de contact du site.`,
+        "",
+        `Nom: ${payload.name}`,
+        `Email: ${payload.email}`,
+        `Telephone: ${payload.phone}`,
+        `Sujet: ${payload.subject}`,
+        "",
+        payload.message,
+        "",
+        `Recu le: ${payload.submittedAt}`,
+      ].join("\n"),
+      html: `
+<!doctype html>
+<html lang="fr">
+  <body style="margin:0;padding:0;background:#F8F9FA;font-family:Roboto,Arial,sans-serif;color:#212529;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F8F9FA;padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E3E6E8;border-radius:10px;overflow:hidden;">
+            <tr>
+              <td style="background:#0A62BF;padding:16px 24px;color:#FFFFFF;font-family:Poppins,Arial,sans-serif;font-size:20px;font-weight:700;">
+                Scolive
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <h1 style="margin:0 0 12px;font-family:Poppins,Arial,sans-serif;font-size:22px;line-height:1.3;color:#212529;">
+                  Nouvelle prise de contact
+                </h1>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4A4A4A;">
+                  Un visiteur a soumis le formulaire de contact du site.
+                </p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 16px;background:#F8F9FA;border:1px solid #E3E6E8;border-radius:8px;">
+                  <tr><td style="padding:14px 16px;font-size:14px;color:#4A4A4A;line-height:1.7;">
+                    <div><strong>Nom :</strong> ${payload.name}</div>
+                    <div><strong>Email :</strong> ${payload.email}</div>
+                    <div><strong>Telephone :</strong> ${payload.phone}</div>
+                    <div><strong>Sujet :</strong> ${payload.subject}</div>
+                  </td></tr>
+                </table>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 16px;background:#F8F9FA;border:1px solid #E3E6E8;border-radius:8px;">
+                  <tr><td style="padding:14px 16px;font-size:14px;color:#4A4A4A;line-height:1.7;white-space:pre-line;">
+                    ${payload.message}
+                  </td></tr>
+                </table>
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#4A4A4A;">
+                  Vous pouvez repondre directement a ce message (reply-to: ${payload.email}), ou consulter la liste des prises de contact dans le module "Infos du site".
+                </p>
               </td>
             </tr>
           </table>

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FamilyFeedPage } from "./family-feed-page";
 import { useLocaleStore } from "../../i18n/locale-store";
@@ -33,6 +33,7 @@ describe("FamilyFeedPage i18n", () => {
     expect(
       screen.getByPlaceholderText("Rechercher dans le fil..."),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Filtres" }));
     expect(screen.getByRole("button", { name: "Tous" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "A la une" }),
@@ -65,6 +66,7 @@ describe("FamilyFeedPage i18n", () => {
     expect(
       screen.getByPlaceholderText("Search the feed..."),
     ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Featured" }),

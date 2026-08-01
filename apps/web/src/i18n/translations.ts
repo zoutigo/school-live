@@ -898,6 +898,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Le contenu est obligatoire.",
 
     "sidebar.nav.settings": "Parametres",
+    "sidebar.nav.siteContent": "Contenu du site",
     "sidebar.nav.home": "Accueil",
     "sidebar.nav.newsFeed": "Fil d'actualite",
     "sidebar.nav.teachers": "Enseignants",
@@ -1866,6 +1867,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.common.next": "Suivant",
     "onboardingTour.common.skip": "Passer",
     "onboardingTour.common.finish": "Terminer",
+    "onboardingTour.common.tapTarget":
+      "Cliquez sur l'élément en surbrillance pour continuer.",
+    "onboardingTour.common.gotIt": "J'ai compris",
     "onboardingTour.childTimetable.controlsTitle": "Changez de vue et naviguez",
     "onboardingTour.childTimetable.controlsBody":
       "Cliquez sur Jour, Semaine ou Mois pour changer l'affichage, et utilisez les flèches pour changer de période.",
@@ -1876,6 +1880,19 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Une aide toujours disponible",
     "onboardingTour.childTimetable.helpBlockBody":
       "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
+    "onboardingTour.siteContent.tabsTitle": "Trois sections distinctes",
+    "onboardingTour.siteContent.tabsBody":
+      "L'onglet Contact gère les coordonnées affichées sur le site. L'onglet Documents légaux gère les CGU, mentions légales et politique de confidentialité. L'onglet Messages liste les prises de contact reçues via le formulaire public.",
+    "onboardingTour.siteContent.selectorsTitle":
+      "Choisissez le document et la langue",
+    "onboardingTour.siteContent.selectorsBody":
+      "Chaque document légal est géré séparément par langue (français/anglais). Sélectionnez d'abord le document puis la langue à modifier.",
+    "onboardingTour.siteContent.newDraftTitle": "Créer une nouvelle version",
+    "onboardingTour.siteContent.newDraftBody":
+      "Créez un brouillon, modifiez-le, puis publiez-le quand il est prêt. Publier une nouvelle version archive automatiquement l'ancienne version publiée.",
+    "onboardingTour.siteContent.helpToggleTitle": "Besoin d'aide ?",
+    "onboardingTour.siteContent.helpToggleBody":
+      "Retrouvez à tout moment un rappel de l'usage de cette page via ce bouton.",
     "settings.onboardingHelp.title": "Aide guidée",
     "settings.onboardingHelp.subtitle":
       "Affiche une visite guidée à la première découverte d'un module",
@@ -2104,6 +2121,30 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.filters.featured": "A la une",
     "feed.filters.polls": "Sondages",
     "feed.filters.mine": "Mes posts",
+    "feed.filters.toggleAccessibilityLabel": "Filtres",
+    "feed.filters.reset": "Reinitialiser",
+    "feed.filters.apply": "Appliquer",
+    "feed.help.toggle": "Aide",
+    "feed.help.close": "J'ai compris",
+    "feed.help.title": "Rechercher et filtrer",
+    "feed.help.body1":
+      "Utilisez la barre de recherche pour retrouver une publication par mot-clé.",
+    "feed.help.body2":
+      "Le bouton filtre ouvre un panneau où vous pouvez combiner plusieurs types de publication (à la une, sondages) et n'afficher que vos propres publications.",
+    "feed.help.body3":
+      "Une fois votre sélection faite, validez avec Appliquer pour mettre à jour la liste.",
+    "onboardingTour.feedFilters.step1Title": "Ouvrez les filtres",
+    "onboardingTour.feedFilters.step1Body":
+      "Cliquez sur ce bouton pour ouvrir le panneau de filtres du fil.",
+    "onboardingTour.feedFilters.step2Title": "Combinez les types",
+    "onboardingTour.feedFilters.step2Body":
+      "Sélectionnez un ou plusieurs types de publication : ils se combinent entre eux.",
+    "onboardingTour.feedFilters.step3Title": "Validez votre sélection",
+    "onboardingTour.feedFilters.step3Body":
+      "Cliquez sur Appliquer : le panneau se ferme et la liste affiche directement le résultat filtré.",
+    "onboardingTour.feedFilters.step4Title": "Une aide toujours disponible",
+    "onboardingTour.feedFilters.step4Body":
+      "Cliquez sur ce bouton à tout moment pour retrouver l'explication de la recherche et des filtres.",
     "feed.staffFilters.all": "Tous",
     "feed.staffFilters.parents": "Parents/eleves",
     "feed.staffFilters.staff": "Staff",
@@ -3836,18 +3877,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "contactPage.info.locationLabel": "Localisation",
     "contactPage.info.locationValue": "Cameroun",
 
+    "contactPage.form.title": "Envoyez-nous un message",
+    "contactPage.form.subtitle": "Notre équipe vous répond sous 24h ouvrées.",
     "contactPage.form.name": "Nom complet",
     "contactPage.form.email": "Email",
+    "contactPage.form.phone": "Téléphone",
     "contactPage.form.subject": "Sujet",
     "contactPage.form.message": "Message",
     "contactPage.form.submit": "Envoyer le message",
+    "contactPage.form.sending": "Envoi en cours...",
     "contactPage.form.error.name":
       "Le nom doit contenir au moins 2 caractères.",
     "contactPage.form.error.email": "Adresse email invalide.",
+    "contactPage.form.error.phone":
+      "Numéro de téléphone invalide (9 chiffres attendus).",
     "contactPage.form.error.subject":
       "Le sujet doit contenir au moins 3 caractères.",
     "contactPage.form.error.message":
       "Le message doit contenir au moins 10 caractères.",
+    "contactPage.form.error.server":
+      "Une erreur est survenue lors de l'envoi. Merci de réessayer.",
+    "contactPage.form.error.rateLimited":
+      "Trop de messages envoyés récemment. Merci de réessayer dans quelques minutes.",
     "contactPage.form.success.title": "Message envoyé !",
     "contactPage.form.success.body":
       "Merci, nous revenons vers vous très vite.",
@@ -3855,6 +3906,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "legal.lastUpdated": "Dernière mise à jour :",
     "legal.updatedDate": "30 juillet 2026",
+    "legal.publisherLabel": "Responsable de publication :",
     "legal.placeholderNotice":
       "Ce contenu est un modèle à personnaliser avec les informations légales exactes de votre structure (raison sociale, immatriculation, adresse du siège) avant publication officielle.",
 
@@ -3920,6 +3972,86 @@ export const translations: Record<Locale, Record<string, string>> = {
     "privacyPage.section6.heading": "Conservation des données",
     "privacyPage.section6.body":
       "Les données sont conservées pendant la durée de la scolarité de l'élève et selon les obligations légales applicables.",
+
+    "siteContent.title": "Contenu du site",
+    "siteContent.subtitle":
+      "Coordonnées publiques et documents légaux affichés sur le site vitrine.",
+    "siteContent.tabs.contact": "Contact",
+    "siteContent.tabs.legal": "Documents légaux",
+    "siteContent.tabs.messages": "Messages",
+    "siteContent.contact.emailLabel": "Email",
+    "siteContent.contact.phoneLabel": "Téléphone",
+    "siteContent.contact.addressLabel": "Adresse",
+    "siteContent.contact.legalRepresentativeFirstNameLabel":
+      "Responsable légal — Prénom",
+    "siteContent.contact.legalRepresentativeLastNameLabel":
+      "Responsable légal — Nom",
+    "siteContent.contact.save": "Enregistrer",
+    "siteContent.contact.saveSuccess": "Coordonnées mises à jour.",
+    "siteContent.contact.saveError":
+      "Impossible d'enregistrer les coordonnées.",
+    "siteContent.contact.loadError": "Impossible de charger les coordonnées.",
+    "siteContent.contact.error.email": "Adresse email invalide.",
+    "siteContent.contact.error.phone": "Le téléphone est obligatoire.",
+    "siteContent.contact.error.address": "L'adresse est obligatoire.",
+    "siteContent.legal.slugLabel": "Document",
+    "siteContent.legal.localeLabel": "Langue",
+    "siteContent.legal.slug.cgu": "CGU",
+    "siteContent.legal.slug.mentions-legales": "Mentions légales",
+    "siteContent.legal.slug.confidentialite": "Confidentialité",
+    "siteContent.legal.locale.fr": "Français",
+    "siteContent.legal.locale.en": "Anglais",
+    "siteContent.legal.newDraftTitle": "Nouvelle version (brouillon)",
+    "siteContent.legal.titleLabel": "Titre",
+    "siteContent.legal.contentLabel": "Contenu",
+    "siteContent.legal.createDraft": "Créer un brouillon",
+    "siteContent.legal.createSuccess": "Brouillon créé.",
+    "siteContent.legal.createError": "Impossible de créer le brouillon.",
+    "siteContent.legal.saveDraft": "Enregistrer le brouillon",
+    "siteContent.legal.saveDraftSuccess": "Brouillon enregistré.",
+    "siteContent.legal.saveDraftError":
+      "Impossible d'enregistrer le brouillon.",
+    "siteContent.legal.publish": "Publier",
+    "siteContent.legal.publishConfirm":
+      "Publier cette version ? La version publiée actuelle sera archivée.",
+    "siteContent.legal.publishSuccess": "Version publiée.",
+    "siteContent.legal.publishError": "Impossible de publier cette version.",
+    "siteContent.legal.delete": "Supprimer",
+    "siteContent.legal.deleteConfirm": "Supprimer ce brouillon ?",
+    "siteContent.legal.deleteSuccess": "Brouillon supprimé.",
+    "siteContent.legal.deleteError": "Impossible de supprimer ce brouillon.",
+    "siteContent.legal.edit": "Modifier",
+    "siteContent.legal.cancel": "Annuler",
+    "siteContent.legal.listError": "Impossible de charger les versions.",
+    "siteContent.legal.empty":
+      "Aucune version pour ce document et cette langue.",
+    "siteContent.legal.status.DRAFT": "Brouillon",
+    "siteContent.legal.status.PUBLISHED": "Publié",
+    "siteContent.legal.status.ARCHIVED": "Archivé",
+    "siteContent.legal.version": "Version",
+    "siteContent.legal.error.title": "Le titre est obligatoire.",
+    "siteContent.legal.error.content": "Le contenu est obligatoire.",
+    "siteContent.messages.loading": "Chargement...",
+    "siteContent.messages.listError":
+      "Impossible de charger les prises de contact.",
+    "siteContent.messages.empty.title": "Aucune prise de contact",
+    "siteContent.messages.empty.hint":
+      "Les messages envoyés depuis le formulaire de contact du site apparaîtront ici.",
+    "siteContent.messages.unread": "Non lu",
+    "siteContent.messages.pagination.prev": "Précédent",
+    "siteContent.messages.pagination.next": "Suivant",
+    "siteContent.messages.detail.close": "Fermer",
+    "siteContent.messages.detail.reply": "Répondre par email",
+    "siteContent.messages.detail.read": "Message lu",
+
+    "siteContent.help.toggle": "Aide",
+    "siteContent.help.title": "Contenu du site",
+    "siteContent.help.body1":
+      "Cette page gère le contenu public du site vitrine : les coordonnées de contact, les documents légaux (CGU, mentions légales, confidentialité) et les prises de contact reçues.",
+    "siteContent.help.body2":
+      "Pour un document légal, choisissez d'abord la langue puis créez un nouveau brouillon depuis le bouton dédié. Un brouillon peut être modifié librement tant qu'il n'est pas publié.",
+    "siteContent.help.body3":
+      "Publier un brouillon remplace immédiatement la version visible sur le site pour cette langue et ce document. Les anciennes versions publiées restent visibles dans l'historique. L'onglet Messages liste les demandes reçues via le formulaire de contact public.",
   },
   en: {
     "common.save": "Save",
@@ -4769,6 +4901,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesMine.contribution.errors.contentRequired": "Content is required.",
 
     "sidebar.nav.settings": "Settings",
+    "sidebar.nav.siteContent": "Site content",
     "sidebar.nav.home": "Home",
     "sidebar.nav.newsFeed": "News feed",
     "sidebar.nav.teachers": "Teachers",
@@ -5700,6 +5833,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.common.next": "Next",
     "onboardingTour.common.skip": "Skip",
     "onboardingTour.common.finish": "Finish",
+    "onboardingTour.common.tapTarget":
+      "Click the highlighted element to continue.",
+    "onboardingTour.common.gotIt": "Got it",
     "onboardingTour.childTimetable.controlsTitle": "Switch views and navigate",
     "onboardingTour.childTimetable.controlsBody":
       "Click Day, Week or Month to change the display, and use the arrows to move between periods.",
@@ -5709,6 +5845,19 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childTimetable.helpBlockTitle": "Help is always available",
     "onboardingTour.childTimetable.helpBlockBody":
       "Click this button anytime for a reminder on how to use this page.",
+    "onboardingTour.siteContent.tabsTitle": "Three distinct sections",
+    "onboardingTour.siteContent.tabsBody":
+      "The Contact tab manages the details shown on the website. The Legal documents tab manages the Terms of Service, Legal Notice and Privacy Policy. The Messages tab lists submissions received through the public contact form.",
+    "onboardingTour.siteContent.selectorsTitle":
+      "Pick the document and language",
+    "onboardingTour.siteContent.selectorsBody":
+      "Each legal document is managed separately by language (French/English). Select the document, then the language you want to edit.",
+    "onboardingTour.siteContent.newDraftTitle": "Create a new version",
+    "onboardingTour.siteContent.newDraftBody":
+      "Create a draft, edit it, then publish it when ready. Publishing a new version automatically archives the previously published one.",
+    "onboardingTour.siteContent.helpToggleTitle": "Need help?",
+    "onboardingTour.siteContent.helpToggleBody":
+      "Come back to this button any time for a reminder of how this page works.",
     "settings.onboardingHelp.title": "Guided help",
     "settings.onboardingHelp.subtitle":
       "Show a guided tour the first time you open a module",
@@ -5928,6 +6077,29 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.filters.featured": "Featured",
     "feed.filters.polls": "Polls",
     "feed.filters.mine": "My posts",
+    "feed.filters.toggleAccessibilityLabel": "Filters",
+    "feed.filters.reset": "Reset",
+    "feed.filters.apply": "Apply",
+    "feed.help.toggle": "Help",
+    "feed.help.close": "Got it",
+    "feed.help.title": "Search and filter",
+    "feed.help.body1": "Use the search bar to find a post by keyword.",
+    "feed.help.body2":
+      "The filter button opens a panel where you can combine several post types (featured, polls) and show only your own posts.",
+    "feed.help.body3":
+      "Once you've made your selection, confirm with Apply to update the list.",
+    "onboardingTour.feedFilters.step1Title": "Open the filters",
+    "onboardingTour.feedFilters.step1Body":
+      "Click this button to open the feed's filter panel.",
+    "onboardingTour.feedFilters.step2Title": "Combine post types",
+    "onboardingTour.feedFilters.step2Body":
+      "Select one or more post types: they combine with each other.",
+    "onboardingTour.feedFilters.step3Title": "Confirm your selection",
+    "onboardingTour.feedFilters.step3Body":
+      "Click Apply: the panel closes and the list shows the filtered result right away.",
+    "onboardingTour.feedFilters.step4Title": "Help is always available",
+    "onboardingTour.feedFilters.step4Body":
+      "Click this button anytime to see the search and filters explanation again.",
     "feed.staffFilters.all": "All",
     "feed.staffFilters.parents": "Parents/students",
     "feed.staffFilters.staff": "Staff",
@@ -7583,14 +7755,23 @@ export const translations: Record<Locale, Record<string, string>> = {
     "contactPage.info.locationLabel": "Location",
     "contactPage.info.locationValue": "Cameroon",
 
+    "contactPage.form.title": "Send us a message",
+    "contactPage.form.subtitle": "Our team replies within 24 business hours.",
     "contactPage.form.name": "Full name",
     "contactPage.form.email": "Email",
+    "contactPage.form.phone": "Phone",
     "contactPage.form.subject": "Subject",
     "contactPage.form.message": "Message",
     "contactPage.form.submit": "Send message",
+    "contactPage.form.sending": "Sending...",
     "contactPage.form.error.name": "Name must be at least 2 characters.",
     "contactPage.form.error.email": "Invalid email address.",
+    "contactPage.form.error.phone": "Invalid phone number (9 digits expected).",
     "contactPage.form.error.subject": "Subject must be at least 3 characters.",
+    "contactPage.form.error.server":
+      "Something went wrong while sending. Please try again.",
+    "contactPage.form.error.rateLimited":
+      "Too many messages sent recently. Please try again in a few minutes.",
     "contactPage.form.error.message": "Message must be at least 10 characters.",
     "contactPage.form.success.title": "Message sent!",
     "contactPage.form.success.body": "Thanks, we'll get back to you shortly.",
@@ -7598,6 +7779,7 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "legal.lastUpdated": "Last updated:",
     "legal.updatedDate": "July 30, 2026",
+    "legal.publisherLabel": "Publication director:",
     "legal.placeholderNotice":
       "This content is a template to customise with your organisation's exact legal details (registered name, registration number, registered address) before official publication.",
 
@@ -7663,5 +7845,80 @@ export const translations: Record<Locale, Record<string, string>> = {
     "privacyPage.section6.heading": "Data retention",
     "privacyPage.section6.body":
       "Data is kept for the duration of the student's enrolment and in line with applicable legal obligations.",
+
+    "siteContent.title": "Site content",
+    "siteContent.subtitle":
+      "Public contact details and legal documents shown on the marketing site.",
+    "siteContent.tabs.contact": "Contact",
+    "siteContent.tabs.legal": "Legal documents",
+    "siteContent.tabs.messages": "Messages",
+    "siteContent.contact.emailLabel": "Email",
+    "siteContent.contact.phoneLabel": "Phone",
+    "siteContent.contact.addressLabel": "Address",
+    "siteContent.contact.legalRepresentativeFirstNameLabel":
+      "Legal representative — First name",
+    "siteContent.contact.legalRepresentativeLastNameLabel":
+      "Legal representative — Last name",
+    "siteContent.contact.save": "Save",
+    "siteContent.contact.saveSuccess": "Contact details updated.",
+    "siteContent.contact.saveError": "Could not save contact details.",
+    "siteContent.contact.loadError": "Could not load contact details.",
+    "siteContent.contact.error.email": "Invalid email address.",
+    "siteContent.contact.error.phone": "Phone is required.",
+    "siteContent.contact.error.address": "Address is required.",
+    "siteContent.legal.slugLabel": "Document",
+    "siteContent.legal.localeLabel": "Language",
+    "siteContent.legal.slug.cgu": "Terms of Service",
+    "siteContent.legal.slug.mentions-legales": "Legal Notice",
+    "siteContent.legal.slug.confidentialite": "Privacy Policy",
+    "siteContent.legal.locale.fr": "French",
+    "siteContent.legal.locale.en": "English",
+    "siteContent.legal.newDraftTitle": "New version (draft)",
+    "siteContent.legal.titleLabel": "Title",
+    "siteContent.legal.contentLabel": "Content",
+    "siteContent.legal.createDraft": "Create draft",
+    "siteContent.legal.createSuccess": "Draft created.",
+    "siteContent.legal.createError": "Could not create the draft.",
+    "siteContent.legal.saveDraft": "Save draft",
+    "siteContent.legal.saveDraftSuccess": "Draft saved.",
+    "siteContent.legal.saveDraftError": "Could not save the draft.",
+    "siteContent.legal.publish": "Publish",
+    "siteContent.legal.publishConfirm":
+      "Publish this version? The current published version will be archived.",
+    "siteContent.legal.publishSuccess": "Version published.",
+    "siteContent.legal.publishError": "Could not publish this version.",
+    "siteContent.legal.delete": "Delete",
+    "siteContent.legal.deleteConfirm": "Delete this draft?",
+    "siteContent.legal.deleteSuccess": "Draft deleted.",
+    "siteContent.legal.deleteError": "Could not delete this draft.",
+    "siteContent.legal.edit": "Edit",
+    "siteContent.legal.cancel": "Cancel",
+    "siteContent.legal.listError": "Could not load versions.",
+    "siteContent.legal.empty": "No version yet for this document and language.",
+    "siteContent.legal.status.DRAFT": "Draft",
+    "siteContent.legal.status.PUBLISHED": "Published",
+    "siteContent.legal.status.ARCHIVED": "Archived",
+    "siteContent.legal.version": "Version",
+    "siteContent.legal.error.title": "Title is required.",
+    "siteContent.legal.error.content": "Content is required.",
+    "siteContent.messages.loading": "Loading...",
+    "siteContent.messages.listError": "Could not load contact submissions.",
+    "siteContent.messages.empty.title": "No contact submissions",
+    "siteContent.messages.empty.hint":
+      "Messages sent from the site's contact form will appear here.",
+    "siteContent.messages.unread": "Unread",
+    "siteContent.messages.pagination.prev": "Previous",
+    "siteContent.messages.pagination.next": "Next",
+    "siteContent.messages.detail.close": "Close",
+    "siteContent.messages.detail.reply": "Reply by email",
+    "siteContent.messages.detail.read": "Message read",
+    "siteContent.help.toggle": "Help",
+    "siteContent.help.title": "Site content",
+    "siteContent.help.body1":
+      "This page manages the public showcase site content: contact details, legal documents (Terms of Service, Legal Notice, Privacy Policy) and received contact submissions.",
+    "siteContent.help.body2":
+      "For a legal document, first pick the language, then start a new draft from the dedicated button. A draft can be freely edited until it is published.",
+    "siteContent.help.body3":
+      "Publishing a draft immediately replaces the version visible on the site for that language and document. Previously published versions stay visible in the history. The Messages tab lists submissions received through the public contact form.",
   },
 };
