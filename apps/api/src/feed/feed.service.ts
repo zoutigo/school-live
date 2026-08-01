@@ -83,35 +83,41 @@ export class FeedService {
     const searchTerm = query.q?.trim().toLowerCase() ?? "";
     const now = new Date();
 
+    const typeConditions: Prisma.FeedPostWhereInput[] = [];
+    if (query.types?.includes("polls")) typeConditions.push({ type: "POLL" });
+    if (query.types?.includes("featured")) {
+      typeConditions.push({ featuredUntil: { gt: now } });
+    }
+
+    const andConditions: Prisma.FeedPostWhereInput[] = [];
+    if (typeConditions.length) andConditions.push({ OR: typeConditions });
+    if (searchTerm) {
+      andConditions.push({
+        OR: [
+          { title: { contains: searchTerm, mode: "insensitive" } },
+          { bodyHtml: { contains: searchTerm, mode: "insensitive" } },
+          {
+            authorUser: {
+              OR: [
+                { firstName: { contains: searchTerm, mode: "insensitive" } },
+                { lastName: { contains: searchTerm, mode: "insensitive" } },
+              ],
+            },
+          },
+        ],
+      });
+    }
+
     const where: Prisma.FeedPostWhereInput = {
       schoolId: context.schoolId,
       ...this.visibilityWhere(context),
-      ...(query.filter === "polls" ? { type: "POLL" } : {}),
-      ...(query.filter === "featured" ? { featuredUntil: { gt: now } } : {}),
       ...(query.viewScope === "CLASS"
         ? {
             audienceScope: "CLASS",
             audienceClassId: query.classId ?? undefined,
           }
         : {}),
-      ...(searchTerm
-        ? {
-            OR: [
-              { title: { contains: searchTerm, mode: "insensitive" } },
-              { bodyHtml: { contains: searchTerm, mode: "insensitive" } },
-              {
-                authorUser: {
-                  OR: [
-                    {
-                      firstName: { contains: searchTerm, mode: "insensitive" },
-                    },
-                    { lastName: { contains: searchTerm, mode: "insensitive" } },
-                  ],
-                },
-              },
-            ],
-          }
-        : {}),
+      ...(andConditions.length ? { AND: andConditions } : {}),
     };
 
     if (query.viewScope === "CLASS" && !query.classId) {

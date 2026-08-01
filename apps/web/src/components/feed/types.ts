@@ -68,7 +68,7 @@ export type FeedPost = {
   };
 };
 
-export type FeedFilter = "all" | "featured" | "polls" | "mine";
+export type FeedTypeFilter = "featured" | "polls";
 
 export type FeedComment = {
   id: string;

@@ -87,6 +87,39 @@ describe("feed-api", () => {
     });
   });
 
+  it("combines multiple selected types into a single comma-separated query param", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [],
+        meta: { page: 1, limit: 12, total: 0, totalPages: 0 },
+      }),
+    });
+
+    await listFeedPosts("college-vogt", {
+      viewScope: "GENERAL",
+      types: ["featured", "polls"],
+    });
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain("types=featured%2Cpolls");
+  });
+
+  it("sends no types param when the type filter is empty (Tous)", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [],
+        meta: { page: 1, limit: 12, total: 0, totalPages: 0 },
+      }),
+    });
+
+    await listFeedPosts("college-vogt", { viewScope: "GENERAL", types: [] });
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).not.toContain("types=");
+  });
+
   it("calls the like toggle endpoint", async () => {
     fetchMock.mockResolvedValue({
       ok: true,

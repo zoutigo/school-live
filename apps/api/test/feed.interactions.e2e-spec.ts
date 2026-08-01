@@ -306,7 +306,7 @@ describe("Feed interactions e2e", () => {
       ],
     });
 
-    const list = await apiJson(`/api/schools/${schoolSlug}/feed?filter=polls`, {
+    const list = await apiJson(`/api/schools/${schoolSlug}/feed?types=polls`, {
       method: "GET",
       headers: {
         authorization: `Bearer ${parentToken}`,

@@ -339,4 +339,118 @@ describe("FeedService permissions + media cleanup on PATCH/DELETE", () => {
       }),
     );
   });
+
+  describe("listPosts — combinable type filters", () => {
+    const viewerContext = {
+      schoolId,
+      roles: new Set(["SCHOOL_STAFF"]),
+      classIds: new Set<string>(),
+      levelIds: new Set<string>(),
+      isStaff: true,
+      isParent: false,
+      isStudent: false,
+      locale: "fr",
+    };
+    let countSpy: jest.Mock;
+    let findManySpy: jest.Mock;
+
+    beforeEach(() => {
+      (service as any).resolveViewerContext = jest
+        .fn()
+        .mockResolvedValue(viewerContext);
+      (service as any).visibilityWhere = jest.fn().mockReturnValue({});
+      (service as any).mapPost = jest.fn((post: { id: string }) => post);
+      countSpy = jest.fn().mockResolvedValue(0);
+      findManySpy = jest.fn().mockResolvedValue([]);
+      (prisma as any).feedPost.count = countSpy;
+      (prisma as any).feedPost.findMany = findManySpy;
+      prisma.$transaction.mockImplementation(
+        async (arg: Array<Promise<unknown>>) => Promise.all(arg),
+      );
+    });
+
+    it("applies no type constraint when types is omitted", async () => {
+      await service.listPosts(baseUser, schoolId, {} as never);
+
+      expect(countSpy.mock.calls[0][0].where.AND).toBeUndefined();
+      expect(findManySpy.mock.calls[0][0].where.AND).toBeUndefined();
+    });
+
+    it("filters to a single type when only one is selected", async () => {
+      await service.listPosts(baseUser, schoolId, {
+        types: ["polls"],
+      } as never);
+
+      const expectedWhere = { AND: [{ OR: [{ type: "POLL" }] }] };
+      expect(countSpy.mock.calls[0][0].where).toEqual(
+        expect.objectContaining(expectedWhere),
+      );
+      expect(findManySpy.mock.calls[0][0].where).toEqual(
+        expect.objectContaining(expectedWhere),
+      );
+    });
+
+    it("combines multiple selected types with OR", async () => {
+      await service.listPosts(baseUser, schoolId, {
+        types: ["polls", "featured"],
+      } as never);
+
+      const expectedWhere = {
+        AND: [
+          {
+            OR: [{ type: "POLL" }, { featuredUntil: { gt: expect.any(Date) } }],
+          },
+        ],
+      };
+      expect(countSpy.mock.calls[0][0].where).toEqual(
+        expect.objectContaining(expectedWhere),
+      );
+      expect(findManySpy.mock.calls[0][0].where).toEqual(
+        expect.objectContaining(expectedWhere),
+      );
+    });
+
+    it("computes skip/take from page/limit while keeping the type filter", async () => {
+      await service.listPosts(baseUser, schoolId, {
+        types: ["polls"],
+        page: 3,
+        limit: 5,
+      } as never);
+
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 10,
+          take: 5,
+          where: expect.objectContaining({
+            AND: [{ OR: [{ type: "POLL" }] }],
+          }),
+        }),
+      );
+      expect(countSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: [{ OR: [{ type: "POLL" }] }],
+          }),
+        }),
+      );
+      expect(countSpy.mock.calls[0][0]).not.toHaveProperty("skip");
+      expect(countSpy.mock.calls[0][0]).not.toHaveProperty("take");
+    });
+
+    it("combines a search term with type filters via a separate AND branch", async () => {
+      await service.listPosts(baseUser, schoolId, {
+        types: ["featured"],
+        q: "rentree",
+      } as never);
+
+      const call = countSpy.mock.calls[0][0];
+      expect(call.where.AND).toHaveLength(2);
+      expect(call.where.AND[0]).toEqual({
+        OR: [{ featuredUntil: { gt: expect.any(Date) } }],
+      });
+      expect(call.where.AND[1].OR[0]).toEqual({
+        title: { contains: "rentree", mode: "insensitive" },
+      });
+    });
+  });
 });
