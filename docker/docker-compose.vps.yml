@@ -1,10 +1,17 @@
 name: scolive
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
+    logging: *default-logging
     volumes:
       - ${UPLOADS_ROOT:-/home/ubuntu/uploads/scolive}/redis:/data
     healthcheck:
@@ -17,6 +24,7 @@ services:
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
+    logging: *default-logging
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -44,6 +52,7 @@ services:
       context: ..
       dockerfile: docker/api.Dockerfile
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - ./.env
       - ./.env.mobile-build
@@ -73,6 +82,7 @@ services:
       dockerfile: docker/api.Dockerfile
     command: npm run -w @school-live/api media:start
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - ./.env
     environment:
@@ -94,6 +104,7 @@ services:
       dockerfile: docker/api.Dockerfile
     command: npm run -w @school-live/api worker:start
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - ./.env
     environment:
@@ -113,6 +124,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - ./.env
     environment:

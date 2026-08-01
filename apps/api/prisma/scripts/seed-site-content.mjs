@@ -25,10 +25,7 @@ const CONTACT_INFO = {
 
 function sectionsToHtml(intro, sections) {
   const sectionsHtml = sections
-    .map(
-      (section) =>
-        `<h2>${section.heading}</h2><p>${section.body}</p>`,
-    )
+    .map((section) => `<h2>${section.heading}</h2><p>${section.body}</p>`)
     .join("");
   return `<p>${intro}</p>${sectionsHtml}`;
 }
@@ -296,7 +293,9 @@ async function main() {
         updatedById: actor.id,
       },
     });
-    console.log(`LegalDocument ${doc.slug}/${doc.locale} seeded (v1, PUBLISHED).`);
+    console.log(
+      `LegalDocument ${doc.slug}/${doc.locale} seeded (v1, PUBLISHED).`,
+    );
   }
 
   await prisma.$disconnect();
