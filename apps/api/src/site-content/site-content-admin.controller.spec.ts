@@ -45,12 +45,18 @@ describe("SiteContentAdminController", () => {
       getContactInfo: jest.fn().mockResolvedValue({
         email: "contact@scolive.cm",
         phone: "+237 6XX XXX XXX",
-        address: "Cameroun",
+        addressStreet: "",
+        addressDistrict: "",
+        addressCity: "",
+        addressCountry: "Cameroun",
       }),
       updateContactInfo: jest.fn().mockResolvedValue({
         email: "new@scolive.cm",
         phone: "+237 690000000",
-        address: "Douala",
+        addressStreet: "",
+        addressDistrict: "",
+        addressCity: "Douala",
+        addressCountry: "Cameroun",
       }),
       assertCanManage: jest.fn((user: AuthenticatedUser) => {
         if (user.activeRole !== "SUPER_ADMIN" && user.activeRole !== "ADMIN") {
@@ -107,13 +113,19 @@ describe("SiteContentAdminController", () => {
     const result = await controller.updateContactInfo(user, {
       email: "new@scolive.cm",
       phone: "+237 690000000",
-      address: "Douala",
+      addressStreet: "",
+      addressDistrict: "",
+      addressCity: "Douala",
+      addressCountry: "Cameroun",
     });
 
     expect(contactInfoService.updateContactInfo).toHaveBeenCalledWith(user, {
       email: "new@scolive.cm",
       phone: "+237 690000000",
-      address: "Douala",
+      addressStreet: "",
+      addressDistrict: "",
+      addressCity: "Douala",
+      addressCountry: "Cameroun",
     });
     expect(result.email).toBe("new@scolive.cm");
   });

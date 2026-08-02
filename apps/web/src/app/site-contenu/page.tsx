@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { HelpCircle, Mail, MailOpen, Phone, User, X } from "lucide-react";
+import {
+  HelpCircle,
+  Mail,
+  MailOpen,
+  Pencil,
+  Phone,
+  User,
+  X,
+} from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -44,7 +52,14 @@ function buildContactSchema(t: TranslateFn) {
   return z.object({
     email: z.string().email(t("siteContent.contact.error.email")),
     phone: z.string().min(1, t("siteContent.contact.error.phone")),
-    address: z.string().min(1, t("siteContent.contact.error.address")),
+    addressStreet: z
+      .string()
+      .min(1, t("siteContent.contact.error.addressStreet")),
+    addressDistrict: z.string(),
+    addressCity: z.string().min(1, t("siteContent.contact.error.addressCity")),
+    addressCountry: z
+      .string()
+      .min(1, t("siteContent.contact.error.addressCountry")),
     legalRepresentativeFirstName: z.string(),
     legalRepresentativeLastName: z.string(),
   });
@@ -217,7 +232,20 @@ export default function SiteContentPage() {
   );
 }
 
+const EMPTY_CONTACT_FORM: ContactFormValues = {
+  email: "",
+  phone: "",
+  addressStreet: "",
+  addressDistrict: "",
+  addressCity: "",
+  addressCountry: "",
+  legalRepresentativeFirstName: "",
+  legalRepresentativeLastName: "",
+};
+
 function ContactTab({ t }: { t: TranslateFn }) {
+  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [contact, setContact] = useState<ContactFormValues | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -231,13 +259,7 @@ function ContactTab({ t }: { t: TranslateFn }) {
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(schema),
     mode: "onChange",
-    defaultValues: {
-      email: "",
-      phone: "",
-      address: "",
-      legalRepresentativeFirstName: "",
-      legalRepresentativeLastName: "",
-    },
+    defaultValues: EMPTY_CONTACT_FORM,
   });
 
   useEffect(() => {
@@ -249,6 +271,7 @@ function ContactTab({ t }: { t: TranslateFn }) {
     setLoadError(null);
     try {
       const info = await siteContentApi.getContactInfo();
+      setContact(info);
       form.reset(info);
     } catch {
       setLoadError(t("siteContent.contact.loadError"));
@@ -257,13 +280,32 @@ function ContactTab({ t }: { t: TranslateFn }) {
     }
   }
 
+  function startEdit() {
+    if (contact) {
+      form.reset(contact);
+    }
+    setFeedback(null);
+    setShowRequiredHint(false);
+    setMode("edit");
+  }
+
+  function cancelEdit() {
+    if (contact) {
+      form.reset(contact);
+    }
+    setShowRequiredHint(false);
+    setMode("view");
+  }
+
   async function onValid(values: ContactFormValues) {
     setShowRequiredHint(false);
     setSaving(true);
     setFeedback(null);
     try {
       const updated = await siteContentApi.updateContactInfo(values);
+      setContact(updated);
       form.reset(updated);
+      setMode("view");
       setFeedback({
         type: "success",
         message: t("siteContent.contact.saveSuccess"),
@@ -284,8 +326,12 @@ function ContactTab({ t }: { t: TranslateFn }) {
       form.setFocus("email");
     } else if (errors.phone) {
       form.setFocus("phone");
-    } else if (errors.address) {
-      form.setFocus("address");
+    } else if (errors.addressStreet) {
+      form.setFocus("addressStreet");
+    } else if (errors.addressCity) {
+      form.setFocus("addressCity");
+    } else if (errors.addressCountry) {
+      form.setFocus("addressCountry");
     }
   }
 
@@ -295,6 +341,67 @@ function ContactTab({ t }: { t: TranslateFn }) {
 
   if (loadError) {
     return <p className="text-sm text-notification">{loadError}</p>;
+  }
+
+  if (mode === "view" && contact) {
+    const legalRepresentativeName = [
+      contact.legalRepresentativeFirstName,
+      contact.legalRepresentativeLastName,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const addressLine = [
+      contact.addressStreet,
+      contact.addressDistrict,
+      contact.addressCity,
+      contact.addressCountry,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    return (
+      <div className="grid max-w-lg gap-4">
+        {feedback ? (
+          <p
+            className={`text-sm ${
+              feedback.type === "success"
+                ? "text-accent-teal-dark"
+                : "text-notification"
+            }`}
+          >
+            {feedback.message}
+          </p>
+        ) : null}
+
+        <div className="grid gap-3 rounded-[14px] border border-border bg-warm-surface p-4">
+          <ViewRow label={t("siteContent.contact.emailLabel")}>
+            {contact.email}
+          </ViewRow>
+          <ViewRow label={t("siteContent.contact.phoneLabel")}>
+            {contact.phone}
+          </ViewRow>
+          <ViewRow label={t("siteContent.contact.addressGroupLabel")}>
+            {addressLine || t("siteContent.contact.notProvided")}
+          </ViewRow>
+          <ViewRow
+            label={t("siteContent.contact.legalRepresentativeFirstNameLabel")}
+          >
+            {legalRepresentativeName || t("siteContent.contact.notProvided")}
+          </ViewRow>
+        </div>
+
+        <OnboardingTarget id={SITE_CONTENT_TOUR_TARGETS.contactEdit}>
+          <Button
+            type="button"
+            onClick={startEdit}
+            className="flex w-fit items-center gap-2"
+          >
+            <Pencil className="h-4 w-4" />
+            {t("siteContent.contact.edit")}
+          </Button>
+        </OnboardingTarget>
+      </div>
+    );
   }
 
   return (
@@ -329,14 +436,50 @@ function ContactTab({ t }: { t: TranslateFn }) {
       </FormField>
 
       <FormField
-        label={t("siteContent.contact.addressLabel")}
-        htmlFor="site-contact-address"
-        error={form.formState.errors.address?.message}
+        label={t("siteContent.contact.addressStreetLabel")}
+        htmlFor="site-contact-address-street"
+        error={form.formState.errors.addressStreet?.message}
       >
         <FormTextInput
-          id="site-contact-address"
-          invalid={!!form.formState.errors.address}
-          {...form.register("address")}
+          id="site-contact-address-street"
+          invalid={!!form.formState.errors.addressStreet}
+          {...form.register("addressStreet")}
+        />
+      </FormField>
+
+      <FormField
+        label={t("siteContent.contact.addressDistrictLabel")}
+        htmlFor="site-contact-address-district"
+        error={form.formState.errors.addressDistrict?.message}
+      >
+        <FormTextInput
+          id="site-contact-address-district"
+          invalid={!!form.formState.errors.addressDistrict}
+          {...form.register("addressDistrict")}
+        />
+      </FormField>
+
+      <FormField
+        label={t("siteContent.contact.addressCityLabel")}
+        htmlFor="site-contact-address-city"
+        error={form.formState.errors.addressCity?.message}
+      >
+        <FormTextInput
+          id="site-contact-address-city"
+          invalid={!!form.formState.errors.addressCity}
+          {...form.register("addressCity")}
+        />
+      </FormField>
+
+      <FormField
+        label={t("siteContent.contact.addressCountryLabel")}
+        htmlFor="site-contact-address-country"
+        error={form.formState.errors.addressCountry?.message}
+      >
+        <FormTextInput
+          id="site-contact-address-country"
+          invalid={!!form.formState.errors.addressCountry}
+          {...form.register("addressCountry")}
         />
       </FormField>
 
@@ -374,10 +517,31 @@ function ContactTab({ t }: { t: TranslateFn }) {
         </p>
       ) : null}
 
-      <Button type="submit" disabled={saving} className="w-fit">
-        {t("siteContent.contact.save")}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={saving} className="w-fit">
+          {t("siteContent.contact.save")}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={cancelEdit}
+          className="w-fit"
+        >
+          {t("siteContent.contact.cancel")}
+        </Button>
+      </div>
     </form>
+  );
+}
+
+function ViewRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-0.5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+        {label}
+      </p>
+      <p className="text-sm text-text-primary">{children}</p>
+    </div>
   );
 }
 

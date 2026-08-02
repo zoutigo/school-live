@@ -1883,6 +1883,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.siteContent.tabsTitle": "Trois sections distinctes",
     "onboardingTour.siteContent.tabsBody":
       "L'onglet Contact gère les coordonnées affichées sur le site. L'onglet Documents légaux gère les CGU, mentions légales et politique de confidentialité. L'onglet Messages liste les prises de contact reçues via le formulaire public.",
+    "onboardingTour.siteContent.contactEditTitle": "Modifier les coordonnées",
+    "onboardingTour.siteContent.contactEditBody":
+      "Les coordonnées sont affichées en lecture seule. Cliquez sur ce bouton pour ouvrir le formulaire de modification, adresse comprise (voie, quartier, ville, pays).",
     "onboardingTour.siteContent.selectorsTitle":
       "Choisissez le document et la langue",
     "onboardingTour.siteContent.selectorsBody":
@@ -3981,7 +3984,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.tabs.messages": "Messages",
     "siteContent.contact.emailLabel": "Email",
     "siteContent.contact.phoneLabel": "Téléphone",
-    "siteContent.contact.addressLabel": "Adresse",
+    "siteContent.contact.addressStreetLabel": "Voie",
+    "siteContent.contact.addressDistrictLabel": "Quartier",
+    "siteContent.contact.addressCityLabel": "Ville",
+    "siteContent.contact.addressCountryLabel": "Pays",
     "siteContent.contact.legalRepresentativeFirstNameLabel":
       "Responsable légal — Prénom",
     "siteContent.contact.legalRepresentativeLastNameLabel":
@@ -3993,7 +3999,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.contact.loadError": "Impossible de charger les coordonnées.",
     "siteContent.contact.error.email": "Adresse email invalide.",
     "siteContent.contact.error.phone": "Le téléphone est obligatoire.",
-    "siteContent.contact.error.address": "L'adresse est obligatoire.",
+    "siteContent.contact.error.addressStreet": "La voie est obligatoire.",
+    "siteContent.contact.error.addressCity": "La ville est obligatoire.",
+    "siteContent.contact.error.addressCountry": "Le pays est obligatoire.",
+    "siteContent.contact.edit": "Modifier",
+    "siteContent.contact.cancel": "Annuler",
+    "siteContent.contact.viewTitle": "Coordonnées publiques",
+    "siteContent.contact.notProvided": "Non renseigné",
+    "siteContent.contact.addressGroupLabel": "Adresse",
     "siteContent.legal.slugLabel": "Document",
     "siteContent.legal.localeLabel": "Langue",
     "siteContent.legal.slug.cgu": "CGU",
@@ -5848,6 +5861,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.siteContent.tabsTitle": "Three distinct sections",
     "onboardingTour.siteContent.tabsBody":
       "The Contact tab manages the details shown on the website. The Legal documents tab manages the Terms of Service, Legal Notice and Privacy Policy. The Messages tab lists submissions received through the public contact form.",
+    "onboardingTour.siteContent.contactEditTitle": "Edit contact details",
+    "onboardingTour.siteContent.contactEditBody":
+      "Contact details are shown read-only. Click this button to open the edit form, including the address (street, district, city, country).",
     "onboardingTour.siteContent.selectorsTitle":
       "Pick the document and language",
     "onboardingTour.siteContent.selectorsBody":
@@ -7854,7 +7870,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.tabs.messages": "Messages",
     "siteContent.contact.emailLabel": "Email",
     "siteContent.contact.phoneLabel": "Phone",
-    "siteContent.contact.addressLabel": "Address",
+    "siteContent.contact.addressStreetLabel": "Street",
+    "siteContent.contact.addressDistrictLabel": "District",
+    "siteContent.contact.addressCityLabel": "City",
+    "siteContent.contact.addressCountryLabel": "Country",
     "siteContent.contact.legalRepresentativeFirstNameLabel":
       "Legal representative — First name",
     "siteContent.contact.legalRepresentativeLastNameLabel":
@@ -7865,7 +7884,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.contact.loadError": "Could not load contact details.",
     "siteContent.contact.error.email": "Invalid email address.",
     "siteContent.contact.error.phone": "Phone is required.",
-    "siteContent.contact.error.address": "Address is required.",
+    "siteContent.contact.error.addressStreet": "Street is required.",
+    "siteContent.contact.error.addressCity": "City is required.",
+    "siteContent.contact.error.addressCountry": "Country is required.",
+    "siteContent.contact.edit": "Edit",
+    "siteContent.contact.cancel": "Cancel",
+    "siteContent.contact.viewTitle": "Public contact details",
+    "siteContent.contact.notProvided": "Not provided",
+    "siteContent.contact.addressGroupLabel": "Address",
     "siteContent.legal.slugLabel": "Document",
     "siteContent.legal.localeLabel": "Language",
     "siteContent.legal.slug.cgu": "Terms of Service",

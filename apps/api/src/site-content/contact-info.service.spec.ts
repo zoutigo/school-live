@@ -49,7 +49,10 @@ describe("ContactInfoService", () => {
     expect(result).toEqual({
       email: "contact@scolive.cm",
       phone: "+237 6XX XXX XXX",
-      address: "Cameroun",
+      addressStreet: "",
+      addressDistrict: "",
+      addressCity: "",
+      addressCountry: "Cameroun",
       legalRepresentativeFirstName: "",
       legalRepresentativeLastName: "",
     });
@@ -72,7 +75,10 @@ describe("ContactInfoService", () => {
       value: {
         email: "hello@scolive.cm",
         phone: "+237 690000000",
-        address: "Yaoundé, Cameroun",
+        addressStreet: "Rue des Manguiers",
+        addressDistrict: "Bastos",
+        addressCity: "Yaoundé",
+        addressCountry: "Cameroun",
       },
     });
 
@@ -81,7 +87,10 @@ describe("ContactInfoService", () => {
     expect(result).toEqual({
       email: "hello@scolive.cm",
       phone: "+237 690000000",
-      address: "Yaoundé, Cameroun",
+      addressStreet: "Rue des Manguiers",
+      addressDistrict: "Bastos",
+      addressCity: "Yaoundé",
+      addressCountry: "Cameroun",
       legalRepresentativeFirstName: "",
       legalRepresentativeLastName: "",
     });
@@ -93,7 +102,10 @@ describe("ContactInfoService", () => {
       value: {
         email: "hello@scolive.cm",
         phone: "+237 690000000",
-        address: "Yaoundé, Cameroun",
+        addressStreet: "",
+        addressDistrict: "",
+        addressCity: "Yaoundé",
+        addressCountry: "Cameroun",
       },
     });
 
@@ -109,7 +121,10 @@ describe("ContactInfoService", () => {
       value: {
         email: "hello@scolive.cm",
         phone: "+237 690000000",
-        address: "Yaoundé, Cameroun",
+        addressStreet: "",
+        addressDistrict: "",
+        addressCity: "Yaoundé",
+        addressCountry: "Cameroun",
         legalRepresentativeFirstName: "Jean",
         legalRepresentativeLastName: "Dupont",
       },
@@ -121,6 +136,32 @@ describe("ContactInfoService", () => {
     expect(result.legalRepresentativeLastName).toBe("Dupont");
   });
 
+  it("migre une ligne legacy avec un seul champ address vers addressStreet", async () => {
+    prisma.siteSetting.findUnique.mockResolvedValue({
+      key: "contact",
+      value: {
+        email: "hello@scolive.cm",
+        phone: "+237 690000000",
+        address: "Base militaire - Simbock - Yaounde -Cameroun",
+        legalRepresentativeFirstName: "Michelle",
+        legalRepresentativeLastName: "Foe",
+      },
+    });
+
+    const result = await service.getContactInfo();
+
+    expect(result).toEqual({
+      email: "hello@scolive.cm",
+      phone: "+237 690000000",
+      addressStreet: "Base militaire - Simbock - Yaounde -Cameroun",
+      addressDistrict: "",
+      addressCity: "",
+      addressCountry: "",
+      legalRepresentativeFirstName: "Michelle",
+      legalRepresentativeLastName: "Foe",
+    });
+  });
+
   it("refuse la mise à jour pour un utilisateur non SUPER_ADMIN/ADMIN", async () => {
     const user = makeUser({ activeRole: "SCHOOL_ADMIN", platformRoles: [] });
 
@@ -128,7 +169,10 @@ describe("ContactInfoService", () => {
       service.updateContactInfo(user, {
         email: "a@b.cm",
         phone: "+237 690000000",
-        address: "Douala",
+        addressStreet: "Rue X",
+        addressDistrict: "",
+        addressCity: "Douala",
+        addressCountry: "Cameroun",
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(prisma.siteSetting.upsert).not.toHaveBeenCalled();
@@ -141,13 +185,19 @@ describe("ContactInfoService", () => {
     const result = await service.updateContactInfo(user, {
       email: "admin@b.cm",
       phone: "+237 690000001",
-      address: "Yaoundé",
+      addressStreet: "Rue Y",
+      addressDistrict: "Bonapriso",
+      addressCity: "Yaoundé",
+      addressCountry: "Cameroun",
     });
 
     expect(result).toEqual({
       email: "admin@b.cm",
       phone: "+237 690000001",
-      address: "Yaoundé",
+      addressStreet: "Rue Y",
+      addressDistrict: "Bonapriso",
+      addressCity: "Yaoundé",
+      addressCountry: "Cameroun",
       legalRepresentativeFirstName: "",
       legalRepresentativeLastName: "",
     });
@@ -160,7 +210,10 @@ describe("ContactInfoService", () => {
     const result = await service.updateContactInfo(user, {
       email: " a@b.cm ",
       phone: " +237 690000000 ",
-      address: " Douala ",
+      addressStreet: " Rue Z ",
+      addressDistrict: " Bastos ",
+      addressCity: " Douala ",
+      addressCountry: " Cameroun ",
       legalRepresentativeFirstName: " Jean ",
       legalRepresentativeLastName: " Dupont ",
     });
@@ -168,7 +221,10 @@ describe("ContactInfoService", () => {
     expect(result).toEqual({
       email: "a@b.cm",
       phone: "+237 690000000",
-      address: "Douala",
+      addressStreet: "Rue Z",
+      addressDistrict: "Bastos",
+      addressCity: "Douala",
+      addressCountry: "Cameroun",
       legalRepresentativeFirstName: "Jean",
       legalRepresentativeLastName: "Dupont",
     });

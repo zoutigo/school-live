@@ -5,7 +5,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 export type ContactInfo = {
   email: string;
   phone: string;
-  address: string;
+  addressStreet: string;
+  addressDistrict: string;
+  addressCity: string;
+  addressCountry: string;
   legalRepresentativeFirstName: string;
   legalRepresentativeLastName: string;
 };

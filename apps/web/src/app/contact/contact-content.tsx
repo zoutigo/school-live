@@ -7,7 +7,10 @@ import { SiteFooter } from "../../components/marketing/site-footer";
 import { ContactForm } from "../../components/marketing/contact-form";
 import { useFixedTranslation } from "../../i18n/useTranslation";
 import type { MarketingLocale } from "../../lib/seo";
-import type { PublicContactInfo } from "../../lib/site-content";
+import {
+  formatPublicAddress,
+  type PublicContactInfo,
+} from "../../lib/site-content";
 
 export function ContactContent({
   locale = "fr",
@@ -63,9 +66,12 @@ export function ContactContent({
                     <p className="font-heading text-sm font-semibold text-text-primary">
                       {t("contactPage.info.emailLabel")}
                     </p>
-                    <p className="text-sm text-text-secondary">
+                    <a
+                      href={`mailto:${contactInfo.email}`}
+                      className="text-sm text-text-secondary hover:text-primary hover:underline"
+                    >
                       {contactInfo.email}
-                    </p>
+                    </a>
                   </div>
                 </div>
 
@@ -77,9 +83,12 @@ export function ContactContent({
                     <p className="font-heading text-sm font-semibold text-text-primary">
                       {t("contactPage.info.phoneLabel")}
                     </p>
-                    <p className="text-sm text-text-secondary">
+                    <a
+                      href={`tel:${contactInfo.phone.replace(/\s+/g, "")}`}
+                      className="text-sm text-text-secondary hover:text-primary hover:underline"
+                    >
                       {contactInfo.phone}
-                    </p>
+                    </a>
                   </div>
                 </div>
 
@@ -92,7 +101,7 @@ export function ContactContent({
                       {t("contactPage.info.locationLabel")}
                     </p>
                     <p className="text-sm text-text-secondary">
-                      {contactInfo.address}
+                      {formatPublicAddress(contactInfo)}
                     </p>
                   </div>
                 </div>

@@ -18,8 +18,23 @@ export class UpdateContactInfoDto {
 
   @IsString()
   @MinLength(1)
-  @MaxLength(240)
-  address!: string;
+  @MaxLength(160)
+  addressStreet!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  addressDistrict?: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  addressCity!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  addressCountry!: string;
 
   @IsOptional()
   @IsString()
