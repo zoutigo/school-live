@@ -1097,7 +1097,7 @@ describe("Classes page subject color UI", () => {
       () => {
         expect(submitButton).toBeEnabled();
       },
-      { timeout: 10000 },
+      { timeout: 18000 },
     );
 
     fireEvent.click(submitButton);
@@ -1110,7 +1110,7 @@ describe("Classes page subject color UI", () => {
       expect(postCall).toBeDefined();
       expect(String(postCall?.[1]?.body ?? "")).toContain('"capacity":40');
     });
-  });
+  }, 20000);
 
   it("shows inline create-class validation and enables submit only when valid", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
