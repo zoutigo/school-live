@@ -47,6 +47,23 @@ describe("onboardingTour.* translations", () => {
       "onboardingTour.parentLanding.step3Body",
       "onboardingTour.parentLanding.step4Title",
       "onboardingTour.parentLanding.step4Body",
+      "onboardingTour.parentLanding.step5Title",
+      "onboardingTour.parentLanding.step5Body",
+    ];
+
+    for (const key of requiredKeys) {
+      expect(translations.fr[key]).toBeTruthy();
+      expect(translations.en[key]).toBeTruthy();
+    }
+  });
+
+  it("has the parent dashboard help dialog content in both locales", () => {
+    const requiredKeys = [
+      "dashboard.parent.help.toggle",
+      "dashboard.parent.help.title",
+      "dashboard.parent.help.body1",
+      "dashboard.parent.help.body2",
+      "dashboard.parent.help.body3",
     ];
 
     for (const key of requiredKeys) {

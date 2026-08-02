@@ -1891,6 +1891,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.parentLanding.step4Title": "Paramètres de votre compte",
     "onboardingTour.parentLanding.step4Body":
       "Ce lien ouvre les paramètres de votre compte : coordonnées, sécurité et préférences.",
+    "onboardingTour.parentLanding.step5Title": "Une aide toujours disponible",
+    "onboardingTour.parentLanding.step5Body":
+      "Cliquez sur ce bouton à tout moment pour revoir un rappel sur l'utilisation de cette page et du menu de navigation.",
+    "dashboard.parent.help.toggle": "Aide sur cette page",
+    "dashboard.parent.help.title": "Votre espace parent",
+    "dashboard.parent.help.body1":
+      "Ce tableau de bord regroupe l'essentiel : la vie scolaire et les notes de vos enfants, votre compte, et le fil d'actualité de l'école.",
+    "dashboard.parent.help.body2":
+      "Pour tout le reste — messagerie, espace d'un enfant, paramètres du compte — utilisez le menu latéral : sur ordinateur il est toujours visible, sur mobile touchez l'icône menu pour l'ouvrir.",
+    "dashboard.parent.help.body3":
+      "Vous pouvez revoir le parcours de découverte du menu à tout moment en cliquant à nouveau sur cette icône d'aide.",
     "onboardingTour.siteContent.tabsTitle": "Trois sections distinctes",
     "onboardingTour.siteContent.tabsBody":
       "L'onglet Contact gère les coordonnées affichées sur le site. L'onglet Documents légaux gère les CGU, mentions légales et politique de confidentialité. L'onglet Messages liste les prises de contact reçues via le formulaire public.",
@@ -5880,6 +5891,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.parentLanding.step4Title": "Your account settings",
     "onboardingTour.parentLanding.step4Body":
       "This link opens your account settings: contact details, security and preferences.",
+    "onboardingTour.parentLanding.step5Title": "Help is always available",
+    "onboardingTour.parentLanding.step5Body":
+      "Click this button anytime for a reminder on how to use this page and the navigation menu.",
+    "dashboard.parent.help.toggle": "Help on this page",
+    "dashboard.parent.help.title": "Your family space",
+    "dashboard.parent.help.body1":
+      "This dashboard gathers the essentials: your children's school life and grades, your account, and the school's news feed.",
+    "dashboard.parent.help.body2":
+      "For everything else — messaging, a child's space, account settings — use the side menu: on desktop it's always visible, on mobile tap the menu icon to open it.",
+    "dashboard.parent.help.body3":
+      "You can replay the menu discovery tour at any time by clicking this help icon again.",
     "onboardingTour.siteContent.tabsTitle": "Three distinct sections",
     "onboardingTour.siteContent.tabsBody":
       "The Contact tab manages the details shown on the website. The Legal documents tab manages the Terms of Service, Legal Notice and Privacy Policy. The Messages tab lists submissions received through the public contact form.",

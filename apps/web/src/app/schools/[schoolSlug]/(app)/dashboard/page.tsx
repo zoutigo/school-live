@@ -13,6 +13,7 @@ import {
   CreditCard,
   GraduationCap,
   HeartHandshake,
+  HelpCircle,
   LayoutDashboard,
   MessageSquare,
   ShieldAlert,
@@ -23,9 +24,12 @@ import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page"
 import { getSchoolMessagesUnreadCount } from "../../../../../components/messaging/messaging-api";
 import type { StudentNotesTermSnapshot } from "../../../../../components/student-notes/student-notes.types";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
+import { HelpDialog } from "../../../../../components/ui/help-dialog";
 import {
   PARENT_LANDING_TOUR_ID,
   PARENT_LANDING_TOUR_STEPS,
+  PARENT_LANDING_TOUR_TARGETS,
 } from "./parent-landing-tour.config";
 import {
   useTranslation,
@@ -237,9 +241,12 @@ function getHeroContent(
 function WarmWelcomePanel({
   me,
   t,
+  onHelpClick,
 }: {
   me: MeResponse | null;
   t: TranslateFn;
+  /** Parent-only "?" help toggle rendered next to the badge, when provided. */
+  onHelpClick?: () => void;
 }) {
   const fullName = me
     ? `${me.firstName} ${me.lastName}`
@@ -252,9 +259,24 @@ function WarmWelcomePanel({
       <div className="absolute bottom-0 right-16 h-24 w-24 rounded-full bg-[#fcd34d]/25 blur-2xl" />
       <div className="relative min-w-0 space-y-4">
         <div className="min-w-0 space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-white/80 px-3 py-1 text-xs font-medium text-orange-900 backdrop-blur sm:text-sm">
-            <Sparkles className="h-4 w-4" />
-            {hero.badge}
+          <div className="flex items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-white/80 px-3 py-1 text-xs font-medium text-orange-900 backdrop-blur sm:text-sm">
+              <Sparkles className="h-4 w-4" />
+              {hero.badge}
+            </div>
+            {onHelpClick ? (
+              <OnboardingTarget id={PARENT_LANDING_TOUR_TARGETS.helpButton}>
+                <button
+                  type="button"
+                  data-testid="dashboard-parent-help-toggle"
+                  aria-label={t("dashboard.parent.help.toggle")}
+                  onClick={onHelpClick}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-orange-200/80 bg-white/80 text-orange-900 backdrop-blur hover:bg-white"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </OnboardingTarget>
+            ) : null}
           </div>
           <h1 className="font-heading text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl">
             {t("dashboard.hero.welcome").replace("{fullName}", fullName)}
@@ -1195,6 +1217,7 @@ export default function DashboardPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [parentCardsLoading, setParentCardsLoading] = useState(false);
   const [disciplineSummaries, setDisciplineSummaries] = useState<
     ChildDisciplineSummary[]
@@ -1661,7 +1684,13 @@ export default function DashboardPage() {
       data-testid="dashboard-root"
       className="grid w-full min-w-0 gap-4 overflow-x-hidden min-[360px]:gap-6"
     >
-      <WarmWelcomePanel me={me} t={t} />
+      <WarmWelcomePanel
+        me={me}
+        t={t}
+        onHelpClick={
+          me?.role === "PARENT" ? () => setHelpOpen(true) : undefined
+        }
+      />
 
       {me?.role === "PARENT" || me?.role === "STUDENT" ? (
         <>
@@ -1771,6 +1800,19 @@ export default function DashboardPage() {
             loading={schoolCardsLoading}
           />
         </div>
+      ) : null}
+
+      {me?.role === "PARENT" ? (
+        <HelpDialog
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          title={t("dashboard.parent.help.title")}
+          body={[
+            t("dashboard.parent.help.body1"),
+            t("dashboard.parent.help.body2"),
+            t("dashboard.parent.help.body3"),
+          ]}
+        />
       ) : null}
     </div>
   );

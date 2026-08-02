@@ -1,4 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertNoHorizontalOverflowAt320,
@@ -1007,7 +1013,7 @@ describe("DashboardPage parent-landing onboarding tour", () => {
       ),
     );
     expect(useOnboardingTourStore.getState().activeRole).toBe("parent");
-    expect(useOnboardingTourStore.getState().steps).toHaveLength(4);
+    expect(useOnboardingTourStore.getState().steps).toHaveLength(5);
   });
 
   it("does not start the tour when onboardingHelpEnabled is false", async () => {
@@ -1048,5 +1054,40 @@ describe("DashboardPage parent-landing onboarding tour", () => {
       expect(screen.getByTestId("teacher-dashboard")).toBeInTheDocument();
     });
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  describe("help dialog", () => {
+    it("renders the help toggle for a parent and it opens/closes the dialog", async () => {
+      mockParentMe();
+
+      render(<DashboardPage />);
+
+      const toggle = await screen.findByTestId("dashboard-parent-help-toggle");
+      expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+
+      fireEvent.click(toggle);
+      expect(screen.getByTestId("help-dialog")).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("help-dialog")).getByText(
+          "Votre espace parent",
+        ),
+      ).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId("help-dialog-close"));
+      expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+    });
+
+    it("does not render the help toggle for a non-parent role", async () => {
+      mockParentMe({ role: "TEACHER" });
+
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("teacher-dashboard")).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByTestId("dashboard-parent-help-toggle"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -16,6 +16,7 @@ export const PARENT_LANDING_TOUR_TARGETS = {
   messaging: SIDEBAR_MESSAGING_TOUR_TARGET,
   children: SIDEBAR_CHILDREN_TOUR_TARGET,
   account: SIDEBAR_ACCOUNT_TOUR_TARGET,
+  helpButton: "dashboard-parent-help-target",
 } as const;
 
 // Étape 1 (menu) utilise advanceOnTargetPress : sur mobile, la cible réelle
@@ -51,6 +52,11 @@ export const PARENT_LANDING_TOUR_STEPS: OnboardingTourStep[] = [
     targetKey: PARENT_LANDING_TOUR_TARGETS.account,
     titleKey: "onboardingTour.parentLanding.step4Title",
     bodyKey: "onboardingTour.parentLanding.step4Body",
+  },
+  {
+    targetKey: PARENT_LANDING_TOUR_TARGETS.helpButton,
+    titleKey: "onboardingTour.parentLanding.step5Title",
+    bodyKey: "onboardingTour.parentLanding.step5Body",
     finishLabelKey: "onboardingTour.common.gotIt",
   },
 ];

@@ -146,6 +146,8 @@ describe("Tour parent-landing — intégration AppShell + DashboardPage", () => 
   });
 
   it("avance jusqu'au bout du tour et le marque comme complété pour le rôle parent", async () => {
+    setViewportWidth(390);
+
     render(
       <AppShell schoolSlug="college-vogt" schoolName="College Vogt">
         <DashboardPage />
@@ -164,6 +166,7 @@ describe("Tour parent-landing — intégration AppShell + DashboardPage", () => 
       PARENT_LANDING_TOUR_TARGETS.messaging,
       PARENT_LANDING_TOUR_TARGETS.children,
       PARENT_LANDING_TOUR_TARGETS.account,
+      PARENT_LANDING_TOUR_TARGETS.helpButton,
     ]);
 
     useOnboardingTourStore
@@ -171,11 +174,45 @@ describe("Tour parent-landing — intégration AppShell + DashboardPage", () => 
       .advanceIfTarget(PARENT_LANDING_TOUR_TARGETS.menu);
     useOnboardingTourStore.getState().next();
     useOnboardingTourStore.getState().next();
-    expect(useOnboardingTourStore.getState().stepIndex).toBe(3);
+    useOnboardingTourStore.getState().next();
+    expect(useOnboardingTourStore.getState().stepIndex).toBe(4);
 
     useOnboardingTourStore.getState().finish();
 
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+    expect(
+      useOnboardingTourStore
+        .getState()
+        .isCompleted("parent", PARENT_LANDING_TOUR_ID),
+    ).toBe(true);
+  });
+
+  it("sur desktop, l'étape menu cible la sidebar toujours visible (pas le bouton mobile md:hidden) et la cliquer avance le tour", async () => {
+    setViewportWidth(1280);
+
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="College Vogt">
+        <DashboardPage />
+      </AppShell>,
+    );
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        PARENT_LANDING_TOUR_ID,
+      ),
+    );
+    expect(useOnboardingTourStore.getState().stepIndex).toBe(0);
+
+    // Cliquer n'importe où dans la sidebar (ici son lien "Mon compte") est un
+    // no-op de navigation harmless mais avance bien le tour : la sidebar
+    // desktop est déjà ouverte en permanence, il n'y a rien à "ouvrir".
+    fireEvent.click(screen.getByRole("link", { name: /Mon compte/i }));
+    expect(useOnboardingTourStore.getState().stepIndex).toBe(1);
+
+    useOnboardingTourStore.getState().next();
+    useOnboardingTourStore.getState().next();
+    useOnboardingTourStore.getState().finish();
+
     expect(
       useOnboardingTourStore
         .getState()
