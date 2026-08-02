@@ -22,7 +22,6 @@ describe("onboardingTour.* translations", () => {
   it("has the child-timetable pilot tour steps in both locales", () => {
     const requiredKeys = [
       "onboardingTour.common.next",
-      "onboardingTour.common.skip",
       "onboardingTour.common.finish",
       "onboardingTour.childTimetable.controlsTitle",
       "onboardingTour.childTimetable.controlsBody",
@@ -30,6 +29,24 @@ describe("onboardingTour.* translations", () => {
       "onboardingTour.childTimetable.dayListBody",
       "onboardingTour.childTimetable.helpBlockTitle",
       "onboardingTour.childTimetable.helpBlockBody",
+    ];
+
+    for (const key of requiredKeys) {
+      expect(translations.fr[key]).toBeTruthy();
+      expect(translations.en[key]).toBeTruthy();
+    }
+  });
+
+  it("has the parent-landing tour steps in both locales", () => {
+    const requiredKeys = [
+      "onboardingTour.parentLanding.step1Title",
+      "onboardingTour.parentLanding.step1Body",
+      "onboardingTour.parentLanding.step2Title",
+      "onboardingTour.parentLanding.step2Body",
+      "onboardingTour.parentLanding.step3Title",
+      "onboardingTour.parentLanding.step3Body",
+      "onboardingTour.parentLanding.step4Title",
+      "onboardingTour.parentLanding.step4Body",
     ];
 
     for (const key of requiredKeys) {

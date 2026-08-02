@@ -149,14 +149,6 @@ export function OnboardingTourOverlay() {
             <button
               type="button"
               onClick={next}
-              className="px-2 py-2 text-sm font-semibold text-text-secondary"
-              data-testid="onboarding-tour-skip"
-            >
-              {t("onboardingTour.common.skip")}
-            </button>
-            <button
-              type="button"
-              onClick={next}
               className="rounded-card bg-primary px-4 py-2 text-sm font-bold text-white"
               data-testid="onboarding-tour-next"
             >

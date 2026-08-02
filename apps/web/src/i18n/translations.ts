@@ -1865,7 +1865,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.selectionBanner.clear": "Effacer la sélection",
 
     "onboardingTour.common.next": "Suivant",
-    "onboardingTour.common.skip": "Passer",
     "onboardingTour.common.finish": "Terminer",
     "onboardingTour.common.tapTarget":
       "Cliquez sur l'élément en surbrillance pour continuer.",
@@ -1880,6 +1879,18 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Une aide toujours disponible",
     "onboardingTour.childTimetable.helpBlockBody":
       "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
+    "onboardingTour.parentLanding.step1Title": "Votre menu de navigation",
+    "onboardingTour.parentLanding.step1Body":
+      "Sur mobile, touchez cette icône pour ouvrir le menu. Sur ordinateur, ce menu reste toujours visible sur le côté pour accéder à toutes les rubriques de l'école.",
+    "onboardingTour.parentLanding.step2Title": "Votre messagerie",
+    "onboardingTour.parentLanding.step2Body":
+      "Ce lien ouvre votre messagerie parent, où se trouvent tous vos échanges avec l'école.",
+    "onboardingTour.parentLanding.step3Title": "Vos enfants",
+    "onboardingTour.parentLanding.step3Body":
+      "Retrouvez ici la liste de vos enfants. Cliquez sur le nom d'un enfant pour ouvrir son espace (notes, emploi du temps, vie scolaire...).",
+    "onboardingTour.parentLanding.step4Title": "Paramètres de votre compte",
+    "onboardingTour.parentLanding.step4Body":
+      "Ce lien ouvre les paramètres de votre compte : coordonnées, sécurité et préférences.",
     "onboardingTour.siteContent.tabsTitle": "Trois sections distinctes",
     "onboardingTour.siteContent.tabsBody":
       "L'onglet Contact gère les coordonnées affichées sur le site. L'onglet Documents légaux gère les CGU, mentions légales et politique de confidentialité. L'onglet Messages liste les prises de contact reçues via le formulaire public.",
@@ -5844,7 +5855,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.adminSchedule.selectionBanner.clear": "Clear selection",
 
     "onboardingTour.common.next": "Next",
-    "onboardingTour.common.skip": "Skip",
     "onboardingTour.common.finish": "Finish",
     "onboardingTour.common.tapTarget":
       "Click the highlighted element to continue.",
@@ -5858,6 +5868,18 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childTimetable.helpBlockTitle": "Help is always available",
     "onboardingTour.childTimetable.helpBlockBody":
       "Click this button anytime for a reminder on how to use this page.",
+    "onboardingTour.parentLanding.step1Title": "Your navigation menu",
+    "onboardingTour.parentLanding.step1Body":
+      "On mobile, tap this icon to open the menu. On desktop, this menu stays visible on the side to reach every section of the school.",
+    "onboardingTour.parentLanding.step2Title": "Your messaging",
+    "onboardingTour.parentLanding.step2Body":
+      "This link opens your parent messaging, where all your exchanges with the school live.",
+    "onboardingTour.parentLanding.step3Title": "Your children",
+    "onboardingTour.parentLanding.step3Body":
+      "This is the list of your children. Click a child's name to open their space (grades, timetable, school life...).",
+    "onboardingTour.parentLanding.step4Title": "Your account settings",
+    "onboardingTour.parentLanding.step4Body":
+      "This link opens your account settings: contact details, security and preferences.",
     "onboardingTour.siteContent.tabsTitle": "Three distinct sections",
     "onboardingTour.siteContent.tabsBody":
       "The Contact tab manages the details shown on the website. The Legal documents tab manages the Terms of Service, Legal Notice and Privacy Policy. The Messages tab lists submissions received through the public contact form.",

@@ -7,6 +7,17 @@ import { Badge } from "../ui/badge";
 import type { Role } from "../../lib/role-view";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import { useAppShellUiStore } from "./app-shell-ui-store";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
+
+/**
+ * Cible de tour spotlight stable pour le bouton menu mobile — partagée par
+ * tout tour qui veut mettre en avant la navigation (ex.
+ * `dashboard/parent-landing-tour.config.ts`), définie ici puisque c'est ce
+ * bouton qui en est la source. Sur desktop, la même cible enveloppe la
+ * barre latérale toujours visible (voir `app-shell.tsx`).
+ */
+export const APP_HEADER_MENU_TOUR_TARGET = "app-header-menu-target";
 
 type Props = {
   schoolName: string;
@@ -197,27 +208,35 @@ export function AppHeader({
           </button>
         </div>
 
-        <button
-          aria-label={t("header.openMenu")}
-          data-attention={
-            hasOpenedMobileMenu
-              ? "dismissed"
-              : menuHintActive
-                ? "active"
-                : "idle"
-          }
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary md:hidden ${
-            menuHintActive ? "menu-attention-active" : ""
-          }`}
-          onClick={() => {
-            markMobileMenuOpened();
-            setMenuHintActive(false);
-            onToggleMenu();
-          }}
-          type="button"
+        <OnboardingTarget
+          id={APP_HEADER_MENU_TOUR_TARGET}
+          className="md:hidden"
         >
-          <Menu className="h-[18px] w-[18px] stroke-[2.25]" />
-        </button>
+          <button
+            aria-label={t("header.openMenu")}
+            data-attention={
+              hasOpenedMobileMenu
+                ? "dismissed"
+                : menuHintActive
+                  ? "active"
+                  : "idle"
+            }
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary ${
+              menuHintActive ? "menu-attention-active" : ""
+            }`}
+            onClick={() => {
+              markMobileMenuOpened();
+              setMenuHintActive(false);
+              onToggleMenu();
+              useOnboardingTourStore
+                .getState()
+                .advanceIfTarget(APP_HEADER_MENU_TOUR_TARGET);
+            }}
+            type="button"
+          >
+            <Menu className="h-[18px] w-[18px] stroke-[2.25]" />
+          </button>
+        </OnboardingTarget>
       </header>
     </div>
   );

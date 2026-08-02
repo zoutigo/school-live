@@ -22,6 +22,11 @@ import {
 import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page";
 import { getSchoolMessagesUnreadCount } from "../../../../../components/messaging/messaging-api";
 import type { StudentNotesTermSnapshot } from "../../../../../components/student-notes/student-notes.types";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import {
+  PARENT_LANDING_TOUR_ID,
+  PARENT_LANDING_TOUR_STEPS,
+} from "./parent-landing-tour.config";
 import {
   useTranslation,
   type TranslateFn,
@@ -64,6 +69,7 @@ type MeResponse = {
     | "STUDENT";
   email?: string;
   linkedStudents?: ParentChild[];
+  onboardingHelpEnabled?: boolean;
 };
 
 // Raw API shapes used only inside this file
@@ -1230,6 +1236,19 @@ export default function DashboardPage() {
     setMe(payload);
 
     if (payload.role === "PARENT") {
+      const tourStore = useOnboardingTourStore.getState();
+      if (
+        payload.onboardingHelpEnabled !== false &&
+        !tourStore.isCompleted("parent", PARENT_LANDING_TOUR_ID) &&
+        !tourStore.activeTourId
+      ) {
+        tourStore.startTour(
+          PARENT_LANDING_TOUR_ID,
+          "parent",
+          PARENT_LANDING_TOUR_STEPS,
+        );
+      }
+
       await loadParentDashboardData(payload);
       return;
     }

@@ -7,6 +7,8 @@ import {
 import DashboardPage from "./page";
 import { useLocaleStore } from "../../../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../../../i18n/translations";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import { PARENT_LANDING_TOUR_ID } from "./parent-landing-tour.config";
 
 const replaceMock = vi.fn();
 let paramsMock = { schoolSlug: "college-vogt" };
@@ -939,5 +941,112 @@ describe("DashboardPage role dashboards", () => {
           link.getAttribute("href") === "/schools/college-vogt/messagerie",
       );
     expect(messagingLink).toBeDefined();
+  });
+});
+
+describe("DashboardPage parent-landing onboarding tour", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    paramsMock = { schoolSlug: "college-vogt" };
+    setViewportWidth(1280);
+    useOnboardingTourStore.setState({
+      completedTours: {},
+      activeTourId: null,
+      activeRole: null,
+      steps: [],
+      stepIndex: 0,
+      targetRect: null,
+    });
+  });
+
+  function mockParentMe(overrides: Record<string, unknown> = {}) {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.includes("/schools/college-vogt/me")) {
+        return createJsonResponse({
+          firstName: "Robert",
+          lastName: "Ntamack",
+          role: "PARENT",
+          linkedStudents: [],
+          ...overrides,
+        });
+      }
+
+      if (url.includes("/auth/me/parent-dashboard-summary")) {
+        return createJsonResponse({
+          unreadMessages: 0,
+          payments: {
+            connected: false,
+            pendingCount: null,
+            overdueCount: null,
+            detail: "",
+          },
+          documents: {
+            recentCount: 0,
+            totalPublishedCount: 0,
+            detail: "",
+            latest: [],
+          },
+        });
+      }
+
+      return createJsonResponse({ message: "Not found" }, 404);
+    });
+  }
+
+  it("starts the parent-landing onboarding tour for a parent by default", async () => {
+    mockParentMe();
+
+    render(<DashboardPage />);
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        PARENT_LANDING_TOUR_ID,
+      ),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("parent");
+    expect(useOnboardingTourStore.getState().steps).toHaveLength(4);
+  });
+
+  it("does not start the tour when onboardingHelpEnabled is false", async () => {
+    mockParentMe({ onboardingHelpEnabled: false });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Bienvenue, Robert Ntamack" }),
+      ).toBeInTheDocument();
+    });
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  it("does not restart the tour once it has already been completed for the parent role", async () => {
+    useOnboardingTourStore.setState({
+      completedTours: { [`parent:${PARENT_LANDING_TOUR_ID}`]: true },
+    });
+    mockParentMe();
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Bienvenue, Robert Ntamack" }),
+      ).toBeInTheDocument();
+    });
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  it("does not start the tour for a non-parent role", async () => {
+    mockParentMe({ role: "TEACHER" });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("teacher-dashboard")).toBeInTheDocument();
+    });
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 });
