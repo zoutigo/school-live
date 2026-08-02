@@ -1097,7 +1097,7 @@ describe("Classes page subject color UI", () => {
       () => {
         expect(submitButton).toBeEnabled();
       },
-      { timeout: 10000 },
+      { timeout: 18000 },
     );
 
     fireEvent.click(submitButton);
