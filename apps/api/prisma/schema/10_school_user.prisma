@@ -43,6 +43,11 @@ model School {
   curriculums        Curriculum[]
   curriculumSubjects CurriculumSubject[]
   lifeEvents         StudentLifeEvent[]
+  healthConditions   StudentHealthCondition[]
+  healthCareEvents   StudentHealthCareEvent[]
+  healthReports      StudentHealthReport[]
+  healthAttachments  StudentHealthAttachment[]
+  healthAccessLogs   StudentHealthAccessLog[]
   staffFunctions     SchoolStaffFunction[]
   staffAssignments   SchoolStaffAssignment[]
   internalMessages   InternalMessage[]
@@ -122,6 +127,11 @@ model User {
   createdActivationCodes ActivationCode[]     @relation("ActivationCodeIssuer")
   authAuditLogs      AuthAuditLog[]
   lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
+  healthConditionsAuthored StudentHealthCondition[] @relation("StudentHealthConditionAuthor")
+  healthCareEventsAuthored StudentHealthCareEvent[] @relation("StudentHealthCareEventAuthor")
+  healthReportsAuthored    StudentHealthReport[]    @relation("StudentHealthReportAuthor")
+  healthReportsAcknowledged StudentHealthReport[]   @relation("StudentHealthReportAcknowledgedBy")
+  healthAccessLogs         StudentHealthAccessLog[] @relation("StudentHealthAccessLogUser")
   staffAssignments   SchoolStaffAssignment[]
   sentMessages       InternalMessage[]         @relation("InternalMessageSender")
   receivedMessages   InternalMessageRecipient[] @relation("InternalMessageRecipientUser")

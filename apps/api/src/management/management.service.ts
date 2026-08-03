@@ -89,18 +89,24 @@ const SCHOOL_ROLES = [
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
   "TEACHER",
   "PARENT",
   "STUDENT",
 ] as const;
 const STAFF_ROLE_PLACEHOLDER_NAMES: Record<
-  "SCHOOL_MANAGER" | "SUPERVISOR" | "SCHOOL_ACCOUNTANT" | "SCHOOL_STAFF",
+  | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
+  | "SCHOOL_ACCOUNTANT"
+  | "SCHOOL_STAFF"
+  | "SCHOOL_HEALTH_OFFICER",
   string
 > = {
   SCHOOL_MANAGER: "Responsable",
   SUPERVISOR: "Surveillant",
   SCHOOL_ACCOUNTANT: "Comptable",
   SCHOOL_STAFF: "Personnel",
+  SCHOOL_HEALTH_OFFICER: "Responsable santé",
 };
 const CREATABLE_ROLES = [
   "ADMIN",
@@ -111,6 +117,7 @@ const CREATABLE_ROLES = [
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
   "TEACHER",
   "PARENT",
   "STUDENT",
@@ -167,6 +174,7 @@ const updateUserSchema = z.object({
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",
@@ -1183,6 +1191,7 @@ export class ManagementService {
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
     ];
 
     const [staffCount, teachersCount, parentsCount] =
@@ -5194,6 +5203,7 @@ export class ManagementService {
             "SUPERVISOR",
             "SCHOOL_ACCOUNTANT",
             "SCHOOL_STAFF",
+            "SCHOOL_HEALTH_OFFICER",
           ],
         },
       },
@@ -7521,6 +7531,7 @@ export class ManagementService {
             "SUPERVISOR",
             "SCHOOL_ACCOUNTANT",
             "SCHOOL_STAFF",
+            "SCHOOL_HEALTH_OFFICER",
           ],
         },
       },
@@ -8182,6 +8193,7 @@ export class ManagementService {
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",

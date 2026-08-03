@@ -18,6 +18,7 @@ const ALLOWED_ROLES = [
   "SCHOOL_MANAGER",
   "SUPERVISOR",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
 ] as const;
 
 export default function TeacherClassFeedPage() {
@@ -36,6 +37,7 @@ export default function TeacherClassFeedPage() {
     | "SCHOOL_MANAGER"
     | "SUPERVISOR"
     | "SCHOOL_STAFF"
+    | "SCHOOL_HEALTH_OFFICER"
   >("TEACHER");
   const { t } = useTranslation();
 

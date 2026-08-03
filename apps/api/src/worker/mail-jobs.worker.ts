@@ -20,6 +20,8 @@ import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION,
+  MAIL_JOB_SEND_STUDENT_HEALTH_CARE_EVENT_NOTIFICATION,
+  MAIL_JOB_SEND_STUDENT_HEALTH_REPORT_NOTIFICATION,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEST_EXECUTION_FAILED_NOTIFICATION,
   MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
@@ -32,6 +34,8 @@ import {
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
   type RoomStatusChangeMailPayload,
+  type StudentHealthCareEventMailPayload,
+  type StudentHealthReportMailPayload,
   type StudentLifeEventNotificationPayload,
   type TestExecutionFailedNotificationPayload,
   type TimetableChangeMailPayload,
@@ -115,6 +119,18 @@ export class MailJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === MAIL_JOB_SEND_CONTACT_FORM_SUBMISSION_NOTIFICATION) {
           await this.emailPort.sendContactFormSubmissionNotification(
             job.data as ContactFormSubmissionMailPayload,
+          );
+          return;
+        }
+        if (job.name === MAIL_JOB_SEND_STUDENT_HEALTH_CARE_EVENT_NOTIFICATION) {
+          await this.emailPort.sendStudentHealthCareEventNotification(
+            job.data as StudentHealthCareEventMailPayload,
+          );
+          return;
+        }
+        if (job.name === MAIL_JOB_SEND_STUDENT_HEALTH_REPORT_NOTIFICATION) {
+          await this.emailPort.sendStudentHealthReportNotification(
+            job.data as StudentHealthReportMailPayload,
           );
           return;
         }

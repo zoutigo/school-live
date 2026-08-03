@@ -1118,6 +1118,7 @@ export class ManagementController {
     "SUPERVISOR",
     "SCHOOL_ACCOUNTANT",
     "SCHOOL_STAFF",
+    "SCHOOL_HEALTH_OFFICER",
     "TEACHER",
     "PARENT",
     "ADMIN",
@@ -1228,7 +1229,14 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/students")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR", "ADMIN", "SUPER_ADMIN")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "SCHOOL_HEALTH_OFFICER",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
   listStudentsWithEnrollments(
     @CurrentSchoolId() schoolId: string,
     @Query() query: ListStudentEnrollmentsQueryDto,

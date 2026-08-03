@@ -35,6 +35,7 @@ type SchoolRole =
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "SCHOOL_STAFF"
+  | "SCHOOL_HEALTH_OFFICER"
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
@@ -153,7 +154,8 @@ type CreatableRole =
   | "SCHOOL_MANAGER"
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
-  | "SCHOOL_STAFF";
+  | "SCHOOL_STAFF"
+  | "SCHOOL_HEALTH_OFFICER";
 
 const CREATABLE_ROLES: CreatableRole[] = [
   "TEACHER",
@@ -163,6 +165,7 @@ const CREATABLE_ROLES: CreatableRole[] = [
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
 ];
 
 const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -197,6 +200,7 @@ const ROLE_COLORS: Record<
   SCHOOL_MANAGER: { bg: "#E8F2F1", text: "#195E56", border: "#195E56" },
   SUPERVISOR: { bg: "#F3EDF8", text: "#7B4EA0", border: "#7B4EA0" },
   SCHOOL_ACCOUNTANT: { bg: "#EAF5F0", text: "#2E7D62", border: "#2E7D62" },
+  SCHOOL_HEALTH_OFFICER: { bg: "#FCEBEA", text: "#B3261E", border: "#B3261E" },
 };
 
 const STATUS_COLORS: Record<ActivationStatus, { tKey: string; cls: string }> = {
@@ -224,6 +228,7 @@ const ROLE_FILTER_KEYS: { value: RoleFilter; tKey: string }[] = [
   { value: "SUPERVISOR", tKey: "users.filter.supervisors" },
   { value: "SCHOOL_ACCOUNTANT", tKey: "users.filter.accountants" },
   { value: "SCHOOL_STAFF", tKey: "users.filter.staff" },
+  { value: "SCHOOL_HEALTH_OFFICER", tKey: "users.filter.healthOfficer" },
 ];
 
 type AccountFilter = "ALL" | "WITH_ACCOUNT" | "WITHOUT_ACCOUNT";
@@ -248,6 +253,7 @@ const ALL_ROLES: SchoolRole[] = [
   "PARENT",
   "STUDENT",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
   "SCHOOL_ADMIN",
   "SCHOOL_MANAGER",
   "SUPERVISOR",
@@ -259,6 +265,7 @@ const ROLE_TRANSLATION_KEYS: Record<SchoolRole, string> = {
   PARENT: "users.roles.parent",
   STUDENT: "users.roles.student",
   SCHOOL_STAFF: "users.roles.staff",
+  SCHOOL_HEALTH_OFFICER: "users.roles.healthOfficer",
   SCHOOL_ADMIN: "users.roles.admin",
   SCHOOL_MANAGER: "users.roles.manager",
   SUPERVISOR: "users.roles.supervisor",
@@ -1051,7 +1058,8 @@ function CreateUserModal({
       (type === "SCHOOL_MANAGER" ||
         type === "SUPERVISOR" ||
         type === "SCHOOL_ACCOUNTANT" ||
-        type === "SCHOOL_STAFF") &&
+        type === "SCHOOL_STAFF" ||
+        type === "SCHOOL_HEALTH_OFFICER") &&
       staffFunctions.length === 0
     ) {
       apiFetch<StaffFunctionOption[]>(
@@ -1271,7 +1279,8 @@ function CreateUserModal({
     roleType === "SCHOOL_MANAGER" ||
     roleType === "SUPERVISOR" ||
     roleType === "SCHOOL_ACCOUNTANT" ||
-    roleType === "SCHOOL_STAFF";
+    roleType === "SCHOOL_STAFF" ||
+    roleType === "SCHOOL_HEALTH_OFFICER";
 
   return (
     <ModalOverlay onClose={onClose} testId="create-user-modal">
@@ -2089,7 +2098,7 @@ function UserDetailPanel({
             hasAccount={true}
           />
         );
-      if (role === "SCHOOL_STAFF")
+      if (role === "SCHOOL_STAFF" || role === "SCHOOL_HEALTH_OFFICER")
         return (
           <StaffRoleSection
             key={role}

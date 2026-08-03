@@ -1,0 +1,117 @@
+model StudentHealthCondition {
+  id                    String                      @id @default(cuid())
+  schoolId              String
+  studentId             String
+  type                  StudentHealthConditionType
+  alertLevel            StudentHealthAlertLevel
+  label                 String
+  description           String?
+  emergencyInstructions String?
+  isVisibleToAllTeachers Boolean                    @default(false)
+  publicAlertLabel      String?
+  active                Boolean                     @default(true)
+  startDate             DateTime?
+  endDate               DateTime?
+  createdByUserId       String
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  school                School                      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student               Student                     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdByUser         User                        @relation("StudentHealthConditionAuthor", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  attachments           StudentHealthAttachment[]
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([type])
+  @@index([alertLevel])
+  @@index([active])
+}
+
+model StudentHealthCareEvent {
+  id             String                   @id @default(cuid())
+  schoolId       String
+  studentId      String
+  authorUserId   String
+  occurredAt     DateTime
+  summary        String
+  description    String?
+  alertLevel     StudentHealthAlertLevel
+  followUpNeeded Boolean                  @default(false)
+  createdAt      DateTime                 @default(now())
+  school         School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student        Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  authorUser     User                     @relation("StudentHealthCareEventAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  attachments    StudentHealthAttachment[]
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([authorUserId])
+  @@index([occurredAt])
+}
+
+model StudentHealthReport {
+  id                  String                     @id @default(cuid())
+  schoolId            String
+  studentId           String
+  reportedByUserId    String
+  type                StudentHealthReportType
+  alertLevel          StudentHealthAlertLevel
+  description         String
+  sportRestriction    Boolean                    @default(false)
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  createdAt           DateTime                   @default(now())
+  acknowledgedByUserId String?
+  acknowledgedAt       DateTime?
+  school               School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student              Student                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  reportedByUser       User                      @relation("StudentHealthReportAuthor", fields: [reportedByUserId], references: [id], onDelete: Cascade)
+  acknowledgedByUser    User?                     @relation("StudentHealthReportAcknowledgedBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
+  attachments           StudentHealthAttachment[]
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([reportedByUserId])
+  @@index([type])
+  @@index([alertLevel])
+  @@index([acknowledgedAt])
+}
+
+model StudentHealthAttachment {
+  id           String                   @id @default(cuid())
+  schoolId     String
+  conditionId  String?
+  careEventId  String?
+  reportId     String?
+  fileName     String
+  fileUrl      String?
+  sizeLabel    String?
+  mimeType     String?
+  createdAt    DateTime                 @default(now())
+  school       School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  condition    StudentHealthCondition?  @relation(fields: [conditionId], references: [id], onDelete: Cascade)
+  careEvent    StudentHealthCareEvent?  @relation(fields: [careEventId], references: [id], onDelete: Cascade)
+  report       StudentHealthReport?     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([conditionId])
+  @@index([careEventId])
+  @@index([reportId])
+}
+
+model StudentHealthAccessLog {
+  id        String                    @id @default(cuid())
+  schoolId  String
+  studentId String
+  userId    String
+  action    StudentHealthAccessAction
+  createdAt DateTime                  @default(now())
+  school    School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student   Student                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user      User                      @relation("StudentHealthAccessLogUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([userId])
+  @@index([createdAt])
+}

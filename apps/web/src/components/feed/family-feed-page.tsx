@@ -1938,6 +1938,7 @@ function isStaff(role: FeedViewerRole) {
     role === "SUPERVISOR" ||
     role === "SCHOOL_ACCOUNTANT" ||
     role === "SCHOOL_STAFF" ||
+    role === "SCHOOL_HEALTH_OFFICER" ||
     role === "TEACHER"
   );
 }

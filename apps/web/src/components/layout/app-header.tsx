@@ -41,6 +41,8 @@ function roleLabel(role: Role, t: TranslateFn): string {
   if (role === "SUPERVISOR") return t("header.role.supervisor");
   if (role === "SCHOOL_ACCOUNTANT") return t("header.role.schoolAccountant");
   if (role === "SCHOOL_STAFF") return t("header.role.schoolStaff");
+  if (role === "SCHOOL_HEALTH_OFFICER")
+    return t("header.role.schoolHealthOfficer");
   if (role === "TEACHER") return t("header.role.teacher");
   if (role === "PARENT") return t("header.role.parent");
   return t("header.role.student");
@@ -61,7 +63,8 @@ function getPortalLabel(role: Role, t: TranslateFn): string {
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR" ||
     role === "SCHOOL_ACCOUNTANT" ||
-    role === "SCHOOL_STAFF"
+    role === "SCHOOL_STAFF" ||
+    role === "SCHOOL_HEALTH_OFFICER"
   ) {
     return t("header.portal.school");
   }

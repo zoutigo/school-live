@@ -14,6 +14,7 @@ import {
   DoorOpen,
   FileText,
   GraduationCap,
+  HeartPulse,
   HelpCircle,
   Home,
   LayoutDashboard,
@@ -215,7 +216,8 @@ function buildItems(
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR" ||
     role === "SCHOOL_ACCOUNTANT" ||
-    role === "SCHOOL_STAFF"
+    role === "SCHOOL_STAFF" ||
+    role === "SCHOOL_HEALTH_OFFICER"
   ) {
     return [
       {
@@ -297,6 +299,12 @@ function buildItems(
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
         unread: messagesUnread,
+      },
+      {
+        label: t("health.title"),
+        href: `${schoolBase}/sante`,
+        icon: HeartPulse,
+        matchPrefix: `${schoolBase}/sante`,
       },
       {
         label: t("sidebar.nav.settings"),
@@ -499,6 +507,12 @@ function buildParentChildItems(
       unread: toUnread(childBadge?.disciplineUnread),
     },
     {
+      label: t("health.title"),
+      href: `${base}/sante`,
+      icon: HeartPulse,
+      matchPrefix: `${base}/sante`,
+    },
+    {
       label: t("feed.vieDeClasse.title"),
       href: `${base}/vie-de-classe`,
       icon: Users,
@@ -655,6 +669,7 @@ export function AppSidebar({
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",

@@ -9,6 +9,8 @@ import type {
   InternalMessageNotificationPayload,
   PasswordResetMailPayload,
   RoomStatusChangeMailPayload,
+  StudentHealthCareEventMailPayload,
+  StudentHealthReportMailPayload,
   StudentLifeEventNotificationPayload,
   TestExecutionFailedNotificationPayload,
   TimetableChangeMailPayload,
@@ -18,6 +20,10 @@ import {
   lifeEventTypeMailLabel,
   translateStudentLifeEventMail,
 } from "../../mail/student-life-event-mail.translations.js";
+import {
+  healthReportTypeMailLabel,
+  translateStudentHealthMail,
+} from "../../mail/student-health-mail.translations.js";
 import type { EmailPort } from "./email.port.js";
 
 @Injectable()
@@ -827,6 +833,180 @@ export class SmtpEmailAdapter implements EmailPort {
                 </table>
                 <a href="${notesUrl}" style="display:inline-block;background:#0A62BF;color:#FFFFFF;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">
                   Voir les notes
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`,
+    });
+  }
+
+  async sendStudentHealthCareEventNotification(
+    payload: StudentHealthCareEventMailPayload,
+  ) {
+    const { host, port, user, pass, secure, from } = this.getMailerConfig();
+    const webUrl =
+      this.configService.get<string>("WEB_URL") ?? "http://localhost:3000";
+    const schoolUrl = payload.schoolSlug
+      ? `${webUrl}/schools/${payload.schoolSlug}/dashboard`
+      : `${webUrl}/`;
+    const locale = payload.locale;
+    const tr = (key: string, params?: Record<string, string>) =>
+      translateStudentHealthMail(locale, key, params);
+    const studentFullName = `${payload.studentFirstName} ${payload.studentLastName}`;
+    const subject = tr("health.mail.careEvent.subject");
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    });
+
+    await transporter.sendMail({
+      from,
+      to: payload.to,
+      subject,
+      text: [
+        tr("health.mail.careEvent.greeting", {
+          firstName: payload.parentFirstName,
+        }),
+        "",
+        tr("health.mail.careEvent.intro", { studentFullName }),
+        `${tr("health.mail.summary")}: ${payload.summary}`,
+        `${tr("health.mail.date")}: ${payload.occurredAt}`,
+        `${tr("health.mail.author")}: ${payload.authorFullName}`,
+        payload.description
+          ? `${tr("health.mail.description")}: ${payload.description}`
+          : "",
+        "",
+        `${tr("health.mail.openPortal")}: ${schoolUrl}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      html: `
+<!doctype html>
+<html lang="${locale}">
+  <body style="margin:0;padding:0;background:#F8F9FA;font-family:Roboto,Arial,sans-serif;color:#212529;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F8F9FA;padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E3E6E8;border-radius:10px;overflow:hidden;">
+            <tr>
+              <td style="background:#B3261E;padding:16px 24px;color:#FFFFFF;font-family:Poppins,Arial,sans-serif;font-size:20px;font-weight:700;">
+                Scolive
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <h1 style="margin:0 0 4px;font-family:Poppins,Arial,sans-serif;font-size:20px;line-height:1.3;color:#212529;">
+                  ${tr("health.mail.careEvent.greeting", { firstName: payload.parentFirstName })}
+                </h1>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4A4A4A;">
+                  ${tr("health.mail.careEvent.intro", { studentFullName })}
+                </p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 16px;background:#F8F9FA;border:1px solid #E3E6E8;border-radius:8px;">
+                  <tr><td style="padding:14px 16px;font-size:14px;color:#4A4A4A;line-height:1.7;">
+                    <div><strong>${tr("health.mail.summary")} :</strong> ${payload.summary}</div>
+                    <div><strong>${tr("health.mail.date")} :</strong> ${payload.occurredAt}</div>
+                    <div><strong>${tr("health.mail.author")} :</strong> ${payload.authorFullName}</div>
+                    ${payload.description ? `<div><strong>${tr("health.mail.description")} :</strong> ${payload.description}</div>` : ""}
+                  </td></tr>
+                </table>
+                <a href="${schoolUrl}" style="display:inline-block;background:#B3261E;color:#FFFFFF;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">
+                  ${tr("health.mail.openPortal")}
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`,
+    });
+  }
+
+  async sendStudentHealthReportNotification(
+    payload: StudentHealthReportMailPayload,
+  ) {
+    const { host, port, user, pass, secure, from } = this.getMailerConfig();
+    const webUrl =
+      this.configService.get<string>("WEB_URL") ?? "http://localhost:3000";
+    const schoolUrl = payload.schoolSlug
+      ? `${webUrl}/schools/${payload.schoolSlug}/dashboard`
+      : `${webUrl}/`;
+    const locale = payload.locale;
+    const tr = (key: string, params?: Record<string, string>) =>
+      translateStudentHealthMail(locale, key, params);
+    const studentFullName = `${payload.studentFirstName} ${payload.studentLastName}`;
+    const typeLabel = healthReportTypeMailLabel(locale, payload.reportType);
+    const subject = tr("health.mail.report.subject");
+
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    });
+
+    await transporter.sendMail({
+      from,
+      to: payload.to,
+      subject,
+      text: [
+        tr("health.mail.report.greeting", {
+          firstName: payload.recipientFirstName,
+        }),
+        "",
+        tr("health.mail.report.intro", {
+          reporterFullName: payload.reporterFullName,
+          studentFullName,
+        }),
+        `${tr("health.mail.report.type")}: ${typeLabel}`,
+        `${tr("health.mail.description")}: ${payload.description}`,
+        payload.sportRestriction
+          ? tr("health.mail.report.sportRestriction")
+          : "",
+        "",
+        `${tr("health.mail.openPortal")}: ${schoolUrl}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      html: `
+<!doctype html>
+<html lang="${locale}">
+  <body style="margin:0;padding:0;background:#F8F9FA;font-family:Roboto,Arial,sans-serif;color:#212529;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F8F9FA;padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#FFFFFF;border:1px solid #E3E6E8;border-radius:10px;overflow:hidden;">
+            <tr>
+              <td style="background:#B3261E;padding:16px 24px;color:#FFFFFF;font-family:Poppins,Arial,sans-serif;font-size:20px;font-weight:700;">
+                Scolive
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <h1 style="margin:0 0 4px;font-family:Poppins,Arial,sans-serif;font-size:20px;line-height:1.3;color:#212529;">
+                  ${tr("health.mail.report.greeting", { firstName: payload.recipientFirstName })}
+                </h1>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4A4A4A;">
+                  ${tr("health.mail.report.intro", { reporterFullName: payload.reporterFullName, studentFullName })}
+                </p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 16px;background:#F8F9FA;border:1px solid #E3E6E8;border-radius:8px;">
+                  <tr><td style="padding:14px 16px;font-size:14px;color:#4A4A4A;line-height:1.7;">
+                    <div><strong>${tr("health.mail.report.type")} :</strong> ${typeLabel}</div>
+                    <div><strong>${tr("health.mail.description")} :</strong> ${payload.description}</div>
+                    ${payload.sportRestriction ? `<div style="margin-top:8px;padding:6px 10px;border-radius:6px;display:inline-block;background:#FFF3E0;color:#E65100;font-size:13px;font-weight:600;">${tr("health.mail.report.sportRestriction")}</div>` : ""}
+                  </td></tr>
+                </table>
+                <a href="${schoolUrl}" style="display:inline-block;background:#B3261E;color:#FFFFFF;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;">
+                  ${tr("health.mail.openPortal")}
                 </a>
               </td>
             </tr>

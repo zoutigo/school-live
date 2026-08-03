@@ -30,6 +30,7 @@ type Role =
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "SCHOOL_STAFF"
+  | "SCHOOL_HEALTH_OFFICER"
   | "TEACHER"
   | "PARENT"
   | "STUDENT";

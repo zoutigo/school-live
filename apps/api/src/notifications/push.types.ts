@@ -92,3 +92,31 @@ export type ResourceSubmissionRejectedPushPayload = {
     part: "STATEMENT" | "CORRECTION";
   };
 };
+
+export const PUSH_JOB_SEND_STUDENT_HEALTH_CARE_EVENT =
+  "send-student-health-care-event-push";
+export const PUSH_JOB_SEND_STUDENT_HEALTH_REPORT =
+  "send-student-health-report-push";
+
+export type StudentHealthCareEventPushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "STUDENT_HEALTH_CARE_EVENT";
+    schoolSlug: string;
+    studentId: string;
+  };
+};
+
+export type StudentHealthReportPushPayload = {
+  tokens: string[];
+  title: string;
+  body: string;
+  data: {
+    type: "STUDENT_HEALTH_REPORT";
+    schoolSlug: string;
+    studentId: string;
+    reportId: string;
+  };
+};

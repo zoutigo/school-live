@@ -42,6 +42,7 @@ type SchoolMembershipRole =
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "SCHOOL_STAFF"
+  | "SCHOOL_HEALTH_OFFICER"
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
@@ -106,6 +107,7 @@ const ROLE_LABEL: Record<Role, string> = {
   SUPERVISOR: "Superviseur discipline",
   SCHOOL_ACCOUNTANT: "Comptable d'etablissement",
   SCHOOL_STAFF: "Personnel scolaire",
+  SCHOOL_HEALTH_OFFICER: "Responsable sante",
   TEACHER: "Enseignant",
   PARENT: "Parent",
   STUDENT: "Eleve",

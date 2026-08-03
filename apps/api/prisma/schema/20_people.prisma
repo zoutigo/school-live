@@ -16,6 +16,10 @@ model Student {
   homeworkComments HomeworkComment[]
   enrollments Enrollment[]
   lifeEvents  StudentLifeEvent[]
+  healthConditions  StudentHealthCondition[]
+  healthCareEvents  StudentHealthCareEvent[]
+  healthReports     StudentHealthReport[]
+  healthAccessLogs  StudentHealthAccessLog[]
 
   @@index([schoolId])
   @@unique([schoolId, userId])

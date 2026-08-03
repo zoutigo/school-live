@@ -4,6 +4,8 @@ import type {
   ResourceSubmissionDiscardedPushPayload,
   ResourceSubmissionRejectedPushPayload,
   RoomStatusChangePushPayload,
+  StudentHealthCareEventPushPayload,
+  StudentHealthReportPushPayload,
   StudentLifeEventPushPayload,
   TimetableChangePushPayload,
 } from "../../notifications/push.types.js";
@@ -31,5 +33,11 @@ export type PushPort = {
   ): Promise<void>;
   sendResourceSubmissionRejectedNotification(
     payload: ResourceSubmissionRejectedPushPayload,
+  ): Promise<void>;
+  sendStudentHealthCareEventNotification(
+    payload: StudentHealthCareEventPushPayload,
+  ): Promise<void>;
+  sendStudentHealthReportNotification(
+    payload: StudentHealthReportPushPayload,
   ): Promise<void>;
 };
