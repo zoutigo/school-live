@@ -19,6 +19,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import type { CreateStudentHealthConditionDto } from "./dto/create-student-health-condition.dto.js";
 import type { UpdateStudentHealthConditionDto } from "./dto/update-student-health-condition.dto.js";
 import type { CreateStudentHealthCareEventDto } from "./dto/create-student-health-care-event.dto.js";
+import type { UpdateStudentHealthCareEventDto } from "./dto/update-student-health-care-event.dto.js";
 import type { CreateStudentHealthReportDto } from "./dto/create-student-health-report.dto.js";
 import type { ListStudentHealthConditionsQueryDto } from "./dto/list-student-health-conditions-query.dto.js";
 import type { GetStudentHealthHistoryQueryDto } from "./dto/get-student-health-history-query.dto.js";
@@ -424,6 +425,44 @@ export class StudentHealthService {
     await this.notifyParentsAboutCareEvent(schoolId, student, event);
 
     return event;
+  }
+
+  async updateCareEvent(
+    schoolId: string,
+    user: AuthenticatedUser,
+    studentId: string,
+    careEventId: string,
+    payload: UpdateStudentHealthCareEventDto,
+  ) {
+    await this.ensureStudentInSchool(studentId, schoolId);
+    if (!this.isHealthManager(user, schoolId)) {
+      throw new ForbiddenException("Insufficient role");
+    }
+
+    const existing = await this.prisma.studentHealthCareEvent.findFirst({
+      where: { id: careEventId, schoolId, studentId },
+    });
+    if (!existing) {
+      throw new NotFoundException("Health care event not found");
+    }
+
+    return this.prisma.studentHealthCareEvent.update({
+      where: { id: careEventId },
+      data: {
+        occurredAt: payload.occurredAt
+          ? new Date(payload.occurredAt)
+          : undefined,
+        summary: payload.summary,
+        description: payload.description,
+        alertLevel: payload.alertLevel,
+        followUpNeeded: payload.followUpNeeded,
+      },
+      include: {
+        authorUser: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+    });
   }
 
   async listReports(

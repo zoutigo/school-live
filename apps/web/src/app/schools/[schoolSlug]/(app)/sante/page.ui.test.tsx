@@ -4,16 +4,11 @@ import SchoolSantePage from "./page";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
 import { HEALTH_SCHOOL_TOUR_ID } from "../../../../../components/health/health-school-tour.config";
 
-const replaceMock = vi.fn();
-const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
+const pushMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ schoolSlug: "college-vogt" }),
-  useRouter: () => ({ replace: replaceMock }),
-}));
-
-vi.mock("../../../../../lib/auth-cookies", () => ({
-  getCsrfTokenCookie: () => getCsrfTokenCookieMock(),
+  useRouter: () => ({ push: pushMock, replace: vi.fn() }),
 }));
 
 function jsonResponse(payload: unknown, status = 200) {
@@ -25,38 +20,60 @@ function jsonResponse(payload: unknown, status = 200) {
   );
 }
 
-const studentsPayload = {
-  students: [
-    {
-      id: "student-1",
-      firstName: "Nathan",
-      lastName: "Mbele",
-      currentEnrollment: { class: { id: "class-1", name: "6eC" } },
-    },
-  ],
+const CLASSES = [{ id: "class-1", name: "6eC" }];
+
+const STATS = {
+  activeConditionsByAlertLevel: { INFO: 2, ATTENTION: 1, URGENT: 3 },
+  activeConditionsTotal: 6,
+  studentsWithActiveConditions: 4,
+  careEventsLast7Days: 5,
+  careEventsLast30Days: 20,
+  reportsPendingAcknowledgement: 2,
 };
 
-const urgencyPayload = {
-  student: { id: "student-1", firstName: "Nathan", lastName: "Mbele" },
-  conditions: [
-    {
-      id: "cond-1",
-      label: "Allergie arachides",
-      alertLevel: "URGENT",
-      active: true,
-    },
-  ],
-  emergencyContacts: [
-    { id: "parent-1", fullName: "Jean Mbele", phone: "699001122" },
-  ],
+const REPORT_1 = {
+  id: "report-1",
+  type: "ACCIDENT",
+  alertLevel: "URGENT",
+  description: "Crise d'asthme",
+  createdAt: new Date("2026-02-05T10:00:00Z").toISOString(),
+  acknowledgedAt: null,
+  student: {
+    id: "student-1",
+    firstName: "Nathan",
+    lastName: "Mbele",
+    class: { id: "class-1", name: "6eC" },
+  },
 };
 
-describe("School sante page", () => {
+const STUDENT_1 = {
+  id: "student-1",
+  firstName: "Nathan",
+  lastName: "Mbele",
+  class: { id: "class-1", name: "6eC" },
+  age: 11,
+};
+
+function mockFetchDefault() {
+  return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+    const url = String(input);
+    if (url.endsWith("/schools/college-vogt/me")) {
+      return jsonResponse({ onboardingHelpEnabled: false });
+    }
+    if (url.includes("/admin/classrooms")) return jsonResponse(CLASSES);
+    if (url.includes("/health/stats")) return jsonResponse(STATS);
+    if (url.includes("/health/reports"))
+      return jsonResponse({ items: [], total: 0 });
+    if (url.includes("/health/students"))
+      return jsonResponse({ items: [], total: 0 });
+    return jsonResponse({}, 404);
+  });
+}
+
+describe("School sante page (vue école — responsable santé)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    replaceMock.mockReset();
-    getCsrfTokenCookieMock.mockReset();
-    getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
+    pushMock.mockReset();
     useOnboardingTourStore.setState({
       completedTours: {},
       activeTourId: null,
@@ -70,14 +87,11 @@ describe("School sante page", () => {
   it("démarre le tour d'aide guidée santé école par défaut", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url.endsWith("/schools/college-vogt/me")) {
-        return jsonResponse({ role: "SCHOOL_HEALTH_OFFICER" });
-      }
-      if (url.includes("/admin/students"))
-        return jsonResponse({ students: [] });
+      if (url.endsWith("/schools/college-vogt/me")) return jsonResponse({});
+      if (url.includes("/admin/classrooms")) return jsonResponse(CLASSES);
+      if (url.includes("/health/stats")) return jsonResponse(STATS);
       return jsonResponse({}, 404);
     });
-
     render(<SchoolSantePage />);
 
     await waitFor(() =>
@@ -88,74 +102,122 @@ describe("School sante page", () => {
     expect(useOnboardingTourStore.getState().activeRole).toBe("school");
   });
 
-  it("recherche un élève puis affiche sa synthèse d'urgence", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const url = String(input);
-      if (url.includes("/admin/students")) return jsonResponse(studentsPayload);
-      if (url.includes("/health/urgence")) return jsonResponse(urgencyPayload);
-      if (url.includes("/health/care-events")) return jsonResponse([]);
-      if (url.includes("/health/reports")) return jsonResponse([]);
-      return jsonResponse({}, 404);
-    });
-
+  it("charge et affiche les statistiques (onglet Synthèse) au montage", async () => {
+    mockFetchDefault();
     render(<SchoolSantePage />);
 
-    const studentButton = await screen.findByText(/Mbele Nathan/);
-    fireEvent.click(studentButton);
-
     await waitFor(() => {
-      expect(screen.getByText("Informations critiques")).toBeInTheDocument();
-      expect(screen.getByText("Allergie arachides")).toBeInTheDocument();
+      expect(screen.getByText("6")).toBeInTheDocument();
+      expect(screen.getByText("4")).toBeInTheDocument();
     });
   });
 
-  it("enregistre un soin pour l'élève sélectionné", async () => {
-    let careCreated = false;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
+  it("recharge les statistiques quand on change de classe", async () => {
+    const fetchMock = mockFetchDefault();
+    render(<SchoolSantePage />);
+    await waitFor(() => expect(screen.getByText("6")).toBeInTheDocument());
 
-      if (url.includes("/admin/students")) return jsonResponse(studentsPayload);
-      if (url.includes("/health/urgence")) return jsonResponse(urgencyPayload);
-      if (url.includes("/health/care-events") && method === "POST") {
-        careCreated = true;
-        return jsonResponse({ id: "care-1" }, 201);
-      }
-      if (url.includes("/health/care-events")) {
-        return jsonResponse(
-          careCreated
-            ? [
-                {
-                  id: "care-1",
-                  summary: "Chute dans la cour",
-                  description: null,
-                  occurredAt: new Date().toISOString(),
-                  alertLevel: "INFO",
-                  authorUser: null,
-                },
-              ]
-            : [],
-        );
-      }
-      if (url.includes("/health/reports")) return jsonResponse([]);
+    fireEvent.change(screen.getByTestId("sante-stats-class"), {
+      target: { value: "class-1" },
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).includes("/health/stats?classId=class-1"),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("onglet Cares : charge les signalements, recherche et filtre", async () => {
+    const fetchMock = mockFetchDefault();
+    fetchMock.mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) return jsonResponse({});
+      if (url.includes("/admin/classrooms")) return jsonResponse(CLASSES);
+      if (url.includes("/health/reports"))
+        return jsonResponse({ items: [REPORT_1], total: 1 });
       return jsonResponse({}, 404);
     });
 
     render(<SchoolSantePage />);
+    fireEvent.click(screen.getByTestId("sante-tab-cares"));
 
-    const studentButton = await screen.findByText(/Mbele Nathan/);
-    fireEvent.click(studentButton);
+    await waitFor(() => screen.getByTestId("sante-cares-item-report-1"));
+    expect(screen.getByText("Mbele Nathan")).toBeInTheDocument();
 
-    const summaryField = await screen.findByPlaceholderText(
-      "Ex : Chute dans la cour",
-    );
-    fireEvent.change(summaryField, { target: { value: "Chute dans la cour" } });
-    fireEvent.click(screen.getByText("Enregistrer ce soin"));
+    fireEvent.change(screen.getByTestId("sante-cares-filter-status"), {
+      target: { value: "false" },
+    });
 
     await waitFor(() => {
-      expect(screen.getAllByText("Chute dans la cour").length).toBeGreaterThan(
-        0,
-      );
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).includes("acknowledged=false"),
+        ),
+      ).toBe(true);
     });
+  });
+
+  it("onglet Cares : le clic sur une card navigue vers la fiche élève avec les métadonnées en query", async () => {
+    const fetchMock = mockFetchDefault();
+    fetchMock.mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/admin/classrooms")) return jsonResponse(CLASSES);
+      if (url.includes("/health/reports"))
+        return jsonResponse({ items: [REPORT_1], total: 1 });
+      return jsonResponse({}, 404);
+    });
+
+    render(<SchoolSantePage />);
+    fireEvent.click(screen.getByTestId("sante-tab-cares"));
+    await waitFor(() => screen.getByTestId("sante-cares-item-report-1"));
+
+    fireEvent.click(screen.getByTestId("sante-cares-item-report-1"));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      expect.stringContaining("/schools/college-vogt/sante/student-1?"),
+    );
+    expect(pushMock.mock.calls[0][0]).toContain("firstName=Nathan");
+  });
+
+  it("onglet Élèves : charge, recherche avec debounce, et pagine", async () => {
+    vi.useFakeTimers();
+    const fetchMock = mockFetchDefault();
+    fetchMock.mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/admin/classrooms")) return jsonResponse(CLASSES);
+      if (url.includes("/health/students"))
+        return jsonResponse({ items: [STUDENT_1], total: 25 });
+      return jsonResponse({}, 404);
+    });
+
+    render(<SchoolSantePage />);
+    fireEvent.click(screen.getByTestId("sante-tab-eleves"));
+
+    await vi.waitFor(() => screen.getByTestId("sante-eleves-item-student-1"));
+    expect(screen.getByText("6eC · 11 ans")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("sante-eleves-search"), {
+      target: { value: "nathan" },
+    });
+    await vi.advanceTimersByTimeAsync(350);
+
+    await vi.waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).includes("search=nathan"),
+        ),
+      ).toBe(true);
+    });
+
+    fireEvent.click(screen.getAllByText("Suivant")[0]);
+    await vi.waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([url]) => String(url).includes("page=2")),
+      ).toBe(true);
+    });
+    vi.useRealTimers();
   });
 });

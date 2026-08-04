@@ -93,6 +93,8 @@ const makePrismaMock = () => ({
   studentHealthCareEvent: {
     findMany: jest.fn().mockResolvedValue([]),
     create: jest.fn(),
+    update: jest.fn(),
+    findFirst: jest.fn(),
   },
   studentHealthReport: {
     findMany: jest.fn().mockResolvedValue([]),
@@ -491,6 +493,87 @@ describe("StudentHealthService", () => {
       await expect(
         service.createCareEvent(SCHOOL_ID, HEALTH_OFFICER, STUDENT_ID, payload),
       ).resolves.toEqual(expect.objectContaining({ id: "care-1" }));
+    });
+  });
+
+  // ── updateCareEvent ──────────────────────────────────────────────────────────
+
+  describe("updateCareEvent", () => {
+    const payload = {
+      summary: "Chute mise à jour",
+      alertLevel: "ATTENTION" as const,
+    };
+
+    it("refuse un parent", async () => {
+      await expect(
+        service.updateCareEvent(
+          SCHOOL_ID,
+          PARENT,
+          STUDENT_ID,
+          "care-1",
+          payload,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("refuse un enseignant référent", async () => {
+      await expect(
+        service.updateCareEvent(
+          SCHOOL_ID,
+          REFERENT_TEACHER,
+          STUDENT_ID,
+          "care-1",
+          payload,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("lève NotFoundException si le care event n'existe pas dans l'école/l'élève", async () => {
+      prisma.studentHealthCareEvent.findFirst.mockResolvedValue(null);
+      await expect(
+        service.updateCareEvent(
+          SCHOOL_ID,
+          HEALTH_OFFICER,
+          STUDENT_ID,
+          "care-missing",
+          payload,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("permet au responsable santé de modifier un care event existant", async () => {
+      prisma.studentHealthCareEvent.findFirst.mockResolvedValue({
+        id: "care-1",
+        schoolId: SCHOOL_ID,
+        studentId: STUDENT_ID,
+      });
+      prisma.studentHealthCareEvent.update.mockResolvedValue({
+        id: "care-1",
+        summary: payload.summary,
+        alertLevel: payload.alertLevel,
+        authorUser: { firstName: "Marie", lastName: "Ateba" },
+      });
+
+      const result = await service.updateCareEvent(
+        SCHOOL_ID,
+        HEALTH_OFFICER,
+        STUDENT_ID,
+        "care-1",
+        payload,
+      );
+
+      expect(prisma.studentHealthCareEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "care-1" },
+          data: expect.objectContaining({
+            summary: payload.summary,
+            alertLevel: payload.alertLevel,
+          }),
+        }),
+      );
+      expect(result).toEqual(
+        expect.objectContaining({ id: "care-1", summary: payload.summary }),
+      );
     });
   });
 

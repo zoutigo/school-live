@@ -19,6 +19,7 @@ import { StudentHealthService } from "./student-health.service.js";
 import { CreateStudentHealthConditionDto } from "./dto/create-student-health-condition.dto.js";
 import { UpdateStudentHealthConditionDto } from "./dto/update-student-health-condition.dto.js";
 import { CreateStudentHealthCareEventDto } from "./dto/create-student-health-care-event.dto.js";
+import { UpdateStudentHealthCareEventDto } from "./dto/update-student-health-care-event.dto.js";
 import { CreateStudentHealthReportDto } from "./dto/create-student-health-report.dto.js";
 import { ListStudentHealthConditionsQueryDto } from "./dto/list-student-health-conditions-query.dto.js";
 import { GetStudentHealthHistoryQueryDto } from "./dto/get-student-health-history-query.dto.js";
@@ -119,6 +120,23 @@ export class StudentHealthController {
       schoolId,
       user,
       studentId,
+      payload,
+    );
+  }
+
+  @Patch("care-events/:careEventId")
+  updateCareEvent(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+    @Param("careEventId") careEventId: string,
+    @Body() payload: UpdateStudentHealthCareEventDto,
+  ) {
+    return this.studentHealthService.updateCareEvent(
+      schoolId,
+      user,
+      studentId,
+      careEventId,
       payload,
     );
   }
