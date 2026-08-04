@@ -25,12 +25,63 @@ function jsonResponse(payload: unknown, status = 200) {
   );
 }
 
+function paginated<T>(items: T[], page = 1, total = items.length) {
+  return { items, page, limit: 20, total };
+}
+
 const mePayload = {
   role: "PARENT",
   linkedStudents: [{ id: "child-1", firstName: "Nathan", lastName: "Mbele" }],
 };
 
-describe("Child sante page", () => {
+const CONDITION_1 = {
+  id: "cond-1",
+  type: "ALLERGY",
+  alertLevel: "URGENT",
+  label: "Allergie arachides",
+  description: "Ne pas donner d'arachides",
+  active: true,
+  isVisibleToAllTeachers: false,
+  publicAlertLabel: null,
+  createdAt: new Date("2026-01-01T10:00:00Z").toISOString(),
+};
+
+const CARE_EVENT_1 = {
+  id: "care-1",
+  summary: "Chute dans la cour",
+  description: null,
+  occurredAt: new Date("2026-02-01T10:00:00Z").toISOString(),
+  alertLevel: "INFO",
+  followUpNeeded: false,
+  authorUser: { firstName: "Marie", lastName: "Ateba" },
+};
+
+function mockFetchDefault(overrides: {
+  conditions?: unknown;
+  history?: unknown;
+  onRequest?: (
+    url: string,
+    init?: RequestInit,
+  ) => Response | undefined | Promise<Response>;
+}) {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    const url = String(input);
+    const overridden = await overrides.onRequest?.(url, init);
+    if (overridden) return overridden;
+
+    if (url.endsWith("/schools/college-vogt/me"))
+      return jsonResponse(mePayload);
+    if (url.includes("/health/conditions")) {
+      return jsonResponse(overrides.conditions ?? paginated([]));
+    }
+    if (url.includes("/health/history")) {
+      return jsonResponse(overrides.history ?? paginated([]));
+    }
+    return jsonResponse({}, 404);
+  });
+}
+
+describe("Child sante page (vue parent)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
@@ -47,15 +98,7 @@ describe("Child sante page", () => {
   });
 
   it("démarre le tour d'aide guidée santé pour un parent par défaut", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const url = String(input);
-      if (url.endsWith("/schools/college-vogt/me"))
-        return jsonResponse(mePayload);
-      if (url.includes("/health/conditions")) return jsonResponse([]);
-      if (url.includes("/health/care-events")) return jsonResponse([]);
-      if (url.includes("/health/reports")) return jsonResponse([]);
-      return jsonResponse({}, 404);
-    });
+    mockFetchDefault({});
 
     render(<ChildSantePage />);
 
@@ -73,9 +116,9 @@ describe("Child sante page", () => {
       if (url.endsWith("/schools/college-vogt/me")) {
         return jsonResponse({ ...mePayload, onboardingHelpEnabled: false });
       }
-      if (url.includes("/health/conditions")) return jsonResponse([]);
-      if (url.includes("/health/care-events")) return jsonResponse([]);
-      if (url.includes("/health/reports")) return jsonResponse([]);
+      if (url.includes("/health/conditions"))
+        return jsonResponse(paginated([]));
+      if (url.includes("/health/history")) return jsonResponse(paginated([]));
       return jsonResponse({}, 404);
     });
 
@@ -87,40 +130,16 @@ describe("Child sante page", () => {
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
-  it("affiche les conditions, soins et signalements déjà enregistrés", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const url = String(input);
-      if (url.endsWith("/schools/college-vogt/me"))
-        return jsonResponse(mePayload);
-      if (url.includes("/health/conditions")) {
-        return jsonResponse([
-          {
-            id: "cond-1",
-            type: "ALLERGY",
-            alertLevel: "URGENT",
-            label: "Allergie arachides",
-            description: null,
-            active: true,
-            isVisibleToAllTeachers: false,
-            publicAlertLabel: null,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      }
-      if (url.includes("/health/care-events")) {
-        return jsonResponse([
-          {
-            id: "care-1",
-            summary: "Chute dans la cour",
-            description: null,
-            occurredAt: new Date().toISOString(),
-            alertLevel: "INFO",
-            authorUser: { firstName: "Marie", lastName: "Ateba" },
-          },
-        ]);
-      }
-      if (url.includes("/health/reports")) return jsonResponse([]);
-      return jsonResponse({}, 404);
+  it("affiche les conditions au montage, puis l'historique fusionné sur l'onglet Historique", async () => {
+    mockFetchDefault({
+      conditions: paginated([CONDITION_1]),
+      history: paginated([
+        {
+          kind: "CARE_EVENT",
+          at: CARE_EVENT_1.occurredAt,
+          payload: CARE_EVENT_1,
+        },
+      ]),
     });
 
     render(<ChildSantePage />);
@@ -129,65 +148,222 @@ describe("Child sante page", () => {
       expect(screen.getByText("Allergie arachides")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Soins à l'école"));
+    fireEvent.click(screen.getByTestId("sante-tab-history"));
     await waitFor(() => {
       expect(screen.getByText("Chute dans la cour")).toBeInTheDocument();
     });
   });
 
-  it("signale un événement de santé et rafraîchit la liste", async () => {
-    let reportCreated = false;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
-
-      if (url.endsWith("/schools/college-vogt/me"))
-        return jsonResponse(mePayload);
-      if (url.includes("/health/conditions")) return jsonResponse([]);
-      if (url.includes("/health/care-events")) return jsonResponse([]);
-      if (url.includes("/health/reports") && method === "POST") {
-        reportCreated = true;
-        return jsonResponse({ id: "report-1" }, 201);
-      }
-      if (url.includes("/health/reports")) {
-        return jsonResponse(
-          reportCreated
-            ? [
-                {
-                  id: "report-1",
-                  type: "ACCIDENT",
-                  alertLevel: "ATTENTION",
-                  description: "Crise d'asthme hier soir",
-                  sportRestriction: false,
-                  createdAt: new Date().toISOString(),
-                  acknowledgedAt: null,
-                },
-              ]
-            : [],
-        );
-      }
-      return jsonResponse({}, 404);
+  it("recherche en live avec debounce", async () => {
+    let lastConditionsUrl = "";
+    mockFetchDefault({
+      onRequest: (url) => {
+        if (url.includes("/health/conditions")) lastConditionsUrl = url;
+        return undefined;
+      },
     });
 
     render(<ChildSantePage />);
+    await waitFor(() => expect(lastConditionsUrl).toContain("page=1"));
 
-    await waitFor(() => {
-      expect(screen.queryByText("Chargement…")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("sante-conditions-search-input"), {
+      target: { value: "arachide" },
     });
 
-    fireEvent.click(screen.getByText("Événements hors école"));
-
-    const descriptionField = await screen.findByPlaceholderText(
-      "Décrivez la situation",
+    await waitFor(
+      () => expect(lastConditionsUrl).toContain("search=arachide"),
+      { timeout: 2000 },
     );
-    fireEvent.change(descriptionField, {
+  });
+
+  it("ouvre le panneau de filtres et applique un filtre type", async () => {
+    let lastConditionsUrl = "";
+    mockFetchDefault({
+      onRequest: (url) => {
+        if (url.includes("/health/conditions")) lastConditionsUrl = url;
+        return undefined;
+      },
+    });
+
+    render(<ChildSantePage />);
+    await waitFor(() => expect(lastConditionsUrl).toContain("page=1"));
+
+    fireEvent.click(screen.getByTestId("sante-conditions-filter-toggle"));
+    expect(
+      screen.getByTestId("sante-conditions-filter-panel"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("sante-conditions-filter-type"), {
+      target: { value: "ALLERGY" },
+    });
+
+    await waitFor(() => expect(lastConditionsUrl).toContain("type=ALLERGY"), {
+      timeout: 2000,
+    });
+  });
+
+  it("bouton + → formulaire de création de condition → soumission", async () => {
+    let createBody: unknown = null;
+    mockFetchDefault({
+      onRequest: (url, init) => {
+        if (url.includes("/health/conditions") && init?.method === "POST") {
+          createBody = JSON.parse(String(init.body));
+          return jsonResponse({ id: "cond-2" }, 201) as unknown as Response;
+        }
+        return undefined;
+      },
+    });
+
+    render(<ChildSantePage />);
+    await waitFor(() =>
+      expect(screen.getByTestId("sante-conditions-add")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("sante-conditions-add"));
+    expect(screen.getByTestId("sante-condition-form")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("condition-form-label"), {
+      target: { value: "Allergie arachides" },
+    });
+    fireEvent.click(screen.getByTestId("condition-form-submit"));
+
+    await waitFor(() => {
+      expect(createBody).toMatchObject({ label: "Allergie arachides" });
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("sante-condition-form"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("carte condition → détail → Modifier → PATCH avec active=false", async () => {
+    let patchBody: unknown = null;
+    mockFetchDefault({
+      conditions: paginated([CONDITION_1]),
+      onRequest: (url, init) => {
+        if (
+          url.includes(`/health/conditions/${CONDITION_1.id}`) &&
+          init?.method === "PATCH"
+        ) {
+          patchBody = JSON.parse(String(init.body));
+          return jsonResponse({
+            ...CONDITION_1,
+            active: false,
+          }) as unknown as Response;
+        }
+        return undefined;
+      },
+    });
+
+    render(<ChildSantePage />);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId(`sante-condition-card-${CONDITION_1.id}`),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(
+      screen.getByTestId(`sante-condition-card-${CONDITION_1.id}`),
+    );
+    expect(screen.getByTestId("sante-condition-detail")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("sante-condition-detail-edit"));
+    expect(screen.getByTestId("sante-condition-form")).toBeInTheDocument();
+    expect(
+      (screen.getByTestId("condition-form-label") as HTMLInputElement).value,
+    ).toBe("Allergie arachides");
+
+    fireEvent.click(screen.getByTestId("condition-form-submit"));
+
+    await waitFor(() => {
+      expect(patchBody).toMatchObject({
+        label: "Allergie arachides",
+        active: true,
+      });
+    });
+  });
+
+  it("onglet Historique : bouton + → formulaire report uniquement → soumission", async () => {
+    let createBody: unknown = null;
+    mockFetchDefault({
+      onRequest: (url, init) => {
+        if (url.includes("/health/reports") && init?.method === "POST") {
+          createBody = JSON.parse(String(init.body));
+          return jsonResponse({ id: "report-1" }, 201) as unknown as Response;
+        }
+        return undefined;
+      },
+    });
+
+    render(<ChildSantePage />);
+    fireEvent.click(await screen.findByTestId("sante-tab-history"));
+    await waitFor(() =>
+      expect(screen.getByTestId("sante-history-add")).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByTestId("sante-history-add"));
+    expect(screen.getByTestId("sante-report-form")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("report-form-description"), {
       target: { value: "Crise d'asthme hier soir" },
     });
-
-    fireEvent.click(screen.getByText("Signaler cet événement"));
+    fireEvent.click(screen.getByTestId("report-form-submit"));
 
     await waitFor(() => {
-      expect(screen.getByText("Crise d'asthme hier soir")).toBeInTheDocument();
+      expect(createBody).toMatchObject({
+        description: "Crise d'asthme hier soir",
+      });
     });
+  });
+
+  it("carte historique (soin) → détail en lecture seule", async () => {
+    mockFetchDefault({
+      history: paginated([
+        {
+          kind: "CARE_EVENT",
+          at: CARE_EVENT_1.occurredAt,
+          payload: CARE_EVENT_1,
+        },
+      ]),
+    });
+
+    render(<ChildSantePage />);
+    fireEvent.click(await screen.findByTestId("sante-tab-history"));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId(`sante-history-card-CARE_EVENT-${CARE_EVENT_1.id}`),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(
+      screen.getByTestId(`sante-history-card-CARE_EVENT-${CARE_EVENT_1.id}`),
+    );
+
+    expect(screen.getByTestId("sante-history-detail")).toBeInTheDocument();
+    expect(screen.getByText("Marie Ateba")).toBeInTheDocument();
+  });
+
+  it("pagination : clique sur page suivante recharge avec page=2", async () => {
+    let lastConditionsUrl = "";
+    mockFetchDefault({
+      conditions: paginated([CONDITION_1], 1, 25),
+      onRequest: (url) => {
+        if (url.includes("/health/conditions")) lastConditionsUrl = url;
+        return undefined;
+      },
+    });
+
+    render(<ChildSantePage />);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId(`sante-condition-card-${CONDITION_1.id}`),
+      ).toBeInTheDocument(),
+    );
+
+    const nextButton = screen.getByRole("button", { name: /suivant/i });
+    fireEvent.click(nextButton);
+
+    await waitFor(() => expect(lastConditionsUrl).toContain("page=2"));
   });
 });

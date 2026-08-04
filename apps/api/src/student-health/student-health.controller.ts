@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard.js";
@@ -19,6 +20,8 @@ import { CreateStudentHealthConditionDto } from "./dto/create-student-health-con
 import { UpdateStudentHealthConditionDto } from "./dto/update-student-health-condition.dto.js";
 import { CreateStudentHealthCareEventDto } from "./dto/create-student-health-care-event.dto.js";
 import { CreateStudentHealthReportDto } from "./dto/create-student-health-report.dto.js";
+import { ListStudentHealthConditionsQueryDto } from "./dto/list-student-health-conditions-query.dto.js";
+import { GetStudentHealthHistoryQueryDto } from "./dto/get-student-health-history-query.dto.js";
 
 const HEALTH_ROLES = [
   "SCHOOL_ADMIN",
@@ -41,8 +44,14 @@ export class StudentHealthController {
     @CurrentSchoolId() schoolId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param("studentId") studentId: string,
+    @Query() query: ListStudentHealthConditionsQueryDto,
   ) {
-    return this.studentHealthService.listConditions(schoolId, user, studentId);
+    return this.studentHealthService.listConditions(
+      schoolId,
+      user,
+      studentId,
+      query,
+    );
   }
 
   @Get("alerts")
@@ -171,7 +180,13 @@ export class StudentHealthController {
     @CurrentSchoolId() schoolId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param("studentId") studentId: string,
+    @Query() query: GetStudentHealthHistoryQueryDto,
   ) {
-    return this.studentHealthService.getHistory(schoolId, user, studentId);
+    return this.studentHealthService.getHistory(
+      schoolId,
+      user,
+      studentId,
+      query,
+    );
   }
 }

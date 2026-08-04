@@ -85,6 +85,7 @@ const makePrismaMock = () => ({
   },
   studentHealthCondition: {
     findMany: jest.fn().mockResolvedValue([]),
+    count: jest.fn().mockResolvedValue(0),
     create: jest.fn(),
     update: jest.fn(),
     findFirst: jest.fn(),
@@ -182,11 +183,11 @@ describe("StudentHealthService", () => {
       ).resolves.not.toThrow();
     });
 
-    it("autorise l'enseignant référent de la classe et filtre les conditions inactives", async () => {
+    it("autorise l'enseignant référent de la classe et ne retourne que les conditions actives", async () => {
       prisma.studentHealthCondition.findMany.mockResolvedValue([
         { id: "c1", active: true },
-        { id: "c2", active: false },
       ]);
+      prisma.studentHealthCondition.count.mockResolvedValue(1);
 
       const result = await service.listConditions(
         SCHOOL_ID,
@@ -194,7 +195,12 @@ describe("StudentHealthService", () => {
         STUDENT_ID,
       );
 
-      expect(result).toEqual([{ id: "c1", active: true }]);
+      expect(result.items).toEqual([{ id: "c1", active: true }]);
+      expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ active: true }),
+        }),
+      );
     });
 
     it("refuse un enseignant non référent de la classe", async () => {
@@ -205,6 +211,99 @@ describe("StudentHealthService", () => {
       await expect(
         service.listConditions(SCHOOL_ID, OTHER_TEACHER, STUDENT_ID),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("pagine avec les valeurs par défaut (page=1, limit=20)", async () => {
+      prisma.parentStudent.findFirst.mockResolvedValue({ id: "link-1" });
+      prisma.studentHealthCondition.findMany.mockResolvedValue([]);
+      prisma.studentHealthCondition.count.mockResolvedValue(45);
+
+      const result = await service.listConditions(
+        SCHOOL_ID,
+        PARENT,
+        STUDENT_ID,
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({ page: 1, limit: 20, total: 45 }),
+      );
+      expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 0, take: 20 }),
+      );
+    });
+
+    it("calcule skip/take à partir de page/limit demandés", async () => {
+      prisma.parentStudent.findFirst.mockResolvedValue({ id: "link-1" });
+
+      await service.listConditions(SCHOOL_ID, PARENT, STUDENT_ID, {
+        page: 3,
+        limit: 10,
+      });
+
+      expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 20, take: 10 }),
+      );
+      expect(prisma.studentHealthCondition.count).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            schoolId: SCHOOL_ID,
+            studentId: STUDENT_ID,
+          }),
+        }),
+      );
+    });
+
+    it("applique search sur label/description pour findMany ET count", async () => {
+      prisma.parentStudent.findFirst.mockResolvedValue({ id: "link-1" });
+
+      await service.listConditions(SCHOOL_ID, PARENT, STUDENT_ID, {
+        search: "arachide",
+      });
+
+      const expectedWhere = expect.objectContaining({
+        OR: [
+          { label: { contains: "arachide", mode: "insensitive" } },
+          { description: { contains: "arachide", mode: "insensitive" } },
+        ],
+      });
+      expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expectedWhere }),
+      );
+      expect(prisma.studentHealthCondition.count).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expectedWhere }),
+      );
+    });
+
+    it("applique les filtres type/alertLevel/active", async () => {
+      prisma.parentStudent.findFirst.mockResolvedValue({ id: "link-1" });
+
+      await service.listConditions(SCHOOL_ID, PARENT, STUDENT_ID, {
+        type: "ALLERGY",
+        alertLevel: "URGENT",
+        active: false,
+      });
+
+      expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            type: "ALLERGY",
+            alertLevel: "URGENT",
+            active: false,
+          }),
+        }),
+      );
+    });
+
+    it("le filtre active du référent (actives uniquement) n'est jamais remplacé par le query param active=false", async () => {
+      await service.listConditions(SCHOOL_ID, REFERENT_TEACHER, STUDENT_ID, {
+        active: false,
+      });
+
+      expect(prisma.studentHealthCondition.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ active: true }),
+        }),
+      );
     });
   });
 
@@ -513,6 +612,136 @@ describe("StudentHealthService", () => {
           "ghost",
         ),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── getHistory : fusion care events + reports, pagination, filtres ─────────
+
+  describe("getHistory", () => {
+    beforeEach(() => {
+      prisma.parentStudent.findFirst.mockResolvedValue({ id: "link-1" });
+    });
+
+    it("fusionne care events et reports, triés par date décroissante", async () => {
+      prisma.studentHealthCareEvent.findMany.mockResolvedValue([
+        {
+          id: "care-1",
+          occurredAt: new Date("2026-08-01T10:00:00Z"),
+          summary: "Chute",
+        },
+      ]);
+      prisma.studentHealthReport.findMany.mockResolvedValue([
+        {
+          id: "report-1",
+          createdAt: new Date("2026-08-02T10:00:00Z"),
+          description: "Grippe",
+        },
+      ]);
+
+      const result = await service.getHistory(SCHOOL_ID, PARENT, STUDENT_ID);
+
+      expect(result.items.map((item) => item.kind)).toEqual([
+        "REPORT",
+        "CARE_EVENT",
+      ]);
+      expect(result).toEqual(
+        expect.objectContaining({ page: 1, limit: 20, total: 2 }),
+      );
+    });
+
+    it("ne fusionne plus les conditions (retirées du merge)", async () => {
+      await service.getHistory(SCHOOL_ID, PARENT, STUDENT_ID);
+
+      expect(prisma.studentHealthCondition.findMany).not.toHaveBeenCalled();
+    });
+
+    it("pagine en mémoire après fusion (page 2, limit 1)", async () => {
+      prisma.studentHealthCareEvent.findMany.mockResolvedValue([
+        { id: "care-1", occurredAt: new Date("2026-08-01T10:00:00Z") },
+      ]);
+      prisma.studentHealthReport.findMany.mockResolvedValue([
+        { id: "report-1", createdAt: new Date("2026-08-02T10:00:00Z") },
+      ]);
+
+      const result = await service.getHistory(SCHOOL_ID, PARENT, STUDENT_ID, {
+        page: 2,
+        limit: 1,
+      });
+
+      expect(result.total).toBe(2);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.payload).toEqual(
+        expect.objectContaining({ id: "care-1" }),
+      );
+    });
+
+    it("origin=CARE_EVENT exclut les reports de la requête", async () => {
+      await service.getHistory(SCHOOL_ID, PARENT, STUDENT_ID, {
+        origin: "CARE_EVENT",
+      });
+
+      expect(prisma.studentHealthReport.findMany).not.toHaveBeenCalled();
+      expect(prisma.studentHealthCareEvent.findMany).toHaveBeenCalled();
+    });
+
+    it("origin=REPORT exclut les care events de la requête", async () => {
+      await service.getHistory(SCHOOL_ID, PARENT, STUDENT_ID, {
+        origin: "REPORT",
+      });
+
+      expect(prisma.studentHealthCareEvent.findMany).not.toHaveBeenCalled();
+      expect(prisma.studentHealthReport.findMany).toHaveBeenCalled();
+    });
+
+    it("applique alertLevel aux deux sources et reportType uniquement aux reports", async () => {
+      await service.getHistory(SCHOOL_ID, PARENT, STUDENT_ID, {
+        alertLevel: "URGENT",
+        reportType: "ACCIDENT",
+      });
+
+      expect(prisma.studentHealthCareEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ alertLevel: "URGENT" }),
+        }),
+      );
+      expect(prisma.studentHealthReport.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            alertLevel: "URGENT",
+            type: "ACCIDENT",
+          }),
+        }),
+      );
+    });
+
+    it("applique search sur summary/description (care) et description (report)", async () => {
+      await service.getHistory(SCHOOL_ID, PARENT, STUDENT_ID, {
+        search: "asthme",
+      });
+
+      expect(prisma.studentHealthCareEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { summary: { contains: "asthme", mode: "insensitive" } },
+              { description: { contains: "asthme", mode: "insensitive" } },
+            ],
+          }),
+        }),
+      );
+      expect(prisma.studentHealthReport.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            description: { contains: "asthme", mode: "insensitive" },
+          }),
+        }),
+      );
+    });
+
+    it("refuse un tiers sans accès (même matrice de droits que listCareEvents/listReports)", async () => {
+      await expect(
+        service.getHistory(SCHOOL_ID, OTHER_TEACHER, STUDENT_ID),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

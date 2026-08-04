@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type {
+  Prisma,
   StudentHealthAccessAction,
   StudentHealthAlertLevel,
   StudentHealthReportType,
@@ -19,6 +20,10 @@ import type { CreateStudentHealthConditionDto } from "./dto/create-student-healt
 import type { UpdateStudentHealthConditionDto } from "./dto/update-student-health-condition.dto.js";
 import type { CreateStudentHealthCareEventDto } from "./dto/create-student-health-care-event.dto.js";
 import type { CreateStudentHealthReportDto } from "./dto/create-student-health-report.dto.js";
+import type { ListStudentHealthConditionsQueryDto } from "./dto/list-student-health-conditions-query.dto.js";
+import type { GetStudentHealthHistoryQueryDto } from "./dto/get-student-health-history-query.dto.js";
+
+const HEALTH_HISTORY_FETCH_CAP = 500;
 
 const HEALTH_TYPE_LABELS: Record<StudentHealthReportType, string> = {
   MALADIE: "Maladie",
@@ -195,22 +200,53 @@ export class StudentHealthService {
     schoolId: string,
     user: AuthenticatedUser,
     studentId: string,
+    query: ListStudentHealthConditionsQueryDto = {},
   ) {
     await this.ensureStudentInSchool(studentId, schoolId);
     const access = await this.assertFullAccess(user, schoolId, studentId);
     await this.logAccess(schoolId, studentId, user.id, "VIEW_CONDITIONS");
 
-    const rows = await this.prisma.studentHealthCondition.findMany({
-      where: { schoolId, studentId },
-      orderBy: [{ active: "desc" }, { createdAt: "desc" }],
-    });
-
-    if (access === "manager" || access === "parent") {
-      return rows;
-    }
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
 
     // Referent teacher: full description allowed, but only active conditions.
-    return rows.filter((row) => row.active);
+    const isReferentOnly = access === "referent";
+
+    const where: Prisma.StudentHealthConditionWhereInput = {
+      schoolId,
+      studentId,
+      ...(isReferentOnly ? { active: true } : {}),
+      ...(query.type ? { type: query.type } : {}),
+      ...(query.alertLevel ? { alertLevel: query.alertLevel } : {}),
+      ...(query.active !== undefined && !isReferentOnly
+        ? { active: query.active }
+        : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { label: { contains: query.search, mode: "insensitive" } },
+              {
+                description: {
+                  contains: query.search,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.studentHealthCondition.findMany({
+        where,
+        orderBy: [{ active: "desc" }, { createdAt: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.studentHealthCondition.count({ where }),
+    ]);
+
+    return { items, page, limit, total };
   }
 
   /** Teachers who are not the referent only see the redacted public alert badge. */
@@ -522,44 +558,89 @@ export class StudentHealthService {
     };
   }
 
+  /**
+   * Merges two heterogeneous tables (care events authored by the school,
+   * reports declared by parents) into a single date-sorted feed. Prisma has
+   * no cross-table UNION, so both sides are fetched pre-filtered (capped at
+   * HEALTH_HISTORY_FETCH_CAP — a single student's health feed never
+   * approaches that volume) and merged/sliced in memory rather than at the
+   * database level.
+   */
   async getHistory(
     schoolId: string,
     user: AuthenticatedUser,
     studentId: string,
+    query: GetStudentHealthHistoryQueryDto = {},
   ) {
     await this.ensureStudentInSchool(studentId, schoolId);
     await this.assertFullAccess(user, schoolId, studentId);
     await this.logAccess(schoolId, studentId, user.id, "VIEW_HISTORY");
 
-    const [conditions, careEvents, reports] = await Promise.all([
-      this.prisma.studentHealthCondition.findMany({
-        where: { schoolId, studentId },
-        orderBy: [{ createdAt: "desc" }],
-      }),
-      this.prisma.studentHealthCareEvent.findMany({
-        where: { schoolId, studentId },
-        orderBy: [{ occurredAt: "desc" }],
-        include: {
-          authorUser: { select: { id: true, firstName: true, lastName: true } },
-        },
-      }),
-      this.prisma.studentHealthReport.findMany({
-        where: { schoolId, studentId },
-        orderBy: [{ createdAt: "desc" }],
-        include: {
-          reportedByUser: {
-            select: { id: true, firstName: true, lastName: true },
-          },
-        },
-      }),
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const includeCareEvents = query.origin !== "REPORT";
+    const includeReports = query.origin !== "CARE_EVENT";
+
+    const careEventWhere: Prisma.StudentHealthCareEventWhereInput = {
+      schoolId,
+      studentId,
+      ...(query.alertLevel ? { alertLevel: query.alertLevel } : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { summary: { contains: query.search, mode: "insensitive" } },
+              {
+                description: {
+                  contains: query.search,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const reportWhere: Prisma.StudentHealthReportWhereInput = {
+      schoolId,
+      studentId,
+      ...(query.alertLevel ? { alertLevel: query.alertLevel } : {}),
+      ...(query.reportType ? { type: query.reportType } : {}),
+      ...(query.search
+        ? { description: { contains: query.search, mode: "insensitive" } }
+        : {}),
+    };
+
+    const [careEvents, reports] = await Promise.all([
+      includeCareEvents
+        ? this.prisma.studentHealthCareEvent.findMany({
+            where: careEventWhere,
+            orderBy: [{ occurredAt: "desc" }],
+            take: HEALTH_HISTORY_FETCH_CAP,
+            include: {
+              authorUser: {
+                select: { id: true, firstName: true, lastName: true },
+              },
+            },
+          })
+        : Promise.resolve([]),
+      includeReports
+        ? this.prisma.studentHealthReport.findMany({
+            where: reportWhere,
+            orderBy: [{ createdAt: "desc" }],
+            take: HEALTH_HISTORY_FETCH_CAP,
+            include: {
+              reportedByUser: {
+                select: { id: true, firstName: true, lastName: true },
+              },
+              acknowledgedByUser: {
+                select: { id: true, firstName: true, lastName: true },
+              },
+            },
+          })
+        : Promise.resolve([]),
     ]);
 
     const items = [
-      ...conditions.map((row) => ({
-        kind: "CONDITION" as const,
-        at: row.createdAt,
-        payload: row,
-      })),
       ...careEvents.map((row) => ({
         kind: "CARE_EVENT" as const,
         at: row.occurredAt,
@@ -574,7 +655,11 @@ export class StudentHealthService {
 
     items.sort((a, b) => b.at.getTime() - a.at.getTime());
 
-    return items;
+    const total = items.length;
+    const start = (page - 1) * limit;
+    const pageItems = items.slice(start, start + limit);
+
+    return { items: pageItems, page, limit, total };
   }
 
   private async notifyParentsAboutCareEvent(
