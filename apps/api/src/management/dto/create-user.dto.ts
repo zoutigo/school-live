@@ -43,6 +43,8 @@ export class CreateUserDto {
     "SCHOOL_MANAGER",
     "SUPERVISOR",
     "SCHOOL_ACCOUNTANT",
+    "SCHOOL_STAFF",
+    "SCHOOL_HEALTH_OFFICER",
     "TEACHER",
     "PARENT",
     "STUDENT",
@@ -55,6 +57,8 @@ export class CreateUserDto {
     | "SCHOOL_MANAGER"
     | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
+    | "SCHOOL_STAFF"
+    | "SCHOOL_HEALTH_OFFICER"
     | "TEACHER"
     | "PARENT"
     | "STUDENT";
@@ -72,6 +76,8 @@ export class CreateUserDto {
       "SCHOOL_MANAGER",
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
+      "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",
@@ -83,6 +89,8 @@ export class CreateUserDto {
     | "SCHOOL_MANAGER"
     | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
+    | "SCHOOL_STAFF"
+    | "SCHOOL_HEALTH_OFFICER"
     | "TEACHER"
     | "PARENT"
     | "STUDENT"

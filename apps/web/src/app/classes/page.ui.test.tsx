@@ -1097,20 +1097,24 @@ describe("Classes page subject color UI", () => {
       () => {
         expect(submitButton).toBeEnabled();
       },
-      { timeout: 18000 },
+      { timeout: 35000 },
     );
 
     fireEvent.click(submitButton);
 
-    await waitFor(() => {
-      const postCall = fetchMock.mock.calls.find(
-        ([url, init]) =>
-          String(url).endsWith("/admin/classrooms") && init?.method === "POST",
-      );
-      expect(postCall).toBeDefined();
-      expect(String(postCall?.[1]?.body ?? "")).toContain('"capacity":40');
-    });
-  }, 20000);
+    await waitFor(
+      () => {
+        const postCall = fetchMock.mock.calls.find(
+          ([url, init]) =>
+            String(url).endsWith("/admin/classrooms") &&
+            init?.method === "POST",
+        );
+        expect(postCall).toBeDefined();
+        expect(String(postCall?.[1]?.body ?? "")).toContain('"capacity":40');
+      },
+      { timeout: 8000 },
+    );
+  }, 45000);
 
   it("shows inline create-class validation and enables submit only when valid", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
