@@ -106,36 +106,6 @@ type StudentRow = {
   enrollments: EnrollmentRow[];
 };
 
-const createStudentSchema = z
-  .object({
-    firstName: z.string().trim().min(1, "Le prenom est obligatoire."),
-    lastName: z.string().trim().min(1, "Le nom est obligatoire."),
-    classId: z.string().trim().min(1, "La classe est obligatoire."),
-    email: z.union([z.string().trim().email("Email invalide."), z.literal("")]),
-    password: z.union([
-      z
-        .string()
-        .regex(
-          PASSWORD_COMPLEXITY_REGEX,
-          "Le mot de passe doit contenir au moins 8 caracteres avec majuscules, minuscules et chiffres.",
-        ),
-      z.literal(""),
-    ]),
-  })
-  .superRefine((value, ctx) => {
-    const hasEmail = value.email.trim().length > 0;
-    const hasPassword = value.password.trim().length > 0;
-
-    if (hasEmail !== hasPassword) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["email"],
-        message:
-          "Saisissez email et mot de passe ensemble, ou laissez les deux vides.",
-      });
-    }
-  });
-
 const updateStudentSchema = z.object({
   firstName: z.string().trim().min(1, "Le prenom est obligatoire."),
   lastName: z.string().trim().min(1, "Le nom est obligatoire."),
@@ -295,7 +265,6 @@ export default function ElevesPage() {
     label: string;
   } | null>(null);
 
-  const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -382,31 +351,6 @@ export default function ElevesPage() {
     },
   });
   const editLifeEventValues = editLifeEventForm.watch();
-  const createStudentForm = useForm<
-    z.input<typeof createStudentSchema>,
-    unknown,
-    z.output<typeof createStudentSchema>
-  >({
-    resolver: zodResolver(createStudentSchema),
-    mode: "onChange",
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      classId: "",
-      email: "",
-      password: "",
-    },
-  });
-  const createStudentValues = createStudentForm.watch();
-  const createStudentFirstNameInvalid =
-    !!createStudentForm.formState.errors.firstName ||
-    !(createStudentValues.firstName ?? "").trim();
-  const createStudentLastNameInvalid =
-    !!createStudentForm.formState.errors.lastName ||
-    !(createStudentValues.lastName ?? "").trim();
-  const createStudentClassInvalid =
-    !!createStudentForm.formState.errors.classId ||
-    !(createStudentValues.classId ?? "").trim();
   const editStudentFirstNameInvalid =
     !!editStudentForm.formState.errors.firstName ||
     !(editStudentValues.firstName ?? "").trim();
@@ -651,22 +595,6 @@ export default function ElevesPage() {
         setSchoolYearFilter(active?.id ?? "");
       }
 
-      if (
-        !(createStudentForm.getValues("classId") ?? "") &&
-        classroomsPayload.length > 0
-      ) {
-        const preferred = classroomsPayload.find(
-          (entry) =>
-            entry.schoolYear.id ===
-            (schoolYearsPayload.find((y) => y.isActive)?.id ?? ""),
-        );
-        createStudentForm.setValue(
-          "classId",
-          preferred?.id ?? classroomsPayload[0].id,
-          { shouldValidate: true },
-        );
-      }
-
       if (!selectedStudentId && studentsPayload.length > 0) {
         setSelectedStudentId(studentsPayload[0].id);
       }
@@ -738,66 +666,6 @@ export default function ElevesPage() {
       setStudentLifeEvents(payload);
     } catch {
       // no-op
-    }
-  }
-
-  async function onCreateStudent(values: z.output<typeof createStudentSchema>) {
-    if (!schoolSlug) {
-      return;
-    }
-    setError(null);
-    setSuccess(null);
-
-    const csrfToken = getCsrfTokenCookie();
-    if (!csrfToken) {
-      setError("Session CSRF invalide. Reconnectez-vous.");
-      router.replace("/");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const response = await fetch(buildAdminPath(schoolSlug, "students"), {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken,
-        },
-        body: JSON.stringify({
-          firstName: values.firstName,
-          lastName: values.lastName,
-          classId: values.classId,
-          email: values.email.trim() || undefined,
-          password: values.password.trim() || undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          message?: string | string[];
-        } | null;
-        const message =
-          payload?.message && Array.isArray(payload.message)
-            ? payload.message.join(", ")
-            : (payload?.message ?? "Creation impossible.");
-        setError(String(message));
-        return;
-      }
-
-      createStudentForm.reset({
-        firstName: "",
-        lastName: "",
-        classId: createStudentForm.getValues("classId") ?? "",
-        email: "",
-        password: "",
-      });
-      setSuccess("Eleve cree.");
-      await loadData(schoolSlug);
-    } catch {
-      setError("Erreur reseau.");
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -1475,134 +1343,19 @@ export default function ElevesPage() {
             </p>
           ) : tab === "list" ? (
             <div className="grid gap-4">
-              <form
-                className="grid gap-3 md:grid-cols-6"
-                onSubmit={createStudentForm.handleSubmit(onCreateStudent)}
-              >
-                <FormField
-                  label="Prenom"
-                  error={createStudentForm.formState.errors.firstName?.message}
+              <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <p className="text-sm text-text-secondary">
+                  Pour ajouter un nouvel eleve, utilisez la page Utilisateurs.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    router.push(`/schools/${schoolSlug}/utilisateurs`)
+                  }
                 >
-                  <FormTextInput
-                    aria-label="Prenom"
-                    invalid={createStudentFirstNameInvalid}
-                    value={createStudentValues.firstName ?? ""}
-                    onChange={(event) => {
-                      createStudentForm.setValue(
-                        "firstName",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      );
-                    }}
-                  />
-                </FormField>
-                <FormField
-                  label="Nom"
-                  error={createStudentForm.formState.errors.lastName?.message}
-                >
-                  <FormTextInput
-                    aria-label="Nom"
-                    invalid={createStudentLastNameInvalid}
-                    value={createStudentValues.lastName ?? ""}
-                    onChange={(event) => {
-                      createStudentForm.setValue(
-                        "lastName",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      );
-                    }}
-                  />
-                </FormField>
-                <FormField
-                  label="Classe"
-                  error={createStudentForm.formState.errors.classId?.message}
-                >
-                  <FormSelect
-                    aria-label="Classe"
-                    invalid={createStudentClassInvalid}
-                    value={createStudentValues.classId ?? ""}
-                    onChange={(event) => {
-                      createStudentForm.setValue(
-                        "classId",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      );
-                    }}
-                  >
-                    <option value="">Selectionner</option>
-                    {classrooms.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.name} ({entry.schoolYear.label})
-                      </option>
-                    ))}
-                  </FormSelect>
-                </FormField>
-                <FormField
-                  label="Email (optionnel)"
-                  error={createStudentForm.formState.errors.email?.message}
-                >
-                  <EmailInput
-                    invalid={!!createStudentForm.formState.errors.email}
-                    value={createStudentValues.email ?? ""}
-                    onChange={(event) => {
-                      createStudentForm.setValue("email", event.target.value, {
-                        shouldDirty: true,
-                        shouldTouch: true,
-                        shouldValidate: true,
-                      });
-                    }}
-                  />
-                </FormField>
-                <FormField
-                  label="Mot de passe (optionnel)"
-                  error={createStudentForm.formState.errors.email?.message}
-                >
-                  <PasswordInput
-                    aria-invalid={
-                      createStudentForm.formState.errors.email
-                        ? "true"
-                        : "false"
-                    }
-                    value={createStudentValues.password ?? ""}
-                    onChange={(event) => {
-                      createStudentForm.setValue(
-                        "password",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      );
-                    }}
-                  />
-                </FormField>
-                <div className="self-end">
-                  <SubmitButton
-                    disabled={
-                      submitting || !createStudentForm.formState.isValid
-                    }
-                  >
-                    {submitting ? "Creation..." : "Ajouter"}
-                  </SubmitButton>
-                </div>
-                <FormSubmitHint
-                  visible={!createStudentForm.formState.isValid}
-                  className="md:col-span-6"
-                />
-              </form>
+                  Aller a Utilisateurs
+                </Button>
+              </Card>
 
               <form
                 className="filter-panel grid gap-3 md:grid-cols-4"

@@ -894,6 +894,114 @@ describe("UtilisateursPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("crée l'accès via le bon endpoint /students/:id/promote et affiche les identifiants", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("/users?"))
+          return jsonRes(makeListResponse([STUDENT_ONLY]));
+        if (url.includes(`/students/${STUDENT_ONLY.studentId}/profile`)) {
+          return jsonRes(STUDENT_ONLY_DETAIL);
+        }
+        if (
+          url.endsWith(`/students/${STUDENT_ONLY.studentId}/suggest-username`)
+        ) {
+          return jsonRes({ username: "ChloeMBIDA" });
+        }
+        if (
+          url.endsWith(`/students/${STUDENT_ONLY.studentId}/promote`) &&
+          method === "POST"
+        ) {
+          return jsonRes({
+            username: "ChloeMBIDA",
+            temporaryPassword: "Campus482",
+          });
+        }
+        return jsonRes({}, 404);
+      });
+
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_ONLY.id}`));
+    fireEvent.click(await screen.findByTestId("action-create-access"));
+
+    expect(
+      await screen.findByTestId("promote-student-modal"),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("promote-username-input")).toHaveValue(
+        "ChloeMBIDA",
+      );
+    });
+
+    fireEvent.click(screen.getByTestId("promote-student-submit"));
+
+    await waitFor(() => {
+      const promoteCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith(`/students/${STUDENT_ONLY.studentId}/promote`) &&
+          init?.method === "POST",
+      );
+      expect(promoteCall).toBeDefined();
+      expect(String(promoteCall?.[1]?.body ?? "")).toContain(
+        '"username":"ChloeMBIDA"',
+      );
+    });
+
+    expect(
+      await screen.findByTestId("credential-display-modal"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("credential-username")).toHaveTextContent(
+      "ChloeMBIDA",
+    );
+    expect(
+      screen.getByTestId("credential-temporary-password"),
+    ).toHaveTextContent("Campus482");
+  });
+
+  it("réinitialise le mot de passe via /students/:id/reset-password et affiche le nouveau mot de passe", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("/users?"))
+          return jsonRes(makeListResponse([STUDENT_USER]));
+        if (url.includes(`/users/${STUDENT_USER.id}`))
+          return jsonRes(STUDENT_DETAIL);
+        if (
+          url.endsWith(`/students/${STUDENT_USER.studentId}/reset-password`) &&
+          method === "POST"
+        ) {
+          return jsonRes({ temporaryPassword: "Horizon913" });
+        }
+        return jsonRes({}, 404);
+      });
+
+    render(<UtilisateursPage />);
+    fireEvent.click(await screen.findByTestId(`user-card-${STUDENT_USER.id}`));
+    fireEvent.click(await screen.findByTestId("action-reset-password"));
+
+    await waitFor(() => {
+      const resetCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith(
+            `/students/${STUDENT_USER.studentId}/reset-password`,
+          ) && init?.method === "POST",
+      );
+      expect(resetCall).toBeDefined();
+    });
+
+    expect(
+      await screen.findByTestId("credential-display-modal"),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("credential-username")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("credential-temporary-password"),
+    ).toHaveTextContent("Horizon913");
+  });
+
   // ── Edit roles modal ──────────────────────────────────────────────────────
 
   it("ouvre le modal de modification des rôles", async () => {
@@ -1350,6 +1458,9 @@ describe("UtilisateursPage", () => {
       fireEvent.change(screen.getByTestId("create-user-class"), {
         target: { value: "class-1" },
       });
+      fireEvent.change(screen.getByTestId("create-user-date-of-birth"), {
+        target: { value: "2012-05-14" },
+      });
       fireEvent.click(screen.getByTestId("create-user-submit"));
 
       await waitFor(() => {
@@ -1358,9 +1469,11 @@ describe("UtilisateursPage", () => {
             String(url).endsWith("/admin/students") && init?.method === "POST",
         );
         expect(postCall).toBeDefined();
-        expect(String(postCall?.[1]?.body ?? "")).toContain(
-          '"classId":"class-1"',
-        );
+        const body = String(postCall?.[1]?.body ?? "");
+        expect(body).toContain('"classId":"class-1"');
+        expect(body).toContain('"dateOfBirth":"2012-05-14"');
+        expect(body).not.toContain("email");
+        expect(body).not.toContain("password");
       });
     });
 

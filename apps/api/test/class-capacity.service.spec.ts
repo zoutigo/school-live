@@ -109,6 +109,57 @@ describe("ManagementService — capacite de classe", () => {
       expect(prisma.enrollment.count).not.toHaveBeenCalled();
       expect(prisma.student.create).toHaveBeenCalled();
     });
+
+    it("convertit dateOfBirth en Date et la transmet a student.create", async () => {
+      prisma.class.findFirst.mockResolvedValue({
+        id: "class-1",
+        schoolYearId: "year-1",
+      });
+      prisma.class.findUnique.mockResolvedValue({
+        name: "6eme A",
+        capacity: null,
+      });
+      prisma.student.create.mockResolvedValue({ id: "student-3" });
+
+      await service.createStudent("school-1", {
+        firstName: "Chloe",
+        lastName: "Mbida",
+        classId: "class-1",
+        dateOfBirth: "2012-05-14",
+      } as never);
+
+      expect(prisma.student.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dateOfBirth: new Date("2012-05-14"),
+          }),
+        }),
+      );
+    });
+
+    it("laisse dateOfBirth a null quand elle n'est pas fournie", async () => {
+      prisma.class.findFirst.mockResolvedValue({
+        id: "class-1",
+        schoolYearId: "year-1",
+      });
+      prisma.class.findUnique.mockResolvedValue({
+        name: "6eme A",
+        capacity: null,
+      });
+      prisma.student.create.mockResolvedValue({ id: "student-4" });
+
+      await service.createStudent("school-1", {
+        firstName: "Chloe",
+        lastName: "Mbida",
+        classId: "class-1",
+      } as never);
+
+      expect(prisma.student.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ dateOfBirth: null }),
+        }),
+      );
+    });
   });
 
   describe("createStudentEnrollment", () => {

@@ -6171,48 +6171,9 @@ export class ManagementService {
       classEntity.schoolYearId,
     );
 
-    if (payload.email && payload.password) {
-      const studentEmail = payload.email.toLowerCase();
-      const passwordHash = await bcrypt.hash(payload.password, 10);
-
-      return this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            firstName: payload.firstName,
-            lastName: payload.lastName,
-            email: studentEmail,
-            passwordHash,
-            memberships: {
-              create: {
-                schoolId,
-                role: "STUDENT",
-              },
-            },
-          },
-        });
-
-        const student = await tx.student.create({
-          data: {
-            schoolId,
-            firstName: payload.firstName,
-            lastName: payload.lastName,
-            userId: user.id,
-          },
-        });
-
-        await tx.enrollment.create({
-          data: {
-            schoolId,
-            schoolYearId: classEntity.schoolYearId,
-            studentId: student.id,
-            classId: payload.classId,
-            status: "ACTIVE",
-          },
-        });
-
-        return { user, student };
-      });
-    }
+    const dateOfBirth = payload.dateOfBirth
+      ? new Date(payload.dateOfBirth)
+      : null;
 
     return this.prisma.$transaction(async (tx) => {
       const student = await tx.student.create({
@@ -6220,6 +6181,7 @@ export class ManagementService {
           schoolId,
           firstName: payload.firstName,
           lastName: payload.lastName,
+          dateOfBirth,
         },
       });
 

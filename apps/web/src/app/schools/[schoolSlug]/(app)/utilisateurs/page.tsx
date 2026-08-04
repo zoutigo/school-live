@@ -24,6 +24,7 @@ import { useTranslation } from "../../../../../i18n/useTranslation";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
 import { PasswordInput } from "../../../../../components/ui/password-input";
 import { PinInput } from "../../../../../components/ui/pin-input";
+import { DateInput } from "../../../../../components/ui/date-input";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -858,6 +859,173 @@ function AssignParentToStudentModal({
   );
 }
 
+// ── PromoteStudentModal ────────────────────────────────────────────────────────
+
+function PromoteStudentModal({
+  schoolSlug,
+  studentId,
+  studentName,
+  onClose,
+  onSuccess,
+  t,
+}: {
+  schoolSlug: string;
+  studentId: string;
+  studentName: string;
+  onClose: () => void;
+  onSuccess: (credentials: {
+    username: string;
+    temporaryPassword: string;
+  }) => void;
+  t: (k: string) => string;
+}) {
+  const [username, setUsername] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setSuggesting(true);
+    apiFetch<{ username: string }>(
+      `/schools/${schoolSlug}/students/${studentId}/suggest-username`,
+    )
+      .then((res) => {
+        if (active) setUsername(res.username);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setSuggesting(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [schoolSlug, studentId]);
+
+  async function handleSubmit() {
+    if (!username.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    const csrf = getCsrfTokenCookie();
+    try {
+      const result = await apiFetch<{
+        username: string;
+        temporaryPassword: string;
+      }>(`/schools/${schoolSlug}/students/${studentId}/promote`, {
+        method: "POST",
+        headers: { "X-CSRF-Token": csrf ?? "" },
+        body: JSON.stringify({ username: username.trim() }),
+      });
+      onSuccess(result);
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClose={onClose} testId="promote-student-modal">
+      <ModalHeader
+        eyebrow={t("users.roles.student")}
+        title={t("users.promote.title")}
+        subtitle={`${t("users.promote.subtitle")} ${studentName}.`}
+        onClose={onClose}
+      />
+      <div className="space-y-1">
+        <label
+          htmlFor="promote-username"
+          className="text-xs font-semibold text-text-secondary"
+        >
+          {t("users.promote.usernameLabel")}
+        </label>
+        <input
+          id="promote-username"
+          data-testid="promote-username-input"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
+          autoFocus
+        />
+        {suggesting ? (
+          <p className="text-xs text-text-secondary">
+            {t("users.promote.suggestLoading")}
+          </p>
+        ) : null}
+      </div>
+      <p className="mt-3 rounded-xl bg-[#EBF1F8] px-3 py-2 text-xs text-[#08467D]">
+        {t("users.promote.usernameHint")}
+      </p>
+      {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+      <ModalActions
+        onCancel={onClose}
+        onSubmit={() => void handleSubmit()}
+        submitLabel={t("users.promote.submit")}
+        submitDisabled={!username.trim()}
+        submitting={submitting}
+        testId="promote-student"
+      />
+    </ModalOverlay>
+  );
+}
+
+// ── CredentialDisplayModal ─────────────────────────────────────────────────────
+
+function CredentialDisplayModal({
+  username,
+  temporaryPassword,
+  onClose,
+  t,
+}: {
+  username: string | null;
+  temporaryPassword: string;
+  onClose: () => void;
+  t: (k: string) => string;
+}) {
+  return (
+    <ModalOverlay onClose={onClose} testId="credential-display-modal">
+      <ModalHeader
+        eyebrow={t("users.roles.student")}
+        title={t("users.credentials.title")}
+        subtitle={t("users.credentials.subtitle")}
+        onClose={onClose}
+      />
+      <div className="space-y-3">
+        {username ? (
+          <div>
+            <p className="text-xs font-semibold text-text-secondary">
+              {t("users.credentials.username")}
+            </p>
+            <p
+              data-testid="credential-username"
+              className="rounded-xl border border-warm-border bg-white px-3 py-2 font-mono text-sm"
+            >
+              {username}
+            </p>
+          </div>
+        ) : null}
+        <div>
+          <p className="text-xs font-semibold text-text-secondary">
+            {t("users.credentials.temporaryPassword")}
+          </p>
+          <p
+            data-testid="credential-temporary-password"
+            className="rounded-xl border border-warm-border bg-white px-3 py-2 font-mono text-sm"
+          >
+            {temporaryPassword}
+          </p>
+        </div>
+      </div>
+      <ModalActions
+        onCancel={onClose}
+        onSubmit={onClose}
+        submitLabel={t("users.credentials.close")}
+        testId="credential-display"
+      />
+    </ModalOverlay>
+  );
+}
+
 // ── AssignChildToParentModal ──────────────────────────────────────────────────
 
 function AssignChildToParentModal({
@@ -1013,6 +1181,7 @@ function CreateUserModal({
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [levelId, setLevelId] = useState("");
   const [classId, setClassId] = useState("");
   const [functionId, setFunctionId] = useState("");
@@ -1042,6 +1211,7 @@ function CreateUserModal({
     resetContactFields();
     setFirstName("");
     setLastName("");
+    setDateOfBirth("");
     setLevelId("");
     setClassId("");
     setFunctionId("");
@@ -1108,18 +1278,13 @@ function CreateUserModal({
     email,
     password,
   });
-  const hasAccessFields = Boolean(email.trim() || password.trim());
-
   const canSubmit = (() => {
     if (!roleType) return false;
     if (roleType === "TEACHER") return contactValid;
     if (roleType === "PARENT") return Boolean(studentId) && contactValid;
     if (roleType === "STUDENT") {
-      const identityValid = firstName.trim() && lastName.trim() && classId;
-      if (!identityValid) return false;
-      if (!hasAccessFields) return true;
-      return (
-        /\S+@\S+\.\S+/.test(email) && PASSWORD_COMPLEXITY_REGEX.test(password)
+      return Boolean(
+        firstName.trim() && lastName.trim() && classId && dateOfBirth,
       );
     }
     return contactValid;
@@ -1162,55 +1327,33 @@ function CreateUserModal({
           createdAt: new Date().toISOString(),
         });
       } else if (roleType === "STUDENT") {
-        const result = await apiFetch<{
-          id?: string;
-          user?: { id: string };
-          student?: { id: string };
-        }>(`/schools/${schoolSlug}/admin/students`, {
-          method: "POST",
-          headers: { "X-CSRF-Token": csrf ?? "" },
-          body: JSON.stringify({
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            classId,
-            email: email.trim() || undefined,
-            password: password.trim() || undefined,
-          }),
+        const result = await apiFetch<{ id: string }>(
+          `/schools/${schoolSlug}/admin/students`,
+          {
+            method: "POST",
+            headers: { "X-CSRF-Token": csrf ?? "" },
+            body: JSON.stringify({
+              firstName: firstName.trim(),
+              lastName: lastName.trim(),
+              classId,
+              dateOfBirth: dateOfBirth || undefined,
+            }),
+          },
+        );
+        onSuccess({
+          type: "student-only",
+          id: result.id,
+          studentId: result.id,
+          hasAccount: false,
+          firstName: "",
+          lastName: "",
+          email: null,
+          phone: null,
+          roles: ["STUDENT"],
+          activationStatus: null,
+          profileCompleted: false,
+          createdAt: new Date().toISOString(),
         });
-        const createdUserId = result.user?.id;
-        const createdStudentId = result.student?.id ?? result.id;
-        if (createdUserId) {
-          onSuccess({
-            type: "user",
-            id: createdUserId,
-            studentId: createdStudentId ?? null,
-            hasAccount: true,
-            firstName: "",
-            lastName: "",
-            email: null,
-            phone: null,
-            gender: null,
-            roles: ["STUDENT"],
-            activationStatus: "PENDING",
-            profileCompleted: false,
-            createdAt: new Date().toISOString(),
-          });
-        } else if (createdStudentId) {
-          onSuccess({
-            type: "student-only",
-            id: createdStudentId,
-            studentId: createdStudentId,
-            hasAccount: false,
-            firstName: "",
-            lastName: "",
-            email: null,
-            phone: null,
-            roles: ["STUDENT"],
-            activationStatus: null,
-            profileCompleted: false,
-            createdAt: new Date().toISOString(),
-          });
-        }
       } else if (roleType === "PARENT") {
         const result = await apiFetch<{ parentUserId: string }>(
           `/schools/${schoolSlug}/admin/parent-students`,
@@ -1431,26 +1574,19 @@ function CreateUserModal({
                   ))}
                 </select>
               </div>
+              <DateInput
+                data-testid="create-user-date-of-birth"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                aria-label={t("users.create.field.dateOfBirth")}
+                className="w-full"
+              />
               <p className="pt-1 text-xs font-semibold uppercase text-text-secondary">
                 {t("users.create.field.accessSection")}
               </p>
               <p className="text-xs text-text-secondary">
                 {t("users.create.field.accessHint")}
               </p>
-              <input
-                data-testid="create-user-email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("users.create.field.email")}
-                className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
-              />
-              <PasswordInput
-                data-testid="create-user-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("users.create.field.password")}
-                className="w-full rounded-xl border border-warm-border bg-white px-3 py-2 text-sm"
-              />
             </>
           ) : (
             <>
@@ -1980,6 +2116,11 @@ function UserDetailPanel({
   const [editRolesOpen, setEditRolesOpen] = useState(false);
   const [assignChildOpen, setAssignChildOpen] = useState(false);
   const [assignParentOpen, setAssignParentOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [credentials, setCredentials] = useState<{
+    username: string | null;
+    temporaryPassword: string;
+  } | null>(null);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -2028,34 +2169,21 @@ function UserDetailPanel({
       void router.push(`/schools/${schoolSlug}/discipline/${sid}`);
     },
     onAssignParentClick: () => setAssignParentOpen(true),
-    onCreateAccessClick: async () => {
-      const csrf = getCsrfTokenCookie();
-      try {
-        await apiFetch(
-          `/schools/${schoolSlug}/admin/students/${studentId}/create-account`,
-          {
-            method: "POST",
-            headers: { "X-CSRF-Token": csrf ?? "" },
-          },
-        );
-        await loadDetail();
-        onRefreshList();
-        onShowToast(t("users.promote.success"), "success");
-      } catch (err) {
-        onShowToast(extractError(err), "error");
-      }
-    },
+    onCreateAccessClick: () => setPromoteOpen(true),
     onResetPasswordClick: async () => {
-      if (member.type !== "user") return;
       const csrf = getCsrfTokenCookie();
       try {
-        await apiFetch(
-          `/schools/${schoolSlug}/admin/users/${member.id}/reset-password`,
+        const result = await apiFetch<{ temporaryPassword: string }>(
+          `/schools/${schoolSlug}/students/${studentId}/reset-password`,
           {
             method: "POST",
             headers: { "X-CSRF-Token": csrf ?? "" },
           },
         );
+        setCredentials({
+          username: null,
+          temporaryPassword: result.temporaryPassword,
+        });
         onShowToast(t("users.resetPwd.success"), "success");
       } catch (err) {
         onShowToast(extractError(err), "error");
@@ -2343,6 +2471,32 @@ function UserDetailPanel({
             void loadDetail();
             onShowToast(t("users.assignParent.success"), "success");
           }}
+          t={t}
+        />
+      ) : null}
+
+      {promoteOpen ? (
+        <PromoteStudentModal
+          schoolSlug={schoolSlug}
+          studentId={studentId}
+          studentName={fullName}
+          onClose={() => setPromoteOpen(false)}
+          onSuccess={(result) => {
+            setPromoteOpen(false);
+            setCredentials(result);
+            void loadDetail();
+            onRefreshList();
+            onShowToast(t("users.promote.success"), "success");
+          }}
+          t={t}
+        />
+      ) : null}
+
+      {credentials ? (
+        <CredentialDisplayModal
+          username={credentials.username}
+          temporaryPassword={credentials.temporaryPassword}
+          onClose={() => setCredentials(null)}
           t={t}
         />
       ) : null}

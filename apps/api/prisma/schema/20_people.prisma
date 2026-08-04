@@ -4,6 +4,7 @@ model Student {
   userId      String?
   firstName   String
   lastName    String
+  dateOfBirth DateTime?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
