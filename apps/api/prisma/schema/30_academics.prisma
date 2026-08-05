@@ -34,6 +34,8 @@ model SchoolYear {
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents      SchoolCalendarEvent[]
+  feeSchedules        FeeSchedule[]
+  studentPayments     StudentPayment[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -55,6 +57,9 @@ model AcademicLevel {
   curriculums Curriculum[]
   calendarEvents SchoolCalendarEvent[]
   resources   Resource[]
+  termReportsTargetingThisLevel StudentTermReport[] @relation("StudentTermReportNextLevel")
+  feeSchedules FeeSchedule[]
+  enrollmentsTargetingThisLevel Enrollment[] @relation("EnrollmentAcademicLevel")
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -81,6 +86,9 @@ model Track {
   classes     Class[]
   curriculums Curriculum[]
   resources   Resource[]
+  termReportsTargetingThisTrack StudentTermReport[] @relation("StudentTermReportNextTrack")
+  feeSchedules FeeSchedule[]
+  enrollmentsTargetingThisTrack Enrollment[] @relation("EnrollmentTrack")
 
   @@unique([schoolId, code])
   @@index([schoolId])

@@ -714,6 +714,7 @@ export class FeedService {
           where: {
             schoolId: effectiveSchoolId,
             status: "ACTIVE",
+            classId: { not: null },
             student: {
               userId: user.id,
             },
@@ -728,6 +729,7 @@ export class FeedService {
           where: {
             schoolId: effectiveSchoolId,
             status: "ACTIVE",
+            classId: { not: null },
             student: {
               parentLinks: {
                 some: { parentUserId: user.id },
@@ -762,12 +764,14 @@ export class FeedService {
     const levelIds = new Set<string>();
 
     for (const row of studentEnrollments) {
+      if (!row.classId || !row.class) continue;
       classIds.add(row.classId);
       if (row.class.academicLevelId) {
         levelIds.add(row.class.academicLevelId);
       }
     }
     for (const row of parentEnrollments) {
+      if (!row.classId || !row.class) continue;
       classIds.add(row.classId);
       if (row.class.academicLevelId) {
         levelIds.add(row.class.academicLevelId);

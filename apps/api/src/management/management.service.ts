@@ -81,6 +81,7 @@ import type { UpdateTrackDto } from "./dto/update-track.dto.js";
 import type { UpdateUserDto } from "./dto/update-user.dto.js";
 import type { UpdateEvaluationTypeDto } from "./dto/update-evaluation-type.dto.js";
 import type { UpsertCurriculumSubjectDto } from "./dto/upsert-curriculum-subject.dto.js";
+import { ensureClassHasCapacity as ensureClassHasCapacityUtil } from "../common/class-capacity.util.js";
 
 const PLATFORM_ROLES = ["SUPER_ADMIN", "ADMIN", "SALES", "SUPPORT"] as const;
 const SCHOOL_ROLES = [
@@ -3610,6 +3611,7 @@ export class ManagementService {
             schoolId,
             schoolYearId: sourceSchoolYearId,
             status: "ACTIVE",
+            classId: { not: null },
           },
           select: {
             studentId: true,
@@ -3619,7 +3621,9 @@ export class ManagementService {
 
         const enrollmentRows = sourceEnrollments
           .map((enrollment) => {
-            const mappedClassId = classIdMap.get(enrollment.classId);
+            const mappedClassId = enrollment.classId
+              ? classIdMap.get(enrollment.classId)
+              : undefined;
             if (!mappedClassId) {
               return null;
             }
@@ -6918,7 +6922,7 @@ export class ManagementService {
         { schoolYearId: string; count: number }
       >();
       for (const row of existingRows) {
-        if (row.status === "ACTIVE") continue;
+        if (row.status === "ACTIVE" || !row.classId) continue;
         const entry = incomingCountByClass.get(row.classId);
         if (entry) entry.count += 1;
         else
@@ -6988,7 +6992,11 @@ export class ManagementService {
       throw new NotFoundException("Enrollment not found");
     }
 
-    if (parsed.status === "ACTIVE" && existing.status !== "ACTIVE") {
+    if (
+      parsed.status === "ACTIVE" &&
+      existing.status !== "ACTIVE" &&
+      existing.classId
+    ) {
       await this.ensureClassHasCapacity(
         existing.classId,
         existing.schoolYearId,
@@ -7406,22 +7414,12 @@ export class ManagementService {
     schoolYearId: string,
     incomingCount = 1,
   ) {
-    const classEntity = await this.prisma.class.findUnique({
-      where: { id: classId },
-      select: { name: true, capacity: true },
-    });
-
-    if (!classEntity || classEntity.capacity == null) return;
-
-    const activeCount = await this.prisma.enrollment.count({
-      where: { classId, schoolYearId, status: "ACTIVE" },
-    });
-
-    if (activeCount + incomingCount > classEntity.capacity) {
-      throw new BadRequestException(
-        `La classe ${classEntity.name} a atteint sa capacite maximale (${classEntity.capacity} eleves).`,
-      );
-    }
+    return ensureClassHasCapacityUtil(
+      this.prisma,
+      classId,
+      schoolYearId,
+      incomingCount,
+    );
   }
 
   private async ensureStudentInSchool(studentId: string, schoolId: string) {
@@ -7843,7 +7841,7 @@ export class ManagementService {
       schoolId,
       studentId,
     );
-    if (!currentEnrollment) {
+    if (!currentEnrollment || !currentEnrollment.classId) {
       return false;
     }
 
@@ -7908,7 +7906,7 @@ export class ManagementService {
       studentId,
     );
 
-    if (!enrollment) {
+    if (!enrollment || !enrollment.classId) {
       return null;
     }
 

@@ -1234,6 +1234,7 @@ export class ManagementController {
     "SCHOOL_MANAGER",
     "SUPERVISOR",
     "SCHOOL_HEALTH_OFFICER",
+    "SCHOOL_ACCOUNTANT",
     "ADMIN",
     "SUPER_ADMIN",
   )

@@ -146,6 +146,27 @@ enum EnrollmentStatus {
   GRADUATED
 }
 
+enum EnrollmentConfirmationSource {
+  MANUAL
+  PAYMENT_THRESHOLD
+}
+
+enum PromotionDecision {
+  PROMOTED
+  REPEATED
+  LEFT
+}
+
+enum WalletTransactionType {
+  TOPUP
+  ALLOCATION
+}
+
+enum StudentPaymentSource {
+  DIRECT_CASH
+  WALLET_ALLOCATION
+}
+
 enum OverrideAction {
   ADD
   REMOVE

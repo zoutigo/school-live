@@ -96,7 +96,7 @@ export class StudentHealthService {
       return false;
     }
     const enrollment = await this.getCurrentEnrollment(schoolId, studentId);
-    if (!enrollment) {
+    if (!enrollment || !enrollment.classId) {
       return false;
     }
     const classroom = await this.prisma.class.findFirst({
@@ -115,7 +115,7 @@ export class StudentHealthService {
       return false;
     }
     const enrollment = await this.getCurrentEnrollment(schoolId, studentId);
-    if (!enrollment) {
+    if (!enrollment || !enrollment.classId) {
       return false;
     }
     const assignment = await this.prisma.teacherClassSubject.findFirst({
@@ -807,7 +807,7 @@ export class StudentHealthService {
     if (!school) return;
 
     const enrollment = await this.getCurrentEnrollment(schoolId, student.id);
-    if (!enrollment) return;
+    if (!enrollment || !enrollment.classId) return;
 
     const classroom = await this.prisma.class.findFirst({
       where: { id: enrollment.classId, schoolId },

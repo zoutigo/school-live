@@ -72,6 +72,11 @@ model School {
   mobilePushTokens   MobilePushToken[]
   resources          Resource[]
   usersWithActiveSchool User[]              @relation("UserActiveSchool")
+  feeSchedules       FeeSchedule[]
+  feeInstallments    FeeInstallment[]
+  wallets            Wallet[]
+  walletTransactions WalletTransaction[]
+  studentPayments    StudentPayment[]
 
   @@index([activeSchoolYearId])
   @@index([cycle])
@@ -182,6 +187,10 @@ model User {
   resourceAuditLogs     ResourceAuditLog[]       @relation("ResourceAuditActor")
   resourceSubmissions         ResourceSubmission[] @relation("ResourceSubmissionAuthor")
   resourceSubmissionsReviewed ResourceSubmission[] @relation("ResourceSubmissionReviewer")
+  enrollmentsConfirmed        Enrollment[]         @relation("EnrollmentConfirmedBy")
+  wallets                     Wallet[]
+  walletTransactionsRecorded  WalletTransaction[]  @relation("WalletTransactionRecordedBy")
+  paymentsRecorded            StudentPayment[]     @relation("StudentPaymentRecordedBy")
 
   @@index([activeSchoolId])
 }

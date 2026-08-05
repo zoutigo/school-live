@@ -505,6 +505,174 @@ export const translations: Record<Locale, Record<string, string>> = {
     "common.deleting": "Suppression...",
     "common.confirmation": "Confirmation",
     "common.closeConfirmation": "Fermer la confirmation",
+    "common.manage": "Gerer",
+    "common.help": "Aide",
+    "common.remove": "Retirer",
+
+    "financeSchedules.title": "Echeanciers de scolarite",
+    "financeSchedules.subtitle":
+      "Definissez le bareme de frais de scolarite par niveau et filiere pour chaque annee scolaire.",
+    "financeSchedules.errors.load": "Impossible de charger les echeanciers.",
+    "financeSchedules.errors.network": "Erreur reseau.",
+    "financeSchedules.errors.save": "Enregistrement impossible.",
+    "financeSchedules.errors.delete": "Suppression impossible.",
+    "financeSchedules.success.saved": "Echeancier enregistre.",
+    "financeSchedules.form.title": "Nouvel echeancier / mise a jour",
+    "financeSchedules.form.schoolYear": "Annee scolaire",
+    "financeSchedules.form.academicLevel": "Niveau",
+    "financeSchedules.form.track": "Filiere",
+    "financeSchedules.form.trackNone": "Aucune filiere",
+    "financeSchedules.form.installments": "Echeances",
+    "financeSchedules.form.rank": "Rang",
+    "financeSchedules.form.label": "Libelle",
+    "financeSchedules.form.amount": "Montant",
+    "financeSchedules.form.dueDate": "Date d'echeance",
+    "financeSchedules.form.addInstallment": "Ajouter une echeance",
+    "financeSchedules.empty": "Aucun echeancier defini pour le moment.",
+    "financeSchedules.help.summary":
+      "ce module definit le bareme de frais de scolarite par niveau et filiere : c'est lui qui determine le montant de la premiere echeance declenchant la reinscription d'un eleve.",
+    "financeSchedules.help.action1.name": "Creer un echeancier",
+    "financeSchedules.help.action1.purpose":
+      "fixer le montant et la date de chaque echeance pour un niveau (et une filiere si besoin) sur une annee scolaire donnee.",
+    "financeSchedules.help.action1.howTo":
+      "choisir l'annee, le niveau et la filiere, puis ajouter une ou plusieurs echeances avant d'enregistrer.",
+    "financeSchedules.help.action1.moduleImpact":
+      "le bareme est immediatement disponible pour la saisie de paiements et pour le wallet parent.",
+    "financeSchedules.help.action1.crossModuleImpact":
+      "la 1ere echeance de cet echeancier est le seuil qui declenche automatiquement la reinscription d'un eleve dans le module Promotions.",
+    "financeSchedules.help.action2.name": "Supprimer un echeancier",
+    "financeSchedules.help.action2.purpose":
+      "retirer un bareme qui n'est plus applicable.",
+    "financeSchedules.help.action2.howTo":
+      "utiliser le bouton Supprimer sur la fiche de l'echeancier concerne.",
+    "financeSchedules.help.action2.moduleImpact":
+      "les paiements deja enregistres restent conserves, mais plus aucun nouveau seuil ne pourra etre calcule pour ce niveau/filiere tant qu'un echeancier n'est pas recree.",
+    "financeSchedules.help.action2.crossModuleImpact":
+      "verifier qu'aucune campagne de reinscription n'est en cours avant suppression.",
+    "financeSchedules.help.tip1":
+      "Le meme bareme s'applique a un redoublant et a un promu du meme niveau : la distinction se fait uniquement sur la classe cible, pas sur le tarif.",
+    "financeSchedules.help.workflow.title": "Du bareme a la reinscription",
+    "financeSchedules.help.workflow.intro":
+      "voici comment cet echeancier s'inscrit dans le parcours complet de passage en classe superieure.",
+    "financeSchedules.help.workflow.step1.title": "1. Definir le bareme",
+    "financeSchedules.help.workflow.step1.description":
+      "l'accountant cree l'echeancier ici, pour chaque niveau et filiere de la prochaine annee scolaire.",
+    "financeSchedules.help.workflow.step2.title":
+      "2. Saisir ou recevoir un paiement",
+    "financeSchedules.help.workflow.step2.description":
+      "un paiement cash est saisi dans Paiements, ou le parent regle depuis son wallet.",
+    "financeSchedules.help.workflow.step3.title":
+      "3. Reinscription automatique",
+    "financeSchedules.help.workflow.step3.description":
+      "des que le cumul atteint le montant de la 1ere echeance, l'eleve est place en attente d'affectation pour la nouvelle annee.",
+
+    "financePayments.title": "Paiements",
+    "financePayments.subtitle":
+      "Recherchez un eleve et enregistrez un paiement de scolarite en especes.",
+    "financePayments.errors.search": "Recherche impossible.",
+    "financePayments.errors.summary":
+      "Impossible de charger la situation financiere de cet eleve.",
+    "financePayments.errors.save": "Enregistrement du paiement impossible.",
+    "financePayments.errors.network": "Erreur reseau.",
+    "financePayments.success.paid": "Paiement enregistre.",
+    "financePayments.success.paidAndReinscribed":
+      "Paiement enregistre : la reinscription de l'eleve est confirmee.",
+    "financePayments.search.title": "Rechercher un eleve",
+    "financePayments.search.placeholder": "Nom ou prenom",
+    "financePayments.target.title": "Annee scolaire cible",
+    "financePayments.target.schoolYear": "Annee scolaire (reinscription)",
+    "financePayments.summary.title": "Situation financiere",
+    "financePayments.summary.totalPaid": "Total deja verse",
+    "financePayments.summary.firstInstallment": "Montant de la 1ere echeance",
+    "financePayments.summary.eligible": "Seuil atteint : eleve reinscrit.",
+    "financePayments.summary.notEligible":
+      "Seuil non atteint : la reinscription n'est pas encore confirmee.",
+    "financePayments.form.title": "Enregistrer un paiement",
+    "financePayments.form.amount": "Montant verse",
+    "financePayments.form.paidAt": "Date du paiement",
+    "financePayments.form.note": "Note (optionnel)",
+    "financePayments.form.submit": "Enregistrer le paiement",
+    "financePayments.help.summary":
+      "ce module permet de rechercher un eleve et d'enregistrer les paiements en especes de sa scolarite. Des que le cumul atteint le montant de la 1ere echeance de son echeancier, la reinscription de l'eleve est confirmee automatiquement.",
+    "financePayments.help.action1.name": "Enregistrer un paiement",
+    "financePayments.help.action1.purpose":
+      "constater un versement en especes recu d'un parent pour la scolarite d'un eleve.",
+    "financePayments.help.action1.howTo":
+      "rechercher l'eleve, choisir l'annee scolaire cible, verifier sa situation financiere, puis saisir le montant et la date du versement.",
+    "financePayments.help.action1.moduleImpact":
+      "le cumul verse est mis a jour immediatement pour cet eleve et cette annee.",
+    "financePayments.help.action1.crossModuleImpact":
+      "une decision du conseil de classe doit exister au prealable pour cet eleve, sinon le paiement est refuse ; des que le seuil est atteint, l'eleve apparait dans la liste d'attente d'affectation du module Passages de classe.",
+    "financePayments.help.tip1":
+      "Un eleve sans decision de conseil de classe n'apparaitra pas eligible : verifiez d'abord le module Passages de classe.",
+    "financePayments.help.tip2":
+      "Le montant requis est toujours celui de la 1ere echeance de l'echeancier du niveau/filiere cible de l'eleve.",
+
+    "promotions.title": "Passages de classe",
+    "promotions.subtitle":
+      "Decisions du conseil de classe et affectation des eleves en attente vers leur classe definitive.",
+    "promotions.errors.loadReports": "Impossible de charger les bulletins.",
+    "promotions.errors.loadWaiting":
+      "Impossible de charger la liste d'attente.",
+    "promotions.errors.saveDecision":
+      "Enregistrement de la decision impossible.",
+    "promotions.errors.assign": "Affectation impossible.",
+    "promotions.errors.network": "Erreur reseau.",
+    "promotions.success.decisionSaved": "Decision enregistree.",
+    "promotions.success.assigned": "Eleve affecte a la classe.",
+    "promotions.subtab.decisions": "Decisions du conseil",
+    "promotions.subtab.waiting": "Attente d'affectation",
+    "promotions.decisions.selectClass": "Classe (annee en cours)",
+    "promotions.decisions.decision": "Decision",
+    "promotions.decisions.nextLevel": "Niveau cible",
+    "promotions.decisions.nextTrack": "Filiere cible",
+    "promotions.decisions.empty":
+      "Aucun bulletin du dernier trimestre pour cette classe.",
+    "promotions.decision.PROMOTED": "Promu",
+    "promotions.decision.REPEATED": "Redouble",
+    "promotions.decision.LEFT": "Quitte l'etablissement",
+    "promotions.waiting.filters": "Filtrer la liste d'attente",
+    "promotions.waiting.targetYear": "Annee scolaire cible",
+    "promotions.waiting.level": "Niveau",
+    "promotions.waiting.allLevels": "Tous les niveaux",
+    "promotions.waiting.targetClass": "Classe definitive",
+    "promotions.waiting.assign": "Affecter",
+    "promotions.waiting.empty":
+      "Aucun eleve en attente d'affectation pour ces filtres.",
+    "promotions.help.summary":
+      "ce module couvre le passage de classe en deux temps : la decision du conseil de classe (promu, redouble, ou quitte l'etablissement), puis, une fois l'eleve reinscrit via le module Paiements, son affectation a une classe definitive.",
+    "promotions.help.action1.name": "Saisir une decision de conseil",
+    "promotions.help.action1.purpose":
+      "enregistrer, pour chaque eleve d'une classe, la decision du conseil de classe de fin d'annee et le niveau/filiere vise pour l'annee suivante.",
+    "promotions.help.action1.howTo":
+      "choisir la classe de l'annee en cours, puis pour chaque eleve choisir Promu/Redouble/Quitte et, sauf en cas de depart, le niveau (et filiere si besoin) cible.",
+    "promotions.help.action1.moduleImpact":
+      "la decision est rattachee au bulletin du dernier trimestre de l'eleve.",
+    "promotions.help.action1.crossModuleImpact":
+      "cette decision est necessaire pour que le module Paiements accepte un versement ou une reinscription via le wallet parent.",
+    "promotions.help.action2.name": "Affecter un eleve en attente",
+    "promotions.help.action2.purpose":
+      "choisir la classe definitive d'un eleve deja reinscrit (paiement de la 1ere echeance effectue) pour la nouvelle annee scolaire.",
+    "promotions.help.action2.howTo":
+      "filtrer par annee scolaire cible et niveau, puis choisir une classe pour chaque eleve en attente.",
+    "promotions.help.action2.moduleImpact":
+      "l'affectation respecte la capacite maximale de la classe choisie.",
+    "promotions.help.action2.crossModuleImpact":
+      "un eleve n'apparait dans cette liste que s'il a deja franchi le seuil de paiement de la 1ere echeance dans le module Paiements ou via son wallet.",
+    "promotions.help.tip1":
+      "Un eleve arrive en attente d'affectation uniquement apres reinscription (paiement de la 1ere echeance) ; sans paiement, il n'apparait nulle part et n'a besoin d'aucune action ici.",
+    "promotions.help.workflow.title":
+      "Du conseil de classe a la classe definitive",
+    "promotions.help.workflow.intro": "les trois etapes du passage de classe.",
+    "promotions.help.workflow.step1.title": "1. Decision du conseil",
+    "promotions.help.workflow.step1.description":
+      "chaque eleve recoit une decision (promu/redouble/quitte) et un niveau cible.",
+    "promotions.help.workflow.step2.title": "2. Reinscription",
+    "promotions.help.workflow.step2.description":
+      "des que la 1ere echeance de son niveau cible est payee (module Paiements ou wallet parent), l'eleve est place en attente d'affectation.",
+    "promotions.help.workflow.step3.title": "3. Affectation",
+    "promotions.help.workflow.step3.description":
+      "le responsable pedagogique choisit la classe definitive de l'eleve pour la nouvelle annee.",
 
     // Pagination
     "pagination.prevPage": "Page precedente",
@@ -756,6 +924,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.curriculums": "Curriculums",
     "sidebar.nav.enrollments": "Inscriptions",
     "sidebar.nav.students": "Eleves",
+    "sidebar.nav.promotions": "Passages de classe",
+    "sidebar.nav.financeSchedules": "Echeanciers",
+    "sidebar.nav.financePayments": "Paiements",
     "sidebar.nav.users": "Utilisateurs",
     "sidebar.nav.indicators": "Indicateurs",
     "sidebar.nav.testCampaigns": "Campagnes tests",
@@ -2446,6 +2617,27 @@ export const translations: Record<Locale, Record<string, string>> = {
     "finSituation.mobile.credit": "Credit:",
     "finSituation.badge.upcoming": "A venir",
     "finSituation.walletHistory.title": "Dernieres operations",
+    "finSituation.wallet.balance": "Solde du porte-monnaie",
+    "finSituation.wallet.topUpAmount": "Montant a crediter",
+    "finSituation.wallet.topUpSubmit": "Crediter",
+    "finSituation.wallet.transaction.topUp": "Depot",
+    "finSituation.wallet.transaction.allocation": "Reinscription",
+    "finSituation.wallet.errors.load":
+      "Impossible de charger le porte-monnaie.",
+    "finSituation.wallet.errors.network": "Erreur reseau.",
+    "finSituation.wallet.errors.topUp": "Depot impossible.",
+    "finSituation.wallet.errors.reinscribe": "Reinscription impossible.",
+    "finSituation.wallet.success.topUp": "Porte-monnaie credite.",
+    "finSituation.wallet.success.reinscribed": "{firstName} est reinscrit(e) !",
+    "finSituation.children.title": "Mes enfants",
+    "finSituation.children.required": "Montant restant du :",
+    "finSituation.children.payAndReinscribe": "Je paie et je reinscris",
+    "finSituation.children.empty": "Aucun enfant rattache a votre compte.",
+    "finSituation.children.status.DECISION_PENDING":
+      "En attente de la decision du conseil de classe",
+    "finSituation.children.status.ALREADY_REINSCRIBED": "Deja reinscrit(e)",
+    "finSituation.children.status.READY_TO_REINSCRIBE":
+      "Pret(e) a etre reinscrit(e)",
     "finSituation.invoice.issuedOn": "Emise le {date}",
     "finSituation.invoice.status.paid": "Payee",
     "finSituation.invoice.status.late": "Retard",
@@ -4218,6 +4410,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.healthParent.fabTitle": "Ajouter une information",
     "onboardingTour.healthParent.fabBody":
       "Ce bouton ajoute une condition de santé (onglet Conditions) ou signale un événement hors école (onglet Historique). L'enseignant référent est automatiquement informé pour un signalement.",
+    "onboardingTour.financeParent.walletTitle": "Votre porte-monnaie",
+    "onboardingTour.financeParent.walletBody":
+      "Creditez ce porte-monnaie a tout moment, meme avant que le conseil de classe n'ait statue. L'argent y reste disponible jusqu'a ce que vous decidiez de l'affecter a un enfant.",
+    "onboardingTour.financeParent.childrenTitle": "Statut de chaque enfant",
+    "onboardingTour.financeParent.childrenBody":
+      "Pour chaque enfant : en attente de la decision du conseil de classe, deja reinscrit, ou pret a etre reinscrit avec le montant restant du affiche.",
+    "onboardingTour.financeParent.reinscribeTitle": "Je paie et je reinscris",
+    "onboardingTour.financeParent.reinscribeBody":
+      "Ce bouton debite votre porte-monnaie du montant exact de la 1ere echeance de CET enfant et confirme sa reinscription en un seul geste. Un parent avec plusieurs enfants doit cliquer separement pour chacun.",
     "onboardingTour.healthSchool.tabsTitle": "3 onglets pour s'y retrouver",
     "onboardingTour.healthSchool.tabsBody":
       "Synthèse regroupe les statistiques de l'école ou d'une classe. Cares liste les signalements des parents, du plus récent au plus ancien. Élèves permet de retrouver la fiche santé de chaque élève.",
@@ -4756,6 +4957,171 @@ export const translations: Record<Locale, Record<string, string>> = {
     "common.deleting": "Deleting…",
     "common.confirmation": "Confirmation",
     "common.closeConfirmation": "Close confirmation",
+    "common.manage": "Manage",
+    "common.help": "Help",
+    "common.remove": "Remove",
+
+    "financeSchedules.title": "Tuition fee schedules",
+    "financeSchedules.subtitle":
+      "Define the tuition fee schedule per level and track for each school year.",
+    "financeSchedules.errors.load": "Unable to load fee schedules.",
+    "financeSchedules.errors.network": "Network error.",
+    "financeSchedules.errors.save": "Unable to save.",
+    "financeSchedules.errors.delete": "Unable to delete.",
+    "financeSchedules.success.saved": "Fee schedule saved.",
+    "financeSchedules.form.title": "New fee schedule / update",
+    "financeSchedules.form.schoolYear": "School year",
+    "financeSchedules.form.academicLevel": "Level",
+    "financeSchedules.form.track": "Track",
+    "financeSchedules.form.trackNone": "No track",
+    "financeSchedules.form.installments": "Installments",
+    "financeSchedules.form.rank": "Rank",
+    "financeSchedules.form.label": "Label",
+    "financeSchedules.form.amount": "Amount",
+    "financeSchedules.form.dueDate": "Due date",
+    "financeSchedules.form.addInstallment": "Add installment",
+    "financeSchedules.empty": "No fee schedule defined yet.",
+    "financeSchedules.help.summary":
+      "this module defines the tuition fee schedule per level and track: it determines the amount of the first installment that triggers a student's re-enrollment.",
+    "financeSchedules.help.action1.name": "Create a fee schedule",
+    "financeSchedules.help.action1.purpose":
+      "set the amount and due date of each installment for a level (and track if needed) for a given school year.",
+    "financeSchedules.help.action1.howTo":
+      "pick the year, level and track, then add one or more installments before saving.",
+    "financeSchedules.help.action1.moduleImpact":
+      "the schedule is immediately available for recording payments and for the parent wallet.",
+    "financeSchedules.help.action1.crossModuleImpact":
+      "the first installment of this schedule is the threshold that automatically triggers a student's re-enrollment in the Promotions module.",
+    "financeSchedules.help.action2.name": "Delete a fee schedule",
+    "financeSchedules.help.action2.purpose":
+      "remove a schedule that no longer applies.",
+    "financeSchedules.help.action2.howTo":
+      "use the Delete button on the relevant fee schedule card.",
+    "financeSchedules.help.action2.moduleImpact":
+      "existing payments are kept, but no new threshold can be computed for this level/track until a schedule is recreated.",
+    "financeSchedules.help.action2.crossModuleImpact":
+      "check that no re-enrollment campaign is in progress before deleting.",
+    "financeSchedules.help.tip1":
+      "The same schedule applies to a repeating student and a promoted student at the same level: the distinction is made on the target class, not the fee.",
+    "financeSchedules.help.workflow.title":
+      "From fee schedule to re-enrollment",
+    "financeSchedules.help.workflow.intro":
+      "here is how this fee schedule fits into the full grade-promotion journey.",
+    "financeSchedules.help.workflow.step1.title": "1. Define the schedule",
+    "financeSchedules.help.workflow.step1.description":
+      "the accountant creates the schedule here, for each level and track of the upcoming school year.",
+    "financeSchedules.help.workflow.step2.title":
+      "2. Record or receive a payment",
+    "financeSchedules.help.workflow.step2.description":
+      "a cash payment is recorded in Payments, or the parent pays from their wallet.",
+    "financeSchedules.help.workflow.step3.title": "3. Automatic re-enrollment",
+    "financeSchedules.help.workflow.step3.description":
+      "as soon as the cumulative amount reaches the first installment, the student is placed in the class-assignment queue for the new year.",
+
+    "financePayments.title": "Payments",
+    "financePayments.subtitle":
+      "Search for a student and record a cash tuition payment.",
+    "financePayments.errors.search": "Unable to search.",
+    "financePayments.errors.summary":
+      "Unable to load this student's financial status.",
+    "financePayments.errors.save": "Unable to save the payment.",
+    "financePayments.errors.network": "Network error.",
+    "financePayments.success.paid": "Payment recorded.",
+    "financePayments.success.paidAndReinscribed":
+      "Payment recorded: the student's re-enrollment is confirmed.",
+    "financePayments.search.title": "Search a student",
+    "financePayments.search.placeholder": "First or last name",
+    "financePayments.target.title": "Target school year",
+    "financePayments.target.schoolYear": "School year (re-enrollment)",
+    "financePayments.summary.title": "Financial status",
+    "financePayments.summary.totalPaid": "Total already paid",
+    "financePayments.summary.firstInstallment": "First installment amount",
+    "financePayments.summary.eligible":
+      "Threshold reached: student re-enrolled.",
+    "financePayments.summary.notEligible":
+      "Threshold not reached: re-enrollment is not confirmed yet.",
+    "financePayments.form.title": "Record a payment",
+    "financePayments.form.amount": "Amount paid",
+    "financePayments.form.paidAt": "Payment date",
+    "financePayments.form.note": "Note (optional)",
+    "financePayments.form.submit": "Record payment",
+    "financePayments.help.summary":
+      "this module lets you search for a student and record cash tuition payments. As soon as the cumulative amount reaches the first installment of their fee schedule, the student's re-enrollment is confirmed automatically.",
+    "financePayments.help.action1.name": "Record a payment",
+    "financePayments.help.action1.purpose":
+      "log a cash payment received from a parent for a student's tuition.",
+    "financePayments.help.action1.howTo":
+      "search for the student, pick the target school year, check their financial status, then enter the amount and date paid.",
+    "financePayments.help.action1.moduleImpact":
+      "the cumulative amount paid is updated immediately for this student and year.",
+    "financePayments.help.action1.crossModuleImpact":
+      "a class council decision must already exist for this student, otherwise the payment is refused; as soon as the threshold is reached, the student appears in the class-assignment queue of the Grade promotion module.",
+    "financePayments.help.tip1":
+      "A student without a class council decision will not be eligible: check the Grade promotion module first.",
+    "financePayments.help.tip2":
+      "The required amount is always the first installment of the fee schedule for the student's target level/track.",
+
+    "promotions.title": "Grade promotion",
+    "promotions.subtitle":
+      "Class council decisions and assignment of waiting students to their final class.",
+    "promotions.errors.loadReports": "Unable to load report cards.",
+    "promotions.errors.loadWaiting": "Unable to load the waiting list.",
+    "promotions.errors.saveDecision": "Unable to save the decision.",
+    "promotions.errors.assign": "Unable to assign.",
+    "promotions.errors.network": "Network error.",
+    "promotions.success.decisionSaved": "Decision saved.",
+    "promotions.success.assigned": "Student assigned to class.",
+    "promotions.subtab.decisions": "Council decisions",
+    "promotions.subtab.waiting": "Assignment queue",
+    "promotions.decisions.selectClass": "Class (current year)",
+    "promotions.decisions.decision": "Decision",
+    "promotions.decisions.nextLevel": "Target level",
+    "promotions.decisions.nextTrack": "Target track",
+    "promotions.decisions.empty": "No last-term report card for this class.",
+    "promotions.decision.PROMOTED": "Promoted",
+    "promotions.decision.REPEATED": "Repeated",
+    "promotions.decision.LEFT": "Left the school",
+    "promotions.waiting.filters": "Filter the waiting list",
+    "promotions.waiting.targetYear": "Target school year",
+    "promotions.waiting.level": "Level",
+    "promotions.waiting.allLevels": "All levels",
+    "promotions.waiting.targetClass": "Final class",
+    "promotions.waiting.assign": "Assign",
+    "promotions.waiting.empty":
+      "No student waiting for assignment with these filters.",
+    "promotions.help.summary":
+      "this module covers grade promotion in two steps: the class council decision (promoted, repeated, or left the school), then, once the student is re-enrolled through the Payments module, their assignment to a final class.",
+    "promotions.help.action1.name": "Enter a council decision",
+    "promotions.help.action1.purpose":
+      "record, for each student in a class, the end-of-year class council decision and the target level/track for next year.",
+    "promotions.help.action1.howTo":
+      "pick the current year's class, then for each student choose Promoted/Repeated/Left and, unless leaving, the target level (and track if needed).",
+    "promotions.help.action1.moduleImpact":
+      "the decision is attached to the student's last-term report card.",
+    "promotions.help.action1.crossModuleImpact":
+      "this decision is required for the Payments module to accept a payment or a re-enrollment through the parent wallet.",
+    "promotions.help.action2.name": "Assign a waiting student",
+    "promotions.help.action2.purpose":
+      "pick the final class of a student already re-enrolled (first installment paid) for the new school year.",
+    "promotions.help.action2.howTo":
+      "filter by target school year and level, then pick a class for each waiting student.",
+    "promotions.help.action2.moduleImpact":
+      "assignment respects the maximum capacity of the chosen class.",
+    "promotions.help.action2.crossModuleImpact":
+      "a student only appears in this list once they have crossed the first-installment payment threshold in the Payments module or via their wallet.",
+    "promotions.help.tip1":
+      "A student only reaches the assignment queue after re-enrollment (first installment paid); without payment, they appear nowhere and need no action here.",
+    "promotions.help.workflow.title": "From class council to final class",
+    "promotions.help.workflow.intro": "the three steps of grade promotion.",
+    "promotions.help.workflow.step1.title": "1. Council decision",
+    "promotions.help.workflow.step1.description":
+      "each student gets a decision (promoted/repeated/left) and a target level.",
+    "promotions.help.workflow.step2.title": "2. Re-enrollment",
+    "promotions.help.workflow.step2.description":
+      "as soon as the first installment for their target level is paid (Payments module or parent wallet), the student is placed in the assignment queue.",
+    "promotions.help.workflow.step3.title": "3. Assignment",
+    "promotions.help.workflow.step3.description":
+      "the pedagogical lead picks the student's final class for the new year.",
 
     // Pagination
     "pagination.prevPage": "Previous page",
@@ -4997,6 +5363,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.curriculums": "Curricula",
     "sidebar.nav.enrollments": "Enrollments",
     "sidebar.nav.students": "Students",
+    "sidebar.nav.promotions": "Grade promotion",
+    "sidebar.nav.financeSchedules": "Fee schedules",
+    "sidebar.nav.financePayments": "Payments",
     "sidebar.nav.users": "Users",
     "sidebar.nav.indicators": "Indicators",
     "sidebar.nav.testCampaigns": "Test campaigns",
@@ -6596,6 +6965,25 @@ export const translations: Record<Locale, Record<string, string>> = {
     "finSituation.mobile.credit": "Credit:",
     "finSituation.badge.upcoming": "Upcoming",
     "finSituation.walletHistory.title": "Recent transactions",
+    "finSituation.wallet.balance": "Wallet balance",
+    "finSituation.wallet.topUpAmount": "Amount to top up",
+    "finSituation.wallet.topUpSubmit": "Top up",
+    "finSituation.wallet.transaction.topUp": "Top-up",
+    "finSituation.wallet.transaction.allocation": "Re-enrollment",
+    "finSituation.wallet.errors.load": "Unable to load the wallet.",
+    "finSituation.wallet.errors.network": "Network error.",
+    "finSituation.wallet.errors.topUp": "Unable to top up.",
+    "finSituation.wallet.errors.reinscribe": "Unable to re-enroll.",
+    "finSituation.wallet.success.topUp": "Wallet topped up.",
+    "finSituation.wallet.success.reinscribed": "{firstName} is re-enrolled!",
+    "finSituation.children.title": "My children",
+    "finSituation.children.required": "Remaining amount due:",
+    "finSituation.children.payAndReinscribe": "Pay and re-enroll",
+    "finSituation.children.empty": "No child linked to your account.",
+    "finSituation.children.status.DECISION_PENDING":
+      "Waiting on the class council decision",
+    "finSituation.children.status.ALREADY_REINSCRIBED": "Already re-enrolled",
+    "finSituation.children.status.READY_TO_REINSCRIBE": "Ready to re-enroll",
     "finSituation.invoice.issuedOn": "Issued on {date}",
     "finSituation.invoice.status.paid": "Paid",
     "finSituation.invoice.status.late": "Late",
@@ -8313,6 +8701,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.healthParent.fabTitle": "Add information",
     "onboardingTour.healthParent.fabBody":
       "This button adds a health condition (Conditions tab) or reports an event outside school (History tab). The referent teacher is automatically notified for a report.",
+    "onboardingTour.financeParent.walletTitle": "Your wallet",
+    "onboardingTour.financeParent.walletBody":
+      "Top up this wallet at any time, even before the class council has decided. The money stays available until you choose to allocate it to a child.",
+    "onboardingTour.financeParent.childrenTitle": "Each child's status",
+    "onboardingTour.financeParent.childrenBody":
+      "For each child: waiting on the class council decision, already re-enrolled, or ready to re-enroll with the remaining amount due shown.",
+    "onboardingTour.financeParent.reinscribeTitle": "Pay and re-enroll",
+    "onboardingTour.financeParent.reinscribeBody":
+      "This button debits your wallet for the exact amount of THIS child's first installment and confirms their re-enrollment in one step. A parent with several children must click separately for each one.",
     "onboardingTour.healthSchool.tabsTitle": "3 tabs to find things easily",
     "onboardingTour.healthSchool.tabsBody":
       "Summary groups the school's or a class's statistics. Cares lists parent reports, from most recent to oldest. Students lets you find each student's health profile.",

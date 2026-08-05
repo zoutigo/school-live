@@ -21,30 +21,43 @@ model Student {
   healthCareEvents  StudentHealthCareEvent[]
   healthReports     StudentHealthReport[]
   healthAccessLogs  StudentHealthAccessLog[]
+  payments          StudentPayment[]
+  walletAllocations WalletTransaction[]
 
   @@index([schoolId])
   @@unique([schoolId, userId])
 }
 
 model Enrollment {
-  id           String           @id @default(cuid())
-  schoolId     String
-  schoolYearId String
-  studentId    String
-  classId      String
-  status       EnrollmentStatus @default(ACTIVE)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  school       School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  schoolYear   SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
-  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  class        Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  id                  String           @id @default(cuid())
+  schoolId            String
+  schoolYearId        String
+  studentId           String
+  classId             String?
+  academicLevelId     String?
+  trackId             String?
+  status              EnrollmentStatus @default(ACTIVE)
+  confirmedAt         DateTime?
+  confirmedByUserId   String?
+  confirmationSource  EnrollmentConfirmationSource?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  school              School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear          SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  student             Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class               Class?           @relation(fields: [classId], references: [id], onDelete: SetNull)
+  academicLevel       AcademicLevel?   @relation("EnrollmentAcademicLevel", fields: [academicLevelId], references: [id], onDelete: SetNull)
+  track               Track?           @relation("EnrollmentTrack", fields: [trackId], references: [id], onDelete: SetNull)
+  confirmedByUser      User?           @relation("EnrollmentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([schoolYearId, studentId])
   @@index([schoolId])
   @@index([schoolYearId])
   @@index([classId])
   @@index([studentId])
+  @@index([academicLevelId])
+  @@index([trackId])
+  @@index([confirmedByUserId])
 }
 
 model ParentStudent {

@@ -1010,7 +1010,7 @@ export class EvaluationsService {
     }
 
     const enrollments = await this.prisma.enrollment.findMany({
-      where: { schoolId, studentId, status: "ACTIVE" },
+      where: { schoolId, studentId, status: "ACTIVE", classId: { not: null } },
       orderBy: [{ schoolYear: { label: "desc" } }],
       select: {
         classId: true,
@@ -1024,7 +1024,13 @@ export class EvaluationsService {
         },
       },
     });
-    const currentEnrollment = enrollments[0] ?? null;
+    const currentEnrollment = enrollments[0]?.class
+      ? {
+          classId: enrollments[0].classId as string,
+          schoolYearId: enrollments[0].schoolYearId,
+          class: enrollments[0].class,
+        }
+      : null;
 
     // Filtre: si séquence précise → juste cette séquence, sinon toutes les séquences du trimestre
     const sequenceFilter = sequence

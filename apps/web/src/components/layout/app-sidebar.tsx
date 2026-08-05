@@ -162,6 +162,24 @@ function buildItems(
         matchPrefix: "/eleves",
       },
       {
+        label: t("sidebar.nav.promotions"),
+        href: "/promotions",
+        icon: GraduationCap,
+        matchPrefix: "/promotions",
+      },
+      {
+        label: t("sidebar.nav.financeSchedules"),
+        href: "/finance-echeanciers",
+        icon: CreditCard,
+        matchPrefix: "/finance-echeanciers",
+      },
+      {
+        label: t("sidebar.nav.financePayments"),
+        href: "/finance-paiements",
+        icon: Wallet,
+        matchPrefix: "/finance-paiements",
+      },
+      {
         label: t("sidebar.nav.users"),
         href: "/users",
         icon: Users,
@@ -274,6 +292,24 @@ function buildItems(
         href: "/eleves",
         icon: UserSquare2,
         matchPrefix: "/eleves",
+      },
+      {
+        label: t("sidebar.nav.promotions"),
+        href: "/promotions",
+        icon: GraduationCap,
+        matchPrefix: "/promotions",
+      },
+      {
+        label: t("sidebar.nav.financeSchedules"),
+        href: "/finance-echeanciers",
+        icon: CreditCard,
+        matchPrefix: "/finance-echeanciers",
+      },
+      {
+        label: t("sidebar.nav.financePayments"),
+        href: "/finance-paiements",
+        icon: Wallet,
+        matchPrefix: "/finance-paiements",
       },
       {
         label: t("sidebar.nav.teachers"),
