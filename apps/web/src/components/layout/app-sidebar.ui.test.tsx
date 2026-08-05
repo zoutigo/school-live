@@ -788,3 +788,64 @@ describe("AppSidebar messaging link for platform roles", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockPush.mockReset();
+    mockPathname = "/schools/college-vogt/dashboard";
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({}), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+  });
+
+  it("expose Emploi du temps, Vie scolaire, Vie de classe et Devoirs (ajouts additifs)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    const scheduleLink = await screen.findByRole("link", {
+      name: "Emploi du temps",
+    });
+    expect(scheduleLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/emploi-du-temps",
+    );
+
+    expect(screen.getByRole("link", { name: "Vie scolaire" })).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/vie-scolaire",
+    );
+
+    expect(screen.getByRole("link", { name: "Vie de classe" })).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/vie-de-classe",
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Cahier de texte" }),
+    ).toHaveAttribute("href", "/schools/college-vogt/moi/cahier-de-texte");
+  });
+
+  it("n'expose aucun lien Santé (exclusion volontaire)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    await screen.findByRole("link", { name: "Emploi du temps" });
+    expect(
+      screen.queryByRole("link", { name: /Sant/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("conserve les entrées existantes (Notes & devoirs, Situation financière)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    await screen.findByRole("link", { name: "Emploi du temps" });
+    expect(
+      screen.getByRole("link", { name: /Notes.*devoirs|Grades.*homework/i }),
+    ).toBeInTheDocument();
+  });
+});

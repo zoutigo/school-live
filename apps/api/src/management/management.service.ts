@@ -6482,8 +6482,13 @@ export class ManagementService {
       currentUser,
       studentId,
     );
+    const isSelfViewer = await this.canReadStudentLifeEventsAsSelf(
+      schoolId,
+      currentUser,
+      studentId,
+    );
 
-    if (!canWrite && !isParentViewer) {
+    if (!canWrite && !isParentViewer && !isSelfViewer) {
       throw new ForbiddenException("Insufficient role");
     }
 
@@ -7811,6 +7816,26 @@ export class ManagementService {
     });
 
     return Boolean(link);
+  }
+
+  private async canReadStudentLifeEventsAsSelf(
+    schoolId: string,
+    user: AuthenticatedUser,
+    studentId: string,
+  ) {
+    if (!this.hasSchoolRole(user, schoolId, "STUDENT")) {
+      return false;
+    }
+
+    const student = await this.prisma.student.findFirst({
+      where: {
+        schoolId,
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+
+    return student?.id === studentId;
   }
 
   private async canWriteStudentLifeEvents(

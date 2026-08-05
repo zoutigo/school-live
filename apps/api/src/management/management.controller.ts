@@ -1263,6 +1263,7 @@ export class ManagementController {
     "SUPERVISOR",
     "TEACHER",
     "PARENT",
+    "STUDENT",
     "ADMIN",
     "SUPER_ADMIN",
   )

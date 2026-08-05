@@ -27,7 +27,8 @@ import type {
 
 type Props = {
   schoolSlug: string;
-  childId: string;
+  /** Absent = mode self (rôle STUDENT) : l'identité est résolue via `/timetable/me`. */
+  childId?: string;
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -1509,14 +1510,45 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
   const [snapshots, setSnapshots] = useState(STUDENT_NOTES_DEMO_DATA);
   const [warning, setWarning] = useState<string | null>(null);
   const [pageTab, setPageTab] = useState<"notes" | "reports">("notes");
+  const [selfStudentId, setSelfStudentId] = useState<string | null>(null);
+
+  // Mode self (childId absent, rôle STUDENT) : résout sa propre identité via
+  // /timetable/me (déjà self-capable côté API), sans childId.
+  useEffect(() => {
+    if (childId) return;
+    let active = true;
+    fetch(`${API_URL}/schools/${schoolSlug}/timetable/me`, {
+      credentials: "include",
+    })
+      .then((response) =>
+        response.ok
+          ? (response.json() as Promise<{ student: { id: string } }>)
+          : null,
+      )
+      .then((payload) => {
+        if (active && payload) {
+          setSelfStudentId(payload.student.id);
+        }
+      })
+      .catch(() => {
+        // Silencieux : l'effet de chargement des notes gérera l'échec via
+        // le warning de fallback (effectiveStudentId restera vide).
+      });
+    return () => {
+      active = false;
+    };
+  }, [schoolSlug, childId]);
+
+  const effectiveStudentId = childId ?? selfStudentId;
 
   useEffect(() => {
+    if (!effectiveStudentId) return;
     let active = true;
 
     async function loadNotes() {
       try {
         const response = await fetch(
-          `${API_URL}/schools/${schoolSlug}/students/${childId}/notes`,
+          `${API_URL}/schools/${schoolSlug}/students/${effectiveStudentId}/notes`,
           { credentials: "include" },
         );
 
@@ -1544,7 +1576,7 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
     return () => {
       active = false;
     };
-  }, [schoolSlug, childId, t]);
+  }, [schoolSlug, effectiveStudentId, t]);
 
   const snapshot =
     snapshots.find((entry) => entry.term === selectedTerm) ?? snapshots[0];

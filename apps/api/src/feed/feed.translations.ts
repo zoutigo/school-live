@@ -32,6 +32,8 @@ const fr: TranslationDict = {
     "Echec de la suppression du media : {message}",
   "feed.errors.insufficientRole": "Role insuffisant.",
   "feed.errors.missingImageFile": "Fichier image manquant.",
+  "feed.errors.classNotAccessible":
+    "Vous ne pouvez consulter que le fil de votre propre classe.",
 
   "feed.roles.member": "Membre",
   "feed.roles.administration": "Administration",
@@ -82,6 +84,8 @@ const en: TranslationDict = {
   "feed.errors.mediaCleanupFailed": "Media deletion failed: {message}",
   "feed.errors.insufficientRole": "Insufficient role.",
   "feed.errors.missingImageFile": "Missing image file.",
+  "feed.errors.classNotAccessible":
+    "You can only view the feed of your own class.",
 
   "feed.roles.member": "Member",
   "feed.roles.administration": "Administration",

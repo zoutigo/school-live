@@ -30,7 +30,12 @@ type TabKey =
 
 type Props = {
   schoolSlug: string;
-  childId: string;
+  /**
+   * Absent = mode self (rôle STUDENT) : l'identité de l'élève est résolue
+   * en interne via `/timetable/me` (sans childId), et les onglets pointent
+   * vers `/schools/:slug/moi/{tab}` au lieu de `/schools/:slug/children/{childId}/{tab}`.
+   */
+  childId?: string;
   currentTab: TabKey;
   title: string;
   subtitle: string;
@@ -85,6 +90,7 @@ export function ChildModulePage({
 }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
+  const isSelfMode = !childId;
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"content" | "help">("content");
   const [children, setChildren] = useState<ParentChild[]>([]);
@@ -92,8 +98,67 @@ export function ChildModulePage({
   const [onboardingHelpEnabled, setOnboardingHelpEnabled] = useState(true);
 
   useEffect(() => {
-    void loadParentChildren();
-  }, [schoolSlug]);
+    if (isSelfMode) {
+      void loadSelfContext();
+    } else {
+      void loadParentChildren();
+    }
+  }, [schoolSlug, isSelfMode]);
+
+  async function loadSelfContext() {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/schools/${schoolSlug}/me`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        router.replace(`/schools/${schoolSlug}/login`);
+        return;
+      }
+
+      const payload = (await response.json()) as {
+        role?: string;
+        onboardingHelpEnabled?: boolean;
+      };
+
+      if (payload.role !== "STUDENT") {
+        router.replace(`/schools/${schoolSlug}/dashboard`);
+        return;
+      }
+
+      setOnboardingHelpEnabled(payload.onboardingHelpEnabled !== false);
+
+      const timetableResponse = await fetch(
+        `${API_URL}/schools/${schoolSlug}/timetable/me`,
+        { credentials: "include" },
+      );
+
+      if (!timetableResponse.ok) {
+        throw new Error("self-context-load-failed");
+      }
+
+      const timetable = (await timetableResponse.json()) as {
+        student: { id: string; firstName: string; lastName: string };
+        class?: { id?: string | null; name?: string | null } | null;
+      };
+
+      setChildren([
+        {
+          id: timetable.student.id,
+          firstName: timetable.student.firstName,
+          lastName: timetable.student.lastName,
+          classId: timetable.class?.id ?? null,
+          className: timetable.class?.name ?? null,
+        },
+      ]);
+    } catch {
+      setError(t("childModule.error.loadParent"));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function loadParentChildren() {
     setLoading(true);
@@ -206,8 +271,11 @@ export function ChildModulePage({
   }
 
   const currentChild = useMemo(
-    () => children.find((entry) => entry.id === childId) ?? null,
-    [children, childId],
+    () =>
+      isSelfMode
+        ? (children[0] ?? null)
+        : (children.find((entry) => entry.id === childId) ?? null),
+    [children, childId, isSelfMode],
   );
 
   // Fire once per successful load, deliberately not depending on
@@ -235,7 +303,11 @@ export function ChildModulePage({
             {TAB_ITEMS.map((item) => (
               <Link
                 key={item.key}
-                href={`/schools/${schoolSlug}/children/${childId}/${item.key}`}
+                href={
+                  isSelfMode
+                    ? `/schools/${schoolSlug}/moi/${item.key}`
+                    : `/schools/${schoolSlug}/children/${childId}/${item.key}`
+                }
                 className={`section-tab ${currentTab === item.key ? "section-tab-active" : ""}`}
               >
                 {item.key === "accueil"

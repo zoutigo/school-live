@@ -130,6 +130,18 @@ export class FeedService {
       );
     }
 
+    if (
+      query.viewScope === "CLASS" &&
+      query.classId &&
+      context.isStudent &&
+      !context.isStaff &&
+      !context.classIds.has(query.classId)
+    ) {
+      throw new ForbiddenException(
+        translateFeed(context.locale, "feed.errors.classNotAccessible"),
+      );
+    }
+
     const [total, posts] = await this.prisma.$transaction([
       this.prisma.feedPost.count({ where }),
       this.prisma.feedPost.findMany({

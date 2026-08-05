@@ -499,6 +499,24 @@ function buildItems(
       matchPrefix: "/settings",
     },
     {
+      label: t("timetable.sidebar.emploiDuTemps"),
+      href: `${schoolBase}/emploi-du-temps`,
+      icon: CalendarDays,
+      matchPrefix: `${schoolBase}/emploi-du-temps`,
+    },
+    {
+      label: t("discipline.sidebar.vieScolaire"),
+      href: `${schoolBase}/moi/vie-scolaire`,
+      icon: UserRound,
+      matchPrefix: `${schoolBase}/moi/vie-scolaire`,
+    },
+    {
+      label: t("feed.vieDeClasse.title"),
+      href: `${schoolBase}/moi/vie-de-classe`,
+      icon: Users,
+      matchPrefix: `${schoolBase}/moi/vie-de-classe`,
+    },
+    {
       label: t("messaging.nav.title"),
       href: `${schoolBase}/messagerie`,
       icon: MessageSquare,
@@ -516,6 +534,18 @@ function buildItems(
       href: `${schoolBase}/student-grades`,
       icon: BookOpen,
       matchPrefix: `${schoolBase}/student-grades`,
+    },
+    {
+      label: t("sidebar.nav.grades"),
+      href: `${schoolBase}/moi/notes`,
+      icon: BookOpen,
+      matchPrefix: `${schoolBase}/moi/notes`,
+    },
+    {
+      label: t("homework.sidebar.cahierDeTexte"),
+      href: `${schoolBase}/moi/cahier-de-texte`,
+      icon: FileText,
+      matchPrefix: `${schoolBase}/moi/cahier-de-texte`,
     },
   ];
 }
