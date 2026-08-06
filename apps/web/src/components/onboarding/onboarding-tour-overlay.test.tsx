@@ -196,4 +196,61 @@ describe("OnboardingTourOverlay", () => {
       "J'ai compris",
     );
   });
+
+  it("draws a connector line and dot between the tooltip and the target", () => {
+    useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
+    useOnboardingTourStore
+      .getState()
+      .setTargetRect({ x: 10, y: 10, width: 100, height: 40 });
+
+    render(<OnboardingTourOverlay />);
+
+    expect(
+      screen.getByTestId("onboarding-tour-connector"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("onboarding-tour-connector-dot"),
+    ).toBeInTheDocument();
+  });
+
+  it("blocks clicks on the highlighted target when the step is not advanceOnTargetPress", () => {
+    useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
+    useOnboardingTourStore
+      .getState()
+      .setTargetRect({ x: 10, y: 10, width: 100, height: 40 });
+
+    render(<OnboardingTourOverlay />);
+
+    // The only way forward on a regular step is the tooltip's own button:
+    // the highlighted control must not be reachable underneath.
+    expect(
+      screen.getByTestId("onboarding-tour-target-block"),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the target reachable when the step opts into advanceOnTargetPress", () => {
+    const stepsWithPress: OnboardingTourStep[] = [
+      {
+        targetKey: "a",
+        titleKey: "onboardingTour.childTimetable.controlsTitle",
+        bodyKey: "onboardingTour.childTimetable.controlsBody",
+        advanceOnTargetPress: true,
+      },
+      STEPS[1],
+    ];
+    useOnboardingTourStore
+      .getState()
+      .startTour("agenda", "parent", stepsWithPress);
+    useOnboardingTourStore
+      .getState()
+      .setTargetRect({ x: 10, y: 10, width: 100, height: 40 });
+
+    render(<OnboardingTourOverlay />);
+
+    // Real business action (e.g. opening a filter panel) still needs the
+    // underlying control to receive the click.
+    expect(
+      screen.queryByTestId("onboarding-tour-target-block"),
+    ).not.toBeInTheDocument();
+  });
 });
