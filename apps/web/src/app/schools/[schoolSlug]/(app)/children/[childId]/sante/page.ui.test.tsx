@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChildSantePage from "./page";
 import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 import { HEALTH_PARENT_TOUR_ID } from "../../../../../../../components/health/health-parent-tour.config";
+import { usePageHelpStore } from "../../../../../../../store/page-help";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -95,6 +96,26 @@ describe("Child sante page (vue parent)", () => {
       stepIndex: 0,
       targetRect: null,
     });
+    usePageHelpStore.setState({ entry: null, open: false });
+  });
+
+  it("enregistre le contenu d'aide (3 sections) au montage et le retire au démontage", async () => {
+    mockFetchDefault({});
+
+    const { unmount } = render(<ChildSantePage />);
+
+    await waitFor(() => {
+      expect(usePageHelpStore.getState().entry?.title).toBe("Santé");
+    });
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Conditions",
+      "Historique",
+      "Signaler un événement",
+    ]);
+
+    unmount();
+    expect(usePageHelpStore.getState().entry).toBeNull();
   });
 
   it("démarre le tour d'aide guidée santé pour un parent par défaut", async () => {

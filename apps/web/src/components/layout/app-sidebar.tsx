@@ -41,6 +41,7 @@ import { getPlatformMessagesUnreadCount } from "../messaging/admin-messaging-api
 import type { Role } from "../../lib/role-view";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
+import { usePageHelpStore } from "../../store/page-help";
 
 /**
  * Cibles de tour spotlight stables portées par cette barre latérale,
@@ -685,6 +686,8 @@ export function AppSidebar({
   const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
+  const pageHelpEntry = usePageHelpStore((state) => state.entry);
+  const openPageHelp = usePageHelpStore((state) => state.openHelp);
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
   const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
   const [openParentSection, setOpenParentSection] = useState<string>("general");
@@ -1488,6 +1491,33 @@ export function AppSidebar({
             {t("sidebar.logout")}
           </span>
         </button>
+
+        {pageHelpEntry ? (
+          <button
+            type="button"
+            aria-label={pageHelpEntry.title}
+            data-testid="sidebar-help-menu-item"
+            onClick={() => {
+              openPageHelp();
+              onNavigate?.();
+            }}
+            className={`flex w-full items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+              false,
+            )}`}
+          >
+            <span
+              aria-hidden="true"
+              className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                false,
+              )}`}
+            >
+              <HelpCircle className="h-4 w-4" />
+            </span>
+            <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+              {t("sidebar.help")}
+            </span>
+          </button>
+        ) : null}
       </div>
     </aside>
   );

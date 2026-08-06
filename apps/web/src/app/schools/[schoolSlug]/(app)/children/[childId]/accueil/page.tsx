@@ -15,6 +15,14 @@ import {
 import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
 import { lifeEventTypeLabel } from "../../../../../../../components/life-events/life-events-list";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import { usePageHelp } from "../../../../../../../store/page-help";
+import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
+import {
+  CHILD_HOME_TOUR_ID,
+  CHILD_HOME_TOUR_STEPS,
+  CHILD_HOME_TOUR_TARGETS,
+} from "./child-home-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -241,6 +249,20 @@ function ChildAccueilDashboard({
     ? `${child.lastName.toUpperCase()} ${child.firstName}`
     : t("childAccueil.childFallback");
 
+  usePageHelp({
+    title: t("childAccueil.help.title"),
+    sections: [
+      {
+        title: t("childAccueil.help.section1Title"),
+        body: [t("childAccueil.help.section1Body")],
+      },
+      {
+        title: t("childAccueil.help.section2Title"),
+        body: [t("childAccueil.help.section2Body")],
+      },
+    ],
+  });
+
   return (
     <div className="grid gap-4">
       <section className="overflow-hidden rounded-[24px] border border-primary/15 bg-[linear-gradient(145deg,rgba(10,98,191,0.14),rgba(255,255,255,0.98)_48%,rgba(28,154,138,0.14))] p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
@@ -263,7 +285,10 @@ function ChildAccueilDashboard({
                   : t("childAccueil.subtitleDefault")}
               </p>
             </div>
-            <div className="grid gap-3 pt-2 sm:grid-cols-3">
+            <OnboardingTarget
+              id={CHILD_HOME_TOUR_TARGETS.kpis}
+              className="grid gap-3 pt-2 sm:grid-cols-3"
+            >
               <SummaryStat
                 label={t("childAccueil.stats.generalAverage")}
                 value={formatScore(
@@ -300,7 +325,7 @@ function ChildAccueilDashboard({
                 }
                 accent="gold"
               />
-            </div>
+            </OnboardingTarget>
           </div>
 
           <div className="rounded-[20px] border border-white/70 bg-white/80 p-4 shadow-[0_12px_28px_rgba(10,98,191,0.08)]">
@@ -341,7 +366,10 @@ function ChildAccueilDashboard({
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
+      <OnboardingTarget
+        id={CHILD_HOME_TOUR_TARGETS.sections}
+        className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]"
+      >
         <div className="grid gap-4">
           <div className="grid gap-4 md:grid-cols-2">
             <DashboardPanel
@@ -513,7 +541,7 @@ function ChildAccueilDashboard({
             </div>
           </DashboardPanel>
         </div>
-      </section>
+      </OnboardingTarget>
     </div>
   );
 }
@@ -620,6 +648,20 @@ export default function ChildAccueilPage() {
       hideModuleHeader
       hidePrimaryTabs
       hideSecondaryTabs
+      onReady={({ onboardingHelpEnabled }) => {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          onboardingHelpEnabled &&
+          !tourStore.isCompleted("parent", CHILD_HOME_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            CHILD_HOME_TOUR_ID,
+            "parent",
+            CHILD_HOME_TOUR_STEPS,
+          );
+        }
+      }}
       content={({ child }) => (
         <ChildAccueilDashboard
           schoolSlug={schoolSlug}

@@ -47,6 +47,7 @@ import {
   HEALTH_PARENT_TOUR_STEPS,
   HEALTH_PARENT_TOUR_TARGETS,
 } from "../../../../../../../components/health/health-parent-tour.config";
+import { usePageHelp } from "../../../../../../../store/page-help";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const PAGE_SIZE = 20;
@@ -248,6 +249,24 @@ export default function ChildSantePage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [tab, setTab] = useState<ListTabKey>("conditions");
+
+  usePageHelp({
+    title: t("health.parent.help.title"),
+    sections: [
+      {
+        title: t("health.parent.help.section1Title"),
+        body: [t("health.parent.help.section1Body")],
+      },
+      {
+        title: t("health.parent.help.section2Title"),
+        body: [t("health.parent.help.section2Body")],
+      },
+      {
+        title: t("health.parent.help.section3Title"),
+        body: [t("health.parent.help.section3Body")],
+      },
+    ],
+  });
 
   // ── Conditions list ──────────────────────────────────────────────────────
   const [conditions, setConditions] = useState<ConditionRow[]>([]);

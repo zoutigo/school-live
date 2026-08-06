@@ -9,6 +9,7 @@ import {
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
+import { usePageHelpStore } from "../../store/page-help";
 
 const pushMock = vi.fn();
 
@@ -170,5 +171,79 @@ describe("AppShell header scroll behavior", () => {
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith("/");
     });
+  });
+});
+
+describe("AppShell — modale d'aide globale", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    pushMock.mockReset();
+    usePageHelpStore.setState({ entry: null, open: false });
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/api/me")) {
+        return new Response(
+          JSON.stringify({
+            firstName: "Robert",
+            lastName: "Ntamack",
+            role: "PARENT",
+            activeRole: "PARENT",
+            platformRoles: [],
+            memberships: [],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify({ message: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+  });
+
+  it("ne rend aucune modale quand aucune page n'a enregistré d'aide", () => {
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="college vogt">
+        <div>Content</div>
+      </AppShell>,
+    );
+
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+  });
+
+  it("affiche la modale enregistrée par la page une fois ouverte via le store", async () => {
+    usePageHelpStore.setState({
+      entry: {
+        title: "Emploi du temps",
+        sections: [{ title: "Vue", body: ["Changez de vue ici."] }],
+      },
+      open: false,
+    });
+
+    render(
+      <AppShell schoolSlug="college-vogt" schoolName="college vogt">
+        <div>Content</div>
+      </AppShell>,
+    );
+
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+
+    act(() => {
+      usePageHelpStore.getState().openHelp();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("help-dialog")).toHaveTextContent(
+        "Emploi du temps",
+      );
+    });
+    expect(screen.getByTestId("help-dialog")).toHaveTextContent(
+      "Changez de vue ici.",
+    );
+
+    fireEvent.click(screen.getByTestId("help-dialog-close"));
+    expect(usePageHelpStore.getState().open).toBe(false);
   });
 });

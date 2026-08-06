@@ -9,13 +9,21 @@ import {
   TrendingUp,
   FlaskConical,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChildModulePage } from "../family/child-module-page";
 import { Card } from "../ui/card";
 import { FormSelect } from "../ui/form-controls";
 import { STUDENT_NOTES_DEMO_DATA } from "./student-notes-demo-data";
 import { SubjectReportCard } from "./subject-report-card";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelp } from "../../store/page-help";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
+import {
+  CHILD_NOTES_TOUR_ID,
+  CHILD_NOTES_TOUR_STEPS,
+  CHILD_NOTES_TOUR_TARGETS,
+} from "./child-notes-tour.config";
 import type {
   StudentEvaluation,
   StudentNotesTerm,
@@ -1504,6 +1512,24 @@ export function PeriodReportView({
   );
 }
 
+/**
+ * Wraps children in an OnboardingTarget only when `id` is provided — this
+ * screen serves both the self (student) and parent/child views, and the
+ * spotlight tour must only ever target the parent/child one.
+ */
+function TargetOrFragment({
+  id,
+  children,
+}: {
+  id?: string;
+  children: ReactNode;
+}) {
+  if (!id) {
+    return <>{children}</>;
+  }
+  return <OnboardingTarget id={id}>{children}</OnboardingTarget>;
+}
+
 export function StudentNotesPage({ schoolSlug, childId }: Props) {
   const { t } = useTranslation();
   const [selectedTerm, setSelectedTerm] = useState<StudentNotesTerm>("TERM_1");
@@ -1581,6 +1607,26 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
   const snapshot =
     snapshots.find((entry) => entry.term === selectedTerm) ?? snapshots[0];
 
+  const isParentView = Boolean(childId);
+
+  usePageHelp(
+    isParentView
+      ? {
+          title: t("notes.child.help.title"),
+          sections: [
+            {
+              title: t("notes.child.help.section1Title"),
+              body: [t("notes.child.help.section1Body")],
+            },
+            {
+              title: t("notes.child.help.section2Title"),
+              body: [t("notes.child.help.section2Body")],
+            },
+          ],
+        }
+      : null,
+  );
+
   return (
     <ChildModulePage
       schoolSlug={schoolSlug}
@@ -1597,6 +1643,21 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
       hidePrimaryTabs
       hideSecondaryTabs
       hideModuleHeader
+      onReady={({ onboardingHelpEnabled }) => {
+        if (!isParentView) return;
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          onboardingHelpEnabled &&
+          !tourStore.isCompleted("parent", CHILD_NOTES_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            CHILD_NOTES_TOUR_ID,
+            "parent",
+            CHILD_NOTES_TOUR_STEPS,
+          );
+        }
+      }}
       content={({ child }) => (
         <div className="grid gap-5">
           <div className="grid gap-2">
@@ -1653,52 +1714,60 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
             </div>
           ) : null}
 
-          <div
-            data-testid="student-notes-page-tabs"
-            className="flex gap-2 border-b border-border"
+          <TargetOrFragment
+            id={isParentView ? CHILD_NOTES_TOUR_TARGETS.tabs : undefined}
           >
-            <button
-              type="button"
-              data-testid="student-notes-page-tab-notes"
-              onClick={() => setPageTab("notes")}
-              className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
-                pageTab === "notes"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-text-secondary hover:text-primary"
-              }`}
+            <div
+              data-testid="student-notes-page-tabs"
+              className="flex gap-2 border-b border-border"
             >
-              {t("notes.student.page.tabNotes")}
-            </button>
-            <button
-              type="button"
-              data-testid="student-notes-page-tab-reports"
-              onClick={() => setPageTab("reports")}
-              className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
-                pageTab === "reports"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-text-secondary hover:text-primary"
-              }`}
-            >
-              {t("notes.student.page.tabReports")}
-            </button>
-          </div>
-
-          <div className="hidden min-[360px]:flex min-[360px]:flex-wrap min-[360px]:gap-2">
-            {snapshots.map((term) => (
               <button
-                key={term.term}
                 type="button"
-                onClick={() => setSelectedTerm(term.term)}
-                className={`shrink-0 rounded-[10px] border px-4 py-2.5 text-sm font-semibold transition ${
-                  selectedTerm === term.term
-                    ? "border-primary bg-[linear-gradient(90deg,#0A62BF,#1182D8)] text-white shadow-[0_12px_24px_rgba(10,98,191,0.22)]"
-                    : "border-border bg-surface text-text-secondary hover:border-primary/30 hover:text-primary"
+                data-testid="student-notes-page-tab-notes"
+                onClick={() => setPageTab("notes")}
+                className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
+                  pageTab === "notes"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-text-secondary hover:text-primary"
                 }`}
               >
-                {term.label}
+                {t("notes.student.page.tabNotes")}
               </button>
-            ))}
-          </div>
+              <button
+                type="button"
+                data-testid="student-notes-page-tab-reports"
+                onClick={() => setPageTab("reports")}
+                className={`-mb-px border-b-2 px-1 pb-2 text-sm font-semibold transition ${
+                  pageTab === "reports"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-text-secondary hover:text-primary"
+                }`}
+              >
+                {t("notes.student.page.tabReports")}
+              </button>
+            </div>
+          </TargetOrFragment>
+
+          <TargetOrFragment
+            id={isParentView ? CHILD_NOTES_TOUR_TARGETS.terms : undefined}
+          >
+            <div className="hidden min-[360px]:flex min-[360px]:flex-wrap min-[360px]:gap-2">
+              {snapshots.map((term) => (
+                <button
+                  key={term.term}
+                  type="button"
+                  onClick={() => setSelectedTerm(term.term)}
+                  className={`shrink-0 rounded-[10px] border px-4 py-2.5 text-sm font-semibold transition ${
+                    selectedTerm === term.term
+                      ? "border-primary bg-[linear-gradient(90deg,#0A62BF,#1182D8)] text-white shadow-[0_12px_24px_rgba(10,98,191,0.22)]"
+                      : "border-border bg-surface text-text-secondary hover:border-primary/30 hover:text-primary"
+                  }`}
+                >
+                  {term.label}
+                </button>
+              ))}
+            </div>
+          </TargetOrFragment>
 
           {snapshot ? (
             pageTab === "notes" ? (

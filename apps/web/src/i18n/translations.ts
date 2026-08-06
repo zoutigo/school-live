@@ -1137,6 +1137,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.ariaClassMenu": "Menu classe {className}",
     "sidebar.ariaChildMenu": "Menu {childName}",
     "sidebar.logout": "Se deconnecter",
+    "sidebar.help": "Aide",
 
     "discipline.cursus.title": "Cursus",
     "discipline.cursus.subtitleDefault": "Historique eleve",
@@ -1537,6 +1538,24 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Affichage temporaire des donnees de demonstration en attendant la publication des evaluations.",
     "notes.student.page.tabNotes": "Notes",
     "notes.student.page.tabReports": "Bulletins",
+
+    "notes.child.help.title": "Notes",
+    "notes.child.help.section1Title": "Deux onglets",
+    "notes.child.help.section1Body":
+      "L'onglet Notes affiche les évaluations et moyennes du trimestre en cours. L'onglet Bulletins affiche les bulletins publiés, trimestre par trimestre, avec l'appréciation de chaque matière.",
+    "notes.child.help.section2Title": "Choisir la période",
+    "notes.child.help.section2Body":
+      "Les boutons de trimestre changent la période consultée. Sur petit écran, utilisez le menu déroulant en haut de la page.",
+    "onboardingTour.childNotes.tabsTitle": "Deux onglets",
+    "onboardingTour.childNotes.tabsBody":
+      "Notes affiche les évaluations et moyennes du trimestre en cours. Bulletins affiche les bulletins publiés.",
+    "onboardingTour.childNotes.termsTitle": "Changer de trimestre",
+    "onboardingTour.childNotes.termsBody":
+      "Ces boutons changent le trimestre consulté.",
+    "onboardingTour.childNotes.helpToggleTitle":
+      "Une aide toujours disponible",
+    "onboardingTour.childNotes.helpToggleBody":
+      "Ouvrez le menu, puis « Aide », pour retrouver à tout moment le fonctionnement de cette page.",
 
     "notes.student.tabs.evaluations.label": "Evaluations",
     "notes.student.tabs.evaluations.mobileLabel": "Eval",
@@ -2719,6 +2738,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.subtitleWithClass":
       "Vue synthese des modules de {className}.",
     "childAccueil.subtitleDefault": "Vue synthese des modules de votre enfant.",
+
+    "childAccueil.help.title": "Accueil enfant",
+    "childAccueil.help.section1Title": "Trois indicateurs",
+    "childAccueil.help.section1Body":
+      "La moyenne générale, les messages non lus et la vie scolaire sont résumés en un coup d'œil en haut de la page.",
+    "childAccueil.help.section2Title": "Des blocs résumés",
+    "childAccueil.help.section2Body":
+      "Chaque bloc (notes, vie scolaire, accès rapide, dernier message, vie de classe) affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
+    "onboardingTour.childHome.kpisTitle": "Trois indicateurs",
+    "onboardingTour.childHome.kpisBody":
+      "Moyenne générale, messages non lus et vie scolaire, résumés en un coup d'œil.",
+    "onboardingTour.childHome.sectionsTitle": "Des blocs résumés",
+    "onboardingTour.childHome.sectionsBody":
+      "Chaque bloc affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
+    "onboardingTour.childHome.helpToggleTitle":
+      "Une aide toujours disponible",
+    "onboardingTour.childHome.helpToggleBody":
+      "Ouvrez le menu, puis « Aide », pour retrouver à tout moment le fonctionnement de cette page.",
     "childAccueil.childFallback": "Votre enfant",
     "childAccueil.stats.generalAverage": "Moyenne generale",
     "childAccueil.stats.noPeriod": "Aucune periode publiee",
@@ -4380,6 +4417,16 @@ export const translations: Record<Locale, Record<string, string>> = {
       "La condition de santé a été mise à jour.",
     "health.parent.form.createReportSuccess":
       "L'événement a été signalé à l'école.",
+    "health.parent.help.title": "Santé",
+    "health.parent.help.section1Title": "Conditions",
+    "health.parent.help.section1Body":
+      "L'onglet Conditions regroupe les allergies, pathologies et consignes durables de votre enfant, avec un niveau d'alerte (info, attention, urgence) visible d'un coup d'œil.",
+    "health.parent.help.section2Title": "Historique",
+    "health.parent.help.section2Body":
+      "L'onglet Historique fusionne les soins reçus à l'école et les événements que vous signalez vous-même, triés du plus récent au plus ancien.",
+    "health.parent.help.section3Title": "Signaler un événement",
+    "health.parent.help.section3Body":
+      "Le bouton + ajoute une condition de santé depuis l'onglet Conditions, ou signale un événement (maladie, accident...) depuis l'onglet Historique. L'enseignant référent est automatiquement informé pour un signalement.",
     "health.parent.form.hero.createConditionTitle": "Ajouter une condition",
     "health.parent.form.hero.editConditionTitle": "Modifier la condition",
     "health.parent.form.hero.createReportTitle": "Signaler un événement",
@@ -4452,6 +4499,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.healthParent.fabTitle": "Ajouter une information",
     "onboardingTour.healthParent.fabBody":
       "Ce bouton ajoute une condition de santé (onglet Conditions) ou signale un événement hors école (onglet Historique). L'enseignant référent est automatiquement informé pour un signalement.",
+    "onboardingTour.healthParent.helpToggleTitle":
+      "Une aide toujours disponible",
+    "onboardingTour.healthParent.helpToggleBody":
+      "Ouvrez le menu, puis « Aide », pour retrouver à tout moment le fonctionnement de cet écran.",
     "onboardingTour.financeParent.walletTitle": "Votre porte-monnaie",
     "onboardingTour.financeParent.walletBody":
       "Creditez ce porte-monnaie a tout moment, meme avant que le conseil de classe n'ait statue. L'argent y reste disponible jusqu'a ce que vous decidiez de l'affecter a un enfant.",
@@ -5610,6 +5661,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.ariaClassMenu": "Class menu {className}",
     "sidebar.ariaChildMenu": "Menu {childName}",
     "sidebar.logout": "Log out",
+    "sidebar.help": "Help",
 
     "discipline.cursus.title": "Cursus",
     "discipline.cursus.subtitleDefault": "Student history",
@@ -5993,6 +6045,23 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Showing demo data temporarily while evaluations are being published.",
     "notes.student.page.tabNotes": "Notes",
     "notes.student.page.tabReports": "Reports",
+
+    "notes.child.help.title": "Grades",
+    "notes.child.help.section1Title": "Two tabs",
+    "notes.child.help.section1Body":
+      "The Notes tab shows the current term's evaluations and averages. The Reports tab shows published report cards, term by term, with each subject's appreciation.",
+    "notes.child.help.section2Title": "Choose the term",
+    "notes.child.help.section2Body":
+      "The term buttons change the period shown. On small screens, use the dropdown menu at the top of the page.",
+    "onboardingTour.childNotes.tabsTitle": "Two tabs",
+    "onboardingTour.childNotes.tabsBody":
+      "Notes shows the current term's evaluations and averages. Reports shows published report cards.",
+    "onboardingTour.childNotes.termsTitle": "Switch term",
+    "onboardingTour.childNotes.termsBody":
+      "These buttons change the term shown.",
+    "onboardingTour.childNotes.helpToggleTitle": "Help is always available",
+    "onboardingTour.childNotes.helpToggleBody":
+      "Open the menu, then « Help », to find out how this page works at any time.",
 
     "notes.student.tabs.evaluations.label": "Evaluations",
     "notes.student.tabs.evaluations.mobileLabel": "Eval",
@@ -7105,6 +7174,23 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.badge": "Child dashboard",
     "childAccueil.subtitleWithClass": "Summary of modules for {className}.",
     "childAccueil.subtitleDefault": "Summary of modules for your child.",
+
+    "childAccueil.help.title": "Child home",
+    "childAccueil.help.section1Title": "Three indicators",
+    "childAccueil.help.section1Body":
+      "The overall average, unread messages and school life are summarized at a glance at the top of the page.",
+    "childAccueil.help.section2Title": "Summary blocks",
+    "childAccueil.help.section2Body":
+      "Each block (grades, school life, quick access, last message, class life) shows a preview of the module, with a link to open it in full.",
+    "onboardingTour.childHome.kpisTitle": "Three indicators",
+    "onboardingTour.childHome.kpisBody":
+      "Overall average, unread messages and school life, summarized at a glance.",
+    "onboardingTour.childHome.sectionsTitle": "Summary blocks",
+    "onboardingTour.childHome.sectionsBody":
+      "Each block shows a preview of the module, with a link to open it in full.",
+    "onboardingTour.childHome.helpToggleTitle": "Help is always available",
+    "onboardingTour.childHome.helpToggleBody":
+      "Open the menu, then « Help », to find out how this page works at any time.",
     "childAccueil.childFallback": "Your child",
     "childAccueil.stats.generalAverage": "Overall average",
     "childAccueil.stats.noPeriod": "No period published",
@@ -8713,6 +8799,16 @@ export const translations: Record<Locale, Record<string, string>> = {
       "The health condition was updated.",
     "health.parent.form.createReportSuccess":
       "The event was reported to the school.",
+    "health.parent.help.title": "Health",
+    "health.parent.help.section1Title": "Conditions",
+    "health.parent.help.section1Body":
+      "The Conditions tab groups your child's allergies, pathologies and long-standing instructions, with an alert level (info, attention, urgent) visible at a glance.",
+    "health.parent.help.section2Title": "History",
+    "health.parent.help.section2Body":
+      "The History tab merges care received at school and events you report yourself, sorted from most recent to oldest.",
+    "health.parent.help.section3Title": "Report an event",
+    "health.parent.help.section3Body":
+      "The + button adds a health condition from the Conditions tab, or reports an event (illness, accident...) from the History tab. The referent teacher is automatically notified for a report.",
     "health.parent.form.hero.createConditionTitle": "Add a condition",
     "health.parent.form.hero.editConditionTitle": "Edit the condition",
     "health.parent.form.hero.createReportTitle": "Report an event",
@@ -8784,6 +8880,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.healthParent.fabTitle": "Add information",
     "onboardingTour.healthParent.fabBody":
       "This button adds a health condition (Conditions tab) or reports an event outside school (History tab). The referent teacher is automatically notified for a report.",
+    "onboardingTour.healthParent.helpToggleTitle": "Help is always available",
+    "onboardingTour.healthParent.helpToggleBody":
+      "Open the menu, then « Help », to find out how this screen works at any time.",
     "onboardingTour.financeParent.walletTitle": "Your wallet",
     "onboardingTour.financeParent.walletBody":
       "Top up this wallet at any time, even before the class council has decided. The money stays available until you choose to allocate it to a child.",
