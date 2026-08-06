@@ -71,7 +71,10 @@ describe("HelpDialog — sections titrées", () => {
     },
     {
       title: "Naviguer dans le temps",
-      body: ["Utilisez les flèches pour changer de période.", "Second paragraphe."],
+      body: [
+        "Utilisez les flèches pour changer de période.",
+        "Second paragraphe.",
+      ],
     },
   ];
 

@@ -1552,8 +1552,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childNotes.termsTitle": "Changer de trimestre",
     "onboardingTour.childNotes.termsBody":
       "Ces boutons changent le trimestre consulté.",
-    "onboardingTour.childNotes.helpToggleTitle":
-      "Une aide toujours disponible",
+    "onboardingTour.childNotes.helpToggleTitle": "Une aide toujours disponible",
     "onboardingTour.childNotes.helpToggleBody":
       "Ouvrez le menu, puis « Aide », pour retrouver à tout moment le fonctionnement de cette page.",
 
@@ -2752,8 +2751,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childHome.sectionsTitle": "Des blocs résumés",
     "onboardingTour.childHome.sectionsBody":
       "Chaque bloc affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
-    "onboardingTour.childHome.helpToggleTitle":
-      "Une aide toujours disponible",
+    "onboardingTour.childHome.helpToggleTitle": "Une aide toujours disponible",
     "onboardingTour.childHome.helpToggleBody":
       "Ouvrez le menu, puis « Aide », pour retrouver à tout moment le fonctionnement de cette page.",
     "childAccueil.childFallback": "Votre enfant",
