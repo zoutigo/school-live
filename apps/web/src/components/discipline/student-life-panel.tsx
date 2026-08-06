@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Clock3, ShieldAlert } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { AlertTriangle, Clock3, HelpCircle, ShieldAlert } from "lucide-react";
 import { Card } from "../ui/card";
+import { HelpDialog } from "../ui/help-dialog";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
 import { lifeEventTypeLabel } from "../life-events/life-events-list";
 import { markBadgeRead } from "../layout/badges-api";
 import { useTranslation } from "../../i18n/useTranslation";
+import { VIE_SCOLAIRE_TOUR_TARGETS } from "./vie-scolaire-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -118,7 +121,34 @@ export type StudentLifePanelProps = {
   schoolSlug: string;
   studentId: string;
   studentLabel: string;
+  /** True when the current user is viewing their own vie scolaire (student
+   * self-view), false when a parent is viewing a child's — help/tour are
+   * scoped to the student view only, per product decision. */
+  isSelfView?: boolean;
 };
+
+/** Wraps `children` in `OnboardingTarget` only for the student self-view —
+ * the parent view renders the same markup without tour instrumentation. */
+function OnboardingTargetIfSelf({
+  isSelfView,
+  id,
+  className,
+  children,
+}: {
+  isSelfView: boolean;
+  id: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  if (!isSelfView) {
+    return <div className={className}>{children}</div>;
+  }
+  return (
+    <OnboardingTarget id={id} className={className}>
+      {children}
+    </OnboardingTarget>
+  );
+}
 
 /**
  * Panneau Vie scolaire — composant central partagé (lecture seule).
@@ -134,6 +164,7 @@ export function StudentLifePanel({
   schoolSlug,
   studentId,
   studentLabel,
+  isSelfView = false,
 }: StudentLifePanelProps) {
   const { locale, t } = useTranslation();
   const [lifeEvents, setLifeEvents] = useState<StudentLifeEventRow[]>([]);
@@ -141,6 +172,7 @@ export function StudentLifePanel({
   const [error, setError] = useState<string | null>(null);
   const [eventsWarning, setEventsWarning] = useState<string | null>(null);
   const [tab, setTab] = useState<LocalTab>("synthese");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     if (!schoolSlug || !studentId) {
@@ -282,7 +314,25 @@ export function StudentLifePanel({
 
   return (
     <div className="grid gap-4">
-      <Card title={t("discipline.vieScolaire.title")} subtitle={studentLabel}>
+      <Card
+        title={t("discipline.vieScolaire.title")}
+        subtitle={studentLabel}
+        actions={
+          isSelfView ? (
+            <OnboardingTarget id={VIE_SCOLAIRE_TOUR_TARGETS.helpToggle}>
+              <button
+                type="button"
+                aria-label={t("discipline.vieScolaire.studentHelp.toggle")}
+                onClick={() => setHelpOpen(true)}
+                data-testid="vie-scolaire-help-toggle"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-primary hover:opacity-80"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </OnboardingTarget>
+          ) : undefined
+        }
+      >
         {loading ? (
           <p className="text-sm text-text-secondary">
             {t("discipline.common.loading")}
@@ -294,7 +344,11 @@ export function StudentLifePanel({
             {eventsWarning ? (
               <p className="text-sm text-[#8a6d1d]">{eventsWarning}</p>
             ) : null}
-            <div className="flex items-end gap-2 border-b border-border">
+            <OnboardingTargetIfSelf
+              isSelfView={isSelfView}
+              id={VIE_SCOLAIRE_TOUR_TARGETS.tabs}
+              className="flex items-end gap-2 border-b border-border"
+            >
               <button
                 type="button"
                 onClick={() => setTab("synthese")}
@@ -328,11 +382,15 @@ export function StudentLifePanel({
               >
                 {t("discipline.vieScolaire.tabs.sanctionsPunitions")}
               </button>
-            </div>
+            </OnboardingTargetIfSelf>
 
             {tab === "synthese" ? (
               <div className="grid gap-4">
-                <div className="grid gap-3 md:grid-cols-4">
+                <OnboardingTargetIfSelf
+                  isSelfView={isSelfView}
+                  id={VIE_SCOLAIRE_TOUR_TARGETS.kpis}
+                  className="grid gap-3 md:grid-cols-4"
+                >
                   {kpis.map((entry) => {
                     const Icon = entry.icon;
                     return (
@@ -356,7 +414,7 @@ export function StudentLifePanel({
                       </div>
                     );
                   })}
-                </div>
+                </OnboardingTargetIfSelf>
 
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-card border border-border bg-background p-4">
@@ -661,6 +719,18 @@ export function StudentLifePanel({
           </div>
         )}
       </Card>
+
+      {isSelfView ? (
+        <HelpDialog
+          open={helpOpen}
+          title={t("discipline.vieScolaire.studentHelp.title")}
+          body={[
+            t("discipline.vieScolaire.studentHelp.body1"),
+            t("discipline.vieScolaire.studentHelp.body2"),
+          ]}
+          onClose={() => setHelpOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

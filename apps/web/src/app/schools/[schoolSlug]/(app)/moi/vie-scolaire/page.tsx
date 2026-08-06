@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { StudentLifePanel } from "../../../../../../components/discipline/student-life-panel";
 import { useTranslation } from "../../../../../../i18n/useTranslation";
+import { useOnboardingTourStore } from "../../../../../../store/onboarding-tour";
+import {
+  VIE_SCOLAIRE_TOUR_ID,
+  VIE_SCOLAIRE_TOUR_STEPS,
+} from "../../../../../../components/discipline/vie-scolaire-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -33,10 +38,26 @@ export default function MyVieScolairePage() {
         return;
       }
 
-      const me = (await meResponse.json()) as { role?: string };
+      const me = (await meResponse.json()) as {
+        role?: string;
+        onboardingHelpEnabled?: boolean;
+      };
       if (me.role !== "STUDENT") {
         router.replace(`/schools/${currentSchoolSlug}/dashboard`);
         return;
+      }
+
+      const tourStore = useOnboardingTourStore.getState();
+      if (
+        me.onboardingHelpEnabled !== false &&
+        !tourStore.isCompleted("student", VIE_SCOLAIRE_TOUR_ID) &&
+        !tourStore.activeTourId
+      ) {
+        tourStore.startTour(
+          VIE_SCOLAIRE_TOUR_ID,
+          "student",
+          VIE_SCOLAIRE_TOUR_STEPS,
+        );
       }
 
       const timetableResponse = await fetch(
@@ -75,6 +96,7 @@ export default function MyVieScolairePage() {
       schoolSlug={schoolSlug}
       studentId={selfContext.studentId}
       studentLabel={selfContext.studentLabel}
+      isSelfView
     />
   );
 }

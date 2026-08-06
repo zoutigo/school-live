@@ -856,6 +856,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.vieScolaire.eventsWarning":
       "Les evenements vie scolaire sont temporairement indisponibles. Affichage des donnees de demonstration.",
     "discipline.vieScolaire.error": "Impossible de charger la vie scolaire.",
+    "discipline.vieScolaire.studentHelp.toggle": "Aide",
+    "discipline.vieScolaire.studentHelp.title": "Vie scolaire",
+    "discipline.vieScolaire.studentHelp.body1":
+      "« Synthese » resume vos absences, retards, sanctions et punitions de l'annee. « Absences / retards » liste vos absences et retards. « Sanctions / punitions » liste vos sanctions et punitions.",
+    "discipline.vieScolaire.studentHelp.body2":
+      "Dans l'onglet Synthese, ces quatre cartes recapitulent en un coup d'oeil vos absences, retards, sanctions et punitions de l'annee en cours.",
     "discipline.vieScolaire.tabs.synthese": "Synthese",
     "discipline.vieScolaire.tabs.absencesRetards": "Absences / retards",
     "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punitions",
@@ -2076,6 +2082,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childTimetable.helpBlockTitle":
       "Une aide toujours disponible",
     "onboardingTour.childTimetable.helpBlockBody":
+      "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
+    "onboardingTour.vieScolaire.tabsTitle": "Trois onglets",
+    "onboardingTour.vieScolaire.tabsBody":
+      "Cliquez sur un onglet pour passer de la synthèse aux absences et retards, puis aux sanctions et punitions.",
+    "onboardingTour.vieScolaire.kpisTitle": "Vos indicateurs",
+    "onboardingTour.vieScolaire.kpisBody":
+      "Ces quatre cartes récapitulent en un coup d'œil vos absences, retards, sanctions et punitions de l'année en cours.",
+    "onboardingTour.vieScolaire.helpToggleTitle": "Une aide toujours disponible",
+    "onboardingTour.vieScolaire.helpToggleBody":
       "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
     "onboardingTour.parentLanding.step1Title": "Votre menu de navigation",
     "onboardingTour.parentLanding.step1Body":
@@ -5324,6 +5339,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.vieScolaire.eventsWarning":
       "School life events are temporarily unavailable. Showing demo data.",
     "discipline.vieScolaire.error": "Unable to load school life data.",
+    "discipline.vieScolaire.studentHelp.toggle": "Help",
+    "discipline.vieScolaire.studentHelp.title": "School life",
+    "discipline.vieScolaire.studentHelp.body1":
+      '"Summary" gives an overview of your absences, lateness, sanctions and punishments for the year. "Absences / lateness" lists your absences and lateness. "Sanctions / punishments" lists your sanctions and punishments.',
+    "discipline.vieScolaire.studentHelp.body2":
+      "In the Summary tab, these four cards give you an at-a-glance overview of your absences, lateness, sanctions and punishments for the current year.",
     "discipline.vieScolaire.tabs.synthese": "Summary",
     "discipline.vieScolaire.tabs.absencesRetards": "Absences / lateness",
     "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punishments",
@@ -6495,6 +6516,15 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Each row shows the time, subject, teacher and room for the course.",
     "onboardingTour.childTimetable.helpBlockTitle": "Help is always available",
     "onboardingTour.childTimetable.helpBlockBody":
+      "Click this button anytime for a reminder on how to use this page.",
+    "onboardingTour.vieScolaire.tabsTitle": "Three tabs",
+    "onboardingTour.vieScolaire.tabsBody":
+      "Click a tab to switch between the summary, absences and lateness, then sanctions and punishments.",
+    "onboardingTour.vieScolaire.kpisTitle": "Your indicators",
+    "onboardingTour.vieScolaire.kpisBody":
+      "These four cards give you an at-a-glance overview of your absences, lateness, sanctions and punishments for the current year.",
+    "onboardingTour.vieScolaire.helpToggleTitle": "Help is always available",
+    "onboardingTour.vieScolaire.helpToggleBody":
       "Click this button anytime for a reminder on how to use this page.",
     "onboardingTour.parentLanding.step1Title": "Your navigation menu",
     "onboardingTour.parentLanding.step1Body":

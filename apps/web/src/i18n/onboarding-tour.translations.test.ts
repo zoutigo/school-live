@@ -57,6 +57,26 @@ describe("onboardingTour.* translations", () => {
     }
   });
 
+  it("has the vie-scolaire tour steps and student help dialog content in both locales", () => {
+    const requiredKeys = [
+      "onboardingTour.vieScolaire.tabsTitle",
+      "onboardingTour.vieScolaire.tabsBody",
+      "onboardingTour.vieScolaire.kpisTitle",
+      "onboardingTour.vieScolaire.kpisBody",
+      "onboardingTour.vieScolaire.helpToggleTitle",
+      "onboardingTour.vieScolaire.helpToggleBody",
+      "discipline.vieScolaire.studentHelp.toggle",
+      "discipline.vieScolaire.studentHelp.title",
+      "discipline.vieScolaire.studentHelp.body1",
+      "discipline.vieScolaire.studentHelp.body2",
+    ];
+
+    for (const key of requiredKeys) {
+      expect(translations.fr[key]).toBeTruthy();
+      expect(translations.en[key]).toBeTruthy();
+    }
+  });
+
   it("has the homework tour steps and student help dialog content in both locales", () => {
     const requiredKeys = [
       "onboardingTour.homework.tabsTitle",

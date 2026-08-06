@@ -4,12 +4,24 @@
  * /me + /timetable/me, puis réutilisent les mêmes composants centraux que
  * les pages parent (StudentLifePanel, StudentNotesPage, ChildModulePage).
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MyVieScolairePage from "./vie-scolaire/page";
 import MyClassLifePage from "./vie-de-classe/page";
 import MyNotesPage from "./notes/page";
 import MyCahierDeTextePage from "./cahier-de-texte/page";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+
+function resetOnboardingTourStore() {
+  useOnboardingTourStore.setState({
+    completedTours: {},
+    activeTourId: null,
+    activeRole: null,
+    steps: [],
+    stepIndex: 0,
+    targetRect: null,
+  });
+}
 
 const paramsMock = { schoolSlug: "college-vogt" };
 const replaceMock = vi.fn();
@@ -45,12 +57,15 @@ function createJsonResponse(payload: unknown, status = 200) {
   });
 }
 
-function mockSelfFetch() {
+function mockSelfFetch(options: { onboardingHelpEnabled?: boolean } = {}) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url = String(input);
 
     if (url.includes("/schools/college-vogt/me")) {
-      return createJsonResponse({ role: "STUDENT" });
+      return createJsonResponse({
+        role: "STUDENT",
+        onboardingHelpEnabled: options.onboardingHelpEnabled,
+      });
     }
 
     if (url.endsWith("/timetable/me")) {
@@ -76,6 +91,7 @@ describe("Pages self /moi/*", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
+    resetOnboardingTourStore();
   });
 
   it("moi/vie-scolaire résout sa propre identité et affiche son propre nom", async () => {
@@ -120,5 +136,58 @@ describe("Pages self /moi/*", () => {
         "/schools/college-vogt/dashboard",
       );
     });
+  });
+});
+
+describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    resetOnboardingTourStore();
+  });
+
+  it("le tour démarre automatiquement pour un élève", async () => {
+    mockSelfFetch();
+    render(<MyVieScolairePage />);
+
+    await waitFor(() => {
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        "vie-scolaire",
+      );
+    });
+    expect(useOnboardingTourStore.getState().activeRole).toBe("student");
+  });
+
+  it("onboardingHelpEnabled=false : pas de tour", async () => {
+    mockSelfFetch({ onboardingHelpEnabled: false });
+    render(<MyVieScolairePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Lisa Mbele")).toBeInTheDocument();
+    });
+
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  it("le bouton d'aide ouvre la modale et se ferme au clic sur Fermer", async () => {
+    mockSelfFetch({ onboardingHelpEnabled: false });
+    render(<MyVieScolairePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("vie-scolaire-help-toggle")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("vie-scolaire-help-toggle"));
+
+    expect(screen.getByTestId("help-dialog")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("help-dialog").querySelector("#help-dialog-title"),
+    ).toHaveTextContent("Vie scolaire");
+
+    fireEvent.click(screen.getByTestId("help-dialog-close"));
+
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
   });
 });
