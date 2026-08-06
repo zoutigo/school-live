@@ -4,13 +4,14 @@
  * /me + /timetable/me, puis réutilisent les mêmes composants centraux que
  * les pages parent (StudentLifePanel, StudentNotesPage, ChildModulePage).
  */
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MyVieScolairePage from "./vie-scolaire/page";
 import MyClassLifePage from "./vie-de-classe/page";
 import MyNotesPage from "./notes/page";
 import MyCahierDeTextePage from "./cahier-de-texte/page";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import { usePageHelpStore } from "../../../../../store/page-help";
 
 function resetOnboardingTourStore() {
   useOnboardingTourStore.setState({
@@ -144,6 +145,7 @@ describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
     resetOnboardingTourStore();
+    usePageHelpStore.setState({ entry: null, open: false });
   });
 
   it("le tour démarre automatiquement pour un élève", async () => {
@@ -169,27 +171,17 @@ describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
-  it("le bouton d'aide ouvre la modale et se ferme au clic sur Fermer", async () => {
+  it("enregistre le contenu d'aide (2 sections) dans le menu latéral", async () => {
     mockSelfFetch({ onboardingHelpEnabled: false });
     render(<MyVieScolairePage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("vie-scolaire-help-toggle"),
-      ).toBeInTheDocument();
+      expect(usePageHelpStore.getState().entry?.title).toBe("Vie scolaire");
     });
-
-    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId("vie-scolaire-help-toggle"));
-
-    expect(screen.getByTestId("help-dialog")).toBeInTheDocument();
-    expect(
-      screen.getByTestId("help-dialog").querySelector("#help-dialog-title"),
-    ).toHaveTextContent("Vie scolaire");
-
-    fireEvent.click(screen.getByTestId("help-dialog-close"));
-
-    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Trois onglets",
+      "Quatre indicateurs",
+    ]);
   });
 });

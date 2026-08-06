@@ -1,4 +1,5 @@
 import type { OnboardingTourStep } from "../../store/onboarding-tour";
+import { APP_HEADER_MENU_TOUR_TARGET } from "../layout/app-header";
 
 export const FEED_FILTERS_TOUR_ID = "feed-filters";
 
@@ -6,7 +7,7 @@ export const FEED_FILTERS_TOUR_TARGETS = {
   filterToggle: "feed-filters-tour-filter-toggle",
   typeChips: "feed-filters-tour-type-chips",
   apply: "feed-filters-tour-apply",
-  helpToggle: "feed-filters-tour-help-toggle",
+  helpToggle: APP_HEADER_MENU_TOUR_TARGET,
 } as const;
 
 export const FEED_FILTERS_TOUR_STEPS: OnboardingTourStep[] = [

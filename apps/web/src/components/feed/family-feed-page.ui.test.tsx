@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FamilyFeedPage } from "./family-feed-page";
+import { usePageHelpStore } from "../../store/page-help";
 import {
   assertNoHorizontalOverflowAt320,
   setViewportWidth,
@@ -590,17 +591,16 @@ describe("FamilyFeedPage", () => {
     expect(badge.textContent).toMatch(/^\d+(\+)?$/);
   });
 
-  it("opens and closes the help dialog from the header", () => {
+  it("registers its help content in the sidebar menu on mount", () => {
+    usePageHelpStore.setState({ entry: null, open: false });
+
     render(
       <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
     );
 
-    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Aide" }));
-    expect(screen.getByTestId("help-dialog")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId("help-dialog-close"));
-    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+    expect(usePageHelpStore.getState().entry?.title).toBe(
+      "Rechercher et filtrer",
+    );
+    expect(usePageHelpStore.getState().entry?.sections).toHaveLength(1);
   });
 });

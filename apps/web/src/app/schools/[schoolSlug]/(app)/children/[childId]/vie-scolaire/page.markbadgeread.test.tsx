@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChildVieScolairePage from "./page";
+import { usePageHelpStore } from "../../../../../../../store/page-help";
 
 let paramsMock = { schoolSlug: "college-vogt", childId: "child-1" };
 
@@ -31,6 +32,7 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
     getCsrfTokenCookieMock.mockReset();
     getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
     paramsMock = { schoolSlug: "college-vogt", childId: "child-1" };
+    usePageHelpStore.setState({ entry: null, open: false });
   });
 
   it("appelle markBadgeRead(DISCIPLINE, childId) au chargement de la page", async () => {
@@ -99,7 +101,7 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
     ).toBe(false);
   });
 
-  it("n'affiche pas le bouton d'aide (aide guidée réservée à la vue élève)", async () => {
+  it("n'enregistre aucune aide dans le menu (aide guidée réservée à la vue élève)", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
@@ -125,6 +127,6 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
       expect(screen.getByText("Remi Ntamack")).toBeInTheDocument();
     });
 
-    expect(screen.queryByTestId("vie-scolaire-help-toggle")).toBeNull();
+    expect(usePageHelpStore.getState().entry).toBeNull();
   });
 });

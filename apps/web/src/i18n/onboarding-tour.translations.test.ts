@@ -65,10 +65,11 @@ describe("onboardingTour.* translations", () => {
       "onboardingTour.vieScolaire.kpisBody",
       "onboardingTour.vieScolaire.helpToggleTitle",
       "onboardingTour.vieScolaire.helpToggleBody",
-      "discipline.vieScolaire.studentHelp.toggle",
-      "discipline.vieScolaire.studentHelp.title",
-      "discipline.vieScolaire.studentHelp.body1",
-      "discipline.vieScolaire.studentHelp.body2",
+      "discipline.vieScolaire.help.title",
+      "discipline.vieScolaire.help.section1Title",
+      "discipline.vieScolaire.help.section1Body",
+      "discipline.vieScolaire.help.section2Title",
+      "discipline.vieScolaire.help.section2Body",
     ];
 
     for (const key of requiredKeys) {

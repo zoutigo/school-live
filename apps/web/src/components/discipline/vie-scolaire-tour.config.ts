@@ -1,11 +1,12 @@
 import type { OnboardingTourStep } from "../../store/onboarding-tour";
+import { APP_HEADER_MENU_TOUR_TARGET } from "../layout/app-header";
 
 export const VIE_SCOLAIRE_TOUR_ID = "vie-scolaire";
 
 export const VIE_SCOLAIRE_TOUR_TARGETS = {
   tabs: "vie-scolaire-tour-tabs",
   kpis: "vie-scolaire-tour-kpis",
-  helpToggle: "vie-scolaire-tour-help-toggle",
+  helpToggle: APP_HEADER_MENU_TOUR_TARGET,
 } as const;
 
 export const VIE_SCOLAIRE_TOUR_STEPS: OnboardingTourStep[] = [

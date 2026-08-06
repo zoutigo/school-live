@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, Clock3, HelpCircle, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Clock3, ShieldAlert } from "lucide-react";
 import { Card } from "../ui/card";
-import { HelpDialog } from "../ui/help-dialog";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
 import { lifeEventTypeLabel } from "../life-events/life-events-list";
 import { markBadgeRead } from "../layout/badges-api";
 import { useTranslation } from "../../i18n/useTranslation";
+import { usePageHelp } from "../../store/page-help";
 import { VIE_SCOLAIRE_TOUR_TARGETS } from "./vie-scolaire-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -172,7 +172,24 @@ export function StudentLifePanel({
   const [error, setError] = useState<string | null>(null);
   const [eventsWarning, setEventsWarning] = useState<string | null>(null);
   const [tab, setTab] = useState<LocalTab>("synthese");
-  const [helpOpen, setHelpOpen] = useState(false);
+
+  usePageHelp(
+    isSelfView
+      ? {
+          title: t("discipline.vieScolaire.help.title"),
+          sections: [
+            {
+              title: t("discipline.vieScolaire.help.section1Title"),
+              body: [t("discipline.vieScolaire.help.section1Body")],
+            },
+            {
+              title: t("discipline.vieScolaire.help.section2Title"),
+              body: [t("discipline.vieScolaire.help.section2Body")],
+            },
+          ],
+        }
+      : null,
+  );
 
   useEffect(() => {
     if (!schoolSlug || !studentId) {
@@ -314,25 +331,7 @@ export function StudentLifePanel({
 
   return (
     <div className="grid gap-4">
-      <Card
-        title={t("discipline.vieScolaire.title")}
-        subtitle={studentLabel}
-        actions={
-          isSelfView ? (
-            <OnboardingTarget id={VIE_SCOLAIRE_TOUR_TARGETS.helpToggle}>
-              <button
-                type="button"
-                aria-label={t("discipline.vieScolaire.studentHelp.toggle")}
-                onClick={() => setHelpOpen(true)}
-                data-testid="vie-scolaire-help-toggle"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-primary hover:opacity-80"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </OnboardingTarget>
-          ) : undefined
-        }
-      >
+      <Card title={t("discipline.vieScolaire.title")} subtitle={studentLabel}>
         {loading ? (
           <p className="text-sm text-text-secondary">
             {t("discipline.common.loading")}
@@ -719,18 +718,6 @@ export function StudentLifePanel({
           </div>
         )}
       </Card>
-
-      {isSelfView ? (
-        <HelpDialog
-          open={helpOpen}
-          title={t("discipline.vieScolaire.studentHelp.title")}
-          body={[
-            t("discipline.vieScolaire.studentHelp.body1"),
-            t("discipline.vieScolaire.studentHelp.body2"),
-          ]}
-          onClose={() => setHelpOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }

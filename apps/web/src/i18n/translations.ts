@@ -856,11 +856,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.vieScolaire.eventsWarning":
       "Les evenements vie scolaire sont temporairement indisponibles. Affichage des donnees de demonstration.",
     "discipline.vieScolaire.error": "Impossible de charger la vie scolaire.",
-    "discipline.vieScolaire.studentHelp.toggle": "Aide",
-    "discipline.vieScolaire.studentHelp.title": "Vie scolaire",
-    "discipline.vieScolaire.studentHelp.body1":
+    "discipline.vieScolaire.help.title": "Vie scolaire",
+    "discipline.vieScolaire.help.section1Title": "Trois onglets",
+    "discipline.vieScolaire.help.section1Body":
       "« Synthese » resume vos absences, retards, sanctions et punitions de l'annee. « Absences / retards » liste vos absences et retards. « Sanctions / punitions » liste vos sanctions et punitions.",
-    "discipline.vieScolaire.studentHelp.body2":
+    "discipline.vieScolaire.help.section2Title": "Quatre indicateurs",
+    "discipline.vieScolaire.help.section2Body":
       "Dans l'onglet Synthese, ces quatre cartes recapitulent en un coup d'oeil vos absences, retards, sanctions et punitions de l'annee en cours.",
     "discipline.vieScolaire.tabs.synthese": "Synthese",
     "discipline.vieScolaire.tabs.absencesRetards": "Absences / retards",
@@ -2110,7 +2111,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.vieScolaire.helpToggleTitle":
       "Une aide toujours disponible",
     "onboardingTour.vieScolaire.helpToggleBody":
-      "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
+      "Ouvrez le menu, puis « Aide », pour retrouver à tout moment le fonctionnement de cette page.",
     "onboardingTour.parentLanding.step1Title": "Votre menu de navigation",
     "onboardingTour.parentLanding.step1Body":
       "Sur mobile, touchez cette icône pour ouvrir le menu. Sur ordinateur, ce menu reste toujours visible sur le côté pour accéder à toutes les rubriques de l'école.",
@@ -2401,7 +2402,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Cliquez sur Appliquer : le panneau se ferme et la liste affiche directement le résultat filtré.",
     "onboardingTour.feedFilters.step4Title": "Une aide toujours disponible",
     "onboardingTour.feedFilters.step4Body":
-      "Cliquez sur ce bouton à tout moment pour retrouver l'explication de la recherche et des filtres.",
+      "Ouvrez le menu, puis « Aide », pour retrouver l'explication de la recherche et des filtres.",
     "feed.staffFilters.all": "Tous",
     "feed.staffFilters.parents": "Parents/eleves",
     "feed.staffFilters.staff": "Staff",
@@ -5389,11 +5390,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.vieScolaire.eventsWarning":
       "School life events are temporarily unavailable. Showing demo data.",
     "discipline.vieScolaire.error": "Unable to load school life data.",
-    "discipline.vieScolaire.studentHelp.toggle": "Help",
-    "discipline.vieScolaire.studentHelp.title": "School life",
-    "discipline.vieScolaire.studentHelp.body1":
+    "discipline.vieScolaire.help.title": "School life",
+    "discipline.vieScolaire.help.section1Title": "Three tabs",
+    "discipline.vieScolaire.help.section1Body":
       '"Summary" gives an overview of your absences, lateness, sanctions and punishments for the year. "Absences / lateness" lists your absences and lateness. "Sanctions / punishments" lists your sanctions and punishments.',
-    "discipline.vieScolaire.studentHelp.body2":
+    "discipline.vieScolaire.help.section2Title": "Four indicators",
+    "discipline.vieScolaire.help.section2Body":
       "In the Summary tab, these four cards give you an at-a-glance overview of your absences, lateness, sanctions and punishments for the current year.",
     "discipline.vieScolaire.tabs.synthese": "Summary",
     "discipline.vieScolaire.tabs.absencesRetards": "Absences / lateness",
@@ -6593,7 +6595,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "These four cards give you an at-a-glance overview of your absences, lateness, sanctions and punishments for the current year.",
     "onboardingTour.vieScolaire.helpToggleTitle": "Help is always available",
     "onboardingTour.vieScolaire.helpToggleBody":
-      "Click this button anytime for a reminder on how to use this page.",
+      "Open the menu, then « Help », to find out how this page works at any time.",
     "onboardingTour.parentLanding.step1Title": "Your navigation menu",
     "onboardingTour.parentLanding.step1Body":
       "On mobile, tap this icon to open the menu. On desktop, this menu stays visible on the side to reach every section of the school.",
@@ -6874,7 +6876,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Click Apply: the panel closes and the list shows the filtered result right away.",
     "onboardingTour.feedFilters.step4Title": "Help is always available",
     "onboardingTour.feedFilters.step4Body":
-      "Click this button anytime to see the search and filters explanation again.",
+      "Open the menu, then « Help », to see the search and filters explanation again.",
     "feed.staffFilters.all": "All",
     "feed.staffFilters.parents": "Parents/students",
     "feed.staffFilters.staff": "Staff",
