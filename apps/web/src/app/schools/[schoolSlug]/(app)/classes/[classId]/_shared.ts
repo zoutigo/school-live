@@ -16,6 +16,7 @@ export type Role =
 
 export type MeResponse = {
   role: Role;
+  onboardingHelpEnabled?: boolean;
 };
 
 export type GradesContext = {

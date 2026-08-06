@@ -57,6 +57,32 @@ describe("onboardingTour.* translations", () => {
     }
   });
 
+  it("has the homework tour steps and student help dialog content in both locales", () => {
+    const requiredKeys = [
+      "onboardingTour.homework.tabsTitle",
+      "onboardingTour.homework.tabsBody",
+      "onboardingTour.homework.rowTitle",
+      "onboardingTour.homework.rowBody",
+      "onboardingTour.homework.markDoneTitle",
+      "onboardingTour.homework.markDoneBody",
+      "onboardingTour.homework.helpToggleTitle",
+      "onboardingTour.homework.helpToggleBody",
+      "homework.tourFallback.title",
+      "homework.tourFallback.subject",
+      "homework.tourFallback.author",
+      "homework.studentHelp.toggle",
+      "homework.studentHelp.title",
+      "homework.studentHelp.body1",
+      "homework.studentHelp.body2",
+      "homework.studentHelp.body3",
+    ];
+
+    for (const key of requiredKeys) {
+      expect(translations.fr[key]).toBeTruthy();
+      expect(translations.en[key]).toBeTruthy();
+    }
+  });
+
   it("has the parent dashboard help dialog content in both locales", () => {
     const requiredKeys = [
       "dashboard.parent.help.toggle",

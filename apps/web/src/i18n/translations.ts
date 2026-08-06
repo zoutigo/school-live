@@ -1772,6 +1772,32 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.confirm.deleteConfirm": "Supprimer",
     "homework.confirm.cancel": "Annuler",
 
+    "homework.tourFallback.title": "Exemple : Exercices page 42",
+    "homework.tourFallback.subject": "Mathematiques",
+    "homework.tourFallback.author": "Votre enseignant",
+
+    "homework.studentHelp.toggle": "Aide sur les devoirs",
+    "homework.studentHelp.title": "Comprendre vos devoirs",
+    "homework.studentHelp.body1":
+      "« Liste » affiche vos devoirs a venir. « Voir » donne un resume du nombre de devoirs faits, en retard et a faire.",
+    "homework.studentHelp.body2":
+      "Cliquez sur un devoir dans la liste pour voir la consigne complete, les pieces jointes et ajouter un commentaire.",
+    "homework.studentHelp.body3":
+      "Une fois le devoir termine, cliquez sur « Marquer fait » dans le detail du devoir pour le signaler a votre enseignant. Vous pouvez cliquer a nouveau pour annuler.",
+
+    "onboardingTour.homework.tabsTitle": "Deux facons de voir vos devoirs",
+    "onboardingTour.homework.tabsBody":
+      "« Liste » affiche vos devoirs a venir, « Voir » donne un resume rapide (faits, en retard, a faire).",
+    "onboardingTour.homework.rowTitle": "Un devoir de la liste",
+    "onboardingTour.homework.rowBody":
+      "Cliquez sur un devoir pour voir la consigne complete et les pieces jointes.",
+    "onboardingTour.homework.markDoneTitle": "Marquez-le comme fait",
+    "onboardingTour.homework.markDoneBody":
+      "Une fois le devoir termine, cliquez sur ce bouton pour le signaler a votre enseignant. Vous pouvez cliquer a nouveau pour annuler.",
+    "onboardingTour.homework.helpToggleTitle": "Une aide toujours disponible",
+    "onboardingTour.homework.helpToggleBody":
+      "Cliquez sur ce bouton a tout moment pour afficher un rappel sur l'utilisation de cette page.",
+
     "timetable.agenda.page.titlePrefix": "Emploi du temps",
     "timetable.agenda.page.defaultClassName": "Classe",
     "timetable.agenda.page.subtitle":
@@ -6183,6 +6209,32 @@ export const translations: Record<Locale, Record<string, string>> = {
       "This action is irreversible. Comments and completions will also be deleted.",
     "homework.confirm.deleteConfirm": "Delete",
     "homework.confirm.cancel": "Cancel",
+
+    "homework.tourFallback.title": "Example: Exercises page 42",
+    "homework.tourFallback.subject": "Mathematics",
+    "homework.tourFallback.author": "Your teacher",
+
+    "homework.studentHelp.toggle": "Help with homework",
+    "homework.studentHelp.title": "Understanding your homework",
+    "homework.studentHelp.body1":
+      '"List" shows your upcoming homework. "View" gives a quick summary (done, late, to do).',
+    "homework.studentHelp.body2":
+      "Click a homework item in the list to see the full instructions, attachments, and add a comment.",
+    "homework.studentHelp.body3":
+      'Once you\'re done, click "Mark done" in the homework detail to let your teacher know. Click it again to undo.',
+
+    "onboardingTour.homework.tabsTitle": "Two ways to see your homework",
+    "onboardingTour.homework.tabsBody":
+      '"List" shows your upcoming homework, "View" gives a quick summary (done, late, to do).',
+    "onboardingTour.homework.rowTitle": "A homework item",
+    "onboardingTour.homework.rowBody":
+      "Click a homework item to see the full instructions and attachments.",
+    "onboardingTour.homework.markDoneTitle": "Mark it as done",
+    "onboardingTour.homework.markDoneBody":
+      "Once you're done, click this button to let your teacher know. Click it again to undo.",
+    "onboardingTour.homework.helpToggleTitle": "Help is always available",
+    "onboardingTour.homework.helpToggleBody":
+      "Click this button any time to see a reminder of how to use this page.",
 
     "timetable.agenda.page.titlePrefix": "Timetable",
     "timetable.agenda.page.defaultClassName": "Class",

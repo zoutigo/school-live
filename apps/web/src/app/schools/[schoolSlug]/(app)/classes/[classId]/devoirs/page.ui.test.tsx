@@ -1,8 +1,26 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  act,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassHomeworkPage from "./page";
 import { useLocaleStore } from "../../../../../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../../../../../i18n/translations";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+
+function resetOnboardingTourStore() {
+  useOnboardingTourStore.setState({
+    completedTours: {},
+    activeTourId: null,
+    activeRole: null,
+    steps: [],
+    stepIndex: 0,
+    targetRect: null,
+  });
+}
 
 const replaceMock = vi.fn();
 
@@ -145,19 +163,25 @@ const mockDetail = {
 };
 
 function mockFetch(
-  options: { role?: string; homeworks?: unknown[]; detail?: unknown } = {},
+  options: {
+    role?: string;
+    homeworks?: unknown[];
+    detail?: unknown;
+    onboardingHelpEnabled?: boolean;
+  } = {},
 ) {
   const {
     role = "TEACHER",
     homeworks = mockHomeworks,
     detail = mockDetail,
+    onboardingHelpEnabled,
   } = options;
 
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = String(input);
 
     if (url.includes("/schools/college-vogt/me")) {
-      return jsonResponse({ role });
+      return jsonResponse({ role, onboardingHelpEnabled });
     }
     if (url.includes("/student-grades/context")) {
       return jsonResponse(contextPayload);
@@ -179,6 +203,7 @@ describe("Teacher class homework page", () => {
     replaceMock.mockReset();
     window.localStorage.clear();
     useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    resetOnboardingTourStore();
   });
 
   it("affiche les onglets, le tableau et les statuts en francais", async () => {
@@ -292,7 +317,7 @@ describe("Teacher class homework page", () => {
   });
 
   it("affiche le bouton Marquer fait pour un eleve dans le detail", async () => {
-    mockFetch({ role: "STUDENT" });
+    mockFetch({ role: "STUDENT", onboardingHelpEnabled: false });
 
     render(<TeacherClassHomeworkPage />);
 
@@ -380,5 +405,140 @@ describe("Teacher class homework page", () => {
       "http://minio.local/cours.pdf",
     );
     expect(downloadLink).toHaveAttribute("download", "cours.pdf");
+  });
+});
+
+describe("Tour + aide guidee - vue eleve", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    resetOnboardingTourStore();
+  });
+
+  it("eleve : le tour demarre et affiche une ligne de demonstration, meme avec de vrais devoirs", async () => {
+    mockFetch({ role: "STUDENT" });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(useOnboardingTourStore.getState().activeTourId).toBe("homework");
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("homework-row-homework-tour-fallback"),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("homework-row-hw-1")).not.toBeInTheDocument();
+    expect(screen.getByText("Exemple : Exercices page 42")).toBeInTheDocument();
+  });
+
+  it("cliquer la ligne de demonstration ouvre un detail factice et fait avancer le tour", async () => {
+    mockFetch({ role: "STUDENT" });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("homework-row-homework-tour-fallback"),
+      ).toBeInTheDocument();
+    });
+
+    // Move past the informative "tabs" step so the active step is "row"
+    // (the only step with advanceOnTargetPress), matching what the "Suivant"
+    // button in the tooltip would do in the real overlay.
+    act(() => {
+      useOnboardingTourStore.getState().next();
+    });
+
+    fireEvent.click(screen.getByTestId("homework-row-homework-tour-fallback"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-toggle-done")).toBeInTheDocument();
+    });
+
+    expect(useOnboardingTourStore.getState().stepIndex).toBe(2);
+
+    fireEvent.click(screen.getByTestId("homework-toggle-done"));
+    expect(screen.getByTestId("homework-toggle-done")).toHaveTextContent(
+      "Marquer fait",
+    );
+  });
+
+  it("le tour se termine : la ligne de demonstration disparait, les vrais devoirs reapparaissent", async () => {
+    mockFetch({ role: "STUDENT" });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("homework-row-homework-tour-fallback"),
+      ).toBeInTheDocument();
+    });
+
+    act(() => {
+      useOnboardingTourStore.getState().finish();
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("homework-row-homework-tour-fallback"),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId("homework-row-hw-1")).toBeInTheDocument();
+  });
+
+  it("onboardingHelpEnabled=false : pas de tour, les vrais devoirs s'affichent directement", async () => {
+    mockFetch({ role: "STUDENT", onboardingHelpEnabled: false });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-row-hw-1")).toBeInTheDocument();
+    });
+
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+    expect(
+      screen.queryByTestId("homework-row-homework-tour-fallback"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("le bouton d'aide eleve ouvre la modale et se ferme au clic sur Fermer", async () => {
+    mockFetch({ role: "STUDENT", onboardingHelpEnabled: false });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("homework-student-help-toggle"),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("homework-student-help-toggle"));
+
+    expect(screen.getByTestId("help-dialog")).toBeInTheDocument();
+    expect(screen.getByText("Comprendre vos devoirs")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("help-dialog-close"));
+
+    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+  });
+
+  it("n'affiche pas le bouton d'aide eleve pour un enseignant", async () => {
+    mockFetch({ role: "TEACHER" });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("homework-row-hw-1")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("homework-student-help-toggle"),
+    ).not.toBeInTheDocument();
   });
 });
