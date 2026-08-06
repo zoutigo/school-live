@@ -174,7 +174,9 @@ describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
     render(<MyVieScolairePage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("vie-scolaire-help-toggle")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("vie-scolaire-help-toggle"),
+      ).toBeInTheDocument();
     });
 
     expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();

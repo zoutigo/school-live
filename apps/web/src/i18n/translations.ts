@@ -2089,7 +2089,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.vieScolaire.kpisTitle": "Vos indicateurs",
     "onboardingTour.vieScolaire.kpisBody":
       "Ces quatre cartes récapitulent en un coup d'œil vos absences, retards, sanctions et punitions de l'année en cours.",
-    "onboardingTour.vieScolaire.helpToggleTitle": "Une aide toujours disponible",
+    "onboardingTour.vieScolaire.helpToggleTitle":
+      "Une aide toujours disponible",
     "onboardingTour.vieScolaire.helpToggleBody":
       "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
     "onboardingTour.parentLanding.step1Title": "Votre menu de navigation",
