@@ -96,7 +96,6 @@ export default function MyVieScolairePage() {
       schoolSlug={schoolSlug}
       studentId={selfContext.studentId}
       studentLabel={selfContext.studentLabel}
-      isSelfView
     />
   );
 }

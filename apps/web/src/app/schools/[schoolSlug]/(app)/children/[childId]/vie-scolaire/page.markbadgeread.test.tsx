@@ -101,7 +101,7 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
     ).toBe(false);
   });
 
-  it("n'enregistre aucune aide dans le menu (aide guidée réservée à la vue élève)", async () => {
+  it("enregistre l'aide dans le menu pour la vue parent", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
 
@@ -127,6 +127,6 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
       expect(screen.getByText("Remi Ntamack")).toBeInTheDocument();
     });
 
-    expect(usePageHelpStore.getState().entry).toBeNull();
+    expect(usePageHelpStore.getState().entry?.title).toBe("Vie scolaire");
   });
 });

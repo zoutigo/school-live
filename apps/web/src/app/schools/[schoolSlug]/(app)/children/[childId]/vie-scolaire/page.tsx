@@ -4,6 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { StudentLifePanel } from "../../../../../../../components/discipline/student-life-panel";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import {
+  VIE_SCOLAIRE_TOUR_ID,
+  VIE_SCOLAIRE_TOUR_STEPS,
+} from "../../../../../../../components/discipline/vie-scolaire-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -50,6 +55,7 @@ export default function ChildVieScolairePage() {
       const payload = (await response.json()) as {
         role?: string;
         linkedStudents?: ParentChild[];
+        onboardingHelpEnabled?: boolean;
       };
 
       if (payload.role !== "PARENT") {
@@ -68,6 +74,19 @@ export default function ChildVieScolairePage() {
           `/schools/${currentSchoolSlug}/children/${linked[0].id}/vie-scolaire`,
         );
         return;
+      }
+
+      const tourStore = useOnboardingTourStore.getState();
+      if (
+        payload.onboardingHelpEnabled !== false &&
+        !tourStore.isCompleted("parent", VIE_SCOLAIRE_TOUR_ID) &&
+        !tourStore.activeTourId
+      ) {
+        tourStore.startTour(
+          VIE_SCOLAIRE_TOUR_ID,
+          "parent",
+          VIE_SCOLAIRE_TOUR_STEPS,
+        );
       }
 
       setReady(true);

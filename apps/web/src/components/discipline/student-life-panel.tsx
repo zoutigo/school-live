@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Clock3, ShieldAlert } from "lucide-react";
 import { Card } from "../ui/card";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
@@ -121,34 +121,7 @@ export type StudentLifePanelProps = {
   schoolSlug: string;
   studentId: string;
   studentLabel: string;
-  /** True when the current user is viewing their own vie scolaire (student
-   * self-view), false when a parent is viewing a child's — help/tour are
-   * scoped to the student view only, per product decision. */
-  isSelfView?: boolean;
 };
-
-/** Wraps `children` in `OnboardingTarget` only for the student self-view —
- * the parent view renders the same markup without tour instrumentation. */
-function OnboardingTargetIfSelf({
-  isSelfView,
-  id,
-  className,
-  children,
-}: {
-  isSelfView: boolean;
-  id: string;
-  className?: string;
-  children: ReactNode;
-}) {
-  if (!isSelfView) {
-    return <div className={className}>{children}</div>;
-  }
-  return (
-    <OnboardingTarget id={id} className={className}>
-      {children}
-    </OnboardingTarget>
-  );
-}
 
 /**
  * Panneau Vie scolaire — composant central partagé (lecture seule).
@@ -164,7 +137,6 @@ export function StudentLifePanel({
   schoolSlug,
   studentId,
   studentLabel,
-  isSelfView = false,
 }: StudentLifePanelProps) {
   const { locale, t } = useTranslation();
   const [lifeEvents, setLifeEvents] = useState<StudentLifeEventRow[]>([]);
@@ -173,23 +145,19 @@ export function StudentLifePanel({
   const [eventsWarning, setEventsWarning] = useState<string | null>(null);
   const [tab, setTab] = useState<LocalTab>("synthese");
 
-  usePageHelp(
-    isSelfView
-      ? {
-          title: t("discipline.vieScolaire.help.title"),
-          sections: [
-            {
-              title: t("discipline.vieScolaire.help.section1Title"),
-              body: [t("discipline.vieScolaire.help.section1Body")],
-            },
-            {
-              title: t("discipline.vieScolaire.help.section2Title"),
-              body: [t("discipline.vieScolaire.help.section2Body")],
-            },
-          ],
-        }
-      : null,
-  );
+  usePageHelp({
+    title: t("discipline.vieScolaire.help.title"),
+    sections: [
+      {
+        title: t("discipline.vieScolaire.help.section1Title"),
+        body: [t("discipline.vieScolaire.help.section1Body")],
+      },
+      {
+        title: t("discipline.vieScolaire.help.section2Title"),
+        body: [t("discipline.vieScolaire.help.section2Body")],
+      },
+    ],
+  });
 
   useEffect(() => {
     if (!schoolSlug || !studentId) {
@@ -343,8 +311,7 @@ export function StudentLifePanel({
             {eventsWarning ? (
               <p className="text-sm text-[#8a6d1d]">{eventsWarning}</p>
             ) : null}
-            <OnboardingTargetIfSelf
-              isSelfView={isSelfView}
+            <OnboardingTarget
               id={VIE_SCOLAIRE_TOUR_TARGETS.tabs}
               className="flex items-end gap-2 border-b border-border"
             >
@@ -381,12 +348,11 @@ export function StudentLifePanel({
               >
                 {t("discipline.vieScolaire.tabs.sanctionsPunitions")}
               </button>
-            </OnboardingTargetIfSelf>
+            </OnboardingTarget>
 
             {tab === "synthese" ? (
               <div className="grid gap-4">
-                <OnboardingTargetIfSelf
-                  isSelfView={isSelfView}
+                <OnboardingTarget
                   id={VIE_SCOLAIRE_TOUR_TARGETS.kpis}
                   className="grid gap-3 md:grid-cols-4"
                 >
@@ -413,7 +379,7 @@ export function StudentLifePanel({
                       </div>
                     );
                   })}
-                </OnboardingTargetIfSelf>
+                </OnboardingTarget>
 
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-card border border-border bg-background p-4">
