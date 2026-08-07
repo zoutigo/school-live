@@ -598,9 +598,7 @@ describe("FamilyFeedPage", () => {
       <FamilyFeedPage schoolSlug="college-vogt" childFullName="Lisa MBELE" />,
     );
 
-    expect(usePageHelpStore.getState().entry?.title).toBe(
-      "Rechercher et filtrer",
-    );
-    expect(usePageHelpStore.getState().entry?.sections).toHaveLength(1);
+    expect(usePageHelpStore.getState().entry?.title).toBe("Vie de classe");
+    expect(usePageHelpStore.getState().entry?.sections).toHaveLength(7);
   });
 });

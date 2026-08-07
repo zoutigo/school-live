@@ -127,6 +127,8 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
       expect(screen.getByText("Remi Ntamack")).toBeInTheDocument();
     });
 
-    expect(usePageHelpStore.getState().entry?.title).toBe("Vie scolaire");
+    expect(usePageHelpStore.getState().entry?.title).toBe(
+      "Vie scolaire — Synthèse",
+    );
   });
 });

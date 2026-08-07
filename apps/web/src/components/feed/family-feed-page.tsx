@@ -177,12 +177,32 @@ export function FamilyFeedPage({
     title: t("feed.help.title"),
     sections: [
       {
-        title: t("feed.help.title"),
-        body: [
-          t("feed.help.body1"),
-          t("feed.help.body2"),
-          t("feed.help.body3"),
-        ],
+        title: t("feed.help.section1Title"),
+        body: [t("feed.help.section1Body")],
+      },
+      {
+        title: t("feed.help.section2Title"),
+        body: [t("feed.help.section2Body")],
+      },
+      {
+        title: t("feed.help.section3Title"),
+        body: [t("feed.help.section3Body")],
+      },
+      {
+        title: t("feed.help.section4Title"),
+        body: [t("feed.help.section4Body")],
+      },
+      {
+        title: t("feed.help.section5Title"),
+        body: [t("feed.help.section5Body")],
+      },
+      {
+        title: t("feed.help.section6Title"),
+        body: [t("feed.help.section6Body")],
+      },
+      {
+        title: t("feed.help.section7Title"),
+        body: [t("feed.help.section7Body")],
       },
     ],
   });

@@ -521,12 +521,20 @@ export default function TeacherClassHomeworkPage() {
   usePageHelp(
     isStudentOrParent
       ? {
-          title: t("homework.studentHelp.title"),
+          title:
+            tab === "view"
+              ? t("homework.studentHelp.view.title")
+              : t("homework.studentHelp.list.title"),
           sections: [
-            {
-              title: t("homework.studentHelp.section1Title"),
-              body: [t("homework.studentHelp.body1")],
-            },
+            tab === "view"
+              ? {
+                  title: t("homework.studentHelp.view.section1Title"),
+                  body: [t("homework.studentHelp.view.section1Body")],
+                }
+              : {
+                  title: t("homework.studentHelp.list.section1Title"),
+                  body: [t("homework.studentHelp.list.section1Body")],
+                },
             {
               title: t("homework.studentHelp.section2Title"),
               body: [t("homework.studentHelp.body2")],

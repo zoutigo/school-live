@@ -146,17 +146,37 @@ export function StudentLifePanel({
   const [tab, setTab] = useState<LocalTab>("synthese");
 
   usePageHelp({
-    title: t("discipline.vieScolaire.help.title"),
-    sections: [
-      {
-        title: t("discipline.vieScolaire.help.section1Title"),
-        body: [t("discipline.vieScolaire.help.section1Body")],
-      },
-      {
-        title: t("discipline.vieScolaire.help.section2Title"),
-        body: [t("discipline.vieScolaire.help.section2Body")],
-      },
-    ],
+    title:
+      tab === "synthese"
+        ? t("discipline.vieScolaire.help.synthese.title")
+        : tab === "absences"
+          ? t("discipline.vieScolaire.help.absences.title")
+          : t("discipline.vieScolaire.help.sanctions.title"),
+    sections:
+      tab === "synthese"
+        ? [
+            {
+              title: t("discipline.vieScolaire.help.synthese.section1Title"),
+              body: [t("discipline.vieScolaire.help.synthese.section1Body")],
+            },
+            {
+              title: t("discipline.vieScolaire.help.synthese.section2Title"),
+              body: [t("discipline.vieScolaire.help.synthese.section2Body")],
+            },
+          ]
+        : tab === "absences"
+          ? [
+              {
+                title: t("discipline.vieScolaire.help.absences.section1Title"),
+                body: [t("discipline.vieScolaire.help.absences.section1Body")],
+              },
+            ]
+          : [
+              {
+                title: t("discipline.vieScolaire.help.sanctions.section1Title"),
+                body: [t("discipline.vieScolaire.help.sanctions.section1Body")],
+              },
+            ],
   });
 
   useEffect(() => {

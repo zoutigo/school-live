@@ -517,13 +517,11 @@ describe("Tour + aide guidee - vue eleve", () => {
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(usePageHelpStore.getState().entry?.title).toBe(
-        "Comprendre les devoirs",
-      );
+      expect(usePageHelpStore.getState().entry?.title).toBe("Devoirs — Liste");
     });
     const sections = usePageHelpStore.getState().entry?.sections ?? [];
     expect(sections.map((section) => section.title)).toEqual([
-      "Deux onglets",
+      "La vue Liste",
       "Consulter un devoir",
       "Marquer comme fait",
     ]);
@@ -540,9 +538,7 @@ describe("Tour + aide guidee - vue eleve", () => {
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(usePageHelpStore.getState().entry?.title).toBe(
-        "Comprendre les devoirs",
-      );
+      expect(usePageHelpStore.getState().entry?.title).toBe("Devoirs — Liste");
     });
   });
 

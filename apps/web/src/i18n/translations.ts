@@ -880,13 +880,25 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.vieScolaire.eventsWarning":
       "Les evenements vie scolaire sont temporairement indisponibles. Affichage des donnees de demonstration.",
     "discipline.vieScolaire.error": "Impossible de charger la vie scolaire.",
-    "discipline.vieScolaire.help.title": "Vie scolaire",
-    "discipline.vieScolaire.help.section1Title": "Trois onglets",
-    "discipline.vieScolaire.help.section1Body":
-      "« Synthese » resume vos absences, retards, sanctions et punitions de l'annee. « Absences / retards » liste vos absences et retards. « Sanctions / punitions » liste vos sanctions et punitions.",
-    "discipline.vieScolaire.help.section2Title": "Quatre indicateurs",
-    "discipline.vieScolaire.help.section2Body":
-      "Dans l'onglet Synthese, ces quatre cartes recapitulent en un coup d'oeil vos absences, retards, sanctions et punitions de l'annee en cours.",
+    "discipline.vieScolaire.help.synthese.title": "Vie scolaire — Synthèse",
+    "discipline.vieScolaire.help.synthese.section1Title":
+      "Les compteurs de l'année",
+    "discipline.vieScolaire.help.synthese.section1Body":
+      "Les cartes en haut de l'écran totalisent, depuis le début de l'année scolaire, le nombre d'absences, de retards, de sanctions et de punitions. Ces chiffres se mettent à jour automatiquement dès qu'un nouvel événement est enregistré par l'établissement.",
+    "discipline.vieScolaire.help.synthese.section2Title":
+      "Filtrer les événements récents",
+    "discipline.vieScolaire.help.synthese.section2Body":
+      "Cliquez sur une carte (absences, retards, sanctions ou punitions) pour n'afficher, dans la liste « Événements récents » juste en dessous, que les événements de ce type. Cliquez à nouveau sur la même carte pour revenir à la liste complète sans filtre.",
+    "discipline.vieScolaire.help.absences.title": "Vie scolaire — Absences",
+    "discipline.vieScolaire.help.absences.section1Title":
+      "L'historique complet des absences et retards",
+    "discipline.vieScolaire.help.absences.section1Body":
+      "Cet onglet liste, du plus récent au plus ancien, chaque absence et chaque retard enregistrés par l'établissement, avec leur date et leur motif si l'établissement en a précisé un. Cette liste est en lecture seule : elle reflète ce que l'établissement a saisi.",
+    "discipline.vieScolaire.help.sanctions.title": "Vie scolaire — Sanctions",
+    "discipline.vieScolaire.help.sanctions.section1Title":
+      "L'historique complet des sanctions et punitions",
+    "discipline.vieScolaire.help.sanctions.section1Body":
+      "Cet onglet liste, du plus récent au plus ancien, chaque sanction et chaque punition enregistrées par l'établissement, avec leur date et leur motif. Comme l'onglet Absences, cette liste est en lecture seule.",
     "discipline.vieScolaire.tabs.synthese": "Synthese",
     "discipline.vieScolaire.tabs.absencesRetards": "Absences / retards",
     "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punitions",
@@ -1881,13 +1893,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.tourFallback.author": "Votre enseignant",
 
     "homework.studentHelp.toggle": "Aide sur les devoirs",
-    "homework.studentHelp.title": "Comprendre les devoirs",
-    "homework.studentHelp.section1Title": "Deux onglets",
-    "homework.studentHelp.body1":
-      "« Liste » affiche les devoirs a venir. « Voir » donne un resume du nombre de devoirs faits, en retard et a faire.",
+    "homework.studentHelp.list.title": "Devoirs — Liste",
+    "homework.studentHelp.list.section1Title": "La vue Liste",
+    "homework.studentHelp.list.section1Body":
+      "Cette vue affiche vos devoirs sous forme de tableau (matière, titre, date d'échéance, statut). Cliquez sur une ligne pour ouvrir le panneau de détail juste en dessous, avec la consigne complète, les pièces jointes et les commentaires.",
+    "homework.studentHelp.view.title": "Devoirs — Résumé",
+    "homework.studentHelp.view.section1Title": "La vue Résumé",
+    "homework.studentHelp.view.section1Body":
+      "Cette vue affiche la classe active ainsi que trois indicateurs : le nombre total de devoirs, le nombre encore à faire et le nombre en retard. Utile pour un coup d'œil rapide sans parcourir la liste complète.",
     "homework.studentHelp.section2Title": "Consulter un devoir",
     "homework.studentHelp.body2":
-      "Cliquez sur un devoir dans la liste pour voir la consigne complete, les pieces jointes et ajouter un commentaire.",
+      "Cliquez sur un devoir dans la liste pour ouvrir son panneau de détail : la consigne complète, les pièces jointes éventuelles, et une zone pour lire ou ajouter un commentaire, visible par l'enseignant et les autres élèves de la classe.",
     "homework.studentHelp.section3Title": "Marquer comme fait",
     "homework.studentHelp.body3":
       "Une fois le devoir termine, cliquez sur « Marquer fait » dans le detail du devoir pour le signaler a l'enseignant. Vous pouvez cliquer a nouveau pour annuler.",
@@ -2547,13 +2563,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.filters.apply": "Appliquer",
     "feed.help.toggle": "Aide",
     "feed.help.close": "J'ai compris",
-    "feed.help.title": "Rechercher et filtrer",
-    "feed.help.body1":
-      "Utilisez la barre de recherche pour retrouver une publication par mot-clé.",
-    "feed.help.body2":
-      "Le bouton filtre ouvre un panneau où vous pouvez combiner plusieurs types de publication (à la une, sondages) et n'afficher que vos propres publications.",
-    "feed.help.body3":
-      "Une fois votre sélection faite, validez avec Appliquer pour mettre à jour la liste.",
+    "feed.help.title": "Vie de classe",
+    "feed.help.section1Title": "À quoi sert ce fil",
+    "feed.help.section1Body":
+      "Ce fil regroupe toutes les publications de la classe (annonces, messages, sondages) dans l'ordre chronologique, les plus récentes en premier. Il sert de mémoire commune : plutôt que de disperser l'information dans des messages séparés, tout ce qui concerne la classe reste consultable à un seul endroit, y compris après plusieurs jours.",
+    "feed.help.section2Title": "Rechercher une publication",
+    "feed.help.section2Body":
+      "Utilisez la barre de recherche pour retrouver une publication par mot-clé (dans son titre ou son texte). C'est utile dès que le fil contient plusieurs semaines d'historique et que vous cherchez une information précise sans faire défiler toute la liste.",
+    "feed.help.section3Title": "Filtrer par type et par auteur",
+    "feed.help.section3Body":
+      "Le bouton filtre ouvre un panneau où vous pouvez combiner plusieurs types de publication (« à la une », sondages) et n'afficher que vos propres publications. Utile pour se concentrer sur un seul sujet, par exemple ne voir que les sondages en cours. Une fois votre sélection faite, validez avec « Appliquer » pour mettre à jour la liste ; le bouton filtre reste teinté tant qu'un filtre est actif, pour vous rappeler que la liste est restreinte.",
+    "feed.help.section4Title": "Types de publications",
+    "feed.help.section4Body":
+      "Une publication marquée d'une étoile est « à la une » : mise en avant par l'auteur car jugée particulièrement importante, elle reste visible même après avoir été dépassée par des publications plus récentes. Un sondage affiche une question et des options à choix : cliquez sur une option pour voter, le résultat (nombre de voix par option) apparaît immédiatement après votre vote, qui n'est pas modifiable ensuite.",
+    "feed.help.section5Title": "Réagir à une publication",
+    "feed.help.section5Body":
+      "Le cœur ajoute ou retire un « j'aime » et affiche le nombre total de personnes ayant aimé la publication — un signal rapide d'approbation sans écrire de message. La bulle de commentaires affiche le nombre de réponses déjà postées et déplie la liste des commentaires en cliquant dessus. Le bouton d'envoi ouvre un champ de texte : écrivez votre réponse puis validez pour publier votre commentaire, visible par toute la classe.",
+    "feed.help.section6Title": "Pièces jointes et images",
+    "feed.help.section6Body":
+      "Une publication peut contenir des images insérées directement dans le texte (cliquez dessus pour les afficher en plein écran) et des fichiers joints (documents, PDF...) listés sous le texte avec leur nom et leur taille : cliquez sur un fichier pour l'ouvrir ou le télécharger.",
+    "feed.help.section7Title": "Publier et gérer vos publications",
+    "feed.help.section7Body":
+      "Le bouton « + » ouvre le formulaire de publication : rédigez un texte, ajoutez éventuellement des images ou pièces jointes, ou créez un sondage. Vous pouvez modifier ou supprimer une publication que vous avez vous-même créée grâce aux icônes qui apparaissent sur celle-ci ; les publications des autres membres de la classe ne peuvent pas être modifiées ou supprimées depuis cet écran.",
     "onboardingTour.feedFilters.step1Title": "Ouvrez les filtres",
     "onboardingTour.feedFilters.step1Body":
       "Cliquez sur ce bouton pour ouvrir le panneau de filtres du fil.",
@@ -5578,13 +5609,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.vieScolaire.eventsWarning":
       "School life events are temporarily unavailable. Showing demo data.",
     "discipline.vieScolaire.error": "Unable to load school life data.",
-    "discipline.vieScolaire.help.title": "School life",
-    "discipline.vieScolaire.help.section1Title": "Three tabs",
-    "discipline.vieScolaire.help.section1Body":
-      '"Summary" gives an overview of your absences, lateness, sanctions and punishments for the year. "Absences / lateness" lists your absences and lateness. "Sanctions / punishments" lists your sanctions and punishments.',
-    "discipline.vieScolaire.help.section2Title": "Four indicators",
-    "discipline.vieScolaire.help.section2Body":
-      "In the Summary tab, these four cards give you an at-a-glance overview of your absences, lateness, sanctions and punishments for the current year.",
+    "discipline.vieScolaire.help.synthese.title": "School life — Summary",
+    "discipline.vieScolaire.help.synthese.section1Title": "The year's counters",
+    "discipline.vieScolaire.help.synthese.section1Body":
+      "The cards at the top of the screen total, since the start of the school year, the number of absences, lateness, sanctions and punishments. These numbers update automatically as soon as a new event is recorded by the school.",
+    "discipline.vieScolaire.help.synthese.section2Title":
+      "Filtering recent events",
+    "discipline.vieScolaire.help.synthese.section2Body":
+      'Click a card (absences, lateness, sanctions or punishments) to only show, in the "Recent events" list just below, events of that type. Click the same card again to go back to the full unfiltered list.',
+    "discipline.vieScolaire.help.absences.title": "School life — Absences",
+    "discipline.vieScolaire.help.absences.section1Title":
+      "The full history of absences and lateness",
+    "discipline.vieScolaire.help.absences.section1Body":
+      "This tab lists, most recent first, every absence and lateness recorded by the school, with its date and its reason if the school specified one. This list is read-only: it reflects what the school entered.",
+    "discipline.vieScolaire.help.sanctions.title": "School life — Sanctions",
+    "discipline.vieScolaire.help.sanctions.section1Title":
+      "The full history of sanctions and punishments",
+    "discipline.vieScolaire.help.sanctions.section1Body":
+      "This tab lists, most recent first, every sanction and punishment recorded by the school, with its date and its reason. Like the Absences tab, this list is read-only.",
     "discipline.vieScolaire.tabs.synthese": "Summary",
     "discipline.vieScolaire.tabs.absencesRetards": "Absences / lateness",
     "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punishments",
@@ -6547,13 +6589,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.tourFallback.author": "Your teacher",
 
     "homework.studentHelp.toggle": "Help with homework",
-    "homework.studentHelp.title": "Understanding homework",
-    "homework.studentHelp.section1Title": "Two tabs",
-    "homework.studentHelp.body1":
-      '"List" shows upcoming homework. "View" gives a quick summary (done, late, to do).',
+    "homework.studentHelp.list.title": "Homework — List",
+    "homework.studentHelp.list.section1Title": "The List view",
+    "homework.studentHelp.list.section1Body":
+      "This view shows your homework as a table (subject, title, due date, status). Click a row to open the detail panel just below, with the full instructions, attachments and comments.",
+    "homework.studentHelp.view.title": "Homework — Summary",
+    "homework.studentHelp.view.section1Title": "The Summary view",
+    "homework.studentHelp.view.section1Body":
+      "This view shows the active class along with three indicators: the total number of homework, the number still to do, and the number that's late. Useful for a quick glance without browsing the full list.",
     "homework.studentHelp.section2Title": "View a homework item",
     "homework.studentHelp.body2":
-      "Click a homework item in the list to see the full instructions, attachments, and add a comment.",
+      "Click a homework item in the list to open its detail panel: the full instructions, any attachments, and an area to read or add a comment, visible to the teacher and the other students in the class.",
     "homework.studentHelp.section3Title": "Mark as done",
     "homework.studentHelp.body3":
       'Once done, click "Mark done" in the homework detail to let the teacher know. Click it again to undo.',
@@ -7180,12 +7226,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.filters.apply": "Apply",
     "feed.help.toggle": "Help",
     "feed.help.close": "Got it",
-    "feed.help.title": "Search and filter",
-    "feed.help.body1": "Use the search bar to find a post by keyword.",
-    "feed.help.body2":
-      "The filter button opens a panel where you can combine several post types (featured, polls) and show only your own posts.",
-    "feed.help.body3":
-      "Once you've made your selection, confirm with Apply to update the list.",
+    "feed.help.title": "Class life",
+    "feed.help.section1Title": "What this feed is for",
+    "feed.help.section1Body":
+      "This feed gathers every post for the class (announcements, messages, polls) in chronological order, most recent first. It acts as a shared memory: instead of scattering information across separate messages, everything about the class stays available in one place, even after several days.",
+    "feed.help.section2Title": "Search for a post",
+    "feed.help.section2Body":
+      "Use the search bar to find a post by keyword (in its title or text). This is useful once the feed holds several weeks of history and you need a specific piece of information without scrolling through the whole list.",
+    "feed.help.section3Title": "Filter by type and by author",
+    "feed.help.section3Body":
+      'The filter button opens a panel where you can combine several post types ("featured", polls) and show only your own posts. Useful to focus on a single topic, for example seeing only ongoing polls. Once you\'ve made your selection, confirm with "Apply" to update the list; the filter button stays highlighted while a filter is active, as a reminder that the list is restricted.',
+    "feed.help.section4Title": "Post types",
+    "feed.help.section4Body":
+      'A post marked with a star is "featured": highlighted by its author as particularly important, it stays visible even after being overtaken by more recent posts. A poll shows a question with choices: click an option to vote, the result (vote count per option) appears immediately after you vote, and your vote can\'t be changed afterwards.',
+    "feed.help.section5Title": "Reacting to a post",
+    "feed.help.section5Body":
+      'The heart adds or removes a "like" and shows the total number of people who liked the post — a quick way to signal approval without writing a message. The comment bubble shows how many replies have already been posted and expands the comment list when clicked. The send button opens a text field: write your reply then confirm to publish your comment, visible to the whole class.',
+    "feed.help.section6Title": "Attachments and images",
+    "feed.help.section6Body":
+      "A post can contain images inserted directly in the text (click them to view full screen) and attached files (documents, PDFs...) listed below the text with their name and size: click a file to open or download it.",
+    "feed.help.section7Title": "Publishing and managing your posts",
+    "feed.help.section7Body":
+      'The "+" button opens the posting form: write some text, optionally add images or attachments, or create a poll. You can edit or delete a post you created yourself using the icons that appear on it; posts from other class members can\'t be edited or deleted from this screen.',
     "onboardingTour.feedFilters.step1Title": "Open the filters",
     "onboardingTour.feedFilters.step1Body":
       "Click this button to open the feed's filter panel.",

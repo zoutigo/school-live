@@ -176,12 +176,14 @@ describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
     render(<MyVieScolairePage />);
 
     await waitFor(() => {
-      expect(usePageHelpStore.getState().entry?.title).toBe("Vie scolaire");
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Vie scolaire — Synthèse",
+      );
     });
     const sections = usePageHelpStore.getState().entry?.sections ?? [];
     expect(sections.map((section) => section.title)).toEqual([
-      "Trois onglets",
-      "Quatre indicateurs",
+      "Les compteurs de l'année",
+      "Filtrer les événements récents",
     ]);
   });
 });
