@@ -48,6 +48,7 @@ model AcademicLevel {
   label          String
   languageSystem SchoolLanguageSystem?
   cycleId        String?
+  order          Int?
   createdAt      DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   school      School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -60,10 +61,29 @@ model AcademicLevel {
   termReportsTargetingThisLevel StudentTermReport[] @relation("StudentTermReportNextLevel")
   feeSchedules FeeSchedule[]
   enrollmentsTargetingThisLevel Enrollment[] @relation("EnrollmentAcademicLevel")
+  schoolActivations SchoolAcademicLevel[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
   @@index([cycleId])
+  @@index([order])
+}
+
+/// Active un niveau (national ou propre a l'ecole) pour une ecole donnee.
+/// Les niveaux propres a l'ecole (AcademicLevel.schoolId = cette ecole) sont
+/// implicitement actifs et n'ont pas besoin d'une ligne ici ; cette table ne
+/// sert qu'a activer un sous-ensemble du catalogue national par ecole.
+model SchoolAcademicLevel {
+  id              String        @id @default(cuid())
+  schoolId        String
+  academicLevelId String
+  createdAt       DateTime      @default(now())
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, academicLevelId])
+  @@index([schoolId])
+  @@index([academicLevelId])
 }
 
 model NationalCycle {
