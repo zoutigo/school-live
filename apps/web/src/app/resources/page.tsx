@@ -415,19 +415,21 @@ export default function ResourcesBrowsePage() {
 
   usePageHelp(
     isParentRole
-      ? {
-          title: t("resourcesBrowse.help.title"),
-          sections: [
-            {
-              title: t("resourcesBrowse.help.section1Title"),
-              body: [t("resourcesBrowse.help.section1Body")],
-            },
-            {
-              title: t("resourcesBrowse.help.section2Title"),
-              body: [t("resourcesBrowse.help.section2Body")],
-            },
-          ],
-        }
+      ? tab === "mine"
+        ? {
+            title: t("resourcesBrowse.help.mine.title"),
+            sections: [1, 2].map((n) => ({
+              title: t(`resourcesBrowse.help.mine.section${n}Title`),
+              body: [t(`resourcesBrowse.help.mine.section${n}Body`)],
+            })),
+          }
+        : {
+            title: t(`resourcesBrowse.help.${tab}.title`),
+            sections: [1, 2].map((n) => ({
+              title: t(`resourcesBrowse.help.browse.section${n}Title`),
+              body: [t(`resourcesBrowse.help.browse.section${n}Body`)],
+            })),
+          }
       : null,
   );
 

@@ -296,7 +296,7 @@ describe("SiteContentPage UI", () => {
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
-  it("registers help content (3 sections) in the side menu", async () => {
+  it("registers help content for the active tab in the side menu", async () => {
     usePageHelpStore.setState({ entry: null, open: false });
     mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
 
@@ -304,13 +304,38 @@ describe("SiteContentPage UI", () => {
     await screen.findByText("contact@scolive.cm");
 
     await waitFor(() => {
-      expect(usePageHelpStore.getState().entry?.title).toBe("Contenu du site");
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Contact",
+      );
     });
-    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    let sections = usePageHelpStore.getState().entry?.sections ?? [];
     expect(sections.map((section) => section.title)).toEqual([
-      "Trois onglets",
-      "Créer un brouillon",
-      "Publier",
+      "Consulter les coordonnées publiques",
+      "Modifier les coordonnées",
+    ]);
+
+    fireEvent.click(screen.getByText("Documents légaux"));
+    await waitFor(() => {
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Documents légaux",
+      );
+    });
+    sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Choisir le document et la langue",
+      "Créer ou modifier un brouillon",
+      "Publier ou supprimer un document",
+    ]);
+
+    fireEvent.click(screen.getByText("Messages"));
+    await waitFor(() => {
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Messages",
+      );
+    });
+    sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Consulter les messages reçus",
     ]);
   });
 

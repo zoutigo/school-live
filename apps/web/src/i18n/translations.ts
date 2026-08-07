@@ -1033,13 +1033,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesBrowse.correctionAvailable": "Corrige disponible",
     "resourcesBrowse.noStatementYet": "Aucun enonce valide pour le moment.",
 
-    "resourcesBrowse.help.title": "Ressources",
-    "resourcesBrowse.help.section1Title": "Trouver une ressource",
-    "resourcesBrowse.help.section1Body":
-      "Utilisez les onglets Evaluations/Examens pour changer de type de ressource, et le champ de recherche pour retrouver une ressource par son titre. Le bouton Rechercher affiche des filtres supplementaires (annee, etablissement, niveau, type).",
-    "resourcesBrowse.help.section2Title": "Consulter",
-    "resourcesBrowse.help.section2Body":
-      "Cliquez sur une carte pour deplier l'enonce ou le corrige de la ressource.",
+    "resourcesBrowse.help.ASSESSMENT.title":
+      "Comment utiliser l'onglet Évaluations",
+    "resourcesBrowse.help.EXAM.title": "Comment utiliser l'onglet Examens",
+    "resourcesBrowse.help.browse.section1Title": "Rechercher et filtrer",
+    "resourcesBrowse.help.browse.section1Body":
+      "Utilisez le champ de recherche pour retrouver une ressource par son titre. Le bouton Rechercher affiche des filtres supplémentaires (année, établissement, niveau, type).",
+    "resourcesBrowse.help.browse.section2Title": "Consulter une ressource",
+    "resourcesBrowse.help.browse.section2Body":
+      "Cliquez sur une carte pour déplier l'énoncé ou le corrigé de la ressource.",
+    "resourcesBrowse.help.mine.title":
+      "Comment utiliser l'onglet Mes ressources",
+    "resourcesBrowse.help.mine.section1Title": "Proposer une ressource",
+    "resourcesBrowse.help.mine.section1Body":
+      "Cliquez sur + Évaluation ou + Examen pour proposer une nouvelle ressource. Elle est soumise à validation par la modération avant d'être visible des autres utilisateurs.",
+    "resourcesBrowse.help.mine.section2Title":
+      "Suivre le statut et gérer le contenu",
+    "resourcesBrowse.help.mine.section2Body":
+      "Chaque ressource proposée affiche le statut de son énoncé et de son corrigé (en attente, approuvé, refusé). Utilisez Modifier pour corriger ses informations, ou Gérer le contenu pour ajouter ou modifier l'énoncé et le corrigé eux-mêmes.",
 
     "onboardingTour.resources.step1Title": "Types de ressources",
     "onboardingTour.resources.step1Body":
@@ -1363,30 +1374,75 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Comment utiliser l'onglet Évaluations",
     "notes.teacher.pageHelp.evaluations.section1Title": "Rechercher et filtrer",
     "notes.teacher.pageHelp.evaluations.section1Body":
-      "Utilisez la recherche pour retrouver une évaluation par titre, ou l'icône filtre pour affiner par type, séquence ou statut de saisie.",
-    "notes.teacher.pageHelp.evaluations.section2Title": "Créer une évaluation",
+      "Utilisez la recherche pour retrouver une évaluation par titre. Ouvrez l'icône filtre pour affiner la liste par type d'évaluation, par séquence ou par statut de saisie (complète ou incomplète) — utile pour repérer rapidement les évaluations auxquelles il manque encore des notes.",
+    "notes.teacher.pageHelp.evaluations.section2Title":
+      "Statut brouillon ou publié",
     "notes.teacher.pageHelp.evaluations.section2Body":
-      "Cliquez sur le bouton + pour créer une nouvelle évaluation avec son barème et sa date.",
+      "Une évaluation créée en brouillon n'est visible ni par les élèves ni par les parents, et ses notes n'apparaissent pas dans leur onglet Notes tant qu'elle n'est pas publiée. Publiez-la dès que son barème et sa date sont définitifs pour la rendre visible ; le badge Brouillon ou Publié sur chaque carte indique son état actuel.",
+    "notes.teacher.pageHelp.evaluations.section3Title":
+      "Suivre l'avancement de la saisie",
+    "notes.teacher.pageHelp.evaluations.section3Body":
+      "Chaque carte affiche le nombre de notes déjà saisies sur l'effectif de la classe. Ce compteur change de couleur selon que la saisie est complète ou encore incomplète, pour repérer d'un coup d'œil les évaluations à finaliser.",
+    "notes.teacher.pageHelp.evaluations.section4Title": "Créer une évaluation",
+    "notes.teacher.pageHelp.evaluations.section4Body":
+      "Cliquez sur le bouton + pour créer une nouvelle évaluation : titre, matière, type, séquence, date, barème et coefficient. Enregistrez-la comme brouillon pour la préparer à l'avance, ou publiez-la directement si elle est prête.",
+    "notes.teacher.pageHelp.evaluations.section5Title":
+      "Modifier une évaluation",
+    "notes.teacher.pageHelp.evaluations.section5Body":
+      "Ouvrez une évaluation dans la liste pour consulter son détail (barème, coefficient, consignes, notes déjà saisies), puis cliquez sur Modifier pour corriger son titre, sa date, son type ou son barème.",
+    "notes.teacher.pageHelp.evaluations.section6Title":
+      "Passer à la saisie des notes",
+    "notes.teacher.pageHelp.evaluations.section6Body":
+      "Depuis le détail d'une évaluation, cliquez sur Saisir les notes pour basculer directement vers l'onglet Saisie des notes avec cette évaluation déjà sélectionnée.",
     "notes.teacher.pageHelp.notes.title": "Comment utiliser l'onglet Notes",
-    "notes.teacher.pageHelp.notes.section1Title": "Consulter un élève",
+    "notes.teacher.pageHelp.notes.section1Title": "Rechercher un élève",
     "notes.teacher.pageHelp.notes.section1Body":
-      "Recherchez un élève pour consulter toutes ses notes et sa moyenne, matière par matière.",
+      "Recherchez un élève par nom pour consulter toutes ses notes et sa moyenne, matière par matière.",
+    "notes.teacher.pageHelp.notes.section2Title": "Changer de trimestre",
+    "notes.teacher.pageHelp.notes.section2Body":
+      "Une fois un élève sélectionné, cliquez sur un trimestre pour afficher ses notes et sa moyenne sur cette période précise.",
     "notes.teacher.pageHelp.scores.title":
       "Comment utiliser l'onglet Saisie des notes",
-    "notes.teacher.pageHelp.scores.section1Title":
-      "Saisir les notes d'une évaluation",
+    "notes.teacher.pageHelp.scores.section1Title": "Choisir une évaluation",
     "notes.teacher.pageHelp.scores.section1Body":
-      "Choisissez une évaluation puis saisissez ou modifiez la note de chaque élève.",
+      "Sélectionnez l'évaluation à noter dans la liste déroulante pour afficher tous les élèves de la classe avec leur ligne de saisie.",
+    "notes.teacher.pageHelp.scores.section2Title":
+      "Indiquer le statut de chaque élève",
+    "notes.teacher.pageHelp.scores.section2Body":
+      "Pour chaque élève, choisissez Note saisie, Absent, Excusé ou Non noté — le champ note ne s'active que pour le statut Note saisie, pour éviter d'enregistrer une note incohérente avec l'absence de l'élève.",
+    "notes.teacher.pageHelp.scores.section3Title":
+      "Saisir la note et un commentaire",
+    "notes.teacher.pageHelp.scores.section3Body":
+      "Entrez la note de l'élève (dans la limite du barème de l'évaluation) et, si besoin, un commentaire individuel visible avec sa note.",
+    "notes.teacher.pageHelp.scores.section4Title": "Enregistrer",
+    "notes.teacher.pageHelp.scores.section4Body":
+      "Cliquez sur Enregistrer pour sauvegarder les notes saisies. Tant que l'évaluation reste en brouillon, ces notes restent invisibles des familles jusqu'à sa publication.",
     "notes.teacher.pageHelp.council.title":
       "Comment utiliser l'onglet Conseil de classe",
-    "notes.teacher.pageHelp.council.section1Title": "Rédiger les appréciations",
+    "notes.teacher.pageHelp.council.section1Title":
+      "Choisir le trimestre et la date du conseil",
     "notes.teacher.pageHelp.council.section1Body":
-      "Choisissez la séquence puis rédigez ou modifiez l'appréciation de chaque élève avant de publier le conseil de classe.",
+      "Sélectionnez le trimestre concerné et, si besoin, la date à laquelle le conseil de classe s'est tenu — ces informations apparaissent sur le bulletin de chaque élève.",
+    "notes.teacher.pageHelp.council.section2Title": "Rédiger les appréciations",
+    "notes.teacher.pageHelp.council.section2Body":
+      "Pour chaque matière que vous enseignez, rédigez ou corrigez l'appréciation qui apparaîtra sur le bulletin de l'élève. Si vous êtes professeur référent de la classe, une appréciation générale de conseil de classe est également modifiable, en plus des appréciations par matière.",
+    "notes.teacher.pageHelp.council.section3Title":
+      "Enregistrer en brouillon ou publier",
+    "notes.teacher.pageHelp.council.section3Body":
+      "Choisissez Brouillon pour préparer les appréciations sans les rendre visibles aux familles, ou Publié pour les rendre consultables sur le bulletin dès l'enregistrement.",
     "notes.teacher.pageHelp.decision.title":
       "Comment utiliser l'onglet Décision",
-    "notes.teacher.pageHelp.decision.section1Title": "Statuer sur le passage",
+    "notes.teacher.pageHelp.decision.section1Title":
+      "Consulter la synthèse de l'élève",
     "notes.teacher.pageHelp.decision.section1Body":
-      "Consultez la moyenne de chaque trimestre, la moyenne annuelle et le rang de l'élève, puis choisissez Passage, Redoublement ou Départ et enregistrez.",
+      "Le tableau affiche pour chaque élève les moyennes des trois trimestres, la moyenne annuelle et son rang dans la classe — de quoi statuer en connaissance de cause sur son passage.",
+    "notes.teacher.pageHelp.decision.section2Title": "Choisir la décision",
+    "notes.teacher.pageHelp.decision.section2Body":
+      "Sélectionnez Passage, Redoublement ou Départ pour chaque élève. Cette décision détermine si l'élève poursuit dans la classe supérieure, refait son année, ou quitte l'établissement.",
+    "notes.teacher.pageHelp.decision.section3Title":
+      "Choisir la classe de destination et enregistrer",
+    "notes.teacher.pageHelp.decision.section3Body":
+      "Sauf en cas de Départ, indiquez la classe de destination pour l'année suivante, puis enregistrez pour valider la décision de cet élève.",
 
     "onboardingTour.teacherNotes.step1Title": "Les onglets",
     "onboardingTour.teacherNotes.step1Body":
@@ -4584,16 +4640,29 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.messages.detail.read": "Message lu",
 
     "siteContent.help.toggle": "Aide",
-    "siteContent.help.title": "Contenu du site",
-    "siteContent.help.section1Title": "Trois onglets",
-    "siteContent.help.body1":
-      "Cette page gère le contenu public du site vitrine : les coordonnées de contact, les documents légaux (CGU, mentions légales, confidentialité) et les prises de contact reçues.",
-    "siteContent.help.section2Title": "Créer un brouillon",
-    "siteContent.help.body2":
-      "Pour un document légal, choisissez d'abord la langue puis créez un nouveau brouillon depuis le bouton dédié. Un brouillon peut être modifié librement tant qu'il n'est pas publié.",
-    "siteContent.help.section3Title": "Publier",
-    "siteContent.help.body3":
-      "Publier un brouillon remplace immédiatement la version visible sur le site pour cette langue et ce document. Les anciennes versions publiées restent visibles dans l'historique. L'onglet Messages liste les demandes reçues via le formulaire de contact public.",
+    "siteContent.help.contact.title": "Comment utiliser l'onglet Contact",
+    "siteContent.help.contact.section1Title":
+      "Consulter les coordonnées publiques",
+    "siteContent.help.contact.section1Body":
+      "Cet onglet affiche les coordonnées de contact (email, téléphone, adresse, représentant légal) affichées publiquement sur le site vitrine de l'école.",
+    "siteContent.help.contact.section2Title": "Modifier les coordonnées",
+    "siteContent.help.contact.section2Body":
+      "Cliquez sur Modifier pour corriger une information, puis Enregistrer. La mise à jour est immédiatement visible sur le site public.",
+    "siteContent.help.legal.title":
+      "Comment utiliser l'onglet Documents légaux",
+    "siteContent.help.legal.section1Title": "Choisir le document et la langue",
+    "siteContent.help.legal.section1Body":
+      "Sélectionnez le document (CGU, mentions légales, confidentialité) puis la langue à modifier — chaque document existe indépendamment pour chaque langue proposée sur le site.",
+    "siteContent.help.legal.section2Title": "Créer ou modifier un brouillon",
+    "siteContent.help.legal.section2Body":
+      "Cliquez sur Nouveau brouillon pour rédiger une nouvelle version, ou Modifier sur un brouillon existant. Un brouillon peut être corrigé librement tant qu'il n'est pas publié, sans affecter la version visible sur le site.",
+    "siteContent.help.legal.section3Title": "Publier ou supprimer un document",
+    "siteContent.help.legal.section3Body":
+      "Publier un brouillon remplace immédiatement la version visible sur le site pour cette langue et ce document ; les anciennes versions publiées restent consultables dans l'historique. Supprimer retire définitivement un brouillon qui ne doit plus être conservé.",
+    "siteContent.help.messages.title": "Comment utiliser l'onglet Messages",
+    "siteContent.help.messages.section1Title": "Consulter les messages reçus",
+    "siteContent.help.messages.section1Body":
+      "Cet onglet liste les demandes envoyées via le formulaire de contact public du site, des plus récentes aux plus anciennes. Cliquez sur un message pour lire son détail — il est alors marqué comme lu.",
 
     "health.title": "Santé",
     "health.subtitleDefault": "Informations de santé de l'élève",
@@ -4635,16 +4704,30 @@ export const translations: Record<Locale, Record<string, string>> = {
       "La condition de santé a été mise à jour.",
     "health.parent.form.createReportSuccess":
       "L'événement a été signalé à l'école.",
-    "health.parent.help.title": "Santé",
-    "health.parent.help.section1Title": "Conditions",
-    "health.parent.help.section1Body":
-      "L'onglet Conditions regroupe les allergies, pathologies et consignes durables de votre enfant, avec un niveau d'alerte (info, attention, urgence) visible d'un coup d'œil.",
-    "health.parent.help.section2Title": "Historique",
-    "health.parent.help.section2Body":
-      "L'onglet Historique fusionne les soins reçus à l'école et les événements que vous signalez vous-même, triés du plus récent au plus ancien.",
-    "health.parent.help.section3Title": "Signaler un événement",
-    "health.parent.help.section3Body":
-      "Le bouton + ajoute une condition de santé depuis l'onglet Conditions, ou signale un événement (maladie, accident...) depuis l'onglet Historique. L'enseignant référent est automatiquement informé pour un signalement.",
+    "health.parent.help.conditions.title":
+      "Comment utiliser l'onglet Conditions",
+    "health.parent.help.conditions.section1Title":
+      "Consulter les conditions de santé",
+    "health.parent.help.conditions.section1Body":
+      "Cet onglet regroupe les allergies, pathologies et consignes durables de votre enfant, avec un niveau d'alerte (info, attention, urgence) visible d'un coup d'œil sur chaque carte.",
+    "health.parent.help.conditions.section2Title": "Rechercher et filtrer",
+    "health.parent.help.conditions.section2Body":
+      "Utilisez la recherche pour retrouver une condition par son nom, ou le filtre pour affiner par type, niveau d'alerte ou statut (active ou inactive).",
+    "health.parent.help.conditions.section3Title":
+      "Ajouter ou consulter une condition",
+    "health.parent.help.conditions.section3Body":
+      "Touchez le bouton + pour ajouter une nouvelle condition de santé. Touchez une carte pour consulter son détail et la modifier si besoin.",
+    "health.parent.help.history.title": "Comment utiliser l'onglet Historique",
+    "health.parent.help.history.section1Title":
+      "Consulter l'historique de santé",
+    "health.parent.help.history.section1Body":
+      "Cet onglet fusionne les soins reçus à l'école et les événements que vous signalez vous-même, triés du plus récent au plus ancien.",
+    "health.parent.help.history.section2Title": "Rechercher et filtrer",
+    "health.parent.help.history.section2Body":
+      "Utilisez la recherche ou le filtre pour retrouver un événement par niveau d'alerte, origine (école ou signalé par vous) ou type de rapport.",
+    "health.parent.help.history.section3Title": "Signaler un événement",
+    "health.parent.help.history.section3Body":
+      "Touchez le bouton + pour signaler un événement (maladie, accident...) survenu en dehors de l'école. L'enseignant référent de votre enfant est automatiquement informé.",
     "health.parent.form.hero.createConditionTitle": "Ajouter une condition",
     "health.parent.form.hero.editConditionTitle": "Modifier la condition",
     "health.parent.form.hero.createReportTitle": "Signaler un événement",
@@ -5778,13 +5861,22 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesBrowse.correctionAvailable": "Correction available",
     "resourcesBrowse.noStatementYet": "No approved statement yet.",
 
-    "resourcesBrowse.help.title": "Resources",
-    "resourcesBrowse.help.section1Title": "Find a resource",
-    "resourcesBrowse.help.section1Body":
-      "Use the Assessments/Exams tabs to switch resource type, and the search field to find a resource by title. The Search button reveals extra filters (year, school, level, type).",
-    "resourcesBrowse.help.section2Title": "View",
-    "resourcesBrowse.help.section2Body":
+    "resourcesBrowse.help.ASSESSMENT.title": "How to use the Assessments tab",
+    "resourcesBrowse.help.EXAM.title": "How to use the Exams tab",
+    "resourcesBrowse.help.browse.section1Title": "Search and filter",
+    "resourcesBrowse.help.browse.section1Body":
+      "Use the search field to find a resource by title. The Search button reveals extra filters (year, school, level, type).",
+    "resourcesBrowse.help.browse.section2Title": "View a resource",
+    "resourcesBrowse.help.browse.section2Body":
       "Click a card to expand its statement or correction.",
+    "resourcesBrowse.help.mine.title": "How to use the My resources tab",
+    "resourcesBrowse.help.mine.section1Title": "Submit a resource",
+    "resourcesBrowse.help.mine.section1Body":
+      "Click + Assessment or + Exam to submit a new resource. It goes through moderation approval before becoming visible to other users.",
+    "resourcesBrowse.help.mine.section2Title":
+      "Track status and manage content",
+    "resourcesBrowse.help.mine.section2Body":
+      "Each submitted resource shows the status of its statement and correction (pending, approved, rejected). Use Edit to correct its details, or Manage content to add or edit the statement and correction themselves.",
 
     "onboardingTour.resources.step1Title": "Resource types",
     "onboardingTour.resources.step1Body":
@@ -6090,27 +6182,67 @@ export const translations: Record<Locale, Record<string, string>> = {
       "How to use the Evaluations tab",
     "notes.teacher.pageHelp.evaluations.section1Title": "Search and filter",
     "notes.teacher.pageHelp.evaluations.section1Body":
-      "Use the search to find an evaluation by title, or the filter icon to narrow down by type, sequence or entry status.",
-    "notes.teacher.pageHelp.evaluations.section2Title": "Create an evaluation",
+      "Use the search to find an evaluation by title. Open the filter icon to narrow the list by evaluation type, sequence, or entry status (complete or incomplete) — handy for quickly spotting evaluations still missing scores.",
+    "notes.teacher.pageHelp.evaluations.section2Title":
+      "Draft or published status",
     "notes.teacher.pageHelp.evaluations.section2Body":
-      "Click the + button to create a new evaluation with its scale and date.",
+      "An evaluation created as a draft is not visible to students or parents, and its scores don't show up in their Notes tab until it's published. Publish it once its scale and date are final to make it visible; the Draft or Published badge on each card shows its current state.",
+    "notes.teacher.pageHelp.evaluations.section3Title": "Track entry progress",
+    "notes.teacher.pageHelp.evaluations.section3Body":
+      "Each card shows how many scores have been entered out of the class size. This counter changes color depending on whether entry is complete or still incomplete, so you can spot at a glance which evaluations still need finishing.",
+    "notes.teacher.pageHelp.evaluations.section4Title": "Create an evaluation",
+    "notes.teacher.pageHelp.evaluations.section4Body":
+      "Click the + button to create a new evaluation: title, subject, type, sequence, date, scale and coefficient. Save it as a draft to prepare it in advance, or publish it right away if it's ready.",
+    "notes.teacher.pageHelp.evaluations.section5Title": "Edit an evaluation",
+    "notes.teacher.pageHelp.evaluations.section5Body":
+      "Open an evaluation in the list to review its details (scale, coefficient, instructions, scores already entered), then click Edit to correct its title, date, type or scale.",
+    "notes.teacher.pageHelp.evaluations.section6Title": "Jump to score entry",
+    "notes.teacher.pageHelp.evaluations.section6Body":
+      "From an evaluation's details, click Enter scores to switch straight to the Scores tab with this evaluation already selected.",
     "notes.teacher.pageHelp.notes.title": "How to use the Notes tab",
     "notes.teacher.pageHelp.notes.section1Title": "Look up a student",
     "notes.teacher.pageHelp.notes.section1Body":
-      "Search for a student to see all their scores and averages, subject by subject.",
+      "Search for a student by name to see all their scores and averages, subject by subject.",
+    "notes.teacher.pageHelp.notes.section2Title": "Switch term",
+    "notes.teacher.pageHelp.notes.section2Body":
+      "Once a student is selected, click a term to show their scores and average for that specific period.",
     "notes.teacher.pageHelp.scores.title": "How to use the Scores tab",
-    "notes.teacher.pageHelp.scores.section1Title":
-      "Enter scores for an evaluation",
+    "notes.teacher.pageHelp.scores.section1Title": "Pick an evaluation",
     "notes.teacher.pageHelp.scores.section1Body":
-      "Choose an evaluation then enter or edit each student's score.",
+      "Select the evaluation to grade from the dropdown to show every student in the class with their entry row.",
+    "notes.teacher.pageHelp.scores.section2Title": "Set each student's status",
+    "notes.teacher.pageHelp.scores.section2Body":
+      "For each student, choose Entered, Absent, Excused, or Not graded — the score field only activates for the Entered status, to avoid saving a score that's inconsistent with the student being absent.",
+    "notes.teacher.pageHelp.scores.section3Title":
+      "Enter the score and a comment",
+    "notes.teacher.pageHelp.scores.section3Body":
+      "Enter the student's score (within the evaluation's scale) and, if needed, an individual comment shown alongside their score.",
+    "notes.teacher.pageHelp.scores.section4Title": "Save",
+    "notes.teacher.pageHelp.scores.section4Body":
+      "Click Save to store the entered scores. While the evaluation stays in draft, these scores stay invisible to families until it's published.",
     "notes.teacher.pageHelp.council.title": "How to use the Class council tab",
-    "notes.teacher.pageHelp.council.section1Title": "Write assessments",
+    "notes.teacher.pageHelp.council.section1Title":
+      "Pick the term and council date",
     "notes.teacher.pageHelp.council.section1Body":
-      "Choose the sequence then write or edit each student's assessment before publishing the class council.",
+      "Select the relevant term and, if needed, the date the class council was held — this information appears on each student's report.",
+    "notes.teacher.pageHelp.council.section2Title": "Write the remarks",
+    "notes.teacher.pageHelp.council.section2Body":
+      "For each subject you teach, write or correct the remark that will appear on the student's report. If you are the class's referent teacher, a general class-council remark is also editable, in addition to the per-subject remarks.",
+    "notes.teacher.pageHelp.council.section3Title": "Save as draft or publish",
+    "notes.teacher.pageHelp.council.section3Body":
+      "Choose Draft to prepare the remarks without making them visible to families, or Published to make them viewable on the report as soon as you save.",
     "notes.teacher.pageHelp.decision.title": "How to use the Decision tab",
-    "notes.teacher.pageHelp.decision.section1Title": "Decide on promotion",
+    "notes.teacher.pageHelp.decision.section1Title":
+      "Review the student's summary",
     "notes.teacher.pageHelp.decision.section1Body":
-      "Review each term average, the yearly average and the student's rank, then choose Promoted, Repeated or Left and save.",
+      "The table shows each student's three term averages, yearly average, and rank in class — enough to decide on promotion with full context.",
+    "notes.teacher.pageHelp.decision.section2Title": "Choose the decision",
+    "notes.teacher.pageHelp.decision.section2Body":
+      "Select Promoted, Repeated or Left for each student. This decision determines whether the student moves up to the next class, repeats the year, or leaves the school.",
+    "notes.teacher.pageHelp.decision.section3Title":
+      "Pick the destination class and save",
+    "notes.teacher.pageHelp.decision.section3Body":
+      "Unless Left is selected, pick the destination class for next year, then save to confirm this student's decision.",
 
     "onboardingTour.teacherNotes.step1Title": "The tabs",
     "onboardingTour.teacherNotes.step1Body":
@@ -9178,16 +9310,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.messages.detail.reply": "Reply by email",
     "siteContent.messages.detail.read": "Message read",
     "siteContent.help.toggle": "Help",
-    "siteContent.help.title": "Site content",
-    "siteContent.help.section1Title": "Three tabs",
-    "siteContent.help.body1":
-      "This page manages the public showcase site content: contact details, legal documents (Terms of Service, Legal Notice, Privacy Policy) and received contact submissions.",
-    "siteContent.help.section2Title": "Create a draft",
-    "siteContent.help.body2":
-      "For a legal document, first pick the language, then start a new draft from the dedicated button. A draft can be freely edited until it is published.",
-    "siteContent.help.section3Title": "Publish",
-    "siteContent.help.body3":
-      "Publishing a draft immediately replaces the version visible on the site for that language and document. Previously published versions stay visible in the history. The Messages tab lists submissions received through the public contact form.",
+    "siteContent.help.contact.title": "How to use the Contact tab",
+    "siteContent.help.contact.section1Title":
+      "Review the public contact details",
+    "siteContent.help.contact.section1Body":
+      "This tab shows the contact details (email, phone, address, legal representative) publicly displayed on the school's showcase site.",
+    "siteContent.help.contact.section2Title": "Edit the contact details",
+    "siteContent.help.contact.section2Body":
+      "Click Edit to correct any information, then Save. The update is immediately visible on the public site.",
+    "siteContent.help.legal.title": "How to use the Legal documents tab",
+    "siteContent.help.legal.section1Title": "Pick the document and language",
+    "siteContent.help.legal.section1Body":
+      "Select the document (Terms of Service, Legal Notice, Privacy Policy) then the language to edit — each document exists independently for every language offered on the site.",
+    "siteContent.help.legal.section2Title": "Create or edit a draft",
+    "siteContent.help.legal.section2Body":
+      "Click New draft to write a new version, or Edit on an existing draft. A draft can be freely corrected until it's published, without affecting the version visible on the site.",
+    "siteContent.help.legal.section3Title": "Publish or delete a document",
+    "siteContent.help.legal.section3Body":
+      "Publishing a draft immediately replaces the version visible on the site for that language and document; previously published versions stay viewable in the history. Delete permanently removes a draft that no longer needs to be kept.",
+    "siteContent.help.messages.title": "How to use the Messages tab",
+    "siteContent.help.messages.section1Title": "Review received messages",
+    "siteContent.help.messages.section1Body":
+      "This tab lists submissions sent through the site's public contact form, newest first. Click a message to read its details — it is then marked as read.",
 
     "health.title": "Health",
     "health.subtitleDefault": "Student health information",
@@ -9227,16 +9371,26 @@ export const translations: Record<Locale, Record<string, string>> = {
       "The health condition was updated.",
     "health.parent.form.createReportSuccess":
       "The event was reported to the school.",
-    "health.parent.help.title": "Health",
-    "health.parent.help.section1Title": "Conditions",
-    "health.parent.help.section1Body":
-      "The Conditions tab groups your child's allergies, pathologies and long-standing instructions, with an alert level (info, attention, urgent) visible at a glance.",
-    "health.parent.help.section2Title": "History",
-    "health.parent.help.section2Body":
-      "The History tab merges care received at school and events you report yourself, sorted from most recent to oldest.",
-    "health.parent.help.section3Title": "Report an event",
-    "health.parent.help.section3Body":
-      "The + button adds a health condition from the Conditions tab, or reports an event (illness, accident...) from the History tab. The referent teacher is automatically notified for a report.",
+    "health.parent.help.conditions.title": "How to use the Conditions tab",
+    "health.parent.help.conditions.section1Title": "Review health conditions",
+    "health.parent.help.conditions.section1Body":
+      "This tab groups your child's allergies, pathologies and long-standing instructions, with an alert level (info, attention, urgent) visible at a glance on each card.",
+    "health.parent.help.conditions.section2Title": "Search and filter",
+    "health.parent.help.conditions.section2Body":
+      "Use the search field to find a condition by name, or the filter to narrow down by type, alert level, or status (active or inactive).",
+    "health.parent.help.conditions.section3Title": "Add or view a condition",
+    "health.parent.help.conditions.section3Body":
+      "Tap the + button to add a new health condition. Tap a card to view its details and edit it if needed.",
+    "health.parent.help.history.title": "How to use the History tab",
+    "health.parent.help.history.section1Title": "Review the health history",
+    "health.parent.help.history.section1Body":
+      "This tab merges care received at school and events you report yourself, sorted from most recent to oldest.",
+    "health.parent.help.history.section2Title": "Search and filter",
+    "health.parent.help.history.section2Body":
+      "Use the search field or the filter to find an event by alert level, origin (school or reported by you), or report type.",
+    "health.parent.help.history.section3Title": "Report an event",
+    "health.parent.help.history.section3Body":
+      "Tap the + button to report an event (illness, accident...) that happened outside school. Your child's referent teacher is automatically notified.",
     "health.parent.form.hero.createConditionTitle": "Add a condition",
     "health.parent.form.hero.editConditionTitle": "Edit the condition",
     "health.parent.form.hero.createReportTitle": "Report an event",

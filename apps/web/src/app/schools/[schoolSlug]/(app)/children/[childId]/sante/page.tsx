@@ -251,21 +251,11 @@ export default function ChildSantePage() {
   const [tab, setTab] = useState<ListTabKey>("conditions");
 
   usePageHelp({
-    title: t("health.parent.help.title"),
-    sections: [
-      {
-        title: t("health.parent.help.section1Title"),
-        body: [t("health.parent.help.section1Body")],
-      },
-      {
-        title: t("health.parent.help.section2Title"),
-        body: [t("health.parent.help.section2Body")],
-      },
-      {
-        title: t("health.parent.help.section3Title"),
-        body: [t("health.parent.help.section3Body")],
-      },
-    ],
+    title: t(`health.parent.help.${tab}.title`),
+    sections: [1, 2, 3].map((n) => ({
+      title: t(`health.parent.help.${tab}.section${n}Title`),
+      body: [t(`health.parent.help.${tab}.section${n}Body`)],
+    })),
   });
 
   // ── Conditions list ──────────────────────────────────────────────────────

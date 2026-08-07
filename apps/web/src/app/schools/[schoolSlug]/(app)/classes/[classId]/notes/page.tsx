@@ -1069,68 +1069,41 @@ export default function TeacherClassNotesPage() {
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR";
 
+  function buildPageHelpSections(namespace: string, count: number) {
+    return Array.from({ length: count }, (_, index) => {
+      const n = index + 1;
+      return {
+        title: t(`notes.teacher.pageHelp.${namespace}.section${n}Title`),
+        body: [t(`notes.teacher.pageHelp.${namespace}.section${n}Body`)],
+      };
+    });
+  }
+
   usePageHelp(
     role === "TEACHER"
       ? tab === "notes"
         ? {
             title: t("notes.teacher.pageHelp.notes.title"),
-            sections: [
-              {
-                title: t("notes.teacher.pageHelp.notes.section1Title"),
-                body: [t("notes.teacher.pageHelp.notes.section1Body")],
-              },
-            ],
+            sections: buildPageHelpSections("notes", 2),
           }
         : tab === "scores"
           ? {
               title: t("notes.teacher.pageHelp.scores.title"),
-              sections: [
-                {
-                  title: t("notes.teacher.pageHelp.scores.section1Title"),
-                  body: [t("notes.teacher.pageHelp.scores.section1Body")],
-                },
-              ],
+              sections: buildPageHelpSections("scores", 4),
             }
           : tab === "council"
             ? {
                 title: t("notes.teacher.pageHelp.council.title"),
-                sections: [
-                  {
-                    title: t("notes.teacher.pageHelp.council.section1Title"),
-                    body: [t("notes.teacher.pageHelp.council.section1Body")],
-                  },
-                ],
+                sections: buildPageHelpSections("council", 3),
               }
             : tab === "decision"
               ? {
                   title: t("notes.teacher.pageHelp.decision.title"),
-                  sections: [
-                    {
-                      title: t("notes.teacher.pageHelp.decision.section1Title"),
-                      body: [t("notes.teacher.pageHelp.decision.section1Body")],
-                    },
-                  ],
+                  sections: buildPageHelpSections("decision", 3),
                 }
               : {
                   title: t("notes.teacher.pageHelp.evaluations.title"),
-                  sections: [
-                    {
-                      title: t(
-                        "notes.teacher.pageHelp.evaluations.section1Title",
-                      ),
-                      body: [
-                        t("notes.teacher.pageHelp.evaluations.section1Body"),
-                      ],
-                    },
-                    {
-                      title: t(
-                        "notes.teacher.pageHelp.evaluations.section2Title",
-                      ),
-                      body: [
-                        t("notes.teacher.pageHelp.evaluations.section2Body"),
-                      ],
-                    },
-                  ],
+                  sections: buildPageHelpSections("evaluations", 6),
                 }
       : null,
   );

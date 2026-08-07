@@ -99,23 +99,48 @@ describe("Child sante page (vue parent)", () => {
     usePageHelpStore.setState({ entry: null, open: false });
   });
 
-  it("enregistre le contenu d'aide (3 sections) au montage et le retire au démontage", async () => {
+  it("enregistre le contenu d'aide de l'onglet Conditions (3 sections) au montage et le retire au démontage", async () => {
     mockFetchDefault({});
 
     const { unmount } = render(<ChildSantePage />);
 
     await waitFor(() => {
-      expect(usePageHelpStore.getState().entry?.title).toBe("Santé");
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Conditions",
+      );
     });
     const sections = usePageHelpStore.getState().entry?.sections ?? [];
     expect(sections.map((section) => section.title)).toEqual([
-      "Conditions",
-      "Historique",
-      "Signaler un événement",
+      "Consulter les conditions de santé",
+      "Rechercher et filtrer",
+      "Ajouter ou consulter une condition",
     ]);
 
     unmount();
     expect(usePageHelpStore.getState().entry).toBeNull();
+  });
+
+  it("bascule vers le contenu d'aide de l'onglet Historique", async () => {
+    mockFetchDefault({});
+
+    render(<ChildSantePage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(screen.getByTestId("sante-tab-history"));
+
+    await waitFor(() => {
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Historique",
+      );
+    });
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Consulter l'historique de santé",
+      "Rechercher et filtrer",
+      "Signaler un événement",
+    ]);
   });
 
   it("démarre le tour d'aide guidée santé pour un parent par défaut", async () => {

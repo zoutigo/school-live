@@ -102,21 +102,16 @@ export default function SiteContentPage() {
   }, [activeTourId, tourSteps, tourStepIndex]);
 
   usePageHelp({
-    title: t("siteContent.help.title"),
-    sections: [
-      {
-        title: t("siteContent.help.section1Title"),
-        body: [t("siteContent.help.body1")],
-      },
-      {
-        title: t("siteContent.help.section2Title"),
-        body: [t("siteContent.help.body2")],
-      },
-      {
-        title: t("siteContent.help.section3Title"),
-        body: [t("siteContent.help.body3")],
-      },
-    ],
+    title: t(`siteContent.help.${tab}.title`),
+    sections: (tab === "legal"
+      ? [1, 2, 3]
+      : tab === "contact"
+        ? [1, 2]
+        : [1]
+    ).map((n) => ({
+      title: t(`siteContent.help.${tab}.section${n}Title`),
+      body: [t(`siteContent.help.${tab}.section${n}Body`)],
+    })),
   });
 
   async function boot() {

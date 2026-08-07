@@ -384,16 +384,39 @@ describe("ResourcesBrowsePage — aide parent", () => {
     const { unmount } = render(<ResourcesBrowsePage />);
 
     await waitFor(() =>
-      expect(usePageHelpStore.getState().entry?.title).toBe("Ressources"),
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Évaluations",
+      ),
     );
     const sections = usePageHelpStore.getState().entry?.sections ?? [];
     expect(sections.map((section) => section.title)).toEqual([
-      "Trouver une ressource",
-      "Consulter",
+      "Rechercher et filtrer",
+      "Consulter une ressource",
     ]);
 
     unmount();
     expect(usePageHelpStore.getState().entry).toBeNull();
+  });
+
+  it("bascule vers le contenu d'aide de l'onglet Mes ressources", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({
+        me: { activeRole: "PARENT", onboardingHelpEnabled: true },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(await screen.findByTestId("resources-tab-mine"));
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Mes ressources",
+      ),
+    );
   });
 
   it("démarre le tour d'aide guidée pour un parent par défaut", async () => {

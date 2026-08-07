@@ -1528,7 +1528,7 @@ describe("TeacherClassNotesPage — aide enseignant (par onglet) et tour", () =>
     return setupFetchMock();
   }
 
-  it("enregistre le contenu d'aide de l'onglet Évaluations (2 sections) pour un enseignant", async () => {
+  it("enregistre le contenu d'aide de l'onglet Évaluations (6 sections) pour un enseignant", async () => {
     mockTeacherRouter();
 
     render(<TeacherClassNotesPage />);
@@ -1541,7 +1541,11 @@ describe("TeacherClassNotesPage — aide enseignant (par onglet) et tour", () =>
     const sections = usePageHelpStore.getState().entry?.sections ?? [];
     expect(sections.map((section) => section.title)).toEqual([
       "Rechercher et filtrer",
+      "Statut brouillon ou publié",
+      "Suivre l'avancement de la saisie",
       "Créer une évaluation",
+      "Modifier une évaluation",
+      "Passer à la saisie des notes",
     ]);
   });
 
