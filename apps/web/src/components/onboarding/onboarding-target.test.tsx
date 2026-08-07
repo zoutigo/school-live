@@ -75,6 +75,39 @@ describe("OnboardingTarget", () => {
     getBoundingClientRectSpy.mockRestore();
   });
 
+  it("scrolls the target into view once instead of reporting an out-of-viewport rect", () => {
+    useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
+
+    const outOfViewRect = { x: 5, y: 2000, width: 200, height: 40 };
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      ...outOfViewRect,
+      top: outOfViewRect.y,
+      left: outOfViewRect.x,
+      right: outOfViewRect.x + outOfViewRect.width,
+      bottom: outOfViewRect.y + outOfViewRect.height,
+      toJSON: () => ({}),
+    });
+    const scrollIntoViewSpy = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoViewSpy;
+
+    render(
+      <OnboardingTarget id="target-a">
+        <span>content</span>
+      </OnboardingTarget>,
+    );
+
+    expect(scrollIntoViewSpy).toHaveBeenCalledTimes(1);
+    expect(scrollIntoViewSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "center" }),
+    );
+    // Scrolling is async in a real browser: the target's rect is not
+    // reported to the store on this first pass, only once a subsequent
+    // scroll/resize measurement confirms it is now visible.
+    expect(useOnboardingTourStore.getState().targetRect).toBeNull();
+
+    vi.restoreAllMocks();
+  });
+
   it("ignores a zero-sized measurement", () => {
     useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
 
