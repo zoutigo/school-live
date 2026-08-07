@@ -38,7 +38,7 @@ const makePrismaMock = () => ({
     upsert: jest.fn(),
   },
   evaluationAuditLog: { create: jest.fn() },
-  subject: { findFirst: jest.fn() },
+  subject: { findFirst: jest.fn(), findMany: jest.fn() },
   subjectBranch: { findFirst: jest.fn(), findMany: jest.fn() },
   teacherClassSubject: { findFirst: jest.fn(), findMany: jest.fn() },
   enrollment: {
@@ -886,6 +886,41 @@ describe("EvaluationsService", () => {
         create: { generalAppreciation: string | null };
       };
       expect(upsertArgs.create.generalAppreciation).toBe("Bon trimestre");
+    });
+
+    it("autorise l'appréciation d'une matière liée au curriculum national (Subject.schoolId null) pour un admin école", async () => {
+      // Les matières issues du catalogue curriculum national ont schoolId
+      // null (voir management.service.ts#listSubjects) ; le fallback "tous
+      // les sujets de l'école" doit donc matcher schoolId OU schoolId null,
+      // pas schoolId seul.
+      prisma.subject.findMany.mockResolvedValue([{ id: "subject-1" }]);
+
+      const admin = makeUser({
+        id: "admin-1",
+        memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" }],
+      });
+
+      await service.upsertClassTermReports(
+        admin,
+        "school-1",
+        "class-1",
+        Term.TERM_1,
+        {
+          status: "DRAFT",
+          reports: [
+            {
+              studentId: "student-1",
+              subjects: [{ subjectId: "subject-1", appreciation: "Bon élève" }],
+            },
+          ],
+        } as never,
+      );
+
+      expect(prisma.subject.findMany).toHaveBeenCalledWith({
+        where: { OR: [{ schoolId: "school-1" }, { schoolId: null }] },
+        select: { id: true },
+      });
+      expect(prisma.studentTermReport.upsert).toHaveBeenCalled();
     });
   });
 

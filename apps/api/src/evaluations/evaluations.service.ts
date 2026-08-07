@@ -829,7 +829,7 @@ export class EvaluationsService {
       accessibleSubjectIds ??
         (
           await this.prisma.subject.findMany({
-            where: { schoolId },
+            where: { OR: [{ schoolId }, { schoolId: null }] },
             select: { id: true },
           })
         ).map((subject) => subject.id),
