@@ -1,6 +1,7 @@
 import { IsIn, IsString } from "class-validator";
+import type { AppRole } from "../auth.types.js";
 
-const APP_ROLES = [
+const APP_ROLES: readonly AppRole[] = [
   "SUPER_ADMIN",
   "ADMIN",
   "SALES",
@@ -9,6 +10,8 @@ const APP_ROLES = [
   "SCHOOL_MANAGER",
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
+  "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
   "TEACHER",
   "PARENT",
   "STUDENT",
@@ -17,5 +20,5 @@ const APP_ROLES = [
 export class SetActiveRoleDto {
   @IsString()
   @IsIn(APP_ROLES)
-  role!: (typeof APP_ROLES)[number];
+  role!: AppRole;
 }

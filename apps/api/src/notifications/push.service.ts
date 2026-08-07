@@ -10,6 +10,8 @@ import {
   PUSH_JOB_SEND_RESOURCE_SUBMISSION_DISCARDED,
   PUSH_JOB_SEND_RESOURCE_SUBMISSION_REJECTED,
   PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
+  PUSH_JOB_SEND_STUDENT_HEALTH_CARE_EVENT,
+  PUSH_JOB_SEND_STUDENT_HEALTH_REPORT,
   PUSH_JOB_SEND_STUDENT_LIFE_EVENT,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
@@ -18,6 +20,8 @@ import {
   type ResourceSubmissionDiscardedPushPayload,
   type ResourceSubmissionRejectedPushPayload,
   type RoomStatusChangePushPayload,
+  type StudentHealthCareEventPushPayload,
+  type StudentHealthReportPushPayload,
   type StudentLifeEventPushPayload,
   type TimetableChangePushPayload,
 } from "./push.types.js";
@@ -172,6 +176,50 @@ export class PushService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.pushPort.sendResourceSubmissionRejectedNotification(payload);
+    }
+  }
+
+  async sendStudentHealthCareEventNotification(
+    payload: StudentHealthCareEventPushPayload,
+  ) {
+    if (payload.tokens.length === 0) {
+      return;
+    }
+
+    try {
+      await this.queue.add(
+        PUSH_QUEUE_NAME,
+        PUSH_JOB_SEND_STUDENT_HEALTH_CARE_EVENT,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous push sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.pushPort.sendStudentHealthCareEventNotification(payload);
+    }
+  }
+
+  async sendStudentHealthReportNotification(
+    payload: StudentHealthReportPushPayload,
+  ) {
+    if (payload.tokens.length === 0) {
+      return;
+    }
+
+    try {
+      await this.queue.add(
+        PUSH_QUEUE_NAME,
+        PUSH_JOB_SEND_STUDENT_HEALTH_REPORT,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous push sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.pushPort.sendStudentHealthReportNotification(payload);
     }
   }
 }

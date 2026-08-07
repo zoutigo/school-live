@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassNotesPage from "./page";
 import { translate } from "../../../../../../../i18n/useTranslation";
+import { usePageHelpStore } from "../../../../../../../store/page-help";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 
 function setRichTextEditorHtml(container: HTMLElement, value: string) {
   const editor = container.querySelector(
@@ -1076,6 +1078,167 @@ describe("TeacherClassNotesPage council tab", () => {
   });
 });
 
+describe("TeacherClassNotesPage decision tab (referent teacher only)", () => {
+  const DECISION_ROW = {
+    id: "report-1",
+    studentId: "student-1",
+    student: { id: "student-1", firstName: "Eleve1", lastName: "MBELE" },
+    decision: null,
+    nextAcademicLevel: null,
+    nextTrack: null,
+    termAverages: { TERM_1: 10, TERM_2: 12, TERM_3: 14 },
+    yearlyAverage: 12,
+    rank: 1,
+    classSize: 20,
+    currentAcademicLevel: { id: "level-6e", order: 8 },
+  };
+
+  const ACTIVATED_LEVELS = [
+    { id: "level-6e", label: "6eme", order: 8 },
+    { id: "level-5e", label: "5eme", order: 9 },
+  ];
+
+  function setupReferentFetchMock() {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const request = input instanceof Request ? input : null;
+      const url = String(input);
+      const method =
+        request?.method ??
+        (typeof init === "object" && init !== null && "method" in init
+          ? init.method
+          : undefined);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER" });
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: {
+            id: "class-1",
+            name: "6eC",
+            schoolYearId: "sy-1",
+            isReferentTeacher: true,
+          },
+          subjects: [{ id: "sub-1", name: "Mathematiques", branches: [] }],
+          evaluationTypes: [],
+          students: [
+            { id: "student-1", firstName: "Eleve1", lastName: "MBELE" },
+          ],
+        });
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/term-reports?term=")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/admin/academic-levels/active")) {
+        return jsonResponse(ACTIVATED_LEVELS);
+      }
+      if (
+        url.includes("/admin/promotions/classes/class-1/term-reports") &&
+        method !== "PATCH"
+      ) {
+        return jsonResponse([DECISION_ROW]);
+      }
+      if (
+        url.includes("/admin/promotions/term-reports/report-1/decision") &&
+        method === "PATCH"
+      ) {
+        return jsonResponse({ ...DECISION_ROW, decision: "PROMOTED" });
+      }
+      if (url.includes("/students/") && url.endsWith("/notes")) {
+        return jsonResponse([]);
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+  }
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+  });
+
+  it("hides the Decision tab when the teacher is not the class referent", async () => {
+    setupFetchMock();
+    render(<TeacherClassNotesPage />);
+    await screen.findByRole("button", { name: /Conseil de classe/i });
+    expect(
+      screen.queryByRole("button", { name: /^Décision$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the yearly synthesis and saves a decision for the referent teacher", async () => {
+    setupReferentFetchMock();
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Décision$/i }));
+
+    expect(
+      await screen.findByTestId("decision-row-report-1"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("decision-tab")).toHaveTextContent("12");
+
+    fireEvent.change(screen.getByTestId("decision-row-report-1-select"), {
+      target: { value: "PROMOTED" },
+    });
+    fireEvent.change(screen.getByTestId("decision-row-report-1-level"), {
+      target: { value: "level-5e" },
+    });
+    fireEvent.click(screen.getByTestId("decision-row-report-1-save"));
+
+    await waitFor(() => {
+      const patchCall = vi
+        .mocked(globalThis.fetch)
+        .mock.calls.find(([reqInput, reqInit]) => {
+          const url = String(reqInput);
+          const method =
+            reqInit && typeof reqInit === "object" && "method" in reqInit
+              ? reqInit.method
+              : undefined;
+          return (
+            url.includes("/admin/promotions/term-reports/report-1/decision") &&
+            method === "PATCH"
+          );
+        });
+      expect(patchCall).toBeDefined();
+    });
+  });
+
+  it("affiche 'Aucune décision' tant qu'aucune decision n'est enregistree, et desactive le bouton Enregistrer", async () => {
+    setupReferentFetchMock();
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Décision$/i }));
+    await screen.findByTestId("decision-row-report-1");
+
+    expect(
+      screen.getByTestId("decision-row-report-1-status"),
+    ).toHaveTextContent("Aucune décision");
+    expect(screen.getByTestId("decision-row-report-1-save")).toBeDisabled();
+  });
+
+  it("propose automatiquement le niveau suivant actif quand la decision devient Promoted", async () => {
+    setupReferentFetchMock();
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Décision$/i }));
+    await screen.findByTestId("decision-row-report-1");
+
+    fireEvent.change(screen.getByTestId("decision-row-report-1-select"), {
+      target: { value: "PROMOTED" },
+    });
+
+    expect(screen.getByTestId("decision-row-report-1-level")).toHaveValue(
+      "level-5e",
+    );
+    expect(screen.getByTestId("decision-row-report-1-save")).not.toBeDisabled();
+  });
+});
+
 describe("TeacherClassNotesPage admin class switcher", () => {
   const ADMIN_CLASSROOMS = [
     {
@@ -1379,5 +1542,174 @@ describe("TeacherClassNotesPage notes tab", () => {
     expect(
       await screen.findByTestId("teacher-notes-student-notes-error"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("TeacherClassNotesPage — aide enseignant (par onglet) et tour", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    pushMock.mockReset();
+    useOnboardingTourStore.setState({
+      activeTourId: null,
+      activeRole: null,
+      steps: [],
+      stepIndex: 0,
+      targetRect: null,
+    });
+    usePageHelpStore.setState({ entry: null, open: false });
+  });
+
+  function mockTeacherRouter() {
+    return setupFetchMock();
+  }
+
+  it("enregistre le contenu d'aide de l'onglet Évaluations (6 sections) pour un enseignant", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Évaluations",
+      ),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Rechercher et filtrer",
+      "Statut brouillon ou publié",
+      "Suivre l'avancement de la saisie",
+      "Créer une évaluation",
+      "Modifier une évaluation",
+      "Passer à la saisie des notes",
+    ]);
+  });
+
+  it("bascule vers un contenu d'aide différent et plus ciblé sur l'onglet Notes", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Notes" }));
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Notes",
+      ),
+    );
+  });
+
+  it("bascule vers le contenu d'aide de l'onglet Saisie des notes", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Saisie des notes" }),
+    );
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Saisie des notes",
+      ),
+    );
+  });
+
+  it("bascule vers le contenu d'aide de l'onglet Conseil de classe", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Conseil de classe" }),
+    );
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Conseil de classe",
+      ),
+    );
+  });
+
+  it("retire le contenu d'aide au démontage", async () => {
+    mockTeacherRouter();
+
+    const { unmount } = render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    unmount();
+    expect(usePageHelpStore.getState().entry).toBeNull();
+  });
+
+  it("masque l'onglet Aide (ancien pattern) pour un enseignant", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Aide" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("démarre le tour d'aide guidée pour un enseignant par défaut", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        "teacher-notes",
+      ),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("teacher");
+  });
+
+  it("ne démarre pas le tour ni n'enregistre d'aide pour un administrateur (garde l'onglet Aide existant)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: { id: "class-1", name: "6eC", schoolYearId: "sy-1" },
+          subjects: [],
+          evaluationTypes: [],
+          students: [],
+        });
+      }
+      if (url.includes("/admin/classrooms")) {
+        return jsonResponse([]);
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse([]);
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<TeacherClassNotesPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Aide" })).toBeInTheDocument(),
+    );
+    expect(usePageHelpStore.getState().entry).toBeNull();
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 });

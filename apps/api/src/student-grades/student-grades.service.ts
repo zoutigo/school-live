@@ -420,13 +420,15 @@ export class StudentGradesService {
       })),
       selectedSchoolYearId,
       assignments,
-      students: students.map((row) => ({
-        classId: row.classId,
-        className: row.class.name,
-        studentId: row.student.id,
-        studentFirstName: row.student.firstName,
-        studentLastName: row.student.lastName,
-      })),
+      students: students
+        .filter((row) => row.class)
+        .map((row) => ({
+          classId: row.classId as string,
+          className: row.class!.name,
+          studentId: row.student.id,
+          studentFirstName: row.student.firstName,
+          studentLastName: row.student.lastName,
+        })),
     };
   }
 

@@ -6,14 +6,17 @@ import { HelpCircle } from "lucide-react";
 import { Button } from "./button";
 import { useTranslation } from "../../i18n/useTranslation";
 
+type Section = { title: string; body: string[] };
+
 type Props = {
   open: boolean;
   title: string;
-  body: string[];
+  body?: string[];
+  sections?: Section[];
   onClose: () => void;
 };
 
-export function HelpDialog({ open, title, body, onClose }: Props) {
+export function HelpDialog({ open, title, body, sections, onClose }: Props) {
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -61,12 +64,38 @@ export function HelpDialog({ open, title, body, onClose }: Props) {
             {title}
           </h2>
         </div>
-        <div className="grid gap-2" data-testid="help-dialog-body">
-          {body.map((paragraph, index) => (
-            <p key={index} className="text-justify text-sm text-text-secondary">
-              {paragraph}
-            </p>
-          ))}
+        <div
+          className="grid max-h-[60vh] gap-4 overflow-y-auto"
+          data-testid="help-dialog-body"
+        >
+          {sections && sections.length > 0
+            ? sections.map((section, index) => (
+                <div
+                  key={index}
+                  className="border-l-2 border-[#BFE3DE] pl-3"
+                  data-testid={`help-dialog-section-${index}`}
+                >
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#195E56]">
+                    {section.title}
+                  </p>
+                  {section.body.map((paragraph, paragraphIndex) => (
+                    <p
+                      key={paragraphIndex}
+                      className="mt-1 text-justify text-sm text-text-secondary"
+                    >
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              ))
+            : (body ?? []).map((paragraph, index) => (
+                <p
+                  key={index}
+                  className="text-justify text-sm text-text-secondary"
+                >
+                  {paragraph}
+                </p>
+              ))}
         </div>
         <div className="mt-5 flex justify-end">
           <Button

@@ -183,6 +183,82 @@ describe("AuthService — école active", () => {
     });
   });
 
+  describe("setActiveRole", () => {
+    it("met à jour activeRole quand le rôle demandé fait partie des memberships de l'utilisateur", async () => {
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: USER_ID,
+        platformRoles: [],
+        memberships: [{ role: "SCHOOL_HEALTH_OFFICER" }, { role: "PARENT" }],
+      });
+      prisma.user.update.mockResolvedValue({});
+
+      const result = await service.setActiveRole(
+        USER_ID,
+        "SCHOOL_HEALTH_OFFICER",
+      );
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: USER_ID },
+        data: { activeRole: "SCHOOL_HEALTH_OFFICER" },
+      });
+      expect(result).toEqual({ activeRole: "SCHOOL_HEALTH_OFFICER" });
+    });
+
+    it("accepte SCHOOL_STAFF comme rôle actif quand membership correspondante", async () => {
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: USER_ID,
+        platformRoles: [],
+        memberships: [{ role: "SCHOOL_STAFF" }],
+      });
+      prisma.user.update.mockResolvedValue({});
+
+      const result = await service.setActiveRole(USER_ID, "SCHOOL_STAFF");
+
+      expect(result).toEqual({ activeRole: "SCHOOL_STAFF" });
+    });
+
+    it("retombe sur le rôle prioritaire existant si le rôle demandé n'est assigné à aucune membership", async () => {
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: USER_ID,
+        platformRoles: [],
+        memberships: [{ role: "PARENT" }],
+      });
+      prisma.user.update.mockResolvedValue({});
+
+      const result = await service.setActiveRole(
+        USER_ID,
+        "SCHOOL_HEALTH_OFFICER",
+      );
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: USER_ID },
+        data: { activeRole: "PARENT" },
+      });
+      expect(result).toEqual({ activeRole: "PARENT" });
+    });
+
+    it("lève ForbiddenException si l'utilisateur n'a aucun rôle plateforme ni membership", async () => {
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: USER_ID,
+        platformRoles: [],
+        memberships: [],
+      });
+
+      await expect(
+        service.setActiveRole(USER_ID, "SCHOOL_HEALTH_OFFICER"),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it("lève UnauthorizedException si l'utilisateur n'existe pas", async () => {
+      prisma.user.findUnique.mockResolvedValueOnce(null);
+
+      await expect(service.setActiveRole(USER_ID, "TEACHER")).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+  });
+
   describe("updateOnboardingHelpEnabled", () => {
     it("active l'aide guidée puis retourne le profil rafraîchi", async () => {
       prisma.user.update.mockResolvedValue({});

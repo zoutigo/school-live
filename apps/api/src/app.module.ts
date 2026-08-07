@@ -3,8 +3,10 @@ import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { BadgesModule } from "./badges/badges.module.js";
+import { EnrollmentsModule } from "./enrollments/enrollments.module.js";
 import { EvaluationsModule } from "./evaluations/evaluations.module.js";
 import { FeedModule } from "./feed/feed.module.js";
+import { FinanceModule } from "./finance/finance.module.js";
 import { HelpFaqsModule } from "./help-faqs/help-faqs.module.js";
 import { HelpGuidesModule } from "./help-guides/help-guides.module.js";
 import { StudentGradesModule } from "./student-grades/student-grades.module.js";
@@ -15,10 +17,13 @@ import { MessagingModule } from "./messaging/messaging.module.js";
 import { MobileBuildsModule } from "./mobile-builds/mobile-builds.module.js";
 import { NotificationsModule } from "./notifications/notifications.module.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
+import { PromotionsModule } from "./promotions/promotions.module.js";
 import { ResourcesModule } from "./resources/resources.module.js";
 import { SchoolUsersModule } from "./school-users/school-users.module.js";
+import { SchoolHealthModule } from "./school-health/school-health.module.js";
 import { SchoolsModule } from "./schools/schools.module.js";
 import { SiteContentModule } from "./site-content/site-content.module.js";
+import { StudentHealthModule } from "./student-health/student-health.module.js";
 import { StudentManagementModule } from "./student-management/student-management.module.js";
 import { TimetableModule } from "./timetable/timetable.module.js";
 import { TicketsModule } from "./tickets/tickets.module.js";
@@ -36,8 +41,10 @@ import { TestsModule } from "./tests/tests.module.js";
     PrismaModule,
     AuthModule,
     BadgesModule,
+    EnrollmentsModule,
     EvaluationsModule,
     FeedModule,
+    FinanceModule,
     HelpFaqsModule,
     HelpGuidesModule,
     HomeworkModule,
@@ -47,11 +54,14 @@ import { TestsModule } from "./tests/tests.module.js";
     MessagingModule,
     MobileBuildsModule,
     NotificationsModule,
+    PromotionsModule,
     ResourcesModule,
+    SchoolHealthModule,
     SchoolsModule,
     SchoolUsersModule,
     SiteContentModule,
     StudentManagementModule,
+    StudentHealthModule,
     TimetableModule,
     TicketsModule,
     TestsModule,

@@ -6,6 +6,8 @@ import type {
   InternalMessageNotificationPayload,
   PasswordResetMailPayload,
   RoomStatusChangeMailPayload,
+  StudentHealthCareEventMailPayload,
+  StudentHealthReportMailPayload,
   StudentLifeEventNotificationPayload,
   TestExecutionFailedNotificationPayload,
   TimetableChangeMailPayload,
@@ -43,5 +45,11 @@ export type EmailPort = {
   ): Promise<void>;
   sendContactFormSubmissionNotification(
     payload: ContactFormSubmissionMailPayload,
+  ): Promise<void>;
+  sendStudentHealthCareEventNotification(
+    payload: StudentHealthCareEventMailPayload,
+  ): Promise<void>;
+  sendStudentHealthReportNotification(
+    payload: StudentHealthReportMailPayload,
   ): Promise<void>;
 };

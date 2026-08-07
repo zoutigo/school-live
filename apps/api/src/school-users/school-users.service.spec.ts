@@ -368,10 +368,10 @@ describe("SchoolUsersService", () => {
               enrollments: [
                 {
                   id: "enr-1",
+                  schoolYear: { id: "year-1", label: "2025-2026" },
                   class: {
                     id: "cls-6eA",
                     name: "6e A",
-                    schoolYear: { label: "2025-2026" },
                   },
                 },
               ],

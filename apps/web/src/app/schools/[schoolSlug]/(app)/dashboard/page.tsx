@@ -22,6 +22,18 @@ import {
 import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page";
 import { getSchoolMessagesUnreadCount } from "../../../../../components/messaging/messaging-api";
 import type { StudentNotesTermSnapshot } from "../../../../../components/student-notes/student-notes.types";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import { usePageHelp } from "../../../../../store/page-help";
+import {
+  PARENT_LANDING_TOUR_ID,
+  PARENT_LANDING_TOUR_STEPS,
+} from "./parent-landing-tour.config";
+import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
+import {
+  TEACHER_HOME_TOUR_ID,
+  TEACHER_HOME_TOUR_STEPS,
+  TEACHER_HOME_TOUR_TARGETS,
+} from "./teacher-home-tour.config";
 import {
   useTranslation,
   type TranslateFn,
@@ -64,6 +76,7 @@ type MeResponse = {
     | "STUDENT";
   email?: string;
   linkedStudents?: ParentChild[];
+  onboardingHelpEnabled?: boolean;
 };
 
 // Raw API shapes used only inside this file
@@ -246,9 +259,11 @@ function WarmWelcomePanel({
       <div className="absolute bottom-0 right-16 h-24 w-24 rounded-full bg-[#fcd34d]/25 blur-2xl" />
       <div className="relative min-w-0 space-y-4">
         <div className="min-w-0 space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-white/80 px-3 py-1 text-xs font-medium text-orange-900 backdrop-blur sm:text-sm">
-            <Sparkles className="h-4 w-4" />
-            {hero.badge}
+          <div className="flex items-center justify-between gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/80 bg-white/80 px-3 py-1 text-xs font-medium text-orange-900 backdrop-blur sm:text-sm">
+              <Sparkles className="h-4 w-4" />
+              {hero.badge}
+            </div>
           </div>
           <h1 className="font-heading text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl">
             {t("dashboard.hero.welcome").replace("{fullName}", fullName)}
@@ -703,7 +718,11 @@ function TeacherClassesGrid({
   }
 
   return (
-    <div className="flex flex-wrap gap-2" data-testid="teacher-classes-grid">
+    <OnboardingTarget
+      id={TEACHER_HOME_TOUR_TARGETS.classesGrid}
+      className="flex flex-wrap gap-2"
+      data-testid="teacher-classes-grid"
+    >
       {classes.map((cls, idx) => {
         const bg =
           TEACHER_CLASS_PALETTE[idx % TEACHER_CLASS_PALETTE.length] ??
@@ -737,7 +756,7 @@ function TeacherClassesGrid({
           </Link>
         );
       })}
-    </div>
+    </OnboardingTarget>
   );
 }
 
@@ -751,6 +770,7 @@ function TeacherSectionCard({
   subtitle,
   children,
   testId,
+  linkTourTargetId,
 }: {
   title: string;
   icon: LucideIcon;
@@ -761,6 +781,8 @@ function TeacherSectionCard({
   subtitle?: string;
   children: ReactNode;
   testId?: string;
+  /** Onboarding tour target id wrapping the header link, if it should be spotlighted. */
+  linkTourTargetId?: string;
 }) {
   return (
     <article
@@ -790,16 +812,27 @@ function TeacherSectionCard({
             </span>
           ) : null}
         </div>
-        {linkHref && linkLabel ? (
-          <Link
-            href={linkHref}
-            className="flex shrink-0 items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
-            style={{ color: iconColor }}
-          >
-            {linkLabel}
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        ) : null}
+        {linkHref && linkLabel
+          ? (() => {
+              const link = (
+                <Link
+                  href={linkHref}
+                  className="flex shrink-0 items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
+                  style={{ color: iconColor }}
+                >
+                  {linkLabel}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              );
+              return linkTourTargetId ? (
+                <OnboardingTarget id={linkTourTargetId}>
+                  {link}
+                </OnboardingTarget>
+              ) : (
+                link
+              );
+            })()
+          : null}
       </div>
       <div>{children}</div>
     </article>
@@ -1025,6 +1058,7 @@ function TeacherEvalsSection({
       linkLabel={t("dashboard.teacher.evalsLinkLabel")}
       linkHref={`/schools/${schoolSlug}/student-grades`}
       testId="section-teacher-evals"
+      linkTourTargetId={TEACHER_HOME_TOUR_TARGETS.evalsLink}
     >
       {loading && !dashboard ? (
         <TeacherSectionSkeleton />
@@ -1230,11 +1264,37 @@ export default function DashboardPage() {
     setMe(payload);
 
     if (payload.role === "PARENT") {
+      const tourStore = useOnboardingTourStore.getState();
+      if (
+        payload.onboardingHelpEnabled !== false &&
+        !tourStore.isCompleted("parent", PARENT_LANDING_TOUR_ID) &&
+        !tourStore.activeTourId
+      ) {
+        tourStore.startTour(
+          PARENT_LANDING_TOUR_ID,
+          "parent",
+          PARENT_LANDING_TOUR_STEPS,
+        );
+      }
+
       await loadParentDashboardData(payload);
       return;
     }
 
     if (payload.role === "TEACHER") {
+      const tourStore = useOnboardingTourStore.getState();
+      if (
+        payload.onboardingHelpEnabled !== false &&
+        !tourStore.isCompleted("teacher", TEACHER_HOME_TOUR_ID) &&
+        !tourStore.activeTourId
+      ) {
+        tourStore.startTour(
+          TEACHER_HOME_TOUR_ID,
+          "teacher",
+          TEACHER_HOME_TOUR_STEPS,
+        );
+      }
+
       await loadTeacherDashboardData();
       return;
     }
@@ -1636,6 +1696,42 @@ export default function DashboardPage() {
     day: "numeric",
     month: "long",
   }).format(new Date());
+
+  usePageHelp(
+    me?.role === "PARENT"
+      ? {
+          title: t("dashboard.parent.help.title"),
+          sections: [
+            {
+              title: t("dashboard.parent.help.section1Title"),
+              body: [t("dashboard.parent.help.body1")],
+            },
+            {
+              title: t("dashboard.parent.help.section2Title"),
+              body: [t("dashboard.parent.help.body2")],
+            },
+            {
+              title: t("dashboard.parent.help.section3Title"),
+              body: [t("dashboard.parent.help.body3")],
+            },
+          ],
+        }
+      : me?.role === "TEACHER"
+        ? {
+            title: t("dashboard.teacher.help.title"),
+            sections: [
+              {
+                title: t("dashboard.teacher.help.section1Title"),
+                body: [t("dashboard.teacher.help.section1Body")],
+              },
+              {
+                title: t("dashboard.teacher.help.section2Title"),
+                body: [t("dashboard.teacher.help.section2Body")],
+              },
+            ],
+          }
+        : null,
+  );
 
   return (
     <div

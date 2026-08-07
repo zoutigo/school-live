@@ -11,7 +11,10 @@ const REVALIDATE_SECONDS = 3600;
 export type PublicContactInfo = {
   email: string;
   phone: string;
-  address: string;
+  addressStreet: string;
+  addressDistrict: string;
+  addressCity: string;
+  addressCountry: string;
   legalRepresentativeFirstName: string;
   legalRepresentativeLastName: string;
 };
@@ -32,7 +35,10 @@ export type PublicLegalDocument = {
 const BUILD_TIME_CONTACT_FALLBACK: PublicContactInfo = {
   email: "contact@scolive.cm",
   phone: "+237 6XX XXX XXX",
-  address: "Cameroun",
+  addressStreet: "",
+  addressDistrict: "",
+  addressCity: "",
+  addressCountry: "Cameroun",
   legalRepresentativeFirstName: "",
   legalRepresentativeLastName: "",
 };
@@ -65,6 +71,17 @@ function buildTimeLegalFallback(
   };
 }
 
+export function formatPublicAddress(contact: PublicContactInfo): string {
+  return [
+    contact.addressStreet,
+    contact.addressDistrict,
+    contact.addressCity,
+    contact.addressCountry,
+  ]
+    .filter((part) => part.trim().length > 0)
+    .join(", ");
+}
+
 export async function getPublicContactInfo(): Promise<PublicContactInfo> {
   try {
     const response = await fetch(`${API_URL}/public/site-content/contact`, {
@@ -80,7 +97,10 @@ export async function getPublicContactInfo(): Promise<PublicContactInfo> {
     return {
       email: data.email,
       phone: data.phone,
-      address: data.address ?? "",
+      addressStreet: data.addressStreet ?? "",
+      addressDistrict: data.addressDistrict ?? "",
+      addressCity: data.addressCity ?? "",
+      addressCountry: data.addressCountry ?? "",
       legalRepresentativeFirstName: data.legalRepresentativeFirstName ?? "",
       legalRepresentativeLastName: data.legalRepresentativeLastName ?? "",
     };

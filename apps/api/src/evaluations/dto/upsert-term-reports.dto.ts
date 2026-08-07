@@ -24,7 +24,7 @@ class UpsertStudentTermReportDto {
 
   @IsOptional()
   @IsString()
-  generalAppreciation?: string;
+  generalAppreciation?: string | null;
 
   @IsArray()
   @ArrayMaxSize(40)

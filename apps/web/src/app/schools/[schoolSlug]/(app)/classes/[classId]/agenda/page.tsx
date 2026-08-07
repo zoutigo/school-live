@@ -36,6 +36,14 @@ import {
   type TranslateFn,
 } from "../../../../../../../i18n/useTranslation";
 import { API_URL, type MeResponse } from "../_shared";
+import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import {
+  TEACHER_CLASS_AGENDA_TOUR_ID,
+  TEACHER_CLASS_AGENDA_TOUR_STEPS,
+  TEACHER_CLASS_AGENDA_TOUR_TARGETS,
+} from "../../../../../../../components/timetable/teacher-class-agenda-tour.config";
+import { usePageHelp } from "../../../../../../../store/page-help";
 
 type TabKey = "slots" | "colors" | "vacations" | "help";
 type ViewMode = "day" | "week" | "month";
@@ -716,6 +724,52 @@ export default function TeacherClassAgendaPage() {
   const canManageCalendar =
     meRole !== null && CAN_MANAGE_CALENDAR_ROLES.includes(meRole);
 
+  usePageHelp(
+    meRole === "TEACHER"
+      ? tab === "vacations"
+        ? {
+            title: t("timetable.agenda.teacherHelp.vacations.title"),
+            sections: [
+              {
+                title: t(
+                  "timetable.agenda.teacherHelp.vacations.section1Title",
+                ),
+                body: [
+                  t("timetable.agenda.teacherHelp.vacations.section1Body"),
+                ],
+              },
+            ],
+          }
+        : tab === "colors"
+          ? {
+              title: t("timetable.agenda.teacherHelp.colors.title"),
+              sections: [
+                {
+                  title: t("timetable.agenda.teacherHelp.colors.section1Title"),
+                  body: [t("timetable.agenda.teacherHelp.colors.section1Body")],
+                },
+              ],
+            }
+          : {
+              title: t("timetable.agenda.teacherHelp.slots.title"),
+              sections: [
+                {
+                  title: t("timetable.agenda.teacherHelp.slots.section1Title"),
+                  body: [t("timetable.agenda.teacherHelp.slots.section1Body")],
+                },
+                {
+                  title: t("timetable.agenda.teacherHelp.slots.section2Title"),
+                  body: [t("timetable.agenda.teacherHelp.slots.section2Body")],
+                },
+                {
+                  title: t("timetable.agenda.teacherHelp.slots.section3Title"),
+                  body: [t("timetable.agenda.teacherHelp.slots.section3Body")],
+                },
+              ],
+            }
+      : null,
+  );
+
   useEffect(() => {
     void bootstrap();
   }, [schoolSlug, classId]);
@@ -1075,6 +1129,22 @@ export default function TeacherClassAgendaPage() {
       }
 
       setMeRole(role);
+
+      if (role === "TEACHER") {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          me.onboardingHelpEnabled !== false &&
+          !tourStore.isCompleted("teacher", TEACHER_CLASS_AGENDA_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            TEACHER_CLASS_AGENDA_TOUR_ID,
+            "teacher",
+            TEACHER_CLASS_AGENDA_TOUR_STEPS,
+          );
+        }
+      }
+
       await loadContextAndTimetable();
     } catch (caught) {
       if (caught instanceof Error) {
@@ -1882,7 +1952,10 @@ export default function TeacherClassAgendaPage() {
         }`}
         subtitle={t("timetable.agenda.page.subtitle")}
       >
-        <div className="mb-4 flex items-end gap-2 border-b border-border">
+        <OnboardingTarget
+          id={TEACHER_CLASS_AGENDA_TOUR_TARGETS.tabs}
+          className="mb-4 flex items-end gap-2 border-b border-border"
+        >
           <button
             type="button"
             onClick={() => setTab("slots")}
@@ -1916,18 +1989,20 @@ export default function TeacherClassAgendaPage() {
           >
             {t("timetable.agenda.tabs.colors")}
           </button>
-          <button
-            type="button"
-            onClick={() => setTab("help")}
-            className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-              tab === "help"
-                ? "border border-border border-b-surface bg-surface text-primary"
-                : "text-text-secondary"
-            }`}
-          >
-            {t("timetable.agenda.tabs.help")}
-          </button>
-        </div>
+          {meRole === "TEACHER" ? null : (
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              {t("timetable.agenda.tabs.help")}
+            </button>
+          )}
+        </OnboardingTarget>
 
         {loading ? (
           <p className="text-sm text-text-secondary">

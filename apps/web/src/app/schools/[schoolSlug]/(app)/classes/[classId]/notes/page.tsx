@@ -52,12 +52,52 @@ import {
   type CreateEvaluationFormValues,
   type EvaluationListFilters,
 } from "./page-logic";
+import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import {
+  TEACHER_NOTES_TOUR_ID,
+  TEACHER_NOTES_TOUR_STEPS,
+  TEACHER_NOTES_TOUR_TARGETS,
+} from "../../../../../../../components/teacher-notes/teacher-notes-tour.config";
+import { usePageHelp } from "../../../../../../../store/page-help";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const EVALUATION_ATTACHMENT_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
 
-type TabKey = "evaluations" | "notes" | "scores" | "council" | "help";
+type TabKey =
+  | "evaluations"
+  | "notes"
+  | "scores"
+  | "council"
+  | "decision"
+  | "help";
+
+type PromotionDecision = "PROMOTED" | "REPEATED" | "LEFT";
+
+type TermReportForDecisionRow = {
+  id: string;
+  studentId: string;
+  student: { id: string; firstName: string; lastName: string };
+  decision: PromotionDecision | null;
+  nextAcademicLevel: { id: string; label: string } | null;
+  nextTrack: { id: string; label: string } | null;
+  termAverages: {
+    TERM_1: number | null;
+    TERM_2: number | null;
+    TERM_3: number | null;
+  };
+  yearlyAverage: number | null;
+  rank: number | null;
+  classSize: number | null;
+  currentAcademicLevel: { id: string; order: number | null } | null;
+};
+
+type AcademicLevelOption = {
+  id: string;
+  label: string;
+  order?: number | null;
+};
 
 type AdminClassroomOption = {
   id: string;
@@ -257,6 +297,22 @@ export default function TeacherClassNotesPage() {
     Record<string, { score: string; status: string; comment: string }>
   >({});
 
+  // ── Onglet Décision : passage en classe supérieure (prof référent) ────────
+  const [decisionRows, setDecisionRows] = useState<TermReportForDecisionRow[]>(
+    [],
+  );
+  const [decisionLevels, setDecisionLevels] = useState<AcademicLevelOption[]>(
+    [],
+  );
+  const [decisionDrafts, setDecisionDrafts] = useState<
+    Record<
+      string,
+      { decision: PromotionDecision | ""; nextAcademicLevelId: string }
+    >
+  >({});
+  const [loadingDecision, setLoadingDecision] = useState(false);
+  const [savingDecisionId, setSavingDecisionId] = useState<string | null>(null);
+
   // ── Onglet Notes : recherche élève dans la classe (parité mobile) ─────────
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedNotesStudentId, setSelectedNotesStudentId] = useState<
@@ -350,6 +406,13 @@ export default function TeacherClassNotesPage() {
     void loadCouncilReports(councilTerm);
   }, [context, councilTerm]);
 
+  useEffect(() => {
+    if (!context || tab !== "decision" || !context.class.isReferentTeacher) {
+      return;
+    }
+    void loadDecisionTab();
+  }, [context, tab]);
+
   // Notes de l'élève sélectionné dans l'onglet Notes.
   useEffect(() => {
     if (!selectedNotesStudentId) {
@@ -406,7 +469,10 @@ export default function TeacherClassNotesPage() {
         return;
       }
 
-      const me = (await meResponse.json()) as { role?: string };
+      const me = (await meResponse.json()) as {
+        role?: string;
+        onboardingHelpEnabled?: boolean;
+      };
       if (
         !["TEACHER", "SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR"].includes(
           me.role ?? "",
@@ -416,6 +482,21 @@ export default function TeacherClassNotesPage() {
         return;
       }
       setRole(me.role ?? null);
+
+      if (me.role === "TEACHER") {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          me.onboardingHelpEnabled !== false &&
+          !tourStore.isCompleted("teacher", TEACHER_NOTES_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            TEACHER_NOTES_TOUR_ID,
+            "teacher",
+            TEACHER_NOTES_TOUR_STEPS,
+          );
+        }
+      }
 
       const tasks = [loadContext(), loadEvaluations()];
       if (
@@ -508,6 +589,137 @@ export default function TeacherClassNotesPage() {
         ]),
       ),
     );
+  }
+
+  async function loadDecisionTab() {
+    setLoadingDecision(true);
+    try {
+      const [levelsResponse, reportsResponse] = await Promise.all([
+        fetch(`${API_URL}/schools/${schoolSlug}/admin/academic-levels/active`, {
+          credentials: "include",
+        }),
+        fetch(
+          `${API_URL}/schools/${schoolSlug}/admin/promotions/classes/${classId}/term-reports`,
+          { credentials: "include" },
+        ),
+      ]);
+      const levels = levelsResponse.ok
+        ? ((await levelsResponse.json()) as AcademicLevelOption[])
+        : [];
+      const rows = reportsResponse.ok
+        ? ((await reportsResponse.json()) as TermReportForDecisionRow[])
+        : [];
+      setDecisionLevels(levels);
+      setDecisionRows(rows);
+      setDecisionDrafts(
+        Object.fromEntries(
+          rows.map((row) => [
+            row.id,
+            {
+              decision: row.decision ?? "",
+              nextAcademicLevelId: row.nextAcademicLevel?.id ?? "",
+            },
+          ]),
+        ),
+      );
+    } finally {
+      setLoadingDecision(false);
+    }
+  }
+
+  /**
+   * Niveau cible propose automatiquement selon la decision choisie :
+   * - REPEATED -> le niveau actuel de la classe (si toujours actif)
+   * - PROMOTED -> le niveau actif dont l'ordre est immediatement superieur
+   * Ne s'applique que si le champ est encore vide (ne jamais ecraser un
+   * choix manuel).
+   */
+  function suggestNextAcademicLevelId(
+    decision: PromotionDecision | "",
+    currentAcademicLevel: TermReportForDecisionRow["currentAcademicLevel"],
+    levels: AcademicLevelOption[],
+  ): string {
+    if (!currentAcademicLevel) return "";
+    if (decision === "REPEATED") {
+      const stillActive = levels.some(
+        (level) => level.id === currentAcademicLevel.id,
+      );
+      return stillActive ? currentAcademicLevel.id : "";
+    }
+    if (decision === "PROMOTED") {
+      if (currentAcademicLevel.order === null) return "";
+      const next = levels
+        .filter(
+          (level) =>
+            level.order !== null &&
+            level.order !== undefined &&
+            level.order > currentAcademicLevel.order!,
+        )
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+      return next?.id ?? "";
+    }
+    return "";
+  }
+
+  function handleDecisionChange(
+    row: TermReportForDecisionRow,
+    decision: PromotionDecision,
+  ) {
+    const current = decisionDrafts[row.id] ?? {
+      decision: "" as PromotionDecision | "",
+      nextAcademicLevelId: "",
+    };
+    const nextAcademicLevelId =
+      current.nextAcademicLevelId ||
+      suggestNextAcademicLevelId(
+        decision,
+        row.currentAcademicLevel,
+        decisionLevels,
+      );
+    setDecisionDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [row.id]: { decision, nextAcademicLevelId },
+    }));
+  }
+
+  async function saveDecision(reportId: string) {
+    const draft = decisionDrafts[reportId];
+    if (!draft || !draft.decision) return;
+    setSavingDecisionId(reportId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const csrfToken = getCsrfTokenCookie();
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/admin/promotions/term-reports/${reportId}/decision`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+          },
+          body: JSON.stringify({
+            decision: draft.decision,
+            nextAcademicLevelId:
+              draft.decision === "LEFT"
+                ? undefined
+                : draft.nextAcademicLevelId || undefined,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(t("notes.teacher.decision.errors.save"));
+      }
+      await loadDecisionTab();
+      setSuccess(t("notes.teacher.decision.success.saved"));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : t("notes.common.networkError"),
+      );
+    } finally {
+      setSavingDecisionId(null);
+    }
   }
 
   async function loadCouncilReports(currentTerm: string) {
@@ -919,6 +1131,46 @@ export default function TeacherClassNotesPage() {
     role === "SCHOOL_ADMIN" ||
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR";
+
+  function buildPageHelpSections(namespace: string, count: number) {
+    return Array.from({ length: count }, (_, index) => {
+      const n = index + 1;
+      return {
+        title: t(`notes.teacher.pageHelp.${namespace}.section${n}Title`),
+        body: [t(`notes.teacher.pageHelp.${namespace}.section${n}Body`)],
+      };
+    });
+  }
+
+  usePageHelp(
+    role === "TEACHER"
+      ? tab === "notes"
+        ? {
+            title: t("notes.teacher.pageHelp.notes.title"),
+            sections: buildPageHelpSections("notes", 2),
+          }
+        : tab === "scores"
+          ? {
+              title: t("notes.teacher.pageHelp.scores.title"),
+              sections: buildPageHelpSections("scores", 4),
+            }
+          : tab === "council"
+            ? {
+                title: t("notes.teacher.pageHelp.council.title"),
+                sections: buildPageHelpSections("council", 3),
+              }
+            : tab === "decision"
+              ? {
+                  title: t("notes.teacher.pageHelp.decision.title"),
+                  sections: buildPageHelpSections("decision", 3),
+                }
+              : {
+                  title: t("notes.teacher.pageHelp.evaluations.title"),
+                  sections: buildPageHelpSections("evaluations", 6),
+                }
+      : null,
+  );
+
   const adminLevelOptions = useMemo(() => {
     const seen = new Map<string, string>();
     adminClassrooms.forEach((entry) => {
@@ -1080,13 +1332,21 @@ export default function TeacherClassNotesPage() {
         )}
         subtitle={t("notes.teacher.card.subtitle")}
       >
-        <div className="section-tabs mb-4">
+        <OnboardingTarget
+          id={TEACHER_NOTES_TOUR_TARGETS.tabs}
+          className="section-tabs mb-4"
+        >
           {[
             { key: "evaluations", label: t("notes.teacher.tabs.evaluations") },
             { key: "notes", label: t("notes.teacher.tabs.notes") },
             { key: "scores", label: t("notes.teacher.tabs.scores") },
             { key: "council", label: t("notes.teacher.tabs.council") },
-            { key: "help", label: t("notes.teacher.tabs.help") },
+            ...(!isAdminBrowsing && context?.class.isReferentTeacher
+              ? [{ key: "decision", label: t("notes.teacher.tabs.decision") }]
+              : []),
+            ...(role === "TEACHER"
+              ? []
+              : [{ key: "help", label: t("notes.teacher.tabs.help") }]),
           ].map((item) => (
             <button
               key={item.key}
@@ -1097,7 +1357,7 @@ export default function TeacherClassNotesPage() {
               {item.label}
             </button>
           ))}
-        </div>
+        </OnboardingTarget>
 
         {loading ? (
           <p className="text-sm text-text-secondary">
@@ -1155,17 +1415,28 @@ export default function TeacherClassNotesPage() {
                     {t("notes.teacher.list.subtitle")}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  aria-label={t("notes.teacher.list.addAria")}
-                  onClick={startCreateEvaluation}
-                  className="group inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-primary px-3 text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition-all duration-200 hover:bg-primary-dark"
-                >
-                  <Plus className="h-5 w-5 shrink-0" />
-                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-40 group-hover:opacity-100">
-                    {t("notes.teacher.list.addLabel")}
-                  </span>
-                </button>
+                {(() => {
+                  const addButton = (
+                    <button
+                      type="button"
+                      aria-label={t("notes.teacher.list.addAria")}
+                      onClick={startCreateEvaluation}
+                      className="group inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-primary px-3 text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition-all duration-200 hover:bg-primary-dark"
+                    >
+                      <Plus className="h-5 w-5 shrink-0" />
+                      <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-40 group-hover:opacity-100">
+                        {t("notes.teacher.list.addLabel")}
+                      </span>
+                    </button>
+                  );
+                  return role === "TEACHER" ? (
+                    <OnboardingTarget id={TEACHER_NOTES_TOUR_TARGETS.create}>
+                      {addButton}
+                    </OnboardingTarget>
+                  ) : (
+                    addButton
+                  );
+                })()}
               </div>
 
               {isAdminBrowsing && adminClassrooms.length > 0 ? (
@@ -1242,21 +1513,34 @@ export default function TeacherClassNotesPage() {
                   aria-label={t("notes.teacher.list.searchAria")}
                   data-testid="notes-evaluations-search-input"
                 />
-                <button
-                  type="button"
-                  data-testid="notes-evaluations-filter-toggle"
-                  onClick={() =>
-                    setEvaluationFiltersOpen((current) => !current)
-                  }
-                  aria-label={t("notes.teacher.list.filterToggle")}
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border transition ${
-                    hasActiveEvaluationListFilters(evaluationFilters)
-                      ? "border-accent-teal bg-accent-teal text-white"
-                      : "border-accent-teal/40 bg-surface text-accent-teal"
-                  }`}
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                </button>
+                {(() => {
+                  const filterButton = (
+                    <button
+                      type="button"
+                      data-testid="notes-evaluations-filter-toggle"
+                      onClick={() =>
+                        setEvaluationFiltersOpen((current) => !current)
+                      }
+                      aria-label={t("notes.teacher.list.filterToggle")}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border transition ${
+                        hasActiveEvaluationListFilters(evaluationFilters)
+                          ? "border-accent-teal bg-accent-teal text-white"
+                          : "border-accent-teal/40 bg-surface text-accent-teal"
+                      }`}
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                    </button>
+                  );
+                  return role === "TEACHER" ? (
+                    <OnboardingTarget
+                      id={TEACHER_NOTES_TOUR_TARGETS.filterToggle}
+                    >
+                      {filterButton}
+                    </OnboardingTarget>
+                  ) : (
+                    filterButton
+                  );
+                })()}
               </div>
 
               {evaluationFiltersOpen ? (
@@ -2403,7 +2687,7 @@ export default function TeacherClassNotesPage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : tab === "council" ? (
           <div className="grid gap-4">
             <div className="grid gap-3 md:grid-cols-[180px_220px_180px]">
               <label className="grid gap-1 text-sm">
@@ -2488,7 +2772,178 @@ export default function TeacherClassNotesPage() {
               isSubmitting={savingCouncil}
             />
           </div>
-        )}
+        ) : tab === "decision" && context.class.isReferentTeacher ? (
+          <div className="grid gap-4" data-testid="decision-tab">
+            <p className="text-sm text-text-secondary">
+              {t("notes.teacher.decision.intro")}
+            </p>
+
+            {loadingDecision ? (
+              <p className="text-sm text-text-secondary">
+                {t("notes.common.loading")}
+              </p>
+            ) : decisionRows.length === 0 ? (
+              <p className="text-sm text-text-secondary">
+                {t("notes.teacher.decision.empty")}
+              </p>
+            ) : (
+              <>
+                {error ? (
+                  <p className="text-sm text-notification">{error}</p>
+                ) : null}
+                {success ? (
+                  <p className="text-sm text-accent-teal">{success}</p>
+                ) : null}
+                <div className="overflow-x-auto rounded-[18px] border border-warm-border bg-surface p-2 shadow-[0_10px_24px_rgba(77,56,32,0.06)]">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-text-secondary">
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnStudent")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">T1</th>
+                        <th className="px-3 py-2 font-medium">T2</th>
+                        <th className="px-3 py-2 font-medium">T3</th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnYearly")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnRank")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnDecision")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnNextLevel")}
+                        </th>
+                        <th className="px-3 py-2 font-medium" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {decisionRows.map((row) => {
+                        const draft = decisionDrafts[row.id];
+                        return (
+                          <tr
+                            key={row.id}
+                            className={
+                              row.decision
+                                ? "border-b border-border/70"
+                                : "border-b border-border/70 border-l-2 border-l-notification"
+                            }
+                            data-testid={`decision-row-${row.id}`}
+                          >
+                            <td className="px-3 py-2 font-medium text-text-primary">
+                              {row.student.lastName} {row.student.firstName}
+                              <div
+                                className={
+                                  row.decision
+                                    ? "text-xs font-semibold text-accent-teal-dark"
+                                    : "text-xs font-semibold uppercase text-notification"
+                                }
+                                data-testid={`decision-row-${row.id}-status`}
+                              >
+                                {row.decision
+                                  ? t(
+                                      `notes.teacher.decision.${row.decision.toLowerCase()}`,
+                                    )
+                                  : t("notes.teacher.decision.noDecision")}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.termAverages.TERM_1 ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.termAverages.TERM_2 ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.termAverages.TERM_3 ?? "-"}
+                            </td>
+                            <td className="px-3 py-2 font-semibold text-primary">
+                              {row.yearlyAverage ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.rank !== null && row.classSize !== null
+                                ? `${row.rank}/${row.classSize}`
+                                : "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              <FormSelect
+                                value={draft?.decision ?? ""}
+                                onChange={(event) =>
+                                  handleDecisionChange(
+                                    row,
+                                    event.target.value as PromotionDecision,
+                                  )
+                                }
+                                data-testid={`decision-row-${row.id}-select`}
+                              >
+                                <option value="">
+                                  {t(
+                                    "notes.teacher.decision.decisionPlaceholder",
+                                  )}
+                                </option>
+                                <option value="PROMOTED">
+                                  {t("notes.teacher.decision.promoted")}
+                                </option>
+                                <option value="REPEATED">
+                                  {t("notes.teacher.decision.repeated")}
+                                </option>
+                                <option value="LEFT">
+                                  {t("notes.teacher.decision.left")}
+                                </option>
+                              </FormSelect>
+                            </td>
+                            <td className="px-3 py-2">
+                              {draft?.decision === "PROMOTED" ||
+                              draft?.decision === "REPEATED" ? (
+                                <FormSelect
+                                  value={draft?.nextAcademicLevelId ?? ""}
+                                  onChange={(event) =>
+                                    setDecisionDrafts((current) => ({
+                                      ...current,
+                                      [row.id]: {
+                                        ...current[row.id],
+                                        nextAcademicLevelId: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  data-testid={`decision-row-${row.id}-level`}
+                                >
+                                  <option value="">
+                                    {t("notes.common.select")}
+                                  </option>
+                                  {decisionLevels.map((level) => (
+                                    <option key={level.id} value={level.id}>
+                                      {level.label}
+                                    </option>
+                                  ))}
+                                </FormSelect>
+                              ) : null}
+                            </td>
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                onClick={() => void saveDecision(row.id)}
+                                disabled={
+                                  savingDecisionId === row.id ||
+                                  !draft?.decision
+                                }
+                                className="rounded-[10px] bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-70"
+                                data-testid={`decision-row-${row.id}-save`}
+                              >
+                                {t("notes.teacher.decision.save")}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
       </Card>
     </div>
   );

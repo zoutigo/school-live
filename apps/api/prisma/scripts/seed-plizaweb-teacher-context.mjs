@@ -38,8 +38,8 @@ const COLOR_BY_SUBJECT = {
 };
 
 const NEW_STUDENTS_6EB = [
-  { firstName: "Esther", lastName: "Ndzi" },
-  { firstName: "Kevin", lastName: "Fouda" },
+  { firstName: "Esther", lastName: "Ndzi", dateOfBirth: "2013-04-12" },
+  { firstName: "Kevin", lastName: "Fouda", dateOfBirth: "2012-11-03" },
 ];
 
 const TIMETABLE_TEMPLATE_6EB = [
@@ -520,6 +520,7 @@ async function ensureStudentForClass({
   classId,
   firstName,
   lastName,
+  dateOfBirth,
 }) {
   let student = await prisma.student.findFirst({
     where: { schoolId, firstName, lastName },
@@ -527,7 +528,12 @@ async function ensureStudentForClass({
 
   if (!student) {
     student = await prisma.student.create({
-      data: { schoolId, firstName, lastName },
+      data: {
+        schoolId,
+        firstName,
+        lastName,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      },
     });
   }
 

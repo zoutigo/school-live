@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AppHeader } from "./app-header";
+import { AppHeader, APP_HEADER_MENU_TOUR_TARGET } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
 import { ConfirmDialog } from "../ui/confirm-dialog";
+import { HelpDialog } from "../ui/help-dialog";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
 import { OnboardingTourOverlay } from "../onboarding/onboarding-tour-overlay";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelpStore } from "../../store/page-help";
 import {
   extractAvailableRoles,
   isPlatformRole,
@@ -21,6 +25,7 @@ type MeResponse = {
   lastName: string;
   role: Role | null;
   activeRole?: Role | null;
+  activeSchoolId?: string | null;
   platformRoles: Array<"SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT">;
   memberships: Array<{
     schoolId: string;
@@ -30,10 +35,12 @@ type MeResponse = {
       | "SUPERVISOR"
       | "SCHOOL_ACCOUNTANT"
       | "SCHOOL_STAFF"
+      | "SCHOOL_HEALTH_OFFICER"
       | "TEACHER"
       | "PARENT"
       | "STUDENT";
   }>;
+  schools?: Array<{ schoolId: string }>;
 };
 
 type Props = {
@@ -56,6 +63,9 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
   } | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const lastScrollTopRef = useRef(0);
+  const pageHelpEntry = usePageHelpStore((state) => state.entry);
+  const pageHelpOpen = usePageHelpStore((state) => state.open);
+  const closePageHelp = usePageHelpStore((state) => state.closeHelp);
 
   useEffect(() => {
     void loadMe();
@@ -266,12 +276,21 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
         />
 
         <div className="relative flex min-h-0 flex-1">
-          <div className="hidden md:block">
-            <AppSidebar
-              schoolSlug={activeSchoolSlug}
-              role={role}
-              onLogoutClick={() => setLogoutConfirmOpen(true)}
-            />
+          <div
+            className="hidden md:block"
+            onClick={() =>
+              useOnboardingTourStore
+                .getState()
+                .advanceIfTarget(APP_HEADER_MENU_TOUR_TARGET)
+            }
+          >
+            <OnboardingTarget id={APP_HEADER_MENU_TOUR_TARGET}>
+              <AppSidebar
+                schoolSlug={activeSchoolSlug}
+                role={role}
+                onLogoutClick={() => setLogoutConfirmOpen(true)}
+              />
+            </OnboardingTarget>
           </div>
 
           {mobileOpen ? (
@@ -306,6 +325,15 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
       </div>
 
       <OnboardingTourOverlay />
+
+      {pageHelpEntry ? (
+        <HelpDialog
+          open={pageHelpOpen}
+          title={pageHelpEntry.title}
+          sections={pageHelpEntry.sections}
+          onClose={closePageHelp}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={logoutConfirmOpen}

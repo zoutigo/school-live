@@ -23,6 +23,8 @@ import { ConfirmDialog } from "../ui/confirm-dialog";
 import { ActionIconButton } from "../ui/action-icon-button";
 import { useTranslation } from "../../i18n/useTranslation";
 import type { TranslateFn } from "../../i18n/useTranslation";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
+import { MESSAGES_TOUR_TARGETS } from "./messages-tour.config";
 import type {
   FolderKey,
   MessageAttachment,
@@ -331,16 +333,21 @@ export function MessagingMailboxView({
           <p className="text-sm text-notification">{error}</p>
         ) : (
           <div className="flex h-full min-h-0 flex-col gap-3">
-            <MessagingToolbar
-              title={t("messaging.toolbar.title")}
-              contextLabel={contextLabel}
-              search={search}
-              onSearchChange={setSearch}
-              onCompose={canCompose ? onOpenCompose : undefined}
-            />
+            <OnboardingTarget id={MESSAGES_TOUR_TARGETS.toolbar}>
+              <MessagingToolbar
+                title={t("messaging.toolbar.title")}
+                contextLabel={contextLabel}
+                search={search}
+                onSearchChange={setSearch}
+                onCompose={canCompose ? onOpenCompose : undefined}
+              />
+            </OnboardingTarget>
 
             <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[240px_320px_minmax(0,1fr)]">
-              <div className="lg:min-h-0">
+              <OnboardingTarget
+                id={MESSAGES_TOUR_TARGETS.folders}
+                className="lg:min-h-0"
+              >
                 <MessagingFoldersPanel
                   folders={buildFolders(t)}
                   activeFolder={folder}
@@ -351,7 +358,7 @@ export function MessagingMailboxView({
                   showComposeButton={canCompose}
                   onCompose={onOpenCompose}
                 />
-              </div>
+              </OnboardingTarget>
               <div className="lg:min-h-0">
                 <MessagingMessagesList
                   panelLabel={getFolderLabel(folder, t)}

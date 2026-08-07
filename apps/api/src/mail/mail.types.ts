@@ -18,6 +18,10 @@ export const MAIL_JOB_SEND_GRADE_PUBLISHED_NOTIFICATION =
   "send-grade-published-notification";
 export const MAIL_JOB_SEND_CONTACT_FORM_SUBMISSION_NOTIFICATION =
   "send-contact-form-submission-notification";
+export const MAIL_JOB_SEND_STUDENT_HEALTH_CARE_EVENT_NOTIFICATION =
+  "send-student-health-care-event-notification";
+export const MAIL_JOB_SEND_STUDENT_HEALTH_REPORT_NOTIFICATION =
+  "send-student-health-report-notification";
 
 export type TemporaryPasswordMailPayload = {
   to: string;
@@ -136,4 +140,38 @@ export type GradePublishedMailPayload = {
   sequenceLabel: string;
   isFinalExam: boolean;
   countsForAverage: boolean;
+};
+
+export type StudentHealthCareEventMailPayload = {
+  to: string;
+  parentFirstName: string;
+  schoolSlug: string | null;
+  studentFirstName: string;
+  studentLastName: string;
+  summary: string;
+  description?: string | null;
+  occurredAt: string;
+  authorFullName: string;
+  locale: "fr" | "en";
+};
+
+export type StudentHealthReportMailPayload = {
+  to: string;
+  recipientFirstName: string;
+  schoolSlug: string | null;
+  studentFirstName: string;
+  studentLastName: string;
+  reportType:
+    | "MALADIE"
+    | "TRAITEMENT"
+    | "ACCIDENT"
+    | "CONSULTATION"
+    | "HOSPITALISATION"
+    | "VACCINATION"
+    | "RESTRICTION_SPORT"
+    | "AUTRE";
+  description: string;
+  sportRestriction: boolean;
+  reporterFullName: string;
+  locale: "fr" | "en";
 };

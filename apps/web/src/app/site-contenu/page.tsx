@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { HelpCircle, Mail, MailOpen, Phone, User, X } from "lucide-react";
+import { Mail, MailOpen, Pencil, Phone, User, X } from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -17,9 +17,9 @@ import {
 } from "../../components/ui/form-controls";
 import { FormRichTextEditor } from "../../components/ui/form-rich-text-editor";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
-import { HelpDialog } from "../../components/ui/help-dialog";
 import { OnboardingTarget } from "../../components/onboarding/onboarding-target";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelp } from "../../store/page-help";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import {
   LEGAL_DOCUMENT_LOCALES,
@@ -44,7 +44,14 @@ function buildContactSchema(t: TranslateFn) {
   return z.object({
     email: z.string().email(t("siteContent.contact.error.email")),
     phone: z.string().min(1, t("siteContent.contact.error.phone")),
-    address: z.string().min(1, t("siteContent.contact.error.address")),
+    addressStreet: z
+      .string()
+      .min(1, t("siteContent.contact.error.addressStreet")),
+    addressDistrict: z.string(),
+    addressCity: z.string().min(1, t("siteContent.contact.error.addressCity")),
+    addressCountry: z
+      .string()
+      .min(1, t("siteContent.contact.error.addressCountry")),
     legalRepresentativeFirstName: z.string(),
     legalRepresentativeLastName: z.string(),
   });
@@ -71,7 +78,6 @@ export default function SiteContentPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("contact");
-  const [helpOpen, setHelpOpen] = useState(false);
 
   const activeTourId = useOnboardingTourStore((state) => state.activeTourId);
   const tourSteps = useOnboardingTourStore((state) => state.steps);
@@ -94,6 +100,19 @@ export default function SiteContentPage() {
       setTab("legal");
     }
   }, [activeTourId, tourSteps, tourStepIndex]);
+
+  usePageHelp({
+    title: t(`siteContent.help.${tab}.title`),
+    sections: (tab === "legal"
+      ? [1, 2, 3]
+      : tab === "contact"
+        ? [1, 2]
+        : [1]
+    ).map((n) => ({
+      title: t(`siteContent.help.${tab}.section${n}Title`),
+      body: [t(`siteContent.help.${tab}.section${n}Body`)],
+    })),
+  });
 
   async function boot() {
     try {
@@ -141,19 +160,6 @@ export default function SiteContentPage() {
         <Card
           title={t("siteContent.title")}
           subtitle={t("siteContent.subtitle")}
-          actions={
-            <OnboardingTarget id={SITE_CONTENT_TOUR_TARGETS.helpToggle}>
-              <button
-                type="button"
-                data-testid="site-content-help-toggle"
-                aria-label={t("siteContent.help.toggle")}
-                onClick={() => setHelpOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-card border border-border bg-background text-text-secondary hover:bg-surface"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </OnboardingTarget>
-          }
         >
           <OnboardingTarget id={SITE_CONTENT_TOUR_TARGETS.tabs}>
             <div className="mb-4 flex items-end gap-2 border-b border-border">
@@ -202,22 +208,24 @@ export default function SiteContentPage() {
           )}
         </Card>
       </div>
-
-      <HelpDialog
-        open={helpOpen}
-        title={t("siteContent.help.title")}
-        body={[
-          t("siteContent.help.body1"),
-          t("siteContent.help.body2"),
-          t("siteContent.help.body3"),
-        ]}
-        onClose={() => setHelpOpen(false)}
-      />
     </AppShell>
   );
 }
 
+const EMPTY_CONTACT_FORM: ContactFormValues = {
+  email: "",
+  phone: "",
+  addressStreet: "",
+  addressDistrict: "",
+  addressCity: "",
+  addressCountry: "",
+  legalRepresentativeFirstName: "",
+  legalRepresentativeLastName: "",
+};
+
 function ContactTab({ t }: { t: TranslateFn }) {
+  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [contact, setContact] = useState<ContactFormValues | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -231,13 +239,7 @@ function ContactTab({ t }: { t: TranslateFn }) {
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(schema),
     mode: "onChange",
-    defaultValues: {
-      email: "",
-      phone: "",
-      address: "",
-      legalRepresentativeFirstName: "",
-      legalRepresentativeLastName: "",
-    },
+    defaultValues: EMPTY_CONTACT_FORM,
   });
 
   useEffect(() => {
@@ -249,6 +251,7 @@ function ContactTab({ t }: { t: TranslateFn }) {
     setLoadError(null);
     try {
       const info = await siteContentApi.getContactInfo();
+      setContact(info);
       form.reset(info);
     } catch {
       setLoadError(t("siteContent.contact.loadError"));
@@ -257,13 +260,32 @@ function ContactTab({ t }: { t: TranslateFn }) {
     }
   }
 
+  function startEdit() {
+    if (contact) {
+      form.reset(contact);
+    }
+    setFeedback(null);
+    setShowRequiredHint(false);
+    setMode("edit");
+  }
+
+  function cancelEdit() {
+    if (contact) {
+      form.reset(contact);
+    }
+    setShowRequiredHint(false);
+    setMode("view");
+  }
+
   async function onValid(values: ContactFormValues) {
     setShowRequiredHint(false);
     setSaving(true);
     setFeedback(null);
     try {
       const updated = await siteContentApi.updateContactInfo(values);
+      setContact(updated);
       form.reset(updated);
+      setMode("view");
       setFeedback({
         type: "success",
         message: t("siteContent.contact.saveSuccess"),
@@ -284,8 +306,12 @@ function ContactTab({ t }: { t: TranslateFn }) {
       form.setFocus("email");
     } else if (errors.phone) {
       form.setFocus("phone");
-    } else if (errors.address) {
-      form.setFocus("address");
+    } else if (errors.addressStreet) {
+      form.setFocus("addressStreet");
+    } else if (errors.addressCity) {
+      form.setFocus("addressCity");
+    } else if (errors.addressCountry) {
+      form.setFocus("addressCountry");
     }
   }
 
@@ -295,6 +321,67 @@ function ContactTab({ t }: { t: TranslateFn }) {
 
   if (loadError) {
     return <p className="text-sm text-notification">{loadError}</p>;
+  }
+
+  if (mode === "view" && contact) {
+    const legalRepresentativeName = [
+      contact.legalRepresentativeFirstName,
+      contact.legalRepresentativeLastName,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const addressLine = [
+      contact.addressStreet,
+      contact.addressDistrict,
+      contact.addressCity,
+      contact.addressCountry,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    return (
+      <div className="grid max-w-lg gap-4">
+        {feedback ? (
+          <p
+            className={`text-sm ${
+              feedback.type === "success"
+                ? "text-accent-teal-dark"
+                : "text-notification"
+            }`}
+          >
+            {feedback.message}
+          </p>
+        ) : null}
+
+        <div className="grid gap-3 rounded-[14px] border border-border bg-warm-surface p-4">
+          <ViewRow label={t("siteContent.contact.emailLabel")}>
+            {contact.email}
+          </ViewRow>
+          <ViewRow label={t("siteContent.contact.phoneLabel")}>
+            {contact.phone}
+          </ViewRow>
+          <ViewRow label={t("siteContent.contact.addressGroupLabel")}>
+            {addressLine || t("siteContent.contact.notProvided")}
+          </ViewRow>
+          <ViewRow
+            label={t("siteContent.contact.legalRepresentativeFirstNameLabel")}
+          >
+            {legalRepresentativeName || t("siteContent.contact.notProvided")}
+          </ViewRow>
+        </div>
+
+        <OnboardingTarget id={SITE_CONTENT_TOUR_TARGETS.contactEdit}>
+          <Button
+            type="button"
+            onClick={startEdit}
+            className="flex w-fit items-center gap-2"
+          >
+            <Pencil className="h-4 w-4" />
+            {t("siteContent.contact.edit")}
+          </Button>
+        </OnboardingTarget>
+      </div>
+    );
   }
 
   return (
@@ -329,14 +416,50 @@ function ContactTab({ t }: { t: TranslateFn }) {
       </FormField>
 
       <FormField
-        label={t("siteContent.contact.addressLabel")}
-        htmlFor="site-contact-address"
-        error={form.formState.errors.address?.message}
+        label={t("siteContent.contact.addressStreetLabel")}
+        htmlFor="site-contact-address-street"
+        error={form.formState.errors.addressStreet?.message}
       >
         <FormTextInput
-          id="site-contact-address"
-          invalid={!!form.formState.errors.address}
-          {...form.register("address")}
+          id="site-contact-address-street"
+          invalid={!!form.formState.errors.addressStreet}
+          {...form.register("addressStreet")}
+        />
+      </FormField>
+
+      <FormField
+        label={t("siteContent.contact.addressDistrictLabel")}
+        htmlFor="site-contact-address-district"
+        error={form.formState.errors.addressDistrict?.message}
+      >
+        <FormTextInput
+          id="site-contact-address-district"
+          invalid={!!form.formState.errors.addressDistrict}
+          {...form.register("addressDistrict")}
+        />
+      </FormField>
+
+      <FormField
+        label={t("siteContent.contact.addressCityLabel")}
+        htmlFor="site-contact-address-city"
+        error={form.formState.errors.addressCity?.message}
+      >
+        <FormTextInput
+          id="site-contact-address-city"
+          invalid={!!form.formState.errors.addressCity}
+          {...form.register("addressCity")}
+        />
+      </FormField>
+
+      <FormField
+        label={t("siteContent.contact.addressCountryLabel")}
+        htmlFor="site-contact-address-country"
+        error={form.formState.errors.addressCountry?.message}
+      >
+        <FormTextInput
+          id="site-contact-address-country"
+          invalid={!!form.formState.errors.addressCountry}
+          {...form.register("addressCountry")}
         />
       </FormField>
 
@@ -374,10 +497,31 @@ function ContactTab({ t }: { t: TranslateFn }) {
         </p>
       ) : null}
 
-      <Button type="submit" disabled={saving} className="w-fit">
-        {t("siteContent.contact.save")}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={saving} className="w-fit">
+          {t("siteContent.contact.save")}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={cancelEdit}
+          className="w-fit"
+        >
+          {t("siteContent.contact.cancel")}
+        </Button>
+      </div>
     </form>
+  );
+}
+
+function ViewRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-0.5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+        {label}
+      </p>
+      <p className="text-sm text-text-primary">{children}</p>
+    </div>
   );
 }
 

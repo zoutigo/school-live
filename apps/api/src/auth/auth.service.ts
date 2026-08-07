@@ -3793,14 +3793,15 @@ export class AuthService {
         firstName: link.student.firstName,
         lastName: link.student.lastName,
         avatarUrl: link.student.user?.avatarUrl ?? null,
-        currentEnrollment: link.student.enrollments[0]
-          ? {
-              class: {
-                id: link.student.enrollments[0].class.id,
-                name: link.student.enrollments[0].class.name,
-              },
-            }
-          : null,
+        currentEnrollment:
+          link.student.enrollments[0] && link.student.enrollments[0].class
+            ? {
+                class: {
+                  id: link.student.enrollments[0].class.id,
+                  name: link.student.enrollments[0].class.name,
+                },
+              }
+            : null,
       })),
     };
   }
@@ -4389,6 +4390,7 @@ export class AuthService {
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",

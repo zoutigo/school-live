@@ -9,7 +9,6 @@ import {
   Crown,
   FileText,
   Heart,
-  HelpCircle,
   MessageCircle,
   Paperclip,
   Pencil,
@@ -24,9 +23,9 @@ import {
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { HelpDialog } from "../ui/help-dialog";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelp } from "../../store/page-help";
 import { FEED_FILTERS_TOUR_TARGETS } from "./feed-filters-tour.config";
 import {
   FormFileInput,
@@ -170,10 +169,43 @@ export function FamilyFeedPage({
   const [types, setTypes] = useState<FeedTypeFilter[]>([]);
   const [mine, setMine] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   const advanceOnboardingTourTarget = useOnboardingTourStore(
     (state) => state.advanceIfTarget,
   );
+
+  usePageHelp({
+    title: t("feed.help.title"),
+    sections: [
+      {
+        title: t("feed.help.section1Title"),
+        body: [t("feed.help.section1Body")],
+      },
+      {
+        title: t("feed.help.section2Title"),
+        body: [t("feed.help.section2Body")],
+      },
+      {
+        title: t("feed.help.section3Title"),
+        body: [t("feed.help.section3Body")],
+      },
+      {
+        title: t("feed.help.section4Title"),
+        body: [t("feed.help.section4Body")],
+      },
+      {
+        title: t("feed.help.section5Title"),
+        body: [t("feed.help.section5Body")],
+      },
+      {
+        title: t("feed.help.section6Title"),
+        body: [t("feed.help.section6Body")],
+      },
+      {
+        title: t("feed.help.section7Title"),
+        body: [t("feed.help.section7Body")],
+      },
+    ],
+  });
   const [search, setSearch] = useState("");
 
   const [openComposerMode, setOpenComposerMode] = useState<ComposerMode | null>(
@@ -1080,17 +1112,6 @@ export function FamilyFeedPage({
                 ) : null}
               </button>
             </OnboardingTarget>
-            <OnboardingTarget id={FEED_FILTERS_TOUR_TARGETS.helpToggle}>
-              <button
-                type="button"
-                data-testid="family-feed-help-toggle"
-                aria-label={t("feed.help.toggle")}
-                onClick={() => setHelpOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-card border border-border bg-background text-text-secondary hover:bg-surface"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </OnboardingTarget>
           </div>
 
           {filtersOpen ? (
@@ -1883,17 +1904,6 @@ export function FamilyFeedPage({
         }}
         onConfirm={confirmDeletePost}
       />
-
-      <HelpDialog
-        open={helpOpen}
-        title={t("feed.help.title")}
-        body={[
-          t("feed.help.body1"),
-          t("feed.help.body2"),
-          t("feed.help.body3"),
-        ]}
-        onClose={() => setHelpOpen(false)}
-      />
     </div>
   );
 }
@@ -1938,6 +1948,7 @@ function isStaff(role: FeedViewerRole) {
     role === "SUPERVISOR" ||
     role === "SCHOOL_ACCOUNTANT" ||
     role === "SCHOOL_STAFF" ||
+    role === "SCHOOL_HEALTH_OFFICER" ||
     role === "TEACHER"
   );
 }

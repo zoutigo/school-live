@@ -20,6 +20,7 @@ enum SchoolRole {
   SUPERVISOR
   SCHOOL_ACCOUNTANT
   SCHOOL_STAFF
+  SCHOOL_HEALTH_OFFICER
   TEACHER
   PARENT
   STUDENT
@@ -35,6 +36,7 @@ enum AppRole {
   SUPERVISOR
   SCHOOL_ACCOUNTANT
   SCHOOL_STAFF
+  SCHOOL_HEALTH_OFFICER
   TEACHER
   PARENT
   STUDENT
@@ -144,6 +146,27 @@ enum EnrollmentStatus {
   GRADUATED
 }
 
+enum EnrollmentConfirmationSource {
+  MANUAL
+  PAYMENT_THRESHOLD
+}
+
+enum PromotionDecision {
+  PROMOTED
+  REPEATED
+  LEFT
+}
+
+enum WalletTransactionType {
+  TOPUP
+  ALLOCATION
+}
+
+enum StudentPaymentSource {
+  DIRECT_CASH
+  WALLET_ALLOCATION
+}
+
 enum OverrideAction {
   ADD
   REMOVE
@@ -154,6 +177,39 @@ enum StudentLifeEventType {
   RETARD
   SANCTION
   PUNITION
+}
+
+enum StudentHealthAlertLevel {
+  INFO
+  ATTENTION
+  URGENT
+}
+
+enum StudentHealthConditionType {
+  ALLERGY
+  PATHOLOGY
+  TREATMENT
+  INSTRUCTION
+  OTHER
+}
+
+enum StudentHealthReportType {
+  MALADIE
+  TRAITEMENT
+  ACCIDENT
+  CONSULTATION
+  HOSPITALISATION
+  VACCINATION
+  RESTRICTION_SPORT
+  AUTRE
+}
+
+enum StudentHealthAccessAction {
+  VIEW_CONDITIONS
+  VIEW_CARE_EVENTS
+  VIEW_REPORTS
+  VIEW_URGENCE
+  VIEW_HISTORY
 }
 
 enum SchoolCalendarEventType {
@@ -323,6 +379,11 @@ model School {
   curriculums        Curriculum[]
   curriculumSubjects CurriculumSubject[]
   lifeEvents         StudentLifeEvent[]
+  healthConditions   StudentHealthCondition[]
+  healthCareEvents   StudentHealthCareEvent[]
+  healthReports      StudentHealthReport[]
+  healthAttachments  StudentHealthAttachment[]
+  healthAccessLogs   StudentHealthAccessLog[]
   staffFunctions     SchoolStaffFunction[]
   staffAssignments   SchoolStaffAssignment[]
   internalMessages   InternalMessage[]
@@ -347,6 +408,12 @@ model School {
   mobilePushTokens   MobilePushToken[]
   resources          Resource[]
   usersWithActiveSchool User[]              @relation("UserActiveSchool")
+  feeSchedules       FeeSchedule[]
+  feeInstallments    FeeInstallment[]
+  wallets            Wallet[]
+  walletTransactions WalletTransaction[]
+  studentPayments    StudentPayment[]
+  activatedAcademicLevels SchoolAcademicLevel[]
 
   @@index([activeSchoolYearId])
   @@index([cycle])
@@ -402,6 +469,11 @@ model User {
   createdActivationCodes ActivationCode[]     @relation("ActivationCodeIssuer")
   authAuditLogs      AuthAuditLog[]
   lifeEventsAuthored StudentLifeEvent[]       @relation("LifeEventAuthor")
+  healthConditionsAuthored StudentHealthCondition[] @relation("StudentHealthConditionAuthor")
+  healthCareEventsAuthored StudentHealthCareEvent[] @relation("StudentHealthCareEventAuthor")
+  healthReportsAuthored    StudentHealthReport[]    @relation("StudentHealthReportAuthor")
+  healthReportsAcknowledged StudentHealthReport[]   @relation("StudentHealthReportAcknowledgedBy")
+  healthAccessLogs         StudentHealthAccessLog[] @relation("StudentHealthAccessLogUser")
   staffAssignments   SchoolStaffAssignment[]
   sentMessages       InternalMessage[]         @relation("InternalMessageSender")
   receivedMessages   InternalMessageRecipient[] @relation("InternalMessageRecipientUser")
@@ -452,6 +524,10 @@ model User {
   resourceAuditLogs     ResourceAuditLog[]       @relation("ResourceAuditActor")
   resourceSubmissions         ResourceSubmission[] @relation("ResourceSubmissionAuthor")
   resourceSubmissionsReviewed ResourceSubmission[] @relation("ResourceSubmissionReviewer")
+  enrollmentsConfirmed        Enrollment[]         @relation("EnrollmentConfirmedBy")
+  wallets                     Wallet[]
+  walletTransactionsRecorded  WalletTransaction[]  @relation("WalletTransactionRecordedBy")
+  paymentsRecorded            StudentPayment[]     @relation("StudentPaymentRecordedBy")
 
   @@index([activeSchoolId])
 }
@@ -646,6 +722,7 @@ model Student {
   userId      String?
   firstName   String
   lastName    String
+  dateOfBirth DateTime?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   school      School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -658,30 +735,47 @@ model Student {
   homeworkComments HomeworkComment[]
   enrollments Enrollment[]
   lifeEvents  StudentLifeEvent[]
+  healthConditions  StudentHealthCondition[]
+  healthCareEvents  StudentHealthCareEvent[]
+  healthReports     StudentHealthReport[]
+  healthAccessLogs  StudentHealthAccessLog[]
+  payments          StudentPayment[]
+  walletAllocations WalletTransaction[]
 
   @@index([schoolId])
   @@unique([schoolId, userId])
 }
 
 model Enrollment {
-  id           String           @id @default(cuid())
-  schoolId     String
-  schoolYearId String
-  studentId    String
-  classId      String
-  status       EnrollmentStatus @default(ACTIVE)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  school       School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  schoolYear   SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
-  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  class        Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  id                  String           @id @default(cuid())
+  schoolId            String
+  schoolYearId        String
+  studentId           String
+  classId             String?
+  academicLevelId     String?
+  trackId             String?
+  status              EnrollmentStatus @default(ACTIVE)
+  confirmedAt         DateTime?
+  confirmedByUserId   String?
+  confirmationSource  EnrollmentConfirmationSource?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  school              School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear          SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  student             Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class               Class?           @relation(fields: [classId], references: [id], onDelete: SetNull)
+  academicLevel       AcademicLevel?   @relation("EnrollmentAcademicLevel", fields: [academicLevelId], references: [id], onDelete: SetNull)
+  track               Track?           @relation("EnrollmentTrack", fields: [trackId], references: [id], onDelete: SetNull)
+  confirmedByUser      User?           @relation("EnrollmentConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([schoolYearId, studentId])
   @@index([schoolId])
   @@index([schoolYearId])
   @@index([classId])
   @@index([studentId])
+  @@index([academicLevelId])
+  @@index([trackId])
+  @@index([confirmedByUserId])
 }
 
 model ParentStudent {
@@ -761,6 +855,8 @@ model SchoolYear {
   timetableSlotExceptions ClassTimetableSlotException[]
   timetableSubjectStyles ClassTimetableSubjectStyle[]
   calendarEvents      SchoolCalendarEvent[]
+  feeSchedules        FeeSchedule[]
+  studentPayments     StudentPayment[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -773,6 +869,7 @@ model AcademicLevel {
   label          String
   languageSystem SchoolLanguageSystem?
   cycleId        String?
+  order          Int?
   createdAt      DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   school      School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -782,10 +879,32 @@ model AcademicLevel {
   curriculums Curriculum[]
   calendarEvents SchoolCalendarEvent[]
   resources   Resource[]
+  termReportsTargetingThisLevel StudentTermReport[] @relation("StudentTermReportNextLevel")
+  feeSchedules FeeSchedule[]
+  enrollmentsTargetingThisLevel Enrollment[] @relation("EnrollmentAcademicLevel")
+  schoolActivations SchoolAcademicLevel[]
 
   @@unique([schoolId, code])
   @@index([schoolId])
   @@index([cycleId])
+  @@index([order])
+}
+
+/// Active un niveau (national ou propre a l'ecole) pour une ecole donnee.
+/// Les niveaux propres a l'ecole (AcademicLevel.schoolId = cette ecole) sont
+/// implicitement actifs et n'ont pas besoin d'une ligne ici ; cette table ne
+/// sert qu'a activer un sous-ensemble du catalogue national par ecole.
+model SchoolAcademicLevel {
+  id              String        @id @default(cuid())
+  schoolId        String
+  academicLevelId String
+  createdAt       DateTime      @default(now())
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, academicLevelId])
+  @@index([schoolId])
+  @@index([academicLevelId])
 }
 
 model NationalCycle {
@@ -808,6 +927,9 @@ model Track {
   classes     Class[]
   curriculums Curriculum[]
   resources   Resource[]
+  termReportsTargetingThisTrack StudentTermReport[] @relation("StudentTermReportNextTrack")
+  feeSchedules FeeSchedule[]
+  enrollmentsTargetingThisTrack Enrollment[] @relation("EnrollmentTrack")
 
   @@unique([schoolId, code])
   @@index([schoolId])
@@ -1329,6 +1451,9 @@ model StudentTermReport {
   councilHeldAt      DateTime?
   generalAppreciation String?
   publishedAt        DateTime?
+  decision           PromotionDecision?
+  nextAcademicLevelId String?
+  nextTrackId        String?
   updatedByUserId    String
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -1337,6 +1462,8 @@ model StudentTermReport {
   class              Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
   student            Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   updatedByUser      User             @relation("StudentTermReportUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Cascade)
+  nextAcademicLevel  AcademicLevel?   @relation("StudentTermReportNextLevel", fields: [nextAcademicLevelId], references: [id], onDelete: SetNull)
+  nextTrack          Track?           @relation("StudentTermReportNextTrack", fields: [nextTrackId], references: [id], onDelete: SetNull)
   subjectEntries     StudentTermReportEntry[]
 
   @@unique([schoolYearId, classId, studentId, term])
@@ -1344,6 +1471,8 @@ model StudentTermReport {
   @@index([classId, term])
   @@index([studentId, term])
   @@index([updatedByUserId])
+  @@index([nextAcademicLevelId])
+  @@index([nextTrackId])
 }
 
 model StudentTermReportEntry {
@@ -1620,6 +1749,225 @@ model ResourceAuditLog {
 
   @@index([resourceId, createdAt])
   @@index([actorUserId])
+}
+
+
+model StudentHealthCondition {
+  id                    String                      @id @default(cuid())
+  schoolId              String
+  studentId             String
+  type                  StudentHealthConditionType
+  alertLevel            StudentHealthAlertLevel
+  label                 String
+  description           String?
+  emergencyInstructions String?
+  isVisibleToAllTeachers Boolean                    @default(false)
+  publicAlertLabel      String?
+  active                Boolean                     @default(true)
+  startDate             DateTime?
+  endDate               DateTime?
+  createdByUserId       String
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  school                School                      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student               Student                     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdByUser         User                        @relation("StudentHealthConditionAuthor", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  attachments           StudentHealthAttachment[]
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([type])
+  @@index([alertLevel])
+  @@index([active])
+}
+
+model StudentHealthCareEvent {
+  id             String                   @id @default(cuid())
+  schoolId       String
+  studentId      String
+  authorUserId   String
+  occurredAt     DateTime
+  summary        String
+  description    String?
+  alertLevel     StudentHealthAlertLevel
+  followUpNeeded Boolean                  @default(false)
+  createdAt      DateTime                 @default(now())
+  school         School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student        Student                  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  authorUser     User                     @relation("StudentHealthCareEventAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  attachments    StudentHealthAttachment[]
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([authorUserId])
+  @@index([occurredAt])
+}
+
+model StudentHealthReport {
+  id                  String                     @id @default(cuid())
+  schoolId            String
+  studentId           String
+  reportedByUserId    String
+  type                StudentHealthReportType
+  alertLevel          StudentHealthAlertLevel
+  description         String
+  sportRestriction    Boolean                    @default(false)
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  createdAt           DateTime                   @default(now())
+  acknowledgedByUserId String?
+  acknowledgedAt       DateTime?
+  school               School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student              Student                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  reportedByUser       User                      @relation("StudentHealthReportAuthor", fields: [reportedByUserId], references: [id], onDelete: Cascade)
+  acknowledgedByUser    User?                     @relation("StudentHealthReportAcknowledgedBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
+  attachments           StudentHealthAttachment[]
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([reportedByUserId])
+  @@index([type])
+  @@index([alertLevel])
+  @@index([acknowledgedAt])
+}
+
+model StudentHealthAttachment {
+  id           String                   @id @default(cuid())
+  schoolId     String
+  conditionId  String?
+  careEventId  String?
+  reportId     String?
+  fileName     String
+  fileUrl      String?
+  sizeLabel    String?
+  mimeType     String?
+  createdAt    DateTime                 @default(now())
+  school       School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  condition    StudentHealthCondition?  @relation(fields: [conditionId], references: [id], onDelete: Cascade)
+  careEvent    StudentHealthCareEvent?  @relation(fields: [careEventId], references: [id], onDelete: Cascade)
+  report       StudentHealthReport?     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([conditionId])
+  @@index([careEventId])
+  @@index([reportId])
+}
+
+model StudentHealthAccessLog {
+  id        String                    @id @default(cuid())
+  schoolId  String
+  studentId String
+  userId    String
+  action    StudentHealthAccessAction
+  createdAt DateTime                  @default(now())
+  school    School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student   Student                   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user      User                      @relation("StudentHealthAccessLogUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+
+model FeeSchedule {
+  id              String           @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  academicLevelId String
+  trackId         String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  school          School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel    @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+  track           Track?           @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  installments    FeeInstallment[]
+
+  // Pas d'unicite DB sur (schoolYearId, academicLevelId, trackId) : Postgres ne
+  // traite pas les NULL comme egaux, donc plusieurs niveaux sans filiere pourraient
+  // passer un @@unique classique. L'unicite est verifiee cote service (FinanceService).
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([academicLevelId])
+  @@index([trackId])
+}
+
+model FeeInstallment {
+  id            String      @id @default(cuid())
+  schoolId      String
+  feeScheduleId String
+  rank          Int
+  label         String
+  amount        Float
+  dueDate       DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  school        School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  feeSchedule   FeeSchedule @relation(fields: [feeScheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([feeScheduleId, rank])
+  @@index([schoolId])
+  @@index([feeScheduleId])
+}
+
+model Wallet {
+  id           String              @id @default(cuid())
+  schoolId     String
+  parentUserId String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  school       School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parentUser   User                @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@unique([schoolId, parentUserId])
+  @@index([schoolId])
+}
+
+model WalletTransaction {
+  id               String                 @id @default(cuid())
+  schoolId         String
+  walletId         String
+  type             WalletTransactionType
+  amount           Float
+  studentId        String?
+  recordedByUserId String
+  note             String?
+  createdAt        DateTime               @default(now())
+  school           School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  wallet           Wallet                 @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  student          Student?               @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  recordedByUser   User                   @relation("WalletTransactionRecordedBy", fields: [recordedByUserId], references: [id], onDelete: Cascade)
+  studentPayment   StudentPayment?
+
+  @@index([schoolId])
+  @@index([walletId])
+  @@index([studentId])
+}
+
+model StudentPayment {
+  id                  String               @id @default(cuid())
+  schoolId            String
+  schoolYearId        String
+  studentId           String
+  amount              Float
+  source              StudentPaymentSource
+  walletTransactionId String?              @unique
+  recordedByUserId    String
+  paidAt              DateTime
+  note                String?
+  createdAt           DateTime             @default(now())
+  school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear          SchoolYear           @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  student             Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  walletTransaction   WalletTransaction?   @relation(fields: [walletTransactionId], references: [id], onDelete: SetNull)
+  recordedByUser      User                 @relation("StudentPaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([studentId, schoolYearId])
 }
 
 

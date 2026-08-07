@@ -15,7 +15,10 @@ describe("SiteContentPublicController", () => {
       getContactInfo: jest.fn().mockResolvedValue({
         email: "contact@scolive.cm",
         phone: "+237 6XX XXX XXX",
-        address: "Cameroun",
+        addressStreet: "",
+        addressDistrict: "",
+        addressCity: "",
+        addressCountry: "Cameroun",
       }),
     };
     legalDocumentsService = {

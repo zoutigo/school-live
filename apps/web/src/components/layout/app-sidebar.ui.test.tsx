@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./app-sidebar";
 import { useLocaleStore } from "../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../i18n/translations";
+import { usePageHelpStore } from "../../store/page-help";
 
 let mockPathname = "/schools/college-vogt/dashboard";
 const mockPush = vi.fn();
@@ -786,5 +787,130 @@ describe("AppSidebar messaging link for platform roles", () => {
     expect(
       screen.queryByRole("link", { name: /Messagerie/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockPush.mockReset();
+    mockPathname = "/schools/college-vogt/dashboard";
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({}), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+  });
+
+  it("expose Emploi du temps, Vie scolaire, Vie de classe et Devoirs (ajouts additifs)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    const scheduleLink = await screen.findByRole("link", {
+      name: "Emploi du temps",
+    });
+    expect(scheduleLink).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/emploi-du-temps",
+    );
+
+    expect(screen.getByRole("link", { name: "Vie scolaire" })).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/vie-scolaire",
+    );
+
+    expect(screen.getByRole("link", { name: "Vie de classe" })).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/moi/vie-de-classe",
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Cahier de texte" }),
+    ).toHaveAttribute("href", "/schools/college-vogt/moi/cahier-de-texte");
+  });
+
+  it("n'expose aucun lien Santé (exclusion volontaire)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    await screen.findByRole("link", { name: "Emploi du temps" });
+    expect(
+      screen.queryByRole("link", { name: /Sant/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("conserve les entrées existantes (Notes & devoirs, Situation financière)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    await screen.findByRole("link", { name: "Emploi du temps" });
+    expect(
+      screen.getByRole("link", { name: /Notes.*devoirs|Grades.*homework/i }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("AppSidebar — entrée Aide (menu déjà existant en sm/xs)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockPush.mockReset();
+    mockPathname = "/schools/college-vogt/dashboard";
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    usePageHelpStore.setState({ entry: null, open: false });
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({}), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+  });
+
+  it("n'affiche pas d'entrée Aide quand aucune page n'en a enregistré", () => {
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    expect(
+      screen.queryByTestId("sidebar-help-menu-item"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("affiche l'entrée Aide sous « Se déconnecter » et ouvre la modale au clic", () => {
+    usePageHelpStore.setState({
+      entry: { title: "Emploi du temps", sections: [] },
+      open: false,
+    });
+
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    const logoutButton = screen.getByTestId("sidebar-logout-button");
+    const helpButton = screen.getByTestId("sidebar-help-menu-item");
+    expect(
+      logoutButton.compareDocumentPosition(helpButton) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    fireEvent.click(helpButton);
+    expect(usePageHelpStore.getState().open).toBe(true);
+  });
+
+  it("ferme le tiroir mobile (onNavigate) au clic sur Aide", () => {
+    usePageHelpStore.setState({
+      entry: { title: "Emploi du temps", sections: [] },
+      open: false,
+    });
+    const onNavigate = vi.fn();
+
+    render(
+      <AppSidebar
+        role="PARENT"
+        schoolSlug="college-vogt"
+        onNavigate={onNavigate}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("sidebar-help-menu-item"));
+    expect(onNavigate).toHaveBeenCalled();
   });
 });

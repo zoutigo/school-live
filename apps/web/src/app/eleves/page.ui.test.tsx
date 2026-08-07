@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import ElevesPage from "./page";
 
 const replaceMock = vi.fn();
+const pushMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: replaceMock }),
+  useRouter: () => ({ replace: replaceMock, push: pushMock }),
 }));
 
 vi.mock("../../components/layout/app-shell", () => ({
@@ -137,6 +138,7 @@ describe("Eleves page parent link modes", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
+    pushMock.mockReset();
     getCsrfTokenCookieMock.mockReset();
     getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
   });
@@ -509,11 +511,9 @@ describe("Eleves page parent link modes", () => {
     });
   });
 
-  it("keeps student creation submit disabled until the form is valid and submits values", async () => {
-    const fetchMock = setupFetchMock();
-    fetchMock.mockImplementation((input, init) => {
+  it("pointe vers la page Utilisateurs pour creer un eleve, sans formulaire de creation local", async () => {
+    setupFetchMock().mockImplementation((input) => {
       const url = String(input);
-      const method = init?.method ?? "GET";
 
       if (url.endsWith("/api/me")) {
         return jsonResponse({
@@ -538,50 +538,21 @@ describe("Eleves page parent link modes", () => {
       if (url.includes("/admin/students?")) {
         return jsonResponse([]);
       }
-      if (url.endsWith("/admin/students") && method === "POST") {
-        return jsonResponse({ id: "student-2" }, 201);
-      }
-      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
     });
 
     render(<ElevesPage />);
 
-    const submitButton = await screen.findByRole("button", { name: "Ajouter" });
-    expect(submitButton).toBeDisabled();
+    expect(screen.queryByLabelText("Prenom")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Ajouter" }),
+    ).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Prenom"), {
-      target: { value: "Paul" },
+    const goToUsersButton = await screen.findByRole("button", {
+      name: "Aller a Utilisateurs",
     });
-    fireEvent.change(screen.getByLabelText("Nom"), {
-      target: { value: "Mbele" },
-    });
+    fireEvent.click(goToUsersButton);
 
-    await waitFor(() => {
-      expect(submitButton).toBeEnabled();
-    });
-
-    fireEvent.click(submitButton);
-
-    await waitFor(() => {
-      const postCall = fetchMock.mock.calls.find(
-        ([url, init]) =>
-          String(url).endsWith("/admin/students") && init?.method === "POST",
-      );
-      expect(postCall).toBeDefined();
-    });
-
-    const postCall = fetchMock.mock.calls.find(
-      ([url, init]) =>
-        String(url).endsWith("/admin/students") && init?.method === "POST",
-    );
-    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
-      '"firstName":"Paul"',
-    );
-    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
-      '"lastName":"Mbele"',
-    );
-    expect(String((postCall?.[1]?.body as string) ?? "")).toContain(
-      '"classId":"class-1"',
-    );
+    expect(pushMock).toHaveBeenCalledWith("/schools/college-vogt/utilisateurs");
   });
 });

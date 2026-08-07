@@ -383,7 +383,7 @@ export class TimetableService {
       },
       select: { classId: true },
     });
-    if (!enrollment) {
+    if (!enrollment || !enrollment.classId) {
       throw new NotFoundException(
         translateTimetableError(
           locale,

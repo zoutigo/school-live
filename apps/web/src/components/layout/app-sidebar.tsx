@@ -14,6 +14,7 @@ import {
   DoorOpen,
   FileText,
   GraduationCap,
+  HeartPulse,
   HelpCircle,
   Home,
   LayoutDashboard,
@@ -39,6 +40,18 @@ import {
 import { getPlatformMessagesUnreadCount } from "../messaging/admin-messaging-api";
 import type { Role } from "../../lib/role-view";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
+import { OnboardingTarget } from "../onboarding/onboarding-target";
+import { usePageHelpStore } from "../../store/page-help";
+
+/**
+ * Cibles de tour spotlight stables portées par cette barre latérale,
+ * partagées par tout tour qui met en avant la messagerie, les enfants ou
+ * l'accès au compte parent (ex. `dashboard/parent-landing-tour.config.ts`).
+ */
+export const SIDEBAR_MESSAGING_TOUR_TARGET = "sidebar-messaging-target";
+export const SIDEBAR_CHILDREN_TOUR_TARGET = "sidebar-children-target";
+export const SIDEBAR_ACCOUNT_TOUR_TARGET = "sidebar-account-target";
+export const SIDEBAR_HELP_TOUR_TARGET = "sidebar-help-target";
 
 type SidebarProps = {
   schoolSlug?: string | null;
@@ -151,6 +164,24 @@ function buildItems(
         matchPrefix: "/eleves",
       },
       {
+        label: t("sidebar.nav.promotions"),
+        href: "/promotions",
+        icon: GraduationCap,
+        matchPrefix: "/promotions",
+      },
+      {
+        label: t("sidebar.nav.financeSchedules"),
+        href: "/finance-echeanciers",
+        icon: CreditCard,
+        matchPrefix: "/finance-echeanciers",
+      },
+      {
+        label: t("sidebar.nav.financePayments"),
+        href: "/finance-paiements",
+        icon: Wallet,
+        matchPrefix: "/finance-paiements",
+      },
+      {
         label: t("sidebar.nav.users"),
         href: "/users",
         icon: Users,
@@ -205,7 +236,8 @@ function buildItems(
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR" ||
     role === "SCHOOL_ACCOUNTANT" ||
-    role === "SCHOOL_STAFF"
+    role === "SCHOOL_STAFF" ||
+    role === "SCHOOL_HEALTH_OFFICER"
   ) {
     return [
       {
@@ -264,6 +296,24 @@ function buildItems(
         matchPrefix: "/eleves",
       },
       {
+        label: t("sidebar.nav.promotions"),
+        href: "/promotions",
+        icon: GraduationCap,
+        matchPrefix: "/promotions",
+      },
+      {
+        label: t("sidebar.nav.financeSchedules"),
+        href: "/finance-echeanciers",
+        icon: CreditCard,
+        matchPrefix: "/finance-echeanciers",
+      },
+      {
+        label: t("sidebar.nav.financePayments"),
+        href: "/finance-paiements",
+        icon: Wallet,
+        matchPrefix: "/finance-paiements",
+      },
+      {
         label: t("sidebar.nav.teachers"),
         href: "/teachers",
         icon: GraduationCap,
@@ -287,6 +337,12 @@ function buildItems(
         icon: MessageSquare,
         matchPrefix: `${schoolBase}/messagerie`,
         unread: messagesUnread,
+      },
+      {
+        label: t("health.title"),
+        href: `${schoolBase}/sante`,
+        icon: HeartPulse,
+        matchPrefix: `${schoolBase}/sante`,
       },
       {
         label: t("sidebar.nav.settings"),
@@ -445,6 +501,24 @@ function buildItems(
       matchPrefix: "/settings",
     },
     {
+      label: t("timetable.sidebar.emploiDuTemps"),
+      href: `${schoolBase}/emploi-du-temps`,
+      icon: CalendarDays,
+      matchPrefix: `${schoolBase}/emploi-du-temps`,
+    },
+    {
+      label: t("discipline.sidebar.vieScolaire"),
+      href: `${schoolBase}/moi/vie-scolaire`,
+      icon: UserRound,
+      matchPrefix: `${schoolBase}/moi/vie-scolaire`,
+    },
+    {
+      label: t("feed.vieDeClasse.title"),
+      href: `${schoolBase}/moi/vie-de-classe`,
+      icon: Users,
+      matchPrefix: `${schoolBase}/moi/vie-de-classe`,
+    },
+    {
       label: t("messaging.nav.title"),
       href: `${schoolBase}/messagerie`,
       icon: MessageSquare,
@@ -462,6 +536,18 @@ function buildItems(
       href: `${schoolBase}/student-grades`,
       icon: BookOpen,
       matchPrefix: `${schoolBase}/student-grades`,
+    },
+    {
+      label: t("sidebar.nav.grades"),
+      href: `${schoolBase}/moi/notes`,
+      icon: BookOpen,
+      matchPrefix: `${schoolBase}/moi/notes`,
+    },
+    {
+      label: t("homework.sidebar.cahierDeTexte"),
+      href: `${schoolBase}/moi/cahier-de-texte`,
+      icon: FileText,
+      matchPrefix: `${schoolBase}/moi/cahier-de-texte`,
     },
   ];
 }
@@ -487,6 +573,12 @@ function buildParentChildItems(
       icon: UserRound,
       matchPrefix: `${base}/vie-scolaire`,
       unread: toUnread(childBadge?.disciplineUnread),
+    },
+    {
+      label: t("health.title"),
+      href: `${base}/sante`,
+      icon: HeartPulse,
+      matchPrefix: `${base}/sante`,
     },
     {
       label: t("feed.vieDeClasse.title"),
@@ -595,6 +687,8 @@ export function AppSidebar({
   const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
+  const pageHelpEntry = usePageHelpStore((state) => state.entry);
+  const openPageHelp = usePageHelpStore((state) => state.openHelp);
   const isFamilySpace = role === "PARENT" || role === "STUDENT";
   const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
   const [openParentSection, setOpenParentSection] = useState<string>("general");
@@ -645,6 +739,7 @@ export function AppSidebar({
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",
@@ -1183,7 +1278,7 @@ export function AppSidebar({
                       : pathname === item.href;
                     const Icon = item.icon;
 
-                    return (
+                    const link = (
                       <Link
                         key={`general-${item.label}-${item.href}`}
                         href={item.href}
@@ -1210,98 +1305,127 @@ export function AppSidebar({
                         ) : null}
                       </Link>
                     );
+
+                    if (item.href.endsWith("/messagerie")) {
+                      return (
+                        <OnboardingTarget
+                          key={`general-target-${item.href}`}
+                          id={SIDEBAR_MESSAGING_TOUR_TARGET}
+                        >
+                          {link}
+                        </OnboardingTarget>
+                      );
+                    }
+
+                    if (item.href === "/account") {
+                      return (
+                        <OnboardingTarget
+                          key={`general-target-${item.href}`}
+                          id={SIDEBAR_ACCOUNT_TOUR_TARGET}
+                        >
+                          {link}
+                        </OnboardingTarget>
+                      );
+                    }
+
+                    return link;
                   })}
                 </nav>
               ) : null}
             </div>
 
-            {parentChildrenWithItems.map((child) => {
-              const sectionKey = `child-${child.id}`;
-              const isOpen = openParentSection === sectionKey;
+            <OnboardingTarget
+              id={SIDEBAR_CHILDREN_TOUR_TARGET}
+              className="grid gap-3"
+            >
+              {parentChildrenWithItems.map((child) => {
+                const sectionKey = `child-${child.id}`;
+                const isOpen = openParentSection === sectionKey;
 
-              return (
-                <div
-                  key={child.id}
-                  className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setOpenParentSection(sectionKey)}
-                    className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-                      isOpen,
-                    )}`}
+                return (
+                  <div
+                    key={child.id}
+                    className="rounded-[18px] border border-white/10 bg-white/8 p-2 backdrop-blur"
                   >
-                    {child.avatarUrl ? (
-                      <img
-                        src={child.avatarUrl}
-                        alt={`${child.firstName} ${child.lastName}`}
-                        className="h-8 w-8 rounded-full border border-border object-cover"
-                      />
-                    ) : (
-                      <span
-                        aria-hidden="true"
-                        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
-                          isOpen,
-                        )}`}
-                      >
-                        <UserRound className="h-4 w-4" />
-                      </span>
-                    )}
-
-                    <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-                      {child.lastName} {child.firstName}
-                    </span>
-                  </button>
-
-                  {isOpen ? (
-                    <nav
-                      className="mt-2 grid gap-1"
-                      aria-label={t("sidebar.ariaChildMenu").replace(
-                        "{childName}",
-                        `${child.lastName} ${child.firstName}`,
-                      )}
+                    <button
+                      type="button"
+                      onClick={() => setOpenParentSection(sectionKey)}
+                      className={`flex w-full items-center rounded-[16px] px-2 py-2 text-left text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                        isOpen,
+                      )}`}
                     >
-                      {child.items.map((item) => {
-                        const active = item.matchPrefix
-                          ? pathname.startsWith(item.matchPrefix)
-                          : pathname === item.href;
-                        const Icon = item.icon;
+                      {child.avatarUrl ? (
+                        <img
+                          src={child.avatarUrl}
+                          alt={`${child.firstName} ${child.lastName}`}
+                          className="h-8 w-8 rounded-full border border-border object-cover"
+                        />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                            isOpen,
+                          )}`}
+                        >
+                          <UserRound className="h-4 w-4" />
+                        </span>
+                      )}
 
-                        return (
-                          <Link
-                            key={`${child.id}-${item.label}-${item.href}`}
-                            href={item.href}
-                            onClick={onNavigate}
-                            className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
-                              active,
-                            )}`}
-                          >
-                            <span
-                              aria-hidden="true"
-                              className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                      <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                        {child.lastName} {child.firstName}
+                      </span>
+                    </button>
+
+                    {isOpen ? (
+                      <nav
+                        className="mt-2 grid gap-1"
+                        aria-label={t("sidebar.ariaChildMenu").replace(
+                          "{childName}",
+                          `${child.lastName} ${child.firstName}`,
+                        )}
+                      >
+                        {child.items.map((item) => {
+                          const active = item.matchPrefix
+                            ? pathname.startsWith(item.matchPrefix)
+                            : pathname === item.href;
+                          const Icon = item.icon;
+
+                          return (
+                            <Link
+                              key={`${child.id}-${item.label}-${item.href}`}
+                              href={item.href}
+                              onClick={onNavigate}
+                              className={`flex items-center rounded-[14px] px-2 py-1.5 text-xs font-heading font-semibold transition-colors ${sidebarItemClass(
                                 active,
                               )}`}
                             >
-                              <Icon className="h-3.5 w-3.5" />
-                            </span>
-                            <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
-                              {item.label}
-                            </span>
-                            {typeof item.unread === "number" ? (
-                              <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
-                                <Badge variant="notification">
-                                  {item.unread}
-                                </Badge>
+                              <span
+                                aria-hidden="true"
+                                className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                                  active,
+                                )}`}
+                              >
+                                <Icon className="h-3.5 w-3.5" />
                               </span>
-                            ) : null}
-                          </Link>
-                        );
-                      })}
-                    </nav>
-                  ) : null}
-                </div>
-              );
-            })}
+                              <span className="ml-2 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[160px] md:group-hover:opacity-100">
+                                {item.label}
+                              </span>
+                              {typeof item.unread === "number" ? (
+                                <span className="ml-auto md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[40px] md:group-hover:opacity-100">
+                                  <Badge variant="notification">
+                                    {item.unread}
+                                  </Badge>
+                                </span>
+                              ) : null}
+                            </Link>
+                          );
+                        })}
+                      </nav>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </OnboardingTarget>
           </div>
         )}
       </div>
@@ -1368,6 +1492,35 @@ export function AppSidebar({
             {t("sidebar.logout")}
           </span>
         </button>
+
+        {pageHelpEntry ? (
+          <OnboardingTarget id={SIDEBAR_HELP_TOUR_TARGET}>
+            <button
+              type="button"
+              aria-label={pageHelpEntry.title}
+              data-testid="sidebar-help-menu-item"
+              onClick={() => {
+                openPageHelp();
+                onNavigate?.();
+              }}
+              className={`flex w-full items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
+                false,
+              )}`}
+            >
+              <span
+                aria-hidden="true"
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                  false,
+                )}`}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </span>
+              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                {t("sidebar.help")}
+              </span>
+            </button>
+          </OnboardingTarget>
+        ) : null}
       </div>
     </aside>
   );

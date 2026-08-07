@@ -37,6 +37,7 @@ type Role =
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "SCHOOL_STAFF"
+  | "SCHOOL_HEALTH_OFFICER"
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
@@ -47,6 +48,7 @@ type SchoolCreatableRole =
   | "SUPERVISOR"
   | "SCHOOL_ACCOUNTANT"
   | "SCHOOL_STAFF"
+  | "SCHOOL_HEALTH_OFFICER"
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
@@ -79,6 +81,7 @@ type UserRow = {
     | "SUPERVISOR"
     | "SCHOOL_ACCOUNTANT"
     | "SCHOOL_STAFF"
+    | "SCHOOL_HEALTH_OFFICER"
     | "TEACHER"
     | "PARENT"
     | "STUDENT"
@@ -119,6 +122,7 @@ type UserDetails = {
       | "SUPERVISOR"
       | "SCHOOL_ACCOUNTANT"
       | "SCHOOL_STAFF"
+      | "SCHOOL_HEALTH_OFFICER"
       | "TEACHER"
       | "PARENT"
       | "STUDENT";
@@ -178,6 +182,7 @@ const SCHOOL_ROLE_OPTIONS: SchoolCreatableRole[] = [
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
   "TEACHER",
   "PARENT",
   "STUDENT",
@@ -213,6 +218,7 @@ const createUserSchema = z
         "SUPERVISOR",
         "SCHOOL_ACCOUNTANT",
         "SCHOOL_STAFF",
+        "SCHOOL_HEALTH_OFFICER",
         "TEACHER",
         "PARENT",
         "STUDENT",
@@ -272,6 +278,7 @@ const updateUserSchema = z.object({
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",
@@ -1025,6 +1032,9 @@ export default function UsersPage() {
                           SCHOOL_ACCOUNTANT
                         </option>
                         <option value="SCHOOL_STAFF">SCHOOL_STAFF</option>
+                        <option value="SCHOOL_HEALTH_OFFICER">
+                          SCHOOL_HEALTH_OFFICER
+                        </option>
                         <option value="TEACHER">TEACHER</option>
                         <option value="PARENT">PARENT</option>
                         <option value="STUDENT">STUDENT</option>

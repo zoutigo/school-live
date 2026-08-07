@@ -130,6 +130,18 @@ describe("GlobalMeController", () => {
       expect(service.setActiveRole).toHaveBeenCalledWith("user-1", "TEACHER");
       expect(result).toEqual(GLOBAL_ME_RESULT);
     });
+
+    it("accepte le rôle SCHOOL_HEALTH_OFFICER", async () => {
+      const user = makeUser();
+      await controller.setActiveRole(user, {
+        role: "SCHOOL_HEALTH_OFFICER",
+      });
+
+      expect(service.setActiveRole).toHaveBeenCalledWith(
+        "user-1",
+        "SCHOOL_HEALTH_OFFICER",
+      );
+    });
   });
 
   // ── PUT /me/active-school ─────────────────────────────────────────────────

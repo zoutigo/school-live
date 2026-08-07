@@ -21,6 +21,9 @@ const prisma = {
   academicLevel: {
     findMany: jest.fn(),
   },
+  schoolAcademicLevel: {
+    findMany: jest.fn(),
+  },
   curriculum: {
     findMany: jest.fn(),
   },
@@ -35,6 +38,7 @@ const service = new ManagementService(prisma as never, mailService as never);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  prisma.schoolAcademicLevel.findMany.mockResolvedValue([]);
 });
 
 describe("ManagementService — filtrage strict du catalogue national par cycle + languageSystem", () => {

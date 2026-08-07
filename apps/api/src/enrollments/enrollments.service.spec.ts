@@ -1,0 +1,177 @@
+/**
+ * Tests unitaires : EnrollmentsService
+ * - resolution de la decision de conseil de classe (annee active, TERM_3)
+ * - confirmReinscription : idempotence, niveau/filiere repris de la decision
+ */
+
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { EnrollmentsService } from "./enrollments.service.js";
+
+const SCHOOL_ID = "school-1";
+const STUDENT_ID = "student-1";
+const SOURCE_YEAR_ID = "year-2025";
+const TARGET_YEAR_ID = "year-2026";
+const NEXT_LEVEL_ID = "level-ce2";
+
+const makePrismaMock = () => ({
+  school: {
+    findUnique: jest
+      .fn()
+      .mockResolvedValue({ activeSchoolYearId: SOURCE_YEAR_ID }),
+  },
+  studentTermReport: {
+    findFirst: jest.fn(),
+  },
+  enrollment: {
+    findUnique: jest.fn(),
+    create: jest
+      .fn()
+      .mockImplementation(({ data }) =>
+        Promise.resolve({ id: "enr-1", ...data }),
+      ),
+  },
+  schoolYear: {
+    findFirst: jest.fn().mockResolvedValue({ id: TARGET_YEAR_ID }),
+  },
+});
+
+describe("EnrollmentsService", () => {
+  let service: EnrollmentsService;
+  let prisma: ReturnType<typeof makePrismaMock>;
+
+  beforeEach(async () => {
+    prisma = makePrismaMock();
+    const module = await Test.createTestingModule({
+      providers: [
+        EnrollmentsService,
+        { provide: PrismaService, useValue: prisma },
+      ],
+    }).compile();
+    service = module.get(EnrollmentsService);
+  });
+
+  describe("getActiveSchoolYearIdOrThrow", () => {
+    it("leve une BadRequestException si l'ecole n'a pas d'annee active", async () => {
+      prisma.school.findUnique.mockResolvedValue({ activeSchoolYearId: null });
+      await expect(
+        service.getActiveSchoolYearIdOrThrow(SCHOOL_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("getConfirmedDecisionOrThrow", () => {
+    it("leve une BadRequestException si aucune decision n'existe (Q4 : pas de paiement sans decision)", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue(null);
+      await expect(
+        service.getConfirmedDecisionOrThrow(SCHOOL_ID, STUDENT_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("leve une BadRequestException si la decision est LEFT", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        decision: "LEFT",
+        nextAcademicLevelId: null,
+        nextTrackId: null,
+      });
+      await expect(
+        service.getConfirmedDecisionOrThrow(SCHOOL_ID, STUDENT_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("leve une BadRequestException si PROMOTED sans niveau cible", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        decision: "PROMOTED",
+        nextAcademicLevelId: null,
+        nextTrackId: null,
+      });
+      await expect(
+        service.getConfirmedDecisionOrThrow(SCHOOL_ID, STUDENT_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("retourne la decision avec le niveau/filiere cible quand elle est valide", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        decision: "PROMOTED",
+        nextAcademicLevelId: NEXT_LEVEL_ID,
+        nextTrackId: null,
+      });
+      const result = await service.getConfirmedDecisionOrThrow(
+        SCHOOL_ID,
+        STUDENT_ID,
+      );
+      expect(result).toEqual({
+        sourceSchoolYearId: SOURCE_YEAR_ID,
+        decision: "PROMOTED",
+        nextAcademicLevelId: NEXT_LEVEL_ID,
+        nextTrackId: null,
+      });
+    });
+  });
+
+  describe("confirmReinscription", () => {
+    it("est idempotente : ne recree rien si une inscription existe deja pour cette annee", async () => {
+      prisma.enrollment.findUnique.mockResolvedValue({ id: "existing-enr" });
+      const result = await service.confirmReinscription(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+        "MANUAL",
+      );
+      expect(result).toEqual({ id: "existing-enr" });
+      expect(prisma.enrollment.create).not.toHaveBeenCalled();
+    });
+
+    it("leve une NotFoundException si l'annee cible n'existe pas pour cette ecole", async () => {
+      prisma.enrollment.findUnique.mockResolvedValue(null);
+      prisma.schoolYear.findFirst.mockResolvedValue(null);
+      await expect(
+        service.confirmReinscription(
+          SCHOOL_ID,
+          STUDENT_ID,
+          TARGET_YEAR_ID,
+          "MANUAL",
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("cree l'inscription en attente (classId null) avec le niveau de la decision", async () => {
+      prisma.enrollment.findUnique.mockResolvedValue(null);
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        decision: "PROMOTED",
+        nextAcademicLevelId: NEXT_LEVEL_ID,
+        nextTrackId: null,
+      });
+
+      const result = await service.confirmReinscription(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+        "PAYMENT_THRESHOLD",
+        "accountant-1",
+      );
+
+      expect(prisma.enrollment.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          schoolId: SCHOOL_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          studentId: STUDENT_ID,
+          classId: null,
+          academicLevelId: NEXT_LEVEL_ID,
+          trackId: null,
+          confirmationSource: "PAYMENT_THRESHOLD",
+          confirmedByUserId: "accountant-1",
+        }),
+      });
+      expect(result).toMatchObject({
+        classId: null,
+        academicLevelId: NEXT_LEVEL_ID,
+      });
+    });
+  });
+});

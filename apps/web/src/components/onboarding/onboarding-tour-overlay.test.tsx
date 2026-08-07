@@ -102,7 +102,7 @@ describe("OnboardingTourOverlay", () => {
     ).toBe(true);
   });
 
-  it("advances to the next step (does not end the tour) when Passer is clicked", () => {
+  it("does not render a Passer/skip button on a regular step", () => {
     useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
     useOnboardingTourStore
       .getState()
@@ -110,16 +110,10 @@ describe("OnboardingTourOverlay", () => {
 
     render(<OnboardingTourOverlay />);
 
-    fireEvent.click(screen.getByTestId("onboarding-tour-skip"));
-
-    expect(useOnboardingTourStore.getState().activeTourId).toBe("agenda");
-    expect(useOnboardingTourStore.getState().stepIndex).toBe(1);
-    expect(
-      useOnboardingTourStore.getState().isCompleted("parent", "agenda"),
-    ).toBe(false);
+    expect(screen.queryByTestId("onboarding-tour-skip")).toBeNull();
   });
 
-  it("completes the tour when Passer is clicked on the final step", () => {
+  it("does not render a Passer/skip button on the final step", () => {
     useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
     useOnboardingTourStore.getState().next();
     useOnboardingTourStore
@@ -128,15 +122,10 @@ describe("OnboardingTourOverlay", () => {
 
     render(<OnboardingTourOverlay />);
 
-    fireEvent.click(screen.getByTestId("onboarding-tour-skip"));
-
-    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
-    expect(
-      useOnboardingTourStore.getState().isCompleted("parent", "agenda"),
-    ).toBe(true);
+    expect(screen.queryByTestId("onboarding-tour-skip")).toBeNull();
   });
 
-  it("hides both Suivant and Passer and shows a click hint when the step opts into advanceOnTargetPress", () => {
+  it("hides Suivant and shows a click hint when the step opts into advanceOnTargetPress", () => {
     const stepsWithPress: OnboardingTourStep[] = [
       {
         targetKey: "a",
@@ -206,5 +195,60 @@ describe("OnboardingTourOverlay", () => {
     expect(screen.getByTestId("onboarding-tour-next")).toHaveTextContent(
       "J'ai compris",
     );
+  });
+
+  it("draws a connector line and dot between the tooltip and the target", () => {
+    useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
+    useOnboardingTourStore
+      .getState()
+      .setTargetRect({ x: 10, y: 10, width: 100, height: 40 });
+
+    render(<OnboardingTourOverlay />);
+
+    expect(screen.getByTestId("onboarding-tour-connector")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("onboarding-tour-connector-dot"),
+    ).toBeInTheDocument();
+  });
+
+  it("blocks clicks on the highlighted target when the step is not advanceOnTargetPress", () => {
+    useOnboardingTourStore.getState().startTour("agenda", "parent", STEPS);
+    useOnboardingTourStore
+      .getState()
+      .setTargetRect({ x: 10, y: 10, width: 100, height: 40 });
+
+    render(<OnboardingTourOverlay />);
+
+    // The only way forward on a regular step is the tooltip's own button:
+    // the highlighted control must not be reachable underneath.
+    expect(
+      screen.getByTestId("onboarding-tour-target-block"),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the target reachable when the step opts into advanceOnTargetPress", () => {
+    const stepsWithPress: OnboardingTourStep[] = [
+      {
+        targetKey: "a",
+        titleKey: "onboardingTour.childTimetable.controlsTitle",
+        bodyKey: "onboardingTour.childTimetable.controlsBody",
+        advanceOnTargetPress: true,
+      },
+      STEPS[1],
+    ];
+    useOnboardingTourStore
+      .getState()
+      .startTour("agenda", "parent", stepsWithPress);
+    useOnboardingTourStore
+      .getState()
+      .setTargetRect({ x: 10, y: 10, width: 100, height: 40 });
+
+    render(<OnboardingTourOverlay />);
+
+    // Real business action (e.g. opening a filter panel) still needs the
+    // underlying control to receive the click.
+    expect(
+      screen.queryByTestId("onboarding-tour-target-block"),
+    ).not.toBeInTheDocument();
   });
 });

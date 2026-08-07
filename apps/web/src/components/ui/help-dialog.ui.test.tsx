@@ -62,3 +62,60 @@ describe("HelpDialog", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("HelpDialog — sections titrées", () => {
+  const sections = [
+    {
+      title: "Changer de vue",
+      body: ["Touchez un onglet pour changer de vue."],
+    },
+    {
+      title: "Naviguer dans le temps",
+      body: [
+        "Utilisez les flèches pour changer de période.",
+        "Second paragraphe.",
+      ],
+    },
+  ];
+
+  it("affiche chaque section avec son titre et ses paragraphes, sans utiliser body", () => {
+    render(
+      <HelpDialog
+        open
+        title="Emploi du temps"
+        body={["Ne doit pas être affiché"]}
+        sections={sections}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Ne doit pas être affiché")).toBeNull();
+    expect(screen.getByTestId("help-dialog-section-0")).toHaveTextContent(
+      "Changer de vue",
+    );
+    expect(screen.getByTestId("help-dialog-section-0")).toHaveTextContent(
+      "Touchez un onglet pour changer de vue.",
+    );
+    expect(screen.getByTestId("help-dialog-section-1")).toHaveTextContent(
+      "Naviguer dans le temps",
+    );
+    expect(screen.getByTestId("help-dialog-section-1")).toHaveTextContent(
+      "Second paragraphe.",
+    );
+  });
+
+  it("retombe sur body quand sections est vide", () => {
+    render(
+      <HelpDialog
+        open
+        title="Emploi du temps"
+        body={["Paragraphe simple."]}
+        sections={[]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Paragraphe simple.")).toBeInTheDocument();
+    expect(screen.queryByTestId("help-dialog-section-0")).toBeNull();
+  });
+});

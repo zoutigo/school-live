@@ -191,11 +191,22 @@ export class BadgesService {
     schoolId: string,
     student: StudentRef,
   ): Promise<ChildBadgeSummary> {
-    const enrollment = await this.prisma.enrollment.findFirst({
-      where: { schoolId, studentId: student.id, status: "ACTIVE" },
+    const enrollmentRow = await this.prisma.enrollment.findFirst({
+      where: {
+        schoolId,
+        studentId: student.id,
+        status: "ACTIVE",
+        classId: { not: null },
+      },
       orderBy: [{ schoolYear: { label: "desc" } }],
       select: { classId: true, schoolYearId: true },
     });
+    const enrollment = enrollmentRow?.classId
+      ? {
+          classId: enrollmentRow.classId,
+          schoolYearId: enrollmentRow.schoolYearId,
+        }
+      : null;
 
     const [homeworkPending, notesUnread, disciplineUnread] = await Promise.all([
       this.getHomeworkPending(schoolId, student.id, enrollment),

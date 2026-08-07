@@ -1,0 +1,98 @@
+model FeeSchedule {
+  id              String           @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  academicLevelId String
+  trackId         String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  school          School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel    @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+  track           Track?           @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  installments    FeeInstallment[]
+
+  // Pas d'unicite DB sur (schoolYearId, academicLevelId, trackId) : Postgres ne
+  // traite pas les NULL comme egaux, donc plusieurs niveaux sans filiere pourraient
+  // passer un @@unique classique. L'unicite est verifiee cote service (FinanceService).
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([academicLevelId])
+  @@index([trackId])
+}
+
+model FeeInstallment {
+  id            String      @id @default(cuid())
+  schoolId      String
+  feeScheduleId String
+  rank          Int
+  label         String
+  amount        Float
+  dueDate       DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  school        School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  feeSchedule   FeeSchedule @relation(fields: [feeScheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([feeScheduleId, rank])
+  @@index([schoolId])
+  @@index([feeScheduleId])
+}
+
+model Wallet {
+  id           String              @id @default(cuid())
+  schoolId     String
+  parentUserId String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  school       School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parentUser   User                @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@unique([schoolId, parentUserId])
+  @@index([schoolId])
+}
+
+model WalletTransaction {
+  id               String                 @id @default(cuid())
+  schoolId         String
+  walletId         String
+  type             WalletTransactionType
+  amount           Float
+  studentId        String?
+  recordedByUserId String
+  note             String?
+  createdAt        DateTime               @default(now())
+  school           School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  wallet           Wallet                 @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  student          Student?               @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  recordedByUser   User                   @relation("WalletTransactionRecordedBy", fields: [recordedByUserId], references: [id], onDelete: Cascade)
+  studentPayment   StudentPayment?
+
+  @@index([schoolId])
+  @@index([walletId])
+  @@index([studentId])
+}
+
+model StudentPayment {
+  id                  String               @id @default(cuid())
+  schoolId            String
+  schoolYearId        String
+  studentId           String
+  amount              Float
+  source              StudentPaymentSource
+  walletTransactionId String?              @unique
+  recordedByUserId    String
+  paidAt              DateTime
+  note                String?
+  createdAt           DateTime             @default(now())
+  school              School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear          SchoolYear           @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  student             Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  walletTransaction   WalletTransaction?   @relation(fields: [walletTransactionId], references: [id], onDelete: SetNull)
+  recordedByUser      User                 @relation("StudentPaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([studentId, schoolYearId])
+}

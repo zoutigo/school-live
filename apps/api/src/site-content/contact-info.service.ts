@@ -9,7 +9,10 @@ const CONTACT_SETTING_KEY = "contact";
 export type ContactInfo = {
   email: string;
   phone: string;
-  address: string;
+  addressStreet: string;
+  addressDistrict: string;
+  addressCity: string;
+  addressCountry: string;
   legalRepresentativeFirstName: string;
   legalRepresentativeLastName: string;
 };
@@ -19,19 +22,22 @@ export type ContactInfo = {
 const CONTACT_INFO_FALLBACK: ContactInfo = {
   email: "contact@scolive.cm",
   phone: "+237 6XX XXX XXX",
-  address: "Cameroun",
+  addressStreet: "",
+  addressDistrict: "",
+  addressCity: "",
+  addressCountry: "Cameroun",
   legalRepresentativeFirstName: "",
   legalRepresentativeLastName: "",
 };
 
-// Les champs "responsable légal" ont été ajoutés après la mise en prod :
-// une ligne SiteSetting existante peut donc ne contenir que email/phone/
-// address. On ne les exige pas dans le type guard pour rester compatible
-// avec ces lignes, et on les complète à "" à la lecture (voir getContactInfo).
-function isContactInfo(
+// L'adresse était historiquement un seul champ `address`. On la migre à la
+// lecture vers `addressStreet` (les nouveaux champs restent vides tant que
+// l'admin ne les a pas renseignés via le nouveau formulaire) plutôt que
+// d'écrire une migration DB — la valeur est stockée en JSON libre dans
+// SiteSetting.value.
+function isLegacyContactInfo(
   value: unknown,
-): value is Pick<ContactInfo, "email" | "phone" | "address"> &
-  Partial<ContactInfo> {
+): value is { email: string; phone: string; address: string } {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -40,6 +46,25 @@ function isContactInfo(
     typeof record.email === "string" &&
     typeof record.phone === "string" &&
     typeof record.address === "string"
+  );
+}
+
+// Les champs "responsable légal" ont été ajoutés après la mise en prod :
+// une ligne SiteSetting existante peut donc ne pas encore les contenir. On
+// ne les exige pas dans le type guard pour rester compatible avec ces
+// lignes, et on les complète à "" à la lecture (voir getContactInfo).
+function isContactInfo(
+  value: unknown,
+): value is Pick<ContactInfo, "email" | "phone" | "addressCity"> &
+  Partial<ContactInfo> {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.email === "string" &&
+    typeof record.phone === "string" &&
+    typeof record.addressCity === "string"
   );
 }
 
@@ -63,7 +88,30 @@ export class ContactInfoService {
       return {
         email: stored.email,
         phone: stored.phone,
-        address: stored.address,
+        addressStreet: stored.addressStreet ?? "",
+        addressDistrict: stored.addressDistrict ?? "",
+        addressCity: stored.addressCity,
+        addressCountry: stored.addressCountry ?? "",
+        legalRepresentativeFirstName: stored.legalRepresentativeFirstName ?? "",
+        legalRepresentativeLastName: stored.legalRepresentativeLastName ?? "",
+      };
+    }
+
+    if (setting && isLegacyContactInfo(setting.value)) {
+      const stored = setting.value as {
+        email: string;
+        phone: string;
+        address: string;
+        legalRepresentativeFirstName?: string;
+        legalRepresentativeLastName?: string;
+      };
+      return {
+        email: stored.email,
+        phone: stored.phone,
+        addressStreet: stored.address,
+        addressDistrict: "",
+        addressCity: "",
+        addressCountry: "",
         legalRepresentativeFirstName: stored.legalRepresentativeFirstName ?? "",
         legalRepresentativeLastName: stored.legalRepresentativeLastName ?? "",
       };
@@ -81,7 +129,10 @@ export class ContactInfoService {
     const value: ContactInfo = {
       email: dto.email.trim(),
       phone: dto.phone.trim(),
-      address: dto.address.trim(),
+      addressStreet: dto.addressStreet.trim(),
+      addressDistrict: dto.addressDistrict?.trim() ?? "",
+      addressCity: dto.addressCity.trim(),
+      addressCountry: dto.addressCountry.trim(),
       legalRepresentativeFirstName:
         dto.legalRepresentativeFirstName?.trim() ?? "",
       legalRepresentativeLastName:

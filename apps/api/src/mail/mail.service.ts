@@ -15,6 +15,8 @@ import {
   MAIL_JOB_SEND_INTERNAL_MESSAGE_NOTIFICATION,
   MAIL_JOB_SEND_PASSWORD_RESET,
   MAIL_JOB_SEND_ROOM_STATUS_CHANGE_NOTIFICATION,
+  MAIL_JOB_SEND_STUDENT_HEALTH_CARE_EVENT_NOTIFICATION,
+  MAIL_JOB_SEND_STUDENT_HEALTH_REPORT_NOTIFICATION,
   MAIL_JOB_SEND_STUDENT_LIFE_EVENT_NOTIFICATION,
   MAIL_JOB_SEND_TEST_EXECUTION_FAILED_NOTIFICATION,
   MAIL_JOB_SEND_TIMETABLE_CHANGE_NOTIFICATION,
@@ -27,6 +29,8 @@ import {
   type InternalMessageNotificationPayload,
   type PasswordResetMailPayload,
   type RoomStatusChangeMailPayload,
+  type StudentHealthCareEventMailPayload,
+  type StudentHealthReportMailPayload,
   type StudentLifeEventNotificationPayload,
   type TestExecutionFailedNotificationPayload,
   type TimetableChangeMailPayload,
@@ -223,6 +227,42 @@ export class MailService {
         error instanceof Error ? error.stack : String(error),
       );
       await this.emailPort.sendGradePublishedNotification(payload);
+    }
+  }
+
+  async sendStudentHealthCareEventNotification(
+    payload: StudentHealthCareEventMailPayload,
+  ) {
+    try {
+      await this.queue.add(
+        MAIL_QUEUE_NAME,
+        MAIL_JOB_SEND_STUDENT_HEALTH_CARE_EVENT_NOTIFICATION,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous email sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.emailPort.sendStudentHealthCareEventNotification(payload);
+    }
+  }
+
+  async sendStudentHealthReportNotification(
+    payload: StudentHealthReportMailPayload,
+  ) {
+    try {
+      await this.queue.add(
+        MAIL_QUEUE_NAME,
+        MAIL_JOB_SEND_STUDENT_HEALTH_REPORT_NOTIFICATION,
+        payload,
+      );
+    } catch (error) {
+      this.logger.error(
+        "Queue unavailable, fallback to synchronous email sending",
+        error instanceof Error ? error.stack : String(error),
+      );
+      await this.emailPort.sendStudentHealthReportNotification(payload);
     }
   }
 }

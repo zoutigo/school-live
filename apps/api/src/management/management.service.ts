@@ -81,6 +81,7 @@ import type { UpdateTrackDto } from "./dto/update-track.dto.js";
 import type { UpdateUserDto } from "./dto/update-user.dto.js";
 import type { UpdateEvaluationTypeDto } from "./dto/update-evaluation-type.dto.js";
 import type { UpsertCurriculumSubjectDto } from "./dto/upsert-curriculum-subject.dto.js";
+import { ensureClassHasCapacity as ensureClassHasCapacityUtil } from "../common/class-capacity.util.js";
 
 const PLATFORM_ROLES = ["SUPER_ADMIN", "ADMIN", "SALES", "SUPPORT"] as const;
 const SCHOOL_ROLES = [
@@ -89,18 +90,24 @@ const SCHOOL_ROLES = [
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
   "TEACHER",
   "PARENT",
   "STUDENT",
 ] as const;
 const STAFF_ROLE_PLACEHOLDER_NAMES: Record<
-  "SCHOOL_MANAGER" | "SUPERVISOR" | "SCHOOL_ACCOUNTANT" | "SCHOOL_STAFF",
+  | "SCHOOL_MANAGER"
+  | "SUPERVISOR"
+  | "SCHOOL_ACCOUNTANT"
+  | "SCHOOL_STAFF"
+  | "SCHOOL_HEALTH_OFFICER",
   string
 > = {
   SCHOOL_MANAGER: "Responsable",
   SUPERVISOR: "Surveillant",
   SCHOOL_ACCOUNTANT: "Comptable",
   SCHOOL_STAFF: "Personnel",
+  SCHOOL_HEALTH_OFFICER: "Responsable santé",
 };
 const CREATABLE_ROLES = [
   "ADMIN",
@@ -111,6 +118,7 @@ const CREATABLE_ROLES = [
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
   "TEACHER",
   "PARENT",
   "STUDENT",
@@ -167,6 +175,7 @@ const updateUserSchema = z.object({
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",
@@ -434,6 +443,7 @@ const updateAcademicLevelSchema = z.object({
   label: z.string().trim().min(1).optional(),
   cycleId: z.string().trim().min(1).optional(),
   languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
+  order: z.number().int().optional(),
 });
 
 const createNationalCycleSchema = z.object({
@@ -1183,6 +1193,7 @@ export class ManagementService {
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
     ];
 
     const [staffCount, teachersCount, parentsCount] =
@@ -3601,6 +3612,7 @@ export class ManagementService {
             schoolId,
             schoolYearId: sourceSchoolYearId,
             status: "ACTIVE",
+            classId: { not: null },
           },
           select: {
             studentId: true,
@@ -3610,7 +3622,9 @@ export class ManagementService {
 
         const enrollmentRows = sourceEnrollments
           .map((enrollment) => {
-            const mappedClassId = classIdMap.get(enrollment.classId);
+            const mappedClassId = enrollment.classId
+              ? classIdMap.get(enrollment.classId)
+              : undefined;
             if (!mappedClassId) {
               return null;
             }
@@ -3708,23 +3722,93 @@ export class ManagementService {
   async listAcademicLevels(schoolId: string) {
     const nationalFilter =
       await this.getNationalCatalogFilterForSchool(schoolId);
-    const levels = await this.prisma.academicLevel.findMany({
-      where: { OR: [{ schoolId }, nationalFilter] },
-      orderBy: [{ code: "asc" }],
-      include: {
-        _count: {
-          select: {
-            classes: true,
-            curriculums: true,
+    const [levels, activations] = await Promise.all([
+      this.prisma.academicLevel.findMany({
+        where: { OR: [{ schoolId }, nationalFilter] },
+        orderBy: [{ code: "asc" }],
+        include: {
+          _count: {
+            select: {
+              classes: true,
+              curriculums: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.schoolAcademicLevel.findMany({
+        where: { schoolId },
+        select: { academicLevelId: true },
+      }),
+    ]);
 
-    return levels.map((level) => ({
-      ...level,
-      isNational: level.schoolId === null,
-    }));
+    const activatedLevelIds = new Set(
+      activations.map((activation) => activation.academicLevelId),
+    );
+
+    return levels.map((level) => {
+      const isNational = level.schoolId === null;
+      return {
+        ...level,
+        isNational,
+        isActivated: isNational ? activatedLevelIds.has(level.id) : true,
+      };
+    });
+  }
+
+  /**
+   * Niveaux effectivement actifs pour l'ecole (niveaux propres + niveaux
+   * nationaux explicitement actives), tries par ordre pedagogique. Utilise
+   * pour la cible de la decision de passage : on ne doit pas y proposer tout
+   * le catalogue national, seulement ce que l'ecole utilise reellement.
+   */
+  async listActivatedAcademicLevels(schoolId: string) {
+    const levels = await this.listAcademicLevels(schoolId);
+    return levels
+      .filter((level) => level.isActivated)
+      .sort((a, b) => {
+        if (a.order === null && b.order === null) return 0;
+        if (a.order === null) return 1;
+        if (b.order === null) return -1;
+        return a.order - b.order;
+      });
+  }
+
+  async setAcademicLevelActivation(
+    schoolId: string,
+    academicLevelId: string,
+    activated: boolean,
+  ) {
+    const level = await this.prisma.academicLevel.findFirst({
+      where: { id: academicLevelId },
+      select: { id: true, schoolId: true },
+    });
+    if (!level) {
+      throw new NotFoundException("Academic level not found");
+    }
+    if (level.schoolId === schoolId) {
+      throw new BadRequestException(
+        "Un niveau propre a l'ecole est toujours actif",
+      );
+    }
+    if (level.schoolId !== null) {
+      throw new NotFoundException("Academic level not found");
+    }
+
+    if (activated) {
+      await this.prisma.schoolAcademicLevel.upsert({
+        where: {
+          schoolId_academicLevelId: { schoolId, academicLevelId },
+        },
+        create: { schoolId, academicLevelId },
+        update: {},
+      });
+    } else {
+      await this.prisma.schoolAcademicLevel.deleteMany({
+        where: { schoolId, academicLevelId },
+      });
+    }
+
+    return { success: true, activated };
   }
 
   async createAcademicLevel(schoolId: string, payload: CreateAcademicLevelDto) {
@@ -3758,7 +3842,11 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    if (parsed.code === undefined && parsed.label === undefined) {
+    if (
+      parsed.code === undefined &&
+      parsed.label === undefined &&
+      parsed.order === undefined
+    ) {
       throw new BadRequestException("No fields to update");
     }
 
@@ -3768,6 +3856,7 @@ export class ManagementService {
       data: {
         code: parsed.code,
         label: parsed.label,
+        order: parsed.order,
       },
     });
   }
@@ -3919,7 +4008,8 @@ export class ManagementService {
       parsed.code === undefined &&
       parsed.label === undefined &&
       parsed.cycleId === undefined &&
-      parsed.languageSystem === undefined
+      parsed.languageSystem === undefined &&
+      parsed.order === undefined
     ) {
       throw new BadRequestException("No fields to update");
     }
@@ -3939,6 +4029,7 @@ export class ManagementService {
         label: parsed.label,
         cycleId: parsed.cycleId,
         languageSystem: parsed.languageSystem,
+        order: parsed.order,
       },
       include: { cycle: true },
     });
@@ -5194,6 +5285,7 @@ export class ManagementService {
             "SUPERVISOR",
             "SCHOOL_ACCOUNTANT",
             "SCHOOL_STAFF",
+            "SCHOOL_HEALTH_OFFICER",
           ],
         },
       },
@@ -6161,48 +6253,9 @@ export class ManagementService {
       classEntity.schoolYearId,
     );
 
-    if (payload.email && payload.password) {
-      const studentEmail = payload.email.toLowerCase();
-      const passwordHash = await bcrypt.hash(payload.password, 10);
-
-      return this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            firstName: payload.firstName,
-            lastName: payload.lastName,
-            email: studentEmail,
-            passwordHash,
-            memberships: {
-              create: {
-                schoolId,
-                role: "STUDENT",
-              },
-            },
-          },
-        });
-
-        const student = await tx.student.create({
-          data: {
-            schoolId,
-            firstName: payload.firstName,
-            lastName: payload.lastName,
-            userId: user.id,
-          },
-        });
-
-        await tx.enrollment.create({
-          data: {
-            schoolId,
-            schoolYearId: classEntity.schoolYearId,
-            studentId: student.id,
-            classId: payload.classId,
-            status: "ACTIVE",
-          },
-        });
-
-        return { user, student };
-      });
-    }
+    const dateOfBirth = payload.dateOfBirth
+      ? new Date(payload.dateOfBirth)
+      : null;
 
     return this.prisma.$transaction(async (tx) => {
       const student = await tx.student.create({
@@ -6210,6 +6263,7 @@ export class ManagementService {
           schoolId,
           firstName: payload.firstName,
           lastName: payload.lastName,
+          dateOfBirth,
         },
       });
 
@@ -6506,8 +6560,13 @@ export class ManagementService {
       currentUser,
       studentId,
     );
+    const isSelfViewer = await this.canReadStudentLifeEventsAsSelf(
+      schoolId,
+      currentUser,
+      studentId,
+    );
 
-    if (!canWrite && !isParentViewer) {
+    if (!canWrite && !isParentViewer && !isSelfViewer) {
       throw new ForbiddenException("Insufficient role");
     }
 
@@ -6946,7 +7005,7 @@ export class ManagementService {
         { schoolYearId: string; count: number }
       >();
       for (const row of existingRows) {
-        if (row.status === "ACTIVE") continue;
+        if (row.status === "ACTIVE" || !row.classId) continue;
         const entry = incomingCountByClass.get(row.classId);
         if (entry) entry.count += 1;
         else
@@ -7016,7 +7075,11 @@ export class ManagementService {
       throw new NotFoundException("Enrollment not found");
     }
 
-    if (parsed.status === "ACTIVE" && existing.status !== "ACTIVE") {
+    if (
+      parsed.status === "ACTIVE" &&
+      existing.status !== "ACTIVE" &&
+      existing.classId
+    ) {
       await this.ensureClassHasCapacity(
         existing.classId,
         existing.schoolYearId,
@@ -7434,22 +7497,12 @@ export class ManagementService {
     schoolYearId: string,
     incomingCount = 1,
   ) {
-    const classEntity = await this.prisma.class.findUnique({
-      where: { id: classId },
-      select: { name: true, capacity: true },
-    });
-
-    if (!classEntity || classEntity.capacity == null) return;
-
-    const activeCount = await this.prisma.enrollment.count({
-      where: { classId, schoolYearId, status: "ACTIVE" },
-    });
-
-    if (activeCount + incomingCount > classEntity.capacity) {
-      throw new BadRequestException(
-        `La classe ${classEntity.name} a atteint sa capacite maximale (${classEntity.capacity} eleves).`,
-      );
-    }
+    return ensureClassHasCapacityUtil(
+      this.prisma,
+      classId,
+      schoolYearId,
+      incomingCount,
+    );
   }
 
   private async ensureStudentInSchool(studentId: string, schoolId: string) {
@@ -7521,6 +7574,7 @@ export class ManagementService {
             "SUPERVISOR",
             "SCHOOL_ACCOUNTANT",
             "SCHOOL_STAFF",
+            "SCHOOL_HEALTH_OFFICER",
           ],
         },
       },
@@ -7842,6 +7896,26 @@ export class ManagementService {
     return Boolean(link);
   }
 
+  private async canReadStudentLifeEventsAsSelf(
+    schoolId: string,
+    user: AuthenticatedUser,
+    studentId: string,
+  ) {
+    if (!this.hasSchoolRole(user, schoolId, "STUDENT")) {
+      return false;
+    }
+
+    const student = await this.prisma.student.findFirst({
+      where: {
+        schoolId,
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+
+    return student?.id === studentId;
+  }
+
   private async canWriteStudentLifeEvents(
     schoolId: string,
     user: AuthenticatedUser,
@@ -7870,7 +7944,7 @@ export class ManagementService {
       schoolId,
       studentId,
     );
-    if (!currentEnrollment) {
+    if (!currentEnrollment || !currentEnrollment.classId) {
       return false;
     }
 
@@ -7935,7 +8009,7 @@ export class ManagementService {
       studentId,
     );
 
-    if (!enrollment) {
+    if (!enrollment || !enrollment.classId) {
       return null;
     }
 
@@ -8182,6 +8256,7 @@ export class ManagementService {
       "SUPERVISOR",
       "SCHOOL_ACCOUNTANT",
       "SCHOOL_STAFF",
+      "SCHOOL_HEALTH_OFFICER",
       "TEACHER",
       "PARENT",
       "STUDENT",

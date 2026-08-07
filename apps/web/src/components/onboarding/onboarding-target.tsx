@@ -7,9 +7,15 @@ type Props = {
   id: string;
   children: ReactNode;
   className?: string;
+  "data-testid"?: string;
 };
 
-export function OnboardingTarget({ id, children, className }: Props) {
+export function OnboardingTarget({
+  id,
+  children,
+  className,
+  "data-testid": dataTestId,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const activeTourId = useOnboardingTourStore((state) => state.activeTourId);
   const steps = useOnboardingTourStore((state) => state.steps);
@@ -21,9 +27,34 @@ export function OnboardingTarget({ id, children, className }: Props) {
   useEffect(() => {
     if (!isActiveTarget) return;
 
+    let hasAutoScrolled = false;
+
     function measure() {
-      const rect = ref.current?.getBoundingClientRect();
-      if (!rect || rect.width <= 0 || rect.height <= 0) return;
+      const node = ref.current;
+      const rect = node?.getBoundingClientRect();
+      if (!node || !rect || rect.width <= 0 || rect.height <= 0) return;
+
+      // A target further down a scrollable page/list can end up below the
+      // fold (or, more rarely, above it) when its step activates — nudge it
+      // into view once instead of leaving the user to notice and scroll
+      // manually to see the spotlight.
+      if (!hasAutoScrolled) {
+        const viewportHeight =
+          window.innerHeight || document.documentElement.clientHeight;
+        const viewportWidth =
+          window.innerWidth || document.documentElement.clientWidth;
+        const isFullyVisible =
+          rect.top >= 0 &&
+          rect.left >= 0 &&
+          rect.bottom <= viewportHeight &&
+          rect.right <= viewportWidth;
+        if (!isFullyVisible) {
+          hasAutoScrolled = true;
+          node.scrollIntoView({ block: "center", behavior: "smooth" });
+          return;
+        }
+      }
+
       setTargetRect({
         x: rect.x,
         y: rect.y,
@@ -34,11 +65,20 @@ export function OnboardingTarget({ id, children, className }: Props) {
 
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
   }, [isActiveTarget, setTargetRect]);
 
   return (
-    <div ref={ref} className={className} data-tour-target={id}>
+    <div
+      ref={ref}
+      className={className}
+      data-tour-target={id}
+      data-testid={dataTestId}
+    >
       {children}
     </div>
   );

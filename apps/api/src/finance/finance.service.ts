@@ -1,0 +1,516 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service.js";
+import { EnrollmentsService } from "../enrollments/enrollments.service.js";
+import type { UpsertFeeScheduleDto } from "./dto/upsert-fee-schedule.dto.js";
+import type { RecordDirectPaymentDto } from "./dto/record-direct-payment.dto.js";
+import type { ListFeeSchedulesQueryDto } from "./dto/list-fee-schedules-query.dto.js";
+
+@Injectable()
+export class FinanceService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly enrollmentsService: EnrollmentsService,
+  ) {}
+
+  async listFeeSchedules(schoolId: string, query: ListFeeSchedulesQueryDto) {
+    return this.prisma.feeSchedule.findMany({
+      where: {
+        schoolId,
+        schoolYearId: query.schoolYearId,
+        academicLevelId: query.academicLevelId,
+      },
+      include: {
+        academicLevel: { select: { id: true, label: true, code: true } },
+        track: { select: { id: true, label: true, code: true } },
+        schoolYear: { select: { id: true, label: true } },
+        installments: { orderBy: { rank: "asc" } },
+      },
+      orderBy: [{ academicLevelId: "asc" }, { trackId: "asc" }],
+    });
+  }
+
+  async upsertFeeSchedule(schoolId: string, payload: UpsertFeeScheduleDto) {
+    const ranks = payload.installments.map((i) => i.rank);
+    if (new Set(ranks).size !== ranks.length) {
+      throw new BadRequestException(
+        "Les rangs d'echeance doivent etre uniques",
+      );
+    }
+    if (payload.installments.length === 0) {
+      throw new BadRequestException("Au moins une echeance est requise");
+    }
+
+    const schoolYear = await this.prisma.schoolYear.findFirst({
+      where: { id: payload.schoolYearId, schoolId },
+      select: { id: true },
+    });
+    if (!schoolYear) {
+      throw new NotFoundException(
+        "Annee scolaire introuvable pour cette ecole",
+      );
+    }
+
+    const academicLevel = await this.prisma.academicLevel.findFirst({
+      where: {
+        id: payload.academicLevelId,
+        OR: [{ schoolId }, { schoolId: null }],
+      },
+      select: { id: true },
+    });
+    if (!academicLevel) {
+      throw new NotFoundException(
+        "Niveau academique introuvable pour cette ecole",
+      );
+    }
+
+    const existing = await this.prisma.feeSchedule.findFirst({
+      where: {
+        schoolId,
+        schoolYearId: payload.schoolYearId,
+        academicLevelId: payload.academicLevelId,
+        trackId: payload.trackId ?? null,
+      },
+      select: { id: true },
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      const feeSchedule = existing
+        ? existing
+        : await tx.feeSchedule.create({
+            data: {
+              schoolId,
+              schoolYearId: payload.schoolYearId,
+              academicLevelId: payload.academicLevelId,
+              trackId: payload.trackId ?? null,
+            },
+          });
+
+      await tx.feeInstallment.deleteMany({
+        where: { feeScheduleId: feeSchedule.id },
+      });
+      await tx.feeInstallment.createMany({
+        data: payload.installments.map((installment) => ({
+          schoolId,
+          feeScheduleId: feeSchedule.id,
+          rank: installment.rank,
+          label: installment.label,
+          amount: installment.amount,
+          dueDate: installment.dueDate ? new Date(installment.dueDate) : null,
+        })),
+      });
+
+      return tx.feeSchedule.findUniqueOrThrow({
+        where: { id: feeSchedule.id },
+        include: { installments: { orderBy: { rank: "asc" } } },
+      });
+    });
+  }
+
+  async deleteFeeSchedule(schoolId: string, feeScheduleId: string) {
+    const feeSchedule = await this.prisma.feeSchedule.findFirst({
+      where: { id: feeScheduleId, schoolId },
+      select: { id: true },
+    });
+    if (!feeSchedule) {
+      throw new NotFoundException("Echeancier introuvable");
+    }
+    await this.prisma.feeSchedule.delete({ where: { id: feeSchedule.id } });
+    return { success: true };
+  }
+
+  private async resolveFeeScheduleForTarget(
+    schoolId: string,
+    schoolYearId: string,
+    academicLevelId: string,
+    trackId: string | null,
+  ) {
+    const feeSchedule = await this.prisma.feeSchedule.findFirst({
+      where: { schoolId, schoolYearId, academicLevelId, trackId },
+      include: { installments: { orderBy: { rank: "asc" } } },
+    });
+
+    if (!feeSchedule || feeSchedule.installments.length === 0) {
+      throw new BadRequestException(
+        "Aucun echeancier n'est defini pour le niveau/filiere cible de cet eleve sur cette annee",
+      );
+    }
+
+    return feeSchedule;
+  }
+
+  async getStudentFinanceSummary(
+    schoolId: string,
+    studentId: string,
+    targetSchoolYearId: string,
+  ) {
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, schoolId },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!student) {
+      throw new NotFoundException("Eleve introuvable");
+    }
+
+    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+      schoolId,
+      studentId,
+    );
+
+    const feeSchedule = await this.resolveFeeScheduleForTarget(
+      schoolId,
+      targetSchoolYearId,
+      decision.nextAcademicLevelId,
+      decision.nextTrackId,
+    );
+
+    const totalPaid = await this.getTotalPaid(studentId, targetSchoolYearId);
+    const firstInstallment = feeSchedule.installments[0];
+
+    return {
+      student,
+      decision,
+      feeSchedule,
+      totalPaid,
+      firstInstallmentAmount: firstInstallment.amount,
+      reinscriptionEligible: totalPaid >= firstInstallment.amount,
+    };
+  }
+
+  private async getTotalPaid(
+    studentId: string,
+    schoolYearId: string,
+  ): Promise<number> {
+    const aggregate = await this.prisma.studentPayment.aggregate({
+      where: { studentId, schoolYearId },
+      _sum: { amount: true },
+    });
+    return aggregate._sum.amount ?? 0;
+  }
+
+  async recordDirectPayment(
+    schoolId: string,
+    payload: RecordDirectPaymentDto,
+    recordedByUserId: string,
+  ) {
+    const student = await this.prisma.student.findFirst({
+      where: { id: payload.studentId, schoolId },
+      select: { id: true },
+    });
+    if (!student) {
+      throw new NotFoundException("Eleve introuvable");
+    }
+
+    // Regle metier : un paiement ne peut jamais preceder la decision du conseil
+    // de classe pour cet eleve (voir EnrollmentsService.getConfirmedDecisionOrThrow).
+    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+      schoolId,
+      payload.studentId,
+    );
+
+    const feeSchedule = await this.resolveFeeScheduleForTarget(
+      schoolId,
+      payload.schoolYearId,
+      decision.nextAcademicLevelId,
+      decision.nextTrackId,
+    );
+
+    const payment = await this.prisma.studentPayment.create({
+      data: {
+        schoolId,
+        schoolYearId: payload.schoolYearId,
+        studentId: payload.studentId,
+        amount: payload.amount,
+        source: "DIRECT_CASH",
+        recordedByUserId,
+        paidAt: new Date(payload.paidAt),
+        note: payload.note,
+      },
+    });
+
+    const totalPaid = await this.getTotalPaid(
+      payload.studentId,
+      payload.schoolYearId,
+    );
+    const firstInstallmentAmount = feeSchedule.installments[0].amount;
+    let reinscriptionConfirmed = false;
+
+    if (totalPaid >= firstInstallmentAmount) {
+      await this.enrollmentsService.confirmReinscription(
+        schoolId,
+        payload.studentId,
+        payload.schoolYearId,
+        "PAYMENT_THRESHOLD",
+        recordedByUserId,
+      );
+      reinscriptionConfirmed = true;
+    }
+
+    return {
+      payment,
+      totalPaid,
+      firstInstallmentAmount,
+      reinscriptionConfirmed,
+    };
+  }
+
+  private async getOrCreateWallet(schoolId: string, parentUserId: string) {
+    return this.prisma.wallet.upsert({
+      where: { schoolId_parentUserId: { schoolId, parentUserId } },
+      create: { schoolId, parentUserId },
+      update: {},
+    });
+  }
+
+  private async getWalletBalance(walletId: string): Promise<number> {
+    const [topUps, allocations] = await Promise.all([
+      this.prisma.walletTransaction.aggregate({
+        where: { walletId, type: "TOPUP" },
+        _sum: { amount: true },
+      }),
+      this.prisma.walletTransaction.aggregate({
+        where: { walletId, type: "ALLOCATION" },
+        _sum: { amount: true },
+      }),
+    ]);
+    return (topUps._sum.amount ?? 0) - (allocations._sum.amount ?? 0);
+  }
+
+  async topUpWallet(
+    schoolId: string,
+    parentUserId: string,
+    amount: number,
+    recordedByUserId: string,
+    note?: string,
+  ) {
+    // Le depot dans le wallet est libre : il peut precede la decision du
+    // conseil de classe (une famille peut provisionner a l'avance). Seule
+    // l'affectation vers un eleve precis (payAndReinscribeFromWallet) exige
+    // que la decision existe deja.
+    const wallet = await this.getOrCreateWallet(schoolId, parentUserId);
+    await this.prisma.walletTransaction.create({
+      data: {
+        schoolId,
+        walletId: wallet.id,
+        type: "TOPUP",
+        amount,
+        recordedByUserId,
+        note,
+      },
+    });
+    const balance = await this.getWalletBalance(wallet.id);
+    return { walletId: wallet.id, balance };
+  }
+
+  /**
+   * L'annee cible de reinscription n'est pas modelisee explicitement (une
+   * SchoolYear n'a pas de "suivante"). On retient par convention l'annee la
+   * plus recemment creee qui n'est pas l'annee active : en pratique, l'ecole
+   * cree cette annee cible avant d'ouvrir la campagne de reinscription.
+   */
+  private async resolveLikelyNextSchoolYear(
+    schoolId: string,
+    activeSchoolYearId: string,
+  ) {
+    return this.prisma.schoolYear.findFirst({
+      where: { schoolId, id: { not: activeSchoolYearId } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, label: true },
+    });
+  }
+
+  async getWalletSummary(schoolId: string, parentUserId: string) {
+    const wallet = await this.getOrCreateWallet(schoolId, parentUserId);
+    const [balance, transactions, children] = await Promise.all([
+      this.getWalletBalance(wallet.id),
+      this.prisma.walletTransaction.findMany({
+        where: { walletId: wallet.id },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      this.prisma.parentStudent.findMany({
+        where: { schoolId, parentUserId },
+        select: {
+          student: { select: { id: true, firstName: true, lastName: true } },
+        },
+      }),
+    ]);
+
+    const childrenStatus = await Promise.all(
+      children.map(async ({ student }) => {
+        let decision;
+        try {
+          decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+            schoolId,
+            student.id,
+          );
+        } catch {
+          return {
+            student,
+            status: "DECISION_PENDING" as const,
+          };
+        }
+
+        const nextYear = await this.resolveLikelyNextSchoolYear(
+          schoolId,
+          decision.sourceSchoolYearId,
+        );
+        if (!nextYear) {
+          return {
+            student,
+            status: "DECISION_PENDING" as const,
+          };
+        }
+
+        const existingEnrollment = await this.prisma.enrollment.findUnique({
+          where: {
+            schoolYearId_studentId: {
+              schoolYearId: nextYear.id,
+              studentId: student.id,
+            },
+          },
+          select: { id: true },
+        });
+        if (existingEnrollment) {
+          return {
+            student,
+            status: "ALREADY_REINSCRIBED" as const,
+            targetSchoolYearId: nextYear.id,
+            targetSchoolYearLabel: nextYear.label,
+          };
+        }
+
+        let requiredAmount: number | null = null;
+        try {
+          const feeSchedule = await this.resolveFeeScheduleForTarget(
+            schoolId,
+            nextYear.id,
+            decision.nextAcademicLevelId,
+            decision.nextTrackId,
+          );
+          const totalPaid = await this.getTotalPaid(student.id, nextYear.id);
+          requiredAmount = Math.max(
+            0,
+            feeSchedule.installments[0].amount - totalPaid,
+          );
+        } catch {
+          // Pas d'echeancier defini pour ce niveau/filiere/annee : le parent
+          // ne peut pas encore reinscrire depuis son wallet.
+        }
+
+        return {
+          student,
+          status: "READY_TO_REINSCRIBE" as const,
+          targetSchoolYearId: nextYear.id,
+          targetSchoolYearLabel: nextYear.label,
+          requiredAmount,
+        };
+      }),
+    );
+
+    return {
+      walletId: wallet.id,
+      balance,
+      transactions,
+      children: childrenStatus,
+    };
+  }
+
+  async payAndReinscribeFromWallet(
+    schoolId: string,
+    parentUserId: string,
+    studentId: string,
+    schoolYearId: string,
+  ) {
+    const link = await this.prisma.parentStudent.findFirst({
+      where: { schoolId, parentUserId, studentId },
+      select: { id: true },
+    });
+    if (!link) {
+      throw new BadRequestException("Cet eleve n'est pas rattache a ce parent");
+    }
+
+    const existingEnrollment = await this.prisma.enrollment.findUnique({
+      where: { schoolYearId_studentId: { schoolYearId, studentId } },
+      select: { id: true },
+    });
+    if (existingEnrollment) {
+      throw new BadRequestException(
+        "Cet eleve est deja reinscrit pour cette annee",
+      );
+    }
+
+    // Regle metier : pas de paiement/affectation avant la decision du conseil.
+    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+      schoolId,
+      studentId,
+    );
+
+    const feeSchedule = await this.resolveFeeScheduleForTarget(
+      schoolId,
+      schoolYearId,
+      decision.nextAcademicLevelId,
+      decision.nextTrackId,
+    );
+    const firstInstallmentAmount = feeSchedule.installments[0].amount;
+    const alreadyPaid = await this.getTotalPaid(studentId, schoolYearId);
+    const requiredAmount = firstInstallmentAmount - alreadyPaid;
+
+    if (requiredAmount <= 0) {
+      await this.enrollmentsService.confirmReinscription(
+        schoolId,
+        studentId,
+        schoolYearId,
+        "PAYMENT_THRESHOLD",
+        parentUserId,
+      );
+      return { requiredAmount: 0, reinscriptionConfirmed: true };
+    }
+
+    const wallet = await this.getOrCreateWallet(schoolId, parentUserId);
+    const balance = await this.getWalletBalance(wallet.id);
+    if (balance < requiredAmount) {
+      throw new BadRequestException(
+        "Solde du wallet insuffisant pour couvrir la premiere echeance",
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const walletTransaction = await tx.walletTransaction.create({
+        data: {
+          schoolId,
+          walletId: wallet.id,
+          type: "ALLOCATION",
+          amount: requiredAmount,
+          studentId,
+          recordedByUserId: parentUserId,
+        },
+      });
+      await tx.studentPayment.create({
+        data: {
+          schoolId,
+          schoolYearId,
+          studentId,
+          amount: requiredAmount,
+          source: "WALLET_ALLOCATION",
+          walletTransactionId: walletTransaction.id,
+          recordedByUserId: parentUserId,
+          paidAt: new Date(),
+        },
+      });
+    });
+
+    await this.enrollmentsService.confirmReinscription(
+      schoolId,
+      studentId,
+      schoolYearId,
+      "PAYMENT_THRESHOLD",
+      parentUserId,
+    );
+
+    return { requiredAmount, reinscriptionConfirmed: true };
+  }
+}

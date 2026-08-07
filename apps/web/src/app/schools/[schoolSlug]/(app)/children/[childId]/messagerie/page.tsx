@@ -33,6 +33,14 @@ import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog
 import { ActionIconButton } from "../../../../../../../components/ui/action-icon-button";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
 import type { TranslateFn } from "../../../../../../../i18n/useTranslation";
+import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import { usePageHelp } from "../../../../../../../store/page-help";
+import {
+  MESSAGES_TOUR_ID,
+  MESSAGES_TOUR_STEPS,
+  MESSAGES_TOUR_TARGETS,
+} from "../../../../../../../components/messaging/messages-tour.config";
 import type {
   FolderKey,
   MessageAttachment,
@@ -145,6 +153,7 @@ export default function ChildMessageriePage() {
       const payload = (await response.json()) as {
         role?: string;
         linkedStudents?: ParentChild[];
+        onboardingHelpEnabled?: boolean;
       };
 
       if (payload.role !== "PARENT") {
@@ -163,6 +172,16 @@ export default function ChildMessageriePage() {
           `/schools/${currentSchoolSlug}/children/${linked[0].id}/messagerie`,
         );
       }
+
+      const tourStore = useOnboardingTourStore.getState();
+      if (
+        payload.onboardingHelpEnabled !== false &&
+        !tourStore.isCompleted("parent", MESSAGES_TOUR_ID) &&
+        !tourStore.activeTourId
+      ) {
+        tourStore.startTour(MESSAGES_TOUR_ID, "parent", MESSAGES_TOUR_STEPS);
+      }
+
       await loadMessages(currentSchoolSlug, folder, search);
     } catch {
       setError(t("messaging.page.loadError"));
@@ -379,6 +398,20 @@ export default function ChildMessageriePage() {
     );
   }
 
+  usePageHelp({
+    title: t("messaging.help.title"),
+    sections: [
+      {
+        title: t("messaging.help.section1Title"),
+        body: [t("messaging.help.section1Body")],
+      },
+      {
+        title: t("messaging.help.section2Title"),
+        body: [t("messaging.help.section2Body")],
+      },
+    ],
+  });
+
   return (
     <div className="grid gap-4 lg:h-[calc(100vh-10rem)]">
       <Card
@@ -394,31 +427,35 @@ export default function ChildMessageriePage() {
           <p className="text-sm text-notification">{error}</p>
         ) : (
           <div className="flex h-full min-h-0 flex-col gap-3">
-            <MessagingToolbar
-              title={t("messaging.toolbar.title")}
-              contextLabel={
-                currentChild
-                  ? `${currentChild.firstName} ${currentChild.lastName}`
-                  : t("messaging.page.childDefaultContext")
-              }
-              search={search}
-              onSearchChange={setSearch}
-            />
+            <OnboardingTarget id={MESSAGES_TOUR_TARGETS.toolbar}>
+              <MessagingToolbar
+                title={t("messaging.toolbar.title")}
+                contextLabel={
+                  currentChild
+                    ? `${currentChild.firstName} ${currentChild.lastName}`
+                    : t("messaging.page.childDefaultContext")
+                }
+                search={search}
+                onSearchChange={setSearch}
+              />
+            </OnboardingTarget>
 
             <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[230px_320px_minmax(0,1fr)]">
               <div className="lg:min-h-0">
-                <MessagingFoldersPanel
-                  folders={buildFolders(t)}
-                  activeFolder={folder}
-                  onSelectFolder={setFolder}
-                  inboxUnreadCount={inboxUnreadCount}
-                  draftsCount={draftsCount}
-                  archiveCount={archiveCount}
-                  showComposeButton
-                  onCompose={() =>
-                    router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
-                  }
-                />
+                <OnboardingTarget id={MESSAGES_TOUR_TARGETS.folders}>
+                  <MessagingFoldersPanel
+                    folders={buildFolders(t)}
+                    activeFolder={folder}
+                    onSelectFolder={setFolder}
+                    inboxUnreadCount={inboxUnreadCount}
+                    draftsCount={draftsCount}
+                    archiveCount={archiveCount}
+                    showComposeButton
+                    onCompose={() =>
+                      router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
+                    }
+                  />
+                </OnboardingTarget>
               </div>
               <div className="lg:min-h-0">
                 <MessagingMessagesList

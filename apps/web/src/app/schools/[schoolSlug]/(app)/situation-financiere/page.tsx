@@ -12,7 +12,17 @@ import {
 } from "lucide-react";
 import { Button } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
+import { FormTextInput } from "../../../../../components/ui/form-controls";
+import { FormField } from "../../../../../components/ui/form-field";
+import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
 import { useTranslation } from "../../../../../i18n/useTranslation";
+import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import {
+  FINANCE_PARENT_TOUR_ID,
+  FINANCE_PARENT_TOUR_STEPS,
+  FINANCE_PARENT_TOUR_TARGETS,
+} from "./finance-parent-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -33,9 +43,33 @@ type MeResponse = {
   role: Role;
   firstName: string;
   lastName: string;
+  onboardingHelpEnabled?: boolean;
 };
 
 type TabKey = "compte" | "porte-monnaie" | "factures" | "reglement";
+
+type WalletTransactionRow = {
+  id: string;
+  type: "TOPUP" | "ALLOCATION";
+  amount: number;
+  createdAt: string;
+  note: string | null;
+};
+
+type ChildFinanceStatus = {
+  student: { id: string; firstName: string; lastName: string };
+  status: "DECISION_PENDING" | "ALREADY_REINSCRIBED" | "READY_TO_REINSCRIBE";
+  targetSchoolYearId?: string;
+  targetSchoolYearLabel?: string;
+  requiredAmount?: number | null;
+};
+
+type WalletSummary = {
+  walletId: string;
+  balance: number;
+  transactions: WalletTransactionRow[];
+  children: ChildFinanceStatus[];
+};
 
 type LedgerEntry = {
   id: string;
@@ -129,30 +163,6 @@ const wallets: WalletEntry[] = [
   },
 ];
 
-const walletHistory = [
-  {
-    id: "wh-1",
-    date: "20 fevrier 2026",
-    label: "Debit navette semaine",
-    amount: -3500,
-    channel: "Porte-monnaie Transport",
-  },
-  {
-    id: "wh-2",
-    date: "16 fevrier 2026",
-    label: "Recharge Orange Money",
-    amount: 10000,
-    channel: "Porte-monnaie Cantine",
-  },
-  {
-    id: "wh-3",
-    date: "12 fevrier 2026",
-    label: "Recharge cash guichet",
-    amount: 9000,
-    channel: "Porte-monnaie Activites",
-  },
-];
-
 const invoices: Invoice[] = [
   {
     id: "inv-2477",
@@ -243,10 +253,24 @@ export default function ParentFinancePage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("compte");
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [financeWallet, setFinanceWallet] = useState<WalletSummary | null>(
+    null,
+  );
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [walletSuccess, setWalletSuccess] = useState<string | null>(null);
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpSubmitting, setTopUpSubmitting] = useState(false);
+  const [reinscribingStudentId, setReinscribingStudentId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     void loadProfile();
   }, [schoolSlug]);
+
+  useEffect(() => {
+    if (tab === "porte-monnaie" && me) void loadWallet();
+  }, [tab, me]);
 
   async function loadProfile() {
     setLoading(true);
@@ -267,6 +291,129 @@ export default function ParentFinancePage() {
 
     setMe(payload);
     setLoading(false);
+
+    const tourStore = useOnboardingTourStore.getState();
+    if (
+      payload.onboardingHelpEnabled !== false &&
+      !tourStore.isCompleted("parent", FINANCE_PARENT_TOUR_ID) &&
+      !tourStore.activeTourId
+    ) {
+      tourStore.startTour(
+        FINANCE_PARENT_TOUR_ID,
+        "parent",
+        FINANCE_PARENT_TOUR_STEPS,
+      );
+    }
+  }
+
+  async function loadWallet() {
+    setWalletError(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/me/finance/wallet`,
+        {
+          credentials: "include",
+        },
+      );
+      if (!response.ok) {
+        setWalletError(t("finSituation.wallet.errors.load"));
+        return;
+      }
+      setFinanceWallet((await response.json()) as WalletSummary);
+    } catch {
+      setWalletError(t("finSituation.wallet.errors.network"));
+    }
+  }
+
+  async function onTopUp() {
+    const amount = Number(topUpAmount);
+    if (!amount || amount <= 0) return;
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setWalletError(t("common.errors.invalidCsrfSession"));
+      router.replace(`/schools/${schoolSlug}/login`);
+      return;
+    }
+    setTopUpSubmitting(true);
+    setWalletError(null);
+    setWalletSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/me/finance/wallet/top-up`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ amount }),
+        },
+      );
+      if (!response.ok) {
+        setWalletError(t("finSituation.wallet.errors.topUp"));
+        return;
+      }
+      setWalletSuccess(t("finSituation.wallet.success.topUp"));
+      setTopUpAmount("");
+      await loadWallet();
+    } catch {
+      setWalletError(t("finSituation.wallet.errors.network"));
+    } finally {
+      setTopUpSubmitting(false);
+    }
+  }
+
+  async function onPayAndReinscribe(child: ChildFinanceStatus) {
+    if (!child.targetSchoolYearId) return;
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setWalletError(t("common.errors.invalidCsrfSession"));
+      router.replace(`/schools/${schoolSlug}/login`);
+      return;
+    }
+    setReinscribingStudentId(child.student.id);
+    setWalletError(null);
+    setWalletSuccess(null);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/me/finance/wallet/pay-and-reinscribe`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            studentId: child.student.id,
+            schoolYearId: child.targetSchoolYearId,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("finSituation.wallet.errors.reinscribe"));
+        setWalletError(String(message));
+        return;
+      }
+      setWalletSuccess(
+        t("finSituation.wallet.success.reinscribed").replace(
+          "{firstName}",
+          child.student.firstName,
+        ),
+      );
+      await loadWallet();
+    } catch {
+      setWalletError(t("finSituation.wallet.errors.network"));
+    } finally {
+      setReinscribingStudentId(null);
+    }
   }
 
   const currentBalance = useMemo(
@@ -434,72 +581,156 @@ export default function ParentFinancePage() {
 
             {tab === "porte-monnaie" ? (
               <div className="grid gap-4">
-                <div className="grid gap-3 md:grid-cols-3">
-                  {wallets.map((wallet) => {
-                    const fill = Math.min(
-                      100,
-                      (wallet.balance / wallet.cap) * 100,
-                    );
-                    return (
-                      <article
-                        key={wallet.id}
-                        className="rounded-card border border-border bg-background p-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-heading font-semibold text-text-primary">
-                            {wallet.label}
-                          </p>
-                          <Wallet className="h-4 w-4 text-primary" />
-                        </div>
-                        <p className="mt-2 text-lg font-heading font-bold text-primary">
-                          {formatXaf(wallet.balance)}
-                        </p>
-                        <div className="mt-3 h-2 rounded-full bg-surface">
-                          <div
-                            className="h-2 rounded-full bg-primary"
-                            style={{ width: `${fill}%` }}
-                          />
-                        </div>
-                        <p className="mt-2 text-xs text-text-secondary">
-                          {wallet.lastOperation}
-                        </p>
-                      </article>
-                    );
-                  })}
-                </div>
-
-                <Card
-                  title={t("finSituation.walletHistory.title")}
-                  className="bg-background"
-                >
-                  <div className="grid gap-2">
-                    {walletHistory.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-center justify-between rounded-card border border-border px-3 py-2"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-text-primary">
-                            {entry.label}
-                          </p>
-                          <p className="text-xs text-text-secondary">
-                            {entry.date} - {entry.channel}
-                          </p>
-                        </div>
-                        <p
-                          className={`text-sm font-semibold ${
-                            entry.amount >= 0
-                              ? "text-primary"
-                              : "text-text-primary"
-                          }`}
-                        >
-                          {entry.amount >= 0 ? "+" : "-"}
-                          {formatXaf(Math.abs(entry.amount))}
-                        </p>
-                      </div>
-                    ))}
+                {walletError ? (
+                  <div className="rounded-card border border-notification bg-notification/5 p-3 text-sm text-notification">
+                    {walletError}
                   </div>
-                </Card>
+                ) : null}
+                {walletSuccess ? (
+                  <div className="rounded-card border border-primary bg-primary/5 p-3 text-sm text-primary">
+                    {walletSuccess}
+                  </div>
+                ) : null}
+
+                <OnboardingTarget id={FINANCE_PARENT_TOUR_TARGETS.wallet}>
+                  <article className="rounded-card border border-border bg-background p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-heading font-semibold text-text-primary">
+                        {t("finSituation.wallet.balance")}
+                      </p>
+                      <Wallet className="h-4 w-4 text-primary" />
+                    </div>
+                    <p className="mt-2 text-lg font-heading font-bold text-primary">
+                      {financeWallet ? formatXaf(financeWallet.balance) : "-"}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-end gap-2">
+                      <FormField label={t("finSituation.wallet.topUpAmount")}>
+                        <FormTextInput
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={topUpAmount}
+                          onChange={(e) => setTopUpAmount(e.target.value)}
+                        />
+                      </FormField>
+                      <Button
+                        type="button"
+                        onClick={onTopUp}
+                        disabled={topUpSubmitting || !topUpAmount}
+                      >
+                        {t("finSituation.wallet.topUpSubmit")}
+                      </Button>
+                    </div>
+                  </article>
+                </OnboardingTarget>
+
+                {financeWallet && financeWallet.transactions.length > 0 ? (
+                  <Card
+                    title={t("finSituation.walletHistory.title")}
+                    className="bg-background"
+                  >
+                    <div className="grid gap-2">
+                      {financeWallet.transactions.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="flex items-center justify-between rounded-card border border-border px-3 py-2"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-text-primary">
+                              {entry.type === "TOPUP"
+                                ? t("finSituation.wallet.transaction.topUp")
+                                : t(
+                                    "finSituation.wallet.transaction.allocation",
+                                  )}
+                            </p>
+                            <p className="text-xs text-text-secondary">
+                              {new Date(entry.createdAt).toLocaleDateString()}
+                              {entry.note ? ` - ${entry.note}` : ""}
+                            </p>
+                          </div>
+                          <p
+                            className={`text-sm font-semibold ${
+                              entry.type === "TOPUP"
+                                ? "text-primary"
+                                : "text-text-primary"
+                            }`}
+                          >
+                            {entry.type === "TOPUP" ? "+" : "-"}
+                            {formatXaf(entry.amount)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                ) : null}
+
+                <OnboardingTarget id={FINANCE_PARENT_TOUR_TARGETS.children}>
+                  <Card
+                    title={t("finSituation.children.title")}
+                    className="bg-background"
+                  >
+                    <div className="grid gap-3">
+                      {(financeWallet?.children ?? []).map((child) => (
+                        <article
+                          key={child.student.id}
+                          className="rounded-card border border-border p-3"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-heading font-semibold text-text-primary">
+                              {child.student.firstName} {child.student.lastName}
+                            </p>
+                            <Badge
+                              tone={
+                                child.status === "ALREADY_REINSCRIBED"
+                                  ? "ok"
+                                  : child.status === "READY_TO_REINSCRIBE"
+                                    ? "warn"
+                                    : "neutral"
+                              }
+                            >
+                              {t(
+                                `finSituation.children.status.${child.status}`,
+                              )}
+                            </Badge>
+                          </div>
+                          {child.status === "READY_TO_REINSCRIBE" ? (
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm text-text-secondary">
+                                {t("finSituation.children.required")}{" "}
+                                {formatXaf(child.requiredAmount ?? 0)}
+                                {child.targetSchoolYearLabel
+                                  ? ` (${child.targetSchoolYearLabel})`
+                                  : ""}
+                              </p>
+                              <OnboardingTarget
+                                id={FINANCE_PARENT_TOUR_TARGETS.reinscribe}
+                              >
+                                <Button
+                                  type="button"
+                                  onClick={() => onPayAndReinscribe(child)}
+                                  disabled={
+                                    reinscribingStudentId ===
+                                      child.student.id ||
+                                    !financeWallet ||
+                                    financeWallet.balance <
+                                      (child.requiredAmount ?? 0)
+                                  }
+                                >
+                                  {t("finSituation.children.payAndReinscribe")}
+                                </Button>
+                              </OnboardingTarget>
+                            </div>
+                          ) : null}
+                        </article>
+                      ))}
+                      {(financeWallet?.children ?? []).length === 0 ? (
+                        <p className="text-sm text-text-secondary">
+                          {t("finSituation.children.empty")}
+                        </p>
+                      ) : null}
+                    </div>
+                  </Card>
+                </OnboardingTarget>
               </div>
             ) : null}
 

@@ -350,11 +350,11 @@ export class SchoolUsersService {
           select: {
             id: true,
             status: true,
+            schoolYear: { select: { id: true, label: true } },
             class: {
               select: {
                 id: true,
                 name: true,
-                schoolYear: { select: { id: true, label: true } },
               },
             },
           },
@@ -391,10 +391,10 @@ export class SchoolUsersService {
       enrollments: student.enrollments.map((e) => ({
         id: e.id,
         status: e.status,
-        classId: e.class.id,
-        className: e.class.name,
-        schoolYearId: e.class.schoolYear.id,
-        schoolYear: e.class.schoolYear.label,
+        classId: e.class?.id ?? null,
+        className: e.class?.name ?? null,
+        schoolYearId: e.schoolYear.id,
+        schoolYear: e.schoolYear.label,
       })),
       parents: student.parentLinks.map((link) => ({
         id: link.parent.id,
@@ -452,11 +452,11 @@ export class SchoolUsersService {
               orderBy: { createdAt: "desc" },
               select: {
                 id: true,
+                schoolYear: { select: { label: true } },
                 class: {
                   select: {
                     id: true,
                     name: true,
-                    schoolYear: { select: { label: true } },
                   },
                 },
               },
@@ -545,16 +545,16 @@ export class SchoolUsersService {
       enrollments: user.studentProfiles.flatMap((profile) =>
         profile.enrollments.map((enrollment) => ({
           id: enrollment.id,
-          classId: enrollment.class.id,
-          className: enrollment.class.name,
-          schoolYear: enrollment.class.schoolYear.label,
+          classId: enrollment.class?.id ?? null,
+          className: enrollment.class?.name ?? null,
+          schoolYear: enrollment.schoolYear.label,
         })),
       ),
       children: user.parentLinks.map((link) => ({
         id: link.student.id,
         firstName: link.student.firstName,
         lastName: link.student.lastName,
-        className: link.student.enrollments[0]?.class.name ?? null,
+        className: link.student.enrollments[0]?.class?.name ?? null,
       })),
       teachingClasses: Array.from(teachingByClass.values()),
       studentParents: user.studentProfiles.flatMap((profile) =>

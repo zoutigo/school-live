@@ -15,6 +15,7 @@ export const CREATABLE_STAFF_ROLES = [
   "SUPERVISOR",
   "SCHOOL_ACCOUNTANT",
   "SCHOOL_STAFF",
+  "SCHOOL_HEALTH_OFFICER",
 ] as const;
 
 export type CreatableStaffRole = (typeof CREATABLE_STAFF_ROLES)[number];

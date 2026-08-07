@@ -131,6 +131,9 @@ model StudentTermReport {
   councilHeldAt      DateTime?
   generalAppreciation String?
   publishedAt        DateTime?
+  decision           PromotionDecision?
+  nextAcademicLevelId String?
+  nextTrackId        String?
   updatedByUserId    String
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -139,6 +142,8 @@ model StudentTermReport {
   class              Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
   student            Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   updatedByUser      User             @relation("StudentTermReportUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: Cascade)
+  nextAcademicLevel  AcademicLevel?   @relation("StudentTermReportNextLevel", fields: [nextAcademicLevelId], references: [id], onDelete: SetNull)
+  nextTrack          Track?           @relation("StudentTermReportNextTrack", fields: [nextTrackId], references: [id], onDelete: SetNull)
   subjectEntries     StudentTermReportEntry[]
 
   @@unique([schoolYearId, classId, studentId, term])
@@ -146,6 +151,8 @@ model StudentTermReport {
   @@index([classId, term])
   @@index([studentId, term])
   @@index([updatedByUserId])
+  @@index([nextAcademicLevelId])
+  @@index([nextTrackId])
 }
 
 model StudentTermReportEntry {

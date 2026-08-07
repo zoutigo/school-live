@@ -4,6 +4,7 @@ import SiteContentPage from "./page";
 import { useLocaleStore } from "../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../i18n/translations";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelpStore } from "../../store/page-help";
 import {
   ContactInfo,
   ContactSubmission,
@@ -30,7 +31,10 @@ function jsonResponse(payload: unknown, status = 200) {
 const CONTACT_PAYLOAD: ContactInfo = {
   email: "contact@scolive.cm",
   phone: "+237 690000000",
-  address: "Yaoundé, Cameroun",
+  addressStreet: "Rue des Manguiers",
+  addressDistrict: "Bastos",
+  addressCity: "Yaoundé",
+  addressCountry: "Cameroun",
   legalRepresentativeFirstName: "",
   legalRepresentativeLastName: "",
 };
@@ -135,30 +139,132 @@ describe("SiteContentPage UI", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/acceuil"));
   });
 
-  it("renders the contact form pre-filled for an ADMIN", async () => {
+  it("renders the contact details read-only for an ADMIN", async () => {
     mockSiteContentFlow({ activeRole: "ADMIN" });
 
     render(<SiteContentPage />);
 
-    const emailInput = await screen.findByDisplayValue("contact@scolive.cm");
-    expect(emailInput).toBeInTheDocument();
+    expect(await screen.findByText("contact@scolive.cm")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
   });
 
-  it("renders the contact form pre-filled for a SUPER_ADMIN", async () => {
+  it("renders the contact details read-only for a SUPER_ADMIN, with the composed address", async () => {
     mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
 
     render(<SiteContentPage />);
 
-    const emailInput = await screen.findByDisplayValue("contact@scolive.cm");
-    expect(emailInput).toBeInTheDocument();
+    expect(await screen.findByText("contact@scolive.cm")).toBeInTheDocument();
+    expect(screen.getByText("+237 690000000")).toBeInTheDocument();
+    expect(
+      screen.getByText("Rue des Manguiers, Bastos, Yaoundé, Cameroun"),
+    ).toBeInTheDocument();
+  });
+
+  it("switches to the edit form when clicking Modifier, pre-filled with the split address fields", async () => {
+    mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
+
+    render(<SiteContentPage />);
+    await screen.findByText("contact@scolive.cm");
+
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+
+    expect(
+      await screen.findByDisplayValue("contact@scolive.cm"),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue("+237 690000000")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Rue des Manguiers")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Bastos")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Yaoundé")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Cameroun")).toBeInTheDocument();
+  });
+
+  it("cancels the edit form and returns to the read-only view without saving", async () => {
+    mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
+
+    render(<SiteContentPage />);
+    await screen.findByText("contact@scolive.cm");
+
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    await screen.findByDisplayValue("Rue des Manguiers");
+
+    fireEvent.change(screen.getByDisplayValue("Rue des Manguiers"), {
+      target: { value: "Rue changée" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Annuler" }));
+
+    expect(
+      await screen.findByText("Rue des Manguiers, Bastos, Yaoundé, Cameroun"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Voie")).not.toBeInTheDocument();
+  });
+
+  it("saves the edited address and returns to the read-only view with a success message", async () => {
+    mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
+    const updatedContact: ContactInfo = {
+      ...CONTACT_PAYLOAD,
+      addressStreet: "Nouvelle voie",
+    };
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return jsonResponse({ activeRole: "SUPER_ADMIN" });
+      }
+      if (
+        url.includes("/site-content/admin/contact") &&
+        init?.method === "PUT"
+      ) {
+        return jsonResponse(updatedContact);
+      }
+      if (url.includes("/site-content/admin/contact")) {
+        return jsonResponse(CONTACT_PAYLOAD);
+      }
+      if (url.includes("/site-content/admin/legal-documents")) {
+        return jsonResponse(LEGAL_ITEMS);
+      }
+      return jsonResponse({ message: "Not found" }, 404);
+    });
+
+    render(<SiteContentPage />);
+    await screen.findByText("contact@scolive.cm");
+
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    await screen.findByDisplayValue("Rue des Manguiers");
+
+    fireEvent.change(screen.getByDisplayValue("Rue des Manguiers"), {
+      target: { value: "Nouvelle voie" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    expect(
+      await screen.findByText("Coordonnées mises à jour."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Nouvelle voie, Bastos, Yaoundé, Cameroun"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Voie")).not.toBeInTheDocument();
+  });
+
+  it("shows inline validation errors in the edit form and does not submit", async () => {
+    mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
+
+    render(<SiteContentPage />);
+    await screen.findByText("contact@scolive.cm");
+
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    const streetInput = await screen.findByDisplayValue("Rue des Manguiers");
+    fireEvent.change(streetInput, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+    expect(
+      await screen.findByText("La voie est obligatoire."),
+    ).toBeInTheDocument();
   });
 
   it("starts the site-content onboarding tour by default", async () => {
     mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
 
     render(<SiteContentPage />);
-    await screen.findByDisplayValue("contact@scolive.cm");
+    await screen.findByText("contact@scolive.cm");
 
     expect(useOnboardingTourStore.getState().activeTourId).toBe(
       SITE_CONTENT_TOUR_ID,
@@ -173,7 +279,7 @@ describe("SiteContentPage UI", () => {
     });
 
     render(<SiteContentPage />);
-    await screen.findByDisplayValue("contact@scolive.cm");
+    await screen.findByText("contact@scolive.cm");
 
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
@@ -185,35 +291,59 @@ describe("SiteContentPage UI", () => {
     mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
 
     render(<SiteContentPage />);
-    await screen.findByDisplayValue("contact@scolive.cm");
+    await screen.findByText("contact@scolive.cm");
 
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
-  it("opens and closes the help dialog via the header button", async () => {
+  it("registers help content for the active tab in the side menu", async () => {
+    usePageHelpStore.setState({ entry: null, open: false });
     mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
 
     render(<SiteContentPage />);
-    await screen.findByDisplayValue("contact@scolive.cm");
+    await screen.findByText("contact@scolive.cm");
 
-    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Contact",
+      );
+    });
+    let sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Consulter les coordonnées publiques",
+      "Modifier les coordonnées",
+    ]);
 
-    fireEvent.click(screen.getByTestId("site-content-help-toggle"));
-    const dialog = await screen.findByTestId("help-dialog");
-    expect(dialog).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("Contenu du site");
+    fireEvent.click(screen.getByText("Documents légaux"));
+    await waitFor(() => {
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Documents légaux",
+      );
+    });
+    sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Choisir le document et la langue",
+      "Créer ou modifier un brouillon",
+      "Publier ou supprimer un document",
+    ]);
 
-    fireEvent.click(screen.getByTestId("help-dialog-close"));
-    await waitFor(() =>
-      expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument(),
-    );
+    fireEvent.click(screen.getByText("Messages"));
+    await waitFor(() => {
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Messages",
+      );
+    });
+    sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Consulter les messages reçus",
+    ]);
   });
 
   it("lists legal document versions after switching tabs", async () => {
     mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
 
     render(<SiteContentPage />);
-    await screen.findByDisplayValue("contact@scolive.cm");
+    await screen.findByText("contact@scolive.cm");
 
     fireEvent.click(screen.getByText("Documents légaux"));
 
@@ -225,7 +355,7 @@ describe("SiteContentPage UI", () => {
     mockSiteContentFlow({ activeRole: "SUPER_ADMIN" });
 
     render(<SiteContentPage />);
-    await screen.findByDisplayValue("contact@scolive.cm");
+    await screen.findByText("contact@scolive.cm");
 
     fireEvent.click(screen.getByText("Messages"));
 
@@ -259,7 +389,7 @@ describe("SiteContentPage UI", () => {
     });
 
     render(<SiteContentPage />);
-    await screen.findByDisplayValue("contact@scolive.cm");
+    await screen.findByText("contact@scolive.cm");
 
     fireEvent.click(screen.getByText("Messages"));
 

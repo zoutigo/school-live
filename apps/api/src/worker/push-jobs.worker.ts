@@ -15,6 +15,8 @@ import {
   PUSH_JOB_SEND_RESOURCE_SUBMISSION_DISCARDED,
   PUSH_JOB_SEND_RESOURCE_SUBMISSION_REJECTED,
   PUSH_JOB_SEND_ROOM_STATUS_CHANGE,
+  PUSH_JOB_SEND_STUDENT_HEALTH_CARE_EVENT,
+  PUSH_JOB_SEND_STUDENT_HEALTH_REPORT,
   PUSH_JOB_SEND_STUDENT_LIFE_EVENT,
   PUSH_JOB_SEND_TIMETABLE_CHANGE,
   PUSH_QUEUE_NAME,
@@ -23,6 +25,8 @@ import {
   type ResourceSubmissionDiscardedPushPayload,
   type ResourceSubmissionRejectedPushPayload,
   type RoomStatusChangePushPayload,
+  type StudentHealthCareEventPushPayload,
+  type StudentHealthReportPushPayload,
   type StudentLifeEventPushPayload,
   type TimetableChangePushPayload,
 } from "../notifications/push.types.js";
@@ -80,6 +84,18 @@ export class PushJobsWorker implements OnModuleInit, OnModuleDestroy {
         if (job.name === PUSH_JOB_SEND_RESOURCE_SUBMISSION_REJECTED) {
           await this.pushPort.sendResourceSubmissionRejectedNotification(
             job.data as ResourceSubmissionRejectedPushPayload,
+          );
+          return;
+        }
+        if (job.name === PUSH_JOB_SEND_STUDENT_HEALTH_CARE_EVENT) {
+          await this.pushPort.sendStudentHealthCareEventNotification(
+            job.data as StudentHealthCareEventPushPayload,
+          );
+          return;
+        }
+        if (job.name === PUSH_JOB_SEND_STUDENT_HEALTH_REPORT) {
+          await this.pushPort.sendStudentHealthReportNotification(
+            job.data as StudentHealthReportPushPayload,
           );
           return;
         }

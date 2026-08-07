@@ -13,7 +13,10 @@ vi.mock("next/navigation", () => ({
 const CONTACT_INFO: PublicContactInfo = {
   email: "contact@scolive.cm",
   phone: "+237 690000000",
-  address: "Yaoundé, Cameroun",
+  addressStreet: "Rue des Manguiers",
+  addressDistrict: "Bastos",
+  addressCity: "Yaoundé",
+  addressCountry: "Cameroun",
   legalRepresentativeFirstName: "",
   legalRepresentativeLastName: "",
 };
@@ -44,6 +47,20 @@ describe("ContactContent", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("affiche l'adresse composée et des liens mailto/tel cliquables", () => {
+    render(<ContactContent contactInfo={CONTACT_INFO} />);
+
+    expect(
+      screen.getByText("Rue des Manguiers, Bastos, Yaoundé, Cameroun"),
+    ).toBeInTheDocument();
+
+    const emailLink = screen.getByRole("link", { name: "contact@scolive.cm" });
+    expect(emailLink).toHaveAttribute("href", "mailto:contact@scolive.cm");
+
+    const phoneLink = screen.getByRole("link", { name: "+237 690000000" });
+    expect(phoneLink).toHaveAttribute("href", "tel:+237690000000");
   });
 
   it("shows inline validation errors and keeps the submit button enabled", async () => {

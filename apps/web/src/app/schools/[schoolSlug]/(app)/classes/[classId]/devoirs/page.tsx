@@ -8,6 +8,14 @@ import { z } from "zod";
 import { Card } from "../../../../../../../components/ui/card";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { FormRichTextEditor } from "../../../../../../../components/ui/form-rich-text-editor";
+import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import { usePageHelp } from "../../../../../../../store/page-help";
+import {
+  HOMEWORK_TOUR_ID,
+  HOMEWORK_TOUR_STEPS,
+  HOMEWORK_TOUR_TARGETS,
+} from "../../../../../../../components/homework/homework-tour.config";
 import {
   useTranslation,
   type TranslateFn,
@@ -33,6 +41,8 @@ import {
   type HomeworkDetail,
   type HomeworkAttachment,
 } from "../../../../../../../components/homework/homework-api";
+
+const HOMEWORK_TOUR_FALLBACK_ID = "homework-tour-fallback";
 
 type TabKey = "list" | "view" | "help";
 
@@ -143,6 +153,27 @@ export default function TeacherClassHomeworkPage() {
   const [commentError, setCommentError] = useState<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
+  const homeworkTourActiveTourId = useOnboardingTourStore(
+    (state) => state.activeTourId,
+  );
+  const homeworkTourActiveTargetKey = useOnboardingTourStore((state) =>
+    state.activeTourId ? state.steps[state.stepIndex]?.targetKey : undefined,
+  );
+  const isHomeworkTourActive = homeworkTourActiveTourId === HOMEWORK_TOUR_ID;
+
+  // The row/mark-done steps only exist in the "list" tab. Force it back if
+  // the tour reaches one of those steps while another tab is active, so the
+  // step's target actually mounts instead of leaving the tour stuck.
+  useEffect(() => {
+    if (
+      (homeworkTourActiveTargetKey === HOMEWORK_TOUR_TARGETS.row ||
+        homeworkTourActiveTargetKey === HOMEWORK_TOUR_TARGETS.markDone) &&
+      tab !== "list"
+    ) {
+      setTab("list");
+    }
+  }, [homeworkTourActiveTargetKey, tab]);
+
   const formSchema = useMemo(() => buildFormSchema(t), [t]);
   const commentSchema = useMemo(() => buildCommentSchema(t), [t]);
 
@@ -231,6 +262,18 @@ export default function TeacherClassHomeworkPage() {
       const me = (await meResponse.json()) as MeResponse;
       setRole(me.role);
 
+      if (me.role === "STUDENT" || me.role === "PARENT") {
+        const tourRole = me.role === "PARENT" ? "parent" : "student";
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          me.onboardingHelpEnabled !== false &&
+          !tourStore.isCompleted(tourRole, HOMEWORK_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(HOMEWORK_TOUR_ID, tourRole, HOMEWORK_TOUR_STEPS);
+        }
+      }
+
       const contextResponse = await fetch(
         `${API_URL}/schools/${schoolSlug}/student-grades/context`,
         { credentials: "include" },
@@ -253,10 +296,15 @@ export default function TeacherClassHomeworkPage() {
   }
 
   async function openDetail(homework: HomeworkRow) {
-    setSelectedDetail(null);
-    setDetailLoading(true);
     resetComment({ body: "" });
     setCommentError(null);
+    if (homework.id === HOMEWORK_TOUR_FALLBACK_ID) {
+      setSelectedDetail({ ...homework, comments: [], completionStatuses: [] });
+      setDetailLoading(false);
+      return;
+    }
+    setSelectedDetail(null);
+    setDetailLoading(true);
     try {
       const detail = await getHomeworkDetail(schoolSlug, classId, homework.id);
       setSelectedDetail(detail);
@@ -361,7 +409,7 @@ export default function TeacherClassHomeworkPage() {
   }
 
   async function handleToggleDone(detail: HomeworkDetail) {
-    if (!isStudentOrParent) return;
+    if (!isStudentOrParent || detail.id === HOMEWORK_TOUR_FALLBACK_ID) return;
     setCompletionLoading(true);
     try {
       const updated = await setCompletion(schoolSlug, classId, detail.id, {
@@ -381,7 +429,9 @@ export default function TeacherClassHomeworkPage() {
   }
 
   const handleAddComment = handleCommentSubmit(async (values) => {
-    if (!selectedDetail) return;
+    if (!selectedDetail || selectedDetail.id === HOMEWORK_TOUR_FALLBACK_ID) {
+      return;
+    }
     setCommentSaving(true);
     setCommentError(null);
     try {
@@ -424,6 +474,42 @@ export default function TeacherClassHomeworkPage() {
     }));
   }, [homeworks, role]);
 
+  // A demo row is always shown while the tour is on the "list" tab, whether
+  // the real list is empty or not: it keeps the row/mark-done steps
+  // deterministic instead of depending on mutable real data (order, done
+  // state). It disappears as soon as the tour ends (isHomeworkTourActive
+  // becomes false). Never mixed into `listItems`/`summaryStats`, which stay
+  // driven by real data for the "View" tab summary.
+  const fallbackHomeworkItem = useMemo(
+    () => ({
+      id: HOMEWORK_TOUR_FALLBACK_ID,
+      classId,
+      title: t("homework.tourFallback.title"),
+      contentHtml: null,
+      expectedAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      authorUserId: "",
+      authorDisplayName: t("homework.tourFallback.author"),
+      subject: {
+        id: "homework-tour-fallback-subject",
+        name: t("homework.tourFallback.subject"),
+        colorHex: null,
+      },
+      attachments: [],
+      commentsCount: 0,
+      summary: null,
+      myDoneAt: null,
+      status: "todo" as const,
+    }),
+    [classId, t],
+  );
+  const showFallbackHomeworkRow =
+    isStudentOrParent && isHomeworkTourActive && tab === "list";
+  const displayedListRows = showFallbackHomeworkRow
+    ? [fallbackHomeworkItem]
+    : listItems;
+
   const summaryStats = useMemo(() => {
     const total = listItems.length;
     const done = listItems.filter((hw) => hw.status === "done").length;
@@ -432,47 +518,117 @@ export default function TeacherClassHomeworkPage() {
     return { total, done, late, todo };
   }, [listItems]);
 
+  usePageHelp(
+    isStudentOrParent
+      ? {
+          title:
+            tab === "view"
+              ? t("homework.studentHelp.view.title")
+              : t("homework.studentHelp.list.title"),
+          sections: [
+            tab === "view"
+              ? {
+                  title: t("homework.studentHelp.view.section1Title"),
+                  body: [t("homework.studentHelp.view.section1Body")],
+                }
+              : {
+                  title: t("homework.studentHelp.list.section1Title"),
+                  body: [t("homework.studentHelp.list.section1Body")],
+                },
+            {
+              title: t("homework.studentHelp.section2Title"),
+              body: [t("homework.studentHelp.body2")],
+            },
+            {
+              title: t("homework.studentHelp.section3Title"),
+              body: [t("homework.studentHelp.body3")],
+            },
+          ],
+        }
+      : null,
+  );
+
   return (
     <div className="grid gap-4">
       <Card
         title={`${t("homework.page.title")} - ${classCtx?.className ?? t("homework.page.defaultClassName")}`}
         subtitle={t("homework.page.subtitle")}
       >
-        <div className="mb-4 flex items-end gap-2 border-b border-border">
-          <button
-            type="button"
-            onClick={() => setTab("list")}
-            className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-              tab === "list"
-                ? "border border-border border-b-surface bg-surface text-primary"
-                : "text-text-secondary"
-            }`}
-          >
-            {t("homework.tabs.list")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("view")}
-            className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-              tab === "view"
-                ? "border border-border border-b-surface bg-surface text-primary"
-                : "text-text-secondary"
-            }`}
-          >
-            {t("homework.tabs.view")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("help")}
-            className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-              tab === "help"
-                ? "border border-border border-b-surface bg-surface text-primary"
-                : "text-text-secondary"
-            }`}
-          >
-            {t("homework.tabs.help")}
-          </button>
-        </div>
+        {isStudentOrParent ? (
+          <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.tabs}>
+            <div className="mb-4 flex items-end gap-2 border-b border-border">
+              <button
+                type="button"
+                onClick={() => setTab("list")}
+                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                  tab === "list"
+                    ? "border border-border border-b-surface bg-surface text-primary"
+                    : "text-text-secondary"
+                }`}
+              >
+                {t("homework.tabs.list")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("view")}
+                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                  tab === "view"
+                    ? "border border-border border-b-surface bg-surface text-primary"
+                    : "text-text-secondary"
+                }`}
+              >
+                {t("homework.tabs.view")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("help")}
+                className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                  tab === "help"
+                    ? "border border-border border-b-surface bg-surface text-primary"
+                    : "text-text-secondary"
+                }`}
+              >
+                {t("homework.tabs.help")}
+              </button>
+            </div>
+          </OnboardingTarget>
+        ) : (
+          <div className="mb-4 flex items-end gap-2 border-b border-border">
+            <button
+              type="button"
+              onClick={() => setTab("list")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "list"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              {t("homework.tabs.list")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("view")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "view"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              {t("homework.tabs.view")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("help")}
+              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                tab === "help"
+                  ? "border border-border border-b-surface bg-surface text-primary"
+                  : "text-text-secondary"
+              }`}
+            >
+              {t("homework.tabs.help")}
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <p className="text-sm text-text-secondary">
@@ -520,88 +676,104 @@ export default function TeacherClassHomeworkPage() {
               </div>
             )}
 
-            {listItems.length === 0 ? (
+            {displayedListRows.length === 0 ? (
               <p className="text-sm text-text-secondary">
                 {t("homework.list.empty")}
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-text-secondary">
-                      <th className="px-3 py-2 font-medium">
-                        {t("homework.table.title")}
-                      </th>
-                      <th className="px-3 py-2 font-medium">
-                        {t("homework.table.subject")}
-                      </th>
-                      <th className="px-3 py-2 font-medium">
-                        {t("homework.table.dueDate")}
-                      </th>
-                      <th className="px-3 py-2 font-medium">
-                        {t("homework.table.status")}
-                      </th>
-                      <th className="px-3 py-2 font-medium"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {listItems.map((hw) => (
-                      <tr
-                        key={hw.id}
-                        className="border-b border-border hover:bg-background cursor-pointer"
-                        onClick={() => void openDetail(hw)}
-                        data-testid={`homework-row-${hw.id}`}
-                      >
-                        <td className="px-3 py-2 font-medium text-text-primary">
-                          {hw.title}
-                        </td>
-                        <td className="px-3 py-2 text-text-secondary">
-                          {hw.subject.name}
-                        </td>
-                        <td className="px-3 py-2 text-text-secondary">
-                          {formatDate(hw.expectedAt)}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusPill(hw.status)}`}
+              (() => {
+                const table = (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-text-secondary">
+                          <th className="px-3 py-2 font-medium">
+                            {t("homework.table.title")}
+                          </th>
+                          <th className="px-3 py-2 font-medium">
+                            {t("homework.table.subject")}
+                          </th>
+                          <th className="px-3 py-2 font-medium">
+                            {t("homework.table.dueDate")}
+                          </th>
+                          <th className="px-3 py-2 font-medium">
+                            {t("homework.table.status")}
+                          </th>
+                          <th className="px-3 py-2 font-medium"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayedListRows.map((hw) => (
+                          <tr
+                            key={hw.id}
+                            className="border-b border-border hover:bg-background cursor-pointer"
+                            onClick={() => {
+                              void openDetail(hw);
+                              useOnboardingTourStore
+                                .getState()
+                                .advanceIfTarget(HOMEWORK_TOUR_TARGETS.row);
+                            }}
+                            data-testid={`homework-row-${hw.id}`}
                           >
-                            {statusLabel(hw.status, t)}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditForm(hw);
-                              }}
-                              className="text-xs text-primary hover:underline mr-2"
-                              data-testid={`homework-edit-${hw.id}`}
-                            >
-                              {t("homework.detail.edit")}
-                            </button>
-                          )}
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPendingDelete(hw);
-                                setDeleteError(null);
-                              }}
-                              className="text-xs text-notification hover:underline"
-                              data-testid={`homework-delete-${hw.id}`}
-                            >
-                              {t("homework.detail.delete")}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            <td className="px-3 py-2 font-medium text-text-primary">
+                              {hw.title}
+                            </td>
+                            <td className="px-3 py-2 text-text-secondary">
+                              {hw.subject.name}
+                            </td>
+                            <td className="px-3 py-2 text-text-secondary">
+                              {formatDate(hw.expectedAt)}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${statusPill(hw.status)}`}
+                              >
+                                {statusLabel(hw.status, t)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2">
+                              {canManage && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditForm(hw);
+                                  }}
+                                  className="text-xs text-primary hover:underline mr-2"
+                                  data-testid={`homework-edit-${hw.id}`}
+                                >
+                                  {t("homework.detail.edit")}
+                                </button>
+                              )}
+                              {canManage && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPendingDelete(hw);
+                                    setDeleteError(null);
+                                  }}
+                                  className="text-xs text-notification hover:underline"
+                                  data-testid={`homework-delete-${hw.id}`}
+                                >
+                                  {t("homework.detail.delete")}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+                return isStudentOrParent ? (
+                  <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.row}>
+                    {table}
+                  </OnboardingTarget>
+                ) : (
+                  table
+                );
+              })()
             )}
           </div>
         ) : (
@@ -667,25 +839,35 @@ export default function TeacherClassHomeworkPage() {
               </div>
 
               {/* Mark done (student/parent) */}
-              {isStudentOrParent && (
-                <button
-                  type="button"
-                  disabled={completionLoading}
-                  onClick={() => void handleToggleDone(selectedDetail)}
-                  className={`rounded-card px-4 py-2 text-sm font-semibold text-white ${
-                    selectedDetail.myDoneAt
-                      ? "bg-emerald-600 hover:bg-emerald-700"
-                      : "bg-primary hover:opacity-90"
-                  } disabled:opacity-60`}
-                  data-testid="homework-toggle-done"
-                >
-                  {completionLoading
-                    ? t("homework.common.loading")
-                    : selectedDetail.myDoneAt
-                      ? t("homework.detail.markUndone")
-                      : t("homework.detail.markDone")}
-                </button>
-              )}
+              {isStudentOrParent &&
+                (() => {
+                  const markDoneButton = (
+                    <button
+                      type="button"
+                      disabled={completionLoading}
+                      onClick={() => void handleToggleDone(selectedDetail)}
+                      className={`rounded-card px-4 py-2 text-sm font-semibold text-white ${
+                        selectedDetail.myDoneAt
+                          ? "bg-emerald-600 hover:bg-emerald-700"
+                          : "bg-primary hover:opacity-90"
+                      } disabled:opacity-60`}
+                      data-testid="homework-toggle-done"
+                    >
+                      {completionLoading
+                        ? t("homework.common.loading")
+                        : selectedDetail.myDoneAt
+                          ? t("homework.detail.markUndone")
+                          : t("homework.detail.markDone")}
+                    </button>
+                  );
+                  return isStudentOrParent ? (
+                    <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.markDone}>
+                      {markDoneButton}
+                    </OnboardingTarget>
+                  ) : (
+                    markDoneButton
+                  );
+                })()}
 
               {/* Instructions */}
               <div>

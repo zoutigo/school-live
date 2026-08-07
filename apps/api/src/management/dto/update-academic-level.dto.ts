@@ -1,5 +1,5 @@
 import { SchoolLanguageSystem } from "@prisma/client";
-import { IsEnum, IsOptional, IsString } from "class-validator";
+import { IsEnum, IsInt, IsOptional, IsString } from "class-validator";
 
 export class UpdateAcademicLevelDto {
   @IsOptional()
@@ -17,4 +17,8 @@ export class UpdateAcademicLevelDto {
   @IsOptional()
   @IsEnum(SchoolLanguageSystem)
   languageSystem?: SchoolLanguageSystem;
+
+  @IsOptional()
+  @IsInt()
+  order?: number;
 }
