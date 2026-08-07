@@ -727,7 +727,14 @@ export class ManagementController {
 
   @Get("schools/:schoolSlug/admin/academic-levels")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
   listAcademicLevels(@CurrentSchoolId() schoolId: string) {
     return this.managementService.listAcademicLevels(schoolId);
   }

@@ -65,7 +65,34 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const EVALUATION_ATTACHMENT_ACCEPT =
   ".jpg,.jpeg,.png,.webp,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
 
-type TabKey = "evaluations" | "notes" | "scores" | "council" | "help";
+type TabKey =
+  | "evaluations"
+  | "notes"
+  | "scores"
+  | "council"
+  | "decision"
+  | "help";
+
+type PromotionDecision = "PROMOTED" | "REPEATED" | "LEFT";
+
+type TermReportForDecisionRow = {
+  id: string;
+  studentId: string;
+  student: { id: string; firstName: string; lastName: string };
+  decision: PromotionDecision | null;
+  nextAcademicLevel: { id: string; label: string } | null;
+  nextTrack: { id: string; label: string } | null;
+  termAverages: {
+    TERM_1: number | null;
+    TERM_2: number | null;
+    TERM_3: number | null;
+  };
+  yearlyAverage: number | null;
+  rank: number | null;
+  classSize: number | null;
+};
+
+type AcademicLevelOption = { id: string; label: string };
 
 type AdminClassroomOption = {
   id: string;
@@ -265,6 +292,19 @@ export default function TeacherClassNotesPage() {
     Record<string, { score: string; status: string; comment: string }>
   >({});
 
+  // ── Onglet Décision : passage en classe supérieure (prof référent) ────────
+  const [decisionRows, setDecisionRows] = useState<TermReportForDecisionRow[]>(
+    [],
+  );
+  const [decisionLevels, setDecisionLevels] = useState<AcademicLevelOption[]>(
+    [],
+  );
+  const [decisionDrafts, setDecisionDrafts] = useState<
+    Record<string, { decision: PromotionDecision; nextAcademicLevelId: string }>
+  >({});
+  const [loadingDecision, setLoadingDecision] = useState(false);
+  const [savingDecisionId, setSavingDecisionId] = useState<string | null>(null);
+
   // ── Onglet Notes : recherche élève dans la classe (parité mobile) ─────────
   const [studentSearch, setStudentSearch] = useState("");
   const [selectedNotesStudentId, setSelectedNotesStudentId] = useState<
@@ -357,6 +397,13 @@ export default function TeacherClassNotesPage() {
 
     void loadCouncilReports(councilTerm);
   }, [context, councilTerm]);
+
+  useEffect(() => {
+    if (!context || tab !== "decision" || !context.class.isReferentTeacher) {
+      return;
+    }
+    void loadDecisionTab();
+  }, [context, tab]);
 
   // Notes de l'élève sélectionné dans l'onglet Notes.
   useEffect(() => {
@@ -534,6 +581,82 @@ export default function TeacherClassNotesPage() {
         ]),
       ),
     );
+  }
+
+  async function loadDecisionTab() {
+    setLoadingDecision(true);
+    try {
+      const [levelsResponse, reportsResponse] = await Promise.all([
+        fetch(`${API_URL}/schools/${schoolSlug}/admin/academic-levels`, {
+          credentials: "include",
+        }),
+        fetch(
+          `${API_URL}/schools/${schoolSlug}/admin/promotions/classes/${classId}/term-reports`,
+          { credentials: "include" },
+        ),
+      ]);
+      const levels = levelsResponse.ok
+        ? ((await levelsResponse.json()) as AcademicLevelOption[])
+        : [];
+      const rows = reportsResponse.ok
+        ? ((await reportsResponse.json()) as TermReportForDecisionRow[])
+        : [];
+      setDecisionLevels(levels);
+      setDecisionRows(rows);
+      setDecisionDrafts(
+        Object.fromEntries(
+          rows.map((row) => [
+            row.id,
+            {
+              decision: row.decision ?? "PROMOTED",
+              nextAcademicLevelId: row.nextAcademicLevel?.id ?? "",
+            },
+          ]),
+        ),
+      );
+    } finally {
+      setLoadingDecision(false);
+    }
+  }
+
+  async function saveDecision(reportId: string) {
+    const draft = decisionDrafts[reportId];
+    if (!draft) return;
+    setSavingDecisionId(reportId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const csrfToken = getCsrfTokenCookie();
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/admin/promotions/term-reports/${reportId}/decision`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "content-type": "application/json",
+            ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+          },
+          body: JSON.stringify({
+            decision: draft.decision,
+            nextAcademicLevelId:
+              draft.decision === "LEFT"
+                ? undefined
+                : draft.nextAcademicLevelId || undefined,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(t("notes.teacher.decision.errors.save"));
+      }
+      await loadDecisionTab();
+      setSuccess(t("notes.teacher.decision.success.saved"));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : t("notes.common.networkError"),
+      );
+    } finally {
+      setSavingDecisionId(null);
+    }
   }
 
   async function loadCouncilReports(currentTerm: string) {
@@ -978,27 +1101,37 @@ export default function TeacherClassNotesPage() {
                   },
                 ],
               }
-            : {
-                title: t("notes.teacher.pageHelp.evaluations.title"),
-                sections: [
-                  {
-                    title: t(
-                      "notes.teacher.pageHelp.evaluations.section1Title",
-                    ),
-                    body: [
-                      t("notes.teacher.pageHelp.evaluations.section1Body"),
-                    ],
-                  },
-                  {
-                    title: t(
-                      "notes.teacher.pageHelp.evaluations.section2Title",
-                    ),
-                    body: [
-                      t("notes.teacher.pageHelp.evaluations.section2Body"),
-                    ],
-                  },
-                ],
-              }
+            : tab === "decision"
+              ? {
+                  title: t("notes.teacher.pageHelp.decision.title"),
+                  sections: [
+                    {
+                      title: t("notes.teacher.pageHelp.decision.section1Title"),
+                      body: [t("notes.teacher.pageHelp.decision.section1Body")],
+                    },
+                  ],
+                }
+              : {
+                  title: t("notes.teacher.pageHelp.evaluations.title"),
+                  sections: [
+                    {
+                      title: t(
+                        "notes.teacher.pageHelp.evaluations.section1Title",
+                      ),
+                      body: [
+                        t("notes.teacher.pageHelp.evaluations.section1Body"),
+                      ],
+                    },
+                    {
+                      title: t(
+                        "notes.teacher.pageHelp.evaluations.section2Title",
+                      ),
+                      body: [
+                        t("notes.teacher.pageHelp.evaluations.section2Body"),
+                      ],
+                    },
+                  ],
+                }
       : null,
   );
 
@@ -1172,6 +1305,9 @@ export default function TeacherClassNotesPage() {
             { key: "notes", label: t("notes.teacher.tabs.notes") },
             { key: "scores", label: t("notes.teacher.tabs.scores") },
             { key: "council", label: t("notes.teacher.tabs.council") },
+            ...(!isAdminBrowsing && context?.class.isReferentTeacher
+              ? [{ key: "decision", label: t("notes.teacher.tabs.decision") }]
+              : []),
             ...(role === "TEACHER"
               ? []
               : [{ key: "help", label: t("notes.teacher.tabs.help") }]),
@@ -2515,7 +2651,7 @@ export default function TeacherClassNotesPage() {
               </div>
             )}
           </div>
-        ) : (
+        ) : tab === "council" ? (
           <div className="grid gap-4">
             <div className="grid gap-3 md:grid-cols-[180px_220px_180px]">
               <label className="grid gap-1 text-sm">
@@ -2600,7 +2736,155 @@ export default function TeacherClassNotesPage() {
               isSubmitting={savingCouncil}
             />
           </div>
-        )}
+        ) : tab === "decision" && context.class.isReferentTeacher ? (
+          <div className="grid gap-4" data-testid="decision-tab">
+            <p className="text-sm text-text-secondary">
+              {t("notes.teacher.decision.intro")}
+            </p>
+
+            {loadingDecision ? (
+              <p className="text-sm text-text-secondary">
+                {t("notes.common.loading")}
+              </p>
+            ) : decisionRows.length === 0 ? (
+              <p className="text-sm text-text-secondary">
+                {t("notes.teacher.decision.empty")}
+              </p>
+            ) : (
+              <>
+                {error ? (
+                  <p className="text-sm text-notification">{error}</p>
+                ) : null}
+                {success ? (
+                  <p className="text-sm text-accent-teal">{success}</p>
+                ) : null}
+                <div className="overflow-x-auto rounded-[18px] border border-warm-border bg-surface p-2 shadow-[0_10px_24px_rgba(77,56,32,0.06)]">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-text-secondary">
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnStudent")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">T1</th>
+                        <th className="px-3 py-2 font-medium">T2</th>
+                        <th className="px-3 py-2 font-medium">T3</th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnYearly")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnRank")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnDecision")}
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          {t("notes.teacher.decision.columnNextLevel")}
+                        </th>
+                        <th className="px-3 py-2 font-medium" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {decisionRows.map((row) => {
+                        const draft = decisionDrafts[row.id];
+                        return (
+                          <tr
+                            key={row.id}
+                            className="border-b border-border/70"
+                            data-testid={`decision-row-${row.id}`}
+                          >
+                            <td className="px-3 py-2 font-medium text-text-primary">
+                              {row.student.lastName} {row.student.firstName}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.termAverages.TERM_1 ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.termAverages.TERM_2 ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.termAverages.TERM_3 ?? "-"}
+                            </td>
+                            <td className="px-3 py-2 font-semibold text-primary">
+                              {row.yearlyAverage ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.rank !== null && row.classSize !== null
+                                ? `${row.rank}/${row.classSize}`
+                                : "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              <FormSelect
+                                value={draft?.decision ?? "PROMOTED"}
+                                onChange={(event) =>
+                                  setDecisionDrafts((current) => ({
+                                    ...current,
+                                    [row.id]: {
+                                      ...current[row.id],
+                                      decision: event.target
+                                        .value as PromotionDecision,
+                                    },
+                                  }))
+                                }
+                                data-testid={`decision-row-${row.id}-select`}
+                              >
+                                <option value="PROMOTED">
+                                  {t("notes.teacher.decision.promoted")}
+                                </option>
+                                <option value="REPEATED">
+                                  {t("notes.teacher.decision.repeated")}
+                                </option>
+                                <option value="LEFT">
+                                  {t("notes.teacher.decision.left")}
+                                </option>
+                              </FormSelect>
+                            </td>
+                            <td className="px-3 py-2">
+                              {draft?.decision !== "LEFT" ? (
+                                <FormSelect
+                                  value={draft?.nextAcademicLevelId ?? ""}
+                                  onChange={(event) =>
+                                    setDecisionDrafts((current) => ({
+                                      ...current,
+                                      [row.id]: {
+                                        ...current[row.id],
+                                        nextAcademicLevelId: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  data-testid={`decision-row-${row.id}-level`}
+                                >
+                                  <option value="">
+                                    {t("notes.common.select")}
+                                  </option>
+                                  {decisionLevels.map((level) => (
+                                    <option key={level.id} value={level.id}>
+                                      {level.label}
+                                    </option>
+                                  ))}
+                                </FormSelect>
+                              ) : null}
+                            </td>
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                onClick={() => void saveDecision(row.id)}
+                                disabled={savingDecisionId === row.id}
+                                className="rounded-[10px] bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-70"
+                                data-testid={`decision-row-${row.id}-save`}
+                              >
+                                {t("notes.teacher.decision.save")}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
       </Card>
     </div>
   );

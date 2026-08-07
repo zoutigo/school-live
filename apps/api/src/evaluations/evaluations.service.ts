@@ -801,6 +801,66 @@ export class EvaluationsService {
     });
   }
 
+  /**
+   * Moyenne générale pondérée (coefficients matière) de chaque élève de la
+   * classe, pour chaque trimestre où un bulletin existe. Utilisé par le
+   * module Promotions pour la synthèse annuelle (T1/T2/T3) accompagnant la
+   * décision de passage.
+   */
+  async computeClassTermAverages(
+    schoolId: string,
+    classId: string,
+  ): Promise<Map<string, Partial<Record<Term, number | null>>>> {
+    const classEntity = await this.prisma.class.findFirst({
+      where: { id: classId, schoolId },
+      select: { schoolYearId: true, curriculumId: true },
+    });
+    if (!classEntity) {
+      return new Map();
+    }
+
+    const subjectWeights = await this.loadSubjectWeights(
+      schoolId,
+      classEntity.curriculumId,
+      classId,
+    );
+
+    const reports = await this.prisma.studentTermReport.findMany({
+      where: { schoolId, classId, schoolYearId: classEntity.schoolYearId },
+      include: { subjectEntries: true },
+    });
+
+    const result = new Map<string, Partial<Record<Term, number | null>>>();
+    for (const report of reports) {
+      const validEntries = report.subjectEntries.filter(
+        (entry) => entry.termAverage !== null,
+      );
+      const totalCoeff = validEntries.reduce(
+        (sum, entry) => sum + (subjectWeights.get(entry.subjectId) ?? 1),
+        0,
+      );
+      const average =
+        totalCoeff > 0
+          ? Number(
+              (
+                validEntries.reduce(
+                  (sum, entry) =>
+                    sum +
+                    (entry.termAverage ?? 0) *
+                      (subjectWeights.get(entry.subjectId) ?? 1),
+                  0,
+                ) / totalCoeff
+              ).toFixed(2),
+            )
+          : null;
+
+      const current = result.get(report.studentId) ?? {};
+      current[report.term] = average;
+      result.set(report.studentId, current);
+    }
+    return result;
+  }
+
   async upsertClassTermReports(
     user: AuthenticatedUser,
     schoolId: string,

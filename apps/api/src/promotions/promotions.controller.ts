@@ -28,21 +28,32 @@ const PROMOTION_ROLES = [
   "SUPER_ADMIN",
 ] as const;
 
+// Un enseignant referent peut acceder aux routes de decision (term-reports),
+// mais pas a la gestion des inscriptions en attente / affectation de classe :
+// ces deux routes gardent PROMOTION_ROLES via un @Roles dedie sur leurs handlers.
+const PROMOTION_DECISION_ROLES = [...PROMOTION_ROLES, "TEACHER"] as const;
+
 @Controller("schools/:schoolSlug/admin/promotions")
 @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-@Roles(...PROMOTION_ROLES)
 export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
   @Get("classes/:classId/term-reports")
+  @Roles(...PROMOTION_DECISION_ROLES)
   listTermReportsForDecision(
     @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param("classId") classId: string,
   ) {
-    return this.promotionsService.listTermReportsForDecision(schoolId, classId);
+    return this.promotionsService.listTermReportsForDecision(
+      user,
+      schoolId,
+      classId,
+    );
   }
 
   @Patch("term-reports/:reportId/decision")
+  @Roles(...PROMOTION_DECISION_ROLES)
   setTermReportDecision(
     @CurrentSchoolId() schoolId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -50,14 +61,15 @@ export class PromotionsController {
     @Body() payload: SetTermReportDecisionDto,
   ) {
     return this.promotionsService.setTermReportDecision(
+      user,
       schoolId,
       reportId,
       payload,
-      user.id,
     );
   }
 
   @Get("waiting-enrollments")
+  @Roles(...PROMOTION_ROLES)
   listWaitingEnrollments(
     @CurrentSchoolId() schoolId: string,
     @Query() query: ListWaitingEnrollmentsQueryDto,
@@ -66,6 +78,7 @@ export class PromotionsController {
   }
 
   @Patch("enrollments/:enrollmentId/assign-class")
+  @Roles(...PROMOTION_ROLES)
   assignEnrollmentToClass(
     @CurrentSchoolId() schoolId: string,
     @Param("enrollmentId") enrollmentId: string,
@@ -79,6 +92,7 @@ export class PromotionsController {
   }
 
   @Post("students/:studentId/confirm-reinscription")
+  @Roles(...PROMOTION_ROLES)
   confirmReinscriptionManually(
     @CurrentSchoolId() schoolId: string,
     @CurrentUser() user: AuthenticatedUser,

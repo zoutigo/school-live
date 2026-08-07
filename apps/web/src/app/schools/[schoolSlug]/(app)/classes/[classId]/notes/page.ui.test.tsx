@@ -1078,6 +1078,131 @@ describe("TeacherClassNotesPage council tab", () => {
   });
 });
 
+describe("TeacherClassNotesPage decision tab (referent teacher only)", () => {
+  const DECISION_ROW = {
+    id: "report-1",
+    studentId: "student-1",
+    student: { id: "student-1", firstName: "Eleve1", lastName: "MBELE" },
+    decision: null,
+    nextAcademicLevel: null,
+    nextTrack: null,
+    termAverages: { TERM_1: 10, TERM_2: 12, TERM_3: 14 },
+    yearlyAverage: 12,
+    rank: 1,
+    classSize: 20,
+  };
+
+  function setupReferentFetchMock() {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const request = input instanceof Request ? input : null;
+      const url = String(input);
+      const method =
+        request?.method ??
+        (typeof init === "object" && init !== null && "method" in init
+          ? init.method
+          : undefined);
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER" });
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: {
+            id: "class-1",
+            name: "6eC",
+            schoolYearId: "sy-1",
+            isReferentTeacher: true,
+          },
+          subjects: [{ id: "sub-1", name: "Mathematiques", branches: [] }],
+          evaluationTypes: [],
+          students: [
+            { id: "student-1", firstName: "Eleve1", lastName: "MBELE" },
+          ],
+        });
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/term-reports?term=")) {
+        return jsonResponse([]);
+      }
+      if (url.includes("/admin/academic-levels")) {
+        return jsonResponse([{ id: "level-5e", label: "5eme" }]);
+      }
+      if (
+        url.includes("/admin/promotions/classes/class-1/term-reports") &&
+        method !== "PATCH"
+      ) {
+        return jsonResponse([DECISION_ROW]);
+      }
+      if (
+        url.includes("/admin/promotions/term-reports/report-1/decision") &&
+        method === "PATCH"
+      ) {
+        return jsonResponse({ ...DECISION_ROW, decision: "PROMOTED" });
+      }
+      if (url.includes("/students/") && url.endsWith("/notes")) {
+        return jsonResponse([]);
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+  }
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+  });
+
+  it("hides the Decision tab when the teacher is not the class referent", async () => {
+    setupFetchMock();
+    render(<TeacherClassNotesPage />);
+    await screen.findByRole("button", { name: /Conseil de classe/i });
+    expect(
+      screen.queryByRole("button", { name: /^Décision$/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the yearly synthesis and saves a decision for the referent teacher", async () => {
+    setupReferentFetchMock();
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Décision$/i }));
+
+    expect(
+      await screen.findByTestId("decision-row-report-1"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("decision-tab")).toHaveTextContent("12");
+
+    fireEvent.change(screen.getByTestId("decision-row-report-1-select"), {
+      target: { value: "PROMOTED" },
+    });
+    fireEvent.change(screen.getByTestId("decision-row-report-1-level"), {
+      target: { value: "level-5e" },
+    });
+    fireEvent.click(screen.getByTestId("decision-row-report-1-save"));
+
+    await waitFor(() => {
+      const patchCall = vi
+        .mocked(globalThis.fetch)
+        .mock.calls.find(([reqInput, reqInit]) => {
+          const url = String(reqInput);
+          const method =
+            reqInit && typeof reqInit === "object" && "method" in reqInit
+              ? reqInit.method
+              : undefined;
+          return (
+            url.includes("/admin/promotions/term-reports/report-1/decision") &&
+            method === "PATCH"
+          );
+        });
+      expect(patchCall).toBeDefined();
+    });
+  });
+});
+
 describe("TeacherClassNotesPage admin class switcher", () => {
   const ADMIN_CLASSROOMS = [
     {

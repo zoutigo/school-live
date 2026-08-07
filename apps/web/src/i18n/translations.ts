@@ -1276,7 +1276,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.tabs.notes": "Notes",
     "notes.teacher.tabs.scores": "Saisie des notes",
     "notes.teacher.tabs.council": "Conseil de classe",
+    "notes.teacher.tabs.decision": "Décision",
     "notes.teacher.tabs.help": "Aide",
+    "notes.teacher.decision.intro":
+      "Synthèse annuelle et décision de passage, réservée au professeur référent de la classe.",
+    "notes.teacher.decision.empty":
+      "Aucun bulletin du 3ème trimestre n'est disponible pour cette classe.",
+    "notes.teacher.decision.columnStudent": "Élève",
+    "notes.teacher.decision.columnYearly": "Moy. annuelle",
+    "notes.teacher.decision.columnRank": "Rang",
+    "notes.teacher.decision.columnDecision": "Décision",
+    "notes.teacher.decision.columnNextLevel": "Niveau cible",
+    "notes.teacher.decision.promoted": "Passage",
+    "notes.teacher.decision.repeated": "Redoublement",
+    "notes.teacher.decision.left": "Départ",
+    "notes.teacher.decision.save": "Enregistrer",
+    "notes.teacher.decision.errors.save":
+      "Impossible d'enregistrer la décision",
+    "notes.teacher.decision.success.saved": "Décision enregistrée",
     "notes.teacher.notesTab.subtitle":
       "Recherchez un eleve de la classe pour consulter ses notes.",
     "notes.teacher.notesTab.searchPlaceholder": "Rechercher un eleve...",
@@ -1365,10 +1382,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.pageHelp.council.section1Title": "Rédiger les appréciations",
     "notes.teacher.pageHelp.council.section1Body":
       "Choisissez la séquence puis rédigez ou modifiez l'appréciation de chaque élève avant de publier le conseil de classe.",
+    "notes.teacher.pageHelp.decision.title":
+      "Comment utiliser l'onglet Décision",
+    "notes.teacher.pageHelp.decision.section1Title": "Statuer sur le passage",
+    "notes.teacher.pageHelp.decision.section1Body":
+      "Consultez la moyenne de chaque trimestre, la moyenne annuelle et le rang de l'élève, puis choisissez Passage, Redoublement ou Départ et enregistrez.",
 
-    "onboardingTour.teacherNotes.step1Title": "Quatre onglets",
+    "onboardingTour.teacherNotes.step1Title": "Les onglets",
     "onboardingTour.teacherNotes.step1Body":
-      "Passez des évaluations aux notes par élève, à la saisie des notes puis au conseil de classe.",
+      "Passez des évaluations aux notes par élève, à la saisie des notes puis au conseil de classe. Si vous êtes professeur référent de la classe, un onglet Décision apparaît en plus pour statuer sur le passage.",
     "onboardingTour.teacherNotes.step2Title": "Rechercher et filtrer",
     "onboardingTour.teacherNotes.step2Body":
       "Touchez l'icône filtre pour affiner la liste des évaluations par type, séquence ou statut de saisie.",
@@ -5990,7 +6012,23 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.tabs.notes": "Notes",
     "notes.teacher.tabs.scores": "Grade entry",
     "notes.teacher.tabs.council": "Class council",
+    "notes.teacher.tabs.decision": "Decision",
     "notes.teacher.tabs.help": "Help",
+    "notes.teacher.decision.intro":
+      "Yearly synthesis and promotion decision, restricted to the class's referent teacher.",
+    "notes.teacher.decision.empty":
+      "No term 3 report is available for this class yet.",
+    "notes.teacher.decision.columnStudent": "Student",
+    "notes.teacher.decision.columnYearly": "Yearly avg.",
+    "notes.teacher.decision.columnRank": "Rank",
+    "notes.teacher.decision.columnDecision": "Decision",
+    "notes.teacher.decision.columnNextLevel": "Target level",
+    "notes.teacher.decision.promoted": "Promoted",
+    "notes.teacher.decision.repeated": "Repeated",
+    "notes.teacher.decision.left": "Left",
+    "notes.teacher.decision.save": "Save",
+    "notes.teacher.decision.errors.save": "Unable to save decision",
+    "notes.teacher.decision.success.saved": "Decision saved",
     "notes.teacher.notesTab.subtitle":
       "Search a student in this class to view their notes.",
     "notes.teacher.notesTab.searchPlaceholder": "Search a student...",
@@ -6069,10 +6107,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.pageHelp.council.section1Title": "Write assessments",
     "notes.teacher.pageHelp.council.section1Body":
       "Choose the sequence then write or edit each student's assessment before publishing the class council.",
+    "notes.teacher.pageHelp.decision.title": "How to use the Decision tab",
+    "notes.teacher.pageHelp.decision.section1Title": "Decide on promotion",
+    "notes.teacher.pageHelp.decision.section1Body":
+      "Review each term average, the yearly average and the student's rank, then choose Promoted, Repeated or Left and save.",
 
-    "onboardingTour.teacherNotes.step1Title": "Four tabs",
+    "onboardingTour.teacherNotes.step1Title": "The tabs",
     "onboardingTour.teacherNotes.step1Body":
-      "Switch from evaluations to per-student scores, to score entry, then to the class council.",
+      "Switch from evaluations to per-student scores, to score entry, then to the class council. If you're the class's referent teacher, an extra Decision tab appears to decide on promotion.",
     "onboardingTour.teacherNotes.step2Title": "Search and filter",
     "onboardingTour.teacherNotes.step2Body":
       "Tap the filter icon to narrow down the evaluation list by type, sequence or entry status.",
