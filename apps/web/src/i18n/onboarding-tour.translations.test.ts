@@ -118,6 +118,114 @@ describe("onboardingTour.* translations", () => {
       expect(translations.en[key]).toBeTruthy();
     }
   });
+
+  it("has the teacher-notes tour steps and per-tab help dialog content in both locales", () => {
+    const requiredKeys = [
+      "onboardingTour.teacherNotes.step1Title",
+      "onboardingTour.teacherNotes.step1Body",
+      "onboardingTour.teacherNotes.step2Title",
+      "onboardingTour.teacherNotes.step2Body",
+      "onboardingTour.teacherNotes.step3Title",
+      "onboardingTour.teacherNotes.step3Body",
+      "onboardingTour.teacherNotes.step4Title",
+      "onboardingTour.teacherNotes.step4Body",
+      "notes.teacher.pageHelp.evaluations.title",
+      "notes.teacher.pageHelp.evaluations.section1Title",
+      "notes.teacher.pageHelp.evaluations.section1Body",
+      "notes.teacher.pageHelp.evaluations.section2Title",
+      "notes.teacher.pageHelp.evaluations.section2Body",
+      "notes.teacher.pageHelp.notes.title",
+      "notes.teacher.pageHelp.notes.section1Title",
+      "notes.teacher.pageHelp.notes.section1Body",
+      "notes.teacher.pageHelp.scores.title",
+      "notes.teacher.pageHelp.scores.section1Title",
+      "notes.teacher.pageHelp.scores.section1Body",
+      "notes.teacher.pageHelp.council.title",
+      "notes.teacher.pageHelp.council.section1Title",
+      "notes.teacher.pageHelp.council.section1Body",
+    ];
+
+    for (const key of requiredKeys) {
+      expect(translations.fr[key]).toBeTruthy();
+      expect(translations.en[key]).toBeTruthy();
+    }
+  });
+
+  it("has the teacher-discipline tour steps and per-tab help dialog content in both locales", () => {
+    const requiredKeys = [
+      "onboardingTour.teacherDiscipline.step1Title",
+      "onboardingTour.teacherDiscipline.step1Body",
+      "onboardingTour.teacherDiscipline.step2Title",
+      "onboardingTour.teacherDiscipline.step2Body",
+      "onboardingTour.teacherDiscipline.step3Title",
+      "onboardingTour.teacherDiscipline.step3Body",
+      "discipline.pageHelp.entry.title",
+      "discipline.pageHelp.entry.section1Title",
+      "discipline.pageHelp.entry.section1Body",
+      "discipline.pageHelp.entry.section2Title",
+      "discipline.pageHelp.entry.section2Body",
+      "discipline.pageHelp.history.title",
+      "discipline.pageHelp.history.section1Title",
+      "discipline.pageHelp.history.section1Body",
+    ];
+
+    for (const key of requiredKeys) {
+      expect(translations.fr[key]).toBeTruthy();
+      expect(translations.en[key]).toBeTruthy();
+    }
+  });
+
+  it("has the teacher-home tour steps and help dialog content in both locales", () => {
+    const requiredKeys = [
+      "onboardingTour.teacherHome.step1Title",
+      "onboardingTour.teacherHome.step1Body",
+      "onboardingTour.teacherHome.step2Title",
+      "onboardingTour.teacherHome.step2Body",
+      "onboardingTour.teacherHome.step3Title",
+      "onboardingTour.teacherHome.step3Body",
+      "dashboard.teacher.help.title",
+      "dashboard.teacher.help.section1Title",
+      "dashboard.teacher.help.section1Body",
+      "dashboard.teacher.help.section2Title",
+      "dashboard.teacher.help.section2Body",
+    ];
+
+    for (const key of requiredKeys) {
+      expect(translations.fr[key]).toBeTruthy();
+      expect(translations.en[key]).toBeTruthy();
+    }
+  });
+
+  it("has the teacher class-agenda tour steps and per-tab help dialog content in both locales", () => {
+    const requiredKeys = [
+      "onboardingTour.teacherClassAgenda.step1Title",
+      "onboardingTour.teacherClassAgenda.step1Body",
+      "onboardingTour.teacherClassAgenda.step2Title",
+      "onboardingTour.teacherClassAgenda.step2Body",
+      "onboardingTour.teacherClassAgenda.step3Title",
+      "onboardingTour.teacherClassAgenda.step3Body",
+      "onboardingTour.teacherClassAgenda.step4Title",
+      "onboardingTour.teacherClassAgenda.step4Body",
+      "timetable.agenda.teacherHelp.slots.title",
+      "timetable.agenda.teacherHelp.slots.section1Title",
+      "timetable.agenda.teacherHelp.slots.section1Body",
+      "timetable.agenda.teacherHelp.slots.section2Title",
+      "timetable.agenda.teacherHelp.slots.section2Body",
+      "timetable.agenda.teacherHelp.slots.section3Title",
+      "timetable.agenda.teacherHelp.slots.section3Body",
+      "timetable.agenda.teacherHelp.vacations.title",
+      "timetable.agenda.teacherHelp.vacations.section1Title",
+      "timetable.agenda.teacherHelp.vacations.section1Body",
+      "timetable.agenda.teacherHelp.colors.title",
+      "timetable.agenda.teacherHelp.colors.section1Title",
+      "timetable.agenda.teacherHelp.colors.section1Body",
+    ];
+
+    for (const key of requiredKeys) {
+      expect(translations.fr[key]).toBeTruthy();
+      expect(translations.en[key]).toBeTruthy();
+    }
+  });
 });
 
 describe("settings.onboardingHelp.* translations", () => {

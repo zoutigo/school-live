@@ -13,7 +13,6 @@ import {
   CreditCard,
   GraduationCap,
   HeartHandshake,
-  HelpCircle,
   LayoutDashboard,
   MessageSquare,
   ShieldAlert,
@@ -24,13 +23,17 @@ import { FamilyFeedPage } from "../../../../../components/feed/family-feed-page"
 import { getSchoolMessagesUnreadCount } from "../../../../../components/messaging/messaging-api";
 import type { StudentNotesTermSnapshot } from "../../../../../components/student-notes/student-notes.types";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
-import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
-import { HelpDialog } from "../../../../../components/ui/help-dialog";
+import { usePageHelp } from "../../../../../store/page-help";
 import {
   PARENT_LANDING_TOUR_ID,
   PARENT_LANDING_TOUR_STEPS,
-  PARENT_LANDING_TOUR_TARGETS,
 } from "./parent-landing-tour.config";
+import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
+import {
+  TEACHER_HOME_TOUR_ID,
+  TEACHER_HOME_TOUR_STEPS,
+  TEACHER_HOME_TOUR_TARGETS,
+} from "./teacher-home-tour.config";
 import {
   useTranslation,
   type TranslateFn,
@@ -241,12 +244,9 @@ function getHeroContent(
 function WarmWelcomePanel({
   me,
   t,
-  onHelpClick,
 }: {
   me: MeResponse | null;
   t: TranslateFn;
-  /** Parent-only "?" help toggle rendered next to the badge, when provided. */
-  onHelpClick?: () => void;
 }) {
   const fullName = me
     ? `${me.firstName} ${me.lastName}`
@@ -264,19 +264,6 @@ function WarmWelcomePanel({
               <Sparkles className="h-4 w-4" />
               {hero.badge}
             </div>
-            {onHelpClick ? (
-              <OnboardingTarget id={PARENT_LANDING_TOUR_TARGETS.helpButton}>
-                <button
-                  type="button"
-                  data-testid="dashboard-parent-help-toggle"
-                  aria-label={t("dashboard.parent.help.toggle")}
-                  onClick={onHelpClick}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-orange-200/80 bg-white/80 text-orange-900 backdrop-blur hover:bg-white"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </button>
-              </OnboardingTarget>
-            ) : null}
           </div>
           <h1 className="font-heading text-[1.6rem] font-semibold leading-tight text-slate-900 sm:text-3xl md:text-4xl">
             {t("dashboard.hero.welcome").replace("{fullName}", fullName)}
@@ -731,7 +718,11 @@ function TeacherClassesGrid({
   }
 
   return (
-    <div className="flex flex-wrap gap-2" data-testid="teacher-classes-grid">
+    <OnboardingTarget
+      id={TEACHER_HOME_TOUR_TARGETS.classesGrid}
+      className="flex flex-wrap gap-2"
+      data-testid="teacher-classes-grid"
+    >
       {classes.map((cls, idx) => {
         const bg =
           TEACHER_CLASS_PALETTE[idx % TEACHER_CLASS_PALETTE.length] ??
@@ -765,7 +756,7 @@ function TeacherClassesGrid({
           </Link>
         );
       })}
-    </div>
+    </OnboardingTarget>
   );
 }
 
@@ -779,6 +770,7 @@ function TeacherSectionCard({
   subtitle,
   children,
   testId,
+  linkTourTargetId,
 }: {
   title: string;
   icon: LucideIcon;
@@ -789,6 +781,8 @@ function TeacherSectionCard({
   subtitle?: string;
   children: ReactNode;
   testId?: string;
+  /** Onboarding tour target id wrapping the header link, if it should be spotlighted. */
+  linkTourTargetId?: string;
 }) {
   return (
     <article
@@ -818,16 +812,27 @@ function TeacherSectionCard({
             </span>
           ) : null}
         </div>
-        {linkHref && linkLabel ? (
-          <Link
-            href={linkHref}
-            className="flex shrink-0 items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
-            style={{ color: iconColor }}
-          >
-            {linkLabel}
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        ) : null}
+        {linkHref && linkLabel
+          ? (() => {
+              const link = (
+                <Link
+                  href={linkHref}
+                  className="flex shrink-0 items-center gap-1 text-[11px] font-semibold transition-opacity hover:opacity-80"
+                  style={{ color: iconColor }}
+                >
+                  {linkLabel}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              );
+              return linkTourTargetId ? (
+                <OnboardingTarget id={linkTourTargetId}>
+                  {link}
+                </OnboardingTarget>
+              ) : (
+                link
+              );
+            })()
+          : null}
       </div>
       <div>{children}</div>
     </article>
@@ -1053,6 +1058,7 @@ function TeacherEvalsSection({
       linkLabel={t("dashboard.teacher.evalsLinkLabel")}
       linkHref={`/schools/${schoolSlug}/student-grades`}
       testId="section-teacher-evals"
+      linkTourTargetId={TEACHER_HOME_TOUR_TARGETS.evalsLink}
     >
       {loading && !dashboard ? (
         <TeacherSectionSkeleton />
@@ -1217,7 +1223,6 @@ export default function DashboardPage() {
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [parentCardsLoading, setParentCardsLoading] = useState(false);
   const [disciplineSummaries, setDisciplineSummaries] = useState<
     ChildDisciplineSummary[]
@@ -1277,6 +1282,19 @@ export default function DashboardPage() {
     }
 
     if (payload.role === "TEACHER") {
+      const tourStore = useOnboardingTourStore.getState();
+      if (
+        payload.onboardingHelpEnabled !== false &&
+        !tourStore.isCompleted("teacher", TEACHER_HOME_TOUR_ID) &&
+        !tourStore.activeTourId
+      ) {
+        tourStore.startTour(
+          TEACHER_HOME_TOUR_ID,
+          "teacher",
+          TEACHER_HOME_TOUR_STEPS,
+        );
+      }
+
       await loadTeacherDashboardData();
       return;
     }
@@ -1679,18 +1697,48 @@ export default function DashboardPage() {
     month: "long",
   }).format(new Date());
 
+  usePageHelp(
+    me?.role === "PARENT"
+      ? {
+          title: t("dashboard.parent.help.title"),
+          sections: [
+            {
+              title: t("dashboard.parent.help.section1Title"),
+              body: [t("dashboard.parent.help.body1")],
+            },
+            {
+              title: t("dashboard.parent.help.section2Title"),
+              body: [t("dashboard.parent.help.body2")],
+            },
+            {
+              title: t("dashboard.parent.help.section3Title"),
+              body: [t("dashboard.parent.help.body3")],
+            },
+          ],
+        }
+      : me?.role === "TEACHER"
+        ? {
+            title: t("dashboard.teacher.help.title"),
+            sections: [
+              {
+                title: t("dashboard.teacher.help.section1Title"),
+                body: [t("dashboard.teacher.help.section1Body")],
+              },
+              {
+                title: t("dashboard.teacher.help.section2Title"),
+                body: [t("dashboard.teacher.help.section2Body")],
+              },
+            ],
+          }
+        : null,
+  );
+
   return (
     <div
       data-testid="dashboard-root"
       className="grid w-full min-w-0 gap-4 overflow-x-hidden min-[360px]:gap-6"
     >
-      <WarmWelcomePanel
-        me={me}
-        t={t}
-        onHelpClick={
-          me?.role === "PARENT" ? () => setHelpOpen(true) : undefined
-        }
-      />
+      <WarmWelcomePanel me={me} t={t} />
 
       {me?.role === "PARENT" || me?.role === "STUDENT" ? (
         <>
@@ -1800,19 +1848,6 @@ export default function DashboardPage() {
             loading={schoolCardsLoading}
           />
         </div>
-      ) : null}
-
-      {me?.role === "PARENT" ? (
-        <HelpDialog
-          open={helpOpen}
-          onClose={() => setHelpOpen(false)}
-          title={t("dashboard.parent.help.title")}
-          body={[
-            t("dashboard.parent.help.body1"),
-            t("dashboard.parent.help.body2"),
-            t("dashboard.parent.help.body3"),
-          ]}
-        />
       ) : null}
     </div>
   );

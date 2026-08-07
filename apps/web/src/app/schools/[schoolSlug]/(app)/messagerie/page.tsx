@@ -17,6 +17,12 @@ import {
 } from "../../../../../components/messaging/messaging-mailbox-view";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 import type { FolderKey } from "../../../../../components/messaging/types";
+import { usePageHelp } from "../../../../../store/page-help";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import {
+  MESSAGES_TOUR_ID,
+  MESSAGES_TOUR_STEPS,
+} from "../../../../../components/messaging/messages-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -34,6 +40,7 @@ type SchoolRole =
 type MePayload = {
   role?: SchoolRole;
   schoolName?: string;
+  onboardingHelpEnabled?: boolean;
 };
 
 const COMPOSER_ALLOWED_ROLES: SchoolRole[] = [
@@ -90,10 +97,39 @@ export default function SchoolMessageriePage() {
       const payload = (await response.json()) as MePayload;
       setRole(payload.role ?? null);
       setSchoolName(payload.schoolName ?? null);
+
+      if (payload.role === "TEACHER") {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          payload.onboardingHelpEnabled !== false &&
+          !tourStore.isCompleted("teacher", MESSAGES_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(MESSAGES_TOUR_ID, "teacher", MESSAGES_TOUR_STEPS);
+        }
+      }
     } finally {
       setProfileLoading(false);
     }
   }
+
+  usePageHelp(
+    role === "TEACHER"
+      ? {
+          title: t("messaging.help.title"),
+          sections: [
+            {
+              title: t("messaging.help.section1Title"),
+              body: [t("messaging.help.section1Body")],
+            },
+            {
+              title: t("messaging.help.section2Title"),
+              body: [t("messaging.help.section2Body")],
+            },
+          ],
+        }
+      : null,
+  );
 
   const canCompose = role ? COMPOSER_ALLOWED_ROLES.includes(role) : false;
 

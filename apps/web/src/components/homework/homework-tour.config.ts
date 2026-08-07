@@ -1,4 +1,5 @@
 import type { OnboardingTourStep } from "../../store/onboarding-tour";
+import { APP_HEADER_MENU_TOUR_TARGET } from "../layout/app-header";
 
 export const HOMEWORK_TOUR_ID = "homework";
 
@@ -6,7 +7,7 @@ export const HOMEWORK_TOUR_TARGETS = {
   tabs: "homework-tour-tabs",
   row: "homework-tour-row",
   markDone: "homework-tour-mark-done",
-  helpToggle: "homework-tour-help-toggle",
+  helpToggle: APP_HEADER_MENU_TOUR_TARGET,
 } as const;
 
 // Web deliberately targets the row-table container (not a single <tr>, which

@@ -1,4 +1,5 @@
 import type { OnboardingTourStep } from "../../store/onboarding-tour";
+import { APP_HEADER_MENU_TOUR_TARGET } from "../../components/layout/app-header";
 
 export const SITE_CONTENT_TOUR_ID = "site-content";
 
@@ -7,7 +8,7 @@ export const SITE_CONTENT_TOUR_TARGETS = {
   contactEdit: "site-content-tour-contact-edit",
   selectors: "site-content-tour-selectors",
   newDraft: "site-content-tour-new-draft",
-  helpToggle: "site-content-tour-help-toggle",
+  helpToggle: APP_HEADER_MENU_TOUR_TARGET,
 } as const;
 
 export const SITE_CONTENT_TOUR_STEPS: OnboardingTourStep[] = [

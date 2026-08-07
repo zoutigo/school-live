@@ -11,6 +11,11 @@ import {
   type MeResponse,
 } from "../_shared";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import {
+  FEED_FILTERS_TOUR_ID,
+  FEED_FILTERS_TOUR_STEPS,
+} from "../../../../../../../components/feed/feed-filters-tour.config";
 
 const ALLOWED_ROLES = [
   "TEACHER",
@@ -70,6 +75,21 @@ export default function TeacherClassFeedPage() {
         return;
       }
       setViewerRole(me.role as typeof viewerRole);
+
+      if (me.role === "TEACHER") {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          me.onboardingHelpEnabled !== false &&
+          !tourStore.isCompleted("teacher", FEED_FILTERS_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            FEED_FILTERS_TOUR_ID,
+            "teacher",
+            FEED_FILTERS_TOUR_STEPS,
+          );
+        }
+      }
 
       const contextResponse = await fetch(
         `${API_URL}/schools/${schoolSlug}/student-grades/context`,

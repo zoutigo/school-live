@@ -3,6 +3,7 @@ import { APP_HEADER_MENU_TOUR_TARGET } from "../../../../../components/layout/ap
 import {
   SIDEBAR_ACCOUNT_TOUR_TARGET,
   SIDEBAR_CHILDREN_TOUR_TARGET,
+  SIDEBAR_HELP_TOUR_TARGET,
   SIDEBAR_MESSAGING_TOUR_TARGET,
 } from "../../../../../components/layout/app-sidebar";
 
@@ -16,7 +17,7 @@ export const PARENT_LANDING_TOUR_TARGETS = {
   messaging: SIDEBAR_MESSAGING_TOUR_TARGET,
   children: SIDEBAR_CHILDREN_TOUR_TARGET,
   account: SIDEBAR_ACCOUNT_TOUR_TARGET,
-  helpButton: "dashboard-parent-help-target",
+  helpButton: SIDEBAR_HELP_TOUR_TARGET,
 } as const;
 
 // Étape 1 (menu) utilise advanceOnTargetPress : sur mobile, la cible réelle

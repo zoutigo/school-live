@@ -5,13 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { HelpCircle } from "lucide-react";
 import { Card } from "../../../../../../../components/ui/card";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
-import { HelpDialog } from "../../../../../../../components/ui/help-dialog";
 import { FormRichTextEditor } from "../../../../../../../components/ui/form-rich-text-editor";
 import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
 import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import { usePageHelp } from "../../../../../../../store/page-help";
 import {
   HOMEWORK_TOUR_ID,
   HOMEWORK_TOUR_STEPS,
@@ -152,10 +151,8 @@ export default function TeacherClassHomeworkPage() {
   const [completionLoading, setCompletionLoading] = useState(false);
   const [commentSaving, setCommentSaving] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
-  const isStudentRole = role === "STUDENT";
   const homeworkTourActiveTourId = useOnboardingTourStore(
     (state) => state.activeTourId,
   );
@@ -265,14 +262,15 @@ export default function TeacherClassHomeworkPage() {
       const me = (await meResponse.json()) as MeResponse;
       setRole(me.role);
 
-      if (me.role === "STUDENT") {
+      if (me.role === "STUDENT" || me.role === "PARENT") {
+        const tourRole = me.role === "PARENT" ? "parent" : "student";
         const tourStore = useOnboardingTourStore.getState();
         if (
           me.onboardingHelpEnabled !== false &&
-          !tourStore.isCompleted("student", HOMEWORK_TOUR_ID) &&
+          !tourStore.isCompleted(tourRole, HOMEWORK_TOUR_ID) &&
           !tourStore.activeTourId
         ) {
-          tourStore.startTour(HOMEWORK_TOUR_ID, "student", HOMEWORK_TOUR_STEPS);
+          tourStore.startTour(HOMEWORK_TOUR_ID, tourRole, HOMEWORK_TOUR_STEPS);
         }
       }
 
@@ -507,7 +505,7 @@ export default function TeacherClassHomeworkPage() {
     [classId, t],
   );
   const showFallbackHomeworkRow =
-    isStudentRole && isHomeworkTourActive && tab === "list";
+    isStudentOrParent && isHomeworkTourActive && tab === "list";
   const displayedListRows = showFallbackHomeworkRow
     ? [fallbackHomeworkItem]
     : listItems;
@@ -520,28 +518,35 @@ export default function TeacherClassHomeworkPage() {
     return { total, done, late, todo };
   }, [listItems]);
 
+  usePageHelp(
+    isStudentOrParent
+      ? {
+          title: t("homework.studentHelp.title"),
+          sections: [
+            {
+              title: t("homework.studentHelp.section1Title"),
+              body: [t("homework.studentHelp.body1")],
+            },
+            {
+              title: t("homework.studentHelp.section2Title"),
+              body: [t("homework.studentHelp.body2")],
+            },
+            {
+              title: t("homework.studentHelp.section3Title"),
+              body: [t("homework.studentHelp.body3")],
+            },
+          ],
+        }
+      : null,
+  );
+
   return (
     <div className="grid gap-4">
       <Card
         title={`${t("homework.page.title")} - ${classCtx?.className ?? t("homework.page.defaultClassName")}`}
         subtitle={t("homework.page.subtitle")}
-        actions={
-          isStudentRole ? (
-            <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.helpToggle}>
-              <button
-                type="button"
-                aria-label={t("homework.studentHelp.toggle")}
-                onClick={() => setHelpOpen(true)}
-                data-testid="homework-student-help-toggle"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-primary hover:opacity-80"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </button>
-            </OnboardingTarget>
-          ) : undefined
-        }
       >
-        {isStudentRole ? (
+        {isStudentOrParent ? (
           <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.tabs}>
             <div className="mb-4 flex items-end gap-2 border-b border-border">
               <button
@@ -753,7 +758,7 @@ export default function TeacherClassHomeworkPage() {
                     </table>
                   </div>
                 );
-                return isStudentRole ? (
+                return isStudentOrParent ? (
                   <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.row}>
                     {table}
                   </OnboardingTarget>
@@ -847,7 +852,7 @@ export default function TeacherClassHomeworkPage() {
                           : t("homework.detail.markDone")}
                     </button>
                   );
-                  return isStudentRole ? (
+                  return isStudentOrParent ? (
                     <OnboardingTarget id={HOMEWORK_TOUR_TARGETS.markDone}>
                       {markDoneButton}
                     </OnboardingTarget>
@@ -1265,19 +1270,6 @@ export default function TeacherClassHomeworkPage() {
           </div>
         </div>
       )}
-
-      {isStudentRole ? (
-        <HelpDialog
-          open={helpOpen}
-          title={t("homework.studentHelp.title")}
-          body={[
-            t("homework.studentHelp.body1"),
-            t("homework.studentHelp.body2"),
-            t("homework.studentHelp.body3"),
-          ]}
-          onClose={() => setHelpOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }

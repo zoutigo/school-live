@@ -1,10 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertNoHorizontalOverflowAt320,
@@ -14,6 +8,7 @@ import DashboardPage from "./page";
 import { useLocaleStore } from "../../../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../../../i18n/translations";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
+import { usePageHelpStore } from "../../../../../store/page-help";
 import { PARENT_LANDING_TOUR_ID } from "./parent-landing-tour.config";
 
 const replaceMock = vi.fn();
@@ -1045,8 +1040,35 @@ describe("DashboardPage parent-landing onboarding tour", () => {
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
-  it("does not start the tour for a non-parent role", async () => {
+  it("does not start the parent-landing tour for a non-parent, non-teacher role", async () => {
+    mockParentMe({ role: "SCHOOL_ADMIN" });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("dashboard-root")).toBeInTheDocument();
+    });
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  it("starts the teacher-home tour (not parent-landing) for a teacher by default", async () => {
     mockParentMe({ role: "TEACHER" });
+
+    render(<DashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("teacher-dashboard")).toBeInTheDocument();
+    });
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        "teacher-home",
+      ),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("teacher");
+  });
+
+  it("does not start the teacher-home tour when onboardingHelpEnabled is false", async () => {
+    mockParentMe({ role: "TEACHER", onboardingHelpEnabled: false });
 
     render(<DashboardPage />);
 
@@ -1056,38 +1078,55 @@ describe("DashboardPage parent-landing onboarding tour", () => {
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
-  describe("help dialog", () => {
-    it("renders the help toggle for a parent and it opens/closes the dialog", async () => {
+  describe("help content (side menu)", () => {
+    beforeEach(() => {
+      usePageHelpStore.setState({ entry: null, open: false });
+    });
+
+    it("registers help content (3 sections) for a parent", async () => {
       mockParentMe();
 
       render(<DashboardPage />);
 
-      const toggle = await screen.findByTestId("dashboard-parent-help-toggle");
-      expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
-
-      fireEvent.click(toggle);
-      expect(screen.getByTestId("help-dialog")).toBeInTheDocument();
-      expect(
-        within(screen.getByTestId("help-dialog")).getByText(
+      await waitFor(() => {
+        expect(usePageHelpStore.getState().entry?.title).toBe(
           "Votre espace parent",
-        ),
-      ).toBeInTheDocument();
-
-      fireEvent.click(screen.getByTestId("help-dialog-close"));
-      expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+        );
+      });
+      const sections = usePageHelpStore.getState().entry?.sections ?? [];
+      expect(sections.map((section) => section.title)).toEqual([
+        "Vue d'ensemble",
+        "Le menu latéral",
+        "Revoir cette aide",
+      ]);
     });
 
-    it("does not render the help toggle for a non-parent role", async () => {
+    it("does not register parent/teacher help content for another role", async () => {
+      mockParentMe({ role: "SCHOOL_ADMIN" });
+
+      render(<DashboardPage />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("dashboard-root")).toBeInTheDocument();
+      });
+      expect(usePageHelpStore.getState().entry).toBeNull();
+    });
+
+    it("registers help content (2 sections) for a teacher", async () => {
       mockParentMe({ role: "TEACHER" });
 
       render(<DashboardPage />);
 
       await waitFor(() => {
-        expect(screen.getByTestId("teacher-dashboard")).toBeInTheDocument();
+        expect(usePageHelpStore.getState().entry?.title).toBe(
+          "Votre tableau de bord enseignant",
+        );
       });
-      expect(
-        screen.queryByTestId("dashboard-parent-help-toggle"),
-      ).not.toBeInTheDocument();
+      const sections = usePageHelpStore.getState().entry?.sections ?? [];
+      expect(sections.map((section) => section.title)).toEqual([
+        "Accéder à une classe",
+        "Suivre les évaluations",
+      ]);
     });
   });
 });

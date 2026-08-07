@@ -1,11 +1,12 @@
 import type { OnboardingTourStep } from "../../store/onboarding-tour";
+import { APP_HEADER_MENU_TOUR_TARGET } from "../layout/app-header";
 
 export const TIMETABLE_TOUR_ID = "child-timetable";
 
 export const TIMETABLE_TOUR_TARGETS = {
   controls: "timetable-tour-controls",
   dayList: "timetable-tour-day-list",
-  helpBlock: "timetable-tour-help-block",
+  helpToggle: APP_HEADER_MENU_TOUR_TARGET,
 } as const;
 
 // Web deliberately has fewer steps than mobile: the desktop layout merges
@@ -24,7 +25,7 @@ export const TIMETABLE_TOUR_STEPS: OnboardingTourStep[] = [
     bodyKey: "onboardingTour.childTimetable.dayListBody",
   },
   {
-    targetKey: TIMETABLE_TOUR_TARGETS.helpBlock,
+    targetKey: TIMETABLE_TOUR_TARGETS.helpToggle,
     titleKey: "onboardingTour.childTimetable.helpBlockTitle",
     bodyKey: "onboardingTour.childTimetable.helpBlockBody",
   },

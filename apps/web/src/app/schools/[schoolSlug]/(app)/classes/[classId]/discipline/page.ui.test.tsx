@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassDisciplinePage from "./page";
+import { usePageHelpStore } from "../../../../../../../store/page-help";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -353,5 +355,135 @@ describe("Discipline page form", () => {
         }),
       );
     });
+  });
+});
+
+describe("TeacherClassDisciplinePage — aide enseignant (par onglet) et tour", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    getCsrfTokenCookieMock.mockReset();
+    getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
+    useOnboardingTourStore.setState({
+      activeTourId: null,
+      activeRole: null,
+      steps: [],
+      stepIndex: 0,
+      targetRect: null,
+    });
+    usePageHelpStore.setState({ entry: null, open: false });
+  });
+
+  function mockTeacherRouter(onboardingHelpEnabled?: boolean) {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({
+          role: "TEACHER",
+          ...(onboardingHelpEnabled !== undefined
+            ? { onboardingHelpEnabled }
+            : {}),
+        });
+      }
+      if (url.endsWith("/schools/college-vogt/student-grades/context")) {
+        return jsonResponse(contextPayload);
+      }
+      if (
+        url.includes("/schools/college-vogt/students/student-1/life-events") &&
+        method === "GET"
+      ) {
+        return jsonResponse([]);
+      }
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+  }
+
+  it("enregistre le contenu d'aide de l'onglet Saisie (2 sections) pour un enseignant", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassDisciplinePage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Saisie",
+      ),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Choisir l'élève",
+      "Signaler un événement",
+    ]);
+  });
+
+  it("bascule vers un contenu d'aide différent et plus ciblé sur l'onglet Historique", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassDisciplinePage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Historique" }));
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Historique",
+      ),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Consulter les événements d'un élève",
+    ]);
+  });
+
+  it("retire le contenu d'aide au démontage", async () => {
+    mockTeacherRouter();
+
+    const { unmount } = render(<TeacherClassDisciplinePage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    unmount();
+    expect(usePageHelpStore.getState().entry).toBeNull();
+  });
+
+  it("ne propose plus l'ancien onglet Aide", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassDisciplinePage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Aide" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("démarre le tour d'aide guidée pour un enseignant par défaut", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassDisciplinePage />);
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        "teacher-discipline",
+      ),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("teacher");
+  });
+
+  it("ne démarre pas le tour si onboardingHelpEnabled est désactivé", async () => {
+    mockTeacherRouter(false);
+
+    render(<TeacherClassDisciplinePage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 });

@@ -51,6 +51,7 @@ import { usePageHelpStore } from "../../store/page-help";
 export const SIDEBAR_MESSAGING_TOUR_TARGET = "sidebar-messaging-target";
 export const SIDEBAR_CHILDREN_TOUR_TARGET = "sidebar-children-target";
 export const SIDEBAR_ACCOUNT_TOUR_TARGET = "sidebar-account-target";
+export const SIDEBAR_HELP_TOUR_TARGET = "sidebar-help-target";
 
 type SidebarProps = {
   schoolSlug?: string | null;
@@ -1493,30 +1494,32 @@ export function AppSidebar({
         </button>
 
         {pageHelpEntry ? (
-          <button
-            type="button"
-            aria-label={pageHelpEntry.title}
-            data-testid="sidebar-help-menu-item"
-            onClick={() => {
-              openPageHelp();
-              onNavigate?.();
-            }}
-            className={`flex w-full items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
-              false,
-            )}`}
-          >
-            <span
-              aria-hidden="true"
-              className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+          <OnboardingTarget id={SIDEBAR_HELP_TOUR_TARGET}>
+            <button
+              type="button"
+              aria-label={pageHelpEntry.title}
+              data-testid="sidebar-help-menu-item"
+              onClick={() => {
+                openPageHelp();
+                onNavigate?.();
+              }}
+              className={`flex w-full items-center rounded-[16px] px-2 py-2 text-sm font-heading font-semibold transition-colors ${sidebarItemClass(
                 false,
               )}`}
             >
-              <HelpCircle className="h-4 w-4" />
-            </span>
-            <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
-              {t("sidebar.help")}
-            </span>
-          </button>
+              <span
+                aria-hidden="true"
+                className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${sidebarIconClass(
+                  false,
+                )}`}
+              >
+                <HelpCircle className="h-4 w-4" />
+              </span>
+              <span className="ml-3 whitespace-nowrap md:max-w-0 md:overflow-hidden md:opacity-0 md:transition-all md:duration-200 md:group-hover:max-w-[180px] md:group-hover:opacity-100">
+                {t("sidebar.help")}
+              </span>
+            </button>
+          </OnboardingTarget>
         ) : null}
       </div>
     </aside>

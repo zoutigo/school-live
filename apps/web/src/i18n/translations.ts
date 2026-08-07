@@ -786,6 +786,30 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Classe non accessible avec vos affectations.",
     "discipline.page.studentLabel": "Eleve",
 
+    "discipline.pageHelp.entry.title": "Comment utiliser l'onglet Saisie",
+    "discipline.pageHelp.entry.section1Title": "Choisir l'élève",
+    "discipline.pageHelp.entry.section1Body":
+      "Sélectionnez l'élève concerné dans la liste avant de renseigner l'événement.",
+    "discipline.pageHelp.entry.section2Title": "Signaler un événement",
+    "discipline.pageHelp.entry.section2Body":
+      "Renseignez le type (absence, retard, sanction, punition), la date et un motif, puis validez.",
+    "discipline.pageHelp.history.title": "Comment utiliser l'onglet Historique",
+    "discipline.pageHelp.history.section1Title":
+      "Consulter les événements d'un élève",
+    "discipline.pageHelp.history.section1Body":
+      "Sélectionnez un élève pour afficher tous ses événements de vie scolaire, du plus récent au plus ancien.",
+
+    "onboardingTour.teacherDiscipline.step1Title": "Deux onglets",
+    "onboardingTour.teacherDiscipline.step1Body":
+      "Passez de la saisie d'un nouvel événement à l'historique complet d'un élève.",
+    "onboardingTour.teacherDiscipline.step2Title": "Choisir l'élève",
+    "onboardingTour.teacherDiscipline.step2Body":
+      "Sélectionnez l'élève concerné avant de saisir un événement ou de consulter son historique.",
+    "onboardingTour.teacherDiscipline.step3Title":
+      "Une aide toujours disponible",
+    "onboardingTour.teacherDiscipline.step3Body":
+      "Ouvrez ce menu à tout moment, puis « Aide », pour afficher un rappel adapté à l'onglet que vous consultez.",
+
     "discipline.help.summary":
       "ce module permet a l'enseignant de declarer des absences, retards, sanctions et punitions sur ses classes affectees.",
     "discipline.help.record.name": "Saisir",
@@ -996,6 +1020,24 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Impossible de charger les ressources.",
     "resourcesBrowse.correctionAvailable": "Corrige disponible",
     "resourcesBrowse.noStatementYet": "Aucun enonce valide pour le moment.",
+
+    "resourcesBrowse.help.title": "Ressources",
+    "resourcesBrowse.help.section1Title": "Trouver une ressource",
+    "resourcesBrowse.help.section1Body":
+      "Utilisez les onglets Evaluations/Examens pour changer de type de ressource, et le champ de recherche pour retrouver une ressource par son titre. Le bouton Rechercher affiche des filtres supplementaires (annee, etablissement, niveau, type).",
+    "resourcesBrowse.help.section2Title": "Consulter",
+    "resourcesBrowse.help.section2Body":
+      "Cliquez sur une carte pour deplier l'enonce ou le corrige de la ressource.",
+
+    "onboardingTour.resources.step1Title": "Types de ressources",
+    "onboardingTour.resources.step1Body":
+      "Basculez entre Evaluations et Examens grace a ces onglets.",
+    "onboardingTour.resources.step2Title": "Rechercher et filtrer",
+    "onboardingTour.resources.step2Body":
+      "Recherchez une ressource par titre, ou ouvrez les filtres pour affiner par annee, etablissement, niveau ou type.",
+    "onboardingTour.resources.step3Title": "Besoin d'aide ?",
+    "onboardingTour.resources.step3Body":
+      "Ouvrez ce menu, puis « Aide », pour retrouver ces explications a tout moment.",
 
     "resourcesMine.tab": "Mes ressources",
     "resourcesMine.empty": "Vous n'avez pas encore cree de ressource.",
@@ -1287,6 +1329,43 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.success.councilPublished": "Conseil de classe publie.",
     "notes.teacher.success.councilDraftSaved":
       "Brouillon du conseil de classe enregistre.",
+
+    "notes.teacher.pageHelp.evaluations.title":
+      "Comment utiliser l'onglet Évaluations",
+    "notes.teacher.pageHelp.evaluations.section1Title": "Rechercher et filtrer",
+    "notes.teacher.pageHelp.evaluations.section1Body":
+      "Utilisez la recherche pour retrouver une évaluation par titre, ou l'icône filtre pour affiner par type, séquence ou statut de saisie.",
+    "notes.teacher.pageHelp.evaluations.section2Title": "Créer une évaluation",
+    "notes.teacher.pageHelp.evaluations.section2Body":
+      "Cliquez sur le bouton + pour créer une nouvelle évaluation avec son barème et sa date.",
+    "notes.teacher.pageHelp.notes.title": "Comment utiliser l'onglet Notes",
+    "notes.teacher.pageHelp.notes.section1Title": "Consulter un élève",
+    "notes.teacher.pageHelp.notes.section1Body":
+      "Recherchez un élève pour consulter toutes ses notes et sa moyenne, matière par matière.",
+    "notes.teacher.pageHelp.scores.title":
+      "Comment utiliser l'onglet Saisie des notes",
+    "notes.teacher.pageHelp.scores.section1Title":
+      "Saisir les notes d'une évaluation",
+    "notes.teacher.pageHelp.scores.section1Body":
+      "Choisissez une évaluation puis saisissez ou modifiez la note de chaque élève.",
+    "notes.teacher.pageHelp.council.title":
+      "Comment utiliser l'onglet Conseil de classe",
+    "notes.teacher.pageHelp.council.section1Title": "Rédiger les appréciations",
+    "notes.teacher.pageHelp.council.section1Body":
+      "Choisissez la séquence puis rédigez ou modifiez l'appréciation de chaque élève avant de publier le conseil de classe.",
+
+    "onboardingTour.teacherNotes.step1Title": "Quatre onglets",
+    "onboardingTour.teacherNotes.step1Body":
+      "Passez des évaluations aux notes par élève, à la saisie des notes puis au conseil de classe.",
+    "onboardingTour.teacherNotes.step2Title": "Rechercher et filtrer",
+    "onboardingTour.teacherNotes.step2Body":
+      "Touchez l'icône filtre pour affiner la liste des évaluations par type, séquence ou statut de saisie.",
+    "onboardingTour.teacherNotes.step3Title": "Créer une évaluation",
+    "onboardingTour.teacherNotes.step3Body":
+      "Cliquez sur ce bouton pour créer une nouvelle évaluation avec son barème et sa date.",
+    "onboardingTour.teacherNotes.step4Title": "Une aide toujours disponible",
+    "onboardingTour.teacherNotes.step4Body":
+      "Ouvrez ce menu à tout moment, puis « Aide », pour afficher un rappel adapté à l'onglet que vous consultez.",
 
     "notes.teacher.help.moduleName": "Evaluations de classe",
     "notes.teacher.help.summary":
@@ -1802,13 +1881,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.tourFallback.author": "Votre enseignant",
 
     "homework.studentHelp.toggle": "Aide sur les devoirs",
-    "homework.studentHelp.title": "Comprendre vos devoirs",
+    "homework.studentHelp.title": "Comprendre les devoirs",
+    "homework.studentHelp.section1Title": "Deux onglets",
     "homework.studentHelp.body1":
-      "« Liste » affiche vos devoirs a venir. « Voir » donne un resume du nombre de devoirs faits, en retard et a faire.",
+      "« Liste » affiche les devoirs a venir. « Voir » donne un resume du nombre de devoirs faits, en retard et a faire.",
+    "homework.studentHelp.section2Title": "Consulter un devoir",
     "homework.studentHelp.body2":
       "Cliquez sur un devoir dans la liste pour voir la consigne complete, les pieces jointes et ajouter un commentaire.",
+    "homework.studentHelp.section3Title": "Marquer comme fait",
     "homework.studentHelp.body3":
-      "Une fois le devoir termine, cliquez sur « Marquer fait » dans le detail du devoir pour le signaler a votre enseignant. Vous pouvez cliquer a nouveau pour annuler.",
+      "Une fois le devoir termine, cliquez sur « Marquer fait » dans le detail du devoir pour le signaler a l'enseignant. Vous pouvez cliquer a nouveau pour annuler.",
 
     "onboardingTour.homework.tabsTitle": "Deux facons de voir vos devoirs",
     "onboardingTour.homework.tabsBody":
@@ -1821,7 +1903,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Une fois le devoir termine, cliquez sur ce bouton pour le signaler a votre enseignant. Vous pouvez cliquer a nouveau pour annuler.",
     "onboardingTour.homework.helpToggleTitle": "Une aide toujours disponible",
     "onboardingTour.homework.helpToggleBody":
-      "Cliquez sur ce bouton a tout moment pour afficher un rappel sur l'utilisation de cette page.",
+      "Ouvrez ce menu, puis « Aide », pour retrouver ces explications a tout moment.",
 
     "timetable.agenda.page.titlePrefix": "Emploi du temps",
     "timetable.agenda.page.defaultClassName": "Classe",
@@ -2018,6 +2100,45 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.teacherPrefix.mr": "Mr",
     "timetable.agenda.teacherPrefix.mrs": "Mme",
 
+    "timetable.agenda.teacherHelp.slots.title":
+      "Comment utiliser l'emploi du temps de ma classe",
+    "timetable.agenda.teacherHelp.slots.section1Title": "Changer de vue",
+    "timetable.agenda.teacherHelp.slots.section1Body":
+      "Basculez entre Jour, Semaine et Mois, et utilisez les flèches pour naviguer d'une période à l'autre.",
+    "timetable.agenda.teacherHelp.slots.section2Title": "Consulter un cours",
+    "timetable.agenda.teacherHelp.slots.section2Body":
+      "Cliquez sur un créneau pour voir le détail de l'horaire, de la matière et de la salle pour cette classe.",
+    "timetable.agenda.teacherHelp.slots.section3Title":
+      "Ajouter ou modifier un créneau",
+    "timetable.agenda.teacherHelp.slots.section3Body":
+      "Touchez le bouton + pour proposer un nouveau créneau récurrent, ou modifiez une occurrence ponctuelle depuis sa carte.",
+    "timetable.agenda.teacherHelp.vacations.title":
+      "Comment utiliser l'onglet Vacances",
+    "timetable.agenda.teacherHelp.vacations.section1Title":
+      "Consulter les périodes de vacances",
+    "timetable.agenda.teacherHelp.vacations.section1Body":
+      "Cet onglet liste les périodes de vacances et jours fériés déjà planifiés pour cette classe. Leur création reste réservée à l'administration de l'école.",
+    "timetable.agenda.teacherHelp.colors.title":
+      "Comment utiliser l'onglet Couleurs",
+    "timetable.agenda.teacherHelp.colors.section1Title":
+      "Repérer et modifier les couleurs des matières",
+    "timetable.agenda.teacherHelp.colors.section1Body":
+      "Chaque matière a une couleur dédiée pour la retrouver facilement dans l'emploi du temps. Choisissez une couleur puis touchez Enregistrer pour la modifier.",
+
+    "onboardingTour.teacherClassAgenda.step1Title": "Trois onglets",
+    "onboardingTour.teacherClassAgenda.step1Body":
+      "Passez de l'emploi du temps aux vacances puis aux couleurs de matières de cette classe.",
+    "onboardingTour.teacherClassAgenda.step2Title": "Changez de vue",
+    "onboardingTour.teacherClassAgenda.step2Body":
+      "Basculez entre Jour, Semaine et Mois pour changer la façon d'afficher l'emploi du temps.",
+    "onboardingTour.teacherClassAgenda.step3Title": "Consultez un cours",
+    "onboardingTour.teacherClassAgenda.step3Body":
+      "Chaque créneau affiche l'horaire, la matière, l'enseignant et la salle du cours.",
+    "onboardingTour.teacherClassAgenda.step4Title":
+      "Une aide toujours disponible",
+    "onboardingTour.teacherClassAgenda.step4Body":
+      "Ouvrez ce menu à tout moment, puis « Aide », pour afficher un rappel adapté à l'onglet que vous consultez.",
+
     "timetable.agenda.help.moduleName": "Emploi du temps",
     "timetable.agenda.help.moduleSummary":
       "ce module permet de planifier les cours hebdomadaires et les couleurs de matieres par classe.",
@@ -2048,14 +2169,16 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Aucun eleve lie a ce compte parent.",
     "timetable.myTimetable.errors.loadFailed":
       "Impossible de charger l'emploi du temps.",
-    "timetable.myTimetable.help.toggleOpen": "Besoin d'aide sur cette page ?",
-    "timetable.myTimetable.help.toggleClose": "Masquer l'aide",
     "timetable.myTimetable.help.title": "Comment utiliser cette page",
-    "timetable.myTimetable.help.body1":
+    "timetable.myTimetable.help.section1Title": "Changer de vue",
+    "timetable.myTimetable.help.section1Body":
       "Basculez entre Jour, Semaine et Mois pour changer la façon d'afficher l'emploi du temps.",
-    "timetable.myTimetable.help.body2":
+    "timetable.myTimetable.help.section2Title": "Naviguer dans le temps",
+    "timetable.myTimetable.help.section2Body":
       "Utilisez les flèches ou cliquez sur le libellé de la période pour naviguer dans le temps : avancez de plusieurs mois pour retrouver un créneau précis, ou revenez à « aujourd'hui » pour consulter l'agenda du jour ou de demain.",
-    "timetable.myTimetable.help.body3":
+    "timetable.myTimetable.help.section3Title":
+      "Consulter le détail d'un cours",
+    "timetable.myTimetable.help.section3Body":
       "Cliquez sur une carte de cours pour voir en un coup d'œil son horaire, l'enseignant et la salle.",
 
     "timetable.adminSchedule.title": "Emploi du temps",
@@ -2101,7 +2224,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childTimetable.helpBlockTitle":
       "Une aide toujours disponible",
     "onboardingTour.childTimetable.helpBlockBody":
-      "Cliquez sur ce bouton à tout moment pour afficher un rappel sur l'utilisation de cette page.",
+      "Ouvrez ce menu, puis « Aide », pour retrouver ces explications à tout moment.",
     "onboardingTour.vieScolaire.tabsTitle": "Trois onglets",
     "onboardingTour.vieScolaire.tabsBody":
       "Cliquez sur un onglet pour passer de la synthèse aux absences et retards, puis aux sanctions et punitions.",
@@ -2126,15 +2249,37 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Ce lien ouvre les paramètres de votre compte : coordonnées, sécurité et préférences.",
     "onboardingTour.parentLanding.step5Title": "Une aide toujours disponible",
     "onboardingTour.parentLanding.step5Body":
-      "Cliquez sur ce bouton à tout moment pour revoir un rappel sur l'utilisation de cette page et du menu de navigation.",
+      "Cliquez sur cette entrée « Aide » à tout moment pour revoir un rappel sur l'utilisation de cette page et du menu de navigation.",
     "dashboard.parent.help.toggle": "Aide sur cette page",
     "dashboard.parent.help.title": "Votre espace parent",
+    "dashboard.parent.help.section1Title": "Vue d'ensemble",
     "dashboard.parent.help.body1":
       "Ce tableau de bord regroupe l'essentiel : la vie scolaire et les notes de vos enfants, votre compte, et le fil d'actualité de l'école.",
+    "dashboard.parent.help.section2Title": "Le menu latéral",
     "dashboard.parent.help.body2":
       "Pour tout le reste — messagerie, espace d'un enfant, paramètres du compte — utilisez le menu latéral : sur ordinateur il est toujours visible, sur mobile touchez l'icône menu pour l'ouvrir.",
+    "dashboard.parent.help.section3Title": "Revoir cette aide",
     "dashboard.parent.help.body3":
-      "Vous pouvez revoir le parcours de découverte du menu à tout moment en cliquant à nouveau sur cette icône d'aide.",
+      "Vous pouvez revoir cette aide à tout moment depuis l'entrée « Aide » du menu latéral.",
+
+    "dashboard.teacher.help.title": "Votre tableau de bord enseignant",
+    "dashboard.teacher.help.section1Title": "Accéder à une classe",
+    "dashboard.teacher.help.section1Body":
+      "Cliquez sur une carte de classe pour accéder rapidement au cahier de notes de cette classe.",
+    "dashboard.teacher.help.section2Title": "Suivre les évaluations",
+    "dashboard.teacher.help.section2Body":
+      "La section « Évaluations » liste vos évaluations en attente de notes ; cliquez sur « Cahier de notes » pour ouvrir le module complet.",
+
+    "onboardingTour.teacherHome.step1Title": "Vos classes",
+    "onboardingTour.teacherHome.step1Body":
+      "Cliquez sur une carte de classe pour accéder rapidement à son cahier de notes.",
+    "onboardingTour.teacherHome.step2Title": "Évaluations en attente",
+    "onboardingTour.teacherHome.step2Body":
+      "Cliquez sur « Cahier de notes » pour saisir les notes des évaluations en attente.",
+    "onboardingTour.teacherHome.step3Title": "Une aide toujours disponible",
+    "onboardingTour.teacherHome.step3Body":
+      "Ouvrez ce menu à tout moment, puis « Aide », pour revoir cette présentation du tableau de bord.",
+
     "onboardingTour.siteContent.tabsTitle": "Trois sections distinctes",
     "onboardingTour.siteContent.tabsBody":
       "L'onglet Contact gère les coordonnées affichées sur le site. L'onglet Documents légaux gère les CGU, mentions légales et politique de confidentialité. L'onglet Messages liste les prises de contact reçues via le formulaire public.",
@@ -2150,7 +2295,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Créez un brouillon, modifiez-le, puis publiez-le quand il est prêt. Publier une nouvelle version archive automatiquement l'ancienne version publiée.",
     "onboardingTour.siteContent.helpToggleTitle": "Besoin d'aide ?",
     "onboardingTour.siteContent.helpToggleBody":
-      "Retrouvez à tout moment un rappel de l'usage de cette page via ce bouton.",
+      "Ouvrez ce menu, puis « Aide », pour retrouver un rappel de l'usage de cette page à tout moment.",
     "settings.onboardingHelp.title": "Aide guidée",
     "settings.onboardingHelp.subtitle":
       "Affiche une visite guidée à la première découverte d'un module",
@@ -2364,6 +2509,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.page.deleteConfirmTitle": "Confirmer la suppression",
     "messaging.page.deleteConfirmMessage":
       "Cette action est destructive. Le message sera supprime de votre boite.",
+
+    "messaging.help.title": "Messagerie",
+    "messaging.help.section1Title": "Organiser vos messages",
+    "messaging.help.section1Body":
+      "Utilisez les dossiers Reception, Envoyes, Brouillons et Archives pour retrouver vos messages selon leur statut.",
+    "messaging.help.section2Title": "Ecrire un message",
+    "messaging.help.section2Body":
+      "Utilisez le champ de recherche pour retrouver un message, et le bouton Nouveau message du panneau des dossiers pour en composer un.",
+
+    "onboardingTour.messages.step1Title": "Vos dossiers",
+    "onboardingTour.messages.step1Body":
+      "Basculez entre Reception, Envoyes, Brouillons et Archives, et composez un nouveau message depuis ce panneau.",
+    "onboardingTour.messages.step2Title": "Rechercher",
+    "onboardingTour.messages.step2Body":
+      "Recherchez un message par mot-cle depuis cette barre.",
+    "onboardingTour.messages.step3Title": "Besoin d'aide ?",
+    "onboardingTour.messages.step3Body":
+      "Ouvrez ce menu, puis « Aide », pour retrouver ces explications a tout moment.",
     "messaging.page.deleteConfirmAction": "Supprimer",
     "messaging.page.readingSubtitle": "Lecture du message",
     "messaging.page.childDefaultContext": "Echanges parents-etablissement",
@@ -4369,10 +4532,13 @@ export const translations: Record<Locale, Record<string, string>> = {
 
     "siteContent.help.toggle": "Aide",
     "siteContent.help.title": "Contenu du site",
+    "siteContent.help.section1Title": "Trois onglets",
     "siteContent.help.body1":
       "Cette page gère le contenu public du site vitrine : les coordonnées de contact, les documents légaux (CGU, mentions légales, confidentialité) et les prises de contact reçues.",
+    "siteContent.help.section2Title": "Créer un brouillon",
     "siteContent.help.body2":
       "Pour un document légal, choisissez d'abord la langue puis créez un nouveau brouillon depuis le bouton dédié. Un brouillon peut être modifié librement tant qu'il n'est pas publié.",
+    "siteContent.help.section3Title": "Publier",
     "siteContent.help.body3":
       "Publier un brouillon remplace immédiatement la version visible sur le site pour cette langue et ce document. Les anciennes versions publiées restent visibles dans l'historique. L'onglet Messages liste les demandes reçues via le formulaire de contact public.",
 
@@ -5324,6 +5490,28 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Class not accessible with your assignments.",
     "discipline.page.studentLabel": "Student",
 
+    "discipline.pageHelp.entry.title": "How to use the Entry tab",
+    "discipline.pageHelp.entry.section1Title": "Choose the student",
+    "discipline.pageHelp.entry.section1Body":
+      "Select the student concerned from the list before filling in the event.",
+    "discipline.pageHelp.entry.section2Title": "Report an event",
+    "discipline.pageHelp.entry.section2Body":
+      "Fill in the type (absence, lateness, sanction, punishment), the date and a reason, then submit.",
+    "discipline.pageHelp.history.title": "How to use the History tab",
+    "discipline.pageHelp.history.section1Title": "Check a student's events",
+    "discipline.pageHelp.history.section1Body":
+      "Select a student to see all their student-life events, most recent first.",
+
+    "onboardingTour.teacherDiscipline.step1Title": "Two tabs",
+    "onboardingTour.teacherDiscipline.step1Body":
+      "Switch from entering a new event to a student's full history.",
+    "onboardingTour.teacherDiscipline.step2Title": "Choose the student",
+    "onboardingTour.teacherDiscipline.step2Body":
+      "Select the student concerned before entering an event or checking their history.",
+    "onboardingTour.teacherDiscipline.step3Title": "Help is always available",
+    "onboardingTour.teacherDiscipline.step3Body":
+      'Open this menu at any time, then "Help", for a reminder tailored to the tab you\'re viewing.',
+
     "discipline.help.summary":
       "this module lets the teacher record absences, lateness, sanctions and punishments for their assigned classes.",
     "discipline.help.record.name": "Record",
@@ -5525,6 +5713,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "resourcesBrowse.errors.loadFailed": "Could not load resources.",
     "resourcesBrowse.correctionAvailable": "Correction available",
     "resourcesBrowse.noStatementYet": "No approved statement yet.",
+
+    "resourcesBrowse.help.title": "Resources",
+    "resourcesBrowse.help.section1Title": "Find a resource",
+    "resourcesBrowse.help.section1Body":
+      "Use the Assessments/Exams tabs to switch resource type, and the search field to find a resource by title. The Search button reveals extra filters (year, school, level, type).",
+    "resourcesBrowse.help.section2Title": "View",
+    "resourcesBrowse.help.section2Body":
+      "Click a card to expand its statement or correction.",
+
+    "onboardingTour.resources.step1Title": "Resource types",
+    "onboardingTour.resources.step1Body":
+      "Switch between Assessments and Exams with these tabs.",
+    "onboardingTour.resources.step2Title": "Search and filter",
+    "onboardingTour.resources.step2Body":
+      "Search for a resource by title, or open the filters to narrow down by year, school, level or type.",
+    "onboardingTour.resources.step3Title": "Need help?",
+    "onboardingTour.resources.step3Body":
+      'Open this menu, then "Help", to find these explanations again at any time.',
 
     "resourcesMine.tab": "My resources",
     "resourcesMine.empty": "You have not created any resource yet.",
@@ -5799,6 +6005,41 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.success.scoresUpdated": "Evaluation grades updated.",
     "notes.teacher.success.councilPublished": "Class council published.",
     "notes.teacher.success.councilDraftSaved": "Class council draft saved.",
+
+    "notes.teacher.pageHelp.evaluations.title":
+      "How to use the Evaluations tab",
+    "notes.teacher.pageHelp.evaluations.section1Title": "Search and filter",
+    "notes.teacher.pageHelp.evaluations.section1Body":
+      "Use the search to find an evaluation by title, or the filter icon to narrow down by type, sequence or entry status.",
+    "notes.teacher.pageHelp.evaluations.section2Title": "Create an evaluation",
+    "notes.teacher.pageHelp.evaluations.section2Body":
+      "Click the + button to create a new evaluation with its scale and date.",
+    "notes.teacher.pageHelp.notes.title": "How to use the Notes tab",
+    "notes.teacher.pageHelp.notes.section1Title": "Look up a student",
+    "notes.teacher.pageHelp.notes.section1Body":
+      "Search for a student to see all their scores and averages, subject by subject.",
+    "notes.teacher.pageHelp.scores.title": "How to use the Scores tab",
+    "notes.teacher.pageHelp.scores.section1Title":
+      "Enter scores for an evaluation",
+    "notes.teacher.pageHelp.scores.section1Body":
+      "Choose an evaluation then enter or edit each student's score.",
+    "notes.teacher.pageHelp.council.title": "How to use the Class council tab",
+    "notes.teacher.pageHelp.council.section1Title": "Write assessments",
+    "notes.teacher.pageHelp.council.section1Body":
+      "Choose the sequence then write or edit each student's assessment before publishing the class council.",
+
+    "onboardingTour.teacherNotes.step1Title": "Four tabs",
+    "onboardingTour.teacherNotes.step1Body":
+      "Switch from evaluations to per-student scores, to score entry, then to the class council.",
+    "onboardingTour.teacherNotes.step2Title": "Search and filter",
+    "onboardingTour.teacherNotes.step2Body":
+      "Tap the filter icon to narrow down the evaluation list by type, sequence or entry status.",
+    "onboardingTour.teacherNotes.step3Title": "Create an evaluation",
+    "onboardingTour.teacherNotes.step3Body":
+      "Click this button to create a new evaluation with its scale and date.",
+    "onboardingTour.teacherNotes.step4Title": "Help is always available",
+    "onboardingTour.teacherNotes.step4Body":
+      'Open this menu at any time, then "Help", for a reminder tailored to the tab you\'re viewing.',
 
     "notes.teacher.help.moduleName": "Class evaluations",
     "notes.teacher.help.summary":
@@ -6306,13 +6547,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "homework.tourFallback.author": "Your teacher",
 
     "homework.studentHelp.toggle": "Help with homework",
-    "homework.studentHelp.title": "Understanding your homework",
+    "homework.studentHelp.title": "Understanding homework",
+    "homework.studentHelp.section1Title": "Two tabs",
     "homework.studentHelp.body1":
-      '"List" shows your upcoming homework. "View" gives a quick summary (done, late, to do).',
+      '"List" shows upcoming homework. "View" gives a quick summary (done, late, to do).',
+    "homework.studentHelp.section2Title": "View a homework item",
     "homework.studentHelp.body2":
       "Click a homework item in the list to see the full instructions, attachments, and add a comment.",
+    "homework.studentHelp.section3Title": "Mark as done",
     "homework.studentHelp.body3":
-      'Once you\'re done, click "Mark done" in the homework detail to let your teacher know. Click it again to undo.',
+      'Once done, click "Mark done" in the homework detail to let the teacher know. Click it again to undo.',
 
     "onboardingTour.homework.tabsTitle": "Two ways to see your homework",
     "onboardingTour.homework.tabsBody":
@@ -6325,7 +6569,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Once you're done, click this button to let your teacher know. Click it again to undo.",
     "onboardingTour.homework.helpToggleTitle": "Help is always available",
     "onboardingTour.homework.helpToggleBody":
-      "Click this button any time to see a reminder of how to use this page.",
+      'Open this menu, then "Help", to find these explanations again at any time.',
 
     "timetable.agenda.page.titlePrefix": "Timetable",
     "timetable.agenda.page.defaultClassName": "Class",
@@ -6508,6 +6752,42 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.agenda.teacherPrefix.mr": "Mr",
     "timetable.agenda.teacherPrefix.mrs": "Mrs",
 
+    "timetable.agenda.teacherHelp.slots.title":
+      "How to use my class's timetable",
+    "timetable.agenda.teacherHelp.slots.section1Title": "Switch views",
+    "timetable.agenda.teacherHelp.slots.section1Body":
+      "Switch between Day, Week and Month, and use the arrows to navigate between periods.",
+    "timetable.agenda.teacherHelp.slots.section2Title": "Check a course",
+    "timetable.agenda.teacherHelp.slots.section2Body":
+      "Click a slot to see the schedule, subject and room detail for this class.",
+    "timetable.agenda.teacherHelp.slots.section3Title": "Add or edit a slot",
+    "timetable.agenda.teacherHelp.slots.section3Body":
+      "Tap the + button to propose a new recurring slot, or edit a one-off occurrence from its card.",
+    "timetable.agenda.teacherHelp.vacations.title":
+      "How to use the Vacations tab",
+    "timetable.agenda.teacherHelp.vacations.section1Title":
+      "Check vacation periods",
+    "timetable.agenda.teacherHelp.vacations.section1Body":
+      "This tab lists the vacation periods and public holidays already scheduled for this class. Creating them stays reserved to the school's administration.",
+    "timetable.agenda.teacherHelp.colors.title": "How to use the Colors tab",
+    "timetable.agenda.teacherHelp.colors.section1Title":
+      "Spot and edit subject colors",
+    "timetable.agenda.teacherHelp.colors.section1Body":
+      "Each subject has a dedicated color to make it easy to spot in the timetable. Pick a color then tap Save to change it.",
+
+    "onboardingTour.teacherClassAgenda.step1Title": "Three tabs",
+    "onboardingTour.teacherClassAgenda.step1Body":
+      "Switch between the timetable, vacations, and subject colors for this class.",
+    "onboardingTour.teacherClassAgenda.step2Title": "Switch views",
+    "onboardingTour.teacherClassAgenda.step2Body":
+      "Switch between Day, Week and Month to change how the schedule is displayed.",
+    "onboardingTour.teacherClassAgenda.step3Title": "Check a course",
+    "onboardingTour.teacherClassAgenda.step3Body":
+      "Each slot shows the time, subject, teacher and room for that course.",
+    "onboardingTour.teacherClassAgenda.step4Title": "Help is always available",
+    "onboardingTour.teacherClassAgenda.step4Body":
+      'Open this menu at any time, then "Help", for a reminder tailored to the tab you\'re viewing.',
+
     "timetable.agenda.help.moduleName": "Timetable",
     "timetable.agenda.help.moduleSummary":
       "this module lets you plan weekly classes and subject colors per class.",
@@ -6536,14 +6816,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "timetable.myTimetable.errors.noLinkedStudent":
       "No student is linked to this parent account.",
     "timetable.myTimetable.errors.loadFailed": "Unable to load the timetable.",
-    "timetable.myTimetable.help.toggleOpen": "Need help with this page?",
-    "timetable.myTimetable.help.toggleClose": "Hide help",
     "timetable.myTimetable.help.title": "How to use this page",
-    "timetable.myTimetable.help.body1":
+    "timetable.myTimetable.help.section1Title": "Switch views",
+    "timetable.myTimetable.help.section1Body":
       "Switch between Day, Week and Month to change how the timetable is displayed.",
-    "timetable.myTimetable.help.body2":
+    "timetable.myTimetable.help.section2Title": "Navigate through time",
+    "timetable.myTimetable.help.section2Body":
       "Use the arrows or click the period label to move through time: jump several months ahead to find a specific slot, or return to \"today\" for today's or tomorrow's agenda.",
-    "timetable.myTimetable.help.body3":
+    "timetable.myTimetable.help.section3Title": "Check a course's details",
+    "timetable.myTimetable.help.section3Body":
       "Click a course card to see its time, teacher and room at a glance.",
 
     "timetable.adminSchedule.title": "Schedule",
@@ -6586,7 +6867,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Each row shows the time, subject, teacher and room for the course.",
     "onboardingTour.childTimetable.helpBlockTitle": "Help is always available",
     "onboardingTour.childTimetable.helpBlockBody":
-      "Click this button anytime for a reminder on how to use this page.",
+      'Open this menu, then "Help", to find these explanations again at any time.',
     "onboardingTour.vieScolaire.tabsTitle": "Three tabs",
     "onboardingTour.vieScolaire.tabsBody":
       "Click a tab to switch between the summary, absences and lateness, then sanctions and punishments.",
@@ -6610,15 +6891,37 @@ export const translations: Record<Locale, Record<string, string>> = {
       "This link opens your account settings: contact details, security and preferences.",
     "onboardingTour.parentLanding.step5Title": "Help is always available",
     "onboardingTour.parentLanding.step5Body":
-      "Click this button anytime for a reminder on how to use this page and the navigation menu.",
+      'Click this "Help" entry anytime for a reminder on how to use this page and the navigation menu.',
     "dashboard.parent.help.toggle": "Help on this page",
     "dashboard.parent.help.title": "Your family space",
+    "dashboard.parent.help.section1Title": "Overview",
     "dashboard.parent.help.body1":
       "This dashboard gathers the essentials: your children's school life and grades, your account, and the school's news feed.",
+    "dashboard.parent.help.section2Title": "The side menu",
     "dashboard.parent.help.body2":
       "For everything else — messaging, a child's space, account settings — use the side menu: on desktop it's always visible, on mobile tap the menu icon to open it.",
+    "dashboard.parent.help.section3Title": "Revisit this help",
     "dashboard.parent.help.body3":
-      "You can replay the menu discovery tour at any time by clicking this help icon again.",
+      'You can revisit this help at any time from the "Help" entry in the side menu.',
+
+    "dashboard.teacher.help.title": "Your teacher dashboard",
+    "dashboard.teacher.help.section1Title": "Open a class",
+    "dashboard.teacher.help.section1Body":
+      "Click a class card to quickly access that class's grade book.",
+    "dashboard.teacher.help.section2Title": "Track evaluations",
+    "dashboard.teacher.help.section2Body":
+      'The "Evaluations" section lists your evaluations awaiting scores; click "Grade book" to open the full module.',
+
+    "onboardingTour.teacherHome.step1Title": "Your classes",
+    "onboardingTour.teacherHome.step1Body":
+      "Click a class card to quickly access its grade book.",
+    "onboardingTour.teacherHome.step2Title": "Pending evaluations",
+    "onboardingTour.teacherHome.step2Body":
+      'Click "Grade book" to enter scores for evaluations awaiting grading.',
+    "onboardingTour.teacherHome.step3Title": "Help is always available",
+    "onboardingTour.teacherHome.step3Body":
+      'Open this menu at any time, then "Help", to revisit this dashboard overview.',
+
     "onboardingTour.siteContent.tabsTitle": "Three distinct sections",
     "onboardingTour.siteContent.tabsBody":
       "The Contact tab manages the details shown on the website. The Legal documents tab manages the Terms of Service, Legal Notice and Privacy Policy. The Messages tab lists submissions received through the public contact form.",
@@ -6634,7 +6937,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Create a draft, edit it, then publish it when ready. Publishing a new version automatically archives the previously published one.",
     "onboardingTour.siteContent.helpToggleTitle": "Need help?",
     "onboardingTour.siteContent.helpToggleBody":
-      "Come back to this button any time for a reminder of how this page works.",
+      'Open this menu, then "Help", to find a reminder of how this page works at any time.',
     "settings.onboardingHelp.title": "Guided help",
     "settings.onboardingHelp.subtitle":
       "Show a guided tour the first time you open a module",
@@ -6842,6 +7145,24 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.page.deleteConfirmAction": "Delete",
     "messaging.page.readingSubtitle": "Reading the message",
     "messaging.page.childDefaultContext": "Family-school exchanges",
+
+    "messaging.help.title": "Messaging",
+    "messaging.help.section1Title": "Organize your messages",
+    "messaging.help.section1Body":
+      "Use the Inbox, Sent, Drafts and Archive folders to find your messages by status.",
+    "messaging.help.section2Title": "Write a message",
+    "messaging.help.section2Body":
+      "Use the search field to find a message, and the New message button in the folders panel to compose one.",
+
+    "onboardingTour.messages.step1Title": "Your folders",
+    "onboardingTour.messages.step1Body":
+      "Switch between Inbox, Sent, Drafts and Archive, and compose a new message from this panel.",
+    "onboardingTour.messages.step2Title": "Search",
+    "onboardingTour.messages.step2Body":
+      "Search for a message by keyword from this bar.",
+    "onboardingTour.messages.step3Title": "Need help?",
+    "onboardingTour.messages.step3Body":
+      'Open this menu, then "Help", to find these explanations again at any time.',
 
     "feed.header.sectionLabel": "Family news feed",
     "feed.header.greeting": "Hello, follow {scopeLabel} for {childFullName}",
@@ -8754,10 +9075,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "siteContent.messages.detail.read": "Message read",
     "siteContent.help.toggle": "Help",
     "siteContent.help.title": "Site content",
+    "siteContent.help.section1Title": "Three tabs",
     "siteContent.help.body1":
       "This page manages the public showcase site content: contact details, legal documents (Terms of Service, Legal Notice, Privacy Policy) and received contact submissions.",
+    "siteContent.help.section2Title": "Create a draft",
     "siteContent.help.body2":
       "For a legal document, first pick the language, then start a new draft from the dedicated button. A draft can be freely edited until it is published.",
+    "siteContent.help.section3Title": "Publish",
     "siteContent.help.body3":
       "Publishing a draft immediately replaces the version visible on the site for that language and document. Previously published versions stay visible in the history. The Messages tab lists submissions received through the public contact form.",
 

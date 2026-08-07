@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassAgendaPage from "./page";
 import { useLocaleStore } from "../../../../../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../../../../../i18n/translations";
+import { usePageHelpStore } from "../../../../../../../store/page-help";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -454,5 +456,201 @@ describe("Agenda page forms", () => {
     expect(
       screen.queryByText("Creation et gestion de l'emploi du temps annuel"),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("TeacherClassAgendaPage — aide enseignant (par onglet) et tour", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    getCsrfTokenCookieMock.mockReset();
+    getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+    useOnboardingTourStore.setState({
+      activeTourId: null,
+      activeRole: null,
+      steps: [],
+      stepIndex: 0,
+      targetRect: null,
+    });
+    usePageHelpStore.setState({ entry: null, open: false });
+  });
+
+  function mockTeacherRouter() {
+    return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "TEACHER", onboardingHelpEnabled: true });
+      }
+      if (url.includes("/timetable/classes/class-1/context")) {
+        return jsonResponse(contextPayload);
+      }
+      if (
+        url.includes("/timetable/classes/class-1?") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse(timetablePayload);
+      }
+      return jsonResponse({ message: `Unhandled GET ${url}` }, 404);
+    });
+  }
+
+  it("enregistre le contenu d'aide de l'onglet Créneaux (3 sections) pour un enseignant", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassAgendaPage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'emploi du temps de ma classe",
+      ),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Changer de vue",
+      "Consulter un cours",
+      "Ajouter ou modifier un créneau",
+    ]);
+  });
+
+  it("bascule vers un contenu d'aide différent et plus ciblé sur l'onglet Vacances", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassAgendaPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Vacances" }));
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Vacances",
+      ),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Consulter les périodes de vacances",
+    ]);
+  });
+
+  it("bascule vers le contenu d'aide de l'onglet Couleurs", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassAgendaPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Couleurs" }));
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Couleurs",
+      ),
+    );
+  });
+
+  it("retire le contenu d'aide au démontage", async () => {
+    mockTeacherRouter();
+
+    const { unmount } = render(<TeacherClassAgendaPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    unmount();
+    expect(usePageHelpStore.getState().entry).toBeNull();
+  });
+
+  it("masque l'onglet Aide (ancien pattern) pour un enseignant", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassAgendaPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Aide" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("démarre le tour d'aide guidée pour un enseignant par défaut", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassAgendaPage />);
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        "teacher-class-agenda",
+      ),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("teacher");
+  });
+
+  it("ne démarre pas le tour si onboardingHelpEnabled est désactivé", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({
+          role: "TEACHER",
+          onboardingHelpEnabled: false,
+        });
+      }
+      if (url.includes("/timetable/classes/class-1/context")) {
+        return jsonResponse(contextPayload);
+      }
+      if (
+        url.includes("/timetable/classes/class-1?") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse(timetablePayload);
+      }
+      return jsonResponse({ message: `Unhandled GET ${url}` }, 404);
+    });
+
+    render(<TeacherClassAgendaPage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  it("n'enregistre pas de contenu d'aide ni de tour pour un administrateur (garde l'onglet Aide existant)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.includes("/timetable/classes/class-1/context")) {
+        return jsonResponse(contextPayload);
+      }
+      if (
+        url.includes("/timetable/classes/class-1?") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse(timetablePayload);
+      }
+      return jsonResponse({ message: `Unhandled GET ${url}` }, 404);
+    });
+
+    render(<TeacherClassAgendaPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Aide" })).toBeInTheDocument(),
+    );
+    expect(usePageHelpStore.getState().entry).toBeNull();
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { RotateCcw, Search } from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
@@ -20,6 +20,37 @@ import {
   type ResourceCatalog,
   type ResourceRow as MineResourceRow,
 } from "../../components/resources/resources-api";
+import { OnboardingTarget } from "../../components/onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelp } from "../../store/page-help";
+import {
+  RESOURCES_TOUR_ID,
+  RESOURCES_TOUR_STEPS,
+  RESOURCES_TOUR_TARGETS,
+} from "../../components/resources/resources-tour.config";
+
+type GlobalMe = {
+  activeRole?: string | null;
+  onboardingHelpEnabled?: boolean;
+};
+
+/**
+ * Wraps children in an OnboardingTarget only when `id` is provided — this
+ * page serves teacher/school-staff/platform roles as well as parents, and
+ * the spotlight tour must only ever target the parent view.
+ */
+function TargetOrFragment({
+  id,
+  children,
+}: {
+  id?: string;
+  children: ReactNode;
+}) {
+  if (!id) {
+    return <>{children}</>;
+  }
+  return <OnboardingTarget id={id}>{children}</OnboardingTarget>;
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const RESOURCES_PAGE_SIZE = 20;
@@ -99,6 +130,7 @@ export default function ResourcesBrowsePage() {
   const router = useRouter();
 
   const [ready, setReady] = useState(false);
+  const [isParentRole, setIsParentRole] = useState(false);
   const [tab, setTab] = useState<TabKey>("ASSESSMENT");
   const [items, setItems] = useState<ResourceRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -155,6 +187,23 @@ export default function ResourcesBrowsePage() {
       if (!meRes.ok) {
         router.replace("/");
         return;
+      }
+      const me = (await meRes.json()) as GlobalMe;
+      const parentRole = me.activeRole === "PARENT";
+      setIsParentRole(parentRole);
+      if (parentRole) {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          me.onboardingHelpEnabled !== false &&
+          !tourStore.isCompleted("parent", RESOURCES_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            RESOURCES_TOUR_ID,
+            "parent",
+            RESOURCES_TOUR_STEPS,
+          );
+        }
       }
     } catch {
       router.replace("/");
@@ -364,6 +413,24 @@ export default function ResourcesBrowsePage() {
     }
   }
 
+  usePageHelp(
+    isParentRole
+      ? {
+          title: t("resourcesBrowse.help.title"),
+          sections: [
+            {
+              title: t("resourcesBrowse.help.section1Title"),
+              body: [t("resourcesBrowse.help.section1Body")],
+            },
+            {
+              title: t("resourcesBrowse.help.section2Title"),
+              body: [t("resourcesBrowse.help.section2Body")],
+            },
+          ],
+        }
+      : null,
+  );
+
   if (!ready) {
     return (
       <AppShell schoolName={t("resourcesBrowse.shellName")}>
@@ -385,45 +452,55 @@ export default function ResourcesBrowsePage() {
             </p>
           </div>
           {tab !== "mine" ? (
-            <button
-              type="button"
-              data-testid="resources-search-toggle"
-              onClick={() => setFiltersOpen((current) => !current)}
-              className={`flex items-center gap-1.5 rounded-[12px] border px-3 py-1.5 text-xs font-semibold transition ${
-                filtersOpen
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-warm-border bg-warm-surface text-text-secondary hover:text-text-primary"
-              }`}
+            <TargetOrFragment
+              id={
+                isParentRole ? RESOURCES_TOUR_TARGETS.searchFilter : undefined
+              }
             >
-              <Search className="h-3.5 w-3.5" />
-              {t("resourcesBrowse.filters.toggleLabel")}
-            </button>
+              <button
+                type="button"
+                data-testid="resources-search-toggle"
+                onClick={() => setFiltersOpen((current) => !current)}
+                className={`flex items-center gap-1.5 rounded-[12px] border px-3 py-1.5 text-xs font-semibold transition ${
+                  filtersOpen
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-warm-border bg-warm-surface text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <Search className="h-3.5 w-3.5" />
+                {t("resourcesBrowse.filters.toggleLabel")}
+              </button>
+            </TargetOrFragment>
           ) : null}
         </div>
 
-        <div className="flex gap-2 border-b border-warm-border">
-          {(
-            [
-              ["ASSESSMENT", t("resourcesBrowse.tabs.assessments")],
-              ["EXAM", t("resourcesBrowse.tabs.exams")],
-              ["mine", t("resourcesMine.tab")],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              data-testid={`resources-tab-${key}`}
-              onClick={() => setTab(key)}
-              className={`px-4 py-2 text-sm font-semibold ${
-                tab === key
-                  ? "border-b-2 border-primary text-primary"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <TargetOrFragment
+          id={isParentRole ? RESOURCES_TOUR_TARGETS.tabs : undefined}
+        >
+          <div className="flex gap-2 border-b border-warm-border">
+            {(
+              [
+                ["ASSESSMENT", t("resourcesBrowse.tabs.assessments")],
+                ["EXAM", t("resourcesBrowse.tabs.exams")],
+                ["mine", t("resourcesMine.tab")],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                data-testid={`resources-tab-${key}`}
+                onClick={() => setTab(key)}
+                className={`px-4 py-2 text-sm font-semibold ${
+                  tab === key
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </TargetOrFragment>
 
         {tab === "mine" ? (
           <div className="space-y-4" data-testid="resources-mine-tab">

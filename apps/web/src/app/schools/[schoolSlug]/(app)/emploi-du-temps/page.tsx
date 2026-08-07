@@ -13,10 +13,8 @@ import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
 import {
   TIMETABLE_TOUR_ID,
   TIMETABLE_TOUR_STEPS,
-  TIMETABLE_TOUR_TARGETS,
 } from "../../../../../components/timetable/timetable-tour.config";
-import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
-import { PageHelpBlock } from "../../../../../components/help/page-help-block";
+import { usePageHelp } from "../../../../../store/page-help";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -547,6 +545,28 @@ export default function StudentTimetablePage() {
     return rows;
   }, [activeRange.from, activeRange.to, classSlots, oneOffSlots]);
 
+  usePageHelp(
+    role === "PARENT"
+      ? {
+          title: t("timetable.myTimetable.help.title"),
+          sections: [
+            {
+              title: t("timetable.myTimetable.help.section1Title"),
+              body: [t("timetable.myTimetable.help.section1Body")],
+            },
+            {
+              title: t("timetable.myTimetable.help.section2Title"),
+              body: [t("timetable.myTimetable.help.section2Body")],
+            },
+            {
+              title: t("timetable.myTimetable.help.section3Title"),
+              body: [t("timetable.myTimetable.help.section3Body")],
+            },
+          ],
+        }
+      : null,
+  );
+
   if (isAdmin) {
     return (
       <div className="grid gap-4" data-testid="emploi-du-temps-admin">
@@ -593,22 +613,6 @@ export default function StudentTimetablePage() {
           </div>
         )}
       </Card>
-
-      {role === "PARENT" ? (
-        <OnboardingTarget id={TIMETABLE_TOUR_TARGETS.helpBlock}>
-          <PageHelpBlock
-            title={t("timetable.myTimetable.help.title")}
-            body={[
-              t("timetable.myTimetable.help.body1"),
-              t("timetable.myTimetable.help.body2"),
-              t("timetable.myTimetable.help.body3"),
-            ]}
-            toggleOpenLabel={t("timetable.myTimetable.help.toggleOpen")}
-            toggleCloseLabel={t("timetable.myTimetable.help.toggleClose")}
-            testId="timetable-help-block"
-          />
-        </OnboardingTarget>
-      ) : null}
     </div>
   );
 }

@@ -17,7 +17,9 @@ export type GlobalMeLike = {
   role?: Role | null;
   activeRole?: Role | null;
   platformRoles?: PlatformRole[];
-  memberships?: Array<{ role: SchoolRole }>;
+  memberships?: Array<{ schoolId: string; role: SchoolRole }>;
+  activeSchoolId?: string | null;
+  schools?: Array<{ schoolId: string }>;
 };
 
 const ROLE_SET: Set<string> = new Set([
@@ -54,15 +56,22 @@ export function extractAvailableRoles(me: GlobalMeLike | null): Role[] {
     return [];
   }
 
+  const activeSchoolId = me.activeSchoolId ?? me.schools?.[0]?.schoolId ?? null;
+
   const roles = new Set<Role>();
   for (const role of me.platformRoles ?? []) {
     roles.add(role);
   }
   for (const membership of me.memberships ?? []) {
-    roles.add(membership.role);
+    if (membership.schoolId === activeSchoolId) {
+      roles.add(membership.role);
+    }
   }
   if (me.role && isRole(me.role)) {
     roles.add(me.role);
+  }
+  if (me.activeRole && isRole(me.activeRole)) {
+    roles.add(me.activeRole);
   }
   return Array.from(roles);
 }

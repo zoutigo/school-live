@@ -7,9 +7,15 @@ type Props = {
   id: string;
   children: ReactNode;
   className?: string;
+  "data-testid"?: string;
 };
 
-export function OnboardingTarget({ id, children, className }: Props) {
+export function OnboardingTarget({
+  id,
+  children,
+  className,
+  "data-testid": dataTestId,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const activeTourId = useOnboardingTourStore((state) => state.activeTourId);
   const steps = useOnboardingTourStore((state) => state.steps);
@@ -38,7 +44,12 @@ export function OnboardingTarget({ id, children, className }: Props) {
   }, [isActiveTarget, setTargetRect]);
 
   return (
-    <div ref={ref} className={className} data-tour-target={id}>
+    <div
+      ref={ref}
+      className={className}
+      data-tour-target={id}
+      data-testid={dataTestId}
+    >
       {children}
     </div>
   );

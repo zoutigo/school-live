@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeacherClassNotesPage from "./page";
 import { translate } from "../../../../../../../i18n/useTranslation";
+import { usePageHelpStore } from "../../../../../../../store/page-help";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 
 function setRichTextEditorHtml(container: HTMLElement, value: string) {
   const editor = container.querySelector(
@@ -1379,5 +1381,170 @@ describe("TeacherClassNotesPage notes tab", () => {
     expect(
       await screen.findByTestId("teacher-notes-student-notes-error"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("TeacherClassNotesPage — aide enseignant (par onglet) et tour", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    pushMock.mockReset();
+    useOnboardingTourStore.setState({
+      activeTourId: null,
+      activeRole: null,
+      steps: [],
+      stepIndex: 0,
+      targetRect: null,
+    });
+    usePageHelpStore.setState({ entry: null, open: false });
+  });
+
+  function mockTeacherRouter() {
+    return setupFetchMock();
+  }
+
+  it("enregistre le contenu d'aide de l'onglet Évaluations (2 sections) pour un enseignant", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Évaluations",
+      ),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Rechercher et filtrer",
+      "Créer une évaluation",
+    ]);
+  });
+
+  it("bascule vers un contenu d'aide différent et plus ciblé sur l'onglet Notes", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Notes" }));
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Notes",
+      ),
+    );
+  });
+
+  it("bascule vers le contenu d'aide de l'onglet Saisie des notes", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Saisie des notes" }),
+    );
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Saisie des notes",
+      ),
+    );
+  });
+
+  it("bascule vers le contenu d'aide de l'onglet Conseil de classe", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Conseil de classe" }),
+    );
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comment utiliser l'onglet Conseil de classe",
+      ),
+    );
+  });
+
+  it("retire le contenu d'aide au démontage", async () => {
+    mockTeacherRouter();
+
+    const { unmount } = render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    unmount();
+    expect(usePageHelpStore.getState().entry).toBeNull();
+  });
+
+  it("masque l'onglet Aide (ancien pattern) pour un enseignant", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Aide" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("démarre le tour d'aide guidée pour un enseignant par défaut", async () => {
+    mockTeacherRouter();
+
+    render(<TeacherClassNotesPage />);
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        "teacher-notes",
+      ),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("teacher");
+  });
+
+  it("ne démarre pas le tour ni n'enregistre d'aide pour un administrateur (garde l'onglet Aide existant)", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/schools/college-vogt/me")) {
+        return jsonResponse({ role: "SCHOOL_ADMIN" });
+      }
+      if (url.includes("/classes/class-1/evaluations/context")) {
+        return jsonResponse({
+          class: { id: "class-1", name: "6eC", schoolYearId: "sy-1" },
+          subjects: [],
+          evaluationTypes: [],
+          students: [],
+        });
+      }
+      if (url.includes("/admin/classrooms")) {
+        return jsonResponse([]);
+      }
+      if (
+        url.includes("/classes/class-1/evaluations") &&
+        !url.includes("/context")
+      ) {
+        return jsonResponse([]);
+      }
+      return jsonResponse({ message: `Unhandled ${url}` }, 404);
+    });
+
+    render(<TeacherClassNotesPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Aide" })).toBeInTheDocument(),
+    );
+    expect(usePageHelpStore.getState().entry).toBeNull();
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 });

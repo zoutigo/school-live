@@ -205,9 +205,7 @@ describe("OnboardingTourOverlay", () => {
 
     render(<OnboardingTourOverlay />);
 
-    expect(
-      screen.getByTestId("onboarding-tour-connector"),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("onboarding-tour-connector")).toBeInTheDocument();
     expect(
       screen.getByTestId("onboarding-tour-connector-dot"),
     ).toBeInTheDocument();

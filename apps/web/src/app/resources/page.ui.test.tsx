@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ResourcesBrowsePage from "./page";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelpStore } from "../../store/page-help";
+import { RESOURCES_TOUR_ID } from "../../components/resources/resources-tour.config";
 
 const replaceMock = vi.fn();
 
@@ -338,6 +341,93 @@ describe("ResourcesBrowsePage", () => {
       expect(String(call?.[0])).toContain("page=1");
       expect(String(call?.[0])).toContain("kind=EXAM");
     });
+  });
+});
+
+describe("ResourcesBrowsePage — aide parent", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    replaceMock.mockReset();
+    useOnboardingTourStore.setState({
+      activeTourId: null,
+      activeRole: null,
+      steps: [],
+      stepIndex: 0,
+      targetRect: null,
+    });
+    usePageHelpStore.setState({ entry: null, open: false });
+  });
+
+  it("n'enregistre pas de contenu d'aide ni de tour pour un enseignant", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({ me: { activeRole: "TEACHER", platformRoles: [] } }),
+    );
+
+    render(<ResourcesBrowsePage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("resources-tab-ASSESSMENT"),
+      ).toBeInTheDocument(),
+    );
+    expect(usePageHelpStore.getState().entry).toBeNull();
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
+
+  it("enregistre le contenu d'aide (2 sections) pour un parent et le retire au démontage", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({
+        me: { activeRole: "PARENT", onboardingHelpEnabled: true },
+      }),
+    );
+
+    const { unmount } = render(<ResourcesBrowsePage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe("Ressources"),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Trouver une ressource",
+      "Consulter",
+    ]);
+
+    unmount();
+    expect(usePageHelpStore.getState().entry).toBeNull();
+  });
+
+  it("démarre le tour d'aide guidée pour un parent par défaut", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({
+        me: { activeRole: "PARENT", onboardingHelpEnabled: true },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe(
+        RESOURCES_TOUR_ID,
+      ),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("parent");
+  });
+
+  it("ne démarre pas le tour si onboardingHelpEnabled est false", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      baseRouter({
+        me: { activeRole: "PARENT", onboardingHelpEnabled: false },
+      }),
+    );
+
+    render(<ResourcesBrowsePage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("resources-tab-ASSESSMENT"),
+      ).toBeInTheDocument(),
+    );
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 });
 

@@ -10,6 +10,7 @@ import TeacherClassHomeworkPage from "./page";
 import { useLocaleStore } from "../../../../../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../../../../../i18n/translations";
 import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import { usePageHelpStore } from "../../../../../../../store/page-help";
 
 function resetOnboardingTourStore() {
   useOnboardingTourStore.setState({
@@ -289,7 +290,11 @@ describe("Teacher class homework page", () => {
   });
 
   it("affiche le statut Valide pour un devoir marque fait par un parent", async () => {
-    mockFetch({ role: "PARENT", homeworks: mockHomeworkWithDone });
+    mockFetch({
+      role: "PARENT",
+      homeworks: mockHomeworkWithDone,
+      onboardingHelpEnabled: false,
+    });
 
     render(<TeacherClassHomeworkPage />);
 
@@ -505,30 +510,55 @@ describe("Tour + aide guidee - vue eleve", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("le bouton d'aide eleve ouvre la modale et se ferme au clic sur Fermer", async () => {
+  it("enregistre le contenu d'aide (3 sections) dans le menu latéral pour un élève", async () => {
+    usePageHelpStore.setState({ entry: null, open: false });
     mockFetch({ role: "STUDENT", onboardingHelpEnabled: false });
 
     render(<TeacherClassHomeworkPage />);
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId("homework-student-help-toggle"),
-      ).toBeInTheDocument();
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comprendre les devoirs",
+      );
     });
-
-    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId("homework-student-help-toggle"));
-
-    expect(screen.getByTestId("help-dialog")).toBeInTheDocument();
-    expect(screen.getByText("Comprendre vos devoirs")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId("help-dialog-close"));
-
-    expect(screen.queryByTestId("help-dialog")).not.toBeInTheDocument();
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Deux onglets",
+      "Consulter un devoir",
+      "Marquer comme fait",
+    ]);
   });
 
-  it("n'affiche pas le bouton d'aide eleve pour un enseignant", async () => {
+  it("enregistre le contenu d'aide dans le menu latéral pour un parent", async () => {
+    usePageHelpStore.setState({ entry: null, open: false });
+    mockFetch({
+      role: "PARENT",
+      homeworks: mockHomeworkWithDone,
+      onboardingHelpEnabled: false,
+    });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() => {
+      expect(usePageHelpStore.getState().entry?.title).toBe(
+        "Comprendre les devoirs",
+      );
+    });
+  });
+
+  it("démarre le tour pour un parent (pas seulement pour un élève)", async () => {
+    mockFetch({ role: "PARENT", homeworks: mockHomeworkWithDone });
+
+    render(<TeacherClassHomeworkPage />);
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe("homework"),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("parent");
+  });
+
+  it("n'enregistre aucune aide pour un enseignant", async () => {
+    usePageHelpStore.setState({ entry: null, open: false });
     mockFetch({ role: "TEACHER" });
 
     render(<TeacherClassHomeworkPage />);
@@ -537,8 +567,6 @@ describe("Tour + aide guidee - vue eleve", () => {
       expect(screen.getByTestId("homework-row-hw-1")).toBeInTheDocument();
     });
 
-    expect(
-      screen.queryByTestId("homework-student-help-toggle"),
-    ).not.toBeInTheDocument();
+    expect(usePageHelpStore.getState().entry).toBeNull();
   });
 });

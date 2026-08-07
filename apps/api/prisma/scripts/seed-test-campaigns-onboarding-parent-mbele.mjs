@@ -138,7 +138,8 @@ async function main() {
           module: "Fil d'actualité",
           objective:
             "Vérifier qu'un vote sur un sondage est bien pris en compte et que les résultats s'affichent.",
-          preconditions: "Un sondage est publié et visible dans le fil (cas précédent).",
+          preconditions:
+            "Un sondage est publié et visible dans le fil (cas précédent).",
           steps: [
             "Ouvrir le sondage publié précédemment",
             "Sélectionner une option et voter",
@@ -181,7 +182,8 @@ async function main() {
           module: "Messagerie",
           objective:
             "Vérifier l'envoi d'un message avec une image insérée directement dans le corps du texte.",
-          preconditions: "Être connecté avec le compte parent, au moins un destinataire disponible.",
+          preconditions:
+            "Être connecté avec le compte parent, au moins un destinataire disponible.",
           steps: [
             "Depuis l'accueil, appuyer sur l'accès rapide « Messagerie »",
             "Démarrer une nouvelle conversation ou en ouvrir une existante",
@@ -216,7 +218,8 @@ async function main() {
           module: "Messagerie",
           objective:
             "Vérifier que le compteur de messages non lus se met à jour correctement après lecture.",
-          preconditions: "Au moins un message non lu existe dans une conversation.",
+          preconditions:
+            "Au moins un message non lu existe dans une conversation.",
           steps: [
             "Depuis l'accueil, observer le badge de non-lus sur l'accès rapide « Messagerie »",
             "Ouvrir la messagerie et repérer la conversation avec un message non lu",
@@ -233,7 +236,8 @@ async function main() {
           module: "Messagerie",
           objective:
             "Vérifier qu'une réponse dans une conversation existante s'affiche correctement et met à jour la liste des conversations.",
-          preconditions: "Une conversation avec au moins un message existe déjà.",
+          preconditions:
+            "Une conversation avec au moins un message existe déjà.",
           steps: [
             "Ouvrir une conversation existante",
             "Rédiger une réponse",
@@ -294,7 +298,8 @@ async function main() {
           module: "Notes",
           objective:
             "Vérifier la consultation du bulletin de période pour l'enfant, avec les moyennes par matière et générale.",
-          preconditions: "La période en cours a des notes suffisantes pour générer un bulletin.",
+          preconditions:
+            "La période en cours a des notes suffisantes pour générer un bulletin.",
           steps: [
             "Depuis le module Notes de l'enfant, ouvrir l'onglet Bulletin",
             "Sélectionner la période concernée si plusieurs sont disponibles",
@@ -320,7 +325,8 @@ async function main() {
           module: "Devoirs",
           objective:
             "Vérifier que les devoirs à venir de l'enfant se chargent correctement.",
-          preconditions: "L'enfant Nicolas MBELE a au moins un devoir programmé.",
+          preconditions:
+            "L'enfant Nicolas MBELE a au moins un devoir programmé.",
           steps: [
             "Ouvrir la fiche de l'enfant Nicolas MBELE",
             "Depuis le sous-menu enfant, appuyer sur « Homework » / « Devoirs »",
@@ -334,7 +340,8 @@ async function main() {
           priority: "MEDIUM",
           title: "Ouvrir le détail d'un devoir",
           module: "Devoirs",
-          objective: "Vérifier l'ouverture du détail d'un devoir (matière, consigne, date d'échéance).",
+          objective:
+            "Vérifier l'ouverture du détail d'un devoir (matière, consigne, date d'échéance).",
           preconditions: "Au moins un devoir existe dans la liste.",
           steps: [
             "Depuis la liste des devoirs, sélectionner un devoir",
@@ -349,7 +356,8 @@ async function main() {
           priority: "LOW",
           title: "Vérifier le statut d'un devoir (fait / à faire)",
           module: "Devoirs",
-          objective: "Vérifier que le statut d'un devoir est visible et compréhensible pour le parent.",
+          objective:
+            "Vérifier que le statut d'un devoir est visible et compréhensible pour le parent.",
           preconditions: "Un devoir avec un statut connu existe.",
           steps: [
             "Depuis la liste ou le détail d'un devoir, repérer l'indicateur de statut",
@@ -373,8 +381,10 @@ async function main() {
           priority: "HIGH",
           title: "Consulter l'emploi du temps de la semaine courante",
           module: "Emploi du temps",
-          objective: "Vérifier le chargement de l'emploi du temps de l'enfant pour la semaine courante.",
-          preconditions: "La classe de l'enfant a un emploi du temps configuré.",
+          objective:
+            "Vérifier le chargement de l'emploi du temps de l'enfant pour la semaine courante.",
+          preconditions:
+            "La classe de l'enfant a un emploi du temps configuré.",
           steps: [
             "Ouvrir la fiche de l'enfant Nicolas MBELE",
             "Depuis le sous-menu enfant, appuyer sur « Emploi du temps »",
@@ -388,8 +398,10 @@ async function main() {
           priority: "MEDIUM",
           title: "Naviguer entre les semaines",
           module: "Emploi du temps",
-          objective: "Vérifier la navigation vers la semaine précédente et suivante.",
-          preconditions: "L'emploi du temps de la semaine courante est affiché.",
+          objective:
+            "Vérifier la navigation vers la semaine précédente et suivante.",
+          preconditions:
+            "L'emploi du temps de la semaine courante est affiché.",
           steps: [
             "Depuis l'emploi du temps, naviguer vers la semaine suivante",
             "Vérifier que les cours affichés changent en conséquence",
@@ -416,7 +428,8 @@ async function main() {
           module: "Vie scolaire",
           objective:
             "Vérifier le chargement des événements de vie scolaire (absences, retards, sanctions) de l'enfant.",
-          preconditions: "L'enfant a au moins un événement de vie scolaire enregistré.",
+          preconditions:
+            "L'enfant a au moins un événement de vie scolaire enregistré.",
           steps: [
             "Ouvrir la fiche de l'enfant Nicolas MBELE",
             "Depuis le sous-menu enfant, appuyer sur « Vie scolaire »",
@@ -430,22 +443,26 @@ async function main() {
           priority: "MEDIUM",
           title: "Ouvrir le détail d'un événement",
           module: "Vie scolaire",
-          objective: "Vérifier l'ouverture du détail d'un événement de vie scolaire.",
+          objective:
+            "Vérifier l'ouverture du détail d'un événement de vie scolaire.",
           preconditions: "Au moins un événement existe dans la liste.",
           steps: [
             "Depuis la liste, sélectionner un événement",
             "Ouvrir son détail",
             "Vérifier les informations affichées (type, date, motif/commentaire)",
           ],
-          expectedResult: "Le détail de l'événement s'affiche avec des informations cohérentes.",
+          expectedResult:
+            "Le détail de l'événement s'affiche avec des informations cohérentes.",
           evidenceRequired: false,
         },
         {
           priority: "LOW",
           title: "Filtrer les événements par type",
           module: "Vie scolaire",
-          objective: "Vérifier le filtrage de la liste des événements par type (absence, retard, sanction).",
-          preconditions: "Plusieurs types d'événements existent pour l'enfant, sinon utiliser un seul type disponible.",
+          objective:
+            "Vérifier le filtrage de la liste des événements par type (absence, retard, sanction).",
+          preconditions:
+            "Plusieurs types d'événements existent pour l'enfant, sinon utiliser un seul type disponible.",
           steps: [
             "Depuis la liste des événements, ouvrir le panneau de filtres",
             "Sélectionner un type d'événement",
@@ -471,28 +488,33 @@ async function main() {
           priority: "MEDIUM",
           title: "Consulter la liste des actualités de la classe",
           module: "Vie de classe",
-          objective: "Vérifier le chargement des actualités propres à la classe de l'enfant.",
-          preconditions: "La classe de l'enfant a au moins une actualité publiée.",
+          objective:
+            "Vérifier le chargement des actualités propres à la classe de l'enfant.",
+          preconditions:
+            "La classe de l'enfant a au moins une actualité publiée.",
           steps: [
             "Ouvrir la fiche de l'enfant Nicolas MBELE",
             "Depuis le sous-menu enfant, appuyer sur « Vie de classe »",
             "Vérifier que la liste des actualités de la classe se charge",
           ],
-          expectedResult: "La liste des actualités de la classe de l'enfant s'affiche sans erreur.",
+          expectedResult:
+            "La liste des actualités de la classe de l'enfant s'affiche sans erreur.",
           evidenceRequired: false,
         },
         {
           priority: "MEDIUM",
           title: "Ouvrir le détail d'une actualité de classe",
           module: "Vie de classe",
-          objective: "Vérifier l'ouverture du détail d'une actualité de classe.",
+          objective:
+            "Vérifier l'ouverture du détail d'une actualité de classe.",
           preconditions: "Au moins une actualité de classe existe.",
           steps: [
             "Depuis la liste des actualités de classe, sélectionner une actualité",
             "Ouvrir son détail",
             "Vérifier l'affichage complet du contenu",
           ],
-          expectedResult: "Le détail de l'actualité de classe s'affiche correctement.",
+          expectedResult:
+            "Le détail de l'actualité de classe s'affiche correctement.",
           evidenceRequired: false,
         },
       ],
@@ -509,21 +531,25 @@ async function main() {
           priority: "HIGH",
           title: "Consulter la liste des ressources disponibles",
           module: "Ressources",
-          objective: "Vérifier le chargement de la liste des ressources accessibles au parent pour l'enfant.",
-          preconditions: "Au moins une ressource validée existe pour le niveau/la filière de l'enfant.",
+          objective:
+            "Vérifier le chargement de la liste des ressources accessibles au parent pour l'enfant.",
+          preconditions:
+            "Au moins une ressource validée existe pour le niveau/la filière de l'enfant.",
           steps: [
             "Ouvrir la fiche de l'enfant Nicolas MBELE",
             "Depuis le sous-menu enfant, appuyer sur « Ressources »",
             "Vérifier que la liste des ressources se charge",
           ],
-          expectedResult: "La liste des ressources s'affiche correctement, sans erreur de chargement.",
+          expectedResult:
+            "La liste des ressources s'affiche correctement, sans erreur de chargement.",
           evidenceRequired: false,
         },
         {
           priority: "MEDIUM",
           title: "Rechercher et filtrer dans les ressources",
           module: "Ressources",
-          objective: "Vérifier la recherche par mot-clé et le filtrage des ressources.",
+          objective:
+            "Vérifier la recherche par mot-clé et le filtrage des ressources.",
           preconditions: "La liste des ressources contient plusieurs éléments.",
           steps: [
             "Depuis la liste des ressources, utiliser le champ de recherche avec un mot-clé",

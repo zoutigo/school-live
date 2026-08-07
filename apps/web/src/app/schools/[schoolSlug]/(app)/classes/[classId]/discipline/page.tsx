@@ -24,7 +24,6 @@ import {
   type LifeEventRow,
   type LifeEventType,
 } from "../../../../../../../components/life-events/life-events-list";
-import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { SubmitButton } from "../../../../../../../components/ui/form-buttons";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
@@ -38,8 +37,16 @@ import {
   type MeResponse,
   formatShortDateTime,
 } from "../_shared";
+import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import {
+  TEACHER_DISCIPLINE_TOUR_ID,
+  TEACHER_DISCIPLINE_TOUR_STEPS,
+  TEACHER_DISCIPLINE_TOUR_TARGETS,
+} from "../../../../../../../components/discipline/teacher-discipline-tour.config";
+import { usePageHelp } from "../../../../../../../store/page-help";
 
-type TabKey = "entry" | "history" | "help";
+type TabKey = "entry" | "history";
 type EventType = LifeEventType;
 
 function createEventSchema(t: TranslateFn) {
@@ -131,6 +138,32 @@ export default function TeacherClassDisciplinePage() {
   const [updatingEventId, setUpdatingEventId] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LifeEventRow | null>(null);
+
+  usePageHelp(
+    tab === "history"
+      ? {
+          title: t("discipline.pageHelp.history.title"),
+          sections: [
+            {
+              title: t("discipline.pageHelp.history.section1Title"),
+              body: [t("discipline.pageHelp.history.section1Body")],
+            },
+          ],
+        }
+      : {
+          title: t("discipline.pageHelp.entry.title"),
+          sections: [
+            {
+              title: t("discipline.pageHelp.entry.section1Title"),
+              body: [t("discipline.pageHelp.entry.section1Body")],
+            },
+            {
+              title: t("discipline.pageHelp.entry.section2Title"),
+              body: [t("discipline.pageHelp.entry.section2Body")],
+            },
+          ],
+        },
+  );
 
   useEffect(() => {
     if (createEventForm.getValues("occurredAt")) {
@@ -244,6 +277,19 @@ export default function TeacherClassDisciplinePage() {
       if (me.role !== "TEACHER") {
         router.replace(`/schools/${schoolSlug}/dashboard`);
         return;
+      }
+
+      const tourStore = useOnboardingTourStore.getState();
+      if (
+        me.onboardingHelpEnabled !== false &&
+        !tourStore.isCompleted("teacher", TEACHER_DISCIPLINE_TOUR_ID) &&
+        !tourStore.activeTourId
+      ) {
+        tourStore.startTour(
+          TEACHER_DISCIPLINE_TOUR_ID,
+          "teacher",
+          TEACHER_DISCIPLINE_TOUR_STEPS,
+        );
       }
 
       const contextResponse = await fetch(
@@ -546,7 +592,10 @@ export default function TeacherClassDisciplinePage() {
         title={`Discipline - ${classContext?.className ?? t("discipline.page.defaultClassName")}`}
         subtitle={t("discipline.page.subtitle")}
       >
-        <div className="mb-4 flex items-end gap-2 border-b border-border">
+        <OnboardingTarget
+          id={TEACHER_DISCIPLINE_TOUR_TARGETS.tabs}
+          className="mb-4 flex items-end gap-2 border-b border-border"
+        >
           <button
             type="button"
             onClick={() => setTab("entry")}
@@ -569,18 +618,7 @@ export default function TeacherClassDisciplinePage() {
           >
             {t("discipline.page.tabs.history")}
           </button>
-          <button
-            type="button"
-            onClick={() => setTab("help")}
-            className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-              tab === "help"
-                ? "border border-border border-b-surface bg-surface text-primary"
-                : "text-text-secondary"
-            }`}
-          >
-            {t("discipline.page.tabs.help")}
-          </button>
-        </div>
+        </OnboardingTarget>
 
         {loading ? (
           <p className="text-sm text-text-secondary">
@@ -590,48 +628,28 @@ export default function TeacherClassDisciplinePage() {
           <p className="text-sm text-notification">
             {t("discipline.page.classNotAccessible")}
           </p>
-        ) : tab === "help" ? (
-          <ModuleHelpTab
-            moduleName="Discipline"
-            moduleSummary={t("discipline.help.summary")}
-            actions={[
-              {
-                name: t("discipline.help.record.name"),
-                purpose: t("discipline.help.record.purpose"),
-                howTo: t("discipline.help.record.howTo"),
-                moduleImpact: t("discipline.help.record.moduleImpact"),
-                crossModuleImpact: t(
-                  "discipline.help.record.crossModuleImpact",
-                ),
-              },
-              {
-                name: t("discipline.help.verify.name"),
-                purpose: t("discipline.help.verify.purpose"),
-                howTo: t("discipline.help.verify.howTo"),
-                moduleImpact: t("discipline.help.verify.moduleImpact"),
-                crossModuleImpact: t(
-                  "discipline.help.verify.crossModuleImpact",
-                ),
-              },
-            ]}
-          />
         ) : (
           <div className="grid gap-4">
-            <label className="grid gap-1 text-sm md:max-w-[420px]">
-              <span className="text-text-secondary">
-                {t("discipline.page.studentLabel")}
-              </span>
-              <FormSelect
-                value={selectedStudentId}
-                onChange={(event) => setSelectedStudentId(event.target.value)}
-              >
-                {classContext.students.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.lastName} {entry.firstName}
-                  </option>
-                ))}
-              </FormSelect>
-            </label>
+            <OnboardingTarget
+              id={TEACHER_DISCIPLINE_TOUR_TARGETS.studentSelect}
+              className="grid gap-1 text-sm md:max-w-[420px]"
+            >
+              <label className="grid gap-1 text-sm">
+                <span className="text-text-secondary">
+                  {t("discipline.page.studentLabel")}
+                </span>
+                <FormSelect
+                  value={selectedStudentId}
+                  onChange={(event) => setSelectedStudentId(event.target.value)}
+                >
+                  {classContext.students.map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.lastName} {entry.firstName}
+                    </option>
+                  ))}
+                </FormSelect>
+              </label>
+            </OnboardingTarget>
 
             {error ? (
               <p className="text-sm text-notification">{error}</p>

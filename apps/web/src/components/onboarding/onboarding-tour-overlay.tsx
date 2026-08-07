@@ -64,8 +64,7 @@ export function OnboardingTourOverlay() {
   const connectorLength = Math.sqrt(
     connectorDx * connectorDx + connectorDy * connectorDy,
   );
-  const connectorAngle =
-    (Math.atan2(connectorDy, connectorDx) * 180) / Math.PI;
+  const connectorAngle = (Math.atan2(connectorDy, connectorDx) * 180) / Math.PI;
   const connectorMidX = (tooltipAnchorX + targetAnchorX) / 2;
   const connectorMidY = (tooltipAnchorY + targetAnchorY) / 2;
 

@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MessagingPage from "./page";
+import { usePageHelpStore } from "../../../../../store/page-help";
+import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
 
 // ── Navigation / routing mocks ─────────────────────────────────────────────
 
@@ -127,12 +129,16 @@ function makeFetchMock(options: {
   messages?: unknown[];
   archiveSuccess?: boolean;
   details?: Record<string, unknown>;
+  role?: string;
+  onboardingHelpEnabled?: boolean;
 }) {
   const {
     folder = "inbox",
     messages,
     archiveSuccess = true,
     details = {},
+    role = "PARENT",
+    onboardingHelpEnabled,
   } = options;
 
   const defaultMessages =
@@ -156,7 +162,13 @@ function makeFetchMock(options: {
     const url = String(input);
 
     if (url.endsWith("/schools/college-vogt/me")) {
-      return jsonResponse({ role: "PARENT", schoolName: "Collège Vogt" });
+      return jsonResponse({
+        role,
+        schoolName: "Collège Vogt",
+        ...(onboardingHelpEnabled !== undefined
+          ? { onboardingHelpEnabled }
+          : {}),
+      });
     }
 
     if (url.includes("/messages/unread-count")) {
@@ -460,4 +472,66 @@ describe("MessagingPage — types d'utilisateurs", () => {
       });
     });
   }
+});
+
+describe("SchoolMessageriePage — tour d'aide guidée et aide enseignant", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    searchParamsStore = {};
+    useOnboardingTourStore.setState({
+      activeTourId: null,
+      activeRole: null,
+      steps: [],
+      stepIndex: 0,
+      targetRect: null,
+    });
+    usePageHelpStore.setState({ entry: null, open: false });
+  });
+
+  it("démarre le tour messages pour un enseignant par défaut", async () => {
+    makeFetchMock({ role: "TEACHER" });
+
+    render(<MessagingPage />);
+
+    await waitFor(() =>
+      expect(useOnboardingTourStore.getState().activeTourId).toBe("messages"),
+    );
+    expect(useOnboardingTourStore.getState().activeRole).toBe("teacher");
+  });
+
+  it("enregistre le contenu d'aide (2 sections) pour un enseignant", async () => {
+    makeFetchMock({ role: "TEACHER" });
+
+    render(<MessagingPage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry?.title).toBe("Messagerie"),
+    );
+    const sections = usePageHelpStore.getState().entry?.sections ?? [];
+    expect(sections.map((section) => section.title)).toEqual([
+      "Organiser vos messages",
+      "Ecrire un message",
+    ]);
+  });
+
+  it("ne démarre pas le tour ni n'enregistre d'aide pour un parent (page partagée)", async () => {
+    makeFetchMock({ folder: "inbox", role: "PARENT" });
+
+    render(<MessagingPage />);
+
+    await screen.findByText("Réunion parents");
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+    expect(usePageHelpStore.getState().entry).toBeNull();
+  });
+
+  it("ne démarre pas le tour enseignant si onboardingHelpEnabled est désactivé", async () => {
+    makeFetchMock({ role: "TEACHER", onboardingHelpEnabled: false });
+
+    render(<MessagingPage />);
+
+    await waitFor(() =>
+      expect(usePageHelpStore.getState().entry).not.toBeNull(),
+    );
+    expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
+  });
 });

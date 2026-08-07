@@ -52,6 +52,14 @@ import {
   type CreateEvaluationFormValues,
   type EvaluationListFilters,
 } from "./page-logic";
+import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
+import {
+  TEACHER_NOTES_TOUR_ID,
+  TEACHER_NOTES_TOUR_STEPS,
+  TEACHER_NOTES_TOUR_TARGETS,
+} from "../../../../../../../components/teacher-notes/teacher-notes-tour.config";
+import { usePageHelp } from "../../../../../../../store/page-help";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 const EVALUATION_ATTACHMENT_ACCEPT =
@@ -406,7 +414,10 @@ export default function TeacherClassNotesPage() {
         return;
       }
 
-      const me = (await meResponse.json()) as { role?: string };
+      const me = (await meResponse.json()) as {
+        role?: string;
+        onboardingHelpEnabled?: boolean;
+      };
       if (
         !["TEACHER", "SCHOOL_ADMIN", "SCHOOL_MANAGER", "SUPERVISOR"].includes(
           me.role ?? "",
@@ -416,6 +427,21 @@ export default function TeacherClassNotesPage() {
         return;
       }
       setRole(me.role ?? null);
+
+      if (me.role === "TEACHER") {
+        const tourStore = useOnboardingTourStore.getState();
+        if (
+          me.onboardingHelpEnabled !== false &&
+          !tourStore.isCompleted("teacher", TEACHER_NOTES_TOUR_ID) &&
+          !tourStore.activeTourId
+        ) {
+          tourStore.startTour(
+            TEACHER_NOTES_TOUR_ID,
+            "teacher",
+            TEACHER_NOTES_TOUR_STEPS,
+          );
+        }
+      }
 
       const tasks = [loadContext(), loadEvaluations()];
       if (
@@ -919,6 +945,63 @@ export default function TeacherClassNotesPage() {
     role === "SCHOOL_ADMIN" ||
     role === "SCHOOL_MANAGER" ||
     role === "SUPERVISOR";
+
+  usePageHelp(
+    role === "TEACHER"
+      ? tab === "notes"
+        ? {
+            title: t("notes.teacher.pageHelp.notes.title"),
+            sections: [
+              {
+                title: t("notes.teacher.pageHelp.notes.section1Title"),
+                body: [t("notes.teacher.pageHelp.notes.section1Body")],
+              },
+            ],
+          }
+        : tab === "scores"
+          ? {
+              title: t("notes.teacher.pageHelp.scores.title"),
+              sections: [
+                {
+                  title: t("notes.teacher.pageHelp.scores.section1Title"),
+                  body: [t("notes.teacher.pageHelp.scores.section1Body")],
+                },
+              ],
+            }
+          : tab === "council"
+            ? {
+                title: t("notes.teacher.pageHelp.council.title"),
+                sections: [
+                  {
+                    title: t("notes.teacher.pageHelp.council.section1Title"),
+                    body: [t("notes.teacher.pageHelp.council.section1Body")],
+                  },
+                ],
+              }
+            : {
+                title: t("notes.teacher.pageHelp.evaluations.title"),
+                sections: [
+                  {
+                    title: t(
+                      "notes.teacher.pageHelp.evaluations.section1Title",
+                    ),
+                    body: [
+                      t("notes.teacher.pageHelp.evaluations.section1Body"),
+                    ],
+                  },
+                  {
+                    title: t(
+                      "notes.teacher.pageHelp.evaluations.section2Title",
+                    ),
+                    body: [
+                      t("notes.teacher.pageHelp.evaluations.section2Body"),
+                    ],
+                  },
+                ],
+              }
+      : null,
+  );
+
   const adminLevelOptions = useMemo(() => {
     const seen = new Map<string, string>();
     adminClassrooms.forEach((entry) => {
@@ -1080,13 +1163,18 @@ export default function TeacherClassNotesPage() {
         )}
         subtitle={t("notes.teacher.card.subtitle")}
       >
-        <div className="section-tabs mb-4">
+        <OnboardingTarget
+          id={TEACHER_NOTES_TOUR_TARGETS.tabs}
+          className="section-tabs mb-4"
+        >
           {[
             { key: "evaluations", label: t("notes.teacher.tabs.evaluations") },
             { key: "notes", label: t("notes.teacher.tabs.notes") },
             { key: "scores", label: t("notes.teacher.tabs.scores") },
             { key: "council", label: t("notes.teacher.tabs.council") },
-            { key: "help", label: t("notes.teacher.tabs.help") },
+            ...(role === "TEACHER"
+              ? []
+              : [{ key: "help", label: t("notes.teacher.tabs.help") }]),
           ].map((item) => (
             <button
               key={item.key}
@@ -1097,7 +1185,7 @@ export default function TeacherClassNotesPage() {
               {item.label}
             </button>
           ))}
-        </div>
+        </OnboardingTarget>
 
         {loading ? (
           <p className="text-sm text-text-secondary">
@@ -1155,17 +1243,28 @@ export default function TeacherClassNotesPage() {
                     {t("notes.teacher.list.subtitle")}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  aria-label={t("notes.teacher.list.addAria")}
-                  onClick={startCreateEvaluation}
-                  className="group inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-primary px-3 text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition-all duration-200 hover:bg-primary-dark"
-                >
-                  <Plus className="h-5 w-5 shrink-0" />
-                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-40 group-hover:opacity-100">
-                    {t("notes.teacher.list.addLabel")}
-                  </span>
-                </button>
+                {(() => {
+                  const addButton = (
+                    <button
+                      type="button"
+                      aria-label={t("notes.teacher.list.addAria")}
+                      onClick={startCreateEvaluation}
+                      className="group inline-flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-full bg-primary px-3 text-white shadow-[0_12px_24px_rgba(12,95,168,0.18)] transition-all duration-200 hover:bg-primary-dark"
+                    >
+                      <Plus className="h-5 w-5 shrink-0" />
+                      <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:max-w-40 group-hover:opacity-100">
+                        {t("notes.teacher.list.addLabel")}
+                      </span>
+                    </button>
+                  );
+                  return role === "TEACHER" ? (
+                    <OnboardingTarget id={TEACHER_NOTES_TOUR_TARGETS.create}>
+                      {addButton}
+                    </OnboardingTarget>
+                  ) : (
+                    addButton
+                  );
+                })()}
               </div>
 
               {isAdminBrowsing && adminClassrooms.length > 0 ? (
@@ -1242,21 +1341,34 @@ export default function TeacherClassNotesPage() {
                   aria-label={t("notes.teacher.list.searchAria")}
                   data-testid="notes-evaluations-search-input"
                 />
-                <button
-                  type="button"
-                  data-testid="notes-evaluations-filter-toggle"
-                  onClick={() =>
-                    setEvaluationFiltersOpen((current) => !current)
-                  }
-                  aria-label={t("notes.teacher.list.filterToggle")}
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border transition ${
-                    hasActiveEvaluationListFilters(evaluationFilters)
-                      ? "border-accent-teal bg-accent-teal text-white"
-                      : "border-accent-teal/40 bg-surface text-accent-teal"
-                  }`}
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                </button>
+                {(() => {
+                  const filterButton = (
+                    <button
+                      type="button"
+                      data-testid="notes-evaluations-filter-toggle"
+                      onClick={() =>
+                        setEvaluationFiltersOpen((current) => !current)
+                      }
+                      aria-label={t("notes.teacher.list.filterToggle")}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border transition ${
+                        hasActiveEvaluationListFilters(evaluationFilters)
+                          ? "border-accent-teal bg-accent-teal text-white"
+                          : "border-accent-teal/40 bg-surface text-accent-teal"
+                      }`}
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                    </button>
+                  );
+                  return role === "TEACHER" ? (
+                    <OnboardingTarget
+                      id={TEACHER_NOTES_TOUR_TARGETS.filterToggle}
+                    >
+                      {filterButton}
+                    </OnboardingTarget>
+                  ) : (
+                    filterButton
+                  );
+                })()}
               </div>
 
               {evaluationFiltersOpen ? (
