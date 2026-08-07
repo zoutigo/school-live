@@ -922,6 +922,33 @@ describe("EvaluationsService", () => {
       });
       expect(prisma.studentTermReport.upsert).toHaveBeenCalled();
     });
+
+    it("n'échoue pas quand generalAppreciation vaut null (élève sans brouillon d'appréciation générale)", async () => {
+      // Le mobile envoie explicitement `null` (pas `undefined`) pour les
+      // élèves sans brouillon en cours : round-trip via CouncilDrafts côté
+      // ClassNotesManagerScreen.tsx.
+      await service.upsertClassTermReports(
+        makeTeacher("teacher-referent"),
+        "school-1",
+        "class-1",
+        Term.TERM_1,
+        {
+          status: "DRAFT",
+          reports: [
+            {
+              studentId: "student-1",
+              generalAppreciation: null,
+              subjects: [],
+            },
+          ],
+        } as never,
+      );
+
+      const upsertArgs = prisma.studentTermReport.upsert.mock.calls[0][0] as {
+        update: { generalAppreciation: string | null | undefined };
+      };
+      expect(upsertArgs.update.generalAppreciation).toBeNull();
+    });
   });
 
   describe("createEvaluation / updateEvaluation — description avec image", () => {

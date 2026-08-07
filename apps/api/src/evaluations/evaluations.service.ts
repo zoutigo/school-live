@@ -950,7 +950,7 @@ export class EvaluationsService {
             report.generalAppreciation === undefined ||
             !canEditGeneralAppreciation
               ? undefined
-              : report.generalAppreciation.trim() || null,
+              : report.generalAppreciation?.trim() || null,
           updatedByUserId: user.id,
           publishedAt:
             nextStatus === TermReportStatus.PUBLISHED &&
