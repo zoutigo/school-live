@@ -1090,7 +1090,13 @@ describe("TeacherClassNotesPage decision tab (referent teacher only)", () => {
     yearlyAverage: 12,
     rank: 1,
     classSize: 20,
+    currentAcademicLevel: { id: "level-6e", order: 8 },
   };
+
+  const ACTIVATED_LEVELS = [
+    { id: "level-6e", label: "6eme", order: 8 },
+    { id: "level-5e", label: "5eme", order: 9 },
+  ];
 
   function setupReferentFetchMock() {
     return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
@@ -1129,8 +1135,8 @@ describe("TeacherClassNotesPage decision tab (referent teacher only)", () => {
       if (url.includes("/term-reports?term=")) {
         return jsonResponse([]);
       }
-      if (url.includes("/admin/academic-levels")) {
-        return jsonResponse([{ id: "level-5e", label: "5eme" }]);
+      if (url.includes("/admin/academic-levels/active")) {
+        return jsonResponse(ACTIVATED_LEVELS);
       }
       if (
         url.includes("/admin/promotions/classes/class-1/term-reports") &&
@@ -1200,6 +1206,36 @@ describe("TeacherClassNotesPage decision tab (referent teacher only)", () => {
         });
       expect(patchCall).toBeDefined();
     });
+  });
+
+  it("affiche 'Aucune décision' tant qu'aucune decision n'est enregistree, et desactive le bouton Enregistrer", async () => {
+    setupReferentFetchMock();
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Décision$/i }));
+    await screen.findByTestId("decision-row-report-1");
+
+    expect(
+      screen.getByTestId("decision-row-report-1-status"),
+    ).toHaveTextContent("Aucune décision");
+    expect(screen.getByTestId("decision-row-report-1-save")).toBeDisabled();
+  });
+
+  it("propose automatiquement le niveau suivant actif quand la decision devient Promoted", async () => {
+    setupReferentFetchMock();
+    render(<TeacherClassNotesPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Décision$/i }));
+    await screen.findByTestId("decision-row-report-1");
+
+    fireEvent.change(screen.getByTestId("decision-row-report-1-select"), {
+      target: { value: "PROMOTED" },
+    });
+
+    expect(screen.getByTestId("decision-row-report-1-level")).toHaveValue(
+      "level-5e",
+    );
+    expect(screen.getByTestId("decision-row-report-1-save")).not.toBeDisabled();
   });
 });
 

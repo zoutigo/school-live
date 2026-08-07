@@ -39,7 +39,12 @@ export class PromotionsService {
   ) {
     const classroom = await this.prisma.class.findFirst({
       where: { id: classId, schoolId },
-      select: { id: true, schoolYearId: true, referentTeacherUserId: true },
+      select: {
+        id: true,
+        schoolYearId: true,
+        referentTeacherUserId: true,
+        academicLevel: { select: { id: true, order: true } },
+      },
     });
     if (!classroom) {
       throw new NotFoundException("Classe introuvable");
@@ -153,6 +158,7 @@ export class PromotionsService {
         yearlyAverage,
         rank,
         classSize: rankableYearlyAverages.length,
+        currentAcademicLevel: classroom.academicLevel,
       };
     });
   }

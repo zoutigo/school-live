@@ -154,6 +154,28 @@ describe("PromotionsService", () => {
       });
     });
 
+    it("expose le niveau academique courant de la classe (necessaire a l'auto-suggestion Repeated/Promoted cote client)", async () => {
+      prisma.class.findFirst.mockResolvedValue({
+        id: CLASS_ID,
+        schoolYearId: YEAR_ID,
+        referentTeacherUserId: REFERENT_TEACHER_ID,
+        academicLevel: { id: "level-6eme", order: 8 },
+      });
+      prisma.studentTermReport.findMany.mockResolvedValue([
+        { id: "report-1", studentId: "student-1", decision: null },
+      ]);
+
+      const result = await service.listTermReportsForDecision(
+        adminUser,
+        SCHOOL_ID,
+        CLASS_ID,
+      );
+
+      expect(result[0]).toMatchObject({
+        currentAcademicLevel: { id: "level-6eme", order: 8 },
+      });
+    });
+
     it("calcule le rang de chaque eleve sur la moyenne annuelle (classement standard, ex-aequo partages)", async () => {
       prisma.studentTermReport.findMany.mockResolvedValue([
         { id: "report-1", studentId: "student-1", decision: null },

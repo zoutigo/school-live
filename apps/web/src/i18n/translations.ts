@@ -30,6 +30,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "settings.tab.navigation": "Navigation",
     "settings.tab.help": "Aide",
     "settings.tab.staff": "Personnel",
+    "settings.tab.levels": "Niveaux",
     "settings.tab.language": "Langue",
     "settings.language.title": "Langue de ce navigateur",
     "settings.language.subtitle": "Choisissez la langue de l'interface",
@@ -37,6 +38,14 @@ export const translations: Record<Locale, Record<string, string>> = {
       "La langue choisie est appliquee immediatement et conservee sur ce navigateur.",
     "settings.language.fr": "Francais",
     "settings.language.en": "Anglais",
+
+    "schoolSettings.levels.intro":
+      "Activez les niveaux nationaux utilises par cette ecole. Les niveaux propres a l'ecole sont toujours actifs. L'ordre determine le niveau suivant propose automatiquement lors d'une decision de passage.",
+    "schoolSettings.levels.own": "Niveau propre a l'ecole",
+    "schoolSettings.levels.national": "Niveau national",
+    "schoolSettings.levels.alwaysActive": "Toujours actif",
+    "schoolSettings.levels.empty.message":
+      "Aucun niveau academique n'est disponible pour cette ecole.",
 
     "settings.accountLanguage.title": "Langue du compte",
     "settings.accountLanguage.subtitle":
@@ -1302,6 +1311,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.decision.repeated": "Redoublement",
     "notes.teacher.decision.left": "Départ",
     "notes.teacher.decision.save": "Enregistrer",
+    "notes.teacher.decision.decisionPlaceholder": "Décision",
+    "notes.teacher.decision.noDecision": "Aucune décision",
     "notes.teacher.decision.errors.save":
       "Impossible d'enregistrer la décision",
     "notes.teacher.decision.success.saved": "Décision enregistrée",
@@ -2319,6 +2330,12 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Une aide toujours disponible",
     "onboardingTour.childTimetable.helpBlockBody":
       "Ouvrez ce menu, puis « Aide », pour retrouver ces explications à tout moment.",
+    "onboardingTour.schoolSettings.step1Title": "Onglet Niveaux",
+    "onboardingTour.schoolSettings.step1Body":
+      "Cet onglet regroupe les niveaux académiques utilisés par votre école. D'autres réglages viendront s'y ajouter au fil du temps.",
+    "onboardingTour.schoolSettings.step2Title": "Activer un niveau",
+    "onboardingTour.schoolSettings.step2Body":
+      "La case à cocher active ou désactive un niveau national pour votre école : seuls les niveaux actifs apparaissent ensuite comme cible possible dans l'onglet Décision de Notes. Les niveaux propres à votre école sont toujours actifs. Le champ Ordre (sur vos niveaux propres) détermine quel niveau est proposé automatiquement quand un enseignant enregistre une décision « Promu ».",
     "onboardingTour.vieScolaire.tabsTitle": "Trois onglets",
     "onboardingTour.vieScolaire.tabsBody":
       "Cliquez sur un onglet pour passer de la synthèse aux absences et retards, puis aux sanctions et punitions.",
@@ -4898,6 +4915,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "settings.tab.navigation": "Navigation",
     "settings.tab.help": "Help",
     "settings.tab.staff": "Staff",
+    "settings.tab.levels": "Levels",
     "settings.tab.language": "Language",
     "settings.language.title": "Language of this browser",
     "settings.language.subtitle": "Choose the interface language",
@@ -4905,6 +4923,14 @@ export const translations: Record<Locale, Record<string, string>> = {
       "The selected language is applied immediately and saved on this browser.",
     "settings.language.fr": "French",
     "settings.language.en": "English",
+
+    "schoolSettings.levels.intro":
+      "Activate the national levels used by this school. Levels created for this school are always active. The order determines the level automatically suggested for the next promotion decision.",
+    "schoolSettings.levels.own": "School-owned level",
+    "schoolSettings.levels.national": "National level",
+    "schoolSettings.levels.alwaysActive": "Always active",
+    "schoolSettings.levels.empty.message":
+      "No academic level is available for this school.",
 
     "settings.accountLanguage.title": "Account language",
     "settings.accountLanguage.subtitle":
@@ -6119,6 +6145,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.decision.repeated": "Repeated",
     "notes.teacher.decision.left": "Left",
     "notes.teacher.decision.save": "Save",
+    "notes.teacher.decision.decisionPlaceholder": "Decision",
+    "notes.teacher.decision.noDecision": "No decision",
     "notes.teacher.decision.errors.save": "Unable to save decision",
     "notes.teacher.decision.success.saved": "Decision saved",
     "notes.teacher.notesTab.subtitle":
@@ -7088,6 +7116,12 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.childTimetable.helpBlockTitle": "Help is always available",
     "onboardingTour.childTimetable.helpBlockBody":
       'Open this menu, then "Help", to find these explanations again at any time.',
+    "onboardingTour.schoolSettings.step1Title": "Levels tab",
+    "onboardingTour.schoolSettings.step1Body":
+      "This tab groups the academic levels used by your school. More settings will be added here over time.",
+    "onboardingTour.schoolSettings.step2Title": "Activate a level",
+    "onboardingTour.schoolSettings.step2Body":
+      'This checkbox activates or deactivates a national level for your school: only active levels then appear as a possible target in the Decision tab of Notes. Levels created for your school are always active. The Order field (on your own levels) determines which level is automatically suggested when a teacher records a "Promoted" decision.',
     "onboardingTour.vieScolaire.tabsTitle": "Three tabs",
     "onboardingTour.vieScolaire.tabsBody":
       "Click a tab to switch between the summary, absences and lateness, then sanctions and punishments.",

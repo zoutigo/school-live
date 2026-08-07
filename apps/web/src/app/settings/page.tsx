@@ -21,6 +21,13 @@ import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { extractAvailableRoles, type Role } from "../../lib/role-view";
 import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { useTranslation } from "../../i18n/useTranslation";
+import { OnboardingTarget } from "../../components/onboarding/onboarding-target";
+import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import {
+  SCHOOL_SETTINGS_TOUR_ID,
+  SCHOOL_SETTINGS_TOUR_STEPS,
+  SCHOOL_SETTINGS_TOUR_TARGETS,
+} from "./school-settings-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -34,7 +41,7 @@ const staffAssignmentSchema = z.object({
   userId: z.string().min(1, "Selectionnez un personnel."),
 });
 
-type Tab = "navigation" | "staff" | "help" | "language";
+type Tab = "navigation" | "staff" | "levels" | "help" | "language";
 
 type SchoolMembershipRole =
   | "SCHOOL_ADMIN"
@@ -97,6 +104,15 @@ type StaffCandidateRow = {
   email: string;
 };
 
+type AcademicLevelRow = {
+  id: string;
+  code: string;
+  label: string;
+  order: number | null;
+  isNational: boolean;
+  isActivated: boolean;
+};
+
 const ROLE_LABEL: Record<Role, string> = {
   SUPER_ADMIN: "Super administrateur plateforme",
   ADMIN: "Administrateur plateforme",
@@ -151,6 +167,15 @@ export default function SettingsPage() {
   );
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [submittingStaff, setSubmittingStaff] = useState(false);
+  const [academicLevels, setAcademicLevels] = useState<AcademicLevelRow[]>([]);
+  const [loadingLevels, setLoadingLevels] = useState(false);
+  const [togglingLevelId, setTogglingLevelId] = useState<string | null>(null);
+  const [levelOrderDrafts, setLevelOrderDrafts] = useState<
+    Record<string, string>
+  >({});
+  const [savingLevelOrderId, setSavingLevelOrderId] = useState<string | null>(
+    null,
+  );
   const staffFunctionForm = useForm<
     z.input<typeof staffFunctionSchema>,
     unknown,
@@ -227,6 +252,12 @@ export default function SettingsPage() {
     (me?.role === "SCHOOL_ADMIN" ||
       me?.role === "ADMIN" ||
       me?.role === "SUPER_ADMIN");
+  const canManageLevels =
+    Boolean(schoolSlug) &&
+    (me?.role === "SCHOOL_ADMIN" ||
+      me?.role === "SCHOOL_MANAGER" ||
+      me?.role === "ADMIN" ||
+      me?.role === "SUPER_ADMIN");
 
   useEffect(() => {
     if (!schoolSlug || !canReadStaff) {
@@ -234,6 +265,33 @@ export default function SettingsPage() {
     }
     void loadStaffData(schoolSlug);
   }, [schoolSlug, canReadStaff]);
+
+  useEffect(() => {
+    if (!schoolSlug || !canManageLevels) {
+      return;
+    }
+    void loadAcademicLevels(schoolSlug);
+  }, [schoolSlug, canManageLevels]);
+
+  useEffect(() => {
+    if (!canManageLevels || !me?.role) {
+      return;
+    }
+    if (me.onboardingHelpEnabled === false) {
+      return;
+    }
+    const tourStore = useOnboardingTourStore.getState();
+    if (
+      !tourStore.isCompleted(me.role, SCHOOL_SETTINGS_TOUR_ID) &&
+      !tourStore.activeTourId
+    ) {
+      tourStore.startTour(
+        SCHOOL_SETTINGS_TOUR_ID,
+        me.role,
+        SCHOOL_SETTINGS_TOUR_STEPS,
+      );
+    }
+  }, [canManageLevels, me?.role, me?.onboardingHelpEnabled]);
 
   async function onSaveNavigation() {
     if (!selectedRole) {
@@ -537,6 +595,130 @@ export default function SettingsPage() {
     }
   }
 
+  async function loadAcademicLevels(currentSchoolSlug: string) {
+    setLoadingLevels(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/schools/${currentSchoolSlug}/admin/academic-levels`,
+        { credentials: "include" },
+      );
+      if (!response.ok) {
+        return;
+      }
+      const rows = (await response.json()) as AcademicLevelRow[];
+      setAcademicLevels(rows);
+      setLevelOrderDrafts(
+        Object.fromEntries(
+          rows.map((row) => [
+            row.id,
+            row.order != null ? String(row.order) : "",
+          ]),
+        ),
+      );
+    } finally {
+      setLoadingLevels(false);
+    }
+  }
+
+  async function toggleLevelActivation(level: AcademicLevelRow) {
+    if (!schoolSlug || !canManageLevels || !level.isNational) {
+      return;
+    }
+    const nextActivated = !level.isActivated;
+    setTogglingLevelId(level.id);
+    setError(null);
+    try {
+      const csrfToken = getCsrfTokenCookie();
+      if (!csrfToken) {
+        setError("Session CSRF invalide. Reconnectez-vous.");
+        return;
+      }
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/admin/academic-levels/${level.id}/activation`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ activated: nextActivated }),
+        },
+      );
+      if (!response.ok) {
+        setError("Impossible de modifier l'activation de ce niveau.");
+        return;
+      }
+      setAcademicLevels((current) =>
+        current.map((entry) =>
+          entry.id === level.id
+            ? { ...entry, isActivated: nextActivated }
+            : entry,
+        ),
+      );
+      setSuccess("Modification enregistree.");
+    } finally {
+      setTogglingLevelId(null);
+    }
+  }
+
+  async function saveLevelOrder(level: AcademicLevelRow) {
+    if (!schoolSlug || !canManageLevels || level.isNational) {
+      return;
+    }
+    const draft = levelOrderDrafts[level.id] ?? "";
+    const parsed = draft.trim() === "" ? null : Number(draft);
+    if (parsed !== null && (!Number.isInteger(parsed) || parsed < 0)) {
+      setError("L'ordre doit etre un nombre entier positif.");
+      return;
+    }
+    setSavingLevelOrderId(level.id);
+    setError(null);
+    try {
+      const csrfToken = getCsrfTokenCookie();
+      if (!csrfToken) {
+        setError("Session CSRF invalide. Reconnectez-vous.");
+        return;
+      }
+      const response = await fetch(
+        `${API_URL}/schools/${schoolSlug}/admin/academic-levels/${level.id}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ order: parsed ?? undefined }),
+        },
+      );
+      if (!response.ok) {
+        setError("Impossible d'enregistrer l'ordre.");
+        return;
+      }
+      setAcademicLevels((current) =>
+        current.map((entry) =>
+          entry.id === level.id ? { ...entry, order: parsed } : entry,
+        ),
+      );
+      setSuccess("Modification enregistree.");
+    } finally {
+      setSavingLevelOrderId(null);
+    }
+  }
+
+  const orderedAcademicLevels = useMemo(
+    () =>
+      [...academicLevels].sort((a, b) => {
+        if (a.order == null && b.order == null)
+          return a.code.localeCompare(b.code);
+        if (a.order == null) return 1;
+        if (b.order == null) return -1;
+        return a.order - b.order;
+      }),
+    [academicLevels],
+  );
+
   return (
     <AppShell
       schoolSlug={schoolSlug}
@@ -590,6 +772,22 @@ export default function SettingsPage() {
               >
                 {t("settings.tab.staff")}
               </button>
+            ) : null}
+            {canManageLevels ? (
+              <OnboardingTarget id={SCHOOL_SETTINGS_TOUR_TARGETS.levelsTab}>
+                <button
+                  type="button"
+                  onClick={() => setTab("levels")}
+                  className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
+                    tab === "levels"
+                      ? "border border-border border-b-surface bg-surface text-primary"
+                      : "text-text-secondary"
+                  }`}
+                  data-testid="settings-tab-levels"
+                >
+                  {t("settings.tab.levels")}
+                </button>
+              </OnboardingTarget>
             ) : null}
           </div>
 
@@ -1021,6 +1219,134 @@ export default function SettingsPage() {
                 </div>
               </div>
             )
+          ) : tab === "levels" ? (
+            !canManageLevels ? (
+              <p className="text-sm text-text-secondary">
+                Gestion des niveaux indisponible pour ce role.
+              </p>
+            ) : loadingLevels ? (
+              <p className="text-sm text-text-secondary">Chargement...</p>
+            ) : (
+              <div className="grid gap-4" data-testid="settings-levels-panel">
+                {error ? (
+                  <p className="text-sm text-notification">{error}</p>
+                ) : null}
+                {success ? (
+                  <p className="text-sm text-primary-dark">{success}</p>
+                ) : null}
+                <p className="text-sm text-text-secondary">
+                  {t("schoolSettings.levels.intro")}
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="text-left text-text-secondary">
+                      <tr>
+                        <th className="px-2 py-2">Niveau</th>
+                        <th className="px-2 py-2">Type</th>
+                        <th className="px-2 py-2">Ordre</th>
+                        <th className="px-2 py-2">Actif</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orderedAcademicLevels.map((level, index) => (
+                        <tr
+                          key={level.id}
+                          className={index % 2 === 0 ? "bg-background/60" : ""}
+                          data-testid={`settings-level-row-${level.id}`}
+                        >
+                          <td className="px-2 py-2 font-medium text-text-primary">
+                            {index === 0 ? (
+                              <OnboardingTarget
+                                id={SCHOOL_SETTINGS_TOUR_TARGETS.firstRow}
+                                className="inline"
+                              >
+                                {level.label}{" "}
+                                <span className="text-text-secondary">
+                                  ({level.code})
+                                </span>
+                              </OnboardingTarget>
+                            ) : (
+                              <>
+                                {level.label}{" "}
+                                <span className="text-text-secondary">
+                                  ({level.code})
+                                </span>
+                              </>
+                            )}
+                          </td>
+                          <td className="px-2 py-2 text-text-secondary">
+                            {level.isNational
+                              ? t("schoolSettings.levels.national")
+                              : t("schoolSettings.levels.own")}
+                          </td>
+                          <td className="px-2 py-2">
+                            {level.isNational ? (
+                              <span className="text-text-secondary">
+                                {level.order ?? "—"}
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  className="h-9 w-20 rounded-card border border-border bg-background px-2 text-sm"
+                                  value={levelOrderDrafts[level.id] ?? ""}
+                                  onChange={(event) =>
+                                    setLevelOrderDrafts((current) => ({
+                                      ...current,
+                                      [level.id]: event.target.value,
+                                    }))
+                                  }
+                                  data-testid={`settings-level-row-${level.id}-order-input`}
+                                />
+                                <button
+                                  type="button"
+                                  className="rounded-card border border-border px-2 py-1 text-xs text-primary transition hover:bg-primary/10 disabled:opacity-50"
+                                  disabled={savingLevelOrderId === level.id}
+                                  onClick={() => void saveLevelOrder(level)}
+                                  data-testid={`settings-level-row-${level.id}-order-save`}
+                                >
+                                  {t("common.save")}
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-2 py-2">
+                            {level.isNational ? (
+                              <label className="inline-flex cursor-pointer items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={level.isActivated}
+                                  disabled={togglingLevelId === level.id}
+                                  onChange={() =>
+                                    void toggleLevelActivation(level)
+                                  }
+                                  data-testid={`settings-level-row-${level.id}-toggle`}
+                                />
+                              </label>
+                            ) : (
+                              <span className="text-xs font-semibold uppercase text-accent-teal-dark">
+                                {t("schoolSettings.levels.alwaysActive")}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {orderedAcademicLevels.length === 0 ? (
+                        <tr>
+                          <td
+                            className="px-2 py-3 text-text-secondary"
+                            colSpan={4}
+                          >
+                            {t("schoolSettings.levels.empty.message")}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
           ) : (
             <ModuleHelpTab
               moduleName="Parametres de navigation"
@@ -1037,6 +1363,21 @@ export default function SettingsPage() {
                   crossModuleImpact:
                     "Le changement simplifie vos deplacements vers les modules associes a ce role.",
                 },
+                ...(canManageLevels
+                  ? [
+                      {
+                        name: "Activer les niveaux de l'ecole (onglet Niveaux)",
+                        purpose:
+                          "Ne proposer, comme cible de decision de passage, que les niveaux academiques reellement utilises par votre ecole plutot que tout le catalogue national.",
+                        howTo:
+                          "Dans l'onglet Niveaux, cochez les niveaux nationaux utilises par votre ecole. Les niveaux propres a l'ecole sont toujours actifs. Renseignez l'ordre sur vos niveaux propres pour piloter la suggestion automatique du niveau suivant.",
+                        moduleImpact:
+                          "L'onglet Decision de Notes ne propose plus que les niveaux actives, tries par cet ordre, et suggere automatiquement le niveau cible pour une decision Promu ou Redouble.",
+                        crossModuleImpact:
+                          "Utile avant tout conseil de classe de fin d'annee pour eviter des erreurs de niveau cible.",
+                      },
+                    ]
+                  : []),
               ]}
               tips={[
                 "La preference est enregistree localement sur ce navigateur.",

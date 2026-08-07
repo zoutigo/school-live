@@ -90,9 +90,14 @@ type TermReportForDecisionRow = {
   yearlyAverage: number | null;
   rank: number | null;
   classSize: number | null;
+  currentAcademicLevel: { id: string; order: number | null } | null;
 };
 
-type AcademicLevelOption = { id: string; label: string };
+type AcademicLevelOption = {
+  id: string;
+  label: string;
+  order?: number | null;
+};
 
 type AdminClassroomOption = {
   id: string;
@@ -300,7 +305,10 @@ export default function TeacherClassNotesPage() {
     [],
   );
   const [decisionDrafts, setDecisionDrafts] = useState<
-    Record<string, { decision: PromotionDecision; nextAcademicLevelId: string }>
+    Record<
+      string,
+      { decision: PromotionDecision | ""; nextAcademicLevelId: string }
+    >
   >({});
   const [loadingDecision, setLoadingDecision] = useState(false);
   const [savingDecisionId, setSavingDecisionId] = useState<string | null>(null);
@@ -587,7 +595,7 @@ export default function TeacherClassNotesPage() {
     setLoadingDecision(true);
     try {
       const [levelsResponse, reportsResponse] = await Promise.all([
-        fetch(`${API_URL}/schools/${schoolSlug}/admin/academic-levels`, {
+        fetch(`${API_URL}/schools/${schoolSlug}/admin/academic-levels/active`, {
           credentials: "include",
         }),
         fetch(
@@ -608,7 +616,7 @@ export default function TeacherClassNotesPage() {
           rows.map((row) => [
             row.id,
             {
-              decision: row.decision ?? "PROMOTED",
+              decision: row.decision ?? "",
               nextAcademicLevelId: row.nextAcademicLevel?.id ?? "",
             },
           ]),
@@ -619,9 +627,64 @@ export default function TeacherClassNotesPage() {
     }
   }
 
+  /**
+   * Niveau cible propose automatiquement selon la decision choisie :
+   * - REPEATED -> le niveau actuel de la classe (si toujours actif)
+   * - PROMOTED -> le niveau actif dont l'ordre est immediatement superieur
+   * Ne s'applique que si le champ est encore vide (ne jamais ecraser un
+   * choix manuel).
+   */
+  function suggestNextAcademicLevelId(
+    decision: PromotionDecision | "",
+    currentAcademicLevel: TermReportForDecisionRow["currentAcademicLevel"],
+    levels: AcademicLevelOption[],
+  ): string {
+    if (!currentAcademicLevel) return "";
+    if (decision === "REPEATED") {
+      const stillActive = levels.some(
+        (level) => level.id === currentAcademicLevel.id,
+      );
+      return stillActive ? currentAcademicLevel.id : "";
+    }
+    if (decision === "PROMOTED") {
+      if (currentAcademicLevel.order === null) return "";
+      const next = levels
+        .filter(
+          (level) =>
+            level.order !== null &&
+            level.order !== undefined &&
+            level.order > currentAcademicLevel.order!,
+        )
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+      return next?.id ?? "";
+    }
+    return "";
+  }
+
+  function handleDecisionChange(
+    row: TermReportForDecisionRow,
+    decision: PromotionDecision,
+  ) {
+    const current = decisionDrafts[row.id] ?? {
+      decision: "" as PromotionDecision | "",
+      nextAcademicLevelId: "",
+    };
+    const nextAcademicLevelId =
+      current.nextAcademicLevelId ||
+      suggestNextAcademicLevelId(
+        decision,
+        row.currentAcademicLevel,
+        decisionLevels,
+      );
+    setDecisionDrafts((currentDrafts) => ({
+      ...currentDrafts,
+      [row.id]: { decision, nextAcademicLevelId },
+    }));
+  }
+
   async function saveDecision(reportId: string) {
     const draft = decisionDrafts[reportId];
-    if (!draft) return;
+    if (!draft || !draft.decision) return;
     setSavingDecisionId(reportId);
     setError(null);
     setSuccess(null);
@@ -2762,11 +2825,29 @@ export default function TeacherClassNotesPage() {
                         return (
                           <tr
                             key={row.id}
-                            className="border-b border-border/70"
+                            className={
+                              row.decision
+                                ? "border-b border-border/70"
+                                : "border-b border-border/70 border-l-2 border-l-notification"
+                            }
                             data-testid={`decision-row-${row.id}`}
                           >
                             <td className="px-3 py-2 font-medium text-text-primary">
                               {row.student.lastName} {row.student.firstName}
+                              <div
+                                className={
+                                  row.decision
+                                    ? "text-xs font-semibold text-accent-teal-dark"
+                                    : "text-xs font-semibold uppercase text-notification"
+                                }
+                                data-testid={`decision-row-${row.id}-status`}
+                              >
+                                {row.decision
+                                  ? t(
+                                      `notes.teacher.decision.${row.decision.toLowerCase()}`,
+                                    )
+                                  : t("notes.teacher.decision.noDecision")}
+                              </div>
                             </td>
                             <td className="px-3 py-2">
                               {row.termAverages.TERM_1 ?? "-"}
@@ -2787,19 +2868,20 @@ export default function TeacherClassNotesPage() {
                             </td>
                             <td className="px-3 py-2">
                               <FormSelect
-                                value={draft?.decision ?? "PROMOTED"}
+                                value={draft?.decision ?? ""}
                                 onChange={(event) =>
-                                  setDecisionDrafts((current) => ({
-                                    ...current,
-                                    [row.id]: {
-                                      ...current[row.id],
-                                      decision: event.target
-                                        .value as PromotionDecision,
-                                    },
-                                  }))
+                                  handleDecisionChange(
+                                    row,
+                                    event.target.value as PromotionDecision,
+                                  )
                                 }
                                 data-testid={`decision-row-${row.id}-select`}
                               >
+                                <option value="">
+                                  {t(
+                                    "notes.teacher.decision.decisionPlaceholder",
+                                  )}
+                                </option>
                                 <option value="PROMOTED">
                                   {t("notes.teacher.decision.promoted")}
                                 </option>
@@ -2812,7 +2894,8 @@ export default function TeacherClassNotesPage() {
                               </FormSelect>
                             </td>
                             <td className="px-3 py-2">
-                              {draft?.decision !== "LEFT" ? (
+                              {draft?.decision === "PROMOTED" ||
+                              draft?.decision === "REPEATED" ? (
                                 <FormSelect
                                   value={draft?.nextAcademicLevelId ?? ""}
                                   onChange={(event) =>
@@ -2841,7 +2924,10 @@ export default function TeacherClassNotesPage() {
                               <button
                                 type="button"
                                 onClick={() => void saveDecision(row.id)}
-                                disabled={savingDecisionId === row.id}
+                                disabled={
+                                  savingDecisionId === row.id ||
+                                  !draft?.decision
+                                }
                                 className="rounded-[10px] bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-70"
                                 data-testid={`decision-row-${row.id}-save`}
                               >

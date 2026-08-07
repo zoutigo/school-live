@@ -67,6 +67,7 @@ import { ListStudentEnrollmentsQueryDto } from "./dto/list-student-enrollments-q
 import { ListStudentLifeEventsQueryDto } from "./dto/list-student-life-events-query.dto.js";
 import { ListTeacherAssignmentsQueryDto } from "./dto/list-teacher-assignments-query.dto.js";
 import { UpdateAcademicLevelDto } from "./dto/update-academic-level.dto.js";
+import { SetAcademicLevelActivationDto } from "./dto/set-academic-level-activation.dto.js";
 import { UpdateClassroomDto } from "./dto/update-classroom.dto.js";
 import { UpdateClassSubjectOverrideDto } from "./dto/update-class-subject-override.dto.js";
 import { UpdateCurriculumDto } from "./dto/update-curriculum.dto.js";
@@ -774,6 +775,37 @@ export class ManagementController {
     return this.managementService.deleteAcademicLevel(
       schoolId,
       academicLevelId,
+    );
+  }
+
+  @Get("schools/:schoolSlug/admin/academic-levels/active")
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles(
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "TEACHER",
+    "ADMIN",
+    "SUPER_ADMIN",
+  )
+  listActivatedAcademicLevels(@CurrentSchoolId() schoolId: string) {
+    return this.managementService.listActivatedAcademicLevels(schoolId);
+  }
+
+  @Patch(
+    "schools/:schoolSlug/admin/academic-levels/:academicLevelId/activation",
+  )
+  @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "ADMIN", "SUPER_ADMIN")
+  setAcademicLevelActivation(
+    @CurrentSchoolId() schoolId: string,
+    @Param("academicLevelId") academicLevelId: string,
+    @Body() payload: SetAcademicLevelActivationDto,
+  ) {
+    return this.managementService.setAcademicLevelActivation(
+      schoolId,
+      academicLevelId,
+      payload.activated,
     );
   }
 

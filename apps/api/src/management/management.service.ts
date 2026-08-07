@@ -443,6 +443,7 @@ const updateAcademicLevelSchema = z.object({
   label: z.string().trim().min(1).optional(),
   cycleId: z.string().trim().min(1).optional(),
   languageSystem: z.enum(["FRANCOPHONE", "ANGLOPHONE", "BILINGUAL"]).optional(),
+  order: z.number().int().optional(),
 });
 
 const createNationalCycleSchema = z.object({
@@ -3721,23 +3722,93 @@ export class ManagementService {
   async listAcademicLevels(schoolId: string) {
     const nationalFilter =
       await this.getNationalCatalogFilterForSchool(schoolId);
-    const levels = await this.prisma.academicLevel.findMany({
-      where: { OR: [{ schoolId }, nationalFilter] },
-      orderBy: [{ code: "asc" }],
-      include: {
-        _count: {
-          select: {
-            classes: true,
-            curriculums: true,
+    const [levels, activations] = await Promise.all([
+      this.prisma.academicLevel.findMany({
+        where: { OR: [{ schoolId }, nationalFilter] },
+        orderBy: [{ code: "asc" }],
+        include: {
+          _count: {
+            select: {
+              classes: true,
+              curriculums: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.schoolAcademicLevel.findMany({
+        where: { schoolId },
+        select: { academicLevelId: true },
+      }),
+    ]);
 
-    return levels.map((level) => ({
-      ...level,
-      isNational: level.schoolId === null,
-    }));
+    const activatedLevelIds = new Set(
+      activations.map((activation) => activation.academicLevelId),
+    );
+
+    return levels.map((level) => {
+      const isNational = level.schoolId === null;
+      return {
+        ...level,
+        isNational,
+        isActivated: isNational ? activatedLevelIds.has(level.id) : true,
+      };
+    });
+  }
+
+  /**
+   * Niveaux effectivement actifs pour l'ecole (niveaux propres + niveaux
+   * nationaux explicitement actives), tries par ordre pedagogique. Utilise
+   * pour la cible de la decision de passage : on ne doit pas y proposer tout
+   * le catalogue national, seulement ce que l'ecole utilise reellement.
+   */
+  async listActivatedAcademicLevels(schoolId: string) {
+    const levels = await this.listAcademicLevels(schoolId);
+    return levels
+      .filter((level) => level.isActivated)
+      .sort((a, b) => {
+        if (a.order === null && b.order === null) return 0;
+        if (a.order === null) return 1;
+        if (b.order === null) return -1;
+        return a.order - b.order;
+      });
+  }
+
+  async setAcademicLevelActivation(
+    schoolId: string,
+    academicLevelId: string,
+    activated: boolean,
+  ) {
+    const level = await this.prisma.academicLevel.findFirst({
+      where: { id: academicLevelId },
+      select: { id: true, schoolId: true },
+    });
+    if (!level) {
+      throw new NotFoundException("Academic level not found");
+    }
+    if (level.schoolId === schoolId) {
+      throw new BadRequestException(
+        "Un niveau propre a l'ecole est toujours actif",
+      );
+    }
+    if (level.schoolId !== null) {
+      throw new NotFoundException("Academic level not found");
+    }
+
+    if (activated) {
+      await this.prisma.schoolAcademicLevel.upsert({
+        where: {
+          schoolId_academicLevelId: { schoolId, academicLevelId },
+        },
+        create: { schoolId, academicLevelId },
+        update: {},
+      });
+    } else {
+      await this.prisma.schoolAcademicLevel.deleteMany({
+        where: { schoolId, academicLevelId },
+      });
+    }
+
+    return { success: true, activated };
   }
 
   async createAcademicLevel(schoolId: string, payload: CreateAcademicLevelDto) {
@@ -3771,7 +3842,11 @@ export class ManagementService {
     }
 
     const parsed = parsedResult.data;
-    if (parsed.code === undefined && parsed.label === undefined) {
+    if (
+      parsed.code === undefined &&
+      parsed.label === undefined &&
+      parsed.order === undefined
+    ) {
       throw new BadRequestException("No fields to update");
     }
 
@@ -3781,6 +3856,7 @@ export class ManagementService {
       data: {
         code: parsed.code,
         label: parsed.label,
+        order: parsed.order,
       },
     });
   }
@@ -3932,7 +4008,8 @@ export class ManagementService {
       parsed.code === undefined &&
       parsed.label === undefined &&
       parsed.cycleId === undefined &&
-      parsed.languageSystem === undefined
+      parsed.languageSystem === undefined &&
+      parsed.order === undefined
     ) {
       throw new BadRequestException("No fields to update");
     }
@@ -3952,6 +4029,7 @@ export class ManagementService {
         label: parsed.label,
         cycleId: parsed.cycleId,
         languageSystem: parsed.languageSystem,
+        order: parsed.order,
       },
       include: { cycle: true },
     });
