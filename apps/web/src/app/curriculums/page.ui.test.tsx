@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CurriculumsPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -145,9 +146,7 @@ describe("Curriculums page forms", () => {
       expect(submitButton).toBeEnabled();
     });
 
-    fireEvent.change(screen.getByLabelText("Filiere (optionnel)"), {
-      target: { value: "track-1" },
-    });
+    await selectSearchableOption("Filiere (optionnel)", "C - Scientifique");
     fireEvent.click(submitButton);
 
     await waitFor(() => {

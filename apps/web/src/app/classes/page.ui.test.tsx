@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ClassesPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -32,14 +33,6 @@ function jsonResponse(payload: unknown, status = 200) {
       headers: { "Content-Type": "application/json" },
     }),
   );
-}
-
-async function selectSearchableOption(
-  triggerLabel: string,
-  optionLabel: string,
-) {
-  fireEvent.click(screen.getByLabelText(triggerLabel));
-  fireEvent.click(await screen.findByRole("option", { name: optionLabel }));
 }
 
 describe("Classes page subject color UI", () => {

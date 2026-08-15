@@ -82,7 +82,7 @@ describe("Curriculums page — deep link depuis la fiche ecole", () => {
     render(<CurriculumsPage />);
 
     expect(
-      await screen.findByDisplayValue("Lycee du Poisson d'Avril"),
+      await screen.findByText("Lycee du Poisson d'Avril"),
     ).toBeInTheDocument();
     expect(
       await screen.findByLabelText("Niveau academique"),
