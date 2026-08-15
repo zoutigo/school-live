@@ -195,12 +195,10 @@ describe("Agenda page forms", () => {
     });
     expect(submitButton).toBeEnabled();
 
-    // Sélectionner la salle B14 dans le dropdown (select)
-    const roomSelect = document.getElementById(
-      "slot-room",
-    ) as HTMLSelectElement;
-    await waitFor(() => expect(roomSelect).not.toBeNull());
-    fireEvent.change(roomSelect, { target: { value: "B14" } });
+    // Sélectionner la salle B14 dans le dropdown
+    const roomSelect = await screen.findByTestId("slot-room-select");
+    fireEvent.click(roomSelect);
+    fireEvent.click(await screen.findByRole("option", { name: "B14" }));
 
     const slotTimeInputs = document.querySelectorAll('input[type="time"]');
     fireEvent.change(slotTimeInputs[1] as HTMLInputElement, {
