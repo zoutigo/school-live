@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { FormSelect, FormTextInput } from "../ui/form-controls";
+import { FormTextInput } from "../ui/form-controls";
+import { SearchableSelect } from "../ui/searchable-select";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import {
   academicYearValues,
@@ -292,20 +293,20 @@ export function ResourceForm(props: {
             className="mb-2"
             data-testid="resources-mine-form-school-search"
           />
-          <FormSelect
-            {...register("schoolId")}
+          <SearchableSelect
+            ariaLabel={t("resourcesMine.form.schoolLabel")}
+            value={watch("schoolId") ?? ""}
+            onChange={(value) => setValue("schoolId", value)}
             invalid={!!errors.schoolId}
+            placeholder={t("resourcesMine.form.schoolPlaceholder")}
+            searchPlaceholder={t("settings.form.searchPlaceholder")}
+            noResultsLabel={t("settings.form.noResults")}
             data-testid="resources-mine-form-school"
-          >
-            <option value="">
-              {t("resourcesMine.form.schoolPlaceholder")}
-            </option>
-            {schoolPool.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </FormSelect>
+            options={schoolPool.map((s) => ({
+              value: s.id,
+              label: s.name,
+            }))}
+          />
           {errors.schoolId?.message && (
             <p className="mt-1 text-xs text-notification">
               {errors.schoolId.message}
@@ -318,46 +319,48 @@ export function ResourceForm(props: {
         <label className="mb-1 block text-sm font-semibold text-text-primary">
           {t("resourcesMine.form.cycleLabel")}
         </label>
-        <FormSelect
-          {...register("cycleId")}
-          onChange={(e) => {
-            setValue("cycleId", e.target.value);
+        <SearchableSelect
+          ariaLabel={t("resourcesMine.form.cycleLabel")}
+          value={watch("cycleId") ?? ""}
+          onChange={(value) => {
+            setValue("cycleId", value);
             setValue("academicLevelId", "");
             setValue("trackId", "");
             setValue("subjectId", "");
           }}
+          placeholder={t("resourcesMine.form.cyclePlaceholder")}
+          searchPlaceholder={t("settings.form.searchPlaceholder")}
+          noResultsLabel={t("settings.form.noResults")}
           data-testid="resources-mine-form-cycle"
-        >
-          <option value="">{t("resourcesMine.form.cyclePlaceholder")}</option>
-          {catalog.cycles.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-            </option>
-          ))}
-        </FormSelect>
+          options={catalog.cycles.map((c) => ({
+            value: c.id,
+            label: c.label,
+          }))}
+        />
       </div>
 
       <div>
         <label className="mb-1 block text-sm font-semibold text-text-primary">
           {t("resourcesMine.form.levelLabel")}
         </label>
-        <FormSelect
-          {...register("academicLevelId")}
+        <SearchableSelect
+          ariaLabel={t("resourcesMine.form.levelLabel")}
+          value={watch("academicLevelId") ?? ""}
           invalid={!!errors.academicLevelId}
-          onChange={(e) => {
-            setValue("academicLevelId", e.target.value);
+          onChange={(value) => {
+            setValue("academicLevelId", value);
             setValue("trackId", "");
             setValue("subjectId", "");
           }}
+          placeholder={t("resourcesMine.form.levelPlaceholder")}
+          searchPlaceholder={t("settings.form.searchPlaceholder")}
+          noResultsLabel={t("settings.form.noResults")}
           data-testid="resources-mine-form-level"
-        >
-          <option value="">{t("resourcesMine.form.levelPlaceholder")}</option>
-          {levelOptions.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.label}
-            </option>
-          ))}
-        </FormSelect>
+          options={levelOptions.map((l) => ({
+            value: l.id,
+            label: l.label,
+          }))}
+        />
         {errors.academicLevelId?.message && (
           <p className="mt-1 text-xs text-notification">
             {errors.academicLevelId.message}
@@ -370,22 +373,23 @@ export function ResourceForm(props: {
           <label className="mb-1 block text-sm font-semibold text-text-primary">
             {t("resourcesMine.form.trackLabel")}
           </label>
-          <FormSelect
-            {...register("trackId")}
+          <SearchableSelect
+            ariaLabel={t("resourcesMine.form.trackLabel")}
+            value={watch("trackId") ?? ""}
             invalid={!!errors.trackId}
-            onChange={(e) => {
-              setValue("trackId", e.target.value);
+            onChange={(value) => {
+              setValue("trackId", value);
               setValue("subjectId", "");
             }}
+            placeholder={t("resourcesMine.form.trackPlaceholder")}
+            searchPlaceholder={t("settings.form.searchPlaceholder")}
+            noResultsLabel={t("settings.form.noResults")}
             data-testid="resources-mine-form-track"
-          >
-            <option value="">{t("resourcesMine.form.trackPlaceholder")}</option>
-            {trackOptions.map((tr) => (
-              <option key={tr.id} value={tr.id}>
-                {tr.label}
-              </option>
-            ))}
-          </FormSelect>
+            options={trackOptions.map((tr) => ({
+              value: tr.id,
+              label: tr.label,
+            }))}
+          />
           {errors.trackId?.message && (
             <p className="mt-1 text-xs text-notification">
               {errors.trackId.message}
@@ -398,18 +402,20 @@ export function ResourceForm(props: {
         <label className="mb-1 block text-sm font-semibold text-text-primary">
           {t("resourcesMine.form.subjectLabel")}
         </label>
-        <FormSelect
-          {...register("subjectId")}
+        <SearchableSelect
+          ariaLabel={t("resourcesMine.form.subjectLabel")}
+          value={watch("subjectId") ?? ""}
           invalid={!!errors.subjectId}
+          onChange={(value) => setValue("subjectId", value)}
+          placeholder={t("resourcesMine.form.subjectPlaceholder")}
+          searchPlaceholder={t("settings.form.searchPlaceholder")}
+          noResultsLabel={t("settings.form.noResults")}
           data-testid="resources-mine-form-subject"
-        >
-          <option value="">{t("resourcesMine.form.subjectPlaceholder")}</option>
-          {subjectOptions.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </FormSelect>
+          options={subjectOptions.map((s) => ({
+            value: s.id,
+            label: s.name,
+          }))}
+        />
         {errors.subjectId?.message && (
           <p className="mt-1 text-xs text-notification">
             {errors.subjectId.message}
@@ -421,16 +427,16 @@ export function ResourceForm(props: {
         <label className="mb-1 block text-sm font-semibold text-text-primary">
           {t("resourcesMine.form.examTypeLabel")}
         </label>
-        <FormSelect
-          {...register("examType")}
+        <SearchableSelect
+          ariaLabel={t("resourcesMine.form.examTypeLabel")}
+          value={watch("examType") ?? ""}
+          onChange={(value) => setValue("examType", value)}
           data-testid="resources-mine-form-exam-type"
-        >
-          {EXAM_TYPE_VALUES.map((type) => (
-            <option key={type} value={type}>
-              {t(`resources.examType.${type}`)}
-            </option>
-          ))}
-        </FormSelect>
+          options={EXAM_TYPE_VALUES.map((type) => ({
+            value: type,
+            label: t(`resources.examType.${type}`),
+          }))}
+        />
       </div>
 
       {requiresSchool && (
@@ -438,17 +444,17 @@ export function ResourceForm(props: {
           <label className="mb-1 block text-sm font-semibold text-text-primary">
             {t("resourcesMine.form.sequenceLabel")}
           </label>
-          <FormSelect
-            {...register("sequence")}
+          <SearchableSelect
+            ariaLabel={t("resourcesMine.form.sequenceLabel")}
+            value={watch("sequence") ?? ""}
             invalid={!!errors.sequence}
+            onChange={(value) => setValue("sequence", value)}
             data-testid="resources-mine-form-sequence"
-          >
-            {SEQUENCE_VALUES.map((seq) => (
-              <option key={seq} value={seq}>
-                {t(`resources.sequence.${seq}`)}
-              </option>
-            ))}
-          </FormSelect>
+            options={SEQUENCE_VALUES.map((seq) => ({
+              value: seq,
+              label: t(`resources.sequence.${seq}`),
+            }))}
+          />
           {errors.sequence?.message && (
             <p className="mt-1 text-xs text-notification">
               {errors.sequence.message}
@@ -461,17 +467,17 @@ export function ResourceForm(props: {
         <label className="mb-1 block text-sm font-semibold text-text-primary">
           {t("resourcesMine.form.yearLabel")}
         </label>
-        <FormSelect
-          {...register("academicYearLabel")}
+        <SearchableSelect
+          ariaLabel={t("resourcesMine.form.yearLabel")}
+          value={watch("academicYearLabel") ?? ""}
           invalid={!!errors.academicYearLabel}
+          onChange={(value) => setValue("academicYearLabel", value)}
           data-testid="resources-mine-form-year"
-        >
-          {academicYearValues().map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </FormSelect>
+          options={academicYearValues().map((year) => ({
+            value: year,
+            label: year,
+          }))}
+        />
       </div>
 
       {props.errorMessage && (
