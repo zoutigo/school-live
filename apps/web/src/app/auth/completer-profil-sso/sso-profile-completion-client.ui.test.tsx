@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SsoProfileCompletionClient } from "./sso-profile-completion-client";
 import { useLocaleStore } from "../../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../../i18n/translations";
+import { selectSearchableOption } from "../../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getSessionMock = vi.fn();
@@ -48,57 +49,59 @@ describe("SsoProfileCompletionClient UI", () => {
       },
     });
 
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-      const url = String(input);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input) => {
+        const url = String(input);
 
-      if (url.includes("/auth/sso/profile/options")) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            firstName: "",
-            lastName: "",
-            gender: null,
-            phone: null,
-            schoolSlug: "college-vogt",
-            missingFields: ["firstName", "lastName", "gender", "phone"],
-            needsProfileCompletion: true,
-          }),
-          {
+        if (url.includes("/auth/sso/profile/options")) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              firstName: "",
+              lastName: "",
+              gender: null,
+              phone: null,
+              schoolSlug: "college-vogt",
+              missingFields: ["firstName", "lastName", "gender", "phone"],
+              needsProfileCompletion: true,
+            }),
+            {
+              status: 201,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (url.includes("/auth/sso/profile/complete")) {
+          return new Response(
+            JSON.stringify({ success: true, schoolSlug: "college-vogt" }),
+            {
+              status: 201,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (url.includes("/auth/sso/login")) {
+          return new Response(JSON.stringify({ accessToken: "token" }), {
             status: 201,
             headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
+          });
+        }
 
-      if (url.includes("/auth/sso/profile/complete")) {
-        return new Response(
-          JSON.stringify({ success: true, schoolSlug: "college-vogt" }),
-          {
-            status: 201,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
+        if (url.endsWith("/me")) {
+          return new Response(
+            JSON.stringify({ role: "PARENT", schoolSlug: "college-vogt" }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
 
-      if (url.includes("/auth/sso/login")) {
-        return new Response(JSON.stringify({ accessToken: "token" }), {
-          status: 201,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      if (url.endsWith("/me")) {
-        return new Response(
-          JSON.stringify({ role: "PARENT", schoolSlug: "college-vogt" }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      return new Response("not-found", { status: 404 });
-    });
+        return new Response("not-found", { status: 404 });
+      });
 
     render(<SsoProfileCompletionClient schoolSlug="college-vogt" />);
 
@@ -106,6 +109,7 @@ describe("SsoProfileCompletionClient UI", () => {
 
     await user.type(screen.getByLabelText("Prenom"), "Aline");
     await user.type(screen.getByLabelText("Nom"), "Mbella");
+    await selectSearchableOption("Genre", "Feminin");
     await user.type(screen.getByLabelText("Telephone"), "+237612345678");
     await user.type(screen.getByLabelText("PIN (6 chiffres)"), "123456");
 
@@ -124,6 +128,13 @@ describe("SsoProfileCompletionClient UI", () => {
         "/schools/college-vogt/dashboard",
       );
     });
+
+    const completeCall = fetchMock.mock.calls.find(([callUrl]) =>
+      String(callUrl).includes("/auth/sso/profile/complete"),
+    );
+    expect(completeCall).toBeTruthy();
+    const body = JSON.parse(String(completeCall?.[1]?.body));
+    expect(body.gender).toBe("F");
   });
 
   it("blocks submission when PIN is not 6 digits", async () => {

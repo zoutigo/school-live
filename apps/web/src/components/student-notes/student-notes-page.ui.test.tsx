@@ -441,17 +441,16 @@ describe("StudentNotesPage UI", () => {
   it("updates smartphone content when the trimester select changes", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
-    const select = (await screen.findByTestId(
-      "notes-term-select-mobile",
-    )) as HTMLSelectElement;
-
-    fireEvent.change(select, { target: { value: "TERM_2" } });
+    await screen.findByTestId("notes-term-select-mobile");
+    fireEvent.click(screen.getByTestId("notes-term-select-mobile"));
+    fireEvent.click(
+      await screen.findByTestId("notes-term-select-mobile-option-TERM_2"),
+    );
 
     await waitFor(() => {
-      expect(select.value).toBe("TERM_2");
+      expect(screen.getAllByText("2eme Trimestre").length).toBeGreaterThan(0);
     });
 
-    expect(screen.getAllByText("2eme Trimestre").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Chimie").length).toBeGreaterThan(0);
     expect(screen.queryAllByText("Anglais").length).toBe(0);
     expect(screen.getAllByText("15,50").length).toBeGreaterThan(0);
@@ -460,15 +459,11 @@ describe("StudentNotesPage UI", () => {
   it("switches to the empty smartphone trimester through the mobile select", async () => {
     render(<StudentNotesPage schoolSlug="college-vogt" childId="child-1" />);
 
-    const select = (await screen.findByTestId(
-      "notes-term-select-mobile",
-    )) as HTMLSelectElement;
-
-    fireEvent.change(select, { target: { value: "TERM_3" } });
-
-    await waitFor(() => {
-      expect(select.value).toBe("TERM_3");
-    });
+    await screen.findByTestId("notes-term-select-mobile");
+    fireEvent.click(screen.getByTestId("notes-term-select-mobile"));
+    fireEvent.click(
+      await screen.findByTestId("notes-term-select-mobile-option-TERM_3"),
+    );
 
     expect(screen.getAllByText("3eme Trimestre").length).toBeGreaterThan(0);
     expect(

@@ -142,28 +142,32 @@ describe("School sante student page (fiche élève)", () => {
 
   it("soumission création : POST care-events puis recharge l'historique", async () => {
     let created = false;
-    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
-      if (url.includes("/health/care-events") && method === "POST") {
-        created = true;
-        return jsonResponse({ id: "care-2" }, 201);
-      }
-      if (url.includes("/health/history")) {
-        return jsonResponse({
-          items: created
-            ? [
-                {
-                  kind: "CARE_EVENT",
-                  at: "now",
-                  payload: { ...CARE_EVENT_1, id: "care-2" },
-                },
-              ]
-            : [],
-        });
-      }
-      return jsonResponse({ items: [] });
-    });
+    let postedAlertLevel: string | null = null;
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("/health/care-events") && method === "POST") {
+          created = true;
+          postedAlertLevel = JSON.parse(String(init?.body)).alertLevel;
+          return jsonResponse({ id: "care-2" }, 201);
+        }
+        if (url.includes("/health/history")) {
+          return jsonResponse({
+            items: created
+              ? [
+                  {
+                    kind: "CARE_EVENT",
+                    at: "now",
+                    payload: { ...CARE_EVENT_1, id: "care-2" },
+                  },
+                ]
+              : [],
+          });
+        }
+        return jsonResponse({ items: [] });
+      });
 
     render(<SchoolSanteStudentPage />);
     fireEvent.click(await screen.findByTestId("sante-student-add-care"));
@@ -171,12 +175,18 @@ describe("School sante student page (fiche élève)", () => {
     fireEvent.change(screen.getByTestId("sante-care-form-summary"), {
       target: { value: "Petite coupure" },
     });
+    fireEvent.click(screen.getByTestId("sante-care-form-alertLevel"));
+    fireEvent.click(
+      await screen.findByTestId("sante-care-form-alertLevel-option-URGENT"),
+    );
     fireEvent.click(screen.getByTestId("sante-care-form-submit"));
 
     await waitFor(() => {
       expect(created).toBe(true);
+      expect(postedAlertLevel).toBe("URGENT");
       expect(screen.queryByTestId("sante-care-form-summary")).toBeNull();
     });
+    expect(fetchMock).toHaveBeenCalled();
   });
 
   it("le lien Modifier ouvre le formulaire pré-rempli, la soumission fait un PATCH avec l'id du soin", async () => {

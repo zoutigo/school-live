@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Download, FileBadge2, GraduationCap, ReceiptText } from "lucide-react";
 import { Button } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
-import { FormSelect } from "../../../../../components/ui/form-controls";
+import { SearchableSelect } from "../../../../../components/ui/searchable-select";
 import {
   useTranslation,
   type TranslateFn,
@@ -344,17 +344,17 @@ export default function ParentDocumentsPage() {
                 <span className="text-xs text-text-secondary">
                   {t("documents.archive.access")}
                 </span>
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("documents.archive.access")}
                   value={archive}
-                  onChange={(event) =>
-                    setArchive(event.target.value as ArchiveYear)
-                  }
+                  onChange={(value) => setArchive(value as ArchiveYear)}
                   className="bg-surface px-3 py-2 text-sm"
-                >
-                  <option value="2025-2026">2025-2026</option>
-                  <option value="2024-2025">2024-2025</option>
-                  <option value="2023-2024">2023-2024</option>
-                </FormSelect>
+                  options={[
+                    { value: "2025-2026", label: "2025-2026" },
+                    { value: "2024-2025", label: "2024-2025" },
+                    { value: "2023-2024", label: "2023-2024" },
+                  ]}
+                />
               </label>
             </div>
 

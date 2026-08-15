@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { FormField } from "../ui/form-field";
 import { FormRichTextEditor } from "../ui/form-rich-text-editor";
-import { FormSelect, FormTextInput, FormTextarea } from "../ui/form-controls";
+import { FormTextInput, FormTextarea } from "../ui/form-controls";
+import { SearchableSelect } from "../ui/searchable-select";
 import {
   type HelpFaq,
   type HelpFaqAudience,
@@ -863,13 +864,15 @@ export function AssistanceFaqPanel({ canManageOverride = true }: Props) {
                 name="audience"
                 render={({ field }) => (
                   <FormField label="Audience">
-                    <FormSelect {...field}>
-                      {AUDIENCE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      ariaLabel="Audience"
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={AUDIENCE_OPTIONS.map((option) => ({
+                        value: option.value,
+                        label: option.label,
+                      }))}
+                    />
                   </FormField>
                 )}
               />
@@ -878,13 +881,15 @@ export function AssistanceFaqPanel({ canManageOverride = true }: Props) {
                 name="status"
                 render={({ field }) => (
                   <FormField label="Statut">
-                    <FormSelect {...field}>
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      ariaLabel="Statut FAQ"
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={STATUS_OPTIONS.map((option) => ({
+                        value: option.value,
+                        label: option.label,
+                      }))}
+                    />
                   </FormField>
                 )}
               />
@@ -947,13 +952,15 @@ export function AssistanceFaqPanel({ canManageOverride = true }: Props) {
                 name="status"
                 render={({ field }) => (
                   <FormField label="Statut">
-                    <FormSelect {...field}>
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      ariaLabel="Statut theme"
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={STATUS_OPTIONS.map((option) => ({
+                        value: option.value,
+                        label: option.label,
+                      }))}
+                    />
                   </FormField>
                 )}
               />
@@ -1016,13 +1023,15 @@ export function AssistanceFaqPanel({ canManageOverride = true }: Props) {
                 name="status"
                 render={({ field }) => (
                   <FormField label="Statut">
-                    <FormSelect {...field}>
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      ariaLabel="Statut question"
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={STATUS_OPTIONS.map((option) => ({
+                        value: option.value,
+                        label: option.label,
+                      }))}
+                    />
                   </FormField>
                 )}
               />

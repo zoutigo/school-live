@@ -7,7 +7,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
-import { FormSelect, FormTextInput } from "../../components/ui/form-controls";
+import { FormTextInput } from "../../components/ui/form-controls";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
@@ -357,17 +358,16 @@ export default function FinancePaiementsPage() {
             {selectedStudentId ? (
               <Card title={t("financePayments.target.title")} className="mb-4">
                 <FormField label={t("financePayments.target.schoolYear")}>
-                  <FormSelect
+                  <SearchableSelect
+                    ariaLabel={t("financePayments.target.schoolYear")}
                     value={targetSchoolYearId}
-                    onChange={(e) => setTargetSchoolYearId(e.target.value)}
-                  >
-                    <option value="">{t("common.select")}</option>
-                    {schoolYears.map((year) => (
-                      <option key={year.id} value={year.id}>
-                        {year.label}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    onChange={setTargetSchoolYearId}
+                    placeholder={t("common.select")}
+                    options={schoolYears.map((year) => ({
+                      value: year.id,
+                      label: year.label,
+                    }))}
+                  />
                 </FormField>
               </Card>
             ) : null}
