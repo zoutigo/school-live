@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
-import { FormSelect } from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { Button } from "../../components/ui/button";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { useTranslation } from "../../i18n/useTranslation";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
@@ -443,17 +443,19 @@ export default function PromotionsPage() {
               <>
                 <Card className="mb-4">
                   <FormField label={t("promotions.decisions.selectClass")}>
-                    <FormSelect
+                    <SearchableSelect
                       value={selectedClassId}
-                      onChange={(e) => setSelectedClassId(e.target.value)}
-                    >
-                      <option value="">{t("common.select")}</option>
-                      {classrooms.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c.schoolYear.label})
-                        </option>
-                      ))}
-                    </FormSelect>
+                      onChange={setSelectedClassId}
+                      placeholder={t("common.select")}
+                      searchPlaceholder={t("settings.form.searchPlaceholder")}
+                      noResultsLabel={t("settings.form.noResults")}
+                      ariaLabel={t("promotions.decisions.selectClass")}
+                      data-testid="promotions-class-select"
+                      options={classrooms.map((c) => ({
+                        value: c.id,
+                        label: `${c.name} (${c.schoolYear.label})`,
+                      }))}
+                    />
                   </FormField>
                 </Card>
 
@@ -467,78 +469,96 @@ export default function PromotionsPage() {
                       >
                         <div className="grid gap-3 sm:grid-cols-3">
                           <FormField label={t("promotions.decisions.decision")}>
-                            <FormSelect
+                            <SearchableSelect
+                              ariaLabel={t("promotions.decisions.decision")}
                               value={draft?.decision ?? "PROMOTED"}
-                              onChange={(e) =>
+                              onChange={(value) =>
                                 setDecisionDrafts((current) => ({
                                   ...current,
                                   [report.id]: {
                                     ...current[report.id],
-                                    decision: e.target.value as Decision,
+                                    decision: value as Decision,
                                   },
                                 }))
                               }
-                            >
-                              <option value="PROMOTED">
-                                {t("promotions.decision.PROMOTED")}
-                              </option>
-                              <option value="REPEATED">
-                                {t("promotions.decision.REPEATED")}
-                              </option>
-                              <option value="LEFT">
-                                {t("promotions.decision.LEFT")}
-                              </option>
-                            </FormSelect>
+                              data-testid={`promotions-decision-select-${report.id}`}
+                              options={[
+                                {
+                                  value: "PROMOTED",
+                                  label: t("promotions.decision.PROMOTED"),
+                                },
+                                {
+                                  value: "REPEATED",
+                                  label: t("promotions.decision.REPEATED"),
+                                },
+                                {
+                                  value: "LEFT",
+                                  label: t("promotions.decision.LEFT"),
+                                },
+                              ]}
+                            />
                           </FormField>
                           {draft?.decision !== "LEFT" ? (
                             <>
                               <FormField
                                 label={t("promotions.decisions.nextLevel")}
                               >
-                                <FormSelect
+                                <SearchableSelect
+                                  ariaLabel={t(
+                                    "promotions.decisions.nextLevel",
+                                  )}
                                   value={draft?.nextAcademicLevelId ?? ""}
-                                  onChange={(e) =>
+                                  onChange={(value) =>
                                     setDecisionDrafts((current) => ({
                                       ...current,
                                       [report.id]: {
                                         ...current[report.id],
-                                        nextAcademicLevelId: e.target.value,
+                                        nextAcademicLevelId: value,
                                       },
                                     }))
                                   }
-                                >
-                                  <option value="">{t("common.select")}</option>
-                                  {academicLevels.map((level) => (
-                                    <option key={level.id} value={level.id}>
-                                      {level.label}
-                                    </option>
-                                  ))}
-                                </FormSelect>
+                                  placeholder={t("common.select")}
+                                  searchPlaceholder={t(
+                                    "settings.form.searchPlaceholder",
+                                  )}
+                                  noResultsLabel={t("settings.form.noResults")}
+                                  data-testid={`promotions-next-level-select-${report.id}`}
+                                  options={academicLevels.map((level) => ({
+                                    value: level.id,
+                                    label: level.label,
+                                  }))}
+                                />
                               </FormField>
                               <FormField
                                 label={t("promotions.decisions.nextTrack")}
                               >
-                                <FormSelect
+                                <SearchableSelect
+                                  ariaLabel={t(
+                                    "promotions.decisions.nextTrack",
+                                  )}
                                   value={draft?.nextTrackId ?? ""}
-                                  onChange={(e) =>
+                                  onChange={(value) =>
                                     setDecisionDrafts((current) => ({
                                       ...current,
                                       [report.id]: {
                                         ...current[report.id],
-                                        nextTrackId: e.target.value,
+                                        nextTrackId: value,
                                       },
                                     }))
                                   }
-                                >
-                                  <option value="">
-                                    {t("financeSchedules.form.trackNone")}
-                                  </option>
-                                  {tracks.map((track) => (
-                                    <option key={track.id} value={track.id}>
-                                      {track.label}
-                                    </option>
-                                  ))}
-                                </FormSelect>
+                                  placeholder={t(
+                                    "financeSchedules.form.trackNone",
+                                  )}
+                                  searchPlaceholder={t(
+                                    "settings.form.searchPlaceholder",
+                                  )}
+                                  noResultsLabel={t("settings.form.noResults")}
+                                  data-testid={`promotions-next-track-select-${report.id}`}
+                                  options={tracks.map((track) => ({
+                                    value: track.id,
+                                    label: track.label,
+                                  }))}
+                                />
                               </FormField>
                             </>
                           ) : null}
@@ -567,32 +587,34 @@ export default function PromotionsPage() {
                 <Card title={t("promotions.waiting.filters")} className="mb-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <FormField label={t("promotions.waiting.targetYear")}>
-                      <FormSelect
+                      <SearchableSelect
                         value={targetSchoolYearId}
-                        onChange={(e) => setTargetSchoolYearId(e.target.value)}
-                      >
-                        <option value="">{t("common.select")}</option>
-                        {schoolYears.map((year) => (
-                          <option key={year.id} value={year.id}>
-                            {year.label}
-                          </option>
-                        ))}
-                      </FormSelect>
+                        onChange={setTargetSchoolYearId}
+                        placeholder={t("common.select")}
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        ariaLabel={t("promotions.waiting.targetYear")}
+                        data-testid="promotions-target-year-select"
+                        options={schoolYears.map((year) => ({
+                          value: year.id,
+                          label: year.label,
+                        }))}
+                      />
                     </FormField>
                     <FormField label={t("promotions.waiting.level")}>
-                      <FormSelect
+                      <SearchableSelect
                         value={waitingLevelId}
-                        onChange={(e) => setWaitingLevelId(e.target.value)}
-                      >
-                        <option value="">
-                          {t("promotions.waiting.allLevels")}
-                        </option>
-                        {academicLevels.map((level) => (
-                          <option key={level.id} value={level.id}>
-                            {level.label}
-                          </option>
-                        ))}
-                      </FormSelect>
+                        onChange={setWaitingLevelId}
+                        placeholder={t("promotions.waiting.allLevels")}
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        ariaLabel={t("promotions.waiting.level")}
+                        data-testid="promotions-waiting-level-select"
+                        options={academicLevels.map((level) => ({
+                          value: level.id,
+                          label: level.label,
+                        }))}
+                      />
                     </FormField>
                   </div>
                 </Card>
@@ -608,22 +630,26 @@ export default function PromotionsPage() {
                     >
                       <div className="flex flex-wrap items-end gap-3">
                         <FormField label={t("promotions.waiting.targetClass")}>
-                          <FormSelect
+                          <SearchableSelect
+                            ariaLabel={t("promotions.waiting.targetClass")}
                             value={assignDrafts[row.id] ?? ""}
-                            onChange={(e) =>
+                            onChange={(value) =>
                               setAssignDrafts((current) => ({
                                 ...current,
-                                [row.id]: e.target.value,
+                                [row.id]: value,
                               }))
                             }
-                          >
-                            <option value="">{t("common.select")}</option>
-                            {targetYearClassrooms.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.name}
-                              </option>
-                            ))}
-                          </FormSelect>
+                            placeholder={t("common.select")}
+                            searchPlaceholder={t(
+                              "settings.form.searchPlaceholder",
+                            )}
+                            noResultsLabel={t("settings.form.noResults")}
+                            data-testid={`promotions-target-class-select-${row.id}`}
+                            options={targetYearClassrooms.map((c) => ({
+                              value: c.id,
+                              label: c.name,
+                            }))}
+                          />
                         </FormField>
                         <Button
                           type="button"
