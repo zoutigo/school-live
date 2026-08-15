@@ -1579,6 +1579,7 @@ function CreateUserModal({
                 value={dateOfBirth}
                 onChange={(e) => setDateOfBirth(e.target.value)}
                 aria-label={t("users.create.field.dateOfBirth")}
+                max={new Date().toISOString().slice(0, 10)}
                 className="w-full"
               />
               <p className="pt-1 text-xs font-semibold uppercase text-text-secondary">
