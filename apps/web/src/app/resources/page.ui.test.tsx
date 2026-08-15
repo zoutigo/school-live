@@ -165,9 +165,8 @@ describe("ResourcesBrowsePage", () => {
     await screen.findByTestId("resources-card-res-1");
     fireEvent.click(screen.getByTestId("resources-search-toggle"));
 
-    fireEvent.change(screen.getByTestId("resources-filter-school"), {
-      target: { value: "school-1" },
-    });
+    fireEvent.click(screen.getByTestId("resources-filter-school"));
+    fireEvent.click(await screen.findByRole("option", { name: "École Test" }));
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([u]) =>
@@ -186,9 +185,8 @@ describe("ResourcesBrowsePage", () => {
     await screen.findByTestId("resources-card-res-1");
     fireEvent.click(screen.getByTestId("resources-search-toggle"));
 
-    fireEvent.change(screen.getByTestId("resources-filter-school"), {
-      target: { value: "school-1" },
-    });
+    fireEvent.click(screen.getByTestId("resources-filter-school"));
+    fireEvent.click(await screen.findByRole("option", { name: "École Test" }));
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([u]) =>
         String(u).includes("schoolId=school-1"),

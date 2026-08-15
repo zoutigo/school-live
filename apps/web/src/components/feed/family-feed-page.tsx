@@ -29,10 +29,10 @@ import { usePageHelp } from "../../store/page-help";
 import { FEED_FILTERS_TOUR_TARGETS } from "./feed-filters-tour.config";
 import {
   FormFileInput,
-  FormSelect,
   FormTextInput,
   FormTextarea,
 } from "../ui/form-controls";
+import { SearchableSelect } from "../ui/searchable-select";
 import {
   RichTextEditor,
   type RichTextEditorRef,
@@ -1195,10 +1195,10 @@ export function FamilyFeedPage({
                 ))}
               </div>
               {staffViewFilter === "LEVEL" || staffViewFilter === "CLASS" ? (
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("feed.filters.levelAria")}
                   value={staffFilterLevelId}
-                  onChange={(event) => {
-                    const levelId = event.target.value;
+                  onChange={(levelId) => {
                     setStaffFilterLevelId(levelId);
                     const firstClass = classOptions.find(
                       (entry) => entry.levelId === levelId,
@@ -1207,33 +1207,30 @@ export function FamilyFeedPage({
                       setStaffFilterClassId(firstClass.id);
                     }
                   }}
-                  className="h-9 bg-surface text-sm"
-                >
-                  {levelOptions.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.label}
-                    </option>
-                  ))}
-                </FormSelect>
+                  className="h-9"
+                  data-testid="family-feed-staff-level-select"
+                  options={levelOptions.map((entry) => ({
+                    value: entry.id,
+                    label: entry.label,
+                  }))}
+                />
               ) : (
                 <span />
               )}
               {staffViewFilter === "CLASS" ? (
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("feed.filters.classAria")}
                   value={staffFilterClassId}
-                  onChange={(event) =>
-                    setStaffFilterClassId(event.target.value)
-                  }
-                  className="h-9 bg-surface text-sm"
-                >
-                  {classOptions
+                  onChange={setStaffFilterClassId}
+                  className="h-9"
+                  data-testid="family-feed-staff-class-select"
+                  options={classOptions
                     .filter((entry) => entry.levelId === staffFilterLevelId)
-                    .map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.label}
-                      </option>
-                    ))}
-                </FormSelect>
+                    .map((entry) => ({
+                      value: entry.id,
+                      label: entry.label,
+                    }))}
+                />
               ) : (
                 <span />
               )}
@@ -1263,30 +1260,28 @@ export function FamilyFeedPage({
                 className="h-10 bg-background text-sm"
               />
               {viewerRole === "PARENT" || viewerRole === "STUDENT" ? null : (
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("feed.composer.audienceScopeAria")}
                   value={selectedAudienceScope}
-                  onChange={(event) =>
-                    setSelectedAudienceScope(
-                      event.target.value as FeedAudienceScope,
-                    )
+                  onChange={(value) =>
+                    setSelectedAudienceScope(value as FeedAudienceScope)
                   }
-                  className="h-10 bg-background text-sm"
-                >
-                  {audienceOptions.map((entry) => (
-                    <option key={entry.scope} value={entry.scope}>
-                      {entry.label}
-                    </option>
-                  ))}
-                </FormSelect>
+                  className="h-10"
+                  data-testid="family-feed-composer-audience-scope-select"
+                  options={audienceOptions.map((entry) => ({
+                    value: entry.scope,
+                    label: entry.label,
+                  }))}
+                />
               )}
             </div>
 
             {isStaff(viewerRole) && selectedAudienceScope === "CLASS" ? (
               <div className="grid gap-2 sm:grid-cols-2">
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("feed.composer.audienceLevelAria")}
                   value={selectedAudienceLevelId}
-                  onChange={(event) => {
-                    const nextLevelId = event.target.value;
+                  onChange={(nextLevelId) => {
                     setSelectedAudienceLevelId(nextLevelId);
                     const firstClass = classOptions.find(
                       (entry) => entry.levelId === nextLevelId,
@@ -1295,31 +1290,28 @@ export function FamilyFeedPage({
                       setSelectedAudienceClassId(firstClass.id);
                     }
                   }}
-                  className="h-10 bg-background text-sm"
-                >
-                  {levelOptions.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.label}
-                    </option>
-                  ))}
-                </FormSelect>
-                <FormSelect
+                  className="h-10"
+                  data-testid="family-feed-composer-audience-level-select"
+                  options={levelOptions.map((entry) => ({
+                    value: entry.id,
+                    label: entry.label,
+                  }))}
+                />
+                <SearchableSelect
+                  ariaLabel={t("feed.composer.audienceClassAria")}
                   value={selectedAudienceClassId}
-                  onChange={(event) =>
-                    setSelectedAudienceClassId(event.target.value)
-                  }
-                  className="h-10 bg-background text-sm"
-                >
-                  {classOptions
+                  onChange={setSelectedAudienceClassId}
+                  className="h-10"
+                  data-testid="family-feed-composer-audience-class-select"
+                  options={classOptions
                     .filter(
                       (entry) => entry.levelId === selectedAudienceLevelId,
                     )
-                    .map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.label}
-                      </option>
-                    ))}
-                </FormSelect>
+                    .map((entry) => ({
+                      value: entry.id,
+                      label: entry.label,
+                    }))}
+                />
               </div>
             ) : null}
 
@@ -1407,19 +1399,20 @@ export function FamilyFeedPage({
               <div className="inline-flex items-center gap-2 text-sm text-text-secondary">
                 <CalendarDays className="h-4 w-4" />
                 {t("feed.composer.featuredDaysLabel")}
-                <FormSelect
-                  value={featuredDays}
-                  onChange={(event) =>
-                    setFeaturedDays(Number(event.target.value))
-                  }
-                  className="h-8 bg-background px-2"
-                >
-                  <option value={0}>{t("feed.composer.featuredNone")}</option>
-                  <option value={1}>{t("feed.composer.featured1Day")}</option>
-                  <option value={3}>{t("feed.composer.featured3Days")}</option>
-                  <option value={5}>{t("feed.composer.featured5Days")}</option>
-                  <option value={7}>{t("feed.composer.featured7Days")}</option>
-                </FormSelect>
+                <SearchableSelect
+                  ariaLabel={t("feed.composer.featuredDaysAria")}
+                  value={String(featuredDays)}
+                  onChange={(value) => setFeaturedDays(Number(value))}
+                  className="h-8 min-w-[140px]"
+                  data-testid="family-feed-featured-days-select"
+                  options={[
+                    { value: "0", label: t("feed.composer.featuredNone") },
+                    { value: "1", label: t("feed.composer.featured1Day") },
+                    { value: "3", label: t("feed.composer.featured3Days") },
+                    { value: "5", label: t("feed.composer.featured5Days") },
+                    { value: "7", label: t("feed.composer.featured7Days") },
+                  ]}
+                />
               </div>
               <Button
                 onClick={publishPost}

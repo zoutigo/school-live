@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { FormField } from "../ui/form-field";
 import { FormRichTextEditor } from "../ui/form-rich-text-editor";
-import { FormSelect, FormTextInput, FormTextarea } from "../ui/form-controls";
+import { FormTextInput, FormTextarea } from "../ui/form-controls";
+import { SearchableSelect } from "../ui/searchable-select";
 import {
   type HelpChapterItem,
   type HelpGuideAudience,
@@ -513,22 +514,23 @@ export function AssistanceGuidePanel({
           </div>
           {adminMode ? (
             <div className="flex items-center gap-2">
-              <FormSelect
+              <SearchableSelect
+                ariaLabel="Guide"
                 value={activeGuideId ?? ""}
-                onChange={(event) => {
-                  const nextGuideId = event.target.value;
+                onChange={(nextGuideId) => {
                   setActiveGuideId(nextGuideId || null);
                   void loadGuideData(nextGuideId || undefined);
                 }}
-                className="min-w-[220px] py-2 text-xs"
-              >
-                <option value="">Guide auto (audience)</option>
-                {adminGuides.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title} · {item.audience}
-                  </option>
-                ))}
-              </FormSelect>
+                placeholder="Guide auto (audience)"
+                searchPlaceholder="Rechercher..."
+                noResultsLabel="Aucun resultat"
+                className="min-w-[220px]"
+                data-testid="assistance-guide-select"
+                options={adminGuides.map((item) => ({
+                  value: item.id,
+                  label: `${item.title} · ${item.audience}`,
+                }))}
+              />
               <button
                 type="button"
                 onClick={() => void loadGuideData(activeGuideId)}
@@ -861,23 +863,49 @@ export function AssistanceGuidePanel({
                     </FormField>
 
                     <FormField label="Audience">
-                      <FormSelect {...guideForm.register("audience")}>
-                        {AUDIENCE_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </FormSelect>
+                      <SearchableSelect
+                        ariaLabel="Audience"
+                        value={guideForm.watch("audience")}
+                        onChange={(value) =>
+                          guideForm.setValue(
+                            "audience",
+                            value as GuideFormValues["audience"],
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }
+                        data-testid="assistance-guide-audience-select"
+                        options={AUDIENCE_OPTIONS.map((opt) => ({
+                          value: opt.value,
+                          label: opt.label,
+                        }))}
+                      />
                     </FormField>
 
                     <FormField label="Statut">
-                      <FormSelect {...guideForm.register("status")}>
-                        {STATUS_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </FormSelect>
+                      <SearchableSelect
+                        ariaLabel="Statut du guide"
+                        value={guideForm.watch("status")}
+                        onChange={(value) =>
+                          guideForm.setValue(
+                            "status",
+                            value as GuideFormValues["status"],
+                            {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            },
+                          )
+                        }
+                        data-testid="assistance-guide-status-select"
+                        options={STATUS_OPTIONS.map((opt) => ({
+                          value: opt.value,
+                          label: opt.label,
+                        }))}
+                      />
                     </FormField>
 
                     <FormField label="Description">
@@ -947,16 +975,27 @@ export function AssistanceGuidePanel({
                     </FormField>
 
                     <FormField label="Parent">
-                      <FormSelect {...chapterForm.register("parentId")}>
-                        <option value="">Aucun (chapitre racine)</option>
-                        {flattenedPlan
+                      <SearchableSelect
+                        ariaLabel="Chapitre parent"
+                        value={chapterForm.watch("parentId") ?? ""}
+                        onChange={(value) =>
+                          chapterForm.setValue("parentId", value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
+                        }
+                        placeholder="Aucun (chapitre racine)"
+                        searchPlaceholder="Rechercher..."
+                        noResultsLabel="Aucun resultat"
+                        data-testid="assistance-chapter-parent-select"
+                        options={flattenedPlan
                           .filter((node) => node.id !== currentChapter?.id)
-                          .map((node) => (
-                            <option key={node.id} value={node.id}>
-                              {`${"-".repeat(node.depth)} ${node.title}`}
-                            </option>
-                          ))}
-                      </FormSelect>
+                          .map((node) => ({
+                            value: node.id,
+                            label: `${"-".repeat(node.depth)} ${node.title}`,
+                          }))}
+                      />
                     </FormField>
 
                     <div className="grid gap-2 md:grid-cols-3">
@@ -969,19 +1008,48 @@ export function AssistanceGuidePanel({
                         />
                       </FormField>
                       <FormField label="Type">
-                        <FormSelect {...chapterForm.register("contentType")}>
-                          <option value="RICH_TEXT">Texte riche</option>
-                          <option value="VIDEO">Vidéo</option>
-                        </FormSelect>
+                        <SearchableSelect
+                          ariaLabel="Type de contenu"
+                          value={chapterForm.watch("contentType")}
+                          onChange={(value) =>
+                            chapterForm.setValue(
+                              "contentType",
+                              value as ChapterFormValues["contentType"],
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
+                          }
+                          data-testid="assistance-chapter-type-select"
+                          options={[
+                            { value: "RICH_TEXT", label: "Texte riche" },
+                            { value: "VIDEO", label: "Vidéo" },
+                          ]}
+                        />
                       </FormField>
                       <FormField label="Statut">
-                        <FormSelect {...chapterForm.register("status")}>
-                          {STATUS_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </FormSelect>
+                        <SearchableSelect
+                          ariaLabel="Statut du chapitre"
+                          value={chapterForm.watch("status")}
+                          onChange={(value) =>
+                            chapterForm.setValue(
+                              "status",
+                              value as ChapterFormValues["status"],
+                              {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              },
+                            )
+                          }
+                          data-testid="assistance-chapter-status-select"
+                          options={STATUS_OPTIONS.map((opt) => ({
+                            value: opt.value,
+                            label: opt.label,
+                          }))}
+                        />
                       </FormField>
                     </div>
 

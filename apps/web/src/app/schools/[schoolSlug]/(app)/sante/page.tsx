@@ -3,11 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
-import {
-  FormSelect,
-  FormTextInput,
-} from "../../../../../components/ui/form-controls";
+import { FormTextInput } from "../../../../../components/ui/form-controls";
 import { PaginationControls } from "../../../../../components/ui/pagination-controls";
+import { SearchableSelect } from "../../../../../components/ui/searchable-select";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 import { useOnboardingTourStore } from "../../../../../store/onboarding-tour";
 import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
@@ -306,18 +304,19 @@ export default function SchoolSantePage() {
       {tab === "synthese" ? (
         <Card title={t("health.admin.tabs.synthese")}>
           <div className="mb-4 max-w-xs">
-            <FormSelect
+            <SearchableSelect
+              ariaLabel={t("health.admin.scope.allClasses")}
               value={statsClassId}
-              onChange={(e) => setStatsClassId(e.target.value)}
+              onChange={setStatsClassId}
+              placeholder={t("health.admin.scope.allClasses")}
+              searchPlaceholder={t("settings.form.searchPlaceholder")}
+              noResultsLabel={t("settings.form.noResults")}
               data-testid="sante-stats-class"
-            >
-              <option value="">{t("health.admin.scope.allClasses")}</option>
-              {classOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </FormSelect>
+              options={classOptions.map((c) => ({
+                value: c.id,
+                label: c.name,
+              }))}
+            />
           </div>
 
           {statsError ? (
@@ -382,49 +381,50 @@ export default function SchoolSantePage() {
           </OnboardingTarget>
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <FormSelect
+            <SearchableSelect
+              ariaLabel={t("health.admin.cares.filters.allLevels")}
               value={caresAlertLevel}
-              onChange={(e) => setCaresAlertLevel(e.target.value)}
+              onChange={setCaresAlertLevel}
+              placeholder={t("health.admin.cares.filters.allLevels")}
               data-testid="sante-cares-filter-alertLevel"
-            >
-              <option value="">
-                {t("health.admin.cares.filters.allLevels")}
-              </option>
-              {ALERT_LEVELS.map((level) => (
-                <option key={level} value={level}>
-                  {t(`health.alertLevel.${level}`)}
-                </option>
-              ))}
-            </FormSelect>
-            <FormSelect
+              options={ALERT_LEVELS.map((level) => ({
+                value: level,
+                label: t(`health.alertLevel.${level}`),
+              }))}
+            />
+            <SearchableSelect
+              ariaLabel={t("health.admin.cares.filters.allReportTypes")}
               value={caresReportType}
-              onChange={(e) => setCaresReportType(e.target.value)}
+              onChange={setCaresReportType}
+              placeholder={t("health.admin.cares.filters.allReportTypes")}
+              searchPlaceholder={t("settings.form.searchPlaceholder")}
+              noResultsLabel={t("settings.form.noResults")}
               data-testid="sante-cares-filter-reportType"
-            >
-              <option value="">
-                {t("health.admin.cares.filters.allReportTypes")}
-              </option>
-              {REPORT_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {t(`health.reportType.${type}`)}
-                </option>
-              ))}
-            </FormSelect>
-            <FormSelect
+              options={REPORT_TYPES.map((type) => ({
+                value: type,
+                label: t(`health.reportType.${type}`),
+              }))}
+            />
+            <SearchableSelect
+              ariaLabel={t("health.admin.cares.filters.statusAll")}
               value={caresAcknowledged}
-              onChange={(e) => setCaresAcknowledged(e.target.value)}
+              onChange={setCaresAcknowledged}
               data-testid="sante-cares-filter-status"
-            >
-              <option value="">
-                {t("health.admin.cares.filters.statusAll")}
-              </option>
-              <option value="true">
-                {t("health.admin.cares.filters.statusAcknowledged")}
-              </option>
-              <option value="false">
-                {t("health.admin.cares.filters.statusPending")}
-              </option>
-            </FormSelect>
+              options={[
+                {
+                  value: "",
+                  label: t("health.admin.cares.filters.statusAll"),
+                },
+                {
+                  value: "true",
+                  label: t("health.admin.cares.filters.statusAcknowledged"),
+                },
+                {
+                  value: "false",
+                  label: t("health.admin.cares.filters.statusPending"),
+                },
+              ]}
+            />
           </div>
 
           <div className="mt-4 grid gap-2">
@@ -497,20 +497,19 @@ export default function SchoolSantePage() {
           />
 
           <div className="mt-3 max-w-xs">
-            <FormSelect
+            <SearchableSelect
+              ariaLabel={t("health.admin.eleves.filters.allClasses")}
               value={elevesClassId}
-              onChange={(e) => setElevesClassId(e.target.value)}
+              onChange={setElevesClassId}
+              placeholder={t("health.admin.eleves.filters.allClasses")}
+              searchPlaceholder={t("settings.form.searchPlaceholder")}
+              noResultsLabel={t("settings.form.noResults")}
               data-testid="sante-eleves-filter-class"
-            >
-              <option value="">
-                {t("health.admin.eleves.filters.allClasses")}
-              </option>
-              {classOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </FormSelect>
+              options={classOptions.map((c) => ({
+                value: c.id,
+                label: c.name,
+              }))}
+            />
           </div>
 
           <div className="mt-4 grid gap-2">
