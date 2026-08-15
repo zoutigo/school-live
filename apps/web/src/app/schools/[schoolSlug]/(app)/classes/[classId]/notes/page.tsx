@@ -20,7 +20,6 @@ import {
   FormDateTimeInput,
   FormFileInput,
   FormNumberInput,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../../../../../../components/ui/form-controls";
@@ -28,6 +27,7 @@ import { FormField } from "../../../../../../../components/ui/form-field";
 import { FormRichTextEditor } from "../../../../../../../components/ui/form-rich-text-editor";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { PaginationControls } from "../../../../../../../components/ui/pagination-controls";
+import { SearchableSelect } from "../../../../../../../components/ui/searchable-select";
 import { TeacherPeriodReports } from "../../../../../../../components/teacher-notes/teacher-period-reports";
 import { TermView } from "../../../../../../../components/student-notes/student-notes-page";
 import type {
@@ -1448,10 +1448,9 @@ export default function TeacherClassNotesPage() {
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
                       {t("notes.teacher.list.adminLevelLabel")}
                     </p>
-                    <FormSelect
+                    <SearchableSelect
                       value={adminLevelFilter}
-                      onChange={(event) => {
-                        const value = event.target.value;
+                      onChange={(value) => {
                         setAdminLevelFilter(value);
                         const stillValid = adminClassrooms.find(
                           (entry) => entry.id === classId,
@@ -1467,40 +1466,39 @@ export default function TeacherClassNotesPage() {
                           }
                         }
                       }}
+                      placeholder={t("notes.teacher.list.adminAllLevels")}
+                      searchPlaceholder={t("settings.form.searchPlaceholder")}
+                      noResultsLabel={t("settings.form.noResults")}
+                      ariaLabel={t("notes.teacher.list.adminLevelLabel")}
                       data-testid="notes-admin-level-select"
-                    >
-                      <option value="">
-                        {t("notes.teacher.list.adminAllLevels")}
-                      </option>
-                      {adminLevelOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                      options={[
+                        {
+                          value: "",
+                          label: t("notes.teacher.list.adminAllLevels"),
+                        },
+                        ...adminLevelOptions,
+                      ]}
+                    />
                   </div>
                   <div>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-secondary">
                       {t("notes.teacher.list.adminClassLabel")}
                     </p>
-                    <FormSelect
+                    <SearchableSelect
                       value={classId}
-                      onChange={(event) => {
-                        const nextClassId = event.target.value;
+                      onChange={(nextClassId) => {
                         if (nextClassId && nextClassId !== classId) {
                           router.push(
                             `/schools/${schoolSlug}/classes/${nextClassId}/notes`,
                           );
                         }
                       }}
+                      searchPlaceholder={t("settings.form.searchPlaceholder")}
+                      noResultsLabel={t("settings.form.noResults")}
+                      ariaLabel={t("notes.teacher.list.adminClassLabel")}
                       data-testid="notes-admin-class-select"
-                    >
-                      {adminClassOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                      options={adminClassOptions}
+                    />
                   </div>
                 </div>
               ) : null}
@@ -1835,17 +1833,28 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-subject"
                         error={createEvaluationErrors.subjectId?.message}
                       >
-                        <FormSelect
+                        <SearchableSelect
                           id="evaluation-subject"
-                          {...register("subjectId")}
+                          value={watch("subjectId") ?? ""}
+                          onChange={(value) =>
+                            setValue("subjectId", value, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          searchPlaceholder={t(
+                            "settings.form.searchPlaceholder",
+                          )}
+                          noResultsLabel={t("settings.form.noResults")}
+                          ariaLabel={t("notes.teacher.form.subject")}
                           invalid={Boolean(createEvaluationErrors.subjectId)}
-                        >
-                          {context.subjects.map((subject) => (
-                            <option key={subject.id} value={subject.id}>
-                              {subject.name}
-                            </option>
-                          ))}
-                        </FormSelect>
+                          data-testid="evaluation-subject-select"
+                          options={context.subjects.map((subject) => ({
+                            value: subject.id,
+                            label: subject.name,
+                          }))}
+                        />
                       </FormField>
 
                       <FormField
@@ -1853,22 +1862,38 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-subject-branch"
                         error={createEvaluationErrors.subjectBranchId?.message}
                       >
-                        <FormSelect
+                        <SearchableSelect
                           id="evaluation-subject-branch"
-                          {...register("subjectBranchId")}
+                          value={watch("subjectBranchId") ?? ""}
+                          onChange={(value) =>
+                            setValue("subjectBranchId", value, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          searchPlaceholder={t(
+                            "settings.form.searchPlaceholder",
+                          )}
+                          noResultsLabel={t("settings.form.noResults")}
+                          ariaLabel={t("notes.teacher.form.subjectBranch")}
                           invalid={Boolean(
                             createEvaluationErrors.subjectBranchId,
                           )}
-                        >
-                          <option value="">
-                            {t("notes.teacher.form.noSubjectBranch")}
-                          </option>
-                          {(selectedSubject?.branches ?? []).map((branch) => (
-                            <option key={branch.id} value={branch.id}>
-                              {branch.name}
-                            </option>
-                          ))}
-                        </FormSelect>
+                          data-testid="evaluation-subject-branch-select"
+                          options={[
+                            {
+                              value: "",
+                              label: t("notes.teacher.form.noSubjectBranch"),
+                            },
+                            ...(selectedSubject?.branches ?? []).map(
+                              (branch) => ({
+                                value: branch.id,
+                                label: branch.name,
+                              }),
+                            ),
+                          ]}
+                        />
                       </FormField>
 
                       <FormField
@@ -1876,19 +1901,30 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-type"
                         error={createEvaluationErrors.evaluationTypeId?.message}
                       >
-                        <FormSelect
+                        <SearchableSelect
                           id="evaluation-type"
-                          {...register("evaluationTypeId")}
+                          value={watch("evaluationTypeId") ?? ""}
+                          onChange={(value) =>
+                            setValue("evaluationTypeId", value, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          searchPlaceholder={t(
+                            "settings.form.searchPlaceholder",
+                          )}
+                          noResultsLabel={t("settings.form.noResults")}
+                          ariaLabel={t("notes.teacher.form.evaluationType")}
                           invalid={Boolean(
                             createEvaluationErrors.evaluationTypeId,
                           )}
-                        >
-                          {context.evaluationTypes.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.label}
-                            </option>
-                          ))}
-                        </FormSelect>
+                          data-testid="evaluation-type-select"
+                          options={context.evaluationTypes.map((item) => ({
+                            value: item.id,
+                            label: item.label,
+                          }))}
+                        />
                       </FormField>
 
                       <FormField
@@ -1896,21 +1932,32 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-sequence"
                         error={createEvaluationErrors.sequence?.message}
                       >
-                        <FormSelect
+                        <SearchableSelect
                           id="evaluation-sequence"
-                          {...register("sequence")}
-                          invalid={Boolean(createEvaluationErrors.sequence)}
-                        >
-                          {(Object.keys(SEQUENCE_KEY_MAP) as Sequence[]).map(
-                            (seq) => (
-                              <option key={seq} value={seq}>
-                                {t(
-                                  `notes.teacher.sequences.${SEQUENCE_KEY_MAP[seq]}`,
-                                )}
-                              </option>
-                            ),
+                          value={watch("sequence") ?? ""}
+                          onChange={(value) =>
+                            setValue("sequence", value as Sequence, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          searchPlaceholder={t(
+                            "settings.form.searchPlaceholder",
                           )}
-                        </FormSelect>
+                          noResultsLabel={t("settings.form.noResults")}
+                          ariaLabel={t("notes.teacher.form.sequence")}
+                          invalid={Boolean(createEvaluationErrors.sequence)}
+                          data-testid="evaluation-sequence-select"
+                          options={(
+                            Object.keys(SEQUENCE_KEY_MAP) as Sequence[]
+                          ).map((seq) => ({
+                            value: seq,
+                            label: t(
+                              `notes.teacher.sequences.${SEQUENCE_KEY_MAP[seq]}`,
+                            ),
+                          }))}
+                        />
                       </FormField>
 
                       <FormField
@@ -2009,18 +2056,34 @@ export default function TeacherClassNotesPage() {
                         htmlFor="evaluation-status"
                         error={createEvaluationErrors.status?.message}
                       >
-                        <FormSelect
+                        <SearchableSelect
                           id="evaluation-status"
-                          {...register("status")}
+                          value={watch("status") ?? ""}
+                          onChange={(value) =>
+                            setValue("status", value as "DRAFT" | "PUBLISHED", {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
+                          }
+                          searchPlaceholder={t(
+                            "settings.form.searchPlaceholder",
+                          )}
+                          noResultsLabel={t("settings.form.noResults")}
+                          ariaLabel={t("notes.teacher.form.status")}
                           invalid={Boolean(createEvaluationErrors.status)}
-                        >
-                          <option value="DRAFT">
-                            {t("notes.teacher.form.statusDraft")}
-                          </option>
-                          <option value="PUBLISHED">
-                            {t("notes.teacher.form.statusPublished")}
-                          </option>
-                        </FormSelect>
+                          data-testid="evaluation-status-select"
+                          options={[
+                            {
+                              value: "DRAFT",
+                              label: t("notes.teacher.form.statusDraft"),
+                            },
+                            {
+                              value: "PUBLISHED",
+                              label: t("notes.teacher.form.statusPublished"),
+                            },
+                          ]}
+                        />
                       </FormField>
                     </div>
 
@@ -2509,19 +2572,19 @@ export default function TeacherClassNotesPage() {
                 <span className="text-text-secondary">
                   {t("notes.teacher.scores.evaluationLabel")}
                 </span>
-                <FormSelect
+                <SearchableSelect
                   value={selectedEvaluationId}
-                  onChange={(event) =>
-                    setSelectedEvaluationId(event.target.value)
-                  }
-                >
-                  <option value="">{t("notes.common.select")}</option>
-                  {evaluations.map((evaluation) => (
-                    <option key={evaluation.id} value={evaluation.id}>
-                      {evaluation.title} - {evaluation.subject.name}
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={setSelectedEvaluationId}
+                  placeholder={t("notes.common.select")}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
+                  ariaLabel={t("notes.teacher.scores.evaluationLabel")}
+                  data-testid="notes-scores-evaluation-select"
+                  options={evaluations.map((evaluation) => ({
+                    value: evaluation.id,
+                    label: `${evaluation.title} - ${evaluation.subject.name}`,
+                  }))}
+                />
               </label>
             </div>
 
@@ -2585,11 +2648,11 @@ export default function TeacherClassNotesPage() {
                             {student.lastName} {student.firstName}
                           </td>
                           <td className="px-3 py-2">
-                            <FormSelect
+                            <SearchableSelect
                               value={
                                 scoreDrafts[student.id]?.status ?? "NOT_GRADED"
                               }
-                              onChange={(event) =>
+                              onChange={(value) =>
                                 setScoreDrafts((prev) => ({
                                   ...prev,
                                   [student.id]: {
@@ -2597,24 +2660,37 @@ export default function TeacherClassNotesPage() {
                                       score: "",
                                       comment: "",
                                     }),
-                                    status: event.target.value,
+                                    status: value,
                                   },
                                 }))
                               }
-                            >
-                              <option value="ENTERED">
-                                {t("notes.teacher.scores.statusEntered")}
-                              </option>
-                              <option value="ABSENT">
-                                {t("notes.teacher.scores.statusAbsent")}
-                              </option>
-                              <option value="EXCUSED">
-                                {t("notes.teacher.scores.statusExcused")}
-                              </option>
-                              <option value="NOT_GRADED">
-                                {t("notes.teacher.scores.statusNotGraded")}
-                              </option>
-                            </FormSelect>
+                              ariaLabel={t("notes.teacher.scores.columnStatus")}
+                              data-testid={`notes-score-status-select-${student.id}`}
+                              options={[
+                                {
+                                  value: "ENTERED",
+                                  label: t(
+                                    "notes.teacher.scores.statusEntered",
+                                  ),
+                                },
+                                {
+                                  value: "ABSENT",
+                                  label: t("notes.teacher.scores.statusAbsent"),
+                                },
+                                {
+                                  value: "EXCUSED",
+                                  label: t(
+                                    "notes.teacher.scores.statusExcused",
+                                  ),
+                                },
+                                {
+                                  value: "NOT_GRADED",
+                                  label: t(
+                                    "notes.teacher.scores.statusNotGraded",
+                                  ),
+                                },
+                              ]}
+                            />
                           </td>
                           <td className="px-3 py-2">
                             <FormNumberInput
@@ -2694,20 +2770,17 @@ export default function TeacherClassNotesPage() {
                 <span className="text-text-secondary">
                   {t("notes.teacher.council.term")}
                 </span>
-                <FormSelect
+                <SearchableSelect
                   value={councilTerm}
-                  onChange={(event) => setCouncilTerm(event.target.value)}
-                >
-                  <option value="TERM_1">
-                    {t("notes.teacher.terms.term1")}
-                  </option>
-                  <option value="TERM_2">
-                    {t("notes.teacher.terms.term2")}
-                  </option>
-                  <option value="TERM_3">
-                    {t("notes.teacher.terms.term3")}
-                  </option>
-                </FormSelect>
+                  onChange={setCouncilTerm}
+                  ariaLabel={t("notes.teacher.council.term")}
+                  data-testid="notes-council-term-select"
+                  options={[
+                    { value: "TERM_1", label: t("notes.teacher.terms.term1") },
+                    { value: "TERM_2", label: t("notes.teacher.terms.term2") },
+                    { value: "TERM_3", label: t("notes.teacher.terms.term3") },
+                  ]}
+                />
               </label>
               <label className="grid gap-1 text-sm">
                 <span className="text-text-secondary">
@@ -2722,21 +2795,24 @@ export default function TeacherClassNotesPage() {
                 <span className="text-text-secondary">
                   {t("notes.teacher.council.publication")}
                 </span>
-                <FormSelect
+                <SearchableSelect
                   value={councilStatus}
-                  onChange={(event) =>
-                    setCouncilStatus(
-                      event.target.value as "DRAFT" | "PUBLISHED",
-                    )
+                  onChange={(value) =>
+                    setCouncilStatus(value as "DRAFT" | "PUBLISHED")
                   }
-                >
-                  <option value="DRAFT">
-                    {t("notes.teacher.form.statusDraft")}
-                  </option>
-                  <option value="PUBLISHED">
-                    {t("notes.teacher.form.statusPublished")}
-                  </option>
-                </FormSelect>
+                  ariaLabel={t("notes.teacher.council.publication")}
+                  data-testid="notes-council-status-select"
+                  options={[
+                    {
+                      value: "DRAFT",
+                      label: t("notes.teacher.form.statusDraft"),
+                    },
+                    {
+                      value: "PUBLISHED",
+                      label: t("notes.teacher.form.statusPublished"),
+                    },
+                  ]}
+                />
               </label>
             </div>
 
@@ -2867,57 +2943,61 @@ export default function TeacherClassNotesPage() {
                                 : "-"}
                             </td>
                             <td className="px-3 py-2">
-                              <FormSelect
+                              <SearchableSelect
                                 value={draft?.decision ?? ""}
-                                onChange={(event) =>
+                                onChange={(value) =>
                                   handleDecisionChange(
                                     row,
-                                    event.target.value as PromotionDecision,
+                                    value as PromotionDecision,
                                   )
                                 }
+                                placeholder={t(
+                                  "notes.teacher.decision.decisionPlaceholder",
+                                )}
+                                ariaLabel={`${t("notes.teacher.decision.decisionPlaceholder")} ${row.student.lastName} ${row.student.firstName}`}
                                 data-testid={`decision-row-${row.id}-select`}
-                              >
-                                <option value="">
-                                  {t(
-                                    "notes.teacher.decision.decisionPlaceholder",
-                                  )}
-                                </option>
-                                <option value="PROMOTED">
-                                  {t("notes.teacher.decision.promoted")}
-                                </option>
-                                <option value="REPEATED">
-                                  {t("notes.teacher.decision.repeated")}
-                                </option>
-                                <option value="LEFT">
-                                  {t("notes.teacher.decision.left")}
-                                </option>
-                              </FormSelect>
+                                options={[
+                                  {
+                                    value: "PROMOTED",
+                                    label: t("notes.teacher.decision.promoted"),
+                                  },
+                                  {
+                                    value: "REPEATED",
+                                    label: t("notes.teacher.decision.repeated"),
+                                  },
+                                  {
+                                    value: "LEFT",
+                                    label: t("notes.teacher.decision.left"),
+                                  },
+                                ]}
+                              />
                             </td>
                             <td className="px-3 py-2">
                               {draft?.decision === "PROMOTED" ||
                               draft?.decision === "REPEATED" ? (
-                                <FormSelect
+                                <SearchableSelect
                                   value={draft?.nextAcademicLevelId ?? ""}
-                                  onChange={(event) =>
+                                  onChange={(value) =>
                                     setDecisionDrafts((current) => ({
                                       ...current,
                                       [row.id]: {
                                         ...current[row.id],
-                                        nextAcademicLevelId: event.target.value,
+                                        nextAcademicLevelId: value,
                                       },
                                     }))
                                   }
+                                  placeholder={t("notes.common.select")}
+                                  searchPlaceholder={t(
+                                    "settings.form.searchPlaceholder",
+                                  )}
+                                  noResultsLabel={t("settings.form.noResults")}
+                                  ariaLabel={`${t("notes.common.select")} ${row.student.lastName} ${row.student.firstName}`}
                                   data-testid={`decision-row-${row.id}-level`}
-                                >
-                                  <option value="">
-                                    {t("notes.common.select")}
-                                  </option>
-                                  {decisionLevels.map((level) => (
-                                    <option key={level.id} value={level.id}>
-                                      {level.label}
-                                    </option>
-                                  ))}
-                                </FormSelect>
+                                  options={decisionLevels.map((level) => ({
+                                    value: level.id,
+                                    label: level.label,
+                                  }))}
+                                />
                               ) : null}
                             </td>
                             <td className="px-3 py-2">
