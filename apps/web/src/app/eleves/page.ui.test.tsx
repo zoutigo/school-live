@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ElevesPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const pushMock = vi.fn();
@@ -154,9 +155,8 @@ describe("Eleves page parent link modes", () => {
       target: { value: "student-1" },
     });
 
-    fireEvent.change(await screen.findByDisplayValue("Telephone + PIN"), {
-      target: { value: "email" },
-    });
+    await screen.findByTestId("eleves-link-parent-mode-select");
+    await selectSearchableOption("Mode parent", "Email + mot de passe");
     fireEvent.input(await screen.findByPlaceholderText("parent@email.com"), {
       target: { value: "parent@example.test" },
     });
@@ -247,7 +247,11 @@ describe("Eleves page parent link modes", () => {
       target: { value: "student-1" },
     });
 
-    expect(await screen.findByDisplayValue("Telephone + PIN")).toBeDefined();
+    expect(
+      await screen.findByText("Telephone + PIN", {
+        selector: '[data-testid="eleves-link-parent-mode-select"] span',
+      }),
+    ).toBeDefined();
     expect(screen.getByPlaceholderText("6XXXXXXXX")).toBeDefined();
     expect(screen.getByPlaceholderText("123456")).toBeDefined();
   });
@@ -263,9 +267,8 @@ describe("Eleves page parent link modes", () => {
       target: { value: "student-1" },
     });
 
-    fireEvent.change(await screen.findByDisplayValue("Telephone + PIN"), {
-      target: { value: "email" },
-    });
+    await screen.findByTestId("eleves-link-parent-mode-select");
+    await selectSearchableOption("Mode parent", "Email + mot de passe");
 
     const submitButton = screen.getByRole("button", {
       name: "Affecter parent",
