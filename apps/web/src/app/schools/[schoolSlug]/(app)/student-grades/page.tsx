@@ -6,11 +6,11 @@ import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
 import {
   FormNumberInput,
-  FormSelect,
   FormSubmitHint,
 } from "../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../components/ui/form-field";
 import { SubmitButton } from "../../../../../components/ui/form-buttons";
+import { SearchableSelect } from "../../../../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -449,12 +449,11 @@ export default function StudentGradesPage() {
               label={t("notes.admin.form.schoolYear")}
               error={createGradeForm.formState.errors.schoolYearId?.message}
             >
-              <FormSelect
-                aria-label={t("notes.admin.form.schoolYear")}
+              <SearchableSelect
+                ariaLabel={t("notes.admin.form.schoolYear")}
                 invalid={schoolYearInvalid}
                 value={gradeValues.schoolYearId ?? ""}
-                onChange={(event) => {
-                  const next = event.target.value;
+                onChange={(next) => {
                   createGradeForm.setValue("schoolYearId", next, {
                     shouldDirty: true,
                     shouldTouch: true,
@@ -463,17 +462,15 @@ export default function StudentGradesPage() {
                   void loadContext(next);
                 }}
                 disabled={loadingContext}
-              >
-                <option value="">{t("notes.common.select")}</option>
-                {(context?.schoolYears ?? []).map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.label}
-                    {entry.isActive
-                      ? t("notes.admin.form.schoolYearActiveSuffix")
-                      : ""}
-                  </option>
-                ))}
-              </FormSelect>
+                placeholder={t("notes.common.select")}
+                searchPlaceholder={t("settings.form.searchPlaceholder")}
+                noResultsLabel={t("settings.form.noResults")}
+                data-testid="student-grades-create-schoolyear-select"
+                options={(context?.schoolYears ?? []).map((entry) => ({
+                  value: entry.id,
+                  label: `${entry.label}${entry.isActive ? t("notes.admin.form.schoolYearActiveSuffix") : ""}`,
+                }))}
+              />
             </FormField>
 
             <FormField
@@ -481,70 +478,68 @@ export default function StudentGradesPage() {
               error={createGradeForm.formState.errors.assignmentKey?.message}
               className="md:col-span-2"
             >
-              <FormSelect
-                aria-label={t("notes.admin.form.assignment")}
+              <SearchableSelect
+                ariaLabel={t("notes.admin.form.assignment")}
                 invalid={assignmentInvalid}
                 value={gradeValues.assignmentKey ?? ""}
-                onChange={(event) =>
-                  createGradeForm.setValue(
-                    "assignmentKey",
-                    event.target.value,
-                    {
-                      shouldDirty: true,
-                      shouldTouch: true,
-                      shouldValidate: true,
-                    },
-                  )
-                }
-                disabled={loadingContext}
-              >
-                <option value="">{t("notes.common.select")}</option>
-                {assignmentOptions.map((entry) => (
-                  <option key={entry.key} value={entry.key}>
-                    {entry.label}
-                  </option>
-                ))}
-              </FormSelect>
-            </FormField>
-
-            <FormField
-              label={t("notes.admin.form.student")}
-              error={createGradeForm.formState.errors.studentId?.message}
-            >
-              <FormSelect
-                aria-label={t("notes.admin.form.student")}
-                invalid={studentInvalid}
-                value={gradeValues.studentId ?? ""}
-                onChange={(event) =>
-                  createGradeForm.setValue("studentId", event.target.value, {
+                onChange={(value) =>
+                  createGradeForm.setValue("assignmentKey", value, {
                     shouldDirty: true,
                     shouldTouch: true,
                     shouldValidate: true,
                   })
                 }
                 disabled={loadingContext}
-              >
-                <option value="">{t("notes.common.select")}</option>
-                {studentOptions.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.label}
-                  </option>
-                ))}
-              </FormSelect>
+                placeholder={t("notes.common.select")}
+                searchPlaceholder={t("settings.form.searchPlaceholder")}
+                noResultsLabel={t("settings.form.noResults")}
+                data-testid="student-grades-create-assignment-select"
+                options={assignmentOptions.map((entry) => ({
+                  value: entry.key,
+                  label: entry.label,
+                }))}
+              />
+            </FormField>
+
+            <FormField
+              label={t("notes.admin.form.student")}
+              error={createGradeForm.formState.errors.studentId?.message}
+            >
+              <SearchableSelect
+                ariaLabel={t("notes.admin.form.student")}
+                invalid={studentInvalid}
+                value={gradeValues.studentId ?? ""}
+                onChange={(value) =>
+                  createGradeForm.setValue("studentId", value, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
+                  })
+                }
+                disabled={loadingContext}
+                placeholder={t("notes.common.select")}
+                searchPlaceholder={t("settings.form.searchPlaceholder")}
+                noResultsLabel={t("settings.form.noResults")}
+                data-testid="student-grades-create-student-select"
+                options={studentOptions.map((entry) => ({
+                  value: entry.id,
+                  label: entry.label,
+                }))}
+              />
             </FormField>
 
             <FormField
               label={t("notes.admin.form.term")}
               error={createGradeForm.formState.errors.term?.message}
             >
-              <FormSelect
-                aria-label={t("notes.admin.form.term")}
+              <SearchableSelect
+                ariaLabel={t("notes.admin.form.term")}
                 invalid={termInvalid}
                 value={gradeValues.term ?? "TERM_1"}
-                onChange={(event) =>
+                onChange={(value) =>
                   createGradeForm.setValue(
                     "term",
-                    event.target.value as "TERM_1" | "TERM_2" | "TERM_3",
+                    value as "TERM_1" | "TERM_2" | "TERM_3",
                     {
                       shouldDirty: true,
                       shouldTouch: true,
@@ -552,11 +547,13 @@ export default function StudentGradesPage() {
                     },
                   )
                 }
-              >
-                <option value="TERM_1">TERM_1</option>
-                <option value="TERM_2">TERM_2</option>
-                <option value="TERM_3">TERM_3</option>
-              </FormSelect>
+                data-testid="student-grades-create-term-select"
+                options={[
+                  { value: "TERM_1", label: "TERM_1" },
+                  { value: "TERM_2", label: "TERM_2" },
+                  { value: "TERM_3", label: "TERM_3" },
+                ]}
+              />
             </FormField>
 
             <FormField

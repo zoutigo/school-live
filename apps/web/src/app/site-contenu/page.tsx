@@ -11,10 +11,10 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { FormField } from "../../components/ui/form-field";
 import {
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { FormRichTextEditor } from "../../components/ui/form-rich-text-editor";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { OnboardingTarget } from "../../components/onboarding/onboarding-target";
@@ -662,36 +662,32 @@ function LegalDocumentsTab({ t, locale }: { t: TranslateFn; locale: string }) {
             label={t("siteContent.legal.slugLabel")}
             htmlFor="legal-slug"
           >
-            <FormSelect
+            <SearchableSelect
               id="legal-slug"
+              ariaLabel={t("siteContent.legal.slugLabel")}
               value={slug}
-              onChange={(e) => setSlug(e.target.value as LegalDocumentSlug)}
-            >
-              {LEGAL_DOCUMENT_SLUGS.map((value) => (
-                <option key={value} value={value}>
-                  {t(`siteContent.legal.slug.${value}`)}
-                </option>
-              ))}
-            </FormSelect>
+              onChange={(value) => setSlug(value as LegalDocumentSlug)}
+              options={LEGAL_DOCUMENT_SLUGS.map((value) => ({
+                value,
+                label: t(`siteContent.legal.slug.${value}`),
+              }))}
+            />
           </FormField>
 
           <FormField
             label={t("siteContent.legal.localeLabel")}
             htmlFor="legal-locale"
           >
-            <FormSelect
+            <SearchableSelect
               id="legal-locale"
+              ariaLabel={t("siteContent.legal.localeLabel")}
               value={docLocale}
-              onChange={(e) =>
-                setDocLocale(e.target.value as LegalDocumentLocale)
-              }
-            >
-              {LEGAL_DOCUMENT_LOCALES.map((value) => (
-                <option key={value} value={value}>
-                  {t(`siteContent.legal.locale.${value}`)}
-                </option>
-              ))}
-            </FormSelect>
+              onChange={(value) => setDocLocale(value as LegalDocumentLocale)}
+              options={LEGAL_DOCUMENT_LOCALES.map((value) => ({
+                value,
+                label: t(`siteContent.legal.locale.${value}`),
+              }))}
+            />
           </FormField>
         </div>
       </OnboardingTarget>

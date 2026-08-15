@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import FinanceEcheanciersPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn((): string | null => "csrf-token-test");
@@ -100,9 +101,7 @@ describe("Finance echeanciers page", () => {
 
     await screen.findAllByText("CE2");
 
-    fireEvent.change(screen.getByLabelText("Niveau"), {
-      target: { value: "level-1" },
-    });
+    await selectSearchableOption("Niveau", "CE2");
     fireEvent.change(screen.getByLabelText("Libelle"), {
       target: { value: "1ere echeance" },
     });

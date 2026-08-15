@@ -28,9 +28,7 @@ describe("MessagingToolbar", () => {
     expect(
       screen.getByPlaceholderText("Rechercher un message..."),
     ).toBeInTheDocument();
-    expect(
-      screen.getAllByDisplayValue("Annee en cours").length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Annee en cours").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Nouveau message" }));
     expect(onCompose).toHaveBeenCalled();
     assertNoHorizontalOverflowAt320(screen.getByTestId("messaging-toolbar"));

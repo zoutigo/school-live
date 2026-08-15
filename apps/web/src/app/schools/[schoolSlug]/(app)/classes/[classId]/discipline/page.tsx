@@ -12,12 +12,12 @@ import {
   FormCheckbox,
   FormDateTimeInput,
   FormNumberInput,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
   FormTextarea,
 } from "../../../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../../../components/ui/form-field";
+import { SearchableSelect } from "../../../../../../../components/ui/searchable-select";
 import {
   LifeEventsList,
   lifeEventTypeLabel,
@@ -638,16 +638,18 @@ export default function TeacherClassDisciplinePage() {
                 <span className="text-text-secondary">
                   {t("discipline.page.studentLabel")}
                 </span>
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("discipline.page.studentLabel")}
                   value={selectedStudentId}
-                  onChange={(event) => setSelectedStudentId(event.target.value)}
-                >
-                  {classContext.students.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.lastName} {entry.firstName}
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={setSelectedStudentId}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
+                  data-testid="discipline-student-select"
+                  options={classContext.students.map((entry) => ({
+                    value: entry.id,
+                    label: `${entry.lastName} ${entry.firstName}`,
+                  }))}
+                />
               </label>
             </OnboardingTarget>
 
@@ -666,34 +668,34 @@ export default function TeacherClassDisciplinePage() {
                   label={t("discipline.form.type")}
                   htmlFor="discipline-type"
                 >
-                  <FormSelect
+                  <SearchableSelect
                     id="discipline-type"
+                    ariaLabel={t("discipline.form.type")}
                     value={createEventValues.type}
-                    onChange={(event) =>
-                      createEventForm.setValue(
-                        "type",
-                        event.target.value as EventType,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      )
+                    onChange={(value) =>
+                      createEventForm.setValue("type", value as EventType, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
                     }
-                  >
-                    <option value="ABSENCE">
-                      {t("discipline.types.absence")}
-                    </option>
-                    <option value="RETARD">
-                      {t("discipline.types.retard")}
-                    </option>
-                    <option value="SANCTION">
-                      {t("discipline.types.sanction")}
-                    </option>
-                    <option value="PUNITION">
-                      {t("discipline.types.punition")}
-                    </option>
-                  </FormSelect>
+                    data-testid="discipline-type-select"
+                    options={[
+                      {
+                        value: "ABSENCE",
+                        label: t("discipline.types.absence"),
+                      },
+                      { value: "RETARD", label: t("discipline.types.retard") },
+                      {
+                        value: "SANCTION",
+                        label: t("discipline.types.sanction"),
+                      },
+                      {
+                        value: "PUNITION",
+                        label: t("discipline.types.punition"),
+                      },
+                    ]}
+                  />
                 </FormField>
 
                 <FormField
@@ -825,34 +827,36 @@ export default function TeacherClassDisciplinePage() {
                       label={t("discipline.form.typeEditAria")}
                       error={editEventForm.formState.errors.type?.message}
                     >
-                      <FormSelect
-                        aria-label={t("discipline.form.typeEditAria")}
+                      <SearchableSelect
+                        ariaLabel={t("discipline.form.typeEditAria")}
                         value={editEventValues.type ?? "ABSENCE"}
-                        onChange={(event) =>
-                          editEventForm.setValue(
-                            "type",
-                            event.target.value as EventType,
-                            {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            },
-                          )
+                        onChange={(value) =>
+                          editEventForm.setValue("type", value as EventType, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
                         }
-                      >
-                        <option value="ABSENCE">
-                          {t("discipline.types.absence")}
-                        </option>
-                        <option value="RETARD">
-                          {t("discipline.types.retard")}
-                        </option>
-                        <option value="SANCTION">
-                          {t("discipline.types.sanction")}
-                        </option>
-                        <option value="PUNITION">
-                          {t("discipline.types.punition")}
-                        </option>
-                      </FormSelect>
+                        data-testid="discipline-edit-type-select"
+                        options={[
+                          {
+                            value: "ABSENCE",
+                            label: t("discipline.types.absence"),
+                          },
+                          {
+                            value: "RETARD",
+                            label: t("discipline.types.retard"),
+                          },
+                          {
+                            value: "SANCTION",
+                            label: t("discipline.types.sanction"),
+                          },
+                          {
+                            value: "PUNITION",
+                            label: t("discipline.types.punition"),
+                          },
+                        ]}
+                      />
                     </FormField>
 
                     <FormField

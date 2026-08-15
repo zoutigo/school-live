@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../../../components/ui/card";
-import { FormSelect } from "../../../../../../../components/ui/form-controls";
+import { SearchableSelect } from "../../../../../../../components/ui/searchable-select";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
 import { lifeEventTypeLabel } from "../../../../../../../components/life-events/life-events-list";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
@@ -317,69 +317,82 @@ export default function ChildCursusPage() {
                   <span className="text-text-secondary">
                     {t("discipline.cursus.filters.year")}
                   </span>
-                  <FormSelect
+                  <SearchableSelect
+                    ariaLabel={t("discipline.cursus.filters.year")}
                     value={schoolYearFilter}
-                    onChange={(event) =>
-                      setSchoolYearFilter(event.target.value)
-                    }
-                    className="bg-surface"
-                  >
-                    <option value="ALL">
-                      {t("discipline.cursus.filters.allFeminine")}
-                    </option>
-                    {schoolYearOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    onChange={setSchoolYearFilter}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="cursus-filter-year-select"
+                    options={[
+                      {
+                        value: "ALL",
+                        label: t("discipline.cursus.filters.allFeminine"),
+                      },
+                      ...schoolYearOptions.map((option) => ({
+                        value: option,
+                        label: option,
+                      })),
+                    ]}
+                  />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">
                     {t("discipline.cursus.filters.class")}
                   </span>
-                  <FormSelect
+                  <SearchableSelect
+                    ariaLabel={t("discipline.cursus.filters.class")}
                     value={classFilter}
-                    onChange={(event) => setClassFilter(event.target.value)}
-                    className="bg-surface"
-                  >
-                    <option value="ALL">
-                      {t("discipline.cursus.filters.allFeminine")}
-                    </option>
-                    {classOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    onChange={setClassFilter}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="cursus-filter-class-select"
+                    options={[
+                      {
+                        value: "ALL",
+                        label: t("discipline.cursus.filters.allFeminine"),
+                      },
+                      ...classOptions.map((option) => ({
+                        value: option,
+                        label: option,
+                      })),
+                    ]}
+                  />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">
                     {t("discipline.cursus.filters.type")}
                   </span>
-                  <FormSelect
+                  <SearchableSelect
+                    ariaLabel={t("discipline.cursus.filters.type")}
                     value={eventTypeFilter}
-                    onChange={(event) =>
-                      setEventTypeFilter(event.target.value as EventTypeFilter)
+                    onChange={(value) =>
+                      setEventTypeFilter(value as EventTypeFilter)
                     }
-                    className="bg-surface"
-                  >
-                    <option value="ALL">
-                      {t("discipline.cursus.filters.allMasculine")}
-                    </option>
-                    <option value="ABSENCE">
-                      {t("discipline.vieScolaire.kpi.absences")}
-                    </option>
-                    <option value="RETARD">
-                      {t("discipline.vieScolaire.kpi.retards")}
-                    </option>
-                    <option value="SANCTION">
-                      {t("discipline.vieScolaire.kpi.sanctions")}
-                    </option>
-                    <option value="PUNITION">
-                      {t("discipline.vieScolaire.kpi.punitions")}
-                    </option>
-                  </FormSelect>
+                    data-testid="cursus-filter-type-select"
+                    options={[
+                      {
+                        value: "ALL",
+                        label: t("discipline.cursus.filters.allMasculine"),
+                      },
+                      {
+                        value: "ABSENCE",
+                        label: t("discipline.vieScolaire.kpi.absences"),
+                      },
+                      {
+                        value: "RETARD",
+                        label: t("discipline.vieScolaire.kpi.retards"),
+                      },
+                      {
+                        value: "SANCTION",
+                        label: t("discipline.vieScolaire.kpi.sanctions"),
+                      },
+                      {
+                        value: "PUNITION",
+                        label: t("discipline.vieScolaire.kpi.punitions"),
+                      },
+                    ]}
+                  />
                 </label>
                 <div className="self-end">
                   <button

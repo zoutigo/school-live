@@ -2512,6 +2512,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.toolbar.newMessage": "Nouveau message",
     "messaging.toolbar.currentYear": "Annee en cours",
     "messaging.toolbar.previousYear": "Annee precedente",
+    "messaging.toolbar.yearScopeAria": "Periode",
 
     "messaging.compose.pageTitle": "Nouveau message",
     "messaging.compose.defaultSubtitle": "Messagerie de l'etablissement",
@@ -2544,6 +2545,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.compose.addStaff": "Ajouter un personnel",
     "messaging.compose.removeRecipient": "Retirer ce destinataire",
     "messaging.compose.noRecipientOption": "Aucun destinataire selectionne",
+    "messaging.compose.recipientAria": "Destinataire",
     "messaging.compose.searchRecipientsPlaceholder":
       "Rechercher un destinataire par nom ou email...",
     "messaging.compose.searchingRecipients": "Recherche en cours...",
@@ -7326,6 +7328,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.toolbar.newMessage": "New message",
     "messaging.toolbar.currentYear": "Current year",
     "messaging.toolbar.previousYear": "Previous year",
+    "messaging.toolbar.yearScopeAria": "Period",
 
     "messaging.compose.pageTitle": "New message",
     "messaging.compose.defaultSubtitle": "School messaging",
@@ -7357,6 +7360,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.compose.addStaff": "Add a staff member",
     "messaging.compose.removeRecipient": "Remove this recipient",
     "messaging.compose.noRecipientOption": "No recipient selected",
+    "messaging.compose.recipientAria": "Recipient",
     "messaging.compose.searchRecipientsPlaceholder":
       "Search a recipient by name or email...",
     "messaging.compose.searchingRecipients": "Searching...",

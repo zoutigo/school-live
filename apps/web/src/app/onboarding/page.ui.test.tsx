@@ -4,6 +4,7 @@ import OnboardingPage from "./page";
 import { useOnboardingStore } from "./onboarding-store";
 import { useLocaleStore } from "../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../i18n/translations";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const pushMock = vi.fn();
 let searchParamsMock = new URLSearchParams(
@@ -67,9 +68,7 @@ describe("OnboardingPage phone PIN step", () => {
     fireEvent.change(screen.getByLabelText("Votre nom"), {
       target: { value: "MBELE" },
     });
-    fireEvent.change(screen.getByLabelText("Votre genre"), {
-      target: { value: "M" },
-    });
+    await selectSearchableOption("Votre genre", "Masculin");
     const birthDateInput = document.querySelector(
       'input[type="date"]',
     ) as HTMLInputElement | null;
@@ -236,9 +235,7 @@ describe("OnboardingPage phone PIN step", () => {
     fireEvent.change(screen.getByLabelText("Votre nom"), {
       target: { value: "MBELE" },
     });
-    fireEvent.change(screen.getByLabelText("Votre genre"), {
-      target: { value: "M" },
-    });
+    await selectSearchableOption("Votre genre", "Masculin");
     fireEvent.change(
       screen.getByLabelText("Votre date de naissance") as HTMLInputElement,
       {
@@ -361,9 +358,7 @@ describe("OnboardingPage phone PIN step", () => {
     fireEvent.change(screen.getByLabelText("Votre nom"), {
       target: { value: "MBELE" },
     });
-    fireEvent.change(screen.getByLabelText("Votre genre"), {
-      target: { value: "M" },
-    });
+    await selectSearchableOption("Votre genre", "Masculin");
     fireEvent.change(screen.getByLabelText("Votre date de naissance"), {
       target: { value: "1990-01-10" },
     });

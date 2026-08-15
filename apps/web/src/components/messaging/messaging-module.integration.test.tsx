@@ -25,6 +25,7 @@ import {
 } from "../../test/responsive";
 import { ActionIconButton } from "../ui/action-icon-button";
 import { useTranslation } from "../../i18n/useTranslation";
+import { selectSearchableOption } from "../../test/searchable-select";
 import { buildComposeQueryFromMessage } from "./messaging-compose-logic";
 import { MessagingComposer } from "./messaging-composer";
 import { MessagingFoldersPanel } from "./messaging-folders-panel";
@@ -51,18 +52,6 @@ function setEditorText(container: HTMLElement, value: string) {
   editor.innerText = value;
   editor.textContent = value;
   fireEvent.input(editor);
-}
-
-function getComposerRecipientSelect(container: HTMLElement) {
-  const subjectInput = screen.queryByPlaceholderText("Objet du message");
-  const scopeRoot =
-    subjectInput?.closest(".filter-panel") ??
-    container.querySelector(".filter-panel");
-  const select = scopeRoot?.querySelector("select") as HTMLSelectElement | null;
-  if (!select) {
-    throw new Error("Recipient select not found");
-  }
-  return select;
 }
 
 function createMessage(partial: Partial<MessagingMessage>): MessagingMessage {
@@ -421,7 +410,7 @@ describe("Messaging module integration", () => {
       screen.getByPlaceholderText("Rechercher un message..."),
     ).toBeInTheDocument();
     expect(
-      within(toolbar).getAllByDisplayValue("Annee en cours").length,
+      within(toolbar).getAllByText("Annee en cours").length,
     ).toBeGreaterThan(0);
 
     expect(screen.getByText("Dossiers")).toBeInTheDocument();
@@ -438,9 +427,7 @@ describe("Messaging module integration", () => {
     fireEvent.click(
       within(toolbar).getByRole("button", { name: "Nouveau message" }),
     );
-    fireEvent.change(getComposerRecipientSelect(container), {
-      target: { value: "u-anne" },
-    });
+    await selectSearchableOption("Destinataire", "Anne Rousselet");
     fireEvent.change(screen.getByPlaceholderText("Objet du message"), {
       target: { value: "Message parent -> staff" },
     });
@@ -464,8 +451,9 @@ describe("Messaging module integration", () => {
       "Re: Demande de suivi particulier",
     );
     expect(subjectInput).toBeInTheDocument();
-    const recipientSelect = getComposerRecipientSelect(container);
-    expect(recipientSelect.value).toBe("u-mbele");
+    expect(
+      screen.getByLabelText("Destinataire", { selector: "button" }),
+    ).toHaveTextContent("Valery MBELE");
 
     setEditorText(container, "Reponse au message");
     fireEvent.click(screen.getByRole("button", { name: "Envoyer" }));

@@ -8,10 +8,11 @@ import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import { FormSelect, FormTextInput } from "../../components/ui/form-controls";
+import { FormTextInput } from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { useTranslation } from "../../i18n/useTranslation";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
@@ -386,39 +387,66 @@ export default function FinanceEcheanciersPage() {
                     label={t("financeSchedules.form.schoolYear")}
                     error={form.formState.errors.schoolYearId?.message}
                   >
-                    <FormSelect {...form.register("schoolYearId")}>
-                      <option value="">{t("common.select")}</option>
-                      {schoolYears.map((year) => (
-                        <option key={year.id} value={year.id}>
-                          {year.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      id="schoolYearId"
+                      ariaLabel={t("financeSchedules.form.schoolYear")}
+                      invalid={Boolean(form.formState.errors.schoolYearId)}
+                      value={form.watch("schoolYearId") ?? ""}
+                      onChange={(value) =>
+                        form.setValue("schoolYearId", value, {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder={t("common.select")}
+                      options={schoolYears.map((year) => ({
+                        value: year.id,
+                        label: year.label,
+                      }))}
+                    />
                   </FormField>
                   <FormField
                     label={t("financeSchedules.form.academicLevel")}
                     error={form.formState.errors.academicLevelId?.message}
                   >
-                    <FormSelect {...form.register("academicLevelId")}>
-                      <option value="">{t("common.select")}</option>
-                      {academicLevels.map((level) => (
-                        <option key={level.id} value={level.id}>
-                          {level.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      id="academicLevelId"
+                      ariaLabel={t("financeSchedules.form.academicLevel")}
+                      invalid={Boolean(form.formState.errors.academicLevelId)}
+                      value={form.watch("academicLevelId") ?? ""}
+                      onChange={(value) =>
+                        form.setValue("academicLevelId", value, {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder={t("common.select")}
+                      options={academicLevels.map((level) => ({
+                        value: level.id,
+                        label: level.label,
+                      }))}
+                    />
                   </FormField>
                   <FormField label={t("financeSchedules.form.track")}>
-                    <FormSelect {...form.register("trackId")}>
-                      <option value="">
-                        {t("financeSchedules.form.trackNone")}
-                      </option>
-                      {tracks.map((track) => (
-                        <option key={track.id} value={track.id}>
-                          {track.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      id="trackId"
+                      ariaLabel={t("financeSchedules.form.track")}
+                      value={form.watch("trackId") ?? ""}
+                      onChange={(value) =>
+                        form.setValue("trackId", value, {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder={t("financeSchedules.form.trackNone")}
+                      options={[
+                        {
+                          value: "",
+                          label: t("financeSchedules.form.trackNone"),
+                        },
+                        ...tracks.map((track) => ({
+                          value: track.id,
+                          label: track.label,
+                        })),
+                      ]}
+                    />
                   </FormField>
                 </div>
 

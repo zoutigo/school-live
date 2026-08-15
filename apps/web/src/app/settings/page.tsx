@@ -11,10 +11,10 @@ import { Card } from "../../components/ui/card";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import {
   FormRadio,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { FormField } from "../../components/ui/form-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
@@ -1080,32 +1080,27 @@ export default function SettingsPage() {
                             ?.message
                         }
                       >
-                        <FormSelect
+                        <SearchableSelect
                           id="staff-assignment-function"
+                          ariaLabel="Fonction affectee"
                           invalid={
                             !!staffAssignmentForm.formState.errors.functionId
                           }
-                          value={staffAssignmentForm.watch("functionId")}
-                          onChange={(event) =>
-                            staffAssignmentForm.setValue(
-                              "functionId",
-                              event.target.value,
-                              {
-                                shouldDirty: true,
-                                shouldTouch: true,
-                                shouldValidate: true,
-                              },
-                            )
+                          value={staffAssignmentForm.watch("functionId") ?? ""}
+                          onChange={(value) =>
+                            staffAssignmentForm.setValue("functionId", value, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
                           }
                           className="h-10 bg-background text-sm"
-                        >
-                          <option value="">Choisir une fonction</option>
-                          {staffFunctions.map((entry) => (
-                            <option key={entry.id} value={entry.id}>
-                              {entry.name}
-                            </option>
-                          ))}
-                        </FormSelect>
+                          placeholder="Choisir une fonction"
+                          options={staffFunctions.map((entry) => ({
+                            value: entry.id,
+                            label: entry.name,
+                          }))}
+                        />
                       </FormField>
                       <FormField
                         label="Personnel"
@@ -1114,32 +1109,27 @@ export default function SettingsPage() {
                           staffAssignmentForm.formState.errors.userId?.message
                         }
                       >
-                        <FormSelect
+                        <SearchableSelect
                           id="staff-assignment-user"
+                          ariaLabel="Personnel"
                           invalid={
                             !!staffAssignmentForm.formState.errors.userId
                           }
-                          value={staffAssignmentForm.watch("userId")}
-                          onChange={(event) =>
-                            staffAssignmentForm.setValue(
-                              "userId",
-                              event.target.value,
-                              {
-                                shouldDirty: true,
-                                shouldTouch: true,
-                                shouldValidate: true,
-                              },
-                            )
+                          value={staffAssignmentForm.watch("userId") ?? ""}
+                          onChange={(value) =>
+                            staffAssignmentForm.setValue("userId", value, {
+                              shouldDirty: true,
+                              shouldTouch: true,
+                              shouldValidate: true,
+                            })
                           }
                           className="h-10 bg-background text-sm"
-                        >
-                          <option value="">Choisir un personnel</option>
-                          {staffCandidates.map((entry) => (
-                            <option key={entry.userId} value={entry.userId}>
-                              {entry.lastName} {entry.firstName} ({entry.role})
-                            </option>
-                          ))}
-                        </FormSelect>
+                          placeholder="Choisir un personnel"
+                          options={staffCandidates.map((entry) => ({
+                            value: entry.userId,
+                            label: `${entry.lastName} ${entry.firstName} (${entry.role})`,
+                          }))}
+                        />
                       </FormField>
                       <div className="flex items-end">
                         <div className="grid gap-2">

@@ -1,5 +1,7 @@
 import { Plus, RefreshCw, Search } from "lucide-react";
-import { FormSelect, FormTextInput } from "../ui/form-controls";
+import { useState } from "react";
+import { FormTextInput } from "../ui/form-controls";
+import { SearchableSelect } from "../ui/searchable-select";
 import { useTranslation } from "../../i18n/useTranslation";
 
 type Props = {
@@ -18,6 +20,11 @@ export function MessagingToolbar({
   onCompose,
 }: Props) {
   const { t } = useTranslation();
+  const [yearScope, setYearScope] = useState("current");
+  const yearScopeOptions = [
+    { value: "current", label: t("messaging.toolbar.currentYear") },
+    { value: "previous", label: t("messaging.toolbar.previousYear") },
+  ];
   return (
     <div
       data-testid="messaging-toolbar"
@@ -50,10 +57,13 @@ export function MessagingToolbar({
           ) : null}
         </div>
         <div className="flex lg:hidden">
-          <FormSelect className="h-8 min-w-0 w-full bg-surface px-3 text-xs text-text-secondary">
-            <option>{t("messaging.toolbar.currentYear")}</option>
-            <option>{t("messaging.toolbar.previousYear")}</option>
-          </FormSelect>
+          <SearchableSelect
+            className="h-8 min-w-0 w-full bg-surface px-3 text-xs text-text-secondary"
+            ariaLabel={t("messaging.toolbar.yearScopeAria")}
+            value={yearScope}
+            onChange={setYearScope}
+            options={yearScopeOptions}
+          />
         </div>
       </div>
 
@@ -77,10 +87,13 @@ export function MessagingToolbar({
       </div>
 
       <div className="hidden lg:block">
-        <FormSelect className="h-9 min-w-0 w-auto max-w-full bg-surface px-3 text-sm text-text-secondary lg:min-w-[170px] lg:h-10 lg:w-auto">
-          <option>{t("messaging.toolbar.currentYear")}</option>
-          <option>{t("messaging.toolbar.previousYear")}</option>
-        </FormSelect>
+        <SearchableSelect
+          className="h-9 min-w-0 w-auto max-w-full bg-surface px-3 text-sm text-text-secondary lg:min-w-[170px] lg:h-10 lg:w-auto"
+          ariaLabel={t("messaging.toolbar.yearScopeAria")}
+          value={yearScope}
+          onChange={setYearScope}
+          options={yearScopeOptions}
+        />
       </div>
     </div>
   );
