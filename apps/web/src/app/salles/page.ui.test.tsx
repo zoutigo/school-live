@@ -335,9 +335,10 @@ describe("Rooms page forms", () => {
     render(<RoomsPage />);
     await screen.findByTestId("salles-filter-toggle");
     fireEvent.click(screen.getByTestId("salles-filter-toggle"));
-    fireEvent.change(await screen.findByTestId("salles-filter-status"), {
-      target: { value: "MAINTENANCE" },
-    });
+    fireEvent.click(await screen.findByTestId("salles-filter-status"));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "En maintenance" }),
+    );
     fetchMock.mockClear();
     fireEvent.click(screen.getByTestId("salles-filter-apply"));
 
