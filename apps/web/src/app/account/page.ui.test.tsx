@@ -6,7 +6,7 @@ import { DEFAULT_LOCALE } from "../../i18n/translations";
 
 const replaceMock = vi.fn();
 const pushMock = vi.fn();
-const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
+const getCsrfTokenCookieMock = vi.fn((): string | null => "csrf-token-test");
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock, push: pushMock }),
@@ -277,6 +277,141 @@ describe("AccountPage recovery settings UI", () => {
     );
   });
 
+  it("permet de choisir la classe et l'enfant via les listes deroulantes filtrables (compte parent)", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        if (url.endsWith("/me")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                firstName: "Zoutigo",
+                lastName: "Parent",
+                email: "parent@gmail.com",
+                role: "PARENT",
+                schoolSlug: "lycee-du-poisson-d-avril",
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+
+        if (url.endsWith("/auth/recovery/options")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                schoolRoles: ["PARENT"],
+                birthDate: "1990-06-14",
+                selectedQuestions: [],
+                questions: [
+                  { key: "BIRTH_CITY", label: "Votre ville de naissance" },
+                  { key: "FAVORITE_BOOK", label: "Votre livre prefere" },
+                  { key: "FAVORITE_SPORT", label: "Votre sport prefere" },
+                ],
+                classes: [
+                  {
+                    id: "class-1",
+                    name: "6eme A",
+                    schoolYearLabel: "2025-2026",
+                  },
+                  {
+                    id: "class-2",
+                    name: "5eme B",
+                    schoolYearLabel: "2025-2026",
+                  },
+                ],
+                students: [
+                  { id: "student-1", firstName: "Alice", lastName: "Zoutigo" },
+                  { id: "student-2", firstName: "Bob", lastName: "Zoutigo" },
+                ],
+                parentClassId: null,
+                parentStudentId: null,
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+
+        if (url.endsWith("/auth/recovery/update")) {
+          expect(init?.method).toBe("POST");
+          expect(JSON.parse(String(init?.body))).toEqual(
+            expect.objectContaining({
+              parentClassId: "class-2",
+              parentStudentId: "student-1",
+            }),
+          );
+          return Promise.resolve(
+            new Response(JSON.stringify({ success: true }), {
+              status: 201,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+
+        return Promise.resolve(new Response(null, { status: 404 }));
+      });
+
+    render(<AccountPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Securite" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Questions de recuperation")).toBeInTheDocument();
+    });
+    fireEvent.click(
+      screen.getByLabelText("Modifier les questions de recuperation"),
+    );
+
+    fireEvent.click(screen.getByLabelText("Votre ville de naissance"));
+    fireEvent.change(screen.getByPlaceholderText("Votre reponse"), {
+      target: { value: "Douala" },
+    });
+    fireEvent.click(screen.getByLabelText("Votre livre prefere"));
+    fireEvent.change(screen.getAllByPlaceholderText("Votre reponse")[1], {
+      target: { value: "Le Petit Prince" },
+    });
+    fireEvent.click(screen.getByLabelText("Votre sport prefere"));
+    fireEvent.change(screen.getAllByPlaceholderText("Votre reponse")[2], {
+      target: { value: "Football" },
+    });
+
+    fireEvent.click(screen.getByTestId("account-recovery-parent-class-select"));
+    expect(screen.getByText("6eme A (2025-2026)")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByTestId("account-recovery-parent-class-select-option-class-2"),
+    );
+    expect(screen.getByText("5eme B (2025-2026)")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId("account-recovery-parent-student-select"),
+    );
+    fireEvent.click(
+      screen.getByTestId(
+        "account-recovery-parent-student-select-option-student-1",
+      ),
+    );
+    expect(screen.getByText("Zoutigo Alice")).toBeInTheDocument();
+
+    const recoverySubmitButton = screen.getByRole("button", {
+      name: "Mettre a jour la recuperation",
+    });
+    await waitFor(() => {
+      expect(recoverySubmitButton).toBeEnabled();
+    });
+    fireEvent.click(recoverySubmitButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Questions de recuperation mises a jour."),
+      ).toBeInTheDocument();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/auth/recovery/update"),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("updates personal profile from informations personnelles tab", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
@@ -337,9 +472,8 @@ describe("AccountPage recovery settings UI", () => {
     fireEvent.change(screen.getByLabelText("Nom"), {
       target: { value: "Zoutigo" },
     });
-    fireEvent.change(screen.getByLabelText("Genre"), {
-      target: { value: "F" },
-    });
+    fireEvent.click(screen.getByTestId("account-gender-select"));
+    fireEvent.click(screen.getByTestId("account-gender-select-option-F"));
     fireEvent.change(screen.getByLabelText("Telephone"), {
       target: { value: "650597838" },
     });
@@ -715,6 +849,13 @@ describe("AccountPage recovery settings UI", () => {
 
     await waitFor(() => {
       expect(
+        screen.getByRole("button", { name: "Parametres" }),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Parametres" }));
+
+    await waitFor(() => {
+      expect(
         screen.getByTestId("account-language-section"),
       ).toBeInTheDocument();
     });
@@ -915,5 +1056,402 @@ describe("AccountPage recovery settings UI", () => {
     fireEvent.click(resetButton);
 
     expect(useOnboardingTourStore.getState().completedTours).toEqual({});
+  });
+
+  it("affiche la langue de l'appareil dans l'onglet Parametres et masque ecole/profil quand un seul est disponible", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SCHOOL_ADMIN",
+              activeRole: "SCHOOL_ADMIN",
+              schoolSlug: "lycee-du-poisson-d-avril",
+              activeSchoolId: "school-1",
+              schools: [
+                {
+                  schoolId: "school-1",
+                  slug: "lycee-du-poisson-d-avril",
+                  name: "Lycee du Poisson d'Avril",
+                  role: "SCHOOL_ADMIN",
+                },
+              ],
+              platformRoles: [],
+              memberships: [{ schoolId: "school-1", role: "SCHOOL_ADMIN" }],
+              preferredLocale: "FR",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Parametres" }));
+
+    expect(
+      await screen.findByTestId("account-device-language-section"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("account-language-section")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("account-active-school-section"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("account-active-role-section"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("permet de changer l'ecole active depuis l'onglet Parametres", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        if (url.endsWith("/me/active-school")) {
+          expect(init?.method).toBe("PUT");
+          expect(JSON.parse(String(init?.body))).toEqual({
+            schoolId: "school-2",
+          });
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                firstName: "Zoutigo",
+                lastName: "Admin",
+                email: "zoutigo@gmail.com",
+                role: "SCHOOL_ADMIN",
+                activeRole: "SCHOOL_ADMIN",
+                schoolSlug: "college-des-fleurs",
+                activeSchoolId: "school-2",
+                schools: [
+                  {
+                    schoolId: "school-1",
+                    slug: "lycee-du-poisson-d-avril",
+                    name: "Lycee du Poisson d'Avril",
+                    role: "SCHOOL_ADMIN",
+                  },
+                  {
+                    schoolId: "school-2",
+                    slug: "college-des-fleurs",
+                    name: "College des Fleurs",
+                    role: "TEACHER",
+                  },
+                ],
+                platformRoles: [],
+                memberships: [
+                  { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+                  { schoolId: "school-2", role: "TEACHER" },
+                ],
+                preferredLocale: "FR",
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+
+        if (url.endsWith("/me")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                firstName: "Zoutigo",
+                lastName: "Admin",
+                email: "zoutigo@gmail.com",
+                role: "SCHOOL_ADMIN",
+                activeRole: "SCHOOL_ADMIN",
+                schoolSlug: "lycee-du-poisson-d-avril",
+                activeSchoolId: "school-1",
+                schools: [
+                  {
+                    schoolId: "school-1",
+                    slug: "lycee-du-poisson-d-avril",
+                    name: "Lycee du Poisson d'Avril",
+                    role: "SCHOOL_ADMIN",
+                  },
+                  {
+                    schoolId: "school-2",
+                    slug: "college-des-fleurs",
+                    name: "College des Fleurs",
+                    role: "TEACHER",
+                  },
+                ],
+                platformRoles: [],
+                memberships: [
+                  { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+                  { schoolId: "school-2", role: "TEACHER" },
+                ],
+                preferredLocale: "FR",
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+
+        return Promise.resolve(new Response(null, { status: 404 }));
+      });
+
+    render(<AccountPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Parametres" }));
+
+    const schoolSection = await screen.findByTestId(
+      "account-active-school-section",
+    );
+    const saveButton = screen.getByTestId("account-active-school-save");
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("account-active-school-select"));
+    fireEvent.click(
+      screen.getByTestId("account-active-school-select-option-school-2"),
+    );
+    expect(saveButton).not.toBeDisabled();
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("L'ecole active a ete mise a jour."),
+      ).toBeInTheDocument();
+    });
+    expect(schoolSection).toBeInTheDocument();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/me/active-school"),
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({
+          "X-CSRF-Token": "csrf-token-test",
+        }),
+      }),
+    );
+  });
+
+  it("permet de changer le profil actif depuis l'onglet Parametres", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+        if (url.endsWith("/me/active-role")) {
+          expect(init?.method).toBe("PUT");
+          expect(JSON.parse(String(init?.body))).toEqual({
+            role: "TEACHER",
+          });
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                firstName: "Zoutigo",
+                lastName: "Admin",
+                email: "zoutigo@gmail.com",
+                role: "SCHOOL_ADMIN",
+                activeRole: "TEACHER",
+                schoolSlug: "lycee-du-poisson-d-avril",
+                activeSchoolId: "school-1",
+                schools: [],
+                platformRoles: [],
+                memberships: [
+                  { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+                  { schoolId: "school-1", role: "TEACHER" },
+                ],
+                preferredLocale: "FR",
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+
+        if (url.endsWith("/me")) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                firstName: "Zoutigo",
+                lastName: "Admin",
+                email: "zoutigo@gmail.com",
+                role: "SCHOOL_ADMIN",
+                activeRole: "SCHOOL_ADMIN",
+                schoolSlug: "lycee-du-poisson-d-avril",
+                activeSchoolId: "school-1",
+                schools: [
+                  {
+                    schoolId: "school-1",
+                    slug: "lycee-du-poisson-d-avril",
+                    name: "Lycee du Poisson d'Avril",
+                    role: "SCHOOL_ADMIN",
+                  },
+                ],
+                platformRoles: [],
+                memberships: [
+                  { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+                  { schoolId: "school-1", role: "TEACHER" },
+                ],
+                preferredLocale: "FR",
+              }),
+              { status: 200, headers: { "Content-Type": "application/json" } },
+            ),
+          );
+        }
+
+        return Promise.resolve(new Response(null, { status: 404 }));
+      });
+
+    render(<AccountPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Parametres" }));
+
+    const roleSection = await screen.findByTestId(
+      "account-active-role-section",
+    );
+    const saveButton = screen.getByTestId("account-active-role-save");
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId("account-active-role-select"));
+    fireEvent.click(
+      screen.getByTestId("account-active-role-select-option-TEACHER"),
+    );
+    expect(saveButton).not.toBeDisabled();
+
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Le profil actif a ete mis a jour."),
+      ).toBeInTheDocument();
+    });
+    expect(roleSection).toBeInTheDocument();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/me/active-role"),
+      expect.objectContaining({
+        method: "PUT",
+        headers: expect.objectContaining({
+          "X-CSRF-Token": "csrf-token-test",
+        }),
+      }),
+    );
+  });
+
+  it("affiche une erreur si le changement d'ecole active echoue", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      if (url.endsWith("/me/active-school")) {
+        expect(init?.method).toBe("PUT");
+        return Promise.resolve(
+          new Response(JSON.stringify({ message: "Ecole introuvable." }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SCHOOL_ADMIN",
+              activeRole: "SCHOOL_ADMIN",
+              schoolSlug: "lycee-du-poisson-d-avril",
+              activeSchoolId: "school-1",
+              schools: [
+                {
+                  schoolId: "school-1",
+                  slug: "lycee-du-poisson-d-avril",
+                  name: "Lycee du Poisson d'Avril",
+                  role: "SCHOOL_ADMIN",
+                },
+                {
+                  schoolId: "school-2",
+                  slug: "college-des-fleurs",
+                  name: "College des Fleurs",
+                  role: "TEACHER",
+                },
+              ],
+              platformRoles: [],
+              memberships: [
+                { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+                { schoolId: "school-2", role: "TEACHER" },
+              ],
+              preferredLocale: "FR",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Parametres" }));
+    await screen.findByTestId("account-active-school-section");
+
+    fireEvent.click(screen.getByTestId("account-active-school-select"));
+    fireEvent.click(
+      screen.getByTestId("account-active-school-select-option-school-2"),
+    );
+    fireEvent.click(screen.getByTestId("account-active-school-save"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Ecole introuvable.")).toBeInTheDocument();
+    });
+  });
+
+  it("redirige vers l'accueil si le token CSRF est absent lors du changement de profil actif", async () => {
+    getCsrfTokenCookieMock.mockReturnValue(null);
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.endsWith("/me")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              firstName: "Zoutigo",
+              lastName: "Admin",
+              email: "zoutigo@gmail.com",
+              role: "SCHOOL_ADMIN",
+              activeRole: "SCHOOL_ADMIN",
+              schoolSlug: "lycee-du-poisson-d-avril",
+              activeSchoolId: "school-1",
+              schools: [
+                {
+                  schoolId: "school-1",
+                  slug: "lycee-du-poisson-d-avril",
+                  name: "Lycee du Poisson d'Avril",
+                  role: "SCHOOL_ADMIN",
+                },
+              ],
+              platformRoles: [],
+              memberships: [
+                { schoolId: "school-1", role: "SCHOOL_ADMIN" },
+                { schoolId: "school-1", role: "TEACHER" },
+              ],
+              preferredLocale: "FR",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 404 }));
+    });
+
+    render(<AccountPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Parametres" }));
+    await screen.findByTestId("account-active-role-section");
+
+    fireEvent.click(screen.getByTestId("account-active-role-select"));
+    fireEvent.click(
+      screen.getByTestId("account-active-role-select-option-TEACHER"),
+    );
+    fireEvent.click(screen.getByTestId("account-active-role-save"));
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/");
+    });
   });
 });

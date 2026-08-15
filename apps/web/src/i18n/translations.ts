@@ -57,6 +57,31 @@ export const translations: Record<Locale, Record<string, string>> = {
     "settings.accountLanguage.error":
       "La langue du compte n'a pas pu etre mise a jour.",
 
+    "settings.school.title": "Ecole active",
+    "settings.school.subtitle": "Etablissement qui conditionne l'application",
+    "settings.role.title": "Profil actif",
+    "settings.role.subtitle": "Navigation affichee dans l'application",
+    "settings.form.activeSchool.title": "Ecole active",
+    "settings.form.activeSchool.subtitle":
+      "Choisissez l'etablissement qui conditionne l'application",
+    "settings.form.activeSchool.successTitle": "Ecole active mise a jour",
+    "settings.form.activeSchool.successMessage":
+      "L'ecole active a ete mise a jour.",
+    "settings.form.activeSchool.errorTitle": "Mise a jour impossible",
+    "settings.form.activeSchool.errorMessage":
+      "L'ecole active n'a pas pu etre mise a jour.",
+    "settings.form.activeRole.title": "Profil actif",
+    "settings.form.activeRole.subtitle": "Choisissez la navigation a afficher",
+    "settings.form.activeRole.successTitle": "Profil actif mis a jour",
+    "settings.form.activeRole.successMessage":
+      "Le profil actif a ete mis a jour.",
+    "settings.form.activeRole.errorTitle": "Mise a jour impossible",
+    "settings.form.activeRole.errorMessage":
+      "Le profil actif n'a pas pu etre mis a jour.",
+    "settings.form.save": "Enregistrer",
+    "settings.form.searchPlaceholder": "Rechercher...",
+    "settings.form.noResults": "Aucun resultat",
+
     "header.portal.admin": "Portail administration",
     "header.portal.school": "Portail etablissement",
     "header.portal.teacher": "Portail enseignant",
@@ -4940,6 +4965,31 @@ export const translations: Record<Locale, Record<string, string>> = {
     "settings.accountLanguage.success": "Your account language has been saved.",
     "settings.accountLanguage.error":
       "The account language could not be updated.",
+
+    "settings.school.title": "Active school",
+    "settings.school.subtitle": "Establishment that drives the app",
+    "settings.role.title": "Active profile",
+    "settings.role.subtitle": "Navigation displayed in the app",
+    "settings.form.activeSchool.title": "Active school",
+    "settings.form.activeSchool.subtitle":
+      "Choose the establishment that drives the app",
+    "settings.form.activeSchool.successTitle": "Active school updated",
+    "settings.form.activeSchool.successMessage":
+      "The active school has been updated.",
+    "settings.form.activeSchool.errorTitle": "Update failed",
+    "settings.form.activeSchool.errorMessage":
+      "The active school could not be updated.",
+    "settings.form.activeRole.title": "Active profile",
+    "settings.form.activeRole.subtitle": "Choose the navigation to display",
+    "settings.form.activeRole.successTitle": "Active profile updated",
+    "settings.form.activeRole.successMessage":
+      "The active profile has been updated.",
+    "settings.form.activeRole.errorTitle": "Update failed",
+    "settings.form.activeRole.errorMessage":
+      "The active profile could not be updated.",
+    "settings.form.save": "Save",
+    "settings.form.searchPlaceholder": "Search...",
+    "settings.form.noResults": "No results",
 
     "header.portal.admin": "Administration portal",
     "header.portal.school": "School portal",
