@@ -239,9 +239,8 @@ describe("Child sante page (vue parent)", () => {
       screen.getByTestId("sante-conditions-filter-panel"),
     ).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId("sante-conditions-filter-type"), {
-      target: { value: "ALLERGY" },
-    });
+    fireEvent.click(screen.getByTestId("sante-conditions-filter-type"));
+    fireEvent.click(screen.getByRole("option", { name: "Allergie" }));
 
     await waitFor(() => expect(lastConditionsUrl).toContain("type=ALLERGY"), {
       timeout: 2000,
