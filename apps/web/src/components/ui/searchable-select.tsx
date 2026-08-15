@@ -128,6 +128,7 @@ export function SearchableSelect({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-invalid={invalid ? "true" : "false"}
         disabled={disabled}
         onClick={handleTriggerClick}
         className={`flex h-11 w-full items-center justify-between gap-2 rounded-[14px] border bg-warm-surface px-3.5 text-left text-sm text-text-primary outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${

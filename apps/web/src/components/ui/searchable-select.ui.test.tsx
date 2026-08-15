@@ -163,4 +163,35 @@ describe("SearchableSelect", () => {
 
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
+
+  it("expose aria-invalid selon la prop invalid", () => {
+    const { rerender } = render(
+      <SearchableSelect
+        options={FEW_OPTIONS}
+        value=""
+        onChange={vi.fn()}
+        invalid
+        data-testid="test-select"
+      />,
+    );
+
+    expect(screen.getByTestId("test-select")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+
+    rerender(
+      <SearchableSelect
+        options={FEW_OPTIONS}
+        value=""
+        onChange={vi.fn()}
+        data-testid="test-select"
+      />,
+    );
+
+    expect(screen.getByTestId("test-select")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+  });
 });

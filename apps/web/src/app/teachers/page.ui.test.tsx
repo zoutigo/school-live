@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TeachersPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -84,9 +85,8 @@ describe("Teachers page create modes", () => {
       "true",
     );
 
-    fireEvent.change(await screen.findByDisplayValue("Telephone + PIN"), {
-      target: { value: "email" },
-    });
+    await screen.findByTestId("teachers-create-mode-select");
+    await selectSearchableOption("Mode creation", "Email + mot de passe");
     fireEvent.change(
       await screen.findByPlaceholderText("enseignant@ecole.com"),
       {
@@ -271,9 +271,7 @@ describe("Teachers page create modes", () => {
       "true",
     );
 
-    fireEvent.change(screen.getByLabelText("Classe affectation"), {
-      target: { value: "class-1" },
-    });
+    await selectSearchableOption("Classe affectation", "6eC");
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
@@ -399,9 +397,8 @@ describe("Teachers page create modes", () => {
     const getEditingAssignmentField = (label: string) =>
       screen.getAllByLabelText(label).at(-1) as HTMLElement;
 
-    fireEvent.change(getEditingAssignmentField("Classe affectation"), {
-      target: { value: "" },
-    });
+    fireEvent.click(getEditingAssignmentField("Classe affectation"));
+    fireEvent.click(screen.getByRole("option", { name: "Selectionner" }));
 
     expect(
       await screen.findByText("La classe est obligatoire."),
@@ -413,12 +410,10 @@ describe("Teachers page create modes", () => {
       ).length,
     ).toBeGreaterThan(0);
 
-    fireEvent.change(getEditingAssignmentField("Classe affectation"), {
-      target: { value: "class-2" },
-    });
-    fireEvent.change(getEditingAssignmentField("Matiere affectation"), {
-      target: { value: "sub-2" },
-    });
+    fireEvent.click(getEditingAssignmentField("Classe affectation"));
+    fireEvent.click(screen.getByRole("option", { name: "5eA" }));
+    fireEvent.click(getEditingAssignmentField("Matiere affectation"));
+    fireEvent.click(screen.getByRole("option", { name: "Chimie" }));
 
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
