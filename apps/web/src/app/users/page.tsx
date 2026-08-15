@@ -13,7 +13,6 @@ import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
 import {
   FormCheckbox,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
@@ -22,6 +21,7 @@ import { FormField } from "../../components/ui/form-field";
 import { ImageUploadField } from "../../components/ui/image-upload-field";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PaginationControls } from "../../components/ui/pagination-controls";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -1015,63 +1015,74 @@ export default function UsersPage() {
                   <div className="filter-panel flex flex-wrap items-end justify-end gap-2">
                     <label className="grid min-w-[170px] gap-1 text-sm">
                       <span className="text-text-secondary">Role</span>
-                      <FormSelect
+                      <SearchableSelect
+                        ariaLabel="Role"
                         value={roleFilter}
-                        onChange={(event) =>
-                          setRoleFilter(event.target.value as "ALL" | Role)
+                        onChange={(value) =>
+                          setRoleFilter(value as "ALL" | Role)
                         }
-                      >
-                        <option value="ALL">Tous</option>
-                        <option value="SUPER_ADMIN">SUPER_ADMIN</option>
-                        <option value="ADMIN">ADMIN</option>
-                        <option value="SALES">SALES</option>
-                        <option value="SUPPORT">SUPPORT</option>
-                        <option value="SCHOOL_ADMIN">SCHOOL_ADMIN</option>
-                        <option value="SCHOOL_MANAGER">SCHOOL_MANAGER</option>
-                        <option value="SCHOOL_ACCOUNTANT">
-                          SCHOOL_ACCOUNTANT
-                        </option>
-                        <option value="SCHOOL_STAFF">SCHOOL_STAFF</option>
-                        <option value="SCHOOL_HEALTH_OFFICER">
-                          SCHOOL_HEALTH_OFFICER
-                        </option>
-                        <option value="TEACHER">TEACHER</option>
-                        <option value="PARENT">PARENT</option>
-                        <option value="STUDENT">STUDENT</option>
-                      </FormSelect>
+                        data-testid="users-filter-role-select"
+                        options={[
+                          { value: "ALL", label: "Tous" },
+                          { value: "SUPER_ADMIN", label: "SUPER_ADMIN" },
+                          { value: "ADMIN", label: "ADMIN" },
+                          { value: "SALES", label: "SALES" },
+                          { value: "SUPPORT", label: "SUPPORT" },
+                          { value: "SCHOOL_ADMIN", label: "SCHOOL_ADMIN" },
+                          { value: "SCHOOL_MANAGER", label: "SCHOOL_MANAGER" },
+                          {
+                            value: "SCHOOL_ACCOUNTANT",
+                            label: "SCHOOL_ACCOUNTANT",
+                          },
+                          { value: "SCHOOL_STAFF", label: "SCHOOL_STAFF" },
+                          {
+                            value: "SCHOOL_HEALTH_OFFICER",
+                            label: "SCHOOL_HEALTH_OFFICER",
+                          },
+                          { value: "TEACHER", label: "TEACHER" },
+                          { value: "PARENT", label: "PARENT" },
+                          { value: "STUDENT", label: "STUDENT" },
+                        ]}
+                      />
                     </label>
 
                     <label className="grid min-w-[190px] gap-1 text-sm">
                       <span className="text-text-secondary">Ecole</span>
-                      <FormSelect
+                      <SearchableSelect
+                        ariaLabel="Ecole"
                         value={schoolFilter}
-                        onChange={(event) =>
-                          setSchoolFilter(event.target.value)
-                        }
-                      >
-                        <option value="ALL">Toutes</option>
-                        {schools.map((school) => (
-                          <option key={school.id} value={school.slug}>
-                            {school.name}
-                          </option>
-                        ))}
-                      </FormSelect>
+                        onChange={setSchoolFilter}
+                        searchPlaceholder="Rechercher..."
+                        noResultsLabel="Aucun resultat"
+                        data-testid="users-filter-school-select"
+                        options={[
+                          { value: "ALL", label: "Toutes" },
+                          ...schools.map((school) => ({
+                            value: school.slug,
+                            label: school.name,
+                          })),
+                        ]}
+                      />
                     </label>
 
                     <label className="grid min-w-[190px] gap-1 text-sm">
                       <span className="text-text-secondary">Etat</span>
-                      <FormSelect
+                      <SearchableSelect
+                        ariaLabel="Etat"
                         value={stateFilter}
-                        onChange={(event) =>
-                          setStateFilter(event.target.value as UserStateFilter)
+                        onChange={(value) =>
+                          setStateFilter(value as UserStateFilter)
                         }
-                      >
-                        <option value="ALL">Tous</option>
-                        <option value="ACTIVE">Actif</option>
-                        <option value="PASSWORD_CHANGE_REQUIRED">
-                          Mot de passe a changer
-                        </option>
-                      </FormSelect>
+                        data-testid="users-filter-state-select"
+                        options={[
+                          { value: "ALL", label: "Tous" },
+                          { value: "ACTIVE", label: "Actif" },
+                          {
+                            value: "PASSWORD_CHANGE_REQUIRED",
+                            label: "Mot de passe a changer",
+                          },
+                        ]}
+                      />
                     </label>
                   </div>
                 ) : null}
@@ -1647,30 +1658,29 @@ export default function UsersPage() {
                                 : " - classe actuelle: non assignee"}
                             </p>
                             <div className="mt-2 grid gap-2 md:grid-cols-[1fr_auto]">
-                              <FormSelect
+                              <SearchableSelect
+                                ariaLabel={`Classe cible - ${profile.school.name}`}
                                 value={
                                   selectedClassByStudentId[profile.id] ?? ""
                                 }
-                                onChange={(event) =>
+                                onChange={(value) =>
                                   setSelectedClassByStudentId((current) => ({
                                     ...current,
-                                    [profile.id]: event.target.value,
+                                    [profile.id]: value,
                                   }))
                                 }
-                                className="bg-background px-3 py-2 text-sm"
-                              >
-                                <option value="">
-                                  Selectionner une classe
-                                </option>
-                                {(
+                                placeholder="Selectionner une classe"
+                                searchPlaceholder="Rechercher..."
+                                noResultsLabel="Aucun resultat"
+                                data-testid={`users-student-target-class-select-${profile.id}`}
+                                options={(
                                   classroomsBySchoolSlug[profile.school.slug] ??
                                   []
-                                ).map((entry) => (
-                                  <option key={entry.id} value={entry.id}>
-                                    {entry.schoolYear.label} - {entry.name}
-                                  </option>
-                                ))}
-                              </FormSelect>
+                                ).map((entry) => ({
+                                  value: entry.id,
+                                  label: `${entry.schoolYear.label} - ${entry.name}`,
+                                }))}
+                              />
                               <Button
                                 type="button"
                                 disabled={Boolean(
@@ -1702,34 +1712,39 @@ export default function UsersPage() {
                                         : ""}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                      <FormSelect
+                                      <SearchableSelect
+                                        ariaLabel={`Statut inscription - ${enrollment.id}`}
                                         value={
                                           enrollmentStatusDraftById[
                                             enrollment.id
                                           ] ?? enrollment.status
                                         }
-                                        onChange={(event) =>
+                                        onChange={(value) =>
                                           setEnrollmentStatusDraftById(
                                             (current) => ({
                                               ...current,
-                                              [enrollment.id]: event.target
-                                                .value as EnrollmentHistoryRow["status"],
+                                              [enrollment.id]:
+                                                value as EnrollmentHistoryRow["status"],
                                             }),
                                           )
                                         }
-                                        className="bg-surface px-2 py-1 text-xs"
-                                      >
-                                        <option value="ACTIVE">ACTIVE</option>
-                                        <option value="TRANSFERRED">
-                                          TRANSFERRED
-                                        </option>
-                                        <option value="WITHDRAWN">
-                                          WITHDRAWN
-                                        </option>
-                                        <option value="GRADUATED">
-                                          GRADUATED
-                                        </option>
-                                      </FormSelect>
+                                        data-testid={`users-enrollment-status-select-${enrollment.id}`}
+                                        options={[
+                                          { value: "ACTIVE", label: "ACTIVE" },
+                                          {
+                                            value: "TRANSFERRED",
+                                            label: "TRANSFERRED",
+                                          },
+                                          {
+                                            value: "WITHDRAWN",
+                                            label: "WITHDRAWN",
+                                          },
+                                          {
+                                            value: "GRADUATED",
+                                            label: "GRADUATED",
+                                          },
+                                        ]}
+                                      />
                                       <Button
                                         type="button"
                                         variant="secondary"
@@ -2095,31 +2110,29 @@ export default function UsersPage() {
                   className="md:col-span-2"
                   error={createUserForm.formState.errors.schoolSlug?.message}
                 >
-                  <FormSelect
+                  <SearchableSelect
+                    ariaLabel="Ecole assignee"
                     value={createValues.schoolSlug ?? ""}
-                    onChange={(event) => {
-                      createUserForm.setValue(
-                        "schoolSlug",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      );
+                    onChange={(value) => {
+                      createUserForm.setValue("schoolSlug", value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
                     }}
                     invalid={
                       Boolean(createUserForm.formState.errors.schoolSlug) ||
                       !(createValues.schoolSlug ?? "")
                     }
-                  >
-                    <option value="">Selectionner une ecole</option>
-                    {schools.map((school) => (
-                      <option key={school.id} value={school.slug}>
-                        {school.name} ({school.slug})
-                      </option>
-                    ))}
-                  </FormSelect>
+                    placeholder="Selectionner une ecole"
+                    searchPlaceholder="Rechercher..."
+                    noResultsLabel="Aucun resultat"
+                    data-testid="users-create-school-select"
+                    options={schools.map((school) => ({
+                      value: school.slug,
+                      label: `${school.name} (${school.slug})`,
+                    }))}
+                  />
                 </FormField>
               ) : null}
 
