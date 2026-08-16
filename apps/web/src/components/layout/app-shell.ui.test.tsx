@@ -25,6 +25,7 @@ vi.mock("./app-sidebar", () => ({
       </button>
     </nav>
   ),
+  SIDEBAR_HELP_TOUR_TARGET: "sidebar-help-target",
 }));
 
 describe("AppShell header scroll behavior", () => {

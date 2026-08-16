@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HelpCircle } from "lucide-react";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -19,6 +19,8 @@ export function OnboardingTourOverlay() {
   const next = useOnboardingTourStore((state) => state.next);
 
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+  const [tooltipHeight, setTooltipHeight] = useState(TOOLTIP_MAX_HEIGHT);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function updateSize() {
@@ -28,6 +30,27 @@ export function OnboardingTourOverlay() {
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
+
+  useEffect(() => {
+    setTooltipHeight(TOOLTIP_MAX_HEIGHT);
+  }, [stepIndex]);
+
+  // Track the tooltip's real rendered height (title + body + button all vary
+  // by step/locale) instead of trusting a fixed estimate, so the position
+  // computed below always reflects the actual content — mirrors the mobile
+  // overlay's `onLayout` measurement.
+  useLayoutEffect(() => {
+    const node = tooltipRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver((entries) => {
+      const measured = entries[0]?.contentRect.height;
+      if (measured && Math.round(measured) !== Math.round(tooltipHeight)) {
+        setTooltipHeight(measured);
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [tooltipHeight]);
 
   if (!activeTourId || !targetRect) {
     return null;
@@ -46,15 +69,26 @@ export function OnboardingTourOverlay() {
       : t("onboardingTour.common.finish");
   const { height: screenHeight, width: screenWidth } = windowSize;
 
+  const spaceAbove = targetRect.y - TOOLTIP_MARGIN;
   const spaceBelow =
     screenHeight - (targetRect.y + targetRect.height) - TOOLTIP_MARGIN;
-  const placeBelow =
-    spaceBelow >= TOOLTIP_MAX_HEIGHT || spaceBelow >= targetRect.y;
+  const placeBelow = spaceBelow >= spaceAbove;
 
+  // Center the tooltip in whichever free area (above/below the target) it
+  // was placed in, using the real measured height, and hard-clamp it to the
+  // viewport as a safety net (scrollable) so the Next/Finish button can
+  // never end up rendered outside the visible screen.
+  const tooltipTop = placeBelow
+    ? targetRect.y +
+      targetRect.height +
+      TOOLTIP_MARGIN +
+      Math.max(0, (spaceBelow - tooltipHeight) / 2)
+    : Math.max(TOOLTIP_MARGIN, (spaceAbove - tooltipHeight) / 2);
+  const tooltipMaxHeight = Math.max(120, screenHeight - 2 * TOOLTIP_MARGIN);
+
+  const tooltipBottom = tooltipTop + tooltipHeight;
   const tooltipAnchorX = screenWidth / 2;
-  const tooltipAnchorY = placeBelow
-    ? targetRect.y + targetRect.height + TOOLTIP_MARGIN
-    : screenHeight - (screenHeight - targetRect.y + TOOLTIP_MARGIN);
+  const tooltipAnchorY = placeBelow ? tooltipTop : tooltipBottom;
   const targetAnchorX = targetRect.x + targetRect.width / 2;
   const targetAnchorY = placeBelow
     ? targetRect.y + targetRect.height
@@ -166,20 +200,14 @@ export function OnboardingTourOverlay() {
       />
 
       <div
-        className="pointer-events-auto fixed mx-4 overflow-hidden rounded-card border border-teal-border bg-teal-surface shadow-card"
-        style={
-          placeBelow
-            ? {
-                top: targetRect.y + targetRect.height + TOOLTIP_MARGIN,
-                left: 16,
-                right: 16,
-              }
-            : {
-                bottom: screenHeight - targetRect.y + TOOLTIP_MARGIN,
-                left: 16,
-                right: 16,
-              }
-        }
+        ref={tooltipRef}
+        className="pointer-events-auto fixed mx-4 overflow-x-hidden overflow-y-auto rounded-card border border-teal-border bg-teal-surface shadow-card"
+        style={{
+          top: tooltipTop,
+          left: 16,
+          right: 16,
+          maxHeight: tooltipMaxHeight,
+        }}
         data-testid="onboarding-tour-tooltip"
       >
         <div className="flex items-center gap-2 border-b border-teal-border bg-teal-highlight px-4 py-2.5">
