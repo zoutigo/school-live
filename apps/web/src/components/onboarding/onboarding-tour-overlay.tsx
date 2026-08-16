@@ -7,6 +7,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 
 const TOOLTIP_MARGIN = 12;
 const TOOLTIP_MAX_HEIGHT = 160;
+const TOOLTIP_MAX_WIDTH = 420;
 const CONNECTOR_THICKNESS = 2;
 const CONNECTOR_DOT_SIZE = 8;
 
@@ -86,10 +87,23 @@ export function OnboardingTourOverlay() {
     : Math.max(TOOLTIP_MARGIN, (spaceAbove - tooltipHeight) / 2);
   const tooltipMaxHeight = Math.max(120, screenHeight - 2 * TOOLTIP_MARGIN);
 
-  const tooltipBottom = tooltipTop + tooltipHeight;
-  const tooltipAnchorX = screenWidth / 2;
-  const tooltipAnchorY = placeBelow ? tooltipTop : tooltipBottom;
+  // Cap the tooltip's width instead of always stretching it edge-to-edge:
+  // full-bleed makes sense on a narrow phone but reads as a disproportionate
+  // banner on a wide desktop viewport. Center it under/above the target
+  // (like a popover), clamped so it never runs past the screen edges.
+  const tooltipWidth = Math.min(
+    TOOLTIP_MAX_WIDTH,
+    screenWidth - 2 * TOOLTIP_MARGIN,
+  );
   const targetAnchorX = targetRect.x + targetRect.width / 2;
+  const tooltipLeft = Math.min(
+    Math.max(targetAnchorX - tooltipWidth / 2, TOOLTIP_MARGIN),
+    screenWidth - tooltipWidth - TOOLTIP_MARGIN,
+  );
+
+  const tooltipBottom = tooltipTop + tooltipHeight;
+  const tooltipAnchorX = tooltipLeft + tooltipWidth / 2;
+  const tooltipAnchorY = placeBelow ? tooltipTop : tooltipBottom;
   const targetAnchorY = placeBelow
     ? targetRect.y + targetRect.height
     : targetRect.y;
@@ -201,11 +215,11 @@ export function OnboardingTourOverlay() {
 
       <div
         ref={tooltipRef}
-        className="pointer-events-auto fixed mx-4 overflow-x-hidden overflow-y-auto rounded-card border border-teal-border bg-teal-surface shadow-card"
+        className="pointer-events-auto fixed overflow-x-hidden overflow-y-auto rounded-card border border-teal-border bg-teal-surface shadow-card"
         style={{
           top: tooltipTop,
-          left: 16,
-          right: 16,
+          left: tooltipLeft,
+          width: tooltipWidth,
           maxHeight: tooltipMaxHeight,
         }}
         data-testid="onboarding-tour-tooltip"
