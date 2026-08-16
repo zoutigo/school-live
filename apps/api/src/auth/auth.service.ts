@@ -4120,7 +4120,7 @@ export class AuthService {
       data: { activeRole },
     });
 
-    return { activeRole };
+    return this.getGlobalMe(userId);
   }
 
   async updatePersonalProfile(

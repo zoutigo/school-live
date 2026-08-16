@@ -23,7 +23,12 @@ function makeMembership(
   schoolId: string,
   slug: string,
   name: string,
-  role: "TEACHER" | "PARENT" | "SCHOOL_ADMIN" = "TEACHER",
+  role:
+    | "TEACHER"
+    | "PARENT"
+    | "SCHOOL_ADMIN"
+    | "SCHOOL_STAFF"
+    | "SCHOOL_HEALTH_OFFICER" = "TEACHER",
 ) {
   return {
     schoolId,
@@ -184,12 +189,27 @@ describe("AuthService — école active", () => {
   });
 
   describe("setActiveRole", () => {
-    it("met à jour activeRole quand le rôle demandé fait partie des memberships de l'utilisateur", async () => {
-      prisma.user.findUnique.mockResolvedValueOnce({
-        id: USER_ID,
-        platformRoles: [],
-        memberships: [{ role: "SCHOOL_HEALTH_OFFICER" }, { role: "PARENT" }],
-      });
+    it("met à jour activeRole quand le rôle demandé fait partie des memberships de l'utilisateur, et retourne le profil global rafraîchi", async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce({
+          id: USER_ID,
+          platformRoles: [],
+          memberships: [{ role: "SCHOOL_HEALTH_OFFICER" }, { role: "PARENT" }],
+        })
+        .mockResolvedValueOnce(
+          makeGlobalMeUser({
+            activeRole: "SCHOOL_HEALTH_OFFICER",
+            memberships: [
+              makeMembership(
+                SCHOOL_A,
+                "college-a",
+                "Collège A",
+                "SCHOOL_HEALTH_OFFICER",
+              ),
+              makeMembership(SCHOOL_B, "college-b", "Collège B"),
+            ],
+          }),
+        );
       prisma.user.update.mockResolvedValue({});
 
       const result = await service.setActiveRole(
@@ -201,28 +221,53 @@ describe("AuthService — école active", () => {
         where: { id: USER_ID },
         data: { activeRole: "SCHOOL_HEALTH_OFFICER" },
       });
-      expect(result).toEqual({ activeRole: "SCHOOL_HEALTH_OFFICER" });
+      expect(result.activeRole).toBe("SCHOOL_HEALTH_OFFICER");
+      expect(result.firstName).toBe("Jean");
+      expect(result.schools).toHaveLength(2);
     });
 
     it("accepte SCHOOL_STAFF comme rôle actif quand membership correspondante", async () => {
-      prisma.user.findUnique.mockResolvedValueOnce({
-        id: USER_ID,
-        platformRoles: [],
-        memberships: [{ role: "SCHOOL_STAFF" }],
-      });
+      prisma.user.findUnique
+        .mockResolvedValueOnce({
+          id: USER_ID,
+          platformRoles: [],
+          memberships: [{ role: "SCHOOL_STAFF" }],
+        })
+        .mockResolvedValueOnce(
+          makeGlobalMeUser({
+            activeRole: "SCHOOL_STAFF",
+            memberships: [
+              makeMembership(
+                SCHOOL_A,
+                "college-a",
+                "Collège A",
+                "SCHOOL_STAFF",
+              ),
+            ],
+          }),
+        );
       prisma.user.update.mockResolvedValue({});
 
       const result = await service.setActiveRole(USER_ID, "SCHOOL_STAFF");
 
-      expect(result).toEqual({ activeRole: "SCHOOL_STAFF" });
+      expect(result.activeRole).toBe("SCHOOL_STAFF");
     });
 
     it("retombe sur le rôle prioritaire existant si le rôle demandé n'est assigné à aucune membership", async () => {
-      prisma.user.findUnique.mockResolvedValueOnce({
-        id: USER_ID,
-        platformRoles: [],
-        memberships: [{ role: "PARENT" }],
-      });
+      prisma.user.findUnique
+        .mockResolvedValueOnce({
+          id: USER_ID,
+          platformRoles: [],
+          memberships: [{ role: "PARENT" }],
+        })
+        .mockResolvedValueOnce(
+          makeGlobalMeUser({
+            activeRole: "PARENT",
+            memberships: [
+              makeMembership(SCHOOL_A, "college-a", "Collège A", "PARENT"),
+            ],
+          }),
+        );
       prisma.user.update.mockResolvedValue({});
 
       const result = await service.setActiveRole(
@@ -234,7 +279,7 @@ describe("AuthService — école active", () => {
         where: { id: USER_ID },
         data: { activeRole: "PARENT" },
       });
-      expect(result).toEqual({ activeRole: "PARENT" });
+      expect(result.activeRole).toBe("PARENT");
     });
 
     it("lève ForbiddenException si l'utilisateur n'a aucun rôle plateforme ni membership", async () => {
