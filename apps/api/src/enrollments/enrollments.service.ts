@@ -72,6 +72,57 @@ export class EnrollmentsService {
   }
 
   /**
+   * Deduit le libelle de l'annee scolaire suivant une annee source, en
+   * incrementant chaque borne d'un an (ex: "2025-2026" -> "2026-2027").
+   * Si le libelle source ne suit pas ce format, on retombe sur l'annee
+   * civile courante comme point de depart (meme convention que la creation
+   * d'ecole a l'onboarding).
+   */
+  private computeNextSchoolYearLabel(sourceLabel: string): string {
+    const match = /^(\d{4})-(\d{4})$/.exec(sourceLabel);
+    if (match) {
+      const startYear = Number(match[1]) + 1;
+      const endYear = Number(match[2]) + 1;
+      return `${startYear}-${endYear}`;
+    }
+
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = now.getUTCMonth() + 1;
+    const startYear = month >= 8 ? year : year - 1;
+    return `${startYear}-${startYear + 1}`;
+  }
+
+  /**
+   * Garantit qu'une annee scolaire suivant `sourceSchoolYearId` existe pour
+   * l'ecole, sans jamais l'activer : l'activation reste une decision
+   * explicite de l'admin ou du school manager. Appelee automatiquement des
+   * qu'une decision de conseil de classe (promotion ou redoublement) est
+   * enregistree, pour que la reinscription ne reste jamais bloquee faute
+   * d'annee cible. Idempotente via la contrainte unique (schoolId, label).
+   */
+  async ensureNextSchoolYearExists(
+    schoolId: string,
+    sourceSchoolYearId: string,
+  ) {
+    const sourceYear = await this.prisma.schoolYear.findFirst({
+      where: { id: sourceSchoolYearId, schoolId },
+      select: { label: true },
+    });
+    if (!sourceYear) {
+      throw new NotFoundException("Annee scolaire source introuvable");
+    }
+
+    const nextLabel = this.computeNextSchoolYearLabel(sourceYear.label);
+    return this.prisma.schoolYear.upsert({
+      where: { schoolId_label: { schoolId, label: nextLabel } },
+      create: { schoolId, label: nextLabel },
+      update: {},
+      select: { id: true, label: true },
+    });
+  }
+
+  /**
    * Cree (si absente) l'inscription en attente d'affectation de l'eleve pour
    * l'annee scolaire cible, a partir du niveau/filiere decides par le conseil
    * de classe. Idempotente : ne recree rien si l'eleve est deja inscrit pour

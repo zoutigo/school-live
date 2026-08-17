@@ -656,6 +656,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "promotions.success.assigned": "Eleve affecte a la classe.",
     "promotions.subtab.decisions": "Decisions du conseil",
     "promotions.subtab.waiting": "Attente d'affectation",
+    "promotions.subtab.years": "Annees scolaires",
     "promotions.decisions.selectClass": "Classe (annee en cours)",
     "promotions.decisions.decision": "Decision",
     "promotions.decisions.nextLevel": "Niveau cible",
@@ -673,6 +674,30 @@ export const translations: Record<Locale, Record<string, string>> = {
     "promotions.waiting.assign": "Affecter",
     "promotions.waiting.empty":
       "Aucun eleve en attente d'affectation pour ces filtres.",
+    "promotions.years.alert":
+      "Aucune annee scolaire suivante n'existe encore pour cette ecole. Creez-la pour permettre les reinscriptions, meme sans l'activer tout de suite.",
+    "promotions.years.active": "Active",
+    "promotions.years.activate": "Rendre active",
+    "promotions.years.create.title": "Creer une annee scolaire",
+    "promotions.years.create.label": "Libelle (ex: 2026-2027)",
+    "promotions.years.create.startsAt": "Debut (optionnel)",
+    "promotions.years.create.endsAt": "Fin (optionnel)",
+    "promotions.years.create.submit": "Creer",
+    "promotions.years.rollover.title": "Dupliquer les classes",
+    "promotions.years.rollover.source": "Annee source",
+    "promotions.years.rollover.target": "Annee cible",
+    "promotions.years.rollover.copyAssignments":
+      "Dupliquer aussi les affectations d'enseignants",
+    "promotions.years.rollover.submit": "Dupliquer les classes",
+    "promotions.years.success.created": "Annee scolaire creee.",
+    "promotions.years.success.activated": "Annee scolaire activee.",
+    "promotions.years.success.rolledOver": "Classes dupliquees.",
+    "promotions.years.errors.load":
+      "Impossible de charger les annees scolaires.",
+    "promotions.years.errors.create":
+      "Creation de l'annee scolaire impossible.",
+    "promotions.years.errors.activate": "Activation impossible.",
+    "promotions.years.errors.rollover": "Duplication des classes impossible.",
     "promotions.help.summary":
       "ce module couvre le passage de classe en deux temps : la decision du conseil de classe (promu, redouble, ou quitte l'etablissement), puis, une fois l'eleve reinscrit via le module Paiements, son affectation a une classe definitive.",
     "promotions.help.action1.name": "Saisir une decision de conseil",
@@ -3021,6 +3046,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "finSituation.children.empty": "Aucun enfant rattache a votre compte.",
     "finSituation.children.status.DECISION_PENDING":
       "En attente de la decision du conseil de classe",
+    "finSituation.children.status.NEXT_YEAR_NOT_OPEN":
+      "Decision prise, en attente de l'ouverture de l'annee scolaire suivante par l'ecole",
     "finSituation.children.status.ALREADY_REINSCRIBED": "Deja reinscrit(e)",
     "finSituation.children.status.READY_TO_REINSCRIBE":
       "Pret(e) a etre reinscrit(e)",
@@ -5554,6 +5581,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "promotions.success.assigned": "Student assigned to class.",
     "promotions.subtab.decisions": "Council decisions",
     "promotions.subtab.waiting": "Assignment queue",
+    "promotions.subtab.years": "School years",
     "promotions.decisions.selectClass": "Class (current year)",
     "promotions.decisions.decision": "Decision",
     "promotions.decisions.nextLevel": "Target level",
@@ -5570,6 +5598,28 @@ export const translations: Record<Locale, Record<string, string>> = {
     "promotions.waiting.assign": "Assign",
     "promotions.waiting.empty":
       "No student waiting for assignment with these filters.",
+    "promotions.years.alert":
+      "No next school year exists yet for this school. Create it to allow re-enrollments, even without activating it right away.",
+    "promotions.years.active": "Active",
+    "promotions.years.activate": "Set as active",
+    "promotions.years.create.title": "Create a school year",
+    "promotions.years.create.label": "Label (e.g. 2026-2027)",
+    "promotions.years.create.startsAt": "Start date (optional)",
+    "promotions.years.create.endsAt": "End date (optional)",
+    "promotions.years.create.submit": "Create",
+    "promotions.years.rollover.title": "Duplicate classes",
+    "promotions.years.rollover.source": "Source year",
+    "promotions.years.rollover.target": "Target year",
+    "promotions.years.rollover.copyAssignments":
+      "Also duplicate teacher assignments",
+    "promotions.years.rollover.submit": "Duplicate classes",
+    "promotions.years.success.created": "School year created.",
+    "promotions.years.success.activated": "School year activated.",
+    "promotions.years.success.rolledOver": "Classes duplicated.",
+    "promotions.years.errors.load": "Unable to load school years.",
+    "promotions.years.errors.create": "Unable to create the school year.",
+    "promotions.years.errors.activate": "Unable to activate.",
+    "promotions.years.errors.rollover": "Unable to duplicate classes.",
     "promotions.help.summary":
       "this module covers grade promotion in two steps: the class council decision (promoted, repeated, or left the school), then, once the student is re-enrolled through the Payments module, their assignment to a final class.",
     "promotions.help.action1.name": "Enter a council decision",
@@ -7797,6 +7847,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "finSituation.children.empty": "No child linked to your account.",
     "finSituation.children.status.DECISION_PENDING":
       "Waiting on the class council decision",
+    "finSituation.children.status.NEXT_YEAR_NOT_OPEN":
+      "Decision made, waiting for the school to open next school year",
     "finSituation.children.status.ALREADY_REINSCRIBED": "Already re-enrolled",
     "finSituation.children.status.READY_TO_REINSCRIBE": "Ready to re-enroll",
     "finSituation.invoice.issuedOn": "Issued on {date}",

@@ -342,6 +342,17 @@ describe("FinanceService", () => {
       ]);
     });
 
+    it("marque l'enfant NEXT_YEAR_NOT_OPEN si la decision existe mais qu'aucune annee suivante n'a ete creee", async () => {
+      prisma.schoolYear.findFirst.mockResolvedValue(null);
+      const result = await service.getWalletSummary(SCHOOL_ID, "parent-1");
+      expect(result.children).toEqual([
+        {
+          student: { id: STUDENT_ID, firstName: "Remi", lastName: "Ntamack" },
+          status: "NEXT_YEAR_NOT_OPEN",
+        },
+      ]);
+    });
+
     it("marque l'enfant ALREADY_REINSCRIBED si une inscription existe deja pour l'annee cible", async () => {
       prisma.enrollment.findUnique.mockResolvedValue({ id: "enr-existing" });
       const result = await service.getWalletSummary(SCHOOL_ID, "parent-1");
