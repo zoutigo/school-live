@@ -10,7 +10,10 @@
  * /me affichait déjà son rôle correctement grâce à ce même fallback.
  */
 
-import { getPrimaryRole, resolveActiveRole } from "./resolve-active-role.util.js";
+import {
+  getPrimaryRole,
+  resolveActiveRole,
+} from "./resolve-active-role.util.js";
 
 describe("resolveActiveRole", () => {
   it("falls back to the only available role when activeRole is null (mono-role account)", () => {
