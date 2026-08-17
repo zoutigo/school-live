@@ -64,7 +64,9 @@ async function main() {
     select: { id: true, schoolYearId: true, academicLevelId: true },
   });
   if (!classroom) {
-    throw new Error(`Classe ${CLASS_NAME} introuvable pour l'ecole ${schoolId}`);
+    throw new Error(
+      `Classe ${CLASS_NAME} introuvable pour l'ecole ${schoolId}`,
+    );
   }
 
   const existingStudent = await prisma.student.findFirst({

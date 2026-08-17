@@ -1576,6 +1576,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.terms.term1": "1er trimestre",
     "notes.teacher.terms.term2": "2eme trimestre",
     "notes.teacher.terms.term3": "3eme trimestre",
+    "notes.teacher.terms.yearly": "Annee",
+    "notes.teacher.reports.yearly.councilLabel":
+      "Synthese annuelle — moyenne des trimestres disponibles",
     "notes.teacher.sequences.seq1": "T1 — Sequence 1",
     "notes.teacher.sequences.seq2": "T1 — Sequence 2 (examen)",
     "notes.teacher.sequences.seq3": "T2 — Sequence 3",
@@ -6426,6 +6429,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "notes.teacher.terms.term1": "1st term",
     "notes.teacher.terms.term2": "2nd term",
     "notes.teacher.terms.term3": "3rd term",
+    "notes.teacher.terms.yearly": "Year",
+    "notes.teacher.reports.yearly.councilLabel":
+      "Yearly synthesis — average of available terms",
     "notes.teacher.sequences.seq1": "T1 — Sequence 1",
     "notes.teacher.sequences.seq2": "T1 — Sequence 2 (exam)",
     "notes.teacher.sequences.seq3": "T2 — Sequence 3",

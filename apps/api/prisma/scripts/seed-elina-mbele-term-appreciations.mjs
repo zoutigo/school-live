@@ -37,7 +37,9 @@ function computeSequenceAverage(studentId, evaluations) {
   let weightedSum = 0;
   let totalCoeff = 0;
   for (const evaluation of evaluations) {
-    if (!evaluationCountsForAverage(evaluation.sequence, evaluation.isFinalExam)) {
+    if (
+      !evaluationCountsForAverage(evaluation.sequence, evaluation.isFinalExam)
+    ) {
       continue;
     }
     const score = evaluation.scores.find((s) => s.studentId === studentId);
@@ -52,9 +54,12 @@ function computeSequenceAverage(studentId, evaluations) {
 }
 
 const GENERAL_APPRECIATION = {
-  TERM_1: "Trimestre d'integration correct. Elina prend ses reperes dans la classe, doit gagner en regularite.",
-  TERM_2: "Bonne progression ce trimestre, participation active a l'oral en anglais.",
-  TERM_3: "Bon eleve, resultats en nette progression sur l'annee. Conseil favorable a la poursuite.",
+  TERM_1:
+    "Trimestre d'integration correct. Elina prend ses reperes dans la classe, doit gagner en regularite.",
+  TERM_2:
+    "Bonne progression ce trimestre, participation active a l'oral en anglais.",
+  TERM_3:
+    "Bon eleve, resultats en nette progression sur l'annee. Conseil favorable a la poursuite.",
 };
 
 const SUBJECT_APPRECIATION_TEMPLATES = [
@@ -111,11 +116,15 @@ async function main() {
     const subjectEntries = subjectIds.map((subjectId, index) => {
       const seq1Avg = computeSequenceAverage(
         STUDENT_ID,
-        evaluations.filter((e) => e.sequence === seq1 && e.subjectId === subjectId),
+        evaluations.filter(
+          (e) => e.sequence === seq1 && e.subjectId === subjectId,
+        ),
       );
       const seq2Avg = computeSequenceAverage(
         STUDENT_ID,
-        evaluations.filter((e) => e.sequence === seq2 && e.subjectId === subjectId),
+        evaluations.filter(
+          (e) => e.sequence === seq2 && e.subjectId === subjectId,
+        ),
       );
       const termAverage =
         seq1Avg !== null && seq2Avg !== null
@@ -126,7 +135,9 @@ async function main() {
         schoolId,
         subjectId,
         appreciation:
-          SUBJECT_APPRECIATION_TEMPLATES[index % SUBJECT_APPRECIATION_TEMPLATES.length],
+          SUBJECT_APPRECIATION_TEMPLATES[
+            index % SUBJECT_APPRECIATION_TEMPLATES.length
+          ],
         seq1Average: seq1Avg,
         seq2Average: seq2Avg,
         termAverage,

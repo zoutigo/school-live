@@ -65,3 +65,28 @@ export type StudentNotesTermSnapshot = {
   sequences: StudentNotesSequenceSnapshot[];
   subjects: StudentSubjectNotes[];
 };
+
+/**
+ * Synthèse annuelle : calculée côté client à partir des 3 bulletins de
+ * trimestre déjà chargés (jamais persistée, jamais éditable) — voir
+ * `computeYearlySnapshot` dans `student-notes.utils.ts`.
+ */
+export type YearlySubjectNotes = StudentSubjectNotes & {
+  termAverages: Partial<Record<StudentNotesTerm, number | null>>;
+};
+
+export type YearlyNotesSnapshot = {
+  term: "YEARLY";
+  label: string;
+  councilLabel: string;
+  generatedAtLabel: string;
+  generalAverage: {
+    student: number | null;
+    class: number | null;
+    min: number | null;
+    max: number | null;
+  };
+  subjects: YearlySubjectNotes[];
+};
+
+export type StudentNotesTermOrYearly = StudentNotesTerm | "YEARLY";
