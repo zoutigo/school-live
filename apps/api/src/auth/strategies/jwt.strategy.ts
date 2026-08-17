@@ -5,6 +5,7 @@ import { ExtractJwt, Strategy } from "passport-jwt";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import { ACCESS_COOKIE_NAME } from "../auth-cookies.js";
 import type { JwtPayload } from "../auth.types.js";
+import { resolveActiveRole } from "../resolve-active-role.util.js";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -55,11 +56,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException("Invalid token");
     }
 
+    const platformRoles = user.platformRoles.map(
+      (assignment) => assignment.role,
+    );
+    const schoolRoles = user.memberships.map((membership) => membership.role);
+    const activeRole = resolveActiveRole(
+      user.activeRole,
+      platformRoles,
+      schoolRoles,
+    );
+
     return {
       id: user.id,
-      activeRole: user.activeRole,
+      activeRole,
       isTester: user.isTester,
-      platformRoles: user.platformRoles.map((assignment) => assignment.role),
+      platformRoles,
       activationStatus: user.activationStatus,
       memberships: user.memberships.map((membership) => ({
         schoolId: membership.schoolId,
