@@ -1182,12 +1182,14 @@ describe("TeacherClassNotesPage decision tab (referent teacher only)", () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId("decision-tab")).toHaveTextContent("12");
 
-    fireEvent.change(screen.getByTestId("decision-row-report-1-select"), {
-      target: { value: "PROMOTED" },
-    });
-    fireEvent.change(screen.getByTestId("decision-row-report-1-level"), {
-      target: { value: "level-5e" },
-    });
+    fireEvent.click(screen.getByTestId("decision-row-report-1-select"));
+    fireEvent.click(
+      screen.getByTestId("decision-row-report-1-select-option-PROMOTED"),
+    );
+    fireEvent.click(screen.getByTestId("decision-row-report-1-level"));
+    fireEvent.click(
+      screen.getByTestId("decision-row-report-1-level-option-level-5e"),
+    );
     fireEvent.click(screen.getByTestId("decision-row-report-1-save"));
 
     await waitFor(() => {
@@ -1228,12 +1230,13 @@ describe("TeacherClassNotesPage decision tab (referent teacher only)", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^Décision$/i }));
     await screen.findByTestId("decision-row-report-1");
 
-    fireEvent.change(screen.getByTestId("decision-row-report-1-select"), {
-      target: { value: "PROMOTED" },
-    });
+    fireEvent.click(screen.getByTestId("decision-row-report-1-select"));
+    fireEvent.click(
+      screen.getByTestId("decision-row-report-1-select-option-PROMOTED"),
+    );
 
-    expect(screen.getByTestId("decision-row-report-1-level")).toHaveValue(
-      "level-5e",
+    expect(screen.getByTestId("decision-row-report-1-level")).toHaveTextContent(
+      "5eme",
     );
     expect(screen.getByTestId("decision-row-report-1-save")).not.toBeDisabled();
   });
@@ -1362,10 +1365,11 @@ describe("TeacherClassNotesPage admin class switcher", () => {
 
     render(<TeacherClassNotesPage />);
 
-    const levelSelect = (await screen.findByTestId(
-      "notes-admin-level-select",
-    )) as HTMLSelectElement;
-    fireEvent.change(levelSelect, { target: { value: "level-5e" } });
+    await screen.findByTestId("notes-admin-level-select");
+    fireEvent.click(screen.getByTestId("notes-admin-level-select"));
+    fireEvent.click(
+      screen.getByTestId("notes-admin-level-select-option-level-5e"),
+    );
 
     await waitFor(() =>
       expect(pushMock).toHaveBeenCalledWith(
@@ -1373,12 +1377,10 @@ describe("TeacherClassNotesPage admin class switcher", () => {
       ),
     );
 
-    const classSelect = screen.getByTestId(
-      "notes-admin-class-select",
-    ) as HTMLSelectElement;
-    const optionLabels = Array.from(classSelect.options).map(
-      (option) => option.textContent,
-    );
+    fireEvent.click(screen.getByTestId("notes-admin-class-select"));
+    const optionLabels = screen
+      .getAllByRole("option")
+      .map((option) => option.textContent);
     expect(optionLabels).toEqual(["5eA"]);
   });
 
@@ -1387,10 +1389,11 @@ describe("TeacherClassNotesPage admin class switcher", () => {
 
     render(<TeacherClassNotesPage />);
 
-    const classSelect = (await screen.findByTestId(
-      "notes-admin-class-select",
-    )) as HTMLSelectElement;
-    fireEvent.change(classSelect, { target: { value: "class-2" } });
+    await screen.findByTestId("notes-admin-class-select");
+    fireEvent.click(screen.getByTestId("notes-admin-class-select"));
+    fireEvent.click(
+      screen.getByTestId("notes-admin-class-select-option-class-2"),
+    );
 
     await waitFor(() =>
       expect(pushMock).toHaveBeenCalledWith(

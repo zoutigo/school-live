@@ -8,11 +8,11 @@ import { z } from "zod";
 import { Card } from "../../../../../../components/ui/card";
 import { Button } from "../../../../../../components/ui/button";
 import {
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
   FormTextarea,
 } from "../../../../../../components/ui/form-controls";
+import { SearchableSelect } from "../../../../../../components/ui/searchable-select";
 import { FormField } from "../../../../../../components/ui/form-field";
 import { SubmitButton } from "../../../../../../components/ui/form-buttons";
 import { getCsrfTokenCookie } from "../../../../../../lib/auth-cookies";
@@ -267,23 +267,26 @@ export default function SchoolSanteStudentPage() {
               label={t("health.form.alertLevel")}
               htmlFor="care-alert-level"
             >
-              <FormSelect
+              <SearchableSelect
                 id="care-alert-level"
+                ariaLabel={t("health.form.alertLevel")}
                 value={values.alertLevel}
-                onChange={(e) =>
-                  form.setValue("alertLevel", e.target.value as AlertLevel, {
+                onChange={(value) =>
+                  form.setValue("alertLevel", value as AlertLevel, {
                     shouldDirty: true,
                     shouldValidate: true,
                   })
                 }
                 data-testid="sante-care-form-alertLevel"
-              >
-                <option value="INFO">{t("health.alertLevel.INFO")}</option>
-                <option value="ATTENTION">
-                  {t("health.alertLevel.ATTENTION")}
-                </option>
-                <option value="URGENT">{t("health.alertLevel.URGENT")}</option>
-              </FormSelect>
+                options={[
+                  { value: "INFO", label: t("health.alertLevel.INFO") },
+                  {
+                    value: "ATTENTION",
+                    label: t("health.alertLevel.ATTENTION"),
+                  },
+                  { value: "URGENT", label: t("health.alertLevel.URGENT") },
+                ]}
+              />
             </FormField>
 
             <FormField

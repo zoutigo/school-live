@@ -11,13 +11,13 @@ import { Card } from "../../components/ui/card";
 import {
   FormCheckbox,
   FormNumberInput,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -2319,19 +2319,19 @@ function CurriculumsPageContent() {
                 <span className="text-text-secondary">
                   {t("curriculums.schoolLabel")}
                 </span>
-                <FormSelect
+                <SearchableSelect
                   value={schoolSlug ?? ""}
-                  onChange={(event) =>
-                    setSchoolSlug(event.target.value || null)
-                  }
-                >
-                  <option value="">{t("curriculums.schoolPlaceholder")}</option>
-                  {schools.map((school) => (
-                    <option key={school.id} value={school.slug}>
-                      {school.name}
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={(value) => setSchoolSlug(value || null)}
+                  placeholder={t("curriculums.schoolPlaceholder")}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
+                  ariaLabel={t("curriculums.schoolLabel")}
+                  data-testid="curriculums-school-select"
+                  options={schools.map((school) => ({
+                    value: school.slug,
+                    label: school.name,
+                  }))}
+                />
               </label>
             ) : null}
           </div>
@@ -2855,52 +2855,54 @@ function CurriculumsPageContent() {
                     curriculumForm.formState.errors.academicLevelId?.message
                   }
                 >
-                  <FormSelect
-                    aria-label={t("curriculums.curriculum.levelLabel")}
+                  <SearchableSelect
+                    ariaLabel={t("curriculums.curriculum.levelLabel")}
                     invalid={curriculumAcademicLevelInvalid}
                     value={curriculumValues.academicLevelId ?? ""}
-                    onChange={(event) => {
-                      curriculumForm.setValue(
-                        "academicLevelId",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      );
-                    }}
-                  >
-                    <option value="">{t("common.select")}</option>
-                    {academicLevels.map((level) => (
-                      <option key={level.id} value={level.id}>
-                        {level.code} - {level.label}
-                      </option>
-                    ))}
-                  </FormSelect>
-                </FormField>
-
-                <FormField label={t("curriculums.curriculum.trackLabel")}>
-                  <FormSelect
-                    aria-label={t("curriculums.curriculum.trackLabel")}
-                    value={curriculumValues.trackId ?? ""}
-                    onChange={(event) => {
-                      curriculumForm.setValue("trackId", event.target.value, {
+                    onChange={(value) => {
+                      curriculumForm.setValue("academicLevelId", value, {
                         shouldDirty: true,
                         shouldTouch: true,
                         shouldValidate: true,
                       });
                     }}
-                  >
-                    <option value="">
-                      {t("curriculums.curriculum.trackNone")}
-                    </option>
-                    {tracks.map((track) => (
-                      <option key={track.id} value={track.id}>
-                        {track.code} - {track.label}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    placeholder={t("common.select")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="curriculum-create-level-select"
+                    options={academicLevels.map((level) => ({
+                      value: level.id,
+                      label: `${level.code} - ${level.label}`,
+                    }))}
+                  />
+                </FormField>
+
+                <FormField label={t("curriculums.curriculum.trackLabel")}>
+                  <SearchableSelect
+                    ariaLabel={t("curriculums.curriculum.trackLabel")}
+                    value={curriculumValues.trackId ?? ""}
+                    onChange={(value) => {
+                      curriculumForm.setValue("trackId", value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
+                    }}
+                    placeholder={t("curriculums.curriculum.trackNone")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="curriculum-create-track-select"
+                    options={[
+                      {
+                        value: "",
+                        label: t("curriculums.curriculum.trackNone"),
+                      },
+                      ...tracks.map((track) => ({
+                        value: track.id,
+                        label: `${track.code} - ${track.label}`,
+                      })),
+                    ]}
+                  />
                 </FormField>
 
                 <div className="self-end">
@@ -3387,34 +3389,60 @@ function CurriculumsPageContent() {
                         ?.message
                     }
                   >
-                    <FormSelect
-                      aria-label={t("curriculums.national.academicLevelLabel")}
-                      {...nationalCurriculumForm.register("academicLevelId")}
-                    >
-                      <option value="">
-                        {t("curriculums.national.academicLevelPlaceholder")}
-                      </option>
-                      {nationalAcademicLevels.map((level) => (
-                        <option key={level.id} value={level.id}>
-                          {level.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      ariaLabel={t("curriculums.national.academicLevelLabel")}
+                      value={
+                        nationalCurriculumForm.watch("academicLevelId") ?? ""
+                      }
+                      onChange={(value) =>
+                        nationalCurriculumForm.setValue(
+                          "academicLevelId",
+                          value,
+                          {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          },
+                        )
+                      }
+                      placeholder={t(
+                        "curriculums.national.academicLevelPlaceholder",
+                      )}
+                      searchPlaceholder={t("settings.form.searchPlaceholder")}
+                      noResultsLabel={t("settings.form.noResults")}
+                      data-testid="curriculum-national-level-select"
+                      options={nationalAcademicLevels.map((level) => ({
+                        value: level.id,
+                        label: level.label,
+                      }))}
+                    />
                   </FormField>
                   <FormField label={t("curriculums.national.trackLabel")}>
-                    <FormSelect
-                      aria-label={t("curriculums.national.trackLabel")}
-                      {...nationalCurriculumForm.register("trackId")}
-                    >
-                      <option value="">
-                        {t("curriculums.national.trackPlaceholder")}
-                      </option>
-                      {nationalTracks.map((track) => (
-                        <option key={track.id} value={track.id}>
-                          {track.label}
-                        </option>
-                      ))}
-                    </FormSelect>
+                    <SearchableSelect
+                      ariaLabel={t("curriculums.national.trackLabel")}
+                      value={nationalCurriculumForm.watch("trackId") ?? ""}
+                      onChange={(value) =>
+                        nationalCurriculumForm.setValue("trackId", value, {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder={t("curriculums.national.trackPlaceholder")}
+                      searchPlaceholder={t("settings.form.searchPlaceholder")}
+                      noResultsLabel={t("settings.form.noResults")}
+                      data-testid="curriculum-national-track-select"
+                      options={[
+                        {
+                          value: "",
+                          label: t("curriculums.national.trackPlaceholder"),
+                        },
+                        ...nationalTracks.map((track) => ({
+                          value: track.id,
+                          label: track.label,
+                        })),
+                      ]}
+                    />
                   </FormField>
                   <div className="self-end">
                     <SubmitButton disabled={submittingNationalCurriculum}>
@@ -3497,43 +3525,87 @@ function CurriculumsPageContent() {
                                         .errors.academicLevelId?.message
                                     }
                                   >
-                                    <FormSelect
-                                      aria-label={t(
+                                    <SearchableSelect
+                                      ariaLabel={t(
                                         "curriculums.national.academicLevelEditAria",
                                       )}
-                                      {...editNationalCurriculumForm.register(
-                                        "academicLevelId",
+                                      value={
+                                        editNationalCurriculumForm.watch(
+                                          "academicLevelId",
+                                        ) ?? ""
+                                      }
+                                      onChange={(value) =>
+                                        editNationalCurriculumForm.setValue(
+                                          "academicLevelId",
+                                          value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        )
+                                      }
+                                      searchPlaceholder={t(
+                                        "settings.form.searchPlaceholder",
                                       )}
-                                    >
-                                      {nationalAcademicLevels.map((level) => (
-                                        <option key={level.id} value={level.id}>
-                                          {level.label}
-                                        </option>
-                                      ))}
-                                    </FormSelect>
+                                      noResultsLabel={t(
+                                        "settings.form.noResults",
+                                      )}
+                                      data-testid={`curriculum-national-edit-level-select-${curriculum.id}`}
+                                      options={nationalAcademicLevels.map(
+                                        (level) => ({
+                                          value: level.id,
+                                          label: level.label,
+                                        }),
+                                      )}
+                                    />
                                   </FormField>
                                   <FormField
                                     label={t("curriculums.national.trackLabel")}
                                   >
-                                    <FormSelect
-                                      aria-label={t(
+                                    <SearchableSelect
+                                      ariaLabel={t(
                                         "curriculums.national.trackLabel",
                                       )}
-                                      {...editNationalCurriculumForm.register(
-                                        "trackId",
+                                      value={
+                                        editNationalCurriculumForm.watch(
+                                          "trackId",
+                                        ) ?? ""
+                                      }
+                                      onChange={(value) =>
+                                        editNationalCurriculumForm.setValue(
+                                          "trackId",
+                                          value,
+                                          {
+                                            shouldDirty: true,
+                                            shouldTouch: true,
+                                            shouldValidate: true,
+                                          },
+                                        )
+                                      }
+                                      placeholder={t(
+                                        "curriculums.national.trackPlaceholder",
                                       )}
-                                    >
-                                      <option value="">
-                                        {t(
-                                          "curriculums.national.trackPlaceholder",
-                                        )}
-                                      </option>
-                                      {nationalTracks.map((track) => (
-                                        <option key={track.id} value={track.id}>
-                                          {track.label}
-                                        </option>
-                                      ))}
-                                    </FormSelect>
+                                      searchPlaceholder={t(
+                                        "settings.form.searchPlaceholder",
+                                      )}
+                                      noResultsLabel={t(
+                                        "settings.form.noResults",
+                                      )}
+                                      data-testid={`curriculum-national-edit-track-select-${curriculum.id}`}
+                                      options={[
+                                        {
+                                          value: "",
+                                          label: t(
+                                            "curriculums.national.trackPlaceholder",
+                                          ),
+                                        },
+                                        ...nationalTracks.map((track) => ({
+                                          value: track.id,
+                                          label: track.label,
+                                        })),
+                                      ]}
+                                    />
                                   </FormField>
                                   <Button
                                     type="button"
@@ -4120,19 +4192,19 @@ function CurriculumsPageContent() {
                   <span className="text-text-secondary">
                     {t("curriculums.national.academicLevelLabel")}
                   </span>
-                  <FormSelect
+                  <SearchableSelect
                     value={selectedNationalCurriculumId}
-                    onChange={(event) =>
-                      setSelectedNationalCurriculumId(event.target.value)
-                    }
-                  >
-                    <option value="">{t("common.select")}</option>
-                    {nationalCurriculums.map((curriculum) => (
-                      <option key={curriculum.id} value={curriculum.id}>
-                        {curriculum.name}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    onChange={setSelectedNationalCurriculumId}
+                    placeholder={t("common.select")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    ariaLabel={t("curriculums.national.academicLevelLabel")}
+                    data-testid="curriculum-national-subject-curriculum-select"
+                    options={nationalCurriculums.map((curriculum) => ({
+                      value: curriculum.id,
+                      label: curriculum.name,
+                    }))}
+                  />
                 </label>
 
                 {selectedNationalCurriculumId ? (
@@ -4150,16 +4222,16 @@ function CurriculumsPageContent() {
                             .subjectId?.message
                         }
                       >
-                        <FormSelect
-                          aria-label={t("curriculums.subject.subjectLabel")}
+                        <SearchableSelect
+                          ariaLabel={t("curriculums.subject.subjectLabel")}
                           invalid={nationalCurriculumSubjectIdInvalid}
                           value={
                             nationalCurriculumSubjectValues.subjectId ?? ""
                           }
-                          onChange={(event) => {
+                          onChange={(value) => {
                             nationalCurriculumSubjectForm.setValue(
                               "subjectId",
-                              event.target.value,
+                              value,
                               {
                                 shouldDirty: true,
                                 shouldTouch: true,
@@ -4167,14 +4239,17 @@ function CurriculumsPageContent() {
                               },
                             );
                           }}
-                        >
-                          <option value="">{t("common.select")}</option>
-                          {orderedNationalSubjects.map((subject) => (
-                            <option key={subject.id} value={subject.id}>
-                              {subject.name}
-                            </option>
-                          ))}
-                        </FormSelect>
+                          placeholder={t("common.select")}
+                          searchPlaceholder={t(
+                            "settings.form.searchPlaceholder",
+                          )}
+                          noResultsLabel={t("settings.form.noResults")}
+                          data-testid="curriculum-national-subject-select"
+                          options={orderedNationalSubjects.map((subject) => ({
+                            value: subject.id,
+                            label: subject.name,
+                          }))}
+                        />
                       </FormField>
 
                       <FormField
@@ -4368,19 +4443,19 @@ function CurriculumsPageContent() {
                 <span className="text-text-secondary">
                   {t("curriculums.subject.curriculumLabel")}
                 </span>
-                <FormSelect
+                <SearchableSelect
                   value={selectedCurriculumId}
-                  onChange={(event) =>
-                    setSelectedCurriculumId(event.target.value)
-                  }
-                >
-                  <option value="">{t("common.select")}</option>
-                  {orderedCurriculums.map((curriculum) => (
-                    <option key={curriculum.id} value={curriculum.id}>
-                      {curriculum.name}
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={setSelectedCurriculumId}
+                  placeholder={t("common.select")}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
+                  ariaLabel={t("curriculums.subject.curriculumLabel")}
+                  data-testid="curriculum-subject-curriculum-select"
+                  options={orderedCurriculums.map((curriculum) => ({
+                    value: curriculum.id,
+                    label: curriculum.name,
+                  }))}
+                />
               </label>
 
               {selectedCurriculumId ? (
@@ -4398,29 +4473,26 @@ function CurriculumsPageContent() {
                           ?.message
                       }
                     >
-                      <FormSelect
-                        aria-label={t("curriculums.subject.subjectLabel")}
+                      <SearchableSelect
+                        ariaLabel={t("curriculums.subject.subjectLabel")}
                         invalid={curriculumSubjectIdInvalid}
                         value={curriculumSubjectValues.subjectId ?? ""}
-                        onChange={(event) => {
-                          curriculumSubjectForm.setValue(
-                            "subjectId",
-                            event.target.value,
-                            {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            },
-                          );
+                        onChange={(value) => {
+                          curriculumSubjectForm.setValue("subjectId", value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
                         }}
-                      >
-                        <option value="">{t("common.select")}</option>
-                        {subjects.map((subject) => (
-                          <option key={subject.id} value={subject.id}>
-                            {subject.name}
-                          </option>
-                        ))}
-                      </FormSelect>
+                        placeholder={t("common.select")}
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        data-testid="curriculum-subject-select"
+                        options={subjects.map((subject) => ({
+                          value: subject.id,
+                          label: subject.name,
+                        }))}
+                      />
                     </FormField>
 
                     <FormField

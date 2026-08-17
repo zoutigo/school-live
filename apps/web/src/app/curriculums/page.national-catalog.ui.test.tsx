@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CurriculumsPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -373,9 +374,9 @@ describe("Curriculums page — catalogue national", () => {
     });
     fireEvent.click(editButtons[editButtons.length - 1]);
 
-    fireEvent.change(
-      screen.getByLabelText("Niveau academique du curriculum national"),
-      { target: { value: "level-2" } },
+    await selectSearchableOption(
+      "Niveau academique du curriculum national",
+      "5eme",
     );
 
     const saveButton = screen.getByRole("button", { name: "Enregistrer" });
@@ -496,13 +497,9 @@ describe("Curriculums page — catalogue national", () => {
       );
     });
 
-    fireEvent.change(screen.getByLabelText("Niveau academique"), {
-      target: { value: "curriculum-1" },
-    });
+    await selectSearchableOption("Niveau academique", "6EME - TRONC_COMMUN");
 
-    fireEvent.change(screen.getByLabelText("Matiere"), {
-      target: { value: "subject-1" },
-    });
+    await selectSearchableOption("Matiere", "Maths");
     fireEvent.change(screen.getByLabelText("Coefficient"), {
       target: { value: "4" },
     });

@@ -117,9 +117,8 @@ describe("School sante page (vue école — responsable santé)", () => {
     render(<SchoolSantePage />);
     await waitFor(() => expect(screen.getByText("6")).toBeInTheDocument());
 
-    fireEvent.change(screen.getByTestId("sante-stats-class"), {
-      target: { value: "class-1" },
-    });
+    fireEvent.click(screen.getByTestId("sante-stats-class"));
+    fireEvent.click(await screen.findByRole("option", { name: "6eC" }));
 
     await waitFor(() => {
       expect(
@@ -147,9 +146,8 @@ describe("School sante page (vue école — responsable santé)", () => {
     await waitFor(() => screen.getByTestId("sante-cares-item-report-1"));
     expect(screen.getByText("Mbele Nathan")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId("sante-cares-filter-status"), {
-      target: { value: "false" },
-    });
+    fireEvent.click(screen.getByTestId("sante-cares-filter-status"));
+    fireEvent.click(await screen.findByRole("option", { name: "En attente" }));
 
     await waitFor(() => {
       expect(

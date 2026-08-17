@@ -91,8 +91,11 @@ describe("NotesAdminEntryPage", () => {
 
     render(<NotesAdminEntryPage />);
 
-    const classSelect = await screen.findByTestId("notes-admin-entry-class");
-    fireEvent.change(classSelect, { target: { value: "class-10" } });
+    await screen.findByTestId("notes-admin-entry-class");
+    fireEvent.click(screen.getByTestId("notes-admin-entry-class"));
+    fireEvent.click(
+      await screen.findByTestId("notes-admin-entry-class-option-class-10"),
+    );
     fireEvent.click(screen.getByTestId("notes-admin-entry-submit"));
 
     expect(pushMock).toHaveBeenCalledWith(
@@ -267,8 +270,11 @@ describe("NotesAdminEntryPage", () => {
 
     render(<NotesAdminEntryPage />);
 
-    const levelSelect = await screen.findByTestId("notes-admin-entry-level");
-    fireEvent.change(levelSelect, { target: { value: "level-6e" } });
+    await screen.findByTestId("notes-admin-entry-level");
+    fireEvent.click(screen.getByTestId("notes-admin-entry-level"));
+    fireEvent.click(
+      await screen.findByTestId("notes-admin-entry-level-option-level-6e"),
+    );
 
     await waitFor(() => {
       expect(evaluationsFetch).toHaveBeenCalledWith(
@@ -717,19 +723,24 @@ describe("NotesAdminEntryPage", () => {
       await screen.findByTestId("school-reports-row-stu-1");
 
       fireEvent.click(screen.getByTestId("school-reports-filter-toggle"));
-      fireEvent.change(screen.getByTestId("school-reports-filter-level"), {
-        target: { value: "level-6e" },
-      });
-
-      const classSelect = screen.getByTestId(
-        "school-reports-filter-class",
-      ) as HTMLSelectElement;
-      const optionValues = Array.from(classSelect.options).map(
-        (option) => option.value,
+      fireEvent.click(screen.getByTestId("school-reports-filter-level"));
+      fireEvent.click(
+        await screen.findByTestId(
+          "school-reports-filter-level-option-level-6e",
+        ),
       );
-      expect(optionValues).toContain("class-1");
-      expect(optionValues).toContain("class-2");
-      expect(optionValues).not.toContain("class-3");
+
+      fireEvent.click(screen.getByTestId("school-reports-filter-class"));
+      expect(
+        await screen.findByTestId("school-reports-filter-class-option-class-1"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("school-reports-filter-class-option-class-2"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("school-reports-filter-class-option-class-3"),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("school-reports-filter-class"));
 
       expect(screen.queryByTestId("school-reports-row-stu-3")).toBeNull();
       expect(

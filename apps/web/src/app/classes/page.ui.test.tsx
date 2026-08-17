@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ClassesPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -447,14 +448,14 @@ describe("Classes page subject color UI", () => {
 
     render(<ClassesPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
-    fireEvent.change(screen.getByLabelText("Classe"), {
-      target: { value: "class-1" },
-    });
+    await screen.findByLabelText("Classe");
+    await selectSearchableOption("Classe", "6eB (2025-2026)");
 
-    const referentSelect = await screen.findByLabelText(
+    await screen.findByLabelText("Enseignant referent de la classe");
+    await selectSearchableOption(
       "Enseignant referent de la classe",
+      "MBELE Valery",
     );
-    fireEvent.change(referentSelect, { target: { value: "teacher-1" } });
     const referentButton = screen.getByRole("button", {
       name: "Affecter referent",
     });
@@ -557,9 +558,7 @@ describe("Classes page subject color UI", () => {
 
     render(<ClassesPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
-    fireEvent.change(screen.getByLabelText("Classe"), {
-      target: { value: "class-1" },
-    });
+    await screen.findByLabelText("Classe");
 
     const hero = await screen.findByTestId("class-students-hero");
     expect(within(hero).getByText("6eB")).toBeInTheDocument();
@@ -635,17 +634,15 @@ describe("Classes page subject color UI", () => {
     );
 
     await waitFor(() => {
-      expect(
-        (screen.getByLabelText("Annee scolaire") as HTMLSelectElement).value,
-      ).toBe("sy-1");
+      expect(screen.getByLabelText("Annee scolaire")).toHaveTextContent(
+        "2025-2026",
+      );
     });
 
     fireEvent.change(screen.getByLabelText("Nom de classe"), {
       target: { value: "6e A" },
     });
-    fireEvent.change(screen.getByLabelText("Curriculum"), {
-      target: { value: "cur-1" },
-    });
+    await selectSearchableOption("Curriculum", "6EME - TRONC_COMMUN");
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
@@ -799,9 +796,8 @@ describe("Classes page subject color UI", () => {
     });
     expect(submitButton).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Matiere"), {
-      target: { value: "sub-1" },
-    });
+    await screen.findByLabelText("Matiere");
+    await selectSearchableOption("Matiere", "Anglais");
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
@@ -900,14 +896,10 @@ describe("Classes page subject color UI", () => {
 
     render(<ClassesPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
-    fireEvent.change(screen.getByLabelText("Classe"), {
-      target: { value: "class-1" },
-    });
-    fireEvent.change(
-      await screen.findByLabelText("Enseignant referent de la classe"),
-      {
-        target: { value: "teacher-1" },
-      },
+    await screen.findByLabelText("Enseignant referent de la classe");
+    await selectSearchableOption(
+      "Enseignant referent de la classe",
+      "MBELE Valery",
     );
 
     const referentButton = screen.getByRole("button", {
@@ -1013,8 +1005,10 @@ describe("Classes page subject color UI", () => {
 
     render(<ClassesPage />);
     fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
-    fireEvent.change(screen.getByLabelText("Classe"), {
-      target: { value: "class-1" },
+    await screen.findByLabelText("Classe");
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Eleve")).toHaveTextContent("MBELE Lisa");
     });
 
     const studentButton = await screen.findByRole("button", {
@@ -1079,9 +1073,7 @@ describe("Classes page subject color UI", () => {
     fireEvent.change(screen.getByLabelText("Nom de classe"), {
       target: { value: "6e A" },
     });
-    fireEvent.change(screen.getByLabelText("Curriculum"), {
-      target: { value: "cur-1" },
-    });
+    await selectSearchableOption("Curriculum", "6EME - TRONC_COMMUN");
 
     fireEvent.change(screen.getByLabelText("Capacite (optionnel)"), {
       target: { value: "abc" },
@@ -1153,17 +1145,15 @@ describe("Classes page subject color UI", () => {
     ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(
-        (screen.getByLabelText("Annee scolaire") as HTMLSelectElement).value,
-      ).toBe("sy-1");
+      expect(screen.getByLabelText("Annee scolaire")).toHaveTextContent(
+        "2025-2026",
+      );
     });
 
     fireEvent.change(screen.getByLabelText("Nom de classe"), {
       target: { value: "6e A" },
     });
-    fireEvent.change(screen.getByLabelText("Curriculum"), {
-      target: { value: "cur-1" },
-    });
+    await selectSearchableOption("Curriculum", "6EME - TRONC_COMMUN");
     fireEvent.change(screen.getByLabelText("Curriculum"), {
       target: { value: "" },
     });

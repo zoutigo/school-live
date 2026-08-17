@@ -8,14 +8,11 @@ import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
-import {
-  FormCheckbox,
-  FormSelect,
-  FormTextInput,
-} from "../../components/ui/form-controls";
+import { FormCheckbox, FormTextInput } from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -509,19 +506,19 @@ export default function EnrollmentsPage() {
               {role === "SUPER_ADMIN" || role === "ADMIN" ? (
                 <label className="mb-4 grid min-w-[260px] max-w-[420px] gap-1 text-sm">
                   <span className="text-text-secondary">Ecole</span>
-                  <FormSelect
+                  <SearchableSelect
+                    ariaLabel="Ecole"
                     value={schoolSlug ?? ""}
-                    onChange={(event) =>
-                      setSchoolSlug(event.target.value || null)
-                    }
-                  >
-                    <option value="">Selectionner une ecole</option>
-                    {schools.map((school) => (
-                      <option key={school.id} value={school.slug}>
-                        {school.name}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    onChange={(value) => setSchoolSlug(value || null)}
+                    placeholder="Selectionner une ecole"
+                    searchPlaceholder="Rechercher..."
+                    noResultsLabel="Aucun resultat"
+                    data-testid="enrollments-school-select"
+                    options={schools.map((school) => ({
+                      value: school.slug,
+                      label: school.name,
+                    }))}
+                  />
                 </label>
               ) : null}
 
@@ -536,75 +533,74 @@ export default function EnrollmentsPage() {
                     onSubmit={filtersForm.handleSubmit(onApplyFilters)}
                   >
                     <FormField label="Annee scolaire">
-                      <FormSelect
-                        aria-label="Annee scolaire"
+                      <SearchableSelect
+                        ariaLabel="Annee scolaire"
                         value={filterValues.schoolYearId ?? ""}
-                        onChange={(event) => {
-                          filtersForm.setValue(
-                            "schoolYearId",
-                            event.target.value,
-                            {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            },
-                          );
+                        onChange={(value) => {
+                          filtersForm.setValue("schoolYearId", value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
                           filtersForm.setValue("classId", "", {
                             shouldDirty: true,
                             shouldTouch: true,
                             shouldValidate: true,
                           });
                         }}
-                      >
-                        <option value="">Toutes</option>
-                        {schoolYears.map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.label}
-                            {entry.isActive ? " (active)" : ""}
-                          </option>
-                        ))}
-                      </FormSelect>
+                        placeholder="Toutes"
+                        searchPlaceholder="Rechercher..."
+                        noResultsLabel="Aucun resultat"
+                        data-testid="enrollments-filter-year-select"
+                        options={schoolYears.map((entry) => ({
+                          value: entry.id,
+                          label: `${entry.label}${entry.isActive ? " (active)" : ""}`,
+                        }))}
+                      />
                     </FormField>
 
                     <FormField label="Classe">
-                      <FormSelect
-                        aria-label="Classe"
+                      <SearchableSelect
+                        ariaLabel="Classe"
                         value={filterValues.classId ?? ""}
-                        onChange={(event) =>
-                          filtersForm.setValue("classId", event.target.value, {
+                        onChange={(value) =>
+                          filtersForm.setValue("classId", value, {
                             shouldDirty: true,
                             shouldTouch: true,
                             shouldValidate: true,
                           })
                         }
-                      >
-                        <option value="">Toutes</option>
-                        {filteredClassrooms.map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.name} ({entry.schoolYear.label})
-                          </option>
-                        ))}
-                      </FormSelect>
+                        placeholder="Toutes"
+                        searchPlaceholder="Rechercher..."
+                        noResultsLabel="Aucun resultat"
+                        data-testid="enrollments-filter-class-select"
+                        options={filteredClassrooms.map((entry) => ({
+                          value: entry.id,
+                          label: `${entry.name} (${entry.schoolYear.label})`,
+                        }))}
+                      />
                     </FormField>
 
                     <FormField label="Statut">
-                      <FormSelect
-                        aria-label="Statut"
+                      <SearchableSelect
+                        ariaLabel="Statut"
                         value={filterValues.status ?? ""}
-                        onChange={(event) =>
-                          filtersForm.setValue("status", event.target.value, {
+                        onChange={(value) =>
+                          filtersForm.setValue("status", value, {
                             shouldDirty: true,
                             shouldTouch: true,
                             shouldValidate: true,
                           })
                         }
-                      >
-                        <option value="">Tous</option>
-                        <option value="ACTIVE">ACTIVE</option>
-                        <option value="TRANSFERRED">TRANSFERRED</option>
-                        <option value="WITHDRAWN">WITHDRAWN</option>
-                        <option value="GRADUATED">GRADUATED</option>
-                      </FormSelect>
+                        data-testid="enrollments-filter-status-select"
+                        options={[
+                          { value: "", label: "Tous" },
+                          { value: "ACTIVE", label: "ACTIVE" },
+                          { value: "TRANSFERRED", label: "TRANSFERRED" },
+                          { value: "WITHDRAWN", label: "WITHDRAWN" },
+                          { value: "GRADUATED", label: "GRADUATED" },
+                        ]}
+                      />
                     </FormField>
 
                     <FormField
@@ -634,13 +630,13 @@ export default function EnrollmentsPage() {
 
                   <div className="mb-3 flex flex-wrap items-end gap-2 rounded-card border border-border bg-background p-3">
                     <FormField label="Statut cible (selection)">
-                      <FormSelect
-                        aria-label="Statut cible"
+                      <SearchableSelect
+                        ariaLabel="Statut cible"
                         value={bulkValues.status}
-                        onChange={(event) =>
+                        onChange={(value) =>
                           bulkForm.setValue(
                             "status",
-                            event.target.value as z.infer<typeof statusSchema>,
+                            value as z.infer<typeof statusSchema>,
                             {
                               shouldDirty: true,
                               shouldTouch: true,
@@ -648,12 +644,14 @@ export default function EnrollmentsPage() {
                             },
                           )
                         }
-                      >
-                        <option value="ACTIVE">ACTIVE</option>
-                        <option value="TRANSFERRED">TRANSFERRED</option>
-                        <option value="WITHDRAWN">WITHDRAWN</option>
-                        <option value="GRADUATED">GRADUATED</option>
-                      </FormSelect>
+                        data-testid="enrollments-bulk-status-select"
+                        options={[
+                          { value: "ACTIVE", label: "ACTIVE" },
+                          { value: "TRANSFERRED", label: "TRANSFERRED" },
+                          { value: "WITHDRAWN", label: "WITHDRAWN" },
+                          { value: "GRADUATED", label: "GRADUATED" },
+                        ]}
+                      />
                     </FormField>
                     <Button
                       type="button"
@@ -726,32 +724,40 @@ export default function EnrollmentsPage() {
                                 {row.enrollment.class.name}
                               </td>
                               <td className="px-3 py-2">
-                                <FormSelect
+                                <SearchableSelect
+                                  ariaLabel={`Statut - ${row.enrollment.id}`}
                                   value={
                                     statusDraftByEnrollmentId[
                                       row.enrollment.id
                                     ] ?? row.enrollment.status
                                   }
-                                  onChange={(event) =>
+                                  onChange={(value) =>
                                     setStatusDraftByEnrollmentId((current) => ({
                                       ...current,
-                                      [row.enrollment.id]: event.target
-                                        .value as
+                                      [row.enrollment.id]: value as
                                         | "ACTIVE"
                                         | "TRANSFERRED"
                                         | "WITHDRAWN"
                                         | "GRADUATED",
                                     }))
                                   }
-                                  className="px-2 py-1"
-                                >
-                                  <option value="ACTIVE">ACTIVE</option>
-                                  <option value="TRANSFERRED">
-                                    TRANSFERRED
-                                  </option>
-                                  <option value="WITHDRAWN">WITHDRAWN</option>
-                                  <option value="GRADUATED">GRADUATED</option>
-                                </FormSelect>
+                                  data-testid={`enrollments-row-status-select-${row.enrollment.id}`}
+                                  options={[
+                                    { value: "ACTIVE", label: "ACTIVE" },
+                                    {
+                                      value: "TRANSFERRED",
+                                      label: "TRANSFERRED",
+                                    },
+                                    {
+                                      value: "WITHDRAWN",
+                                      label: "WITHDRAWN",
+                                    },
+                                    {
+                                      value: "GRADUATED",
+                                      label: "GRADUATED",
+                                    },
+                                  ]}
+                                />
                               </td>
                               <td className="px-3 py-2">
                                 {row.enrollment.isCurrent ? "Oui" : "Non"}

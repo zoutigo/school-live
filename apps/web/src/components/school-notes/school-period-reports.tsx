@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
-import { FormSelect } from "../ui/form-controls";
+import { SearchableSelect } from "../ui/searchable-select";
 import { SubjectReportCard } from "../student-notes/subject-report-card";
 import type {
   StudentNotesTerm,
@@ -460,35 +460,33 @@ export function SchoolPeriodReports({
             <span className="text-text-secondary">
               {t("notes.adminEntry.levelLabel")}
             </span>
-            <FormSelect
+            <SearchableSelect
+              ariaLabel={t("notes.adminEntry.levelLabel")}
               value={levelId}
-              onChange={(event) => handleLevelChange(event.target.value)}
+              onChange={handleLevelChange}
               data-testid="school-reports-filter-level"
-            >
-              <option value="">{t("notes.adminEntry.allLevels")}</option>
-              {levelOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </FormSelect>
+              placeholder={t("notes.adminEntry.allLevels")}
+              options={levelOptions.map((option) => ({
+                value: option.id,
+                label: option.label,
+              }))}
+            />
           </label>
           <label className="grid gap-1 text-sm">
             <span className="text-text-secondary">
               {t("notes.adminEntry.classLabel")}
             </span>
-            <FormSelect
+            <SearchableSelect
+              ariaLabel={t("notes.adminEntry.classLabel")}
               value={classId}
-              onChange={(event) => setClassId(event.target.value)}
+              onChange={setClassId}
               data-testid="school-reports-filter-class"
-            >
-              <option value="">{t("notes.adminEntry.classPlaceholder")}</option>
-              {classOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </FormSelect>
+              placeholder={t("notes.adminEntry.classPlaceholder")}
+              options={classOptions.map((option) => ({
+                value: option.id,
+                label: option.name,
+              }))}
+            />
           </label>
           {hasActiveFilters ? (
             <button

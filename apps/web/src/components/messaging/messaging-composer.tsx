@@ -19,9 +19,9 @@ import { PaginationControls } from "../ui/pagination-controls";
 import {
   FormCheckbox,
   FormFileInput,
-  FormSelect,
   FormTextInput,
 } from "../ui/form-controls";
+import { SearchableSelect } from "../ui/searchable-select";
 import {
   buildDraftSnapshot,
   canSendMessage,
@@ -564,20 +564,17 @@ export function MessagingComposer({
                 ) : null}
               </div>
             ) : (
-              <FormSelect
+              <SearchableSelect
+                ariaLabel={t("messaging.compose.recipientAria")}
                 value={recipient}
-                onChange={(event) => setRecipient(event.target.value)}
+                onChange={setRecipient}
                 className="h-10 text-sm"
-              >
-                <option value="">
-                  {t("messaging.compose.noRecipientOption")}
-                </option>
-                {recipients.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </FormSelect>
+                placeholder={t("messaging.compose.noRecipientOption")}
+                options={recipients.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                }))}
+              />
             )}
           </div>
 
@@ -1085,20 +1082,23 @@ function StaffRecipientsModal({
           </label>
           <label className="grid gap-1 text-xs text-text-secondary">
             {t("messaging.compose.staffModal.functionLabel")}
-            <FormSelect
+            <SearchableSelect
+              ariaLabel={t("messaging.compose.staffModal.functionLabel")}
               value={functionFilter}
-              onChange={(event) => setFunctionFilter(event.target.value)}
+              onChange={setFunctionFilter}
               className="h-10 text-sm"
-            >
-              <option value="">
-                {t("messaging.compose.staffModal.allFunctions")}
-              </option>
-              {functionOptions.map((entry) => (
-                <option key={entry.value} value={entry.value}>
-                  {entry.label}
-                </option>
-              ))}
-            </FormSelect>
+              placeholder={t("messaging.compose.staffModal.allFunctions")}
+              options={[
+                {
+                  value: "",
+                  label: t("messaging.compose.staffModal.allFunctions"),
+                },
+                ...functionOptions.map((entry) => ({
+                  value: entry.value,
+                  label: entry.label,
+                })),
+              ]}
+            />
           </label>
         </div>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Pencil, X } from "lucide-react";
+import { Building2, Globe, Languages, Pencil, Users2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -13,18 +13,24 @@ import { Card } from "../../components/ui/card";
 import { DateInput } from "../../components/ui/date-input";
 import {
   FormCheckbox,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
 import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { PasswordInput } from "../../components/ui/password-input";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import { PinInput } from "../../components/ui/pin-input";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
+import {
+  extractAvailableRoles,
+  type PlatformRole,
+  type SchoolRole,
+} from "../../lib/role-view";
 import { useLocaleStore } from "../../i18n/locale-store";
+import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { SUPPORTED_LOCALES, type Locale } from "../../i18n/translations";
 import { useTranslation } from "../../i18n/useTranslation";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
@@ -104,6 +110,12 @@ function createChangePinSchema(t: (key: string) => string) {
     });
 }
 
+const GENDER_OPTIONS = [
+  { value: "M", label: "Masculin" },
+  { value: "F", label: "Feminin" },
+  { value: "OTHER", label: "Autre" },
+];
+
 const personalProfileSchema = z.object({
   firstName: z.string().trim().min(1, "Le prenom est obligatoire."),
   lastName: z.string().trim().min(1, "Le nom est obligatoire."),
@@ -180,7 +192,7 @@ type Role =
   | "TEACHER"
   | "PARENT"
   | "STUDENT";
-type Tab = "personal" | "security" | "help";
+type Tab = "personal" | "security" | "help" | "settings";
 type QuestionKey =
   | "MOTHER_MAIDEN_NAME"
   | "FATHER_FIRST_NAME"
@@ -197,11 +209,37 @@ type MeResponse = {
   email?: string | null;
   phone?: string | null;
   role: Role;
+  activeRole?: Role | null;
   schoolSlug: string | null;
+  activeSchoolId?: string | null;
+  schools?: Array<{
+    schoolId: string;
+    slug: string;
+    name: string;
+    role: SchoolRole;
+  }>;
+  platformRoles?: PlatformRole[];
+  memberships?: Array<{ schoolId: string; role: SchoolRole }>;
   hasPassword: boolean;
   hasPhoneCredential: boolean;
   preferredLocale?: "FR" | "EN";
   onboardingHelpEnabled?: boolean;
+};
+
+const ROLE_LABEL: Record<Role, string> = {
+  SUPER_ADMIN: "Super administrateur",
+  ADMIN: "Administrateur",
+  SALES: "Commercial",
+  SUPPORT: "Support",
+  SCHOOL_ADMIN: "Administrateur ecole",
+  SCHOOL_MANAGER: "Directeur",
+  SUPERVISOR: "Superviseur",
+  SCHOOL_ACCOUNTANT: "Comptable",
+  SCHOOL_STAFF: "Personnel",
+  SCHOOL_HEALTH_OFFICER: "Responsable sante",
+  TEACHER: "Enseignant(e)",
+  PARENT: "Parent",
+  STUDENT: "Eleve",
 };
 
 type RecoveryOption = {
@@ -269,6 +307,20 @@ export default function AccountPage() {
     string | null
   >(null);
   const [savingAccountLanguage, setSavingAccountLanguage] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [savingActiveRole, setSavingActiveRole] = useState(false);
+  const [activeRoleError, setActiveRoleError] = useState<string | null>(null);
+  const [activeRoleSuccess, setActiveRoleSuccess] = useState<string | null>(
+    null,
+  );
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
+  const [savingActiveSchool, setSavingActiveSchool] = useState(false);
+  const [activeSchoolError, setActiveSchoolError] = useState<string | null>(
+    null,
+  );
+  const [activeSchoolSuccess, setActiveSchoolSuccess] = useState<string | null>(
+    null,
+  );
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [updatingPassword, setUpdatingPassword] = useState(false);
@@ -472,6 +524,15 @@ export default function AccountPage() {
       gender: payload.gender ?? "M",
       phone: toLocalPhoneDisplay(payload.phone),
     });
+    const availableRoles = extractAvailableRoles(payload);
+    setSelectedRole(
+      payload.activeRole && availableRoles.includes(payload.activeRole)
+        ? payload.activeRole
+        : (payload.role ?? availableRoles[0] ?? null),
+    );
+    setSelectedSchoolId(
+      payload.activeSchoolId ?? payload.schools?.[0]?.schoolId ?? null,
+    );
     setLoading(false);
   }
 
@@ -488,6 +549,12 @@ export default function AccountPage() {
       ? `Etablissement (${me.schoolSlug})`
       : "Espace Scolive";
   }, [me]);
+
+  const availableRoles = useMemo(() => extractAvailableRoles(me), [me]);
+  const currentActiveSchoolId = useMemo(
+    () => me?.activeSchoolId ?? me?.schools?.[0]?.schoolId ?? null,
+    [me?.activeSchoolId, me?.schools],
+  );
 
   async function onUpdatePersonal(
     values: z.output<typeof personalProfileSchema>,
@@ -589,6 +656,107 @@ export default function AccountPage() {
       setAccountLanguageError(t("settings.accountLanguage.error"));
     } finally {
       setSavingAccountLanguage(false);
+    }
+  }
+
+  async function onSaveActiveRole() {
+    if (!selectedRole || savingActiveRole) {
+      return;
+    }
+
+    setActiveRoleError(null);
+    setActiveRoleSuccess(null);
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setActiveRoleError(t("settings.form.activeRole.errorMessage"));
+      router.replace("/");
+      return;
+    }
+
+    setSavingActiveRole(true);
+    try {
+      const response = await fetch(`${API_URL}/me/active-role`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ role: selectedRole }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("settings.form.activeRole.errorMessage"));
+        setActiveRoleError(String(message));
+        return;
+      }
+
+      const updatedMe = (await response.json()) as MeResponse;
+      setMe(updatedMe);
+      setSelectedRole(updatedMe.activeRole ?? selectedRole);
+      setActiveRoleSuccess(t("settings.form.activeRole.successMessage"));
+    } catch {
+      setActiveRoleError(t("settings.form.activeRole.errorMessage"));
+    } finally {
+      setSavingActiveRole(false);
+    }
+  }
+
+  async function onSaveActiveSchool() {
+    if (!selectedSchoolId || savingActiveSchool) {
+      return;
+    }
+
+    setActiveSchoolError(null);
+    setActiveSchoolSuccess(null);
+
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setActiveSchoolError(t("settings.form.activeSchool.errorMessage"));
+      router.replace("/");
+      return;
+    }
+
+    setSavingActiveSchool(true);
+    try {
+      const response = await fetch(`${API_URL}/me/active-school`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ schoolId: selectedSchoolId }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ??
+              t("settings.form.activeSchool.errorMessage"));
+        setActiveSchoolError(String(message));
+        return;
+      }
+
+      const updatedMe = (await response.json()) as MeResponse;
+      setMe(updatedMe);
+      setSelectedSchoolId(updatedMe.activeSchoolId ?? selectedSchoolId);
+      setActiveSchoolSuccess(t("settings.form.activeSchool.successMessage"));
+    } catch {
+      setActiveSchoolError(t("settings.form.activeSchool.errorMessage"));
+    } finally {
+      setSavingActiveSchool(false);
     }
   }
 
@@ -1061,40 +1229,27 @@ export default function AccountPage() {
     <AppShell schoolSlug={me?.schoolSlug ?? null} schoolName={schoolName}>
       <div className="grid gap-4">
         <Card title="Mon compte" subtitle="Gestion de votre profil utilisateur">
-          <div className="mb-4 flex items-end gap-2 border-b border-border">
-            <button
-              type="button"
-              onClick={() => setTab("personal")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "personal"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
-            >
-              Informations personnelles
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("security")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "security"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
-            >
-              Securite
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("help")}
-              className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                tab === "help"
-                  ? "border border-border border-b-surface bg-surface text-primary"
-                  : "text-text-secondary"
-              }`}
-            >
-              Aide
-            </button>
+          <div className="mb-5 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(
+              [
+                { key: "personal", label: "Informations personnelles" },
+                { key: "security", label: "Securite" },
+                { key: "help", label: "Aide" },
+                { key: "settings", label: "Parametres" },
+              ] as const
+            ).map((item) => (
+              <Button
+                key={item.key}
+                type="button"
+                variant={tab === item.key ? "primary" : "secondary"}
+                aria-pressed={tab === item.key}
+                onClick={() => setTab(item.key)}
+                data-testid={`account-tab-${item.key}`}
+                className="shrink-0"
+              >
+                {item.label}
+              </Button>
+            ))}
           </div>
 
           {tab === "personal" ? (
@@ -1210,14 +1365,13 @@ export default function AccountPage() {
                         control={personalForm.control}
                         name="gender"
                         render={({ field }) => (
-                          <FormSelect
-                            name={field.name}
-                            ref={field.ref}
+                          <SearchableSelect
+                            options={GENDER_OPTIONS}
                             value={field.value}
-                            onChange={(event) =>
+                            onChange={(next) =>
                               personalForm.setValue(
                                 "gender",
-                                event.target.value as "M" | "F" | "OTHER",
+                                next as "M" | "F" | "OTHER",
                                 {
                                   shouldDirty: true,
                                   shouldTouch: true,
@@ -1225,15 +1379,12 @@ export default function AccountPage() {
                                 },
                               )
                             }
-                            onBlur={field.onBlur}
                             invalid={Boolean(
                               personalForm.formState.errors.gender,
                             )}
-                          >
-                            <option value="M">Masculin</option>
-                            <option value="F">Feminin</option>
-                            <option value="OTHER">Autre</option>
-                          </FormSelect>
+                            ariaLabel="Genre"
+                            data-testid="account-gender-select"
+                          />
                         )}
                       />
                     </FormField>
@@ -1471,56 +1622,6 @@ export default function AccountPage() {
                     value={me?.schoolSlug ?? "Plateforme"}
                   />
                 </div>
-
-                <section
-                  className="max-w-xl rounded-card border border-border bg-background p-4"
-                  data-testid="account-language-section"
-                >
-                  <p className="text-sm font-semibold text-text-primary">
-                    {t("settings.accountLanguage.title")}
-                  </p>
-                  <p className="mt-1 text-sm text-text-secondary">
-                    {t("settings.accountLanguage.subtitle")}
-                  </p>
-                  <p className="mt-1 text-xs text-text-secondary">
-                    {t("settings.accountLanguage.hint")}
-                  </p>
-                  <div className="mt-3 flex items-center gap-2">
-                    {SUPPORTED_LOCALES.map((option) => {
-                      const selected =
-                        (me?.preferredLocale === "EN" ? "en" : "fr") === option;
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => {
-                            void onUpdateAccountLanguage(option);
-                          }}
-                          disabled={savingAccountLanguage}
-                          aria-pressed={selected}
-                          data-testid={`account-language-${option}`}
-                          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                            selected
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-surface text-text-secondary"
-                          }`}
-                        >
-                          {t(`settings.language.${option}`)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {accountLanguageError ? (
-                    <p className="mt-2 text-sm text-notification">
-                      {accountLanguageError}
-                    </p>
-                  ) : null}
-                  {accountLanguageSuccess ? (
-                    <p className="mt-2 text-sm text-primary">
-                      {accountLanguageSuccess}
-                    </p>
-                  ) : null}
-                </section>
               </div>
             )
           ) : tab === "security" ? (
@@ -2258,14 +2359,18 @@ export default function AccountPage() {
                                 control={recoveryForm.control}
                                 name="parentClassId"
                                 render={({ field }) => (
-                                  <FormSelect
-                                    name={field.name}
-                                    ref={field.ref}
-                                    value={field.value}
-                                    onChange={(event) =>
+                                  <SearchableSelect
+                                    options={recoveryClasses.map(
+                                      (classroom) => ({
+                                        value: classroom.id,
+                                        label: `${classroom.name} (${classroom.schoolYearLabel})`,
+                                      }),
+                                    )}
+                                    value={field.value ?? ""}
+                                    onChange={(next) =>
                                       recoveryForm.setValue(
                                         "parentClassId",
-                                        event.target.value,
+                                        next,
                                         {
                                           shouldDirty: true,
                                           shouldTouch: true,
@@ -2273,27 +2378,22 @@ export default function AccountPage() {
                                         },
                                       )
                                     }
-                                    onBlur={field.onBlur}
+                                    placeholder="Selectionner une classe"
+                                    searchPlaceholder={t(
+                                      "settings.form.searchPlaceholder",
+                                    )}
+                                    noResultsLabel={t(
+                                      "settings.form.noResults",
+                                    )}
                                     invalid={
                                       Boolean(
                                         recoveryForm.formState.errors
                                           .parentClassId,
                                       ) || !(field.value ?? "")
                                     }
-                                  >
-                                    <option value="">
-                                      Selectionner une classe
-                                    </option>
-                                    {recoveryClasses.map((classroom) => (
-                                      <option
-                                        key={classroom.id}
-                                        value={classroom.id}
-                                      >
-                                        {classroom.name} (
-                                        {classroom.schoolYearLabel})
-                                      </option>
-                                    ))}
-                                  </FormSelect>
+                                    ariaLabel="Classe de votre enfant"
+                                    data-testid="account-recovery-parent-class-select"
+                                  />
                                 )}
                               />
                             </FormField>
@@ -2309,14 +2409,18 @@ export default function AccountPage() {
                                 control={recoveryForm.control}
                                 name="parentStudentId"
                                 render={({ field }) => (
-                                  <FormSelect
-                                    name={field.name}
-                                    ref={field.ref}
-                                    value={field.value}
-                                    onChange={(event) =>
+                                  <SearchableSelect
+                                    options={recoveryStudents.map(
+                                      (student) => ({
+                                        value: student.id,
+                                        label: `${student.lastName} ${student.firstName}`,
+                                      }),
+                                    )}
+                                    value={field.value ?? ""}
+                                    onChange={(next) =>
                                       recoveryForm.setValue(
                                         "parentStudentId",
-                                        event.target.value,
+                                        next,
                                         {
                                           shouldDirty: true,
                                           shouldTouch: true,
@@ -2324,26 +2428,22 @@ export default function AccountPage() {
                                         },
                                       )
                                     }
-                                    onBlur={field.onBlur}
+                                    placeholder="Selectionner un eleve"
+                                    searchPlaceholder={t(
+                                      "settings.form.searchPlaceholder",
+                                    )}
+                                    noResultsLabel={t(
+                                      "settings.form.noResults",
+                                    )}
                                     invalid={
                                       Boolean(
                                         recoveryForm.formState.errors
                                           .parentStudentId,
                                       ) || !(field.value ?? "")
                                     }
-                                  >
-                                    <option value="">
-                                      Selectionner un eleve
-                                    </option>
-                                    {recoveryStudents.map((student) => (
-                                      <option
-                                        key={student.id}
-                                        value={student.id}
-                                      >
-                                        {student.lastName} {student.firstName}
-                                      </option>
-                                    ))}
-                                  </FormSelect>
+                                    ariaLabel="Nom de votre enfant"
+                                    data-testid="account-recovery-parent-student-select"
+                                  />
                                 )}
                               />
                             </FormField>
@@ -2494,7 +2594,7 @@ export default function AccountPage() {
                 ]}
               />
             </div>
-          ) : (
+          ) : tab === "help" ? (
             <div className="grid gap-4">
               <div className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-3">
                 <div>
@@ -2559,6 +2659,206 @@ export default function AccountPage() {
                   {t("settings.form.resetOnboardingTours.action")}
                 </Button>
               </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <section
+                className="grid gap-3 rounded-card border border-border bg-background p-4 transition-shadow hover:shadow-card"
+                data-testid="account-device-language-section"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Globe size={18} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">
+                      {t("settings.language.title")}
+                    </p>
+                    <p className="mt-0.5 text-sm text-text-secondary">
+                      {t("settings.language.subtitle")}
+                    </p>
+                  </div>
+                </div>
+                <LanguageSwitcher />
+                <p className="text-xs text-text-secondary">
+                  {t("settings.language.hint")}
+                </p>
+              </section>
+
+              <section
+                className="grid gap-3 rounded-card border border-border bg-background p-4 transition-shadow hover:shadow-card"
+                data-testid="account-language-section"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Languages size={18} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">
+                      {t("settings.accountLanguage.title")}
+                    </p>
+                    <p className="mt-0.5 text-sm text-text-secondary">
+                      {t("settings.accountLanguage.subtitle")}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-text-secondary">
+                  {t("settings.accountLanguage.hint")}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {SUPPORTED_LOCALES.map((option) => {
+                    const selected =
+                      (me?.preferredLocale === "EN" ? "en" : "fr") === option;
+                    return (
+                      <Button
+                        key={option}
+                        type="button"
+                        variant={selected ? "primary" : "secondary"}
+                        onClick={() => {
+                          void onUpdateAccountLanguage(option);
+                        }}
+                        disabled={savingAccountLanguage}
+                        aria-pressed={selected}
+                        data-testid={`account-language-${option}`}
+                      >
+                        {t(`settings.language.${option}`)}
+                      </Button>
+                    );
+                  })}
+                </div>
+                {accountLanguageError ? (
+                  <p className="mt-2 text-sm text-notification">
+                    {accountLanguageError}
+                  </p>
+                ) : null}
+                {accountLanguageSuccess ? (
+                  <p className="mt-2 text-sm text-primary">
+                    {accountLanguageSuccess}
+                  </p>
+                ) : null}
+              </section>
+
+              {(me?.schools?.length ?? 0) > 1 ? (
+                <section
+                  className="grid gap-3 rounded-card border border-border bg-background p-4 transition-shadow hover:shadow-card"
+                  data-testid="account-active-school-section"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Building2 size={18} aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-text-primary">
+                        {t("settings.school.title")}
+                      </h3>
+                      <p className="mt-0.5 text-sm text-text-secondary">
+                        {t("settings.form.activeSchool.subtitle")}
+                      </p>
+                    </div>
+                  </div>
+                  <SearchableSelect
+                    options={(me?.schools ?? []).map((school) => ({
+                      value: school.schoolId,
+                      label: `${school.name} (${ROLE_LABEL[school.role]})`,
+                    }))}
+                    value={selectedSchoolId ?? ""}
+                    onChange={setSelectedSchoolId}
+                    placeholder={t("common.select")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    ariaLabel={t("settings.school.title")}
+                    data-testid="account-active-school-select"
+                  />
+                  {activeSchoolError ? (
+                    <p className="text-sm text-notification">
+                      {activeSchoolError}
+                    </p>
+                  ) : null}
+                  {activeSchoolSuccess ? (
+                    <p className="text-sm text-primary">
+                      {activeSchoolSuccess}
+                    </p>
+                  ) : null}
+                  <div>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        void onSaveActiveSchool();
+                      }}
+                      disabled={
+                        savingActiveSchool ||
+                        !selectedSchoolId ||
+                        selectedSchoolId === currentActiveSchoolId
+                      }
+                      data-testid="account-active-school-save"
+                    >
+                      {savingActiveSchool
+                        ? "Enregistrement..."
+                        : t("settings.form.save")}
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
+
+              {availableRoles.length > 1 ? (
+                <section
+                  className="grid gap-3 rounded-card border border-border bg-background p-4 transition-shadow hover:shadow-card"
+                  data-testid="account-active-role-section"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Users2 size={18} aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-text-primary">
+                        {t("settings.role.title")}
+                      </h3>
+                      <p className="mt-0.5 text-sm text-text-secondary">
+                        {t("settings.form.activeRole.subtitle")}
+                      </p>
+                    </div>
+                  </div>
+                  <SearchableSelect
+                    options={availableRoles.map((role) => ({
+                      value: role,
+                      label: ROLE_LABEL[role],
+                    }))}
+                    value={selectedRole ?? ""}
+                    onChange={(next) => setSelectedRole(next as Role)}
+                    placeholder={t("common.select")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    ariaLabel={t("settings.role.title")}
+                    data-testid="account-active-role-select"
+                  />
+                  {activeRoleError ? (
+                    <p className="text-sm text-notification">
+                      {activeRoleError}
+                    </p>
+                  ) : null}
+                  {activeRoleSuccess ? (
+                    <p className="text-sm text-primary">{activeRoleSuccess}</p>
+                  ) : null}
+                  <div>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        void onSaveActiveRole();
+                      }}
+                      disabled={
+                        savingActiveRole ||
+                        !selectedRole ||
+                        selectedRole === (me?.activeRole ?? me?.role ?? null)
+                      }
+                      data-testid="account-active-role-save"
+                    >
+                      {savingActiveRole
+                        ? "Enregistrement..."
+                        : t("settings.form.save")}
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
             </div>
           )}
         </Card>

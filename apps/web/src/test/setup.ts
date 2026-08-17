@@ -4,6 +4,22 @@ import { afterEach } from "vitest";
 
 configure({ asyncUtilTimeout: 5000 });
 
+if (
+  typeof window !== "undefined" &&
+  typeof window.ResizeObserver !== "function"
+) {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  Object.defineProperty(window, "ResizeObserver", {
+    writable: true,
+    configurable: true,
+    value: ResizeObserverStub,
+  });
+}
+
 if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
   Object.defineProperty(window, "matchMedia", {
     writable: true,

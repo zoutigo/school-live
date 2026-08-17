@@ -14,7 +14,6 @@ import {
   FormCheckbox,
   FormDateTimeInput,
   FormNumberInput,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
@@ -29,6 +28,7 @@ import {
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PinInput } from "../../components/ui/pin-input";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 
@@ -1277,19 +1277,19 @@ export default function ElevesPage() {
             {role === "SUPER_ADMIN" || role === "ADMIN" ? (
               <label className="ml-auto grid min-w-[260px] gap-1 text-sm">
                 <span className="text-text-secondary">Ecole</span>
-                <FormSelect
+                <SearchableSelect
                   value={schoolSlug ?? ""}
-                  onChange={(event) =>
-                    setSchoolSlug(event.target.value || null)
-                  }
-                >
-                  <option value="">Selectionner une ecole</option>
-                  {schools.map((school) => (
-                    <option key={school.id} value={school.slug}>
-                      {school.name}
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={(value) => setSchoolSlug(value || null)}
+                  placeholder="Selectionner une ecole"
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
+                  ariaLabel="Ecole"
+                  data-testid="eleves-school-select"
+                  options={schools.map((school) => ({
+                    value: school.slug,
+                    label: school.name,
+                  }))}
+                />
               </label>
             ) : null}
           </div>
@@ -1376,34 +1376,41 @@ export default function ElevesPage() {
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Classe</span>
-                  <FormSelect
+                  <SearchableSelect
                     value={classFilter}
-                    onChange={(event) => setClassFilter(event.target.value)}
-                  >
-                    <option value="">Toutes</option>
-                    {classrooms.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.name} ({entry.schoolYear.label})
-                      </option>
-                    ))}
-                  </FormSelect>
+                    onChange={setClassFilter}
+                    placeholder="Toutes"
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    ariaLabel="Classe"
+                    data-testid="eleves-filter-class-select"
+                    options={[
+                      { value: "", label: "Toutes" },
+                      ...classrooms.map((entry) => ({
+                        value: entry.id,
+                        label: `${entry.name} (${entry.schoolYear.label})`,
+                      })),
+                    ]}
+                  />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="text-text-secondary">Annee scolaire</span>
-                  <FormSelect
+                  <SearchableSelect
                     value={schoolYearFilter}
-                    onChange={(event) =>
-                      setSchoolYearFilter(event.target.value)
-                    }
-                  >
-                    <option value="">Toutes</option>
-                    {schoolYears.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.label}
-                        {entry.isActive ? " (active)" : ""}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    onChange={setSchoolYearFilter}
+                    placeholder="Toutes"
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    ariaLabel="Annee scolaire"
+                    data-testid="eleves-filter-schoolyear-select"
+                    options={[
+                      { value: "", label: "Toutes" },
+                      ...schoolYears.map((entry) => ({
+                        value: entry.id,
+                        label: `${entry.label}${entry.isActive ? " (active)" : ""}`,
+                      })),
+                    ]}
+                  />
                 </label>
                 <div className="self-end">
                   <SubmitButton disabled={loadingData}>Filtrer</SubmitButton>
@@ -1595,17 +1602,19 @@ export default function ElevesPage() {
             <div className="grid gap-4">
               <label className="grid gap-1 text-sm md:max-w-[420px]">
                 <span className="text-text-secondary">Eleve</span>
-                <FormSelect
+                <SearchableSelect
                   value={selectedStudentId}
-                  onChange={(event) => setSelectedStudentId(event.target.value)}
-                >
-                  <option value="">Selectionner</option>
-                  {sortedStudents.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.lastName} {entry.firstName}
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={setSelectedStudentId}
+                  placeholder="Selectionner"
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
+                  ariaLabel="Eleve"
+                  data-testid="eleves-assignments-student-select"
+                  options={sortedStudents.map((entry) => ({
+                    value: entry.id,
+                    label: `${entry.lastName} ${entry.firstName}`,
+                  }))}
+                />
               </label>
 
               {!selectedStudent ? (
@@ -1627,12 +1636,11 @@ export default function ElevesPage() {
 
                   <div className="grid gap-3 rounded-card border border-border bg-background p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
                     <FormField label="Mode parent">
-                      <FormSelect
+                      <SearchableSelect
+                        ariaLabel="Mode parent"
                         value={linkParentMode}
-                        onChange={(event) => {
-                          const nextMode = event.target.value as
-                            | "email"
-                            | "phone";
+                        onChange={(value) => {
+                          const nextMode = value as "email" | "phone";
                           linkParentForm.setValue("mode", nextMode, {
                             shouldDirty: true,
                             shouldTouch: true,
@@ -1654,10 +1662,12 @@ export default function ElevesPage() {
                             });
                           }
                         }}
-                      >
-                        <option value="phone">Telephone + PIN</option>
-                        <option value="email">Email + mot de passe</option>
-                      </FormSelect>
+                        data-testid="eleves-link-parent-mode-select"
+                        options={[
+                          { value: "phone", label: "Telephone + PIN" },
+                          { value: "email", label: "Email + mot de passe" },
+                        ]}
+                      />
                     </FormField>
                     <FormField
                       label={
@@ -1808,13 +1818,14 @@ export default function ElevesPage() {
                           createLifeEventForm.formState.errors.type?.message
                         }
                       >
-                        <FormSelect
+                        <SearchableSelect
+                          ariaLabel={t("discipline.form.type")}
                           invalid={createLifeEventTypeInvalid}
                           value={createLifeEventValues.type ?? "ABSENCE"}
-                          onChange={(event) =>
+                          onChange={(value) =>
                             createLifeEventForm.setValue(
                               "type",
-                              event.target.value as LifeEventType,
+                              value as LifeEventType,
                               {
                                 shouldDirty: true,
                                 shouldTouch: true,
@@ -1822,20 +1833,26 @@ export default function ElevesPage() {
                               },
                             )
                           }
-                        >
-                          <option value="ABSENCE">
-                            {t("discipline.types.absence")}
-                          </option>
-                          <option value="RETARD">
-                            {t("discipline.types.retard")}
-                          </option>
-                          <option value="SANCTION">
-                            {t("discipline.types.sanction")}
-                          </option>
-                          <option value="PUNITION">
-                            {t("discipline.types.punition")}
-                          </option>
-                        </FormSelect>
+                          data-testid="eleves-life-event-type-select"
+                          options={[
+                            {
+                              value: "ABSENCE",
+                              label: t("discipline.types.absence"),
+                            },
+                            {
+                              value: "RETARD",
+                              label: t("discipline.types.retard"),
+                            },
+                            {
+                              value: "SANCTION",
+                              label: t("discipline.types.sanction"),
+                            },
+                            {
+                              value: "PUNITION",
+                              label: t("discipline.types.punition"),
+                            },
+                          ]}
+                        />
                       </FormField>
                       <FormField
                         label={t("discipline.form.dateTime")}
@@ -1975,14 +1992,14 @@ export default function ElevesPage() {
                             editLifeEventForm.formState.errors.type?.message
                           }
                         >
-                          <FormSelect
-                            aria-label={t("discipline.form.typeEditAria")}
+                          <SearchableSelect
+                            ariaLabel={t("discipline.form.typeEditAria")}
                             invalid={editLifeEventTypeInvalid}
                             value={editLifeEventValues.type ?? "ABSENCE"}
-                            onChange={(event) =>
+                            onChange={(value) =>
                               editLifeEventForm.setValue(
                                 "type",
-                                event.target.value as LifeEventType,
+                                value as LifeEventType,
                                 {
                                   shouldDirty: true,
                                   shouldTouch: true,
@@ -1990,20 +2007,26 @@ export default function ElevesPage() {
                                 },
                               )
                             }
-                          >
-                            <option value="ABSENCE">
-                              {t("discipline.types.absence")}
-                            </option>
-                            <option value="RETARD">
-                              {t("discipline.types.retard")}
-                            </option>
-                            <option value="SANCTION">
-                              {t("discipline.types.sanction")}
-                            </option>
-                            <option value="PUNITION">
-                              {t("discipline.types.punition")}
-                            </option>
-                          </FormSelect>
+                            data-testid="eleves-edit-life-event-type-select"
+                            options={[
+                              {
+                                value: "ABSENCE",
+                                label: t("discipline.types.absence"),
+                              },
+                              {
+                                value: "RETARD",
+                                label: t("discipline.types.retard"),
+                              },
+                              {
+                                value: "SANCTION",
+                                label: t("discipline.types.sanction"),
+                              },
+                              {
+                                value: "PUNITION",
+                                label: t("discipline.types.punition"),
+                              },
+                            ]}
+                          />
                         </FormField>
                         <FormField
                           label={t("discipline.form.dateTimeEditAria")}
@@ -2175,39 +2198,42 @@ export default function ElevesPage() {
                       <span className="text-text-secondary">
                         Nouvelle classe
                       </span>
-                      <FormSelect
+                      <SearchableSelect
                         value={targetClassId}
-                        onChange={(event) =>
-                          setTargetClassId(event.target.value)
-                        }
-                      >
-                        <option value="">Selectionner</option>
-                        {classrooms.map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.name} ({entry.schoolYear.label})
-                          </option>
-                        ))}
-                      </FormSelect>
+                        onChange={setTargetClassId}
+                        placeholder="Selectionner"
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        ariaLabel="Nouvelle classe"
+                        data-testid="eleves-target-class-select"
+                        options={classrooms.map((entry) => ({
+                          value: entry.id,
+                          label: `${entry.name} (${entry.schoolYear.label})`,
+                        }))}
+                      />
                     </label>
                     <label className="grid gap-1 text-sm">
                       <span className="text-text-secondary">Statut</span>
-                      <FormSelect
+                      <SearchableSelect
                         value={targetStatus}
-                        onChange={(event) =>
+                        onChange={(value) =>
                           setTargetStatus(
-                            event.target.value as
+                            value as
                               | "ACTIVE"
                               | "TRANSFERRED"
                               | "WITHDRAWN"
                               | "GRADUATED",
                           )
                         }
-                      >
-                        <option value="ACTIVE">ACTIVE</option>
-                        <option value="TRANSFERRED">TRANSFERRED</option>
-                        <option value="WITHDRAWN">WITHDRAWN</option>
-                        <option value="GRADUATED">GRADUATED</option>
-                      </FormSelect>
+                        ariaLabel="Statut"
+                        data-testid="eleves-target-status-select"
+                        options={[
+                          { value: "ACTIVE", label: "ACTIVE" },
+                          { value: "TRANSFERRED", label: "TRANSFERRED" },
+                          { value: "WITHDRAWN", label: "WITHDRAWN" },
+                          { value: "GRADUATED", label: "GRADUATED" },
+                        ]}
+                      />
                     </label>
                     <div className="self-end">
                       <Button
@@ -2248,28 +2274,33 @@ export default function ElevesPage() {
                               {enrollment.class.name}
                             </td>
                             <td className="px-3 py-2">
-                              <FormSelect
+                              <SearchableSelect
                                 value={
                                   statusDraftByEnrollmentId[enrollment.id] ??
                                   enrollment.status
                                 }
-                                onChange={(event) =>
+                                onChange={(value) =>
                                   setStatusDraftByEnrollmentId((current) => ({
                                     ...current,
-                                    [enrollment.id]: event.target.value as
+                                    [enrollment.id]: value as
                                       | "ACTIVE"
                                       | "TRANSFERRED"
                                       | "WITHDRAWN"
                                       | "GRADUATED",
                                   }))
                                 }
-                                className="px-2 py-1"
-                              >
-                                <option value="ACTIVE">ACTIVE</option>
-                                <option value="TRANSFERRED">TRANSFERRED</option>
-                                <option value="WITHDRAWN">WITHDRAWN</option>
-                                <option value="GRADUATED">GRADUATED</option>
-                              </FormSelect>
+                                ariaLabel="Statut"
+                                data-testid={`eleves-enrollment-status-select-${enrollment.id}`}
+                                options={[
+                                  { value: "ACTIVE", label: "ACTIVE" },
+                                  {
+                                    value: "TRANSFERRED",
+                                    label: "TRANSFERRED",
+                                  },
+                                  { value: "WITHDRAWN", label: "WITHDRAWN" },
+                                  { value: "GRADUATED", label: "GRADUATED" },
+                                ]}
+                              />
                             </td>
                             <td className="px-3 py-2">
                               {enrollment.isCurrent ? "Oui" : "Non"}

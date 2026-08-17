@@ -3,18 +3,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { AppShell } from "../../components/layout/app-shell";
 import { createSchoolMessage } from "../../components/messaging/messaging-api";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
-import {
-  FormSelect,
-  FormTextarea,
-  FormTextInput,
-} from "../../components/ui/form-controls";
+import { FormTextarea, FormTextInput } from "../../components/ui/form-controls";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { DateInput } from "../../components/ui/date-input";
 import { FormField } from "../../components/ui/form-field";
 
@@ -572,21 +569,18 @@ function CampaignsTab() {
           data-testid="admin-tests-search"
           className="max-w-xs"
         />
-        <FormSelect
+        <SearchableSelect
+          ariaLabel="Filtrer par statut"
           value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(e.target.value as CampaignStatus | "")
-          }
+          onChange={(value) => setStatusFilter(value as CampaignStatus | "")}
           data-testid="admin-tests-status-filter"
           className="max-w-[180px]"
-        >
-          <option value="">Tous statuts</option>
-          {CAMPAIGN_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {statusLabel(s)}
-            </option>
-          ))}
-        </FormSelect>
+          placeholder="Tous statuts"
+          options={CAMPAIGN_STATUSES.map((s) => ({
+            value: s,
+            label: statusLabel(s),
+          }))}
+        />
         <Button
           type="button"
           onClick={openCreateCampaign}
@@ -696,6 +690,7 @@ function CampaignFormCard({
 }) {
   const {
     register,
+    control,
     formState: { errors, isValid },
   } = form;
 
@@ -734,13 +729,22 @@ function CampaignFormCard({
           </FormField>
         </div>
         <FormField label="Statut" error={errors.status?.message}>
-          <FormSelect {...register("status")} invalid={!!errors.status}>
-            {CAMPAIGN_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {statusLabel(s)}
-              </option>
-            ))}
-          </FormSelect>
+          <Controller
+            control={control}
+            name="status"
+            render={({ field }) => (
+              <SearchableSelect
+                ariaLabel="Statut"
+                invalid={!!errors.status}
+                value={field.value}
+                onChange={field.onChange}
+                options={CAMPAIGN_STATUSES.map((s) => ({
+                  value: s,
+                  label: statusLabel(s),
+                }))}
+              />
+            )}
+          />
         </FormField>
         {error && (
           <p className="text-sm text-destructive" role="alert">
@@ -1005,18 +1009,22 @@ function CampaignDetail({
                 label="Testeur *"
                 error={assignForm.formState.errors.testerId?.message}
               >
-                <FormSelect
-                  {...assignForm.register("testerId")}
+                <SearchableSelect
+                  ariaLabel="Testeur"
                   invalid={!!assignForm.formState.errors.testerId}
                   data-testid="assign-tester-select"
-                >
-                  <option value="">Choisir…</option>
-                  {testers.map((tester) => (
-                    <option key={tester.id} value={tester.id}>
-                      {tester.fullName}
-                    </option>
-                  ))}
-                </FormSelect>
+                  value={assignForm.watch("testerId") ?? ""}
+                  onChange={(value) =>
+                    assignForm.setValue("testerId", value, {
+                      shouldValidate: true,
+                    })
+                  }
+                  placeholder="Choisir…"
+                  options={testers.map((tester) => ({
+                    value: tester.id,
+                    label: tester.fullName,
+                  }))}
+                />
               </FormField>
               <FormField
                 label="Note"
@@ -1165,13 +1173,19 @@ function CampaignDetail({
                   label="Priorité"
                   error={caseForm.formState.errors.priority?.message}
                 >
-                  <FormSelect {...caseForm.register("priority")}>
-                    {PRIORITIES.map((p) => (
-                      <option key={p} value={p}>
-                        {priorityLabel(p)}
-                      </option>
-                    ))}
-                  </FormSelect>
+                  <SearchableSelect
+                    ariaLabel="Priorité"
+                    value={caseForm.watch("priority") ?? ""}
+                    onChange={(value) =>
+                      caseForm.setValue("priority", value as CasePriority, {
+                        shouldValidate: true,
+                      })
+                    }
+                    options={PRIORITIES.map((p) => ({
+                      value: p,
+                      label: priorityLabel(p),
+                    }))}
+                  />
                 </FormField>
                 <FormField
                   label="Échéance"
@@ -1566,69 +1580,64 @@ function ExecutionsTab({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <FormSelect
+        <SearchableSelect
+          ariaLabel="Filtrer par statut"
           value={filter.status}
-          onChange={(e) =>
+          onChange={(value) =>
             onFilterChange({
               ...filter,
-              status: e.target.value as ExecutionStatus | "",
+              status: value as ExecutionStatus | "",
             })
           }
           data-testid="executions-status-filter"
           className="max-w-[180px]"
-        >
-          <option value="">Tous statuts</option>
-          {EXECUTION_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {executionStatusLabel(s)}
-            </option>
-          ))}
-        </FormSelect>
-        <FormSelect
+          placeholder="Tous statuts"
+          options={EXECUTION_STATUSES.map((s) => ({
+            value: s,
+            label: executionStatusLabel(s),
+          }))}
+        />
+        <SearchableSelect
+          ariaLabel="Filtrer par campagne"
           value={filter.campaignId}
-          onChange={(e) =>
-            onFilterChange({ ...filter, campaignId: e.target.value })
-          }
+          onChange={(value) => onFilterChange({ ...filter, campaignId: value })}
           data-testid="executions-campaign-filter"
           className="max-w-[220px]"
-        >
-          <option value="">Toutes campagnes</option>
-          {campaigns.map((campaign) => (
-            <option key={campaign.id} value={campaign.id}>
-              {campaign.title}
-            </option>
-          ))}
-        </FormSelect>
-        <FormSelect
+          placeholder="Toutes campagnes"
+          options={campaigns.map((campaign) => ({
+            value: campaign.id,
+            label: campaign.title,
+          }))}
+        />
+        <SearchableSelect
+          ariaLabel="Filtrer par testeur"
           value={filter.testerId}
-          onChange={(e) =>
-            onFilterChange({ ...filter, testerId: e.target.value })
-          }
+          onChange={(value) => onFilterChange({ ...filter, testerId: value })}
           data-testid="executions-tester-filter"
           className="max-w-[200px]"
-        >
-          <option value="">Tous testeurs</option>
-          {testers.map((tester) => (
-            <option key={tester.id} value={tester.id}>
-              {tester.fullName}
-            </option>
-          ))}
-        </FormSelect>
-        <FormSelect
+          placeholder="Tous testeurs"
+          options={testers.map((tester) => ({
+            value: tester.id,
+            label: tester.fullName,
+          }))}
+        />
+        <SearchableSelect
+          ariaLabel="Filtrer par traitement"
           value={filter.reviewed}
-          onChange={(e) =>
+          onChange={(value) =>
             onFilterChange({
               ...filter,
-              reviewed: e.target.value as ExecutionsFilter["reviewed"],
+              reviewed: value as ExecutionsFilter["reviewed"],
             })
           }
           data-testid="executions-reviewed-filter"
           className="max-w-[160px]"
-        >
-          <option value="">Tous</option>
-          <option value="false">À traiter</option>
-          <option value="true">Traités</option>
-        </FormSelect>
+          placeholder="Tous"
+          options={[
+            { value: "false", label: "À traiter" },
+            { value: "true", label: "Traités" },
+          ]}
+        />
       </div>
 
       {loading ? (

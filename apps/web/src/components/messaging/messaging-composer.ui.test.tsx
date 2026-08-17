@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MessagingComposer } from "./messaging-composer";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 function setEditorText(container: HTMLElement, value: string) {
   const editor = container.querySelector(
@@ -15,18 +16,12 @@ function setEditorText(container: HTMLElement, value: string) {
   fireEvent.input(editor);
 }
 
-function getRecipientSelect(container: HTMLElement) {
-  const select = container.querySelector(
-    'select[class*="h-10"][class*="bg-surface"]',
-  ) as HTMLSelectElement | null;
-  if (!select) {
-    throw new Error("Recipient select not found");
-  }
-  return select;
+async function selectRecipient(label: string) {
+  await selectSearchableOption("Destinataire", label);
 }
 
 describe("MessagingComposer", () => {
-  it("keeps send button disabled while required fields are incomplete", () => {
+  it("keeps send button disabled while required fields are incomplete", async () => {
     const { container } = render(
       <MessagingComposer
         recipients={[
@@ -40,8 +35,7 @@ describe("MessagingComposer", () => {
     const sendButton = screen.getByRole("button", { name: "Envoyer" });
     expect(sendButton).toBeDisabled();
 
-    const recipientSelect = getRecipientSelect(container);
-    fireEvent.change(recipientSelect, { target: { value: "u-anne" } });
+    await selectRecipient("Anne Rousselet");
     expect(sendButton).toBeDisabled();
 
     fireEvent.change(screen.getByPlaceholderText("Objet du message"), {
@@ -63,9 +57,7 @@ describe("MessagingComposer", () => {
       />,
     );
 
-    fireEvent.change(getRecipientSelect(container), {
-      target: { value: "u-anne" },
-    });
+    await selectRecipient("Anne Rousselet");
     fireEvent.change(screen.getByPlaceholderText("Objet du message"), {
       target: { value: "Nouveau message test" },
     });
@@ -87,7 +79,7 @@ describe("MessagingComposer", () => {
   });
 
   it("prefills recipient and subject in reply mode inputs", () => {
-    const { container } = render(
+    render(
       <MessagingComposer
         recipients={[
           { value: "u-anne", label: "Anne Rousselet" },
@@ -99,14 +91,15 @@ describe("MessagingComposer", () => {
       />,
     );
 
-    const recipientSelect = getRecipientSelect(container);
-    expect(recipientSelect.value).toBe("u-anne");
+    expect(
+      screen.getByLabelText("Destinataire", { selector: "button" }),
+    ).toHaveTextContent("Anne Rousselet");
     expect(
       screen.getByDisplayValue("Re: Demande de suivi"),
     ).toBeInTheDocument();
   });
 
-  it("prefills forwarded body and allows send only after recipient selection", () => {
+  it("prefills forwarded body and allows send only after recipient selection", async () => {
     const { container } = render(
       <MessagingComposer
         recipients={[
@@ -127,9 +120,7 @@ describe("MessagingComposer", () => {
     const sendButton = screen.getByRole("button", { name: "Envoyer" });
     expect(sendButton).toBeDisabled();
 
-    fireEvent.change(getRecipientSelect(container), {
-      target: { value: "u-pierre" },
-    });
+    await selectRecipient("Pierre W");
     setEditorText(container, "Corps transfere");
 
     expect(sendButton).toBeEnabled();
@@ -145,9 +136,7 @@ describe("MessagingComposer", () => {
       />,
     );
 
-    fireEvent.change(getRecipientSelect(container), {
-      target: { value: "u-anne" },
-    });
+    await selectRecipient("Anne Rousselet");
     fireEvent.change(screen.getByPlaceholderText("Objet du message"), {
       target: { value: "Brouillon" },
     });

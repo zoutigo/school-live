@@ -31,6 +31,7 @@ import type {
   AuthResponse,
   JwtPayload,
 } from "./auth.types.js";
+import { resolveActiveRole } from "./resolve-active-role.util.js";
 
 type AuthRequestContext = {
   ipAddress?: string | null;
@@ -3761,7 +3762,7 @@ export class AuthService {
       (assignment) => assignment.role,
     );
     const schoolRoles = user.memberships.map((membership) => membership.role);
-    const activeRole = this.resolveActiveRole(
+    const activeRole = resolveActiveRole(
       user.activeRole,
       platformRoles,
       schoolRoles,
@@ -3990,7 +3991,7 @@ export class AuthService {
       (assignment) => assignment.role,
     );
     const schoolRoles = user.memberships.map((membership) => membership.role);
-    const activeRole = this.resolveActiveRole(
+    const activeRole = resolveActiveRole(
       user.activeRole,
       platformRoles,
       schoolRoles,
@@ -4109,7 +4110,7 @@ export class AuthService {
       (assignment) => assignment.role,
     );
     const schoolRoles = user.memberships.map((membership) => membership.role);
-    const activeRole = this.resolveActiveRole(role, platformRoles, schoolRoles);
+    const activeRole = resolveActiveRole(role, platformRoles, schoolRoles);
 
     if (!activeRole) {
       throw new ForbiddenException("Role is not assigned to this user");
@@ -4120,7 +4121,7 @@ export class AuthService {
       data: { activeRole },
     });
 
-    return { activeRole };
+    return this.getGlobalMe(userId);
   }
 
   async updatePersonalProfile(
@@ -4366,59 +4367,6 @@ export class AuthService {
       return `${compact.slice(0, 2)}***${compact.slice(-2)}`;
     }
     return `${compact.slice(0, 4)}***${compact.slice(-3)}`;
-  }
-
-  private getPrimaryRole(
-    platformRoles: PlatformRole[],
-    schoolRoles: SchoolRole[],
-  ): PlatformRole | SchoolRole | null {
-    const platformPriority: PlatformRole[] = [
-      "SUPER_ADMIN",
-      "ADMIN",
-      "SALES",
-      "SUPPORT",
-    ];
-    for (const role of platformPriority) {
-      if (platformRoles.includes(role)) {
-        return role;
-      }
-    }
-
-    const schoolPriority: SchoolRole[] = [
-      "SCHOOL_ADMIN",
-      "SCHOOL_MANAGER",
-      "SUPERVISOR",
-      "SCHOOL_ACCOUNTANT",
-      "SCHOOL_STAFF",
-      "SCHOOL_HEALTH_OFFICER",
-      "TEACHER",
-      "PARENT",
-      "STUDENT",
-    ];
-    for (const role of schoolPriority) {
-      if (schoolRoles.includes(role)) {
-        return role;
-      }
-    }
-
-    return null;
-  }
-
-  private resolveActiveRole(
-    preferredRole: AppRole | null,
-    platformRoles: PlatformRole[],
-    schoolRoles: SchoolRole[],
-  ): AppRole | null {
-    const allowedRoles = new Set<AppRole>([
-      ...platformRoles,
-      ...schoolRoles,
-    ] as AppRole[]);
-
-    if (preferredRole && allowedRoles.has(preferredRole)) {
-      return preferredRole;
-    }
-
-    return this.getPrimaryRole(platformRoles, schoolRoles);
   }
 
   private resolveDefaultSchoolSlug(user: {

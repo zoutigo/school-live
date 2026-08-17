@@ -12,7 +12,7 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChildModulePage } from "../family/child-module-page";
 import { Card } from "../ui/card";
-import { FormSelect } from "../ui/form-controls";
+import { SearchableSelect } from "../ui/searchable-select";
 import { STUDENT_NOTES_DEMO_DATA } from "./student-notes-demo-data";
 import { SubjectReportCard } from "./subject-report-card";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
@@ -1679,21 +1679,19 @@ export function StudentNotesPage({ schoolSlug, childId }: Props) {
                   <span className="sr-only">
                     {t("notes.student.page.chooseTerm")}
                   </span>
-                  <FormSelect
+                  <SearchableSelect
                     data-testid="notes-term-select-mobile"
-                    aria-label={t("notes.student.page.chooseTerm")}
+                    ariaLabel={t("notes.student.page.chooseTerm")}
                     value={selectedTerm}
-                    onChange={(event) =>
-                      setSelectedTerm(event.target.value as StudentNotesTerm)
+                    onChange={(value) =>
+                      setSelectedTerm(value as StudentNotesTerm)
                     }
                     className="min-w-[132px] bg-surface px-3 py-2 text-xs font-semibold"
-                  >
-                    {snapshots.map((term) => (
-                      <option key={term.term} value={term.term}>
-                        {term.label}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    options={snapshots.map((term) => ({
+                      value: term.term,
+                      label: term.label,
+                    }))}
+                  />
                 </label>
               </div>
             </div>

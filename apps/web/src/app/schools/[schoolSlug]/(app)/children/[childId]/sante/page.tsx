@@ -27,7 +27,6 @@ import { Card } from "../../../../../../../components/ui/card";
 import { Button } from "../../../../../../../components/ui/button";
 import {
   FormCheckbox,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
   FormTextarea,
@@ -35,6 +34,7 @@ import {
 import { FormField } from "../../../../../../../components/ui/form-field";
 import { SubmitButton } from "../../../../../../../components/ui/form-buttons";
 import { PaginationControls } from "../../../../../../../components/ui/pagination-controls";
+import { SearchableSelect } from "../../../../../../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../../../../../../lib/auth-cookies";
 import {
   useTranslation,
@@ -878,55 +878,59 @@ function ConditionsListPanel(props: {
           data-testid="sante-conditions-filter-panel"
         >
           <FormField label={t("health.parent.filters.typeLabel")}>
-            <FormSelect
+            <SearchableSelect
               value={props.typeFilter}
-              onChange={(event) =>
-                props.setTypeFilter(event.target.value as ConditionType | "")
+              onChange={(value) =>
+                props.setTypeFilter(value as ConditionType | "")
               }
+              ariaLabel={t("health.parent.filters.typeLabel")}
               data-testid="sante-conditions-filter-type"
-            >
-              <option value="">{t("health.parent.filters.allTypes")}</option>
-              {CONDITION_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {conditionTypeLabel(t, type)}
-                </option>
-              ))}
-            </FormSelect>
+              options={[
+                { value: "", label: t("health.parent.filters.allTypes") },
+                ...CONDITION_TYPES.map((type) => ({
+                  value: type,
+                  label: conditionTypeLabel(t, type),
+                })),
+              ]}
+            />
           </FormField>
           <FormField label={t("health.parent.filters.alertLevelLabel")}>
-            <FormSelect
+            <SearchableSelect
               value={props.alertFilter}
-              onChange={(event) =>
-                props.setAlertFilter(event.target.value as AlertLevel | "")
+              onChange={(value) =>
+                props.setAlertFilter(value as AlertLevel | "")
               }
+              ariaLabel={t("health.parent.filters.alertLevelLabel")}
               data-testid="sante-conditions-filter-alertLevel"
-            >
-              <option value="">{t("health.parent.filters.allLevels")}</option>
-              {ALERT_LEVELS.map((level) => (
-                <option key={level} value={level}>
-                  {alertLevelLabel(t, level)}
-                </option>
-              ))}
-            </FormSelect>
+              options={[
+                { value: "", label: t("health.parent.filters.allLevels") },
+                ...ALERT_LEVELS.map((level) => ({
+                  value: level,
+                  label: alertLevelLabel(t, level),
+                })),
+              ]}
+            />
           </FormField>
           <FormField label={t("health.parent.filters.statusLabel")}>
-            <FormSelect
+            <SearchableSelect
               value={props.activeFilter}
-              onChange={(event) =>
-                props.setActiveFilter(
-                  event.target.value as "" | "true" | "false",
-                )
+              onChange={(value) =>
+                props.setActiveFilter(value as "" | "true" | "false")
               }
+              ariaLabel={t("health.parent.filters.statusLabel")}
               data-testid="sante-conditions-filter-status"
-            >
-              <option value="">{t("health.parent.filters.status.all")}</option>
-              <option value="true">
-                {t("health.parent.filters.status.active")}
-              </option>
-              <option value="false">
-                {t("health.parent.filters.status.inactive")}
-              </option>
-            </FormSelect>
+              options={[
+                { value: "", label: t("health.parent.filters.status.all") },
+                {
+                  value: "true",
+                  label: t("health.parent.filters.status.active"),
+                },
+                {
+                  value: "false",
+                  label: t("health.parent.filters.status.inactive"),
+                },
+              ]}
+            />
           </FormField>
           <button
             type="button"
@@ -1019,46 +1023,46 @@ function ConditionFormPanel(props: {
         label={t("health.form.conditionType")}
         htmlFor="health-condition-type"
       >
-        <FormSelect
+        <SearchableSelect
           id="health-condition-type"
-          value={props.values.type}
-          onChange={(event) =>
-            form.setValue("type", event.target.value as ConditionType, {
+          ariaLabel={t("health.form.conditionType")}
+          value={props.values.type ?? ""}
+          onChange={(value) =>
+            form.setValue("type", value as ConditionType, {
               shouldDirty: true,
               shouldTouch: true,
               shouldValidate: true,
             })
           }
-        >
-          {CONDITION_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {conditionTypeLabel(t, type)}
-            </option>
-          ))}
-        </FormSelect>
+          data-testid="condition-form-type"
+          options={CONDITION_TYPES.map((type) => ({
+            value: type,
+            label: conditionTypeLabel(t, type),
+          }))}
+        />
       </FormField>
 
       <FormField
         label={t("health.form.alertLevel")}
         htmlFor="health-condition-alert"
       >
-        <FormSelect
+        <SearchableSelect
           id="health-condition-alert"
-          value={props.values.alertLevel}
-          onChange={(event) =>
-            form.setValue("alertLevel", event.target.value as AlertLevel, {
+          ariaLabel={t("health.form.alertLevel")}
+          value={props.values.alertLevel ?? ""}
+          onChange={(value) =>
+            form.setValue("alertLevel", value as AlertLevel, {
               shouldDirty: true,
               shouldTouch: true,
               shouldValidate: true,
             })
           }
-        >
-          {ALERT_LEVELS.map((level) => (
-            <option key={level} value={level}>
-              {alertLevelLabel(t, level)}
-            </option>
-          ))}
-        </FormSelect>
+          data-testid="condition-form-alert"
+          options={ALERT_LEVELS.map((level) => ({
+            value: level,
+            label: alertLevelLabel(t, level),
+          }))}
+        />
       </FormField>
 
       <FormField
@@ -1274,55 +1278,62 @@ function HistoryListPanel(props: {
           data-testid="sante-history-filter-panel"
         >
           <FormField label={t("health.parent.filters.alertLevelLabel")}>
-            <FormSelect
+            <SearchableSelect
               value={props.alertFilter}
-              onChange={(event) =>
-                props.setAlertFilter(event.target.value as AlertLevel | "")
+              onChange={(value) =>
+                props.setAlertFilter(value as AlertLevel | "")
               }
+              ariaLabel={t("health.parent.filters.alertLevelLabel")}
               data-testid="sante-history-filter-alertLevel"
-            >
-              <option value="">{t("health.parent.filters.allLevels")}</option>
-              {ALERT_LEVELS.map((level) => (
-                <option key={level} value={level}>
-                  {alertLevelLabel(t, level)}
-                </option>
-              ))}
-            </FormSelect>
+              options={[
+                { value: "", label: t("health.parent.filters.allLevels") },
+                ...ALERT_LEVELS.map((level) => ({
+                  value: level,
+                  label: alertLevelLabel(t, level),
+                })),
+              ]}
+            />
           </FormField>
           <FormField label={t("health.parent.filters.originLabel")}>
-            <FormSelect
+            <SearchableSelect
               value={props.originFilter}
-              onChange={(event) =>
-                props.setOriginFilter(event.target.value as HistoryOrigin | "")
+              onChange={(value) =>
+                props.setOriginFilter(value as HistoryOrigin | "")
               }
+              ariaLabel={t("health.parent.filters.originLabel")}
               data-testid="sante-history-filter-origin"
-            >
-              <option value="">{t("health.parent.filters.allOrigins")}</option>
-              <option value="CARE_EVENT">
-                {t("health.parent.filters.originSchool")}
-              </option>
-              <option value="REPORT">
-                {t("health.parent.filters.originParent")}
-              </option>
-            </FormSelect>
+              options={[
+                { value: "", label: t("health.parent.filters.allOrigins") },
+                {
+                  value: "CARE_EVENT",
+                  label: t("health.parent.filters.originSchool"),
+                },
+                {
+                  value: "REPORT",
+                  label: t("health.parent.filters.originParent"),
+                },
+              ]}
+            />
           </FormField>
           <FormField label={t("health.parent.filters.reportTypeLabel")}>
-            <FormSelect
+            <SearchableSelect
               value={props.reportTypeFilter}
-              onChange={(event) =>
-                props.setReportTypeFilter(event.target.value as ReportType | "")
+              onChange={(value) =>
+                props.setReportTypeFilter(value as ReportType | "")
               }
+              ariaLabel={t("health.parent.filters.reportTypeLabel")}
               data-testid="sante-history-filter-reportType"
-            >
-              <option value="">
-                {t("health.parent.filters.allReportTypes")}
-              </option>
-              {REPORT_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {reportTypeLabel(t, type)}
-                </option>
-              ))}
-            </FormSelect>
+              options={[
+                {
+                  value: "",
+                  label: t("health.parent.filters.allReportTypes"),
+                },
+                ...REPORT_TYPES.map((type) => ({
+                  value: type,
+                  label: reportTypeLabel(t, type),
+                })),
+              ]}
+            />
           </FormField>
           <button
             type="button"
@@ -1413,46 +1424,46 @@ function ReportFormPanel(props: {
         label={t("health.form.reportType")}
         htmlFor="health-report-type"
       >
-        <FormSelect
+        <SearchableSelect
           id="health-report-type"
-          value={props.values.type}
-          onChange={(event) =>
-            form.setValue("type", event.target.value as ReportType, {
+          ariaLabel={t("health.form.reportType")}
+          value={props.values.type ?? ""}
+          onChange={(value) =>
+            form.setValue("type", value as ReportType, {
               shouldDirty: true,
               shouldTouch: true,
               shouldValidate: true,
             })
           }
-        >
-          {REPORT_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {reportTypeLabel(t, type)}
-            </option>
-          ))}
-        </FormSelect>
+          data-testid="report-form-type"
+          options={REPORT_TYPES.map((type) => ({
+            value: type,
+            label: reportTypeLabel(t, type),
+          }))}
+        />
       </FormField>
 
       <FormField
         label={t("health.form.alertLevel")}
         htmlFor="health-report-alert"
       >
-        <FormSelect
+        <SearchableSelect
           id="health-report-alert"
-          value={props.values.alertLevel}
-          onChange={(event) =>
-            form.setValue("alertLevel", event.target.value as AlertLevel, {
+          ariaLabel={t("health.form.alertLevel")}
+          value={props.values.alertLevel ?? ""}
+          onChange={(value) =>
+            form.setValue("alertLevel", value as AlertLevel, {
               shouldDirty: true,
               shouldTouch: true,
               shouldValidate: true,
             })
           }
-        >
-          {ALERT_LEVELS.map((level) => (
-            <option key={level} value={level}>
-              {alertLevelLabel(t, level)}
-            </option>
-          ))}
-        </FormSelect>
+          data-testid="report-form-alert"
+          options={ALERT_LEVELS.map((level) => ({
+            value: level,
+            label: alertLevelLabel(t, level),
+          }))}
+        />
       </FormField>
 
       <FormField

@@ -19,12 +19,12 @@ import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog
 import { DateInput } from "../../../../../../../components/ui/date-input";
 import {
   FormColorInput,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../../../../../../components/ui/form-controls";
 import { FormField } from "../../../../../../../components/ui/form-field";
 import { ModuleHelpTab } from "../../../../../../../components/ui/module-help-tab";
+import { SearchableSelect } from "../../../../../../../components/ui/searchable-select";
 import { TimeInput } from "../../../../../../../components/ui/time-input";
 import {
   TimetableViews,
@@ -2201,24 +2201,24 @@ export default function TeacherClassAgendaPage() {
                           htmlFor="slot-weekday"
                           error={slotForm.formState.errors.weekday?.message}
                         >
-                          <FormSelect
+                          <SearchableSelect
                             id="slot-weekday"
+                            ariaLabel={t("timetable.agenda.slotForm.weekday")}
                             invalid={slotWeekdayInvalid}
                             value={slotValues.weekday}
-                            onChange={(event) =>
-                              slotForm.setValue("weekday", event.target.value, {
+                            onChange={(value) =>
+                              slotForm.setValue("weekday", value, {
                                 shouldDirty: true,
                                 shouldTouch: true,
                                 shouldValidate: true,
                               })
                             }
-                          >
-                            {WEEKDAY_OPTIONS.map((weekday) => (
-                              <option key={weekday.value} value={weekday.value}>
-                                {weekday.label}
-                              </option>
-                            ))}
-                          </FormSelect>
+                            data-testid="slot-weekday-select"
+                            options={WEEKDAY_OPTIONS.map((weekday) => ({
+                              value: String(weekday.value),
+                              label: weekday.label,
+                            }))}
+                          />
                         </FormField>
 
                         <FormField
@@ -2262,35 +2262,31 @@ export default function TeacherClassAgendaPage() {
                           htmlFor="slot-subject"
                           error={slotForm.formState.errors.subjectId?.message}
                         >
-                          <FormSelect
+                          <SearchableSelect
                             id="slot-subject"
+                            ariaLabel={t("timetable.agenda.slotForm.subject")}
                             invalid={slotSubjectInvalid}
                             value={slotValues.subjectId}
-                            onChange={(event) =>
-                              slotForm.setValue(
-                                "subjectId",
-                                event.target.value,
-                                {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                  shouldValidate: true,
-                                },
-                              )
+                            onChange={(value) =>
+                              slotForm.setValue("subjectId", value, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              })
                             }
-                          >
-                            {context.allowedSubjects.length === 0 ? (
-                              <option value="">
-                                {t(
-                                  "timetable.agenda.slotForm.noSubjectsAvailable",
-                                )}
-                              </option>
-                            ) : null}
-                            {context.allowedSubjects.map((subject) => (
-                              <option key={subject.id} value={subject.id}>
-                                {subject.name}
-                              </option>
-                            ))}
-                          </FormSelect>
+                            placeholder={t(
+                              "timetable.agenda.slotForm.noSubjectsAvailable",
+                            )}
+                            searchPlaceholder={t(
+                              "settings.form.searchPlaceholder",
+                            )}
+                            noResultsLabel={t("settings.form.noResults")}
+                            data-testid="slot-subject-select"
+                            options={context.allowedSubjects.map((subject) => ({
+                              value: subject.id,
+                              label: subject.name,
+                            }))}
+                          />
                         </FormField>
 
                         <FormField
@@ -2300,67 +2296,72 @@ export default function TeacherClassAgendaPage() {
                             slotForm.formState.errors.teacherUserId?.message
                           }
                         >
-                          <FormSelect
+                          <SearchableSelect
                             id="slot-teacher"
+                            ariaLabel={t("timetable.agenda.slotForm.teacher")}
                             invalid={slotTeacherInvalid}
                             value={slotValues.teacherUserId}
-                            onChange={(event) =>
-                              slotForm.setValue(
-                                "teacherUserId",
-                                event.target.value,
-                                {
-                                  shouldDirty: true,
-                                  shouldTouch: true,
-                                  shouldValidate: true,
-                                },
-                              )
+                            onChange={(value) =>
+                              slotForm.setValue("teacherUserId", value, {
+                                shouldDirty: true,
+                                shouldTouch: true,
+                                shouldValidate: true,
+                              })
                             }
-                          >
-                            {teacherChoices.length === 0 ? (
-                              <option value="">
-                                {t(
-                                  "timetable.agenda.slotForm.noTeacherAssigned",
-                                )}
-                              </option>
-                            ) : null}
-                            {teacherChoices.map((teacher) => (
-                              <option key={teacher.id} value={teacher.id}>
-                                {teacher.label}
-                              </option>
-                            ))}
-                          </FormSelect>
+                            placeholder={t(
+                              "timetable.agenda.slotForm.noTeacherAssigned",
+                            )}
+                            searchPlaceholder={t(
+                              "settings.form.searchPlaceholder",
+                            )}
+                            noResultsLabel={t("settings.form.noResults")}
+                            data-testid="slot-teacher-select"
+                            options={teacherChoices.map((teacher) => ({
+                              value: teacher.id,
+                              label: teacher.label,
+                            }))}
+                          />
                         </FormField>
 
                         <FormField
                           label={t("timetable.agenda.slotForm.room")}
                           htmlFor="slot-room"
                         >
-                          <FormSelect
+                          <SearchableSelect
                             id="slot-room"
+                            ariaLabel={t("timetable.agenda.slotForm.room")}
                             value={slotValues.room}
-                            onChange={(event) =>
-                              slotForm.setValue("room", event.target.value, {
+                            onChange={(value) =>
+                              slotForm.setValue("room", value, {
                                 shouldDirty: true,
                                 shouldTouch: true,
                                 shouldValidate: true,
                               })
                             }
-                            className="text-sm"
-                          >
-                            <option value="">
-                              {t("timetable.agenda.slotForm.roomNone")}
-                            </option>
-                            {slotFormAvailableRooms
-                              .filter(
-                                (r) =>
-                                  r.isAvailable && r.status === "AVAILABLE",
-                              )
-                              .map((r) => (
-                                <option key={r.id} value={r.name}>
-                                  {r.name}
-                                </option>
-                              ))}
-                          </FormSelect>
+                            placeholder={t(
+                              "timetable.agenda.slotForm.roomNone",
+                            )}
+                            searchPlaceholder={t(
+                              "settings.form.searchPlaceholder",
+                            )}
+                            noResultsLabel={t("settings.form.noResults")}
+                            data-testid="slot-room-select"
+                            options={[
+                              {
+                                value: "",
+                                label: t("timetable.agenda.slotForm.roomNone"),
+                              },
+                              ...slotFormAvailableRooms
+                                .filter(
+                                  (r) =>
+                                    r.isAvailable && r.status === "AVAILABLE",
+                                )
+                                .map((r) => ({
+                                  value: r.name,
+                                  label: r.name,
+                                })),
+                            ]}
+                          />
                         </FormField>
 
                         <FormField
@@ -2607,17 +2608,15 @@ export default function TeacherClassAgendaPage() {
                         htmlFor="vacation-scope"
                         error={vacationForm.formState.errors.scope?.message}
                       >
-                        <FormSelect
+                        <SearchableSelect
                           id="vacation-scope"
+                          ariaLabel={t("timetable.agenda.vacations.scope")}
                           invalid={vacationScopeInvalid}
                           value={vacationForm.watch("scope")}
-                          onChange={(event) =>
+                          onChange={(value) =>
                             vacationForm.setValue(
                               "scope",
-                              event.target.value as
-                                | "SCHOOL"
-                                | "ACADEMIC_LEVEL"
-                                | "CLASS",
+                              value as "SCHOOL" | "ACADEMIC_LEVEL" | "CLASS",
                               {
                                 shouldDirty: true,
                                 shouldTouch: true,
@@ -2625,19 +2624,28 @@ export default function TeacherClassAgendaPage() {
                               },
                             )
                           }
-                        >
-                          <option value="CLASS">
-                            {t("timetable.agenda.scopeLabel.class")}
-                          </option>
-                          {context.class.academicLevelId ? (
-                            <option value="ACADEMIC_LEVEL">
-                              {t("timetable.agenda.scopeLabel.academicLevel")}
-                            </option>
-                          ) : null}
-                          <option value="SCHOOL">
-                            {t("timetable.agenda.scopeLabel.school")}
-                          </option>
-                        </FormSelect>
+                          data-testid="vacation-scope-select"
+                          options={[
+                            {
+                              value: "CLASS",
+                              label: t("timetable.agenda.scopeLabel.class"),
+                            },
+                            ...(context.class.academicLevelId
+                              ? [
+                                  {
+                                    value: "ACADEMIC_LEVEL",
+                                    label: t(
+                                      "timetable.agenda.scopeLabel.academicLevel",
+                                    ),
+                                  },
+                                ]
+                              : []),
+                            {
+                              value: "SCHOOL",
+                              label: t("timetable.agenda.scopeLabel.school"),
+                            },
+                          ]}
+                        />
                       </FormField>
 
                       <div className="hidden xl:block" />
@@ -3142,31 +3150,28 @@ export default function TeacherClassAgendaPage() {
                       htmlFor="occurrence-subject"
                       error={occurrenceForm.formState.errors.subjectId?.message}
                     >
-                      <FormSelect
+                      <SearchableSelect
                         id="occurrence-subject"
+                        ariaLabel={t("timetable.agenda.slotForm.subject")}
                         invalid={occurrenceSubjectInvalid}
                         value={occurrenceValues.subjectId}
-                        onChange={(event) =>
-                          occurrenceForm.setValue(
-                            "subjectId",
-                            event.target.value,
-                            {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            },
-                          )
+                        onChange={(value) =>
+                          occurrenceForm.setValue("subjectId", value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
                         }
-                      >
-                        {(context?.allowedSubjects ?? []).map((subject) => (
-                          <option
-                            key={`occ-subject-${subject.id}`}
-                            value={subject.id}
-                          >
-                            {subject.name}
-                          </option>
-                        ))}
-                      </FormSelect>
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        data-testid="occurrence-subject-select"
+                        options={(context?.allowedSubjects ?? []).map(
+                          (subject) => ({
+                            value: subject.id,
+                            label: subject.name,
+                          }),
+                        )}
+                      />
                     </FormField>
                     <FormField
                       label={t("timetable.agenda.slotForm.teacher")}
@@ -3175,62 +3180,61 @@ export default function TeacherClassAgendaPage() {
                         occurrenceForm.formState.errors.teacherUserId?.message
                       }
                     >
-                      <FormSelect
+                      <SearchableSelect
                         id="occurrence-teacher"
+                        ariaLabel={t("timetable.agenda.slotForm.teacher")}
                         invalid={occurrenceTeacherInvalid}
                         value={occurrenceValues.teacherUserId}
-                        onChange={(event) =>
-                          occurrenceForm.setValue(
-                            "teacherUserId",
-                            event.target.value,
-                            {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            },
-                          )
+                        onChange={(value) =>
+                          occurrenceForm.setValue("teacherUserId", value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
                         }
-                      >
-                        {occurrenceTeacherChoices.map((teacher) => (
-                          <option
-                            key={`occ-teacher-${teacher.id}`}
-                            value={teacher.id}
-                          >
-                            {teacher.label}
-                          </option>
-                        ))}
-                      </FormSelect>
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        data-testid="occurrence-teacher-select"
+                        options={occurrenceTeacherChoices.map((teacher) => ({
+                          value: teacher.id,
+                          label: teacher.label,
+                        }))}
+                      />
                     </FormField>
                     <FormField
                       label={t("timetable.agenda.slotForm.room")}
                       htmlFor="occurrence-room"
                       className="md:col-span-2"
                     >
-                      <FormSelect
+                      <SearchableSelect
                         id="occurrence-room"
+                        ariaLabel={t("timetable.agenda.slotForm.room")}
                         value={occurrenceValues.room}
-                        onChange={(event) =>
-                          occurrenceForm.setValue("room", event.target.value, {
+                        onChange={(value) =>
+                          occurrenceForm.setValue("room", value, {
                             shouldDirty: true,
                             shouldTouch: true,
                             shouldValidate: true,
                           })
                         }
-                        className="text-sm"
-                      >
-                        <option value="">
-                          {t("timetable.agenda.slotForm.roomNone")}
-                        </option>
-                        {occurrenceFormAvailableRooms
-                          .filter(
-                            (r) => r.isAvailable && r.status === "AVAILABLE",
-                          )
-                          .map((r) => (
-                            <option key={r.id} value={r.name}>
-                              {r.name}
-                            </option>
-                          ))}
-                      </FormSelect>
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        data-testid="occurrence-room-select"
+                        options={[
+                          {
+                            value: "",
+                            label: t("timetable.agenda.slotForm.roomNone"),
+                          },
+                          ...occurrenceFormAvailableRooms
+                            .filter(
+                              (r) => r.isAvailable && r.status === "AVAILABLE",
+                            )
+                            .map((r) => ({
+                              value: r.name,
+                              label: r.name,
+                            })),
+                        ]}
+                      />
                     </FormField>
                   </div>
                 ) : null}

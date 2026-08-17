@@ -5,6 +5,7 @@ import { useLocaleStore } from "../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../i18n/translations";
 import { AppHeader } from "./app-header";
 import { useAppShellUiStore } from "./app-shell-ui-store";
+import { usePageHelpStore } from "../../store/page-help";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -212,5 +213,57 @@ describe("AppHeader localization", () => {
     expect(
       screen.getByText("Platform administration dashboard"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("AppHeader help button", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+    useAppShellUiStore.getState().reset();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+    usePageHelpStore.setState({ entry: null, open: false });
+  });
+
+  it("n'affiche pas de bouton Aide quand aucune page n'en a enregistré", () => {
+    render(
+      <AppHeader
+        schoolName="college vogt"
+        isSchoolContext
+        role="PARENT"
+        userInitials="RN"
+        userDisplayName="Robert Ntamack"
+        onToggleMenu={vi.fn()}
+        onLogoutClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("header-help-button")).not.toBeInTheDocument();
+  });
+
+  it("affiche le bouton Aide en header, quelle que soit la taille d'écran, et ouvre la modale au clic", () => {
+    usePageHelpStore.setState({
+      entry: { title: "Emploi du temps", sections: [] },
+      open: false,
+    });
+
+    render(
+      <AppHeader
+        schoolName="college vogt"
+        isSchoolContext
+        role="PARENT"
+        userInitials="RN"
+        userDisplayName="Robert Ntamack"
+        onToggleMenu={vi.fn()}
+        onLogoutClick={vi.fn()}
+      />,
+    );
+
+    const helpButton = screen.getByTestId("header-help-button");
+    expect(helpButton).not.toHaveClass("md:hidden");
+    expect(helpButton.parentElement).not.toHaveClass("hidden");
+
+    fireEvent.click(helpButton);
+    expect(usePageHelpStore.getState().open).toBe(true);
   });
 });

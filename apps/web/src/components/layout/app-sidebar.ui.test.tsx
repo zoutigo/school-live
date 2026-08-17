@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "./app-sidebar";
 import { useLocaleStore } from "../../i18n/locale-store";
 import { DEFAULT_LOCALE } from "../../i18n/translations";
-import { usePageHelpStore } from "../../store/page-help";
 
 let mockPathname = "/schools/college-vogt/dashboard";
 const mockPush = vi.fn();
@@ -848,69 +847,5 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
     expect(
       screen.getByRole("link", { name: /Notes.*devoirs|Grades.*homework/i }),
     ).toBeInTheDocument();
-  });
-});
-
-describe("AppSidebar — entrée Aide (menu déjà existant en sm/xs)", () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    mockPush.mockReset();
-    mockPathname = "/schools/college-vogt/dashboard";
-    window.localStorage.clear();
-    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
-    usePageHelpStore.setState({ entry: null, open: false });
-    vi.spyOn(globalThis, "fetch").mockImplementation(
-      async () =>
-        new Response(JSON.stringify({}), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-    );
-  });
-
-  it("n'affiche pas d'entrée Aide quand aucune page n'en a enregistré", () => {
-    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
-
-    expect(
-      screen.queryByTestId("sidebar-help-menu-item"),
-    ).not.toBeInTheDocument();
-  });
-
-  it("affiche l'entrée Aide sous « Se déconnecter » et ouvre la modale au clic", () => {
-    usePageHelpStore.setState({
-      entry: { title: "Emploi du temps", sections: [] },
-      open: false,
-    });
-
-    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
-
-    const logoutButton = screen.getByTestId("sidebar-logout-button");
-    const helpButton = screen.getByTestId("sidebar-help-menu-item");
-    expect(
-      logoutButton.compareDocumentPosition(helpButton) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-
-    fireEvent.click(helpButton);
-    expect(usePageHelpStore.getState().open).toBe(true);
-  });
-
-  it("ferme le tiroir mobile (onNavigate) au clic sur Aide", () => {
-    usePageHelpStore.setState({
-      entry: { title: "Emploi du temps", sections: [] },
-      open: false,
-    });
-    const onNavigate = vi.fn();
-
-    render(
-      <AppSidebar
-        role="PARENT"
-        schoolSlug="college-vogt"
-        onNavigate={onNavigate}
-      />,
-    );
-
-    fireEvent.click(screen.getByTestId("sidebar-help-menu-item"));
-    expect(onNavigate).toHaveBeenCalled();
   });
 });

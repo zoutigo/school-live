@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { RotateCcw, Search } from "lucide-react";
 import { AppShell } from "../../components/layout/app-shell";
 import { Card } from "../../components/ui/card";
-import { FormSelect, FormTextInput } from "../../components/ui/form-controls";
+import { FormTextInput } from "../../components/ui/form-controls";
 import { PaginationControls } from "../../components/ui/pagination-controls";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { useTranslation } from "../../i18n/useTranslation";
 import { ResourceForm } from "../../components/resources/resource-form";
 import { ResourceContributionPanel } from "../../components/resources/resource-contribution-panel";
@@ -644,82 +645,73 @@ export default function ResourcesBrowsePage() {
                   />
                 </div>
 
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("resourcesBrowse.filters.allYears")}
                   value={academicYearLabel}
-                  onChange={(e) => setAcademicYearLabel(e.target.value)}
+                  onChange={setAcademicYearLabel}
+                  placeholder={t("resourcesBrowse.filters.allYears")}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
                   data-testid="resources-filter-academic-year"
-                >
-                  <option value="">
-                    {t("resourcesBrowse.filters.allYears")}
-                  </option>
-                  {academicYearValues().map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </FormSelect>
+                  options={academicYearValues().map((year) => ({
+                    value: year,
+                    label: year,
+                  }))}
+                />
 
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("resourcesBrowse.filters.allSchools")}
                   value={schoolId}
-                  onChange={(e) => setSchoolId(e.target.value)}
+                  onChange={setSchoolId}
+                  placeholder={t("resourcesBrowse.filters.allSchools")}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
                   data-testid="resources-filter-school"
-                >
-                  <option value="">
-                    {t("resourcesBrowse.filters.allSchools")}
-                  </option>
-                  {schools.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </FormSelect>
+                  options={schools.map((s) => ({
+                    value: s.id,
+                    label: s.name,
+                  }))}
+                />
 
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("resourcesBrowse.filters.allLevels")}
                   value={academicLevelId}
-                  onChange={(e) => setAcademicLevelId(e.target.value)}
+                  onChange={setAcademicLevelId}
+                  placeholder={t("resourcesBrowse.filters.allLevels")}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
                   data-testid="resources-filter-level"
-                >
-                  <option value="">
-                    {t("resourcesBrowse.filters.allLevels")}
-                  </option>
-                  {catalog.academicLevels.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.label}
-                    </option>
-                  ))}
-                </FormSelect>
+                  options={catalog.academicLevels.map((l) => ({
+                    value: l.id,
+                    label: l.label,
+                  }))}
+                />
 
                 {tab === "ASSESSMENT" ? (
-                  <FormSelect
+                  <SearchableSelect
+                    ariaLabel={t("resourcesBrowse.filters.allSequences")}
                     value={sequence}
-                    onChange={(e) => setSequence(e.target.value)}
+                    onChange={setSequence}
+                    placeholder={t("resourcesBrowse.filters.allSequences")}
                     data-testid="resources-filter-sequence"
-                  >
-                    <option value="">
-                      {t("resourcesBrowse.filters.allSequences")}
-                    </option>
-                    {SEQUENCE_VALUES.map((seq) => (
-                      <option key={seq} value={seq}>
-                        {t(`resources.sequence.${seq}`)}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    options={SEQUENCE_VALUES.map((seq) => ({
+                      value: seq,
+                      label: t(`resources.sequence.${seq}`),
+                    }))}
+                  />
                 ) : null}
 
-                <FormSelect
+                <SearchableSelect
+                  ariaLabel={t("resourcesBrowse.filters.allExamTypes")}
                   value={examType}
-                  onChange={(e) => setExamType(e.target.value)}
+                  onChange={setExamType}
+                  placeholder={t("resourcesBrowse.filters.allExamTypes")}
                   data-testid="resources-filter-exam-type"
-                >
-                  <option value="">
-                    {t("resourcesBrowse.filters.allExamTypes")}
-                  </option>
-                  {EXAM_TYPE_VALUES.map((type) => (
-                    <option key={type} value={type}>
-                      {t(`resources.examType.${type}`)}
-                    </option>
-                  ))}
-                </FormSelect>
+                  options={EXAM_TYPE_VALUES.map((type) => ({
+                    value: type,
+                    label: t(`resources.examType.${type}`),
+                  }))}
+                />
 
                 <button
                   type="button"

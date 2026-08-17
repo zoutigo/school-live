@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
-import { FormSelect } from "../../../../../components/ui/form-controls";
+import { SearchableSelect } from "../../../../../components/ui/searchable-select";
 import { ModuleHelpTab } from "../../../../../components/ui/module-help-tab";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 
@@ -257,21 +257,21 @@ export default function TeacherClassesPage() {
               <span className="text-text-secondary">
                 {t("mesClasses.schoolYear.label")}
               </span>
-              <FormSelect
+              <SearchableSelect
+                ariaLabel={t("mesClasses.schoolYear.label")}
                 value={schoolYearFilter}
-                onChange={(event) => setSchoolYearFilter(event.target.value)}
+                onChange={setSchoolYearFilter}
                 className="bg-surface"
-              >
-                <option value="">{t("mesClasses.schoolYear.all")}</option>
-                {(context?.schoolYears ?? []).map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.label}
-                    {entry.isActive
+                placeholder={t("mesClasses.schoolYear.all")}
+                options={(context?.schoolYears ?? []).map((entry) => ({
+                  value: entry.id,
+                  label: `${entry.label}${
+                    entry.isActive
                       ? ` ${t("mesClasses.schoolYear.active")}`
-                      : ""}
-                  </option>
-                ))}
-              </FormSelect>
+                      : ""
+                  }`,
+                }))}
+              />
             </label>
 
             {tab === "list" ? (
@@ -325,20 +325,17 @@ export default function TeacherClassesPage() {
                   <span className="text-text-secondary">
                     {t("mesClasses.view.selectLabel")}
                   </span>
-                  <FormSelect
+                  <SearchableSelect
+                    ariaLabel={t("mesClasses.view.selectLabel")}
                     value={selectedClassId}
-                    onChange={(event) => setSelectedClassId(event.target.value)}
+                    onChange={setSelectedClassId}
                     className="bg-surface"
-                  >
-                    <option value="">
-                      {t("mesClasses.view.selectPlaceholder")}
-                    </option>
-                    {classes.map((entry) => (
-                      <option key={entry.classId} value={entry.classId}>
-                        {entry.className} ({entry.schoolYearLabel})
-                      </option>
-                    ))}
-                  </FormSelect>
+                    placeholder={t("mesClasses.view.selectPlaceholder")}
+                    options={classes.map((entry) => ({
+                      value: entry.classId,
+                      label: `${entry.className} (${entry.schoolYearLabel})`,
+                    }))}
+                  />
                 </label>
 
                 {!selectedClass ? (

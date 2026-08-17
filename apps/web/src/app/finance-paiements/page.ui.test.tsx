@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import FinancePaiementsPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -100,9 +101,7 @@ async function selectStudentAndYear() {
   });
   fireEvent.click(screen.getByRole("button", { name: "Appliquer" }));
   fireEvent.click(await screen.findByText("Ntamack Remi"));
-  fireEvent.change(screen.getByLabelText("Annee scolaire (reinscription)"), {
-    target: { value: "sy-2026" },
-  });
+  await selectSearchableOption("Annee scolaire (reinscription)", "2026-2027");
 }
 
 describe("Finance paiements page", () => {

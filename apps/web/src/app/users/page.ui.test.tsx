@@ -107,12 +107,10 @@ describe("Users page create form", () => {
       target: { value: "Secret123" },
     });
 
-    const schoolSelect = await screen.findByRole("combobox", {
-      name: "Ecole assignee",
-    });
-    fireEvent.change(schoolSelect, {
-      target: { value: "college-vogt" },
-    });
+    fireEvent.click(await screen.findByLabelText("Ecole assignee"));
+    fireEvent.click(
+      await screen.findByRole("option", { name: /College Vogt/ }),
+    );
 
     await waitFor(() => {
       expect(submitButton).toBeEnabled();
@@ -245,11 +243,9 @@ describe("Users page create form", () => {
     fireEvent.change(screen.getByLabelText("Mot de passe provisoire"), {
       target: { value: "Secret123" },
     });
-    fireEvent.change(
-      await screen.findByRole("combobox", { name: "Ecole assignee" }),
-      {
-        target: { value: "college-vogt" },
-      },
+    fireEvent.click(await screen.findByLabelText("Ecole assignee"));
+    fireEvent.click(
+      await screen.findByRole("option", { name: /College Vogt/ }),
     );
 
     const submitButton = screen.getByRole("button", {

@@ -115,16 +115,13 @@ describe("Promotions page", () => {
     const fetchMock = mockFetchBase();
     render(<PromotionsPage />);
 
-    await screen.findByRole("option", { name: /CE1 A/ });
-    fireEvent.change(screen.getByLabelText("Classe (annee en cours)"), {
-      target: { value: "class-source" },
-    });
+    fireEvent.click(await screen.findByLabelText("Classe (annee en cours)"));
+    fireEvent.click(await screen.findByRole("option", { name: /CE1 A/ }));
 
     expect(await screen.findByText("Ntamack Remi")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Niveau cible"), {
-      target: { value: "level-ce2" },
-    });
+    fireEvent.click(screen.getByLabelText("Niveau cible"));
+    fireEvent.click(await screen.findByRole("option", { name: "CE2" }));
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
     await waitFor(() => {
@@ -152,16 +149,13 @@ describe("Promotions page", () => {
       await screen.findByRole("button", { name: "Attente d'affectation" }),
     );
 
-    await screen.findByRole("option", { name: "2026-2027" });
-    fireEvent.change(screen.getByLabelText("Annee scolaire cible"), {
-      target: { value: "sy-2026" },
-    });
+    fireEvent.click(await screen.findByLabelText("Annee scolaire cible"));
+    fireEvent.click(await screen.findByRole("option", { name: "2026-2027" }));
 
     expect(await screen.findByText("Ntamack Remi")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Classe definitive"), {
-      target: { value: "class-target" },
-    });
+    fireEvent.click(screen.getByLabelText("Classe definitive"));
+    fireEvent.click(await screen.findByRole("option", { name: "CE2 A" }));
     fireEvent.click(screen.getByRole("button", { name: "Affecter" }));
 
     await waitFor(() => {

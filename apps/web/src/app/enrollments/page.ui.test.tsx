@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import EnrollmentsPage from "./page";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
 const getCsrfTokenCookieMock = vi.fn(() => "csrf-token-test");
@@ -113,15 +114,10 @@ describe("Enrollments page forms", () => {
 
     render(<EnrollmentsPage />);
 
-    fireEvent.change(await screen.findByLabelText("Annee scolaire"), {
-      target: { value: "sy-1" },
-    });
-    fireEvent.change(screen.getByLabelText("Classe"), {
-      target: { value: "class-1" },
-    });
-    fireEvent.change(screen.getByLabelText("Statut"), {
-      target: { value: "WITHDRAWN" },
-    });
+    await screen.findByLabelText("Annee scolaire");
+    await selectSearchableOption("Annee scolaire", "2025-2026 (active)");
+    await selectSearchableOption("Classe", "6eC (2025-2026)");
+    await selectSearchableOption("Statut", "WITHDRAWN");
     fireEvent.change(screen.getByLabelText("Recherche eleve"), {
       target: { value: "Ntamack" },
     });
@@ -216,9 +212,7 @@ describe("Enrollments page forms", () => {
 
     await screen.findByText("Ntamack Remi");
     fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.change(screen.getByLabelText("Statut cible"), {
-      target: { value: "GRADUATED" },
-    });
+    await selectSearchableOption("Statut cible", "GRADUATED");
 
     await waitFor(() => {
       expect(
@@ -320,12 +314,11 @@ describe("Enrollments page forms", () => {
     render(<EnrollmentsPage />);
 
     await screen.findByText("Ntamack Remi");
-    const statusSelect = screen.getAllByDisplayValue(
-      "ACTIVE",
-    )[1] as HTMLSelectElement;
-    fireEvent.change(statusSelect, {
-      target: { value: "TRANSFERRED" },
-    });
+    const statusSelect = await screen.findByTestId(
+      "enrollments-row-status-select-enr-1",
+    );
+    fireEvent.click(statusSelect);
+    fireEvent.click(await screen.findByRole("option", { name: "TRANSFERRED" }));
     fireEvent.click(screen.getByRole("button", { name: "Maj" }));
 
     await waitFor(() => {
@@ -379,44 +372,33 @@ describe("Enrollments page forms", () => {
 
     render(<EnrollmentsPage />);
 
-    const schoolYearSelect = (await screen.findByLabelText(
-      "Annee scolaire",
-    )) as HTMLSelectElement;
+    await screen.findByLabelText("Annee scolaire");
+
+    fireEvent.click(screen.getByLabelText("Classe"));
+    expect(
+      await screen.findByRole("option", { name: "6eC (2025-2026)" }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    await selectSearchableOption("Annee scolaire", "2026-2027");
+
+    fireEvent.click(screen.getByLabelText("Classe"));
+    expect(
+      await screen.findByRole("option", { name: "5eA (2026-2027)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "6eC (2025-2026)" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "5eA (2026-2027)" }));
+
+    expect(screen.getByLabelText("Classe")).toHaveTextContent(
+      "5eA (2026-2027)",
+    );
+
+    await selectSearchableOption("Annee scolaire", "2025-2026 (active)");
 
     await waitFor(() => {
-      const classSelect = screen.getByLabelText("Classe") as HTMLSelectElement;
-      const option = Array.from(classSelect.options).find(
-        (entry) => entry.value === "class-1",
-      );
-      expect(option).toBeTruthy();
-    });
-
-    fireEvent.change(schoolYearSelect, {
-      target: { value: "sy-2" },
-    });
-
-    await waitFor(() => {
-      const classSelect = screen.getByLabelText("Classe") as HTMLSelectElement;
-      const option = Array.from(classSelect.options).find(
-        (entry) => entry.value === "class-2",
-      );
-      expect(option).toBeTruthy();
-    });
-
-    const classSelect = screen.getByLabelText("Classe") as HTMLSelectElement;
-    fireEvent.change(classSelect, {
-      target: { value: "class-2" },
-    });
-    await waitFor(() => {
-      expect(classSelect.value).toBe("class-2");
-    });
-
-    fireEvent.change(schoolYearSelect, {
-      target: { value: "sy-1" },
-    });
-
-    await waitFor(() => {
-      expect(classSelect.value).toBe("");
+      expect(screen.getByLabelText("Classe")).toHaveTextContent("Toutes");
     });
   });
 });

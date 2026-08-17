@@ -1,6 +1,13 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AssistanceFaqPanel } from "./assistance-faq-panel";
+import { selectSearchableOption } from "../../test/searchable-select";
 
 const { mockFaqsApi } = vi.hoisted(() => ({
   mockFaqsApi: {
@@ -151,6 +158,59 @@ describe("AssistanceFaqPanel", () => {
     expect(
       screen.getByTestId("assistance-faq-admin-forms"),
     ).toBeInTheDocument();
+  });
+
+  it("cree une FAQ avec l'audience et le statut choisis via les listes deroulantes", async () => {
+    mockFaqsApi.createGlobalFaq.mockResolvedValue({
+      id: "faq-2",
+      schoolId: null,
+      schoolName: null,
+      audience: "TEACHER",
+      title: "FAQ enseignants",
+      slug: "faq-enseignants",
+      description: "",
+      status: "PUBLISHED",
+      themeCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    render(<AssistanceFaqPanel />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("FAQ parent").length).toBeGreaterThanOrEqual(
+        1,
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Nouvelle FAQ" }));
+
+    const faqFormEl = screen
+      .getByRole("heading", { name: "FAQ Scolive" })
+      .closest("form") as HTMLElement;
+
+    fireEvent.change(within(faqFormEl).getByLabelText("Titre"), {
+      target: { value: "FAQ enseignants" },
+    });
+    await selectSearchableOption("Audience", "Teacher");
+    await selectSearchableOption("Statut FAQ", "Publié");
+
+    await waitFor(() =>
+      expect(
+        within(faqFormEl).getByRole("button", { name: "Créer" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(within(faqFormEl).getByRole("button", { name: "Créer" }));
+
+    await waitFor(() => {
+      expect(mockFaqsApi.createGlobalFaq).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "FAQ enseignants",
+          audience: "TEACHER",
+          status: "PUBLISHED",
+        }),
+      );
+    });
   });
 
   it("masque les formulaires admin sans role platform local", async () => {

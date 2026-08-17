@@ -10,7 +10,6 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import {
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
@@ -19,6 +18,7 @@ import { FormField } from "../../components/ui/form-field";
 import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PaginationControls } from "../../components/ui/pagination-controls";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -706,19 +706,19 @@ export default function RoomsPage() {
                 <span className="text-text-secondary">
                   {t("salles.schoolLabel")}
                 </span>
-                <FormSelect
+                <SearchableSelect
                   value={schoolSlug ?? ""}
-                  onChange={(event) =>
-                    setSchoolSlug(event.target.value || null)
-                  }
-                >
-                  <option value="">{t("salles.schoolPlaceholder")}</option>
-                  {schools.map((school) => (
-                    <option key={school.id} value={school.slug}>
-                      {school.name}
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={(value) => setSchoolSlug(value || null)}
+                  placeholder={t("salles.schoolPlaceholder")}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
+                  ariaLabel={t("salles.schoolLabel")}
+                  data-testid="salles-school-select"
+                  options={schools.map((school) => ({
+                    value: school.slug,
+                    label: school.name,
+                  }))}
+                />
               </label>
             ) : null}
           </div>
@@ -763,17 +763,18 @@ export default function RoomsPage() {
                   <span className="font-medium text-text-secondary">
                     {t("salles.calendar.roomLabel")}
                   </span>
-                  <FormSelect
-                    aria-label={t("salles.calendar.roomLabel")}
+                  <SearchableSelect
+                    ariaLabel={t("salles.calendar.roomLabel")}
                     value={calendarRoomId}
-                    onChange={(event) => setCalendarRoomId(event.target.value)}
-                  >
-                    {allRoomOptions.map((room) => (
-                      <option key={room.id} value={room.id}>
-                        {room.name}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    onChange={setCalendarRoomId}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="salles-calendar-room-select"
+                    options={allRoomOptions.map((room) => ({
+                      value: room.id,
+                      label: room.name,
+                    }))}
+                  />
                 </label>
                 <label className="grid gap-1 text-sm">
                   <span className="font-medium text-text-secondary">
@@ -917,32 +918,33 @@ export default function RoomsPage() {
                   label={t("salles.form.statusLabel")}
                   error={createForm.formState.errors.status?.message}
                 >
-                  <FormSelect
-                    aria-label={t("salles.form.statusLabel")}
+                  <SearchableSelect
+                    ariaLabel={t("salles.form.statusLabel")}
                     invalid={Boolean(createForm.formState.errors.status)}
                     value={createValues.status ?? "AVAILABLE"}
-                    onChange={(event) =>
-                      createForm.setValue(
-                        "status",
-                        event.target.value as RoomStatus,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      )
+                    onChange={(value) =>
+                      createForm.setValue("status", value as RoomStatus, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
                     }
-                  >
-                    <option value="AVAILABLE">
-                      {t("salles.status.AVAILABLE")}
-                    </option>
-                    <option value="UNAVAILABLE">
-                      {t("salles.status.UNAVAILABLE")}
-                    </option>
-                    <option value="MAINTENANCE">
-                      {t("salles.status.MAINTENANCE")}
-                    </option>
-                  </FormSelect>
+                    data-testid="salles-create-status-select"
+                    options={[
+                      {
+                        value: "AVAILABLE",
+                        label: t("salles.status.AVAILABLE"),
+                      },
+                      {
+                        value: "UNAVAILABLE",
+                        label: t("salles.status.UNAVAILABLE"),
+                      },
+                      {
+                        value: "MAINTENANCE",
+                        label: t("salles.status.MAINTENANCE"),
+                      },
+                    ]}
+                  />
                 </FormField>
 
                 <div className="md:col-span-5">
@@ -996,55 +998,61 @@ export default function RoomsPage() {
                     <span className="font-medium text-text-secondary">
                       {t("salles.filters.statusLabel")}
                     </span>
-                    <FormSelect
-                      aria-label={t("salles.filters.statusLabel")}
+                    <SearchableSelect
+                      ariaLabel={t("salles.filters.statusLabel")}
                       value={draftFilters.status ?? ""}
-                      onChange={(event) =>
+                      onChange={(value) =>
                         setDraftFilters((current) => ({
                           ...current,
-                          status: (event.target.value ||
-                            null) as RoomStatus | null,
+                          status: (value || null) as RoomStatus | null,
                         }))
                       }
                       data-testid="salles-filter-status"
-                    >
-                      <option value="">{t("salles.filters.allOption")}</option>
-                      <option value="AVAILABLE">
-                        {t("salles.status.AVAILABLE")}
-                      </option>
-                      <option value="UNAVAILABLE">
-                        {t("salles.status.UNAVAILABLE")}
-                      </option>
-                      <option value="MAINTENANCE">
-                        {t("salles.status.MAINTENANCE")}
-                      </option>
-                    </FormSelect>
+                      options={[
+                        { value: "", label: t("salles.filters.allOption") },
+                        {
+                          value: "AVAILABLE",
+                          label: t("salles.status.AVAILABLE"),
+                        },
+                        {
+                          value: "UNAVAILABLE",
+                          label: t("salles.status.UNAVAILABLE"),
+                        },
+                        {
+                          value: "MAINTENANCE",
+                          label: t("salles.status.MAINTENANCE"),
+                        },
+                      ]}
+                    />
                   </label>
 
                   <label className="grid gap-1 text-sm">
                     <span className="font-medium text-text-secondary">
                       {t("salles.filters.simultaneityLabel")}
                     </span>
-                    <FormSelect
-                      aria-label={t("salles.filters.simultaneityLabel")}
+                    <SearchableSelect
+                      ariaLabel={t("salles.filters.simultaneityLabel")}
                       value={draftFilters.simultaneity ?? ""}
-                      onChange={(event) =>
+                      onChange={(value) =>
                         setDraftFilters((current) => ({
                           ...current,
-                          simultaneity: (event.target.value ||
+                          simultaneity: (value ||
                             null) as RoomSimultaneity | null,
                         }))
                       }
                       data-testid="salles-filter-simultaneity"
-                    >
-                      <option value="">{t("salles.filters.allOption")}</option>
-                      <option value="SINGLE">
-                        {t("salles.filters.simultaneity.SINGLE")}
-                      </option>
-                      <option value="MULTIPLE">
-                        {t("salles.filters.simultaneity.MULTIPLE")}
-                      </option>
-                    </FormSelect>
+                      options={[
+                        { value: "", label: t("salles.filters.allOption") },
+                        {
+                          value: "SINGLE",
+                          label: t("salles.filters.simultaneity.SINGLE"),
+                        },
+                        {
+                          value: "MULTIPLE",
+                          label: t("salles.filters.simultaneity.MULTIPLE"),
+                        },
+                      ]}
+                    />
                   </label>
 
                   <div />
@@ -1325,16 +1333,16 @@ export default function RoomsPage() {
                                       editForm.formState.errors.status?.message
                                     }
                                   >
-                                    <FormSelect
-                                      aria-label={t("salles.form.statusLabel")}
+                                    <SearchableSelect
+                                      ariaLabel={t("salles.form.statusLabel")}
                                       invalid={Boolean(
                                         editForm.formState.errors.status,
                                       )}
                                       value={editValues.status ?? "AVAILABLE"}
-                                      onChange={(event) =>
+                                      onChange={(value) =>
                                         editForm.setValue(
                                           "status",
-                                          event.target.value as RoomStatus,
+                                          value as RoomStatus,
                                           {
                                             shouldDirty: true,
                                             shouldTouch: true,
@@ -1342,17 +1350,22 @@ export default function RoomsPage() {
                                           },
                                         )
                                       }
-                                    >
-                                      <option value="AVAILABLE">
-                                        {t("salles.status.AVAILABLE")}
-                                      </option>
-                                      <option value="UNAVAILABLE">
-                                        {t("salles.status.UNAVAILABLE")}
-                                      </option>
-                                      <option value="MAINTENANCE">
-                                        {t("salles.status.MAINTENANCE")}
-                                      </option>
-                                    </FormSelect>
+                                      data-testid="salles-edit-status-select"
+                                      options={[
+                                        {
+                                          value: "AVAILABLE",
+                                          label: t("salles.status.AVAILABLE"),
+                                        },
+                                        {
+                                          value: "UNAVAILABLE",
+                                          label: t("salles.status.UNAVAILABLE"),
+                                        },
+                                        {
+                                          value: "MAINTENANCE",
+                                          label: t("salles.status.MAINTENANCE"),
+                                        },
+                                      ]}
+                                    />
                                   </FormField>
                                   <div className="md:col-span-5">
                                     <FormSubmitHint

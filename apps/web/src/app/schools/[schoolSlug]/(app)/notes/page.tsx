@@ -4,10 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "../../../../../components/ui/card";
 import { Button } from "../../../../../components/ui/button";
-import {
-  FormSelect,
-  FormTextInput,
-} from "../../../../../components/ui/form-controls";
+import { FormTextInput } from "../../../../../components/ui/form-controls";
+import { SearchableSelect } from "../../../../../components/ui/searchable-select";
 import { TermView } from "../../../../../components/student-notes/student-notes-page";
 import { SchoolPeriodReports } from "../../../../../components/school-notes/school-period-reports";
 import type {
@@ -562,10 +560,10 @@ export default function NotesAdminEntryPage() {
               <span className="text-text-secondary">
                 {t("notes.adminEntry.levelLabel")}
               </span>
-              <FormSelect
+              <SearchableSelect
+                ariaLabel={t("notes.adminEntry.levelLabel")}
                 value={levelId}
-                onChange={(event) => {
-                  const nextLevelId = event.target.value;
+                onChange={(nextLevelId) => {
                   setLevelId(nextLevelId);
                   setClassId((current) => {
                     const stillValid = classrooms.find(
@@ -577,33 +575,28 @@ export default function NotesAdminEntryPage() {
                   });
                 }}
                 data-testid="notes-admin-entry-level"
-              >
-                <option value="">{t("notes.adminEntry.allLevels")}</option>
-                {levelOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </FormSelect>
+                placeholder={t("notes.adminEntry.allLevels")}
+                options={levelOptions.map((option) => ({
+                  value: option.id,
+                  label: option.label,
+                }))}
+              />
             </label>
             <label className="grid gap-1 text-sm">
               <span className="text-text-secondary">
                 {t("notes.adminEntry.classLabel")}
               </span>
-              <FormSelect
+              <SearchableSelect
+                ariaLabel={t("notes.adminEntry.classLabel")}
                 value={classId}
-                onChange={(event) => setClassId(event.target.value)}
+                onChange={setClassId}
                 data-testid="notes-admin-entry-class"
-              >
-                <option value="">
-                  {t("notes.adminEntry.classPlaceholder")}
-                </option>
-                {classOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </FormSelect>
+                placeholder={t("notes.adminEntry.classPlaceholder")}
+                options={classOptions.map((option) => ({
+                  value: option.id,
+                  label: option.name,
+                }))}
+              />
             </label>
             <div className="sm:col-span-2">
               <Button

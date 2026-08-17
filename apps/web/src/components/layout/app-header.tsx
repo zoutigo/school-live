@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Menu } from "lucide-react";
+import { HelpCircle, LogOut, Menu } from "lucide-react";
 import { Badge } from "../ui/badge";
 import type { Role } from "../../lib/role-view";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import { useAppShellUiStore } from "./app-shell-ui-store";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
 import { useOnboardingTourStore } from "../../store/onboarding-tour";
+import { usePageHelpStore } from "../../store/page-help";
+import { SIDEBAR_HELP_TOUR_TARGET } from "./app-sidebar";
 
 /**
  * Cible de tour spotlight stable pour le bouton menu mobile — partagée par
@@ -89,6 +91,8 @@ export function AppHeader({
 }: Props) {
   const router = useRouter();
   const { t } = useTranslation();
+  const pageHelpEntry = usePageHelpStore((state) => state.entry);
+  const openPageHelp = usePageHelpStore((state) => state.openHelp);
   const [menuHintActive, setMenuHintActive] = useState(false);
   const hasOpenedMobileMenu = useAppShellUiStore(
     (state) => state.hasOpenedMobileMenu,
@@ -172,74 +176,93 @@ export function AppHeader({
           )}
         </div>
 
-        <div className="hidden items-center gap-3 md:flex">
-          <div className="hidden text-right sm:block md:block">
-            <p className="text-sm font-semibold text-text-primary">
-              {userDisplayName}
-            </p>
-            <p className="text-xs text-text-secondary">{roleLabel(role, t)}</p>
+        <div className="flex items-center gap-3">
+          <div className="hidden items-center gap-3 md:flex">
+            <div className="hidden text-right sm:block md:block">
+              <p className="text-sm font-semibold text-text-primary">
+                {userDisplayName}
+              </p>
+              <p className="text-xs text-text-secondary">
+                {roleLabel(role, t)}
+              </p>
+            </div>
+
+            <button
+              aria-label={t("header.notifications")}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary shadow-sm transition-colors hover:bg-warm-highlight"
+              type="button"
+            >
+              🔔
+              <span className="absolute -right-1 -top-1">
+                <Badge variant="notification">2</Badge>
+              </span>
+            </button>
+
+            <button
+              aria-label={t("header.account")}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-semibold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]"
+              type="button"
+              onClick={() => router.push("/account")}
+            >
+              {userInitials}
+            </button>
+
+            <button
+              aria-label={t("header.logout")}
+              title={t("header.logout")}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary transition-colors hover:bg-warm-highlight"
+              type="button"
+              onClick={onLogoutClick}
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
 
-          <button
-            aria-label={t("header.notifications")}
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary shadow-sm transition-colors hover:bg-warm-highlight"
-            type="button"
-          >
-            🔔
-            <span className="absolute -right-1 -top-1">
-              <Badge variant="notification">2</Badge>
-            </span>
-          </button>
+          {pageHelpEntry ? (
+            <OnboardingTarget id={SIDEBAR_HELP_TOUR_TARGET}>
+              <button
+                aria-label={pageHelpEntry.title}
+                title={pageHelpEntry.title}
+                data-testid="header-help-button"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary transition-colors hover:bg-warm-highlight"
+                type="button"
+                onClick={openPageHelp}
+              >
+                <HelpCircle className="h-[18px] w-[18px]" />
+              </button>
+            </OnboardingTarget>
+          ) : null}
 
-          <button
-            aria-label={t("header.account")}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark font-heading text-sm font-semibold text-surface shadow-[0_10px_20px_rgba(12,95,168,0.2)]"
-            type="button"
-            onClick={() => router.push("/account")}
+          <OnboardingTarget
+            id={APP_HEADER_MENU_TOUR_TARGET}
+            className="md:hidden"
           >
-            {userInitials}
-          </button>
-
-          <button
-            aria-label={t("header.logout")}
-            title={t("header.logout")}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary transition-colors hover:bg-warm-highlight"
-            type="button"
-            onClick={onLogoutClick}
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+            <button
+              aria-label={t("header.openMenu")}
+              data-attention={
+                hasOpenedMobileMenu
+                  ? "dismissed"
+                  : menuHintActive
+                    ? "active"
+                    : "idle"
+              }
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary ${
+                menuHintActive ? "menu-attention-active" : ""
+              }`}
+              onClick={() => {
+                markMobileMenuOpened();
+                setMenuHintActive(false);
+                onToggleMenu();
+                useOnboardingTourStore
+                  .getState()
+                  .advanceIfTarget(APP_HEADER_MENU_TOUR_TARGET);
+              }}
+              type="button"
+            >
+              <Menu className="h-[18px] w-[18px] stroke-[2.25]" />
+            </button>
+          </OnboardingTarget>
         </div>
-
-        <OnboardingTarget
-          id={APP_HEADER_MENU_TOUR_TARGET}
-          className="md:hidden"
-        >
-          <button
-            aria-label={t("header.openMenu")}
-            data-attention={
-              hasOpenedMobileMenu
-                ? "dismissed"
-                : menuHintActive
-                  ? "active"
-                  : "idle"
-            }
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-warm-border bg-warm-surface text-text-primary ${
-              menuHintActive ? "menu-attention-active" : ""
-            }`}
-            onClick={() => {
-              markMobileMenuOpened();
-              setMenuHintActive(false);
-              onToggleMenu();
-              useOnboardingTourStore
-                .getState()
-                .advanceIfTarget(APP_HEADER_MENU_TOUR_TARGET);
-            }}
-            type="button"
-          >
-            <Menu className="h-[18px] w-[18px] stroke-[2.25]" />
-          </button>
-        </OnboardingTarget>
       </header>
     </div>
   );

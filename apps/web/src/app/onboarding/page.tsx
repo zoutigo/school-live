@@ -21,7 +21,6 @@ import { EmailInput } from "../../components/ui/email-input";
 import { BackButton, SubmitButton } from "../../components/ui/form-buttons";
 import {
   FormCheckbox,
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
@@ -29,6 +28,7 @@ import { FormField } from "../../components/ui/form-field";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PasswordRequirementsHint } from "../../components/ui/password-requirements-hint";
 import { PinInput } from "../../components/ui/pin-input";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { SuccessRedirectToast } from "../../components/ui/success-redirect-toast";
 import { useTranslation } from "../../i18n/useTranslation";
 import {
@@ -935,14 +935,14 @@ function OnboardingContent() {
                     label={t("onboarding.form.gender")}
                     error={profileStepForm.formState.errors.gender?.message}
                   >
-                    <FormSelect
-                      aria-label={t("onboarding.form.gender")}
+                    <SearchableSelect
+                      ariaLabel={t("onboarding.form.gender")}
                       invalid={!!profileStepForm.formState.errors.gender}
                       value={profileStepValues.gender ?? ""}
-                      onChange={(event) => {
+                      onChange={(value) => {
                         profileStepForm.setValue(
                           "gender",
-                          event.target.value as "M" | "F" | "OTHER",
+                          value as "M" | "F" | "OTHER",
                           {
                             shouldDirty: true,
                             shouldTouch: true,
@@ -950,14 +950,17 @@ function OnboardingContent() {
                           },
                         );
                       }}
-                    >
-                      <option value="">{t("onboarding.form.select")}</option>
-                      <option value="M">{t("onboarding.form.male")}</option>
-                      <option value="F">{t("onboarding.form.female")}</option>
-                      <option value="OTHER">
-                        {t("onboarding.form.otherGender")}
-                      </option>
-                    </FormSelect>
+                      placeholder={t("onboarding.form.select")}
+                      data-testid="onboarding-gender-select"
+                      options={[
+                        { value: "M", label: t("onboarding.form.male") },
+                        { value: "F", label: t("onboarding.form.female") },
+                        {
+                          value: "OTHER",
+                          label: t("onboarding.form.otherGender"),
+                        },
+                      ]}
+                    />
                   </FormField>
 
                   <FormField
@@ -1145,32 +1148,28 @@ function OnboardingContent() {
                         recoveryStepForm.formState.errors.parentClassId?.message
                       }
                     >
-                      <FormSelect
+                      <SearchableSelect
+                        ariaLabel={t("onboarding.form.childClass")}
                         invalid={
                           !!recoveryStepForm.formState.errors.parentClassId
                         }
                         value={recoveryStepValues.parentClassId ?? ""}
-                        onChange={(event) => {
-                          recoveryStepForm.setValue(
-                            "parentClassId",
-                            event.target.value,
-                            {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            },
-                          );
+                        onChange={(value) => {
+                          recoveryStepForm.setValue("parentClassId", value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
                         }}
-                      >
-                        <option value="">
-                          {t("onboarding.form.selectClass")}
-                        </option>
-                        {(options?.classes ?? []).map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.name} ({entry.year})
-                          </option>
-                        ))}
-                      </FormSelect>
+                        placeholder={t("onboarding.form.selectClass")}
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        data-testid="onboarding-parent-class-select"
+                        options={(options?.classes ?? []).map((entry) => ({
+                          value: entry.id,
+                          label: `${entry.name} (${entry.year})`,
+                        }))}
+                      />
                     </FormField>
 
                     <FormField
@@ -1180,32 +1179,28 @@ function OnboardingContent() {
                           ?.message
                       }
                     >
-                      <FormSelect
+                      <SearchableSelect
+                        ariaLabel={t("onboarding.form.childName")}
                         invalid={
                           !!recoveryStepForm.formState.errors.parentStudentId
                         }
                         value={recoveryStepValues.parentStudentId ?? ""}
-                        onChange={(event) => {
-                          recoveryStepForm.setValue(
-                            "parentStudentId",
-                            event.target.value,
-                            {
-                              shouldDirty: true,
-                              shouldTouch: true,
-                              shouldValidate: true,
-                            },
-                          );
+                        onChange={(value) => {
+                          recoveryStepForm.setValue("parentStudentId", value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
                         }}
-                      >
-                        <option value="">
-                          {t("onboarding.form.selectStudent")}
-                        </option>
-                        {(options?.students ?? []).map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.lastName} {entry.firstName}
-                          </option>
-                        ))}
-                      </FormSelect>
+                        placeholder={t("onboarding.form.selectStudent")}
+                        searchPlaceholder={t("settings.form.searchPlaceholder")}
+                        noResultsLabel={t("settings.form.noResults")}
+                        data-testid="onboarding-parent-student-select"
+                        options={(options?.students ?? []).map((entry) => ({
+                          value: entry.id,
+                          label: `${entry.lastName} ${entry.firstName}`,
+                        }))}
+                      />
                     </FormField>
                   </div>
                 ) : null}

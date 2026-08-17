@@ -57,6 +57,31 @@ export const translations: Record<Locale, Record<string, string>> = {
     "settings.accountLanguage.error":
       "La langue du compte n'a pas pu etre mise a jour.",
 
+    "settings.school.title": "Ecole active",
+    "settings.school.subtitle": "Etablissement qui conditionne l'application",
+    "settings.role.title": "Profil actif",
+    "settings.role.subtitle": "Navigation affichee dans l'application",
+    "settings.form.activeSchool.title": "Ecole active",
+    "settings.form.activeSchool.subtitle":
+      "Choisissez l'etablissement qui conditionne l'application",
+    "settings.form.activeSchool.successTitle": "Ecole active mise a jour",
+    "settings.form.activeSchool.successMessage":
+      "L'ecole active a ete mise a jour.",
+    "settings.form.activeSchool.errorTitle": "Mise a jour impossible",
+    "settings.form.activeSchool.errorMessage":
+      "L'ecole active n'a pas pu etre mise a jour.",
+    "settings.form.activeRole.title": "Profil actif",
+    "settings.form.activeRole.subtitle": "Choisissez la navigation a afficher",
+    "settings.form.activeRole.successTitle": "Profil actif mis a jour",
+    "settings.form.activeRole.successMessage":
+      "Le profil actif a ete mis a jour.",
+    "settings.form.activeRole.errorTitle": "Mise a jour impossible",
+    "settings.form.activeRole.errorMessage":
+      "Le profil actif n'a pas pu etre mis a jour.",
+    "settings.form.save": "Enregistrer",
+    "settings.form.searchPlaceholder": "Rechercher...",
+    "settings.form.noResults": "Aucun resultat",
+
     "header.portal.admin": "Portail administration",
     "header.portal.school": "Portail etablissement",
     "header.portal.teacher": "Portail enseignant",
@@ -2487,6 +2512,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.toolbar.newMessage": "Nouveau message",
     "messaging.toolbar.currentYear": "Annee en cours",
     "messaging.toolbar.previousYear": "Annee precedente",
+    "messaging.toolbar.yearScopeAria": "Periode",
 
     "messaging.compose.pageTitle": "Nouveau message",
     "messaging.compose.defaultSubtitle": "Messagerie de l'etablissement",
@@ -2519,6 +2545,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.compose.addStaff": "Ajouter un personnel",
     "messaging.compose.removeRecipient": "Retirer ce destinataire",
     "messaging.compose.noRecipientOption": "Aucun destinataire selectionne",
+    "messaging.compose.recipientAria": "Destinataire",
     "messaging.compose.searchRecipientsPlaceholder":
       "Rechercher un destinataire par nom ou email...",
     "messaging.compose.searchingRecipients": "Recherche en cours...",
@@ -2656,6 +2683,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.filters.toggleAccessibilityLabel": "Filtres",
     "feed.filters.reset": "Reinitialiser",
     "feed.filters.apply": "Appliquer",
+    "feed.filters.levelAria": "Niveau",
+    "feed.filters.classAria": "Classe",
     "feed.help.toggle": "Aide",
     "feed.help.close": "J'ai compris",
     "feed.help.title": "Vie de classe",
@@ -2700,6 +2729,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.composer.titlePlaceholderPoll": "Titre du sondage",
     "feed.composer.titlePlaceholderPost": "Titre de la publication",
     "feed.composer.audienceTarget": "Public cible: {label}",
+    "feed.composer.audienceScopeAria": "Portee du public",
+    "feed.composer.audienceLevelAria": "Niveau du public",
+    "feed.composer.audienceClassAria": "Classe du public",
+    "feed.composer.featuredDaysAria": "Mise en avant (jours)",
     "feed.composer.editorHint":
       "Ajoutez du contexte, des points cles et des liens utiles pour les familles.",
     "feed.composer.pollQuestionPlaceholder": "Question du sondage",
@@ -4940,6 +4973,31 @@ export const translations: Record<Locale, Record<string, string>> = {
     "settings.accountLanguage.success": "Your account language has been saved.",
     "settings.accountLanguage.error":
       "The account language could not be updated.",
+
+    "settings.school.title": "Active school",
+    "settings.school.subtitle": "Establishment that drives the app",
+    "settings.role.title": "Active profile",
+    "settings.role.subtitle": "Navigation displayed in the app",
+    "settings.form.activeSchool.title": "Active school",
+    "settings.form.activeSchool.subtitle":
+      "Choose the establishment that drives the app",
+    "settings.form.activeSchool.successTitle": "Active school updated",
+    "settings.form.activeSchool.successMessage":
+      "The active school has been updated.",
+    "settings.form.activeSchool.errorTitle": "Update failed",
+    "settings.form.activeSchool.errorMessage":
+      "The active school could not be updated.",
+    "settings.form.activeRole.title": "Active profile",
+    "settings.form.activeRole.subtitle": "Choose the navigation to display",
+    "settings.form.activeRole.successTitle": "Active profile updated",
+    "settings.form.activeRole.successMessage":
+      "The active profile has been updated.",
+    "settings.form.activeRole.errorTitle": "Update failed",
+    "settings.form.activeRole.errorMessage":
+      "The active profile could not be updated.",
+    "settings.form.save": "Save",
+    "settings.form.searchPlaceholder": "Search...",
+    "settings.form.noResults": "No results",
 
     "header.portal.admin": "Administration portal",
     "header.portal.school": "School portal",
@@ -7270,6 +7328,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.toolbar.newMessage": "New message",
     "messaging.toolbar.currentYear": "Current year",
     "messaging.toolbar.previousYear": "Previous year",
+    "messaging.toolbar.yearScopeAria": "Period",
 
     "messaging.compose.pageTitle": "New message",
     "messaging.compose.defaultSubtitle": "School messaging",
@@ -7301,6 +7360,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.compose.addStaff": "Add a staff member",
     "messaging.compose.removeRecipient": "Remove this recipient",
     "messaging.compose.noRecipientOption": "No recipient selected",
+    "messaging.compose.recipientAria": "Recipient",
     "messaging.compose.searchRecipientsPlaceholder":
       "Search a recipient by name or email...",
     "messaging.compose.searchingRecipients": "Searching...",
@@ -7432,6 +7492,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.filters.toggleAccessibilityLabel": "Filters",
     "feed.filters.reset": "Reset",
     "feed.filters.apply": "Apply",
+    "feed.filters.levelAria": "Level",
+    "feed.filters.classAria": "Class",
     "feed.help.toggle": "Help",
     "feed.help.close": "Got it",
     "feed.help.title": "Class life",
@@ -7476,6 +7538,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "feed.composer.titlePlaceholderPoll": "Poll title",
     "feed.composer.titlePlaceholderPost": "Post title",
     "feed.composer.audienceTarget": "Target audience: {label}",
+    "feed.composer.audienceScopeAria": "Audience scope",
+    "feed.composer.audienceLevelAria": "Audience level",
+    "feed.composer.audienceClassAria": "Audience class",
+    "feed.composer.featuredDaysAria": "Highlight (days)",
     "feed.composer.editorHint":
       "Add context, key points and useful links for families.",
     "feed.composer.pollQuestionPlaceholder": "Poll question",

@@ -165,9 +165,8 @@ describe("ResourcesBrowsePage", () => {
     await screen.findByTestId("resources-card-res-1");
     fireEvent.click(screen.getByTestId("resources-search-toggle"));
 
-    fireEvent.change(screen.getByTestId("resources-filter-school"), {
-      target: { value: "school-1" },
-    });
+    fireEvent.click(screen.getByTestId("resources-filter-school"));
+    fireEvent.click(await screen.findByRole("option", { name: "École Test" }));
 
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([u]) =>
@@ -186,9 +185,8 @@ describe("ResourcesBrowsePage", () => {
     await screen.findByTestId("resources-card-res-1");
     fireEvent.click(screen.getByTestId("resources-search-toggle"));
 
-    fireEvent.change(screen.getByTestId("resources-filter-school"), {
-      target: { value: "school-1" },
-    });
+    fireEvent.click(screen.getByTestId("resources-filter-school"));
+    fireEvent.click(await screen.findByRole("option", { name: "École Test" }));
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(([u]) =>
         String(u).includes("schoolId=school-1"),
@@ -587,18 +585,16 @@ describe("ResourcesBrowsePage — Mes ressources", () => {
     fireEvent.change(await screen.findByTestId("resources-mine-form-title"), {
       target: { value: "Devoir chapitre 3" },
     });
-    fireEvent.change(screen.getByTestId("resources-mine-form-school"), {
-      target: { value: "school-1" },
-    });
-    fireEvent.change(screen.getByTestId("resources-mine-form-cycle"), {
-      target: { value: "cycle-1" },
-    });
-    fireEvent.change(screen.getByTestId("resources-mine-form-level"), {
-      target: { value: "level-1" },
-    });
-    fireEvent.change(screen.getByTestId("resources-mine-form-subject"), {
-      target: { value: "subject-1" },
-    });
+    fireEvent.click(screen.getByTestId("resources-mine-form-school"));
+    fireEvent.click(await screen.findByRole("option", { name: "Ecole Test" }));
+    fireEvent.click(screen.getByTestId("resources-mine-form-cycle"));
+    fireEvent.click(await screen.findByRole("option", { name: "College" }));
+    fireEvent.click(screen.getByTestId("resources-mine-form-level"));
+    fireEvent.click(await screen.findByRole("option", { name: "6eme" }));
+    fireEvent.click(screen.getByTestId("resources-mine-form-subject"));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Mathematiques" }),
+    );
 
     fireEvent.click(screen.getByTestId("resources-mine-form-submit"));
 

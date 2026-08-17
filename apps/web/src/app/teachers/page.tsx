@@ -11,7 +11,6 @@ import { Card } from "../../components/ui/card";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { EmailInput } from "../../components/ui/email-input";
 import {
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../components/ui/form-controls";
@@ -20,6 +19,7 @@ import { SubmitButton } from "../../components/ui/form-buttons";
 import { ModuleHelpTab } from "../../components/ui/module-help-tab";
 import { PasswordInput } from "../../components/ui/password-input";
 import { PinInput } from "../../components/ui/pin-input";
+import { SearchableSelect } from "../../components/ui/searchable-select";
 import { getCsrfTokenCookie } from "../../lib/auth-cookies";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -821,19 +821,19 @@ export default function TeachersPage() {
                 <span className="text-text-secondary">
                   {t("teachers.school.label")}
                 </span>
-                <FormSelect
+                <SearchableSelect
                   value={schoolSlug ?? ""}
-                  onChange={(event) =>
-                    setSchoolSlug(event.target.value || null)
-                  }
-                >
-                  <option value="">{t("teachers.school.select")}</option>
-                  {schools.map((school) => (
-                    <option key={school.id} value={school.slug}>
-                      {school.name}
-                    </option>
-                  ))}
-                </FormSelect>
+                  onChange={(value) => setSchoolSlug(value || null)}
+                  placeholder={t("teachers.school.select")}
+                  searchPlaceholder={t("settings.form.searchPlaceholder")}
+                  noResultsLabel={t("settings.form.noResults")}
+                  ariaLabel={t("teachers.school.label")}
+                  data-testid="teachers-school-select"
+                  options={schools.map((school) => ({
+                    value: school.slug,
+                    label: school.name,
+                  }))}
+                />
               </label>
             ) : null}
           </div>
@@ -892,13 +892,12 @@ export default function TeachersPage() {
                     label={t("teachers.create.modeLabel")}
                     error={createTeacherForm.formState.errors.mode?.message}
                   >
-                    <FormSelect
+                    <SearchableSelect
+                      ariaLabel={t("teachers.create.modeLabel")}
                       value={createTeacherMode}
                       invalid={false}
-                      onChange={(event) => {
-                        const nextMode = event.target.value as
-                          | "email"
-                          | "phone";
+                      onChange={(value) => {
+                        const nextMode = value as "email" | "phone";
                         createTeacherForm.setValue("mode", nextMode, {
                           shouldDirty: true,
                           shouldTouch: true,
@@ -920,14 +919,18 @@ export default function TeachersPage() {
                           });
                         }
                       }}
-                    >
-                      <option value="phone">
-                        {t("teachers.create.modePhone")}
-                      </option>
-                      <option value="email">
-                        {t("teachers.create.modeEmail")}
-                      </option>
-                    </FormSelect>
+                      data-testid="teachers-create-mode-select"
+                      options={[
+                        {
+                          value: "phone",
+                          label: t("teachers.create.modePhone"),
+                        },
+                        {
+                          value: "email",
+                          label: t("teachers.create.modeEmail"),
+                        },
+                      ]}
+                    />
                   </FormField>
                   <FormField
                     label={
@@ -1151,35 +1154,31 @@ export default function TeachersPage() {
                     createAssignmentForm.formState.errors.schoolYearId?.message
                   }
                 >
-                  <FormSelect
-                    aria-label={t("teachers.assignment.yearAria")}
+                  <SearchableSelect
+                    ariaLabel={t("teachers.assignment.yearAria")}
                     invalid={createAssignmentSchoolYearInvalid}
                     value={createAssignmentValues.schoolYearId ?? ""}
-                    onChange={(event) => {
-                      createAssignmentForm.setValue(
-                        "schoolYearId",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      );
+                    onChange={(value) => {
+                      createAssignmentForm.setValue("schoolYearId", value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      });
                       createAssignmentForm.setValue("classId", "", {
                         shouldDirty: true,
                         shouldTouch: true,
                         shouldValidate: true,
                       });
                     }}
-                  >
-                    <option value="">{t("common.select")}</option>
-                    {schoolYears.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.label}
-                        {entry.isActive ? " (active)" : ""}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    placeholder={t("common.select")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="teachers-assignment-year-select"
+                    options={schoolYears.map((entry) => ({
+                      value: entry.id,
+                      label: `${entry.label}${entry.isActive ? " (active)" : ""}`,
+                    }))}
+                  />
                 </FormField>
 
                 <FormField
@@ -1188,58 +1187,55 @@ export default function TeachersPage() {
                     createAssignmentForm.formState.errors.teacherUserId?.message
                   }
                 >
-                  <FormSelect
-                    aria-label={t("teachers.assignment.teacherAria")}
+                  <SearchableSelect
+                    ariaLabel={t("teachers.assignment.teacherAria")}
                     invalid={createAssignmentTeacherInvalid}
                     value={createAssignmentValues.teacherUserId ?? ""}
-                    onChange={(event) =>
-                      createAssignmentForm.setValue(
-                        "teacherUserId",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      )
+                    onChange={(value) =>
+                      createAssignmentForm.setValue("teacherUserId", value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
                     }
-                  >
-                    <option value="">{t("common.select")}</option>
-                    {sortedTeachers.map((entry) => (
-                      <option key={entry.userId} value={entry.userId}>
-                        {entry.lastName} {entry.firstName}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    placeholder={t("common.select")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="teachers-assignment-teacher-select"
+                    options={sortedTeachers.map((entry) => ({
+                      value: entry.userId,
+                      label: `${entry.lastName} ${entry.firstName}`,
+                    }))}
+                  />
                 </FormField>
 
                 <FormField
                   label={t("teachers.assignment.classLabel")}
                   error={createAssignmentForm.formState.errors.classId?.message}
                 >
-                  <FormSelect
-                    aria-label={t("teachers.assignment.classAria")}
+                  <SearchableSelect
+                    ariaLabel={t("teachers.assignment.classAria")}
                     invalid={createAssignmentClassInvalid}
                     value={createAssignmentValues.classId ?? ""}
-                    onChange={(event) =>
-                      createAssignmentForm.setValue(
-                        "classId",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      )
+                    onChange={(value) =>
+                      createAssignmentForm.setValue("classId", value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
                     }
-                  >
-                    <option value="">{t("common.select")}</option>
-                    {filteredClassesForCreate().map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.name}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    placeholder={t("common.select")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="teachers-assignment-class-select"
+                    options={[
+                      { value: "", label: t("common.select") },
+                      ...filteredClassesForCreate().map((entry) => ({
+                        value: entry.id,
+                        label: entry.name,
+                      })),
+                    ]}
+                  />
                 </FormField>
 
                 <FormField
@@ -1248,29 +1244,26 @@ export default function TeachersPage() {
                     createAssignmentForm.formState.errors.subjectId?.message
                   }
                 >
-                  <FormSelect
-                    aria-label={t("teachers.assignment.subjectAria")}
+                  <SearchableSelect
+                    ariaLabel={t("teachers.assignment.subjectAria")}
                     invalid={createAssignmentSubjectInvalid}
                     value={createAssignmentValues.subjectId ?? ""}
-                    onChange={(event) =>
-                      createAssignmentForm.setValue(
-                        "subjectId",
-                        event.target.value,
-                        {
-                          shouldDirty: true,
-                          shouldTouch: true,
-                          shouldValidate: true,
-                        },
-                      )
+                    onChange={(value) =>
+                      createAssignmentForm.setValue("subjectId", value, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
                     }
-                  >
-                    <option value="">{t("common.select")}</option>
-                    {subjects.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.name}
-                      </option>
-                    ))}
-                  </FormSelect>
+                    placeholder={t("common.select")}
+                    searchPlaceholder={t("settings.form.searchPlaceholder")}
+                    noResultsLabel={t("settings.form.noResults")}
+                    data-testid="teachers-assignment-subject-select"
+                    options={subjects.map((entry) => ({
+                      value: entry.id,
+                      label: entry.name,
+                    }))}
+                  />
                 </FormField>
 
                 <div className="self-end">
@@ -1373,18 +1366,18 @@ export default function TeachersPage() {
                                         .schoolYearId?.message
                                     }
                                   >
-                                    <FormSelect
-                                      aria-label={t(
+                                    <SearchableSelect
+                                      ariaLabel={t(
                                         "teachers.assignment.yearAria",
                                       )}
                                       invalid={editAssignmentSchoolYearInvalid}
                                       value={
                                         editAssignmentValues.schoolYearId ?? ""
                                       }
-                                      onChange={(event) => {
+                                      onChange={(value) => {
                                         editAssignmentForm.setValue(
                                           "schoolYearId",
-                                          event.target.value,
+                                          value,
                                           {
                                             shouldDirty: true,
                                             shouldTouch: true,
@@ -1401,16 +1394,19 @@ export default function TeachersPage() {
                                           },
                                         );
                                       }}
-                                    >
-                                      <option value="">
-                                        {t("common.select")}
-                                      </option>
-                                      {schoolYears.map((year) => (
-                                        <option key={year.id} value={year.id}>
-                                          {year.label}
-                                        </option>
-                                      ))}
-                                    </FormSelect>
+                                      placeholder={t("common.select")}
+                                      searchPlaceholder={t(
+                                        "settings.form.searchPlaceholder",
+                                      )}
+                                      noResultsLabel={t(
+                                        "settings.form.noResults",
+                                      )}
+                                      data-testid="teachers-edit-assignment-year-select"
+                                      options={schoolYears.map((year) => ({
+                                        value: year.id,
+                                        label: year.label,
+                                      }))}
+                                    />
                                   </FormField>
                                   <FormField
                                     label={t(
@@ -1421,18 +1417,18 @@ export default function TeachersPage() {
                                         .teacherUserId?.message
                                     }
                                   >
-                                    <FormSelect
-                                      aria-label={t(
+                                    <SearchableSelect
+                                      ariaLabel={t(
                                         "teachers.assignment.teacherAria",
                                       )}
                                       invalid={editAssignmentTeacherInvalid}
                                       value={
                                         editAssignmentValues.teacherUserId ?? ""
                                       }
-                                      onChange={(event) =>
+                                      onChange={(value) =>
                                         editAssignmentForm.setValue(
                                           "teacherUserId",
-                                          event.target.value,
+                                          value,
                                           {
                                             shouldDirty: true,
                                             shouldTouch: true,
@@ -1440,19 +1436,21 @@ export default function TeachersPage() {
                                           },
                                         )
                                       }
-                                    >
-                                      <option value="">
-                                        {t("common.select")}
-                                      </option>
-                                      {sortedTeachers.map((teacher) => (
-                                        <option
-                                          key={teacher.userId}
-                                          value={teacher.userId}
-                                        >
-                                          {teacher.lastName} {teacher.firstName}
-                                        </option>
-                                      ))}
-                                    </FormSelect>
+                                      placeholder={t("common.select")}
+                                      searchPlaceholder={t(
+                                        "settings.form.searchPlaceholder",
+                                      )}
+                                      noResultsLabel={t(
+                                        "settings.form.noResults",
+                                      )}
+                                      data-testid="teachers-edit-assignment-teacher-select"
+                                      options={sortedTeachers.map(
+                                        (teacher) => ({
+                                          value: teacher.userId,
+                                          label: `${teacher.lastName} ${teacher.firstName}`,
+                                        }),
+                                      )}
+                                    />
                                   </FormField>
                                   <FormField
                                     label={t("teachers.assignment.classLabel")}
@@ -1461,16 +1459,16 @@ export default function TeachersPage() {
                                         .classId?.message
                                     }
                                   >
-                                    <FormSelect
-                                      aria-label={t(
+                                    <SearchableSelect
+                                      ariaLabel={t(
                                         "teachers.assignment.classAria",
                                       )}
                                       invalid={editAssignmentClassInvalid}
                                       value={editAssignmentValues.classId ?? ""}
-                                      onChange={(event) =>
+                                      onChange={(value) =>
                                         editAssignmentForm.setValue(
                                           "classId",
-                                          event.target.value,
+                                          value,
                                           {
                                             shouldDirty: true,
                                             shouldTouch: true,
@@ -1478,16 +1476,27 @@ export default function TeachersPage() {
                                           },
                                         )
                                       }
-                                    >
-                                      <option value="">
-                                        {t("common.select")}
-                                      </option>
-                                      {filteredClassesForEdit().map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                          {c.name}
-                                        </option>
-                                      ))}
-                                    </FormSelect>
+                                      placeholder={t("common.select")}
+                                      searchPlaceholder={t(
+                                        "settings.form.searchPlaceholder",
+                                      )}
+                                      noResultsLabel={t(
+                                        "settings.form.noResults",
+                                      )}
+                                      data-testid="teachers-edit-assignment-class-select"
+                                      options={[
+                                        {
+                                          value: "",
+                                          label: t("common.select"),
+                                        },
+                                        ...filteredClassesForEdit().map(
+                                          (c) => ({
+                                            value: c.id,
+                                            label: c.name,
+                                          }),
+                                        ),
+                                      ]}
+                                    />
                                   </FormField>
                                   <FormField
                                     label={t(
@@ -1498,18 +1507,18 @@ export default function TeachersPage() {
                                         .subjectId?.message
                                     }
                                   >
-                                    <FormSelect
-                                      aria-label={t(
+                                    <SearchableSelect
+                                      ariaLabel={t(
                                         "teachers.assignment.subjectAria",
                                       )}
                                       invalid={editAssignmentSubjectInvalid}
                                       value={
                                         editAssignmentValues.subjectId ?? ""
                                       }
-                                      onChange={(event) =>
+                                      onChange={(value) =>
                                         editAssignmentForm.setValue(
                                           "subjectId",
-                                          event.target.value,
+                                          value,
                                           {
                                             shouldDirty: true,
                                             shouldTouch: true,
@@ -1517,19 +1526,19 @@ export default function TeachersPage() {
                                           },
                                         )
                                       }
-                                    >
-                                      <option value="">
-                                        {t("common.select")}
-                                      </option>
-                                      {subjects.map((subject) => (
-                                        <option
-                                          key={subject.id}
-                                          value={subject.id}
-                                        >
-                                          {subject.name}
-                                        </option>
-                                      ))}
-                                    </FormSelect>
+                                      placeholder={t("common.select")}
+                                      searchPlaceholder={t(
+                                        "settings.form.searchPlaceholder",
+                                      )}
+                                      noResultsLabel={t(
+                                        "settings.form.noResults",
+                                      )}
+                                      data-testid="teachers-edit-assignment-subject-select"
+                                      options={subjects.map((subject) => ({
+                                        value: subject.id,
+                                        label: subject.name,
+                                      }))}
+                                    />
                                   </FormField>
                                   <FormSubmitHint
                                     visible={

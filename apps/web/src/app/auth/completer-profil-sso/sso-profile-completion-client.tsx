@@ -9,10 +9,10 @@ import { z } from "zod";
 import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import {
-  FormSelect,
   FormSubmitHint,
   FormTextInput,
 } from "../../../components/ui/form-controls";
+import { SearchableSelect } from "../../../components/ui/searchable-select";
 import { FormField } from "../../../components/ui/form-field";
 import { PinInput } from "../../../components/ui/pin-input";
 import { RecoveryShell } from "../../../components/layout/recovery-shell";
@@ -443,20 +443,19 @@ export function SsoProfileCompletionClient({ schoolSlug }: Props) {
               control={form.control}
               name="gender"
               render={({ field }) => (
-                <FormSelect
-                  name={field.name}
-                  ref={field.ref}
+                <SearchableSelect
+                  ariaLabel={t("ssoProfile.fields.gender")}
                   invalid={!!form.formState.errors.gender}
                   value={field.value ?? "M"}
-                  onChange={(event) =>
-                    field.onChange(event.target.value as "M" | "F" | "OTHER")
+                  onChange={(value) =>
+                    field.onChange(value as "M" | "F" | "OTHER")
                   }
-                  onBlur={field.onBlur}
-                >
-                  <option value="M">{t("ssoProfile.gender.male")}</option>
-                  <option value="F">{t("ssoProfile.gender.female")}</option>
-                  <option value="OTHER">{t("ssoProfile.gender.other")}</option>
-                </FormSelect>
+                  options={[
+                    { value: "M", label: t("ssoProfile.gender.male") },
+                    { value: "F", label: t("ssoProfile.gender.female") },
+                    { value: "OTHER", label: t("ssoProfile.gender.other") },
+                  ]}
+                />
               )}
             />
           </FormField>

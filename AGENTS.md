@@ -2,10 +2,12 @@
 
 ## Git
 
-- Après toute modification du code (correction de bug, nouvelle fonctionnalité, correctif), terminer systématiquement par : des tests approfondis unitaires, fonctionnels et d'intégration (front ET back, y compris la gestion des erreurs), puis les vérifications précommit (format, lint, typecheck, build), et enfin un commit.
-- Le push sur le remote reste soumis à une instruction explicite de l'utilisateur (voir `/release-ci` pour le cycle complet push → PR → CI → merge).
+- Après toute modification du code (correction de bug, nouvelle fonctionnalité, correctif), terminer systématiquement par : des tests approfondis unitaires, fonctionnels et d'intégration (front ET back, y compris la gestion des erreurs), puis les vérifications précommit (format, lint, typecheck, tests unitaires — build et e2e ne sont plus vérifiés en local, ils le sont en CI), puis un commit, puis un push vers `origin/dev`.
+- Le push vers `origin/dev` est automatique après chaque commit, sans attendre d'instruction explicite : c'est le déclencheur de la CI (build, e2e API, typecheck, lint), qui ne couvre plus rien en local.
+- Le cycle complet PR → CI → merge vers `main` (voir `/release-ci`) reste soumis à une instruction explicite de l'utilisateur.
 - Sauf indication explicite contraire de l'utilisateur, tout le développement se fait sur la branche `dev`.
 - Si la branche courante n'est pas `dev`, basculer dessus avant toute modification ou signaler clairement le blocage.
+- **`git commit` doit toujours être lancé en arrière-plan, dès la première tentative.** Le hook pre-commit (format complet + lint + typecheck + suite jest/vitest) dépasse systématiquement le timeout de 2 minutes d'une commande foreground. Ne jamais lancer `git commit` en foreground sur ce repo — backgrounder d'emblée (`Bash` avec `run_in_background: true`, ou une commande `&` avec sortie redirigée vers un fichier de log) et attendre la fin plutôt que de constater le timeout puis relancer. Si le hook échoue en arrière-plan, corriger la cause réelle et recommitter — jamais `--no-verify` sans accord explicite de l'utilisateur au cas par cas.
 
 ## Agents
 

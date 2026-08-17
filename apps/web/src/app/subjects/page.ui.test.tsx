@@ -557,26 +557,21 @@ describe("Subjects page forms", () => {
     const getEditingAssignmentField = (label: string) =>
       screen.getAllByLabelText(label).at(-1) as HTMLElement;
 
-    fireEvent.change(getEditingAssignmentField("Enseignant"), {
-      target: { value: "" },
-    });
+    fireEvent.click(getEditingAssignmentField("Enseignant"));
+    fireEvent.click(screen.getByRole("option", { name: "Selectionner" }));
     expect(
       await screen.findByText("L'enseignant est obligatoire."),
     ).toBeInTheDocument();
     expect(saveButton).toBeDisabled();
 
-    fireEvent.change(getEditingAssignmentField("Annee scolaire"), {
-      target: { value: "sy-2" },
-    });
-    fireEvent.change(getEditingAssignmentField("Enseignant"), {
-      target: { value: "teacher-2" },
-    });
-    fireEvent.change(getEditingAssignmentField("Classe"), {
-      target: { value: "class-2" },
-    });
-    fireEvent.change(getEditingAssignmentField("Matiere"), {
-      target: { value: "sub-1" },
-    });
+    fireEvent.click(getEditingAssignmentField("Annee scolaire"));
+    fireEvent.click(screen.getByRole("option", { name: "2026-2027" }));
+    fireEvent.click(getEditingAssignmentField("Enseignant"));
+    fireEvent.click(screen.getByRole("option", { name: "Fotsing Laure" }));
+    fireEvent.click(getEditingAssignmentField("Classe"));
+    fireEvent.click(screen.getByRole("option", { name: "5eA" }));
+    fireEvent.click(getEditingAssignmentField("Matiere"));
+    fireEvent.click(screen.getByRole("option", { name: "Mathematiques" }));
 
     await waitFor(() => {
       expect(saveButton).toBeEnabled();
