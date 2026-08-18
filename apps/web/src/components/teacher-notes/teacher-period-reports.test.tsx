@@ -122,7 +122,7 @@ describe("TeacherPeriodReports", () => {
     ).toBeInTheDocument();
   });
 
-  it("expands a student row into 3 term bulletin cards", () => {
+  it("expands a student row into 3 term bulletin cards + the yearly card", () => {
     setupFetchMock();
     render(<TeacherPeriodReports {...baseProps()} />);
 
@@ -136,6 +136,9 @@ describe("TeacherPeriodReports", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByTestId("teacher-reports-bulletin-student-1-TERM_3"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("teacher-reports-bulletin-student-1-YEARLY"),
     ).toBeInTheDocument();
   });
 
@@ -413,6 +416,59 @@ describe("TeacherPeriodReports", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("teacher-reports-general-readonly"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens a read-only yearly bulletin computed from loaded terms", async () => {
+    setupFetchMock();
+    render(<TeacherPeriodReports {...baseProps()} />);
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-YEARLY"),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    // Un seul trimestre chargé (TERM_2, moyenne 10.56) -> moyenne annuelle = 10.56.
+    expect(
+      screen.getByTestId("teacher-reports-yearly-subject-card-sub-1"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("10,56").length).toBeGreaterThan(0);
+  });
+
+  it("does not call onTermChange when opening the yearly bulletin", () => {
+    const props = baseProps();
+    setupFetchMock();
+    render(<TeacherPeriodReports {...props} />);
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-YEARLY"),
+    );
+
+    expect(props.onTermChange).not.toHaveBeenCalled();
+  });
+
+  it("shows no editable appreciation on the yearly bulletin (read-only synthesis)", async () => {
+    setupFetchMock();
+    render(<TeacherPeriodReports {...baseProps()} />);
+
+    fireEvent.click(screen.getByTestId("teacher-reports-row-student-1"));
+    fireEvent.click(
+      screen.getByTestId("teacher-reports-bulletin-student-1-YEARLY"),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("teacher-reports-hero")).toBeInTheDocument(),
+    );
+
+    expect(
+      screen.queryByTestId("teacher-reports-yearly-subject-sub-1-display"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("teacher-reports-general-display"),
     ).not.toBeInTheDocument();
   });
 

@@ -62,7 +62,17 @@ function mockFetchBase() {
     if (url.includes("/admin/tracks")) {
       return jsonResponse([]);
     }
-    if (url.includes("/admin/school-years")) {
+    if (url.endsWith("/admin/school-years") && method === "POST") {
+      return jsonResponse({
+        id: "sy-2027",
+        label: "2027-2028",
+        isActive: false,
+      });
+    }
+    if (url.endsWith("/admin/school-years/active") && method === "PATCH") {
+      return jsonResponse({ success: true, activeSchoolYearId: "sy-2026" });
+    }
+    if (url.endsWith("/admin/school-years") && method === "GET") {
       return jsonResponse([
         { id: "sy-2025", label: "2025-2026", isActive: true },
         { id: "sy-2026", label: "2026-2027", isActive: false },
@@ -168,6 +178,57 @@ describe("Promotions page", () => {
       expect(assignCall).toBeTruthy();
       const headers = assignCall?.[1]?.headers as Record<string, string>;
       expect(headers["X-CSRF-Token"]).toBe("csrf-token-test");
+    });
+  });
+
+  it("cree une annee scolaire sans l'activer", async () => {
+    const fetchMock = mockFetchBase();
+    render(<PromotionsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Annees scolaires" }),
+    );
+
+    fireEvent.change(screen.getByTestId("promotions-new-year-label"), {
+      target: { value: "2027-2028" },
+    });
+    fireEvent.click(screen.getByTestId("promotions-create-year-submit"));
+
+    await waitFor(() => {
+      const createCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/school-years") &&
+          init?.method === "POST",
+      );
+      expect(createCall).toBeTruthy();
+      const headers = createCall?.[1]?.headers as Record<string, string>;
+      expect(headers["X-CSRF-Token"]).toBe("csrf-token-test");
+      const body = JSON.parse(String(createCall?.[1]?.body));
+      expect(body).toMatchObject({ label: "2027-2028" });
+    });
+  });
+
+  it("active une annee scolaire existante", async () => {
+    const fetchMock = mockFetchBase();
+    render(<PromotionsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Annees scolaires" }),
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Rendre active" }),
+    );
+
+    await waitFor(() => {
+      const activateCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/school-years/active") &&
+          init?.method === "PATCH",
+      );
+      expect(activateCall).toBeTruthy();
+      const body = JSON.parse(String(activateCall?.[1]?.body));
+      expect(body).toMatchObject({ schoolYearId: "sy-2026" });
     });
   });
 });

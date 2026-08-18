@@ -75,12 +75,21 @@ const makePrismaMock = () => ({
 describe("PromotionsService", () => {
   let service: PromotionsService;
   let prisma: ReturnType<typeof makePrismaMock>;
-  let enrollmentsService: { confirmReinscription: jest.Mock };
+  let enrollmentsService: {
+    confirmReinscription: jest.Mock;
+    ensureNextSchoolYearExists: jest.Mock;
+  };
   let evaluationsService: { computeClassTermAverages: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrismaMock();
-    enrollmentsService = { confirmReinscription: jest.fn() };
+    enrollmentsService = {
+      confirmReinscription: jest.fn(),
+      ensureNextSchoolYearExists: jest.fn().mockResolvedValue({
+        id: "next-year",
+        label: "2026-2027",
+      }),
+    };
     evaluationsService = {
       computeClassTermAverages: jest.fn().mockResolvedValue(new Map()),
     };
@@ -279,6 +288,53 @@ describe("PromotionsService", () => {
       });
     });
 
+    it("n'appelle pas ensureNextSchoolYearExists pour une decision LEFT", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        term: "TERM_3",
+        classId: CLASS_ID,
+        schoolYearId: YEAR_ID,
+      });
+      await service.setTermReportDecision(adminUser, SCHOOL_ID, "report-1", {
+        decision: "LEFT",
+      });
+      expect(
+        enrollmentsService.ensureNextSchoolYearExists,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("garantit l'existence de l'annee suivante des qu'une decision PROMOTED est enregistree", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        term: "TERM_3",
+        classId: CLASS_ID,
+        schoolYearId: YEAR_ID,
+      });
+      await service.setTermReportDecision(adminUser, SCHOOL_ID, "report-1", {
+        decision: "PROMOTED",
+        nextAcademicLevelId: "level-1",
+      });
+      expect(
+        enrollmentsService.ensureNextSchoolYearExists,
+      ).toHaveBeenCalledWith(SCHOOL_ID, YEAR_ID);
+    });
+
+    it("garantit l'existence de l'annee suivante des qu'une decision REPEATED est enregistree", async () => {
+      prisma.studentTermReport.findFirst.mockResolvedValue({
+        id: "report-1",
+        term: "TERM_3",
+        classId: CLASS_ID,
+        schoolYearId: YEAR_ID,
+      });
+      await service.setTermReportDecision(adminUser, SCHOOL_ID, "report-1", {
+        decision: "REPEATED",
+        nextAcademicLevelId: "level-1",
+      });
+      expect(
+        enrollmentsService.ensureNextSchoolYearExists,
+      ).toHaveBeenCalledWith(SCHOOL_ID, YEAR_ID);
+    });
+
     it("autorise l'enseignant referent de la classe du bulletin", async () => {
       prisma.studentTermReport.findFirst.mockResolvedValue({
         id: "report-1",
@@ -367,13 +423,36 @@ describe("PromotionsService", () => {
       expect(prisma.enrollment.update).not.toHaveBeenCalled();
     });
 
-    it("affecte l'eleve quand la classe a de la place disponible", async () => {
+    it("refuse une classe cible dont le niveau ne correspond pas au niveau decide pour l'eleve", async () => {
       prisma.enrollment.findFirst.mockResolvedValue({
         id: "enr-1",
         schoolYearId: YEAR_ID,
         classId: null,
+        academicLevelId: "level-ce2",
       });
-      prisma.class.findFirst.mockResolvedValue({ id: CLASS_ID });
+      prisma.class.findFirst.mockResolvedValue({
+        id: CLASS_ID,
+        academicLevelId: "level-cm1",
+      });
+      await expect(
+        service.assignEnrollmentToClass(SCHOOL_ID, "enr-1", {
+          classId: CLASS_ID,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.enrollment.update).not.toHaveBeenCalled();
+    });
+
+    it("affecte l'eleve quand la classe a de la place disponible et que le niveau correspond", async () => {
+      prisma.enrollment.findFirst.mockResolvedValue({
+        id: "enr-1",
+        schoolYearId: YEAR_ID,
+        classId: null,
+        academicLevelId: "level-ce2",
+      });
+      prisma.class.findFirst.mockResolvedValue({
+        id: CLASS_ID,
+        academicLevelId: "level-ce2",
+      });
       prisma.class.findUnique.mockResolvedValue({
         name: "CE2 A",
         capacity: 30,

@@ -171,7 +171,7 @@ export class PromotionsService {
   ) {
     const report = await this.prisma.studentTermReport.findFirst({
       where: { id: reportId, schoolId },
-      select: { id: true, term: true, classId: true },
+      select: { id: true, term: true, classId: true, schoolYearId: true },
     });
     if (!report) {
       throw new NotFoundException("Bulletin introuvable");
@@ -189,7 +189,7 @@ export class PromotionsService {
       );
     }
 
-    return this.prisma.studentTermReport.update({
+    const updated = await this.prisma.studentTermReport.update({
       where: { id: report.id },
       data: {
         decision: payload.decision,
@@ -202,6 +202,19 @@ export class PromotionsService {
         updatedByUserId: user.id,
       },
     });
+
+    if (payload.decision !== "LEFT") {
+      // Une decision de promotion ou de redoublement implique une reinscription
+      // l'annee suivante : on garantit qu'elle existe deja (sans l'activer)
+      // pour que la reinscription et le portefeuille parent ne restent jamais
+      // bloques faute d'annee cible creee par l'admin.
+      await this.enrollmentsService.ensureNextSchoolYearExists(
+        schoolId,
+        report.schoolYearId,
+      );
+    }
+
+    return updated;
   }
 
   async listWaitingEnrollments(
@@ -235,7 +248,12 @@ export class PromotionsService {
   ) {
     const enrollment = await this.prisma.enrollment.findFirst({
       where: { id: enrollmentId, schoolId },
-      select: { id: true, schoolYearId: true, classId: true },
+      select: {
+        id: true,
+        schoolYearId: true,
+        classId: true,
+        academicLevelId: true,
+      },
     });
     if (!enrollment) {
       throw new NotFoundException("Inscription introuvable");
@@ -250,11 +268,19 @@ export class PromotionsService {
         schoolId,
         schoolYearId: enrollment.schoolYearId,
       },
-      select: { id: true },
+      select: { id: true, academicLevelId: true },
     });
     if (!targetClass) {
       throw new NotFoundException(
         "Classe cible introuvable pour cette annee scolaire",
+      );
+    }
+    if (
+      enrollment.academicLevelId &&
+      targetClass.academicLevelId !== enrollment.academicLevelId
+    ) {
+      throw new BadRequestException(
+        "Le niveau de la classe cible ne correspond pas au niveau decide pour cet eleve",
       );
     }
 

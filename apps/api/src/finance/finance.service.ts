@@ -359,9 +359,13 @@ export class FinanceService {
           decision.sourceSchoolYearId,
         );
         if (!nextYear) {
+          // La decision du conseil de classe existe deja (l'eleve est promu
+          // ou redouble) mais l'ecole n'a pas encore ouvert l'annee scolaire
+          // suivante : distinct de DECISION_PENDING pour ne pas laisser croire
+          // au parent que le conseil de classe n'a pas encore statue.
           return {
             student,
-            status: "DECISION_PENDING" as const,
+            status: "NEXT_YEAR_NOT_OPEN" as const,
           };
         }
 

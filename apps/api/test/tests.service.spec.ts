@@ -75,6 +75,7 @@ describe("TestsService", () => {
         startsAt: new Date("2026-06-10T08:00:00.000Z"),
         dueAt: new Date("2026-06-20T08:00:00.000Z"),
         status: "ACTIVE",
+        assignments: [],
         testCases: [
           {
             id: "case-1",
@@ -119,11 +120,56 @@ describe("TestsService", () => {
     expect(result).toEqual([
       expect.objectContaining({
         id: "camp-1",
+        assignedToMe: false,
         summary: {
           totalCases: 2,
           completedCases: 1,
           totalExecutions: 2,
         },
+      }),
+    ]);
+  });
+
+  it("includes campaigns explicitly assigned to the user even outside their role visibility", async () => {
+    prisma.testCampaign.findMany.mockResolvedValue([
+      {
+        id: "camp-2",
+        title: "Discipline — Admin",
+        description: null,
+        targetVersion: null,
+        startsAt: null,
+        dueAt: null,
+        status: "ACTIVE",
+        assignments: [{ id: "assignment-1" }],
+        testCases: [
+          {
+            id: "case-3",
+            title: "Sanction",
+            module: "Discipline",
+            priority: "HIGH",
+            dueAt: null,
+            evidenceRequired: false,
+            recycledAt: null,
+            executions: [],
+            _count: { executions: 0 },
+          },
+        ],
+      },
+    ]);
+
+    const result = await service.listCampaigns(testerUser);
+
+    const [findManyCall] = prisma.testCampaign.findMany.mock.calls;
+    const testCasesSomeWhere =
+      findManyCall[0].where.testCases.some.OR ??
+      findManyCall[0].where.testCases.some;
+    expect(JSON.stringify(testCasesSomeWhere)).toContain(
+      '"campaign":{"assignments":{"some":{"userId":"user-1"}}}',
+    );
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: "camp-2",
+        assignedToMe: true,
       }),
     ]);
   });

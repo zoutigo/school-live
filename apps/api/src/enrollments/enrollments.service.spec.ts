@@ -34,6 +34,11 @@ const makePrismaMock = () => ({
   },
   schoolYear: {
     findFirst: jest.fn().mockResolvedValue({ id: TARGET_YEAR_ID }),
+    upsert: jest
+      .fn()
+      .mockImplementation(({ create }) =>
+        Promise.resolve({ id: "next-year-created", ...create }),
+      ),
   },
 });
 
@@ -172,6 +177,56 @@ describe("EnrollmentsService", () => {
         classId: null,
         academicLevelId: NEXT_LEVEL_ID,
       });
+    });
+  });
+
+  describe("ensureNextSchoolYearExists", () => {
+    it("leve une NotFoundException si l'annee source est introuvable pour cette ecole", async () => {
+      prisma.schoolYear.findFirst.mockResolvedValue(null);
+      await expect(
+        service.ensureNextSchoolYearExists(SCHOOL_ID, SOURCE_YEAR_ID),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("upsert l'annee suivante en incrementant le libelle source, sans l'activer", async () => {
+      prisma.schoolYear.findFirst.mockResolvedValue({ label: "2025-2026" });
+      const result = await service.ensureNextSchoolYearExists(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+      );
+      expect(prisma.schoolYear.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            schoolId_label: { schoolId: SCHOOL_ID, label: "2026-2027" },
+          },
+          create: { schoolId: SCHOOL_ID, label: "2026-2027" },
+          update: {},
+        }),
+      );
+      expect(result).toMatchObject({ label: "2026-2027" });
+    });
+
+    it("est idempotente : rappeler deux fois n'ecrit rien de plus que l'upsert (contrainte unique)", async () => {
+      prisma.schoolYear.findFirst.mockResolvedValue({ label: "2025-2026" });
+      await service.ensureNextSchoolYearExists(SCHOOL_ID, SOURCE_YEAR_ID);
+      await service.ensureNextSchoolYearExists(SCHOOL_ID, SOURCE_YEAR_ID);
+      expect(prisma.schoolYear.upsert).toHaveBeenCalledTimes(2);
+      expect(prisma.schoolYear.upsert).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          where: {
+            schoolId_label: { schoolId: SCHOOL_ID, label: "2026-2027" },
+          },
+        }),
+      );
+      expect(prisma.schoolYear.upsert).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: {
+            schoolId_label: { schoolId: SCHOOL_ID, label: "2026-2027" },
+          },
+        }),
+      );
     });
   });
 });

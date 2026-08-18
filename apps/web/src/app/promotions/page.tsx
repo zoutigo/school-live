@@ -26,7 +26,7 @@ type Role =
   | "PARENT"
   | "STUDENT";
 type Tab = "manage" | "help";
-type SubTab = "decisions" | "waiting";
+type SubTab = "decisions" | "waiting" | "years";
 type Decision = "PROMOTED" | "REPEATED" | "LEFT";
 
 type MeResponse = { role: Role; schoolSlug: string | null };
@@ -64,6 +64,7 @@ export default function PromotionsPage() {
 
   const [loading, setLoading] = useState(true);
   const [schoolSlug, setSchoolSlug] = useState<string | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
   const [classrooms, setClassrooms] = useState<ClassroomRow[]>([]);
   const [academicLevels, setAcademicLevels] = useState<AcademicLevelRow[]>([]);
   const [tracks, setTracks] = useState<TrackRow[]>([]);
@@ -86,6 +87,16 @@ export default function PromotionsPage() {
   const [waiting, setWaiting] = useState<WaitingEnrollmentRow[]>([]);
   const [assignDrafts, setAssignDrafts] = useState<Record<string, string>>({});
   const [assigningId, setAssigningId] = useState<string | null>(null);
+
+  const [newYearLabel, setNewYearLabel] = useState("");
+  const [newYearStartsAt, setNewYearStartsAt] = useState("");
+  const [newYearEndsAt, setNewYearEndsAt] = useState("");
+  const [creatingYear, setCreatingYear] = useState(false);
+  const [activatingYearId, setActivatingYearId] = useState<string | null>(null);
+  const [rolloverSourceId, setRolloverSourceId] = useState("");
+  const [rolloverTargetId, setRolloverTargetId] = useState("");
+  const [rolloverCopyAssignments, setRolloverCopyAssignments] = useState(false);
+  const [rollingOver, setRollingOver] = useState(false);
 
   function buildAdminPath(currentSchoolSlug: string, segment: string) {
     return `${API_URL}/schools/${currentSchoolSlug}/admin/${segment}`;
@@ -129,6 +140,7 @@ export default function PromotionsPage() {
       return;
     }
     setSchoolSlug(me.schoolSlug);
+    setRole(me.role);
     setLoading(false);
   }
 
@@ -320,6 +332,150 @@ export default function PromotionsPage() {
     }
   }
 
+  async function createYear() {
+    if (!schoolSlug || !newYearLabel.trim()) return;
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("common.errors.invalidCsrfSession"));
+      router.replace("/");
+      return;
+    }
+    setCreatingYear(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(buildAdminPath(schoolSlug, "school-years"), {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({
+          label: newYearLabel.trim(),
+          startsAt: newYearStartsAt || undefined,
+          endsAt: newYearEndsAt || undefined,
+        }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("promotions.years.errors.create"));
+        setError(String(message));
+        return;
+      }
+      setSuccess(t("promotions.years.success.created"));
+      setNewYearLabel("");
+      setNewYearStartsAt("");
+      setNewYearEndsAt("");
+      await loadReferenceData(schoolSlug);
+    } catch {
+      setError(t("promotions.errors.network"));
+    } finally {
+      setCreatingYear(false);
+    }
+  }
+
+  async function activateYear(schoolYearId: string) {
+    if (!schoolSlug) return;
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("common.errors.invalidCsrfSession"));
+      router.replace("/");
+      return;
+    }
+    setActivatingYearId(schoolYearId);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, "school-years/active"),
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ schoolYearId }),
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("promotions.years.errors.activate"));
+        setError(String(message));
+        return;
+      }
+      setSuccess(t("promotions.years.success.activated"));
+      await loadReferenceData(schoolSlug);
+    } catch {
+      setError(t("promotions.errors.network"));
+    } finally {
+      setActivatingYearId(null);
+    }
+  }
+
+  async function triggerRollover() {
+    if (!schoolSlug || !rolloverSourceId || !rolloverTargetId) return;
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("common.errors.invalidCsrfSession"));
+      router.replace("/");
+      return;
+    }
+    setRollingOver(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, "school-years/rollover"),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({
+            sourceSchoolYearId: rolloverSourceId,
+            targetSchoolYearId: rolloverTargetId,
+            copyAssignments: rolloverCopyAssignments,
+          }),
+        },
+      );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const message =
+          payload?.message && Array.isArray(payload.message)
+            ? payload.message.join(", ")
+            : (payload?.message ?? t("promotions.years.errors.rollover"));
+        setError(String(message));
+        return;
+      }
+      setSuccess(t("promotions.years.success.rolledOver"));
+      await loadReferenceData(schoolSlug);
+    } catch {
+      setError(t("promotions.errors.network"));
+    } finally {
+      setRollingOver(false);
+    }
+  }
+
+  const canManageYears =
+    role === "SCHOOL_ADMIN" || role === "ADMIN" || role === "SUPER_ADMIN";
+  const canActivateYear = canManageYears || role === "SCHOOL_MANAGER";
+
   const targetYearClassrooms = classrooms.filter(
     (c) => c.schoolYear.id === targetSchoolYearId,
   );
@@ -436,8 +592,167 @@ export default function PromotionsPage() {
                 onClick={() => setSubTab("waiting")}
               >
                 {t("promotions.subtab.waiting")}
+                {targetSchoolYearId ? ` (${waiting.length})` : ""}
+              </Button>
+              <Button
+                type="button"
+                variant={subTab === "years" ? "primary" : "secondary"}
+                onClick={() => setSubTab("years")}
+              >
+                {t("promotions.subtab.years")}
               </Button>
             </div>
+
+            {schoolYears.length <= 1 ? (
+              <div className="mb-4 rounded-card border border-warm-border bg-warm-surface p-3 text-sm text-warm-accent-dark">
+                {t("promotions.years.alert")}
+              </div>
+            ) : null}
+
+            {subTab === "years" ? (
+              <>
+                <div className="grid gap-3 mb-4">
+                  {schoolYears.map((year) => (
+                    <Card key={year.id} title={year.label}>
+                      <div className="flex items-center justify-between gap-3">
+                        {year.isActive ? (
+                          <span className="text-sm font-semibold text-primary">
+                            {t("promotions.years.active")}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-text-secondary">
+                            &nbsp;
+                          </span>
+                        )}
+                        {!year.isActive && canActivateYear ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => activateYear(year.id)}
+                            disabled={activatingYearId === year.id}
+                          >
+                            {t("promotions.years.activate")}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {canManageYears ? (
+                  <>
+                    <Card
+                      title={t("promotions.years.create.title")}
+                      className="mb-4"
+                    >
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <FormField label={t("promotions.years.create.label")}>
+                          <input
+                            type="text"
+                            value={newYearLabel}
+                            onChange={(e) => setNewYearLabel(e.target.value)}
+                            className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                            data-testid="promotions-new-year-label"
+                          />
+                        </FormField>
+                        <FormField
+                          label={t("promotions.years.create.startsAt")}
+                        >
+                          <input
+                            type="date"
+                            value={newYearStartsAt}
+                            onChange={(e) => setNewYearStartsAt(e.target.value)}
+                            className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          />
+                        </FormField>
+                        <FormField label={t("promotions.years.create.endsAt")}>
+                          <input
+                            type="date"
+                            value={newYearEndsAt}
+                            onChange={(e) => setNewYearEndsAt(e.target.value)}
+                            className="w-full rounded-card border border-border bg-surface px-3 py-2 text-sm"
+                          />
+                        </FormField>
+                      </div>
+                      <div className="mt-3">
+                        <Button
+                          type="button"
+                          onClick={createYear}
+                          disabled={creatingYear || !newYearLabel.trim()}
+                          data-testid="promotions-create-year-submit"
+                        >
+                          {t("promotions.years.create.submit")}
+                        </Button>
+                      </div>
+                    </Card>
+
+                    <Card title={t("promotions.years.rollover.title")}>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <FormField
+                          label={t("promotions.years.rollover.source")}
+                        >
+                          <SearchableSelect
+                            value={rolloverSourceId}
+                            onChange={setRolloverSourceId}
+                            placeholder={t("common.select")}
+                            searchPlaceholder={t(
+                              "settings.form.searchPlaceholder",
+                            )}
+                            noResultsLabel={t("settings.form.noResults")}
+                            ariaLabel={t("promotions.years.rollover.source")}
+                            options={schoolYears.map((year) => ({
+                              value: year.id,
+                              label: year.label,
+                            }))}
+                          />
+                        </FormField>
+                        <FormField
+                          label={t("promotions.years.rollover.target")}
+                        >
+                          <SearchableSelect
+                            value={rolloverTargetId}
+                            onChange={setRolloverTargetId}
+                            placeholder={t("common.select")}
+                            searchPlaceholder={t(
+                              "settings.form.searchPlaceholder",
+                            )}
+                            noResultsLabel={t("settings.form.noResults")}
+                            ariaLabel={t("promotions.years.rollover.target")}
+                            options={schoolYears.map((year) => ({
+                              value: year.id,
+                              label: year.label,
+                            }))}
+                          />
+                        </FormField>
+                      </div>
+                      <label className="mt-3 flex items-center gap-2 text-sm text-text-secondary">
+                        <input
+                          type="checkbox"
+                          checked={rolloverCopyAssignments}
+                          onChange={(e) =>
+                            setRolloverCopyAssignments(e.target.checked)
+                          }
+                        />
+                        {t("promotions.years.rollover.copyAssignments")}
+                      </label>
+                      <div className="mt-3">
+                        <Button
+                          type="button"
+                          onClick={triggerRollover}
+                          disabled={
+                            rollingOver ||
+                            !rolloverSourceId ||
+                            !rolloverTargetId
+                          }
+                        >
+                          {t("promotions.years.rollover.submit")}
+                        </Button>
+                      </div>
+                    </Card>
+                  </>
+                ) : null}
+              </>
+            ) : null}
 
             {subTab === "decisions" ? (
               <>

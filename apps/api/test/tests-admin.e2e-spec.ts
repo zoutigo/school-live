@@ -500,6 +500,113 @@ describe("Tests admin API e2e", () => {
     expect(cases.some((item) => item.id === disposableId)).toBe(false);
   });
 
+  it("hides a campaign scoped to another role until the tester is explicitly assigned to it, then shows it fully", async () => {
+    // Régression : un testeur PARENT explicitement assigné à une campagne dont
+    // les cas de test ne ciblent que le rôle TEACHER doit quand même la voir
+    // dans /tests/campaigns et /tests/campaigns/:id, avec assignedToMe=true.
+    const createCampaign = await apiJson("/api/admin/tests/campaigns", {
+      method: "POST",
+      headers: authHeaders(superAdminToken),
+      body: JSON.stringify({
+        title: `Campagne assignation e2e ${runId}`,
+        status: "ACTIVE",
+      }),
+    });
+    expect(createCampaign.response.status).toBe(201);
+    const assignedOnlyCampaignId = String(
+      (createCampaign.body as { id: string }).id,
+    );
+
+    const createCase = await apiJson(
+      `/api/admin/tests/campaigns/${assignedOnlyCampaignId}/cases`,
+      {
+        method: "POST",
+        headers: authHeaders(superAdminToken),
+        body: JSON.stringify({
+          title: "Cas réservé enseignant",
+          expectedResult: "Tout fonctionne",
+          audienceRoles: ["TEACHER"],
+        }),
+      },
+    );
+    expect(createCase.response.status).toBe(201);
+
+    const beforeAssignment = await apiJson("/api/tests/campaigns", {
+      headers: authHeaders(testerToken),
+    });
+    expect(beforeAssignment.response.status).toBe(200);
+    const campaignsBeforeAssignment =
+      beforeAssignment.body as unknown as Array<{
+        id: string;
+      }>;
+    expect(
+      campaignsBeforeAssignment.some(
+        (campaign) => campaign.id === assignedOnlyCampaignId,
+      ),
+    ).toBe(false);
+
+    const assign = await apiJson(
+      `/api/admin/tests/campaigns/${assignedOnlyCampaignId}/assignments`,
+      {
+        method: "POST",
+        headers: authHeaders(superAdminToken),
+        body: JSON.stringify({ testerId: testerUserId }),
+      },
+    );
+    expect(assign.response.status).toBe(201);
+    const assignmentId = String((assign.body as { id: string }).id);
+
+    const afterAssignment = await apiJson("/api/tests/campaigns", {
+      headers: authHeaders(testerToken),
+    });
+    expect(afterAssignment.response.status).toBe(200);
+    const campaignsAfterAssignment = afterAssignment.body as unknown as Array<{
+      id: string;
+      assignedToMe: boolean;
+      summary: { totalCases: number };
+    }>;
+    const visibleCampaign = campaignsAfterAssignment.find(
+      (campaign) => campaign.id === assignedOnlyCampaignId,
+    );
+    expect(visibleCampaign).toBeTruthy();
+    expect(visibleCampaign?.assignedToMe).toBe(true);
+    expect(visibleCampaign?.summary.totalCases).toBe(1);
+
+    const detail = await apiJson(
+      `/api/tests/campaigns/${assignedOnlyCampaignId}`,
+      { headers: authHeaders(testerToken) },
+    );
+    expect(detail.response.status).toBe(200);
+    expect((detail.body as { testCases: unknown[] }).testCases.length).toBe(1);
+
+    const unassign = await apiJson(
+      `/api/admin/tests/assignments/${assignmentId}`,
+      {
+        method: "DELETE",
+        headers: authHeaders(superAdminToken),
+      },
+    );
+    expect(unassign.response.status).toBe(200);
+
+    const afterUnassignment = await apiJson("/api/tests/campaigns", {
+      headers: authHeaders(testerToken),
+    });
+    expect(afterUnassignment.response.status).toBe(200);
+    const campaignsAfterUnassignment =
+      afterUnassignment.body as unknown as Array<{
+        id: string;
+      }>;
+    expect(
+      campaignsAfterUnassignment.some(
+        (campaign) => campaign.id === assignedOnlyCampaignId,
+      ),
+    ).toBe(false);
+
+    await prisma.testCampaign
+      .delete({ where: { id: assignedOnlyCampaignId } })
+      .catch(() => {});
+  });
+
   it("lets SUPER_ADMIN delete the campaign, cascading its test cases", async () => {
     const deleteResult = await apiJson(
       `/api/admin/tests/campaigns/${campaignId}`,

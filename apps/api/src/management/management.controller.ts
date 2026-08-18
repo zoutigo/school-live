@@ -708,7 +708,7 @@ export class ManagementController {
 
   @Patch("schools/:schoolSlug/admin/school-years/active")
   @UseGuards(JwtAuthGuard, SchoolScopeGuard, RolesGuard)
-  @Roles("SCHOOL_ADMIN", "ADMIN", "SUPER_ADMIN")
+  @Roles("SCHOOL_ADMIN", "SCHOOL_MANAGER", "ADMIN", "SUPER_ADMIN")
   setActiveSchoolYear(
     @CurrentSchoolId() schoolId: string,
     @Body() payload: SetActiveSchoolYearDto,

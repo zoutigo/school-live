@@ -151,7 +151,8 @@ export function AppreciationEditor(props: {
 }
 
 export type SubjectReportSequenceRow = {
-  sequence: StudentNotesSequence;
+  /** Clé de séquence (bulletin trimestriel) ou de trimestre (bulletin annuel). */
+  sequence: StudentNotesSequence | string;
   label: string;
   studentAverage: number | null;
 };

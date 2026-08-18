@@ -17,14 +17,23 @@ import {
   AppreciationEditor,
   SubjectReportCard,
 } from "../student-notes/subject-report-card";
+import { computeYearlySnapshot } from "../student-notes/student-notes.utils";
 import type {
   StudentNotesTerm,
+  StudentNotesTermOrYearly,
   StudentNotesTermSnapshot,
+  YearlyNotesSnapshot,
 } from "../student-notes/student-notes.types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 const ALL_TERMS: StudentNotesTerm[] = ["TERM_1", "TERM_2", "TERM_3"];
+const ALL_CARDS: StudentNotesTermOrYearly[] = [
+  "TERM_1",
+  "TERM_2",
+  "TERM_3",
+  "YEARLY",
+];
 
 export type CouncilDrafts = Record<
   string,
@@ -80,13 +89,18 @@ function formatDelta(
   );
 }
 
-function termLabel(t: TranslateFn, term: StudentNotesTerm) {
+function termLabel(t: TranslateFn, term: StudentNotesTermOrYearly) {
   if (term === "TERM_1") return t("notes.teacher.terms.term1");
   if (term === "TERM_2") return t("notes.teacher.terms.term2");
-  return t("notes.teacher.terms.term3");
+  if (term === "TERM_3") return t("notes.teacher.terms.term3");
+  return t("notes.teacher.terms.yearly");
 }
 
-function ReportHero({ snapshot }: { snapshot: StudentNotesTermSnapshot }) {
+function ReportHero({
+  snapshot,
+}: {
+  snapshot: StudentNotesTermSnapshot | YearlyNotesSnapshot;
+}) {
   const { t } = useTranslation();
   const { generalAverage, subjects } = snapshot;
 
@@ -216,7 +230,7 @@ export function TeacherPeriodReports({
   );
   const [detail, setDetail] = useState<{
     studentId: string;
-    term: StudentNotesTerm;
+    term: StudentNotesTermOrYearly;
   } | null>(null);
   const [studentNotes, setStudentNotes] = useState<
     Record<string, StudentNotesTermSnapshot[]>
@@ -274,9 +288,11 @@ export function TeacherPeriodReports({
     );
   }
 
-  function openBulletin(studentId: string, nextTerm: StudentNotesTerm) {
+  function openBulletin(studentId: string, nextTerm: StudentNotesTermOrYearly) {
     setDetail({ studentId, term: nextTerm });
-    onTermChange(nextTerm);
+    if (nextTerm !== "YEARLY") {
+      onTermChange(nextTerm);
+    }
     setEditingGeneral(false);
     setEditingSubjectId(null);
   }
@@ -319,9 +335,16 @@ export function TeacherPeriodReports({
 
   if (detail && selectedStudent) {
     const snapshots = studentNotes[detail.studentId] ?? [];
-    const snapshot =
-      snapshots.find((entry) => entry.term === detail.term) ?? null;
+    const isYearly = detail.term === "YEARLY";
+    const snapshot = isYearly
+      ? null
+      : (snapshots.find((entry) => entry.term === detail.term) ?? null);
+    const yearlySnapshot = isYearly
+      ? computeYearlySnapshot(snapshots, t)
+      : null;
     const generalText = drafts[detail.studentId]?.generalAppreciation ?? "";
+    const isLoading =
+      loadingStudentId === detail.studentId && snapshots.length === 0;
 
     return (
       <div data-testid="teacher-reports-detail" className="grid gap-4">
@@ -339,10 +362,41 @@ export function TeacherPeriodReports({
           {selectedStudent.lastName} {selectedStudent.firstName} · {className}
         </p>
 
-        {loadingStudentId === detail.studentId && !snapshot ? (
+        {isLoading ? (
           <p className="text-sm text-text-secondary">
             {t("notes.teacher.reports.loading")}
           </p>
+        ) : isYearly ? (
+          yearlySnapshot ? (
+            <>
+              <ReportHero snapshot={yearlySnapshot} />
+
+              <div
+                data-testid="teacher-reports-yearly-subjects"
+                className="grid gap-3"
+              >
+                {yearlySnapshot.subjects.map((subject) => (
+                  <SubjectReportCard
+                    key={subject.id}
+                    subject={subject}
+                    sequenceRows={ALL_TERMS.map((termKey) => ({
+                      sequence: termKey,
+                      label: termLabel(t, termKey),
+                      studentAverage: subject.termAverages[termKey] ?? null,
+                    }))}
+                    editable={false}
+                    appreciationValue=""
+                    testId={`teacher-reports-yearly-subject-card-${subject.id}`}
+                    testIdPrefix={`teacher-reports-yearly-subject-${subject.id}`}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-text-secondary">
+              {t("notes.teacher.reports.empty.message")}
+            </p>
+          )
         ) : snapshot ? (
           <>
             <ReportHero snapshot={snapshot} />
@@ -479,27 +533,28 @@ export function TeacherPeriodReports({
                 {expanded ? (
                   <div
                     data-testid={`teacher-reports-bulletins-${student.id}`}
-                    className="grid grid-cols-3 gap-2"
+                    className="grid grid-cols-4 gap-2"
                   >
-                    {ALL_TERMS.map((entryTerm) => {
-                      const snapshot =
-                        snapshots.find((entry) => entry.term === entryTerm) ??
-                        null;
+                    {ALL_CARDS.map((entryTerm) => {
+                      const average =
+                        entryTerm === "YEARLY"
+                          ? (computeYearlySnapshot(snapshots, t)?.generalAverage
+                              .student ?? null)
+                          : (snapshots.find((entry) => entry.term === entryTerm)
+                              ?.generalAverage.student ?? null);
                       return (
                         <button
                           key={entryTerm}
                           type="button"
                           data-testid={`teacher-reports-bulletin-${student.id}-${entryTerm}`}
                           onClick={() => openBulletin(student.id, entryTerm)}
-                          className="grid gap-1 rounded-[10px] border border-teal-border bg-surface px-2.5 py-3 text-center"
+                          className="grid gap-1 rounded-[10px] border border-teal-border bg-surface px-2 py-3 text-center"
                         >
                           <span className="text-[11px] font-semibold text-text-secondary">
                             {termLabel(t, entryTerm)}
                           </span>
                           <span className="font-heading text-base font-extrabold text-primary">
-                            {formatScore(
-                              snapshot?.generalAverage.student ?? null,
-                            )}
+                            {formatScore(average)}
                           </span>
                         </button>
                       );
