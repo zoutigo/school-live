@@ -68,7 +68,7 @@ export class TestsService {
       where: {
         status: "ACTIVE",
         testCases: {
-          some: this.buildCaseVisibilityWhere(roles),
+          some: this.buildCaseVisibilityWhere(roles, user.id),
         },
       },
       orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
@@ -80,8 +80,12 @@ export class TestsService {
         startsAt: true,
         dueAt: true,
         status: true,
+        assignments: {
+          where: { userId: user.id },
+          select: { id: true },
+        },
         testCases: {
-          where: this.buildCaseVisibilityWhere(roles),
+          where: this.buildCaseVisibilityWhere(roles, user.id),
           orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],
           select: {
             id: true,
@@ -126,6 +130,7 @@ export class TestsService {
         startsAt: campaign.startsAt,
         dueAt: campaign.dueAt,
         status: campaign.status,
+        assignedToMe: campaign.assignments.length > 0,
         summary: {
           totalCases: campaign.testCases.length,
           completedCases: completedCount,
@@ -146,7 +151,7 @@ export class TestsService {
         id: campaignId,
         status: "ACTIVE",
         testCases: {
-          some: this.buildCaseVisibilityWhere(roles),
+          some: this.buildCaseVisibilityWhere(roles, user.id),
         },
       },
       select: {
@@ -158,7 +163,7 @@ export class TestsService {
         dueAt: true,
         status: true,
         testCases: {
-          where: this.buildCaseVisibilityWhere(roles),
+          where: this.buildCaseVisibilityWhere(roles, user.id),
           orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],
           select: {
             id: true,
@@ -241,7 +246,7 @@ export class TestsService {
         campaign: {
           status: "ACTIVE",
         },
-        ...this.buildCaseVisibilityWhere(roles),
+        ...this.buildCaseVisibilityWhere(roles, user.id),
       },
       select: {
         id: true,
@@ -431,7 +436,7 @@ export class TestsService {
         campaign: {
           status: "ACTIVE",
         },
-        ...this.buildCaseVisibilityWhere(roles),
+        ...this.buildCaseVisibilityWhere(roles, user.id),
       },
       select: {
         id: true,
@@ -828,7 +833,7 @@ export class TestsService {
     const cases = await this.prisma.testCase.findMany({
       where: {
         campaign: { status: "ACTIVE" },
-        ...this.buildCaseVisibilityWhere(roles),
+        ...this.buildCaseVisibilityWhere(roles, user.id),
         executions: {
           some: { userId: user.id, reworkRequestedAt: { not: null } },
         },
@@ -1549,11 +1554,13 @@ export class TestsService {
 
   private buildCaseVisibilityWhere(
     roles: AppRole[],
+    userId: string,
   ): Prisma.TestCaseWhereInput {
     return {
       OR: [
         { audienceRoles: { none: {} } },
         { audienceRoles: { some: { role: { in: roles } } } },
+        { campaign: { assignments: { some: { userId } } } },
       ],
     };
   }
