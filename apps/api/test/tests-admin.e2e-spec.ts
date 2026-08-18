@@ -535,9 +535,10 @@ describe("Tests admin API e2e", () => {
       headers: authHeaders(testerToken),
     });
     expect(beforeAssignment.response.status).toBe(200);
-    const campaignsBeforeAssignment = beforeAssignment.body as unknown as Array<{
-      id: string;
-    }>;
+    const campaignsBeforeAssignment =
+      beforeAssignment.body as unknown as Array<{
+        id: string;
+      }>;
     expect(
       campaignsBeforeAssignment.some(
         (campaign) => campaign.id === assignedOnlyCampaignId,
@@ -576,23 +577,25 @@ describe("Tests admin API e2e", () => {
       { headers: authHeaders(testerToken) },
     );
     expect(detail.response.status).toBe(200);
-    expect(
-      (detail.body as { testCases: unknown[] }).testCases.length,
-    ).toBe(1);
+    expect((detail.body as { testCases: unknown[] }).testCases.length).toBe(1);
 
-    const unassign = await apiJson(`/api/admin/tests/assignments/${assignmentId}`, {
-      method: "DELETE",
-      headers: authHeaders(superAdminToken),
-    });
+    const unassign = await apiJson(
+      `/api/admin/tests/assignments/${assignmentId}`,
+      {
+        method: "DELETE",
+        headers: authHeaders(superAdminToken),
+      },
+    );
     expect(unassign.response.status).toBe(200);
 
     const afterUnassignment = await apiJson("/api/tests/campaigns", {
       headers: authHeaders(testerToken),
     });
     expect(afterUnassignment.response.status).toBe(200);
-    const campaignsAfterUnassignment = afterUnassignment.body as unknown as Array<{
-      id: string;
-    }>;
+    const campaignsAfterUnassignment =
+      afterUnassignment.body as unknown as Array<{
+        id: string;
+      }>;
     expect(
       campaignsAfterUnassignment.some(
         (campaign) => campaign.id === assignedOnlyCampaignId,
