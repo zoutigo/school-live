@@ -81,7 +81,9 @@ function mockFetchBase() {
       return jsonResponse({ success: true });
     }
     if (url.includes("/admin/finance/settings") && method === "GET") {
-      return jsonResponse({ reinscriptionThresholdPolicy: "FIRST_INSTALLMENT" });
+      return jsonResponse({
+        reinscriptionThresholdPolicy: "FIRST_INSTALLMENT",
+      });
     }
     if (url.includes("/admin/finance/settings") && method === "PATCH") {
       return jsonResponse({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
@@ -161,9 +163,7 @@ describe("Finance echeanciers page", () => {
 
     await screen.findAllByText("CE2");
 
-    fireEvent.click(
-      screen.getByTestId("reinscription-policy-full-payment"),
-    );
+    fireEvent.click(screen.getByTestId("reinscription-policy-full-payment"));
 
     await waitFor(() => {
       const patchCall = fetchMock.mock.calls.find(

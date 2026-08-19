@@ -229,6 +229,115 @@ export class FinanceService {
     };
   }
 
+  /**
+   * Aucun paiement n'est rattache explicitement a une echeance precise en base
+   * (StudentPayment n'a pas de feeInstallmentId) : on reconstitue la
+   * repartition par une cascade, tranche par tranche dans l'ordre des rangs,
+   * chaque tranche consommant le solde restant du cumul paye avant que la
+   * suivante ne soit entamee.
+   */
+  private allocateInstallments(
+    installments: {
+      id: string;
+      rank: number;
+      label: string;
+      amount: number;
+      dueDate: Date | null;
+    }[],
+    totalPaid: number,
+  ) {
+    let remainingPaid = totalPaid;
+    const now = new Date();
+
+    return installments.map((installment) => {
+      const allocatedAmount = Math.max(
+        0,
+        Math.min(remainingPaid, installment.amount),
+      );
+      remainingPaid -= allocatedAmount;
+      const remainingAmount = installment.amount - allocatedAmount;
+
+      let status: "PAID" | "PARTIAL" | "UPCOMING" | "OVERDUE";
+      if (remainingAmount <= 0) {
+        status = "PAID";
+      } else if (allocatedAmount > 0) {
+        status = "PARTIAL";
+      } else if (installment.dueDate && installment.dueDate < now) {
+        status = "OVERDUE";
+      } else {
+        status = "UPCOMING";
+      }
+
+      return { ...installment, allocatedAmount, remainingAmount, status };
+    });
+  }
+
+  async getStudentInstallmentBreakdown(
+    schoolId: string,
+    studentId: string,
+    targetSchoolYearId: string,
+  ) {
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, schoolId },
+      select: { id: true, firstName: true, lastName: true },
+    });
+    if (!student) {
+      throw new NotFoundException("Eleve introuvable");
+    }
+
+    const decision = await this.enrollmentsService.getConfirmedDecisionOrThrow(
+      schoolId,
+      studentId,
+    );
+
+    const feeSchedule = await this.resolveFeeScheduleForTarget(
+      schoolId,
+      targetSchoolYearId,
+      decision.nextAcademicLevelId,
+      decision.nextTrackId,
+    );
+
+    const totalPaid = await this.getTotalPaid(studentId, targetSchoolYearId);
+    const installments = this.allocateInstallments(
+      feeSchedule.installments,
+      totalPaid,
+    );
+    const totalAmount = feeSchedule.installments.reduce(
+      (sum, installment) => sum + installment.amount,
+      0,
+    );
+
+    return {
+      student,
+      schoolYearId: targetSchoolYearId,
+      totalAmount,
+      totalPaid,
+      totalRemaining: Math.max(0, totalAmount - totalPaid),
+      installments,
+    };
+  }
+
+  async getMyChildInstallmentBreakdown(
+    schoolId: string,
+    parentUserId: string,
+    studentId: string,
+    schoolYearId: string,
+  ) {
+    const link = await this.prisma.parentStudent.findFirst({
+      where: { schoolId, parentUserId, studentId },
+      select: { id: true },
+    });
+    if (!link) {
+      throw new BadRequestException("Cet eleve n'est pas rattache a ce parent");
+    }
+
+    return this.getStudentInstallmentBreakdown(
+      schoolId,
+      studentId,
+      schoolYearId,
+    );
+  }
+
   private async getTotalPaid(
     studentId: string,
     schoolYearId: string,

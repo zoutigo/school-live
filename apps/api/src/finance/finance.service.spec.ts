@@ -482,4 +482,145 @@ describe("FinanceService", () => {
       expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
     });
   });
+
+  describe("cascade d'allocation des paiements par echeance", () => {
+    const PAST_DATE = new Date("2020-01-01");
+    const FUTURE_DATE = new Date("2099-01-01");
+
+    const SCHEDULE_WITH_DUE_DATES = {
+      id: "fee-schedule-1",
+      installments: [
+        {
+          id: "inst-1",
+          rank: 1,
+          label: "1ere echeance",
+          amount: 50000,
+          dueDate: PAST_DATE,
+        },
+        {
+          id: "inst-2",
+          rank: 2,
+          label: "2eme echeance",
+          amount: 30000,
+          dueDate: FUTURE_DATE,
+        },
+        {
+          id: "inst-3",
+          rank: 3,
+          label: "3eme echeance",
+          amount: 20000,
+          dueDate: FUTURE_DATE,
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      prisma.feeSchedule.findFirst.mockResolvedValue(SCHEDULE_WITH_DUE_DATES);
+    });
+
+    it("aucun paiement : la 1ere echeance passee est OVERDUE, les suivantes UPCOMING", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 0 },
+      });
+      const result = await service.getStudentInstallmentBreakdown(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+      expect(result.totalAmount).toBe(100000);
+      expect(result.totalPaid).toBe(0);
+      expect(result.totalRemaining).toBe(100000);
+      expect(result.installments).toEqual([
+        expect.objectContaining({
+          id: "inst-1",
+          allocatedAmount: 0,
+          remainingAmount: 50000,
+          status: "OVERDUE",
+        }),
+        expect.objectContaining({
+          id: "inst-2",
+          allocatedAmount: 0,
+          remainingAmount: 30000,
+          status: "UPCOMING",
+        }),
+        expect.objectContaining({
+          id: "inst-3",
+          allocatedAmount: 0,
+          remainingAmount: 20000,
+          status: "UPCOMING",
+        }),
+      ]);
+    });
+
+    it("paiement partiel : consomme la 1ere echeance en priorite avant d'entamer la 2eme", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 60000 },
+      });
+      const result = await service.getStudentInstallmentBreakdown(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+      expect(result.installments).toEqual([
+        expect.objectContaining({
+          id: "inst-1",
+          allocatedAmount: 50000,
+          remainingAmount: 0,
+          status: "PAID",
+        }),
+        expect.objectContaining({
+          id: "inst-2",
+          allocatedAmount: 10000,
+          remainingAmount: 20000,
+          status: "PARTIAL",
+        }),
+        expect.objectContaining({
+          id: "inst-3",
+          allocatedAmount: 0,
+          remainingAmount: 20000,
+          status: "UPCOMING",
+        }),
+      ]);
+    });
+
+    it("paiement integral : toutes les echeances sont PAID", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 100000 },
+      });
+      const result = await service.getStudentInstallmentBreakdown(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+      expect(result.totalRemaining).toBe(0);
+      expect(result.installments.every((i) => i.status === "PAID")).toBe(
+        true,
+      );
+    });
+
+    it("getMyChildInstallmentBreakdown refuse si l'eleve n'est pas rattache a ce parent", async () => {
+      prisma.parentStudent.findFirst.mockResolvedValue(null);
+      await expect(
+        service.getMyChildInstallmentBreakdown(
+          SCHOOL_ID,
+          "parent-1",
+          STUDENT_ID,
+          TARGET_YEAR_ID,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("getMyChildInstallmentBreakdown delegue a la cascade quand le lien parent existe", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 100000 },
+      });
+      const result = await service.getMyChildInstallmentBreakdown(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+      expect(result.totalRemaining).toBe(0);
+    });
+  });
 });

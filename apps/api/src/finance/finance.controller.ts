@@ -111,6 +111,21 @@ export class ParentFinanceController {
     return this.financeService.getWalletSummary(schoolId, user.id);
   }
 
+  @Get("students/:studentId/schedule")
+  getMyChildInstallmentBreakdown(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+    @Query("schoolYearId") schoolYearId: string,
+  ) {
+    return this.financeService.getMyChildInstallmentBreakdown(
+      schoolId,
+      user.id,
+      studentId,
+      schoolYearId,
+    );
+  }
+
   @Post("wallet/top-up")
   topUpWallet(
     @CurrentSchoolId() schoolId: string,

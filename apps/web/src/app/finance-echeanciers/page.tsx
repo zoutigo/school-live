@@ -436,10 +436,7 @@ export default function FinanceEcheanciersPage() {
               </div>
             ) : null}
 
-            <Card
-              title={t("financeSchedules.settings.title")}
-              className="mb-6"
-            >
+            <Card title={t("financeSchedules.settings.title")} className="mb-6">
               <p className="mb-3 text-sm text-text-secondary">
                 {t("financeSchedules.settings.description")}
               </p>
