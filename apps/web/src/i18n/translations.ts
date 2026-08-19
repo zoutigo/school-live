@@ -4176,6 +4176,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sso.appleDisabledNoProvider":
       "Connexion Apple desactivee: provider non configure",
     "sso.appleDisabledTemp": "Connexion Apple desactivee temporairement",
+    "sso.mobileCallback.title": "Connexion Google",
+    "sso.mobileCallback.loading": "Retour vers l'application...",
+    "sso.mobileCallback.finalizing":
+      "Nous finalisons votre connexion mobile...",
+    "sso.mobileCallback.manualPrompt":
+      "L'application ne s'est pas ouverte automatiquement.",
+    "sso.mobileCallback.manualAction": "Ouvrir l'application Scolive",
 
     // ChildModulePage shared strings
     "childModule.tab.home": "Accueil",
@@ -8953,6 +8960,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sso.appleDisabledNoProvider":
       "Apple sign-in disabled: provider not configured",
     "sso.appleDisabledTemp": "Apple sign-in temporarily disabled",
+    "sso.mobileCallback.title": "Google sign-in",
+    "sso.mobileCallback.loading": "Returning to the app...",
+    "sso.mobileCallback.finalizing": "Finishing your mobile sign-in...",
+    "sso.mobileCallback.manualPrompt": "The app didn't open automatically.",
+    "sso.mobileCallback.manualAction": "Open the Scolive app",
 
     // ChildModulePage shared strings
     "childModule.tab.home": "Home",
