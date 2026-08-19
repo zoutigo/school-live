@@ -448,10 +448,11 @@ export class FinanceService {
             decision.nextTrackId,
           );
           const totalPaid = await this.getTotalPaid(student.id, nextYear.id);
-          const thresholdAmount = await this.resolveReinscriptionThresholdAmount(
-            schoolId,
-            feeSchedule,
-          );
+          const thresholdAmount =
+            await this.resolveReinscriptionThresholdAmount(
+              schoolId,
+              feeSchedule,
+            );
           requiredAmount = Math.max(0, thresholdAmount - totalPaid);
         } catch {
           // Pas d'echeancier defini pour ce niveau/filiere/annee : le parent

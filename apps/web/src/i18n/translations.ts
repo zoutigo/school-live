@@ -543,6 +543,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "common.help": "Aide",
     "common.remove": "Retirer",
 
+    "financeSchedules.settings.title": "Seuil de reinscription",
+    "financeSchedules.settings.description":
+      "Determine a partir de quel montant verse un eleve promu est considere reinscrit.",
+    "financeSchedules.settings.firstInstallment": "1ere echeance payee",
+    "financeSchedules.settings.fullPayment": "Echeancier paye en totalite",
+    "financeSchedules.settings.success":
+      "Politique de reinscription mise a jour.",
+    "financeSchedules.settings.errors.save":
+      "Impossible de mettre a jour la politique de reinscription.",
     "financeSchedules.title": "Echeanciers de scolarite",
     "financeSchedules.subtitle":
       "Definissez le bareme de frais de scolarite par niveau et filiere pour chaque annee scolaire.",
@@ -5477,6 +5486,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "common.help": "Help",
     "common.remove": "Remove",
 
+    "financeSchedules.settings.title": "Re-enrollment threshold",
+    "financeSchedules.settings.description":
+      "Determines how much a promoted student's family must pay to be considered re-enrolled.",
+    "financeSchedules.settings.firstInstallment": "First installment paid",
+    "financeSchedules.settings.fullPayment": "Full schedule paid",
+    "financeSchedules.settings.success": "Re-enrollment policy updated.",
+    "financeSchedules.settings.errors.save":
+      "Could not update the re-enrollment policy.",
     "financeSchedules.title": "Tuition fee schedules",
     "financeSchedules.subtitle":
       "Define the tuition fee schedule per level and track for each school year.",

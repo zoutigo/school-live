@@ -45,6 +45,8 @@ type FeeInstallmentRow = {
   dueDate: string | null;
 };
 
+type ReinscriptionThresholdPolicy = "FIRST_INSTALLMENT" | "FULL_PAYMENT";
+
 type FeeScheduleRow = {
   id: string;
   academicLevel: { id: string; label: string; code: string };
@@ -84,6 +86,9 @@ export default function FinanceEcheanciersPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reinscriptionThresholdPolicy, setReinscriptionThresholdPolicy] =
+    useState<ReinscriptionThresholdPolicy>("FIRST_INSTALLMENT");
+  const [savingPolicy, setSavingPolicy] = useState(false);
 
   const form = useForm<ScheduleFormValues>({
     resolver: zodResolver(scheduleFormSchema),
@@ -138,21 +143,31 @@ export default function FinanceEcheanciersPage() {
   async function loadData(currentSchoolSlug: string) {
     setError(null);
     try {
-      const [yearsRes, levelsRes, tracksRes, schedulesRes] = await Promise.all([
-        fetch(buildAdminPath(currentSchoolSlug, "school-years"), {
-          credentials: "include",
-        }),
-        fetch(buildAdminPath(currentSchoolSlug, "academic-levels"), {
-          credentials: "include",
-        }),
-        fetch(buildAdminPath(currentSchoolSlug, "tracks"), {
-          credentials: "include",
-        }),
-        fetch(buildAdminPath(currentSchoolSlug, "finance/fee-schedules"), {
-          credentials: "include",
-        }),
-      ]);
-      if (!yearsRes.ok || !levelsRes.ok || !tracksRes.ok || !schedulesRes.ok) {
+      const [yearsRes, levelsRes, tracksRes, schedulesRes, settingsRes] =
+        await Promise.all([
+          fetch(buildAdminPath(currentSchoolSlug, "school-years"), {
+            credentials: "include",
+          }),
+          fetch(buildAdminPath(currentSchoolSlug, "academic-levels"), {
+            credentials: "include",
+          }),
+          fetch(buildAdminPath(currentSchoolSlug, "tracks"), {
+            credentials: "include",
+          }),
+          fetch(buildAdminPath(currentSchoolSlug, "finance/fee-schedules"), {
+            credentials: "include",
+          }),
+          fetch(buildAdminPath(currentSchoolSlug, "finance/settings"), {
+            credentials: "include",
+          }),
+        ]);
+      if (
+        !yearsRes.ok ||
+        !levelsRes.ok ||
+        !tracksRes.ok ||
+        !schedulesRes.ok ||
+        !settingsRes.ok
+      ) {
         setError(t("financeSchedules.errors.load"));
         return;
       }
@@ -161,6 +176,10 @@ export default function FinanceEcheanciersPage() {
       setAcademicLevels((await levelsRes.json()) as AcademicLevelRow[]);
       setTracks((await tracksRes.json()) as TrackRow[]);
       setSchedules((await schedulesRes.json()) as FeeScheduleRow[]);
+      const settings = (await settingsRes.json()) as {
+        reinscriptionThresholdPolicy: ReinscriptionThresholdPolicy;
+      };
+      setReinscriptionThresholdPolicy(settings.reinscriptionThresholdPolicy);
 
       if (!form.getValues("schoolYearId")) {
         const active = years.find((y) => y.isActive);
@@ -259,6 +278,47 @@ export default function FinanceEcheanciersPage() {
       setError(t("financeSchedules.errors.network"));
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function onSelectPolicy(policy: ReinscriptionThresholdPolicy) {
+    if (!schoolSlug || policy === reinscriptionThresholdPolicy || savingPolicy)
+      return;
+    const csrfToken = getCsrfTokenCookie();
+    if (!csrfToken) {
+      setError(t("common.errors.invalidCsrfSession"));
+      router.replace("/");
+      return;
+    }
+    const previous = reinscriptionThresholdPolicy;
+    setReinscriptionThresholdPolicy(policy);
+    setSavingPolicy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(
+        buildAdminPath(schoolSlug, "finance/settings"),
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
+          body: JSON.stringify({ reinscriptionThresholdPolicy: policy }),
+        },
+      );
+      if (!response.ok) {
+        setReinscriptionThresholdPolicy(previous);
+        setError(t("financeSchedules.settings.errors.save"));
+        return;
+      }
+      setSuccess(t("financeSchedules.settings.success"));
+    } catch {
+      setReinscriptionThresholdPolicy(previous);
+      setError(t("financeSchedules.errors.network"));
+    } finally {
+      setSavingPolicy(false);
     }
   }
 
@@ -375,6 +435,43 @@ export default function FinanceEcheanciersPage() {
                 {success}
               </div>
             ) : null}
+
+            <Card
+              title={t("financeSchedules.settings.title")}
+              className="mb-6"
+            >
+              <p className="mb-3 text-sm text-text-secondary">
+                {t("financeSchedules.settings.description")}
+              </p>
+              <div className="flex gap-2" role="group">
+                <button
+                  type="button"
+                  onClick={() => onSelectPolicy("FIRST_INSTALLMENT")}
+                  disabled={savingPolicy}
+                  className={`flex-1 rounded-card border px-4 py-2 text-sm font-semibold ${
+                    reinscriptionThresholdPolicy === "FIRST_INSTALLMENT"
+                      ? "border-primary bg-primary text-white"
+                      : "border-border text-text-primary"
+                  }`}
+                  data-testid="reinscription-policy-first-installment"
+                >
+                  {t("financeSchedules.settings.firstInstallment")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectPolicy("FULL_PAYMENT")}
+                  disabled={savingPolicy}
+                  className={`flex-1 rounded-card border px-4 py-2 text-sm font-semibold ${
+                    reinscriptionThresholdPolicy === "FULL_PAYMENT"
+                      ? "border-primary bg-primary text-white"
+                      : "border-border text-text-primary"
+                  }`}
+                  data-testid="reinscription-policy-full-payment"
+                >
+                  {t("financeSchedules.settings.fullPayment")}
+                </button>
+              </div>
+            </Card>
 
             <Card title={t("financeSchedules.form.title")} className="mb-6">
               <form
@@ -538,7 +635,7 @@ export default function FinanceEcheanciersPage() {
               </form>
             </Card>
 
-            <div className="grid gap-3">
+            <div className="grid gap-3" data-testid="fee-schedules-list">
               {groupedSchedules.map((schedule) => (
                 <Card
                   key={schedule.id}

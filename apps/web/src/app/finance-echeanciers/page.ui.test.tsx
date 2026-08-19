@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import FinanceEcheanciersPage from "./page";
 import { selectSearchableOption } from "../../test/searchable-select";
@@ -74,6 +80,12 @@ function mockFetchBase() {
     if (url.includes("/admin/finance/fee-schedules/") && method === "DELETE") {
       return jsonResponse({ success: true });
     }
+    if (url.includes("/admin/finance/settings") && method === "GET") {
+      return jsonResponse({ reinscriptionThresholdPolicy: "FIRST_INSTALLMENT" });
+    }
+    if (url.includes("/admin/finance/settings") && method === "PATCH") {
+      return jsonResponse({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
+    }
 
     return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
   });
@@ -92,7 +104,11 @@ describe("Finance echeanciers page", () => {
     render(<FinanceEcheanciersPage />);
 
     expect((await screen.findAllByText("CE2")).length).toBeGreaterThan(0);
-    expect(screen.getByText(/1ere echeance/)).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("fee-schedules-list")).getByText(
+        /1ere echeance/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("cree un nouvel echeancier avec le jeton CSRF", async () => {
@@ -137,5 +153,34 @@ describe("Finance echeanciers page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Supprimer" }));
 
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/"));
+  });
+
+  it("charge la politique de seuil courante et permet de la changer", async () => {
+    const fetchMock = mockFetchBase();
+    render(<FinanceEcheanciersPage />);
+
+    await screen.findAllByText("CE2");
+
+    fireEvent.click(
+      screen.getByTestId("reinscription-policy-full-payment"),
+    );
+
+    await waitFor(() => {
+      const patchCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).includes("/admin/finance/settings") &&
+          init?.method === "PATCH",
+      );
+      expect(patchCall).toBeTruthy();
+      const headers = patchCall?.[1]?.headers as Record<string, string>;
+      expect(headers["X-CSRF-Token"]).toBe("csrf-token-test");
+      expect(JSON.parse(String(patchCall?.[1]?.body))).toEqual({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+    });
+
+    expect(
+      await screen.findByText("Politique de reinscription mise a jour."),
+    ).toBeInTheDocument();
   });
 });
