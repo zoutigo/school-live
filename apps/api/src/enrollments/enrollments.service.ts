@@ -126,6 +126,11 @@ export class EnrollmentsService {
       sourceSchoolYearId,
       targetYear.id,
     );
+    await this.provisionSupplyListsForNewYear(
+      schoolId,
+      sourceSchoolYearId,
+      targetYear.id,
+    );
 
     return targetYear;
   }
@@ -195,6 +200,60 @@ export class EnrollmentsService {
     const shifted = new Date(date);
     shifted.setUTCFullYear(shifted.getUTCFullYear() + 1);
     return shifted;
+  }
+
+  /**
+   * Meme principe que provisionFeeSchedulesForNewYear, applique a la liste de
+   * fournitures scolaires (SupplyList + SupplyItem) : le school manager
+   * n'a plus a la ressaisir de zero chaque annee, il n'ajuste que ce qui
+   * change.
+   */
+  async provisionSupplyListsForNewYear(
+    schoolId: string,
+    sourceSchoolYearId: string,
+    targetSchoolYearId: string,
+  ) {
+    if (sourceSchoolYearId === targetSchoolYearId) {
+      return;
+    }
+
+    const sourceLists = await this.prisma.supplyList.findMany({
+      where: { schoolId, schoolYearId: sourceSchoolYearId },
+      include: { items: { orderBy: { rank: "asc" } } },
+    });
+
+    for (const source of sourceLists) {
+      const existing = await this.prisma.supplyList.findFirst({
+        where: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId: source.academicLevelId,
+          trackId: source.trackId,
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        continue;
+      }
+
+      await this.prisma.supplyList.create({
+        data: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId: source.academicLevelId,
+          trackId: source.trackId,
+          items: {
+            create: source.items.map((item) => ({
+              schoolId,
+              rank: item.rank,
+              label: item.label,
+              quantity: item.quantity,
+              note: item.note,
+            })),
+          },
+        },
+      });
+    }
   }
 
   /**

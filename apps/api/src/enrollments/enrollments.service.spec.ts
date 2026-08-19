@@ -45,6 +45,11 @@ const makePrismaMock = () => ({
     findFirst: jest.fn().mockResolvedValue(null),
     create: jest.fn(),
   },
+  supplyList: {
+    findMany: jest.fn().mockResolvedValue([]),
+    findFirst: jest.fn().mockResolvedValue(null),
+    create: jest.fn(),
+  },
 });
 
 describe("EnrollmentsService", () => {
@@ -321,6 +326,77 @@ describe("EnrollmentsService", () => {
       );
 
       expect(prisma.feeSchedule.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("provisionSupplyListsForNewYear", () => {
+    it("ne fait rien si annee source et annee cible sont identiques", async () => {
+      await service.provisionSupplyListsForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        SOURCE_YEAR_ID,
+      );
+      expect(prisma.supplyList.findMany).not.toHaveBeenCalled();
+    });
+
+    it("copie chaque liste de fournitures de l'annee source vers l'annee cible", async () => {
+      prisma.supplyList.findMany.mockResolvedValue([
+        {
+          id: "supply-src-1",
+          academicLevelId: "level-ce2",
+          trackId: null,
+          items: [
+            { rank: 1, label: "Cahier 100 pages", quantity: 3, note: null },
+          ],
+        },
+      ]);
+      prisma.supplyList.findFirst.mockResolvedValue(null);
+
+      await service.provisionSupplyListsForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.supplyList.create).toHaveBeenCalledWith({
+        data: {
+          schoolId: SCHOOL_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          academicLevelId: "level-ce2",
+          trackId: null,
+          items: {
+            create: [
+              {
+                schoolId: SCHOOL_ID,
+                rank: 1,
+                label: "Cahier 100 pages",
+                quantity: 3,
+                note: null,
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    it("est idempotente : ne recree rien si une liste existe deja pour ce niveau sur l'annee cible", async () => {
+      prisma.supplyList.findMany.mockResolvedValue([
+        {
+          id: "supply-src-1",
+          academicLevelId: "level-ce2",
+          trackId: null,
+          items: [],
+        },
+      ]);
+      prisma.supplyList.findFirst.mockResolvedValue({ id: "already-there" });
+
+      await service.provisionSupplyListsForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.supplyList.create).not.toHaveBeenCalled();
     });
   });
 });

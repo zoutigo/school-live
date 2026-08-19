@@ -570,6 +570,7 @@ const NOOP_PUSH_SERVICE = {
 
 const NOOP_ENROLLMENTS_SERVICE = {
   provisionFeeSchedulesForNewYear: async () => undefined,
+  provisionSupplyListsForNewYear: async () => undefined,
 } as unknown as EnrollmentsService;
 
 const LIFE_EVENT_TYPE_LABELS: Record<string, string> = {
@@ -3462,6 +3463,11 @@ export class ManagementService {
         school.activeSchoolYearId,
         created.id,
       );
+      await this.enrollmentsService.provisionSupplyListsForNewYear(
+        schoolId,
+        school.activeSchoolYearId,
+        created.id,
+      );
     }
 
     return {
@@ -3692,6 +3698,11 @@ export class ManagementService {
     });
 
     await this.enrollmentsService.provisionFeeSchedulesForNewYear(
+      schoolId,
+      result.sourceSchoolYearId,
+      result.targetSchoolYear.id,
+    );
+    await this.enrollmentsService.provisionSupplyListsForNewYear(
       schoolId,
       result.sourceSchoolYearId,
       result.targetSchoolYear.id,

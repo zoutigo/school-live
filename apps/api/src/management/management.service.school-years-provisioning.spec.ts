@@ -47,6 +47,7 @@ function makeService() {
   };
   const enrollmentsService = {
     provisionFeeSchedulesForNewYear: jest.fn().mockResolvedValue(undefined),
+    provisionSupplyListsForNewYear: jest.fn().mockResolvedValue(undefined),
   };
   const service = new ManagementService(
     prisma as unknown as PrismaService,
@@ -68,6 +69,9 @@ describe("ManagementService — provisioning des echeanciers a la creation d'ann
 
     expect(
       enrollmentsService.provisionFeeSchedulesForNewYear,
+    ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, created.id);
+    expect(
+      enrollmentsService.provisionSupplyListsForNewYear,
     ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, created.id);
   });
 
@@ -92,6 +96,9 @@ describe("ManagementService — provisioning des echeanciers a la creation d'ann
 
     expect(
       enrollmentsService.provisionFeeSchedulesForNewYear,
+    ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, "target-year");
+    expect(
+      enrollmentsService.provisionSupplyListsForNewYear,
     ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, "target-year");
   });
 });

@@ -75,6 +75,8 @@ model School {
   usersWithActiveSchool User[]              @relation("UserActiveSchool")
   feeSchedules       FeeSchedule[]
   feeInstallments    FeeInstallment[]
+  supplyLists        SupplyList[]
+  supplyItems        SupplyItem[]
   wallets            Wallet[]
   walletTransactions WalletTransaction[]
   studentPayments    StudentPayment[]
