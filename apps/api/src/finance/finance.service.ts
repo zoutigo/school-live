@@ -586,6 +586,22 @@ export class FinanceService {
     };
   }
 
+  /**
+   * Nombre d'enfants d'un parent prets a etre reinscrits (seuil de paiement
+   * atteignable, pas encore reinscrits) — utilise par BadgesService pour le
+   * badge rouge du menu "Reinscription". Reutilise getWalletSummary plutot
+   * que de dupliquer la resolution de statut par enfant.
+   */
+  async countChildrenReadyToReinscribe(
+    schoolId: string,
+    parentUserId: string,
+  ): Promise<number> {
+    const summary = await this.getWalletSummary(schoolId, parentUserId);
+    return summary.children.filter(
+      (child) => child.status === "READY_TO_REINSCRIBE",
+    ).length;
+  }
+
   async payAndReinscribeFromWallet(
     schoolId: string,
     parentUserId: string,

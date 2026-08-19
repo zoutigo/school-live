@@ -1,6 +1,7 @@
 import { Test } from "@nestjs/testing";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { FinanceService } from "../finance/finance.service.js";
 import { BadgesService } from "./badges.service.js";
 
 function makeUser(
@@ -41,9 +42,13 @@ const makePrismaMock = () => ({
 describe("BadgesService", () => {
   let service: BadgesService;
   let prisma: ReturnType<typeof makePrismaMock>;
+  let financeService: { countChildrenReadyToReinscribe: jest.Mock };
 
   beforeEach(async () => {
     prisma = makePrismaMock();
+    financeService = {
+      countChildrenReadyToReinscribe: jest.fn().mockResolvedValue(0),
+    };
 
     // Defaults so getUnreadSummary doesn't throw when a path isn't under test.
     prisma.internalMessageRecipient.count.mockResolvedValue(0);
@@ -62,7 +67,11 @@ describe("BadgesService", () => {
     prisma.studentLifeEvent.count.mockResolvedValue(0);
 
     const module = await Test.createTestingModule({
-      providers: [BadgesService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        BadgesService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: FinanceService, useValue: financeService },
+      ],
     }).compile();
 
     service = module.get(BadgesService);
@@ -125,10 +134,34 @@ describe("BadgesService", () => {
         feedUnread: 0,
         ticketsNeedingResponse: 0,
         ticketsUnreadReplies: 0,
+        reinscriptionPending: 0,
         children: [],
         teacherClasses: [],
         total: 0,
       });
+    });
+
+    it("inclut le nombre d'enfants prets a etre reinscrits dans reinscriptionPending et dans total", async () => {
+      financeService.countChildrenReadyToReinscribe.mockResolvedValue(2);
+      const user = makeUser({ platformRoles: [] });
+      const result = await service.getUnreadSummary(user, "school-1");
+
+      expect(financeService.countChildrenReadyToReinscribe).toHaveBeenCalledWith(
+        "school-1",
+        "user-1",
+      );
+      expect(result.reinscriptionPending).toBe(2);
+      expect(result.total).toBe(2);
+    });
+
+    it("neutralise reinscriptionPending a 0 si FinanceService echoue (ex. compte STUDENT)", async () => {
+      financeService.countChildrenReadyToReinscribe.mockRejectedValue(
+        new Error("no active school year"),
+      );
+      const user = makeUser({ platformRoles: [] });
+      const result = await service.getUnreadSummary(user, "school-1");
+
+      expect(result.reinscriptionPending).toBe(0);
     });
   });
 

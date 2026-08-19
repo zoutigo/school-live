@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type { BadgeScope } from "@prisma/client";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { FinanceService } from "../finance/finance.service.js";
 import type {
   ChildBadgeSummary,
   TeacherClassBadgeSummary,
@@ -15,20 +16,30 @@ type StudentRef = { id: string; firstName: string; lastName: string };
 
 @Injectable()
 export class BadgesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly financeService: FinanceService,
+  ) {}
 
   async getUnreadSummary(
     user: AuthenticatedUser,
     schoolId: string,
   ): Promise<UnreadSummaryResponse> {
-    const [messagesUnread, feedUnread, ticketCounts, children, teacherClasses] =
-      await Promise.all([
-        this.getMessagesUnread(user, schoolId),
-        this.getFeedUnread(user, schoolId),
-        this.getTicketCounts(user),
-        this.getChildrenBadges(user, schoolId),
-        this.getTeacherClassBadges(user, schoolId),
-      ]);
+    const [
+      messagesUnread,
+      feedUnread,
+      ticketCounts,
+      children,
+      teacherClasses,
+      reinscriptionPending,
+    ] = await Promise.all([
+      this.getMessagesUnread(user, schoolId),
+      this.getFeedUnread(user, schoolId),
+      this.getTicketCounts(user),
+      this.getChildrenBadges(user, schoolId),
+      this.getTeacherClassBadges(user, schoolId),
+      this.getReinscriptionPending(user, schoolId),
+    ]);
 
     const childrenTotal = children.reduce(
       (sum, child) =>
@@ -49,17 +60,37 @@ export class BadgesService {
       ticketCounts.needingResponse +
       ticketCounts.unreadReplies +
       childrenTotal +
-      teacherTotal;
+      teacherTotal +
+      reinscriptionPending;
 
     return {
       messagesUnread,
       feedUnread,
       ticketsNeedingResponse: ticketCounts.needingResponse,
       ticketsUnreadReplies: ticketCounts.unreadReplies,
+      reinscriptionPending,
       children,
       teacherClasses,
       total,
     };
+  }
+
+  /**
+   * Nombre d'enfants du parent prets a etre reinscrits (badge du menu
+   * "Reinscription"). Un compte STUDENT n'a pas de parentStudent -> 0.
+   */
+  private async getReinscriptionPending(
+    user: AuthenticatedUser,
+    schoolId: string,
+  ): Promise<number> {
+    try {
+      return await this.financeService.countChildrenReadyToReinscribe(
+        schoolId,
+        user.id,
+      );
+    } catch {
+      return 0;
+    }
   }
 
   async markRead(
