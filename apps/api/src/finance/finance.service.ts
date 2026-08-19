@@ -8,6 +8,7 @@ import { EnrollmentsService } from "../enrollments/enrollments.service.js";
 import type { UpsertFeeScheduleDto } from "./dto/upsert-fee-schedule.dto.js";
 import type { RecordDirectPaymentDto } from "./dto/record-direct-payment.dto.js";
 import type { ListFeeSchedulesQueryDto } from "./dto/list-fee-schedules-query.dto.js";
+import type { UpdateFinanceSettingsDto } from "./dto/update-finance-settings.dto.js";
 
 @Injectable()
 export class FinanceService {
@@ -15,6 +16,26 @@ export class FinanceService {
     private readonly prisma: PrismaService,
     private readonly enrollmentsService: EnrollmentsService,
   ) {}
+
+  async getFinanceSettings(schoolId: string) {
+    return this.prisma.school.findUniqueOrThrow({
+      where: { id: schoolId },
+      select: { reinscriptionThresholdPolicy: true },
+    });
+  }
+
+  async updateFinanceSettings(
+    schoolId: string,
+    payload: UpdateFinanceSettingsDto,
+  ) {
+    return this.prisma.school.update({
+      where: { id: schoolId },
+      data: {
+        reinscriptionThresholdPolicy: payload.reinscriptionThresholdPolicy,
+      },
+      select: { reinscriptionThresholdPolicy: true },
+    });
+  }
 
   async listFeeSchedules(schoolId: string, query: ListFeeSchedulesQueryDto) {
     return this.prisma.feeSchedule.findMany({
@@ -142,6 +163,31 @@ export class FinanceService {
     return feeSchedule;
   }
 
+  /**
+   * Le seuil de reinscription est un parametre d'ecole (School.reinscriptionThresholdPolicy) :
+   * FIRST_INSTALLMENT (defaut) exige la 1ere tranche, FULL_PAYMENT exige la
+   * totalite de l'echeancier. Centralise ici pour eviter que chaque appelant
+   * reimplemente sa propre regle de seuil.
+   */
+  private async resolveReinscriptionThresholdAmount(
+    schoolId: string,
+    feeSchedule: { installments: { amount: number }[] },
+  ): Promise<number> {
+    const school = await this.prisma.school.findUniqueOrThrow({
+      where: { id: schoolId },
+      select: { reinscriptionThresholdPolicy: true },
+    });
+
+    if (school.reinscriptionThresholdPolicy === "FULL_PAYMENT") {
+      return feeSchedule.installments.reduce(
+        (sum, installment) => sum + installment.amount,
+        0,
+      );
+    }
+
+    return feeSchedule.installments[0].amount;
+  }
+
   async getStudentFinanceSummary(
     schoolId: string,
     studentId: string,
@@ -168,15 +214,18 @@ export class FinanceService {
     );
 
     const totalPaid = await this.getTotalPaid(studentId, targetSchoolYearId);
-    const firstInstallment = feeSchedule.installments[0];
+    const thresholdAmount = await this.resolveReinscriptionThresholdAmount(
+      schoolId,
+      feeSchedule,
+    );
 
     return {
       student,
       decision,
       feeSchedule,
       totalPaid,
-      firstInstallmentAmount: firstInstallment.amount,
-      reinscriptionEligible: totalPaid >= firstInstallment.amount,
+      thresholdAmount,
+      reinscriptionEligible: totalPaid >= thresholdAmount,
     };
   }
 
@@ -235,10 +284,13 @@ export class FinanceService {
       payload.studentId,
       payload.schoolYearId,
     );
-    const firstInstallmentAmount = feeSchedule.installments[0].amount;
+    const thresholdAmount = await this.resolveReinscriptionThresholdAmount(
+      schoolId,
+      feeSchedule,
+    );
     let reinscriptionConfirmed = false;
 
-    if (totalPaid >= firstInstallmentAmount) {
+    if (totalPaid >= thresholdAmount) {
       await this.enrollmentsService.confirmReinscription(
         schoolId,
         payload.studentId,
@@ -252,7 +304,7 @@ export class FinanceService {
     return {
       payment,
       totalPaid,
-      firstInstallmentAmount,
+      thresholdAmount,
       reinscriptionConfirmed,
     };
   }
@@ -396,10 +448,11 @@ export class FinanceService {
             decision.nextTrackId,
           );
           const totalPaid = await this.getTotalPaid(student.id, nextYear.id);
-          requiredAmount = Math.max(
-            0,
-            feeSchedule.installments[0].amount - totalPaid,
+          const thresholdAmount = await this.resolveReinscriptionThresholdAmount(
+            schoolId,
+            feeSchedule,
           );
+          requiredAmount = Math.max(0, thresholdAmount - totalPaid);
         } catch {
           // Pas d'echeancier defini pour ce niveau/filiere/annee : le parent
           // ne peut pas encore reinscrire depuis son wallet.
@@ -459,9 +512,12 @@ export class FinanceService {
       decision.nextAcademicLevelId,
       decision.nextTrackId,
     );
-    const firstInstallmentAmount = feeSchedule.installments[0].amount;
+    const thresholdAmount = await this.resolveReinscriptionThresholdAmount(
+      schoolId,
+      feeSchedule,
+    );
     const alreadyPaid = await this.getTotalPaid(studentId, schoolYearId);
-    const requiredAmount = firstInstallmentAmount - alreadyPaid;
+    const requiredAmount = thresholdAmount - alreadyPaid;
 
     if (requiredAmount <= 0) {
       await this.enrollmentsService.confirmReinscription(
@@ -478,7 +534,7 @@ export class FinanceService {
     const balance = await this.getWalletBalance(wallet.id);
     if (balance < requiredAmount) {
       throw new BadRequestException(
-        "Solde du wallet insuffisant pour couvrir la premiere echeance",
+        "Solde du wallet insuffisant pour couvrir le seuil de reinscription",
       );
     }
 

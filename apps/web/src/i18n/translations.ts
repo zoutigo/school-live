@@ -617,7 +617,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financePayments.target.schoolYear": "Annee scolaire (reinscription)",
     "financePayments.summary.title": "Situation financiere",
     "financePayments.summary.totalPaid": "Total deja verse",
-    "financePayments.summary.firstInstallment": "Montant de la 1ere echeance",
+    "financePayments.summary.threshold":
+      "Seuil de reinscription (selon la politique de l'ecole)",
     "financePayments.summary.eligible": "Seuil atteint : eleve reinscrit.",
     "financePayments.summary.notEligible":
       "Seuil non atteint : la reinscription n'est pas encore confirmee.",
@@ -5550,7 +5551,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financePayments.target.schoolYear": "School year (re-enrollment)",
     "financePayments.summary.title": "Financial status",
     "financePayments.summary.totalPaid": "Total already paid",
-    "financePayments.summary.firstInstallment": "First installment amount",
+    "financePayments.summary.threshold":
+      "Re-enrollment threshold (per school policy)",
     "financePayments.summary.eligible":
       "Threshold reached: student re-enrolled.",
     "financePayments.summary.notEligible":

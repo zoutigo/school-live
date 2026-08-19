@@ -33,6 +33,14 @@ const FEE_SCHEDULE = {
 
 const makePrismaMock = () => {
   const prisma: any = {
+    school: {
+      findUniqueOrThrow: jest.fn().mockResolvedValue({
+        reinscriptionThresholdPolicy: "FIRST_INSTALLMENT",
+      }),
+      update: jest.fn().mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      }),
+    },
     student: { findFirst: jest.fn().mockResolvedValue({ id: STUDENT_ID }) },
     schoolYear: {
       findFirst: jest
@@ -373,6 +381,105 @@ describe("FinanceService", () => {
         targetSchoolYearId: TARGET_YEAR_ID,
         requiredAmount: 30000,
       });
+    });
+
+    it("calcule le montant restant du sur la totalite de l'echeancier quand la politique de l'ecole est FULL_PAYMENT", async () => {
+      prisma.school.findUniqueOrThrow.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      prisma.enrollment.findUnique.mockResolvedValue(null);
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 60000 },
+      });
+      const result = await service.getWalletSummary(SCHOOL_ID, "parent-1");
+      // Echeancier total = 50000 + 50000 = 100000, deja paye 60000 -> reste 40000
+      expect(result.children[0]).toMatchObject({
+        status: "READY_TO_REINSCRIBE",
+        requiredAmount: 40000,
+      });
+    });
+  });
+
+  describe("politique de seuil de reinscription (School.reinscriptionThresholdPolicy)", () => {
+    it("recordDirectPayment n'exige que la 1ere echeance quand la politique est FIRST_INSTALLMENT (defaut)", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 50000 },
+      });
+      const result = await service.recordDirectPayment(
+        SCHOOL_ID,
+        {
+          studentId: STUDENT_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          amount: 50000,
+          paidAt: "2026-06-01",
+        },
+        "accountant-1",
+      );
+      expect(result.thresholdAmount).toBe(50000);
+      expect(result.reinscriptionConfirmed).toBe(true);
+    });
+
+    it("recordDirectPayment exige la totalite de l'echeancier quand la politique est FULL_PAYMENT", async () => {
+      prisma.school.findUniqueOrThrow.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 50000 },
+      });
+      const result = await service.recordDirectPayment(
+        SCHOOL_ID,
+        {
+          studentId: STUDENT_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          amount: 50000,
+          paidAt: "2026-06-01",
+        },
+        "accountant-1",
+      );
+      expect(result.thresholdAmount).toBe(100000);
+      expect(result.reinscriptionConfirmed).toBe(false);
+      expect(enrollmentsService.confirmReinscription).not.toHaveBeenCalled();
+    });
+
+    it("payAndReinscribeFromWallet debite la totalite de l'echeancier quand la politique est FULL_PAYMENT", async () => {
+      prisma.school.findUniqueOrThrow.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      prisma.walletTransaction.aggregate
+        .mockResolvedValueOnce({ _sum: { amount: 100000 } }) // TOPUP
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // ALLOCATION
+
+      const result = await service.payAndReinscribeFromWallet(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(result).toEqual({
+        requiredAmount: 100000,
+        reinscriptionConfirmed: true,
+      });
+    });
+
+    it("getFinanceSettings retourne la politique courante de l'ecole", async () => {
+      prisma.school.findUniqueOrThrow.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      const result = await service.getFinanceSettings(SCHOOL_ID);
+      expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
+    });
+
+    it("updateFinanceSettings persiste la nouvelle politique", async () => {
+      const result = await service.updateFinanceSettings(SCHOOL_ID, {
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      expect(prisma.school.update).toHaveBeenCalledWith({
+        where: { id: SCHOOL_ID },
+        data: { reinscriptionThresholdPolicy: "FULL_PAYMENT" },
+        select: { reinscriptionThresholdPolicy: true },
+      });
+      expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
     });
   });
 });

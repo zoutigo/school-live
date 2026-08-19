@@ -48,7 +48,7 @@ type FinanceSummary = {
     installments: { id: string; rank: number; label: string; amount: number }[];
   };
   totalPaid: number;
-  firstInstallmentAmount: number;
+  thresholdAmount: number;
   reinscriptionEligible: boolean;
 };
 
@@ -388,8 +388,8 @@ export default function FinancePaiementsPage() {
                     {summary.totalPaid.toLocaleString()}
                   </p>
                   <p className="text-sm text-text-secondary">
-                    {t("financePayments.summary.firstInstallment")}:{" "}
-                    {summary.firstInstallmentAmount.toLocaleString()}
+                    {t("financePayments.summary.threshold")}:{" "}
+                    {summary.thresholdAmount.toLocaleString()}
                   </p>
                   <p
                     className={`text-sm font-semibold ${

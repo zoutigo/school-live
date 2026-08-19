@@ -157,6 +157,11 @@ enum PromotionDecision {
   LEFT
 }
 
+enum ReinscriptionThresholdPolicy {
+  FIRST_INSTALLMENT
+  FULL_PAYMENT
+}
+
 enum WalletTransactionType {
   TOPUP
   ALLOCATION

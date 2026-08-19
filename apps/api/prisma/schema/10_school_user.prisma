@@ -13,6 +13,7 @@ model School {
   schoolType         SchoolType?
   ownership          String?
   foundedYear        Int?
+  reinscriptionThresholdPolicy ReinscriptionThresholdPolicy @default(FIRST_INSTALLMENT)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   activeSchoolYear   SchoolYear?           @relation("ActiveSchoolYear", fields: [activeSchoolYearId], references: [id], onDelete: SetNull)
