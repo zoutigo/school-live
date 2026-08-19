@@ -114,12 +114,87 @@ export class EnrollmentsService {
     }
 
     const nextLabel = this.computeNextSchoolYearLabel(sourceYear.label);
-    return this.prisma.schoolYear.upsert({
+    const targetYear = await this.prisma.schoolYear.upsert({
       where: { schoolId_label: { schoolId, label: nextLabel } },
       create: { schoolId, label: nextLabel },
       update: {},
       select: { id: true, label: true },
     });
+
+    await this.provisionFeeSchedulesForNewYear(
+      schoolId,
+      sourceSchoolYearId,
+      targetYear.id,
+    );
+
+    return targetYear;
+  }
+
+  /**
+   * Copie l'echeancier (FeeSchedule + FeeInstallment) de chaque niveau/filiere
+   * depuis l'annee source vers l'annee cible, des que celle-ci est creee —
+   * quel que soit l'evenement declencheur (promotion d'un eleve, roulement
+   * d'annee explicite ou creation manuelle par le chef d'etablissement). Sans
+   * cela, le school manager doit ressaisir l'echeancier de zero chaque annee
+   * pour chaque niveau. Idempotent : ne recree rien si un echeancier existe
+   * deja pour ce (niveau, filiere) sur l'annee cible. Vit ici (plutot que
+   * dans FinanceService) pour eviter un cycle de modules : FinanceModule
+   * importe deja EnrollmentsModule.
+   */
+  async provisionFeeSchedulesForNewYear(
+    schoolId: string,
+    sourceSchoolYearId: string,
+    targetSchoolYearId: string,
+  ) {
+    if (sourceSchoolYearId === targetSchoolYearId) {
+      return;
+    }
+
+    const sourceSchedules = await this.prisma.feeSchedule.findMany({
+      where: { schoolId, schoolYearId: sourceSchoolYearId },
+      include: { installments: { orderBy: { rank: "asc" } } },
+    });
+
+    for (const source of sourceSchedules) {
+      const existing = await this.prisma.feeSchedule.findFirst({
+        where: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId: source.academicLevelId,
+          trackId: source.trackId,
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        continue;
+      }
+
+      await this.prisma.feeSchedule.create({
+        data: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId: source.academicLevelId,
+          trackId: source.trackId,
+          installments: {
+            create: source.installments.map((installment) => ({
+              schoolId,
+              rank: installment.rank,
+              label: installment.label,
+              amount: installment.amount,
+              dueDate: installment.dueDate
+                ? this.shiftDateByOneYear(installment.dueDate)
+                : null,
+            })),
+          },
+        },
+      });
+    }
+  }
+
+  private shiftDateByOneYear(date: Date): Date {
+    const shifted = new Date(date);
+    shifted.setUTCFullYear(shifted.getUTCFullYear() + 1);
+    return shifted;
   }
 
   /**

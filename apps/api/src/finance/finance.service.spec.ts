@@ -593,9 +593,7 @@ describe("FinanceService", () => {
         TARGET_YEAR_ID,
       );
       expect(result.totalRemaining).toBe(0);
-      expect(result.installments.every((i) => i.status === "PAID")).toBe(
-        true,
-      );
+      expect(result.installments.every((i) => i.status === "PAID")).toBe(true);
     });
 
     it("getMyChildInstallmentBreakdown refuse si l'eleve n'est pas rattache a ce parent", async () => {

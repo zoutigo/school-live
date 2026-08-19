@@ -40,6 +40,11 @@ const makePrismaMock = () => ({
         Promise.resolve({ id: "next-year-created", ...create }),
       ),
   },
+  feeSchedule: {
+    findMany: jest.fn().mockResolvedValue([]),
+    findFirst: jest.fn().mockResolvedValue(null),
+    create: jest.fn(),
+  },
 });
 
 describe("EnrollmentsService", () => {
@@ -227,6 +232,95 @@ describe("EnrollmentsService", () => {
           },
         }),
       );
+    });
+  });
+
+  describe("provisionFeeSchedulesForNewYear", () => {
+    it("ne fait rien si annee source et annee cible sont identiques", async () => {
+      await service.provisionFeeSchedulesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        SOURCE_YEAR_ID,
+      );
+      expect(prisma.feeSchedule.findMany).not.toHaveBeenCalled();
+    });
+
+    it("copie chaque echeancier de l'annee source vers l'annee cible avec les dates decalees d'un an", async () => {
+      prisma.feeSchedule.findMany.mockResolvedValue([
+        {
+          id: "fee-src-1",
+          academicLevelId: "level-ce2",
+          trackId: null,
+          installments: [
+            {
+              rank: 1,
+              label: "1ere echeance",
+              amount: 50000,
+              dueDate: new Date("2025-10-01T00:00:00.000Z"),
+            },
+            {
+              rank: 2,
+              label: "2eme echeance",
+              amount: 30000,
+              dueDate: null,
+            },
+          ],
+        },
+      ]);
+      prisma.feeSchedule.findFirst.mockResolvedValue(null);
+
+      await service.provisionFeeSchedulesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.feeSchedule.create).toHaveBeenCalledWith({
+        data: {
+          schoolId: SCHOOL_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          academicLevelId: "level-ce2",
+          trackId: null,
+          installments: {
+            create: [
+              {
+                schoolId: SCHOOL_ID,
+                rank: 1,
+                label: "1ere echeance",
+                amount: 50000,
+                dueDate: new Date("2026-10-01T00:00:00.000Z"),
+              },
+              {
+                schoolId: SCHOOL_ID,
+                rank: 2,
+                label: "2eme echeance",
+                amount: 30000,
+                dueDate: null,
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    it("est idempotente : ne recree rien si un echeancier existe deja pour ce niveau sur l'annee cible", async () => {
+      prisma.feeSchedule.findMany.mockResolvedValue([
+        {
+          id: "fee-src-1",
+          academicLevelId: "level-ce2",
+          trackId: null,
+          installments: [],
+        },
+      ]);
+      prisma.feeSchedule.findFirst.mockResolvedValue({ id: "already-there" });
+
+      await service.provisionFeeSchedulesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.feeSchedule.create).not.toHaveBeenCalled();
     });
   });
 });

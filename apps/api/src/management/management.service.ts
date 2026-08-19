@@ -23,6 +23,7 @@ import { MailService } from "../mail/mail.service.js";
 import { PushService } from "../notifications/push.service.js";
 import { RoomStatusChangeNotificationsService } from "../notifications/room-status-change-notifications.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { EnrollmentsService } from "../enrollments/enrollments.service.js";
 import type { CreateAdminDto } from "./dto/create-admin.dto.js";
 import type { CreateAcademicLevelDto } from "./dto/create-academic-level.dto.js";
 import type { BulkUpdateEnrollmentStatusDto } from "./dto/bulk-update-enrollment-status.dto.js";
@@ -567,6 +568,10 @@ const NOOP_PUSH_SERVICE = {
   sendStudentLifeEventNotification: async () => undefined,
 } as unknown as PushService;
 
+const NOOP_ENROLLMENTS_SERVICE = {
+  provisionFeeSchedulesForNewYear: async () => undefined,
+} as unknown as EnrollmentsService;
+
 const LIFE_EVENT_TYPE_LABELS: Record<string, string> = {
   ABSENCE: "Absence",
   RETARD: "Retard",
@@ -581,6 +586,7 @@ export class ManagementService {
     private readonly mailService: MailService,
     private readonly roomStatusChangeNotificationsService: RoomStatusChangeNotificationsService = NOOP_ROOM_STATUS_CHANGE_NOTIFICATIONS,
     private readonly pushService: PushService = NOOP_PUSH_SERVICE,
+    private readonly enrollmentsService: EnrollmentsService = NOOP_ENROLLMENTS_SERVICE,
   ) {}
 
   async createUser(currentUser: AuthenticatedUser, payload: CreateUserDto) {
@@ -3443,6 +3449,21 @@ export class ManagementService {
       },
     });
 
+    // Reprend l'echeancier de l'annee active courante (si elle existe) sur
+    // la nouvelle annee, par niveau : le chef d'etablissement n'a plus a
+    // ressaisir les echeanciers de zero a chaque creation manuelle d'annee.
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { activeSchoolYearId: true },
+    });
+    if (school?.activeSchoolYearId) {
+      await this.enrollmentsService.provisionFeeSchedulesForNewYear(
+        schoolId,
+        school.activeSchoolYearId,
+        created.id,
+      );
+    }
+
     return {
       ...created,
       isActive: false,
@@ -3669,6 +3690,12 @@ export class ManagementService {
         setAsActive: parsed.setTargetAsActive,
       };
     });
+
+    await this.enrollmentsService.provisionFeeSchedulesForNewYear(
+      schoolId,
+      result.sourceSchoolYearId,
+      result.targetSchoolYear.id,
+    );
 
     return {
       success: true,
