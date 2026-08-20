@@ -27,9 +27,11 @@ describe("buildRedisConnection", () => {
     expect(connection.username).toBe("user");
     expect(connection.password).toBe("pass");
     expect(connection.db).toBe(2);
-    expect(connection.reconnectOnError(new Error("READONLY You can't write against a read only replica."))).toBe(
-      true,
-    );
+    expect(
+      connection.reconnectOnError(
+        new Error("READONLY You can't write against a read only replica."),
+      ),
+    ).toBe(true);
     expect(connection.reconnectOnError(new Error("ECONNRESET"))).toBe(false);
   });
 

@@ -24,6 +24,7 @@ import {
   School,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   UserRound,
   UserSquare2,
   Users,
@@ -181,6 +182,12 @@ function buildItems(
         matchPrefix: "/finance-paiements",
       },
       {
+        label: t("sidebar.nav.supplyLists"),
+        href: "/supply-lists",
+        icon: ShoppingBag,
+        matchPrefix: "/supply-lists",
+      },
+      {
         label: t("sidebar.nav.users"),
         href: "/users",
         icon: Users,
@@ -311,6 +318,12 @@ function buildItems(
         href: "/finance-paiements",
         icon: Wallet,
         matchPrefix: "/finance-paiements",
+      },
+      {
+        label: t("sidebar.nav.supplyLists"),
+        href: "/supply-lists",
+        icon: ShoppingBag,
+        matchPrefix: "/supply-lists",
       },
       {
         label: t("sidebar.nav.teachers"),

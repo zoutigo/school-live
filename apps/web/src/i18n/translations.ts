@@ -609,6 +609,57 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financeSchedules.help.workflow.step3.description":
       "des que le cumul atteint le montant de la 1ere echeance, l'eleve est place en attente d'affectation pour la nouvelle annee.",
 
+    "supplyLists.title": "Fournitures scolaires",
+    "supplyLists.subtitle":
+      "Definissez la liste de fournitures a prevoir par niveau, filiere et annee scolaire.",
+    "supplyLists.errors.load": "Impossible de charger les listes de fournitures.",
+    "supplyLists.errors.network": "Erreur reseau.",
+    "supplyLists.errors.save": "Enregistrement impossible.",
+    "supplyLists.errors.delete": "Suppression impossible.",
+    "supplyLists.success.saved": "Liste de fournitures enregistree.",
+    "supplyLists.form.title": "Nouvelle liste / mise a jour",
+    "supplyLists.form.schoolYear": "Annee scolaire",
+    "supplyLists.form.academicLevel": "Niveau",
+    "supplyLists.form.track": "Filiere",
+    "supplyLists.form.trackNone": "Aucune filiere",
+    "supplyLists.form.items": "Articles",
+    "supplyLists.form.rank": "Rang",
+    "supplyLists.form.label": "Libelle",
+    "supplyLists.form.quantity": "Quantite",
+    "supplyLists.form.addItem": "Ajouter un article",
+    "supplyLists.empty": "Aucune liste de fournitures definie pour le moment.",
+    "supplyLists.help.summary":
+      "ce module definit, pour chaque niveau et filiere, la liste des fournitures que les parents doivent prevoir pour la rentree. Elle est visible par les parents dans l'onglet Fournitures de l'ecran Reinscription, scopee au niveau que leur enfant s'apprete a integrer.",
+    "supplyLists.help.action1.name": "Creer une liste",
+    "supplyLists.help.action1.purpose":
+      "definir les articles a prevoir pour un niveau (et une filiere si besoin) sur une annee scolaire donnee.",
+    "supplyLists.help.action1.howTo":
+      "choisir l'annee, le niveau et la filiere, puis ajouter un ou plusieurs articles (rang, libelle, quantite) avant d'enregistrer.",
+    "supplyLists.help.action1.moduleImpact":
+      "la liste est immediatement visible par les parents concernes dans l'onglet Fournitures de l'ecran Reinscription.",
+    "supplyLists.help.action1.crossModuleImpact":
+      "une nouvelle annee scolaire reprend automatiquement les listes de l'annee precedente : il suffit de les ajuster plutot que de tout ressaisir.",
+    "supplyLists.help.action2.name": "Supprimer une liste",
+    "supplyLists.help.action2.purpose":
+      "retirer une liste qui n'est plus applicable.",
+    "supplyLists.help.action2.howTo":
+      "utiliser le bouton Supprimer sur la fiche de la liste concernee.",
+    "supplyLists.help.action2.moduleImpact":
+      "les parents du niveau concerne ne verront plus aucune liste de fournitures tant qu'une nouvelle n'est pas creee.",
+    "supplyLists.help.action2.crossModuleImpact":
+      "n'a pas d'impact sur les echeanciers de scolarite ni sur la reinscription, qui restent geres separement.",
+    "supplyLists.help.tip1":
+      "La meme liste s'applique a un redoublant et a un promu du meme niveau : la distinction se fait uniquement sur le niveau cible, pas sur la liste.",
+    "supplyLists.help.workflow.title": "De la liste a la rentree",
+    "supplyLists.help.workflow.intro":
+      "voici comment cette liste s'inscrit dans le parcours de reinscription d'un parent.",
+    "supplyLists.help.workflow.step1.title": "1. Definir la liste",
+    "supplyLists.help.workflow.step1.description":
+      "le gestionnaire cree la liste ici, pour chaque niveau et filiere de la prochaine annee scolaire.",
+    "supplyLists.help.workflow.step2.title": "2. Consultation par le parent",
+    "supplyLists.help.workflow.step2.description":
+      "le parent la consulte dans l'onglet Fournitures de l'ecran Reinscription, scopee au niveau que son enfant s'apprete a integrer.",
+
     "financePayments.title": "Paiements",
     "financePayments.subtitle":
       "Recherchez un eleve et enregistrez un paiement de scolarite en especes.",
@@ -1039,6 +1090,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.promotions": "Passages de classe",
     "sidebar.nav.financeSchedules": "Echeanciers",
     "sidebar.nav.financePayments": "Paiements",
+    "sidebar.nav.supplyLists": "Fournitures scolaires",
     "sidebar.nav.users": "Utilisateurs",
     "sidebar.nav.indicators": "Indicateurs",
     "sidebar.nav.testCampaigns": "Campagnes tests",
@@ -5551,6 +5603,56 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financeSchedules.help.workflow.step3.description":
       "as soon as the cumulative amount reaches the first installment, the student is placed in the class-assignment queue for the new year.",
 
+    "supplyLists.title": "School supplies",
+    "supplyLists.subtitle":
+      "Define the list of supplies to prepare per level, track and school year.",
+    "supplyLists.errors.load": "Unable to load supply lists.",
+    "supplyLists.errors.network": "Network error.",
+    "supplyLists.errors.save": "Unable to save.",
+    "supplyLists.errors.delete": "Unable to delete.",
+    "supplyLists.success.saved": "Supply list saved.",
+    "supplyLists.form.title": "New supply list / update",
+    "supplyLists.form.schoolYear": "School year",
+    "supplyLists.form.academicLevel": "Level",
+    "supplyLists.form.track": "Track",
+    "supplyLists.form.trackNone": "No track",
+    "supplyLists.form.items": "Items",
+    "supplyLists.form.rank": "Rank",
+    "supplyLists.form.label": "Label",
+    "supplyLists.form.quantity": "Quantity",
+    "supplyLists.form.addItem": "Add an item",
+    "supplyLists.empty": "No supply list defined yet.",
+    "supplyLists.help.summary":
+      "this module defines, for each level and track, the list of supplies parents need to prepare for the new school year. It is visible to parents in the Supplies tab of the Re-enrollment screen, scoped to the level their child is about to enter.",
+    "supplyLists.help.action1.name": "Create a list",
+    "supplyLists.help.action1.purpose":
+      "define the items to prepare for a level (and a track if needed) for a given school year.",
+    "supplyLists.help.action1.howTo":
+      "choose the year, level and track, then add one or more items (rank, label, quantity) before saving.",
+    "supplyLists.help.action1.moduleImpact":
+      "the list is immediately visible to the parents concerned in the Supplies tab of the Re-enrollment screen.",
+    "supplyLists.help.action1.crossModuleImpact":
+      "a new school year automatically carries forward the previous year's lists — you only need to adjust them rather than re-entering everything.",
+    "supplyLists.help.action2.name": "Delete a list",
+    "supplyLists.help.action2.purpose": "remove a list that no longer applies.",
+    "supplyLists.help.action2.howTo":
+      "use the Delete button on the relevant list card.",
+    "supplyLists.help.action2.moduleImpact":
+      "parents of the level concerned will no longer see any supply list until a new one is created.",
+    "supplyLists.help.action2.crossModuleImpact":
+      "has no impact on fee schedules or re-enrollment, which remain managed separately.",
+    "supplyLists.help.tip1":
+      "The same list applies to a repeating student and a promoted student of the same level: the distinction is only on the target level, not the list.",
+    "supplyLists.help.workflow.title": "From the list to the new school year",
+    "supplyLists.help.workflow.intro":
+      "here is how this list fits into a parent's re-enrollment journey.",
+    "supplyLists.help.workflow.step1.title": "1. Define the list",
+    "supplyLists.help.workflow.step1.description":
+      "the manager creates the list here, for each level and track of the upcoming school year.",
+    "supplyLists.help.workflow.step2.title": "2. Parent consultation",
+    "supplyLists.help.workflow.step2.description":
+      "the parent views it in the Supplies tab of the Re-enrollment screen, scoped to the level their child is about to enter.",
+
     "financePayments.title": "Payments",
     "financePayments.subtitle":
       "Search for a student and record a cash tuition payment.",
@@ -5963,6 +6065,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.promotions": "Grade promotion",
     "sidebar.nav.financeSchedules": "Fee schedules",
     "sidebar.nav.financePayments": "Payments",
+    "sidebar.nav.supplyLists": "School supplies",
     "sidebar.nav.users": "Users",
     "sidebar.nav.indicators": "Indicators",
     "sidebar.nav.testCampaigns": "Test campaigns",

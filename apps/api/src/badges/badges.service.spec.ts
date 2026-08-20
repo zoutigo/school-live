@@ -146,10 +146,9 @@ describe("BadgesService", () => {
       const user = makeUser({ platformRoles: [] });
       const result = await service.getUnreadSummary(user, "school-1");
 
-      expect(financeService.countChildrenReadyToReinscribe).toHaveBeenCalledWith(
-        "school-1",
-        "user-1",
-      );
+      expect(
+        financeService.countChildrenReadyToReinscribe,
+      ).toHaveBeenCalledWith("school-1", "user-1");
       expect(result.reinscriptionPending).toBe(2);
       expect(result.total).toBe(2);
     });
