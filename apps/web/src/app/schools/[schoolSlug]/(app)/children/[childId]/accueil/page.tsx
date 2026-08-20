@@ -10,6 +10,7 @@ import {
   Clock3,
   MessageSquare,
   ShieldAlert,
+  ShoppingBag,
   Users,
 } from "lucide-react";
 import { ChildModulePage } from "../../../../../../../components/family/child-module-page";
@@ -82,6 +83,20 @@ type MessagesListResponse = {
   }>;
 };
 
+type SupplyItemRow = {
+  id: string;
+  rank: number;
+  label: string;
+  quantity: number;
+  note: string | null;
+};
+
+type ChildSupplyList = {
+  targetSchoolYearId: string | null;
+  targetSchoolYearLabel?: string;
+  items: SupplyItemRow[];
+};
+
 function formatScore(value: number | null) {
   if (value === null) {
     return "-";
@@ -127,6 +142,7 @@ function ChildAccueilDashboard({
   const [timetable, setTimetable] = useState<TimetableResponse | null>(null);
   const [messages, setMessages] = useState<MessagesListResponse["items"]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [supplyList, setSupplyList] = useState<ChildSupplyList | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -140,6 +156,7 @@ function ChildAccueilDashboard({
           timetableResponse,
           unreadResponse,
           messagesResponse,
+          supplyListResponse,
         ] = await Promise.all([
           fetch(`${API_URL}/schools/${schoolSlug}/students/${childId}/notes`, {
             credentials: "include",
@@ -161,6 +178,12 @@ function ChildAccueilDashboard({
           }),
           fetch(
             `${API_URL}/schools/${schoolSlug}/messages?folder=inbox&page=1&limit=5`,
+            {
+              credentials: "include",
+            },
+          ),
+          fetch(
+            `${API_URL}/schools/${schoolSlug}/me/supply-lists/students/${childId}`,
             {
               credentials: "include",
             },
@@ -196,6 +219,11 @@ function ChildAccueilDashboard({
               ? (((await messagesResponse.json()) as MessagesListResponse)
                   .items ?? [])
               : [],
+          );
+          setSupplyList(
+            supplyListResponse.ok
+              ? ((await supplyListResponse.json()) as ChildSupplyList)
+              : null,
           );
         }
       } finally {
@@ -259,6 +287,10 @@ function ChildAccueilDashboard({
       {
         title: t("childAccueil.help.section2Title"),
         body: [t("childAccueil.help.section2Body")],
+      },
+      {
+        title: t("childAccueil.help.section3Title"),
+        body: [t("childAccueil.help.section3Body")],
       },
     ],
   });
@@ -514,6 +546,34 @@ function ChildAccueilDashboard({
               </p>
             )}
           </DashboardPanel>
+
+          {supplyList && supplyList.targetSchoolYearId ? (
+            <DashboardPanel
+              title={t("childAccueil.panel.supplies.title")}
+              icon={<ShoppingBag className="h-4 w-4" />}
+              actionHref={`/schools/${schoolSlug}/reinscription`}
+              actionLabel={t("childAccueil.panel.supplies.action")}
+            >
+              <div
+                className="grid gap-2 text-sm text-text-secondary"
+                data-testid="child-home-supplies-panel"
+              >
+                {supplyList.items.length === 0 ? (
+                  <p>{t("childAccueil.panel.supplies.empty")}</p>
+                ) : (
+                  supplyList.items
+                    .slice()
+                    .sort((a, b) => a.rank - b.rank)
+                    .slice(0, 3)
+                    .map((item) => (
+                      <p key={item.id}>
+                        {item.rank}. {item.label} — x{item.quantity}
+                      </p>
+                    ))
+                )}
+              </div>
+            </DashboardPanel>
+          ) : null}
 
           <DashboardPanel
             title={t("childAccueil.panel.classFeed.title")}

@@ -101,6 +101,7 @@ function buildItems(
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "/acceuil";
   const messagesUnread = toUnread(badges?.messagesUnread);
   const feedUnread = toUnread(badges?.feedUnread);
+  const reinscriptionPending = toUnread(badges?.reinscriptionPending);
 
   if (
     role === "SUPER_ADMIN" ||
@@ -440,6 +441,13 @@ function buildItems(
         href: `${schoolBase}/situation-financiere`,
         icon: Wallet,
         matchPrefix: `${schoolBase}/situation-financiere`,
+      },
+      {
+        label: t("sidebar.nav.reinscription"),
+        href: `${schoolBase}/reinscription`,
+        icon: GraduationCap,
+        matchPrefix: `${schoolBase}/reinscription`,
+        unread: reinscriptionPending,
       },
       {
         label: t("sidebar.nav.onlineShop"),
