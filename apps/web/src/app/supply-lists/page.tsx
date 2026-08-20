@@ -342,15 +342,11 @@ export default function SupplyListsPage() {
               steps: [
                 {
                   title: t("supplyLists.help.workflow.step1.title"),
-                  description: t(
-                    "supplyLists.help.workflow.step1.description",
-                  ),
+                  description: t("supplyLists.help.workflow.step1.description"),
                 },
                 {
                   title: t("supplyLists.help.workflow.step2.title"),
-                  description: t(
-                    "supplyLists.help.workflow.step2.description",
-                  ),
+                  description: t("supplyLists.help.workflow.step2.description"),
                 },
               ],
             }}

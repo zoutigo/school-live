@@ -612,7 +612,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "supplyLists.title": "Fournitures scolaires",
     "supplyLists.subtitle":
       "Definissez la liste de fournitures a prevoir par niveau, filiere et annee scolaire.",
-    "supplyLists.errors.load": "Impossible de charger les listes de fournitures.",
+    "supplyLists.errors.load":
+      "Impossible de charger les listes de fournitures.",
     "supplyLists.errors.network": "Erreur reseau.",
     "supplyLists.errors.save": "Enregistrement impossible.",
     "supplyLists.errors.delete": "Suppression impossible.",
