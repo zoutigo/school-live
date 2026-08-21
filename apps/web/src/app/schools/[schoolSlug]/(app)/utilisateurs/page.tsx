@@ -2166,8 +2166,7 @@ function UserDetailPanel({
     enrollments: detail && "enrollments" in detail ? detail.enrollments : [],
     parents: studentParents,
     onDisciplineClick: () => {
-      const sid = member.type === "student-only" ? member.studentId : member.id;
-      void router.push(`/schools/${schoolSlug}/discipline/${sid}`);
+      void router.push(`/schools/${schoolSlug}/discipline/${studentId}`);
     },
     onAssignParentClick: () => setAssignParentOpen(true),
     onCreateAccessClick: () => setPromoteOpen(true),

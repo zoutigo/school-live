@@ -9,16 +9,21 @@ function isPublicPath(path: string) {
   return (
     normalizedPath === "/auth/login" ||
     normalizedPath === "/auth/login-phone" ||
+    normalizedPath === "/auth/login/username" ||
     normalizedPath === "/auth/sso/login" ||
     normalizedPath === "/auth/sso/profile/options" ||
     normalizedPath === "/auth/sso/profile/complete" ||
     normalizedPath === "/auth/activation/start" ||
     normalizedPath === "/auth/activation/complete" ||
     normalizedPath === "/auth/first-password-change" ||
+    normalizedPath === "/auth/first-password-change/username" ||
     normalizedPath === "/auth/forgot-password/request" ||
     normalizedPath === "/auth/forgot-password/options" ||
     normalizedPath === "/auth/forgot-password/verify" ||
     normalizedPath === "/auth/forgot-password/complete" ||
+    normalizedPath === "/auth/recover/username/start" ||
+    normalizedPath === "/auth/recover/username/verify" ||
+    normalizedPath === "/auth/recover/username/reset" ||
     normalizedPath === "/auth/forgot-pin/options" ||
     normalizedPath === "/auth/forgot-pin/verify" ||
     normalizedPath === "/auth/forgot-pin/complete" ||
