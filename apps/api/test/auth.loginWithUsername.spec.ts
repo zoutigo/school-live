@@ -236,10 +236,7 @@ describe("AuthService.loginWithUsername — insensibilité à la casse", () => {
     (service as never as { issueAuthSession: jest.Mock }).issueAuthSession =
       jest.fn().mockReturnValue({ accessToken: "tok", user });
 
-    const result = await service.loginWithUsername(
-      "sanagamarie",
-      "ValidPass1",
-    );
+    const result = await service.loginWithUsername("sanagamarie", "ValidPass1");
 
     expect(result).toHaveProperty("accessToken", "tok");
   });
