@@ -52,7 +52,7 @@ describe("StudentManagementService.suggestUsername — construction du nom de ba
     service = new StudentManagementService(prisma as never);
   });
 
-  it('"Jean" "DUPONT" → "JeanDUPONT"', async () => {
+  it('"Jean" "DUPONT" → "jeandupont" (toujours en minuscules)', async () => {
     prisma.student.findFirst.mockResolvedValue({
       firstName: "Jean",
       lastName: "DUPONT",
@@ -61,13 +61,10 @@ describe("StudentManagementService.suggestUsername — construction du nom de ba
     prisma.user.findUnique.mockResolvedValue(null);
 
     const result = await service.suggestUsername("s-1", SCHOOL_ID);
-    expect(result.username).toBe("JeanDUPONT");
+    expect(result.username).toBe("jeandupont");
   });
 
-  it('"Jean-Claude" "Dupont" → "JeanclaudeDUPONT" (tiret supprimé, casse appliquée sur le token complet)', async () => {
-    // buildUsernameBase strips non-alpha first → "JeanClaude",
-    // then capitalizes first letter and lowercases the rest of the whole
-    // merged token → "Jeanclaude", + lastName uppercased → "DUPONT".
+  it('"Jean-Claude" "Dupont" → "jeanclaudedupont" (tiret supprimé, tout en minuscules)', async () => {
     prisma.student.findFirst.mockResolvedValue({
       firstName: "Jean-Claude",
       lastName: "Dupont",
@@ -75,7 +72,7 @@ describe("StudentManagementService.suggestUsername — construction du nom de ba
     prisma.user.findUnique.mockResolvedValue(null);
 
     const result = await service.suggestUsername("s-1", SCHOOL_ID);
-    expect(result.username).toBe("JeanclaudeDUPONT");
+    expect(result.username).toBe("jeanclaudedupont");
   });
 
   it("avec collision → ajoute le suffixe 2 puis 3", async () => {
@@ -84,15 +81,15 @@ describe("StudentManagementService.suggestUsername — construction du nom de ba
       lastName: "DUPONT",
     });
 
-    // First call: "JeanDUPONT" exists; second call: "JeanDUPONT2" exists;
-    // third call: "JeanDUPONT3" is free.
+    // First call: "jeandupont" exists; second call: "jeandupont2" exists;
+    // third call: "jeandupont3" is free.
     prisma.user.findUnique
-      .mockResolvedValueOnce({ id: "existing-1" }) // JeanDUPONT taken
-      .mockResolvedValueOnce({ id: "existing-2" }) // JeanDUPONT2 taken
-      .mockResolvedValueOnce(null); // JeanDUPONT3 free
+      .mockResolvedValueOnce({ id: "existing-1" }) // jeandupont taken
+      .mockResolvedValueOnce({ id: "existing-2" }) // jeandupont2 taken
+      .mockResolvedValueOnce(null); // jeandupont3 free
 
     const result = await service.suggestUsername("s-1", SCHOOL_ID);
-    expect(result.username).toBe("JeanDUPONT3");
+    expect(result.username).toBe("jeandupont3");
   });
 
   it("lève NotFoundException si l'élève n'existe pas", async () => {

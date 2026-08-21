@@ -19,7 +19,7 @@ import { AuthService } from "../src/auth/auth.service";
 async function makeService(prismaOverrides: Record<string, unknown> = {}) {
   const prisma = {
     user: {
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     authRateLimit: {
       findUnique: jest.fn().mockResolvedValue(null), // not blocked by default
@@ -96,7 +96,7 @@ describe("AuthService.loginWithUsername — succès", () => {
     const passwordHash = await bcrypt.hash("ValidPass1", 10);
     const user = makeActiveUser({ passwordHash });
 
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(user);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(user);
 
     // stub issueAuthSession
     (service as never as { issueAuthSession: jest.Mock }).issueAuthSession =
@@ -114,7 +114,7 @@ describe("AuthService.loginWithUsername — succès", () => {
 describe("AuthService.loginWithUsername — username inexistant", () => {
   it("lève UnauthorizedException et appelle recordAuthFailure", async () => {
     const { service, prisma } = await makeService();
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
 
     await expect(
       service.loginWithUsername("nobody", "Pass1"),
@@ -130,7 +130,7 @@ describe("AuthService.loginWithUsername — passwordHash null", () => {
   it("lève UnauthorizedException quand passwordHash est null", async () => {
     const { service, prisma } = await makeService();
     const user = makeActiveUser({ passwordHash: null });
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(user);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(user);
 
     await expect(
       service.loginWithUsername("jeandupont", "AnyPass1"),
@@ -147,7 +147,7 @@ describe("AuthService.loginWithUsername — mauvais mot de passe", () => {
     const { service, prisma } = await makeService();
     const passwordHash = await bcrypt.hash("CorrectPass1", 10);
     const user = makeActiveUser({ passwordHash });
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(user);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(user);
 
     await expect(
       service.loginWithUsername("jeandupont", "WrongPass1"),
@@ -164,7 +164,7 @@ describe("AuthService.loginWithUsername — mustChangePassword", () => {
     const { service, prisma } = await makeService();
     const passwordHash = await bcrypt.hash("TempPass1", 10);
     const user = makeActiveUser({ passwordHash, mustChangePassword: true });
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(user);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(user);
 
     let thrownError: unknown;
     try {
@@ -190,7 +190,7 @@ describe("AuthService.loginWithUsername — compte SUSPENDED", () => {
       activationStatus: "SUSPENDED",
       mustChangePassword: false,
     });
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(user);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(user);
 
     let thrownError: unknown;
     try {
@@ -204,6 +204,44 @@ describe("AuthService.loginWithUsername — compte SUSPENDED", () => {
       code: string;
     };
     expect(response.code).toBe("ACCOUNT_VALIDATION_REQUIRED");
+  });
+});
+
+describe("AuthService.loginWithUsername — insensibilité à la casse", () => {
+  it("interroge Prisma avec un filtre username insensible à la casse", async () => {
+    const { service, prisma } = await makeService();
+    const passwordHash = await bcrypt.hash("ValidPass1", 10);
+    const user = makeActiveUser({ passwordHash, username: "sanagamarie" });
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(user);
+    (service as never as { issueAuthSession: jest.Mock }).issueAuthSession =
+      jest.fn().mockReturnValue({ accessToken: "tok", user });
+
+    await service.loginWithUsername("SanagaMARIE", "ValidPass1");
+
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          username: { equals: "sanagamarie", mode: "insensitive" },
+        },
+      }),
+    );
+  });
+
+  it("connecte l'utilisateur même si la casse saisie diffère de la casse stockée en base", async () => {
+    const { service, prisma } = await makeService();
+    const passwordHash = await bcrypt.hash("ValidPass1", 10);
+    // Compte historique stocké en casse mixte (avant migration de normalisation)
+    const user = makeActiveUser({ passwordHash, username: "SanagaMARIE" });
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(user);
+    (service as never as { issueAuthSession: jest.Mock }).issueAuthSession =
+      jest.fn().mockReturnValue({ accessToken: "tok", user });
+
+    const result = await service.loginWithUsername(
+      "sanagamarie",
+      "ValidPass1",
+    );
+
+    expect(result).toHaveProperty("accessToken", "tok");
   });
 });
 
@@ -228,6 +266,6 @@ describe("AuthService.loginWithUsername — rate limit déjà bloqué", () => {
     ).rejects.toBeInstanceOf(HttpException);
 
     // Prisma should never have been called
-    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 /**
  * Tests unitaires : StudentManagementService
- * - suggestUsername : génère JeanDUPONT, JeanDUPONT2 en cas de collision
+ * - suggestUsername : génère jeandupont, jeandupont2 en cas de collision, toujours en minuscules
  * - promoteStudent : transaction User + Membership + Student.userId, erreur si déjà lié
  * - resetStudentPassword : met mustChangePassword à true, erreur si student sans userId
  */
@@ -31,7 +31,7 @@ function makeStudent(overrides: Record<string, unknown> = {}) {
 function makeUser(overrides: Record<string, unknown> = {}) {
   return {
     id: USER_ID,
-    username: "JeanDUPONT",
+    username: "jeandupont",
     firstName: "Jean",
     lastName: "DUPONT",
     passwordHash: "hashed",
@@ -90,7 +90,7 @@ describe("StudentManagementService", () => {
   // ── suggestUsername ──────────────────────────────────────────────────────────
 
   describe("suggestUsername", () => {
-    it("génère JeanDUPONT pour un étudiant Jean DUPONT", async () => {
+    it("génère jeandupont (minuscules) pour un étudiant Jean DUPONT", async () => {
       prisma.student.findFirst.mockResolvedValue(
         makeStudent({ firstName: "Jean", lastName: "DUPONT" }),
       );
@@ -98,38 +98,38 @@ describe("StudentManagementService", () => {
 
       const result = await service.suggestUsername(STUDENT_ID, SCHOOL_ID);
 
-      expect(result.username).toBe("JeanDUPONT");
+      expect(result.username).toBe("jeandupont");
     });
 
-    it("génère JeanDUPONT2 si JeanDUPONT est déjà pris", async () => {
+    it("génère jeandupont2 si jeandupont est déjà pris", async () => {
       prisma.student.findFirst.mockResolvedValue(
         makeStudent({ firstName: "Jean", lastName: "DUPONT" }),
       );
-      // First call: JeanDUPONT taken, second call (JeanDUPONT2) free
+      // First call: jeandupont taken, second call (jeandupont2) free
       prisma.user.findUnique
-        .mockResolvedValueOnce({ id: "existing" }) // JeanDUPONT taken
-        .mockResolvedValueOnce(null); // JeanDUPONT2 free
+        .mockResolvedValueOnce({ id: "existing" }) // jeandupont taken
+        .mockResolvedValueOnce(null); // jeandupont2 free
 
       const result = await service.suggestUsername(STUDENT_ID, SCHOOL_ID);
 
-      expect(result.username).toBe("JeanDUPONT2");
+      expect(result.username).toBe("jeandupont2");
     });
 
-    it("génère JeanDUPONT3 si JeanDUPONT et JeanDUPONT2 sont pris", async () => {
+    it("génère jeandupont3 si jeandupont et jeandupont2 sont pris", async () => {
       prisma.student.findFirst.mockResolvedValue(
         makeStudent({ firstName: "Jean", lastName: "DUPONT" }),
       );
       prisma.user.findUnique
-        .mockResolvedValueOnce({ id: "u1" }) // JeanDUPONT taken
-        .mockResolvedValueOnce({ id: "u2" }) // JeanDUPONT2 taken
-        .mockResolvedValueOnce(null); // JeanDUPONT3 free
+        .mockResolvedValueOnce({ id: "u1" }) // jeandupont taken
+        .mockResolvedValueOnce({ id: "u2" }) // jeandupont2 taken
+        .mockResolvedValueOnce(null); // jeandupont3 free
 
       const result = await service.suggestUsername(STUDENT_ID, SCHOOL_ID);
 
-      expect(result.username).toBe("JeanDUPONT3");
+      expect(result.username).toBe("jeandupont3");
     });
 
-    it("normalise les caractères accentués (Ébelle → Ebelle)", async () => {
+    it("normalise les caractères accentués et la casse (Ébelle MARIE → ebellemarie)", async () => {
       prisma.student.findFirst.mockResolvedValue(
         makeStudent({ firstName: "Ébelle", lastName: "Marie" }),
       );
@@ -137,7 +137,19 @@ describe("StudentManagementService", () => {
 
       const result = await service.suggestUsername(STUDENT_ID, SCHOOL_ID);
 
-      expect(result.username).toBe("EbelleMARIE");
+      expect(result.username).toBe("ebellemarie");
+    });
+
+    it("génère toujours un username entièrement en minuscules quel que soit le mélange de casse en entrée", async () => {
+      prisma.student.findFirst.mockResolvedValue(
+        makeStudent({ firstName: "jEaN", lastName: "dUpOnT" }),
+      );
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      const result = await service.suggestUsername(STUDENT_ID, SCHOOL_ID);
+
+      expect(result.username).toBe(result.username.toLowerCase());
+      expect(result.username).toBe("jeandupont");
     });
 
     it("lève NotFoundException si l'étudiant n'existe pas", async () => {
@@ -223,7 +235,7 @@ describe("StudentManagementService", () => {
 
       expect(result).toHaveProperty("username");
       expect(result).toHaveProperty("temporaryPassword");
-      expect(result.username).toBe("JeanDUPONT");
+      expect(result.username).toBe("jeandupont");
       expect(result.temporaryPassword).toHaveLength(12);
     });
 
@@ -259,7 +271,7 @@ describe("StudentManagementService", () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it("utilise le username proposé s'il est libre", async () => {
+    it("utilise le username proposé s'il est libre, normalisé en minuscules", async () => {
       prisma.student.findFirst.mockResolvedValue(makeStudent());
       prisma.user.findUnique.mockResolvedValue(null); // proposed username free
 
@@ -270,7 +282,40 @@ describe("StudentManagementService", () => {
         "CustomName",
       );
 
-      expect(result.username).toBe("CustomName");
+      expect(result.username).toBe("customname");
+    });
+
+    it("vérifie la disponibilité du username proposé avec la version déjà normalisée en minuscules", async () => {
+      prisma.student.findFirst.mockResolvedValue(makeStudent());
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await service.promoteStudent(
+        STUDENT_ID,
+        SCHOOL_ID,
+        ADMIN_USER_ID,
+        "  CustomName  ",
+      );
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { username: "customname" } }),
+      );
+    });
+
+    it("persiste toujours le username généré ou proposé entièrement en minuscules", async () => {
+      prisma.student.findFirst.mockResolvedValue(makeStudent());
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await service.promoteStudent(
+        STUDENT_ID,
+        SCHOOL_ID,
+        ADMIN_USER_ID,
+        "MixedCASE",
+      );
+
+      const createCall = prisma.user.create.mock.calls[0][0] as {
+        data: { username: string };
+      };
+      expect(createCall.data.username).toBe("mixedcase");
     });
   });
 
