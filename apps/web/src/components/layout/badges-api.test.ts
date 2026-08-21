@@ -11,6 +11,7 @@ const SUMMARY: UnreadSummary = {
   feedUnread: 1,
   ticketsNeedingResponse: 0,
   ticketsUnreadReplies: 0,
+  reinscriptionPending: 0,
   children: [
     {
       studentId: "child-1",

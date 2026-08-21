@@ -39,6 +39,47 @@ model FeeInstallment {
   @@index([feeScheduleId])
 }
 
+model SupplyList {
+  id              String       @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  academicLevelId String
+  trackId         String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  school          School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear   @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+  track           Track?       @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  items           SupplyItem[]
+
+  // Meme choix que FeeSchedule : pas d'unicite DB sur (schoolYearId,
+  // academicLevelId, trackId), Postgres ne traite pas les NULL comme egaux.
+  // Unicite verifiee cote service (SupplyListsService).
+  @@index([schoolId])
+  @@index([schoolYearId])
+  @@index([academicLevelId])
+  @@index([trackId])
+}
+
+model SupplyItem {
+  id           String     @id @default(cuid())
+  schoolId     String
+  supplyListId String
+  rank         Int
+  label        String
+  quantity     Int        @default(1)
+  note         String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  school       School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  supplyList   SupplyList @relation(fields: [supplyListId], references: [id], onDelete: Cascade)
+
+  @@unique([supplyListId, rank])
+  @@index([schoolId])
+  @@index([supplyListId])
+}
+
 model Wallet {
   id           String              @id @default(cuid())
   schoolId     String

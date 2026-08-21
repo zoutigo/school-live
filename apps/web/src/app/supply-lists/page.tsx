@@ -37,41 +37,47 @@ type SchoolYearRow = { id: string; label: string; isActive: boolean };
 type AcademicLevelRow = { id: string; code: string; label: string };
 type TrackRow = { id: string; code: string; label: string };
 
-type FeeInstallmentRow = {
+type SupplyItemRow = {
   id: string;
   rank: number;
   label: string;
-  amount: number;
-  dueDate: string | null;
+  quantity: number;
+  note: string | null;
 };
 
-type ReinscriptionThresholdPolicy = "FIRST_INSTALLMENT" | "FULL_PAYMENT";
-
-type FeeScheduleRow = {
+type SupplyListRow = {
   id: string;
   academicLevel: { id: string; label: string; code: string };
   track: { id: string; label: string; code: string } | null;
   schoolYear: { id: string; label: string };
-  installments: FeeInstallmentRow[];
+  items: SupplyItemRow[];
 };
 
-const installmentSchema = z.object({
+const itemSchema = z.object({
   rank: z.coerce.number().int().min(1, "Rang requis"),
   label: z.string().trim().min(1, "Libelle requis"),
-  amount: z.coerce.number().min(0.01, "Montant requis"),
-  dueDate: z.string().optional().default(""),
+  quantity: z.coerce.number().int().min(1, "Quantite requise"),
+  note: z.string().optional().default(""),
 });
 
-const scheduleFormSchema = z.object({
+const supplyListFormSchema = z.object({
   schoolYearId: z.string().trim().min(1, "Annee scolaire requise"),
   academicLevelId: z.string().trim().min(1, "Niveau requis"),
   trackId: z.string().optional().default(""),
-  installments: z.array(installmentSchema).min(1, "Au moins une echeance"),
+  items: z.array(itemSchema).min(1, "Au moins un article"),
 });
 
-type ScheduleFormValues = z.input<typeof scheduleFormSchema>;
+type SupplyListFormValues = z.input<typeof supplyListFormSchema>;
 
-export default function FinanceEcheanciersPage() {
+const ALLOWED_ROLES: Role[] = [
+  "SUPER_ADMIN",
+  "ADMIN",
+  "SCHOOL_ADMIN",
+  "SCHOOL_MANAGER",
+  "SUPERVISOR",
+];
+
+export default function SupplyListsPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("manage");
@@ -81,28 +87,25 @@ export default function FinanceEcheanciersPage() {
   const [schoolYears, setSchoolYears] = useState<SchoolYearRow[]>([]);
   const [academicLevels, setAcademicLevels] = useState<AcademicLevelRow[]>([]);
   const [tracks, setTracks] = useState<TrackRow[]>([]);
-  const [schedules, setSchedules] = useState<FeeScheduleRow[]>([]);
+  const [supplyLists, setSupplyLists] = useState<SupplyListRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [reinscriptionThresholdPolicy, setReinscriptionThresholdPolicy] =
-    useState<ReinscriptionThresholdPolicy>("FIRST_INSTALLMENT");
-  const [savingPolicy, setSavingPolicy] = useState(false);
 
-  const form = useForm<ScheduleFormValues>({
-    resolver: zodResolver(scheduleFormSchema),
+  const form = useForm<SupplyListFormValues>({
+    resolver: zodResolver(supplyListFormSchema),
     mode: "onChange",
     defaultValues: {
       schoolYearId: "",
       academicLevelId: "",
       trackId: "",
-      installments: [{ rank: 1, label: "", amount: 0, dueDate: "" }],
+      items: [{ rank: 1, label: "", quantity: 1, note: "" }],
     },
   });
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "installments",
+    name: "items",
   });
 
   function buildAdminPath(currentSchoolSlug: string, segment: string) {
@@ -124,12 +127,7 @@ export default function FinanceEcheanciersPage() {
       return;
     }
     const me = (await meResponse.json()) as MeResponse;
-    const allowed =
-      me.role === "SUPER_ADMIN" ||
-      me.role === "ADMIN" ||
-      me.role === "SCHOOL_ADMIN" ||
-      me.role === "SCHOOL_MANAGER" ||
-      me.role === "SCHOOL_ACCOUNTANT";
+    const allowed = ALLOWED_ROLES.includes(me.role);
     if (!allowed || !me.schoolSlug) {
       router.replace(
         me.schoolSlug ? `/schools/${me.schoolSlug}/dashboard` : "/",
@@ -143,54 +141,40 @@ export default function FinanceEcheanciersPage() {
   async function loadData(currentSchoolSlug: string) {
     setError(null);
     try {
-      const [yearsRes, levelsRes, tracksRes, schedulesRes, settingsRes] =
-        await Promise.all([
-          fetch(buildAdminPath(currentSchoolSlug, "school-years"), {
-            credentials: "include",
-          }),
-          fetch(buildAdminPath(currentSchoolSlug, "academic-levels"), {
-            credentials: "include",
-          }),
-          fetch(buildAdminPath(currentSchoolSlug, "tracks"), {
-            credentials: "include",
-          }),
-          fetch(buildAdminPath(currentSchoolSlug, "finance/fee-schedules"), {
-            credentials: "include",
-          }),
-          fetch(buildAdminPath(currentSchoolSlug, "finance/settings"), {
-            credentials: "include",
-          }),
-        ]);
-      if (
-        !yearsRes.ok ||
-        !levelsRes.ok ||
-        !tracksRes.ok ||
-        !schedulesRes.ok ||
-        !settingsRes.ok
-      ) {
-        setError(t("financeSchedules.errors.load"));
+      const [yearsRes, levelsRes, tracksRes, listsRes] = await Promise.all([
+        fetch(buildAdminPath(currentSchoolSlug, "school-years"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "academic-levels"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "tracks"), {
+          credentials: "include",
+        }),
+        fetch(buildAdminPath(currentSchoolSlug, "supply-lists"), {
+          credentials: "include",
+        }),
+      ]);
+      if (!yearsRes.ok || !levelsRes.ok || !tracksRes.ok || !listsRes.ok) {
+        setError(t("supplyLists.errors.load"));
         return;
       }
       const years = (await yearsRes.json()) as SchoolYearRow[];
       setSchoolYears(years);
       setAcademicLevels((await levelsRes.json()) as AcademicLevelRow[]);
       setTracks((await tracksRes.json()) as TrackRow[]);
-      setSchedules((await schedulesRes.json()) as FeeScheduleRow[]);
-      const settings = (await settingsRes.json()) as {
-        reinscriptionThresholdPolicy: ReinscriptionThresholdPolicy;
-      };
-      setReinscriptionThresholdPolicy(settings.reinscriptionThresholdPolicy);
+      setSupplyLists((await listsRes.json()) as SupplyListRow[]);
 
       if (!form.getValues("schoolYearId")) {
         const active = years.find((y) => y.isActive);
         if (active) form.setValue("schoolYearId", active.id);
       }
     } catch {
-      setError(t("financeSchedules.errors.network"));
+      setError(t("supplyLists.errors.network"));
     }
   }
 
-  async function onSubmit(values: ScheduleFormValues) {
+  async function onSubmit(values: SupplyListFormValues) {
     if (!schoolSlug) return;
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -202,28 +186,25 @@ export default function FinanceEcheanciersPage() {
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch(
-        buildAdminPath(schoolSlug, "finance/fee-schedules"),
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken,
-          },
-          body: JSON.stringify({
-            schoolYearId: values.schoolYearId,
-            academicLevelId: values.academicLevelId,
-            trackId: values.trackId || undefined,
-            installments: values.installments.map((i) => ({
-              rank: i.rank,
-              label: i.label,
-              amount: i.amount,
-              dueDate: i.dueDate || undefined,
-            })),
-          }),
+      const response = await fetch(buildAdminPath(schoolSlug, "supply-lists"), {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
         },
-      );
+        body: JSON.stringify({
+          schoolYearId: values.schoolYearId,
+          academicLevelId: values.academicLevelId,
+          trackId: values.trackId || undefined,
+          items: values.items.map((item) => ({
+            rank: item.rank,
+            label: item.label,
+            quantity: item.quantity,
+            note: item.note || undefined,
+          })),
+        }),
+      });
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as {
           message?: string | string[];
@@ -231,26 +212,26 @@ export default function FinanceEcheanciersPage() {
         const message =
           payload?.message && Array.isArray(payload.message)
             ? payload.message.join(", ")
-            : (payload?.message ?? t("financeSchedules.errors.save"));
+            : (payload?.message ?? t("supplyLists.errors.save"));
         setError(String(message));
         return;
       }
-      setSuccess(t("financeSchedules.success.saved"));
+      setSuccess(t("supplyLists.success.saved"));
       form.reset({
         schoolYearId: values.schoolYearId,
         academicLevelId: "",
         trackId: "",
-        installments: [{ rank: 1, label: "", amount: 0, dueDate: "" }],
+        items: [{ rank: 1, label: "", quantity: 1, note: "" }],
       });
       await loadData(schoolSlug);
     } catch {
-      setError(t("financeSchedules.errors.network"));
+      setError(t("supplyLists.errors.network"));
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function onDelete(feeScheduleId: string) {
+  async function onDelete(supplyListId: string) {
     if (!schoolSlug) return;
     const csrfToken = getCsrfTokenCookie();
     if (!csrfToken) {
@@ -258,11 +239,11 @@ export default function FinanceEcheanciersPage() {
       router.replace("/");
       return;
     }
-    setDeletingId(feeScheduleId);
+    setDeletingId(supplyListId);
     setError(null);
     try {
       const response = await fetch(
-        buildAdminPath(schoolSlug, `finance/fee-schedules/${feeScheduleId}`),
+        buildAdminPath(schoolSlug, `supply-lists/${supplyListId}`),
         {
           method: "DELETE",
           credentials: "include",
@@ -270,66 +251,25 @@ export default function FinanceEcheanciersPage() {
         },
       );
       if (!response.ok) {
-        setError(t("financeSchedules.errors.delete"));
+        setError(t("supplyLists.errors.delete"));
         return;
       }
       await loadData(schoolSlug);
     } catch {
-      setError(t("financeSchedules.errors.network"));
+      setError(t("supplyLists.errors.network"));
     } finally {
       setDeletingId(null);
     }
   }
 
-  async function onSelectPolicy(policy: ReinscriptionThresholdPolicy) {
-    if (!schoolSlug || policy === reinscriptionThresholdPolicy || savingPolicy)
-      return;
-    const csrfToken = getCsrfTokenCookie();
-    if (!csrfToken) {
-      setError(t("common.errors.invalidCsrfSession"));
-      router.replace("/");
-      return;
-    }
-    const previous = reinscriptionThresholdPolicy;
-    setReinscriptionThresholdPolicy(policy);
-    setSavingPolicy(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const response = await fetch(
-        buildAdminPath(schoolSlug, "finance/settings"),
-        {
-          method: "PATCH",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken,
-          },
-          body: JSON.stringify({ reinscriptionThresholdPolicy: policy }),
-        },
-      );
-      if (!response.ok) {
-        setReinscriptionThresholdPolicy(previous);
-        setError(t("financeSchedules.settings.errors.save"));
-        return;
-      }
-      setSuccess(t("financeSchedules.settings.success"));
-    } catch {
-      setReinscriptionThresholdPolicy(previous);
-      setError(t("financeSchedules.errors.network"));
-    } finally {
-      setSavingPolicy(false);
-    }
-  }
-
-  const groupedSchedules = useMemo(
+  const groupedSupplyLists = useMemo(
     () =>
-      [...schedules].sort((a, b) =>
+      [...supplyLists].sort((a, b) =>
         `${a.academicLevel.code}${a.track?.code ?? ""}`.localeCompare(
           `${b.academicLevel.code}${b.track?.code ?? ""}`,
         ),
       ),
-    [schedules],
+    [supplyLists],
   );
 
   if (loading) {
@@ -337,13 +277,13 @@ export default function FinanceEcheanciersPage() {
   }
 
   return (
-    <AppShell schoolSlug={schoolSlug} schoolName={t("financeSchedules.title")}>
+    <AppShell schoolSlug={schoolSlug} schoolName={t("supplyLists.title")}>
       <div className="mx-auto max-w-4xl p-4 md:p-8">
         <h1 className="mb-1 font-heading text-2xl font-bold text-text-primary">
-          {t("financeSchedules.title")}
+          {t("supplyLists.title")}
         </h1>
         <p className="mb-6 text-sm text-text-secondary">
-          {t("financeSchedules.subtitle")}
+          {t("supplyLists.subtitle")}
         </p>
 
         <div className="mb-4 flex gap-2">
@@ -373,50 +313,40 @@ export default function FinanceEcheanciersPage() {
 
         {tab === "help" ? (
           <ModuleHelpTab
-            moduleName={t("financeSchedules.title")}
-            moduleSummary={t("financeSchedules.help.summary")}
+            moduleName={t("supplyLists.title")}
+            moduleSummary={t("supplyLists.help.summary")}
             actions={[
               {
-                name: t("financeSchedules.help.action1.name"),
-                purpose: t("financeSchedules.help.action1.purpose"),
-                howTo: t("financeSchedules.help.action1.howTo"),
-                moduleImpact: t("financeSchedules.help.action1.moduleImpact"),
+                name: t("supplyLists.help.action1.name"),
+                purpose: t("supplyLists.help.action1.purpose"),
+                howTo: t("supplyLists.help.action1.howTo"),
+                moduleImpact: t("supplyLists.help.action1.moduleImpact"),
                 crossModuleImpact: t(
-                  "financeSchedules.help.action1.crossModuleImpact",
+                  "supplyLists.help.action1.crossModuleImpact",
                 ),
               },
               {
-                name: t("financeSchedules.help.action2.name"),
-                purpose: t("financeSchedules.help.action2.purpose"),
-                howTo: t("financeSchedules.help.action2.howTo"),
-                moduleImpact: t("financeSchedules.help.action2.moduleImpact"),
+                name: t("supplyLists.help.action2.name"),
+                purpose: t("supplyLists.help.action2.purpose"),
+                howTo: t("supplyLists.help.action2.howTo"),
+                moduleImpact: t("supplyLists.help.action2.moduleImpact"),
                 crossModuleImpact: t(
-                  "financeSchedules.help.action2.crossModuleImpact",
+                  "supplyLists.help.action2.crossModuleImpact",
                 ),
               },
             ]}
-            tips={[t("financeSchedules.help.tip1")]}
+            tips={[t("supplyLists.help.tip1")]}
             workflowExample={{
-              title: t("financeSchedules.help.workflow.title"),
-              intro: t("financeSchedules.help.workflow.intro"),
+              title: t("supplyLists.help.workflow.title"),
+              intro: t("supplyLists.help.workflow.intro"),
               steps: [
                 {
-                  title: t("financeSchedules.help.workflow.step1.title"),
-                  description: t(
-                    "financeSchedules.help.workflow.step1.description",
-                  ),
+                  title: t("supplyLists.help.workflow.step1.title"),
+                  description: t("supplyLists.help.workflow.step1.description"),
                 },
                 {
-                  title: t("financeSchedules.help.workflow.step2.title"),
-                  description: t(
-                    "financeSchedules.help.workflow.step2.description",
-                  ),
-                },
-                {
-                  title: t("financeSchedules.help.workflow.step3.title"),
-                  description: t(
-                    "financeSchedules.help.workflow.step3.description",
-                  ),
+                  title: t("supplyLists.help.workflow.step2.title"),
+                  description: t("supplyLists.help.workflow.step2.description"),
                 },
               ],
             }}
@@ -436,41 +366,7 @@ export default function FinanceEcheanciersPage() {
               </div>
             ) : null}
 
-            <Card title={t("financeSchedules.settings.title")} className="mb-6">
-              <p className="mb-3 text-sm text-text-secondary">
-                {t("financeSchedules.settings.description")}
-              </p>
-              <div className="flex gap-2" role="group">
-                <button
-                  type="button"
-                  onClick={() => onSelectPolicy("FIRST_INSTALLMENT")}
-                  disabled={savingPolicy}
-                  className={`flex-1 rounded-card border px-4 py-2 text-sm font-semibold ${
-                    reinscriptionThresholdPolicy === "FIRST_INSTALLMENT"
-                      ? "border-primary bg-primary text-white"
-                      : "border-border text-text-primary"
-                  }`}
-                  data-testid="reinscription-policy-first-installment"
-                >
-                  {t("financeSchedules.settings.firstInstallment")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSelectPolicy("FULL_PAYMENT")}
-                  disabled={savingPolicy}
-                  className={`flex-1 rounded-card border px-4 py-2 text-sm font-semibold ${
-                    reinscriptionThresholdPolicy === "FULL_PAYMENT"
-                      ? "border-primary bg-primary text-white"
-                      : "border-border text-text-primary"
-                  }`}
-                  data-testid="reinscription-policy-full-payment"
-                >
-                  {t("financeSchedules.settings.fullPayment")}
-                </button>
-              </div>
-            </Card>
-
-            <Card title={t("financeSchedules.form.title")} className="mb-6">
+            <Card title={t("supplyLists.form.title")} className="mb-6">
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="grid gap-4"
@@ -478,12 +374,12 @@ export default function FinanceEcheanciersPage() {
               >
                 <div className="grid gap-4 sm:grid-cols-3">
                   <FormField
-                    label={t("financeSchedules.form.schoolYear")}
+                    label={t("supplyLists.form.schoolYear")}
                     error={form.formState.errors.schoolYearId?.message}
                   >
                     <SearchableSelect
                       id="schoolYearId"
-                      ariaLabel={t("financeSchedules.form.schoolYear")}
+                      ariaLabel={t("supplyLists.form.schoolYear")}
                       invalid={Boolean(form.formState.errors.schoolYearId)}
                       value={form.watch("schoolYearId") ?? ""}
                       onChange={(value) =>
@@ -499,12 +395,12 @@ export default function FinanceEcheanciersPage() {
                     />
                   </FormField>
                   <FormField
-                    label={t("financeSchedules.form.academicLevel")}
+                    label={t("supplyLists.form.academicLevel")}
                     error={form.formState.errors.academicLevelId?.message}
                   >
                     <SearchableSelect
                       id="academicLevelId"
-                      ariaLabel={t("financeSchedules.form.academicLevel")}
+                      ariaLabel={t("supplyLists.form.academicLevel")}
                       invalid={Boolean(form.formState.errors.academicLevelId)}
                       value={form.watch("academicLevelId") ?? ""}
                       onChange={(value) =>
@@ -519,21 +415,21 @@ export default function FinanceEcheanciersPage() {
                       }))}
                     />
                   </FormField>
-                  <FormField label={t("financeSchedules.form.track")}>
+                  <FormField label={t("supplyLists.form.track")}>
                     <SearchableSelect
                       id="trackId"
-                      ariaLabel={t("financeSchedules.form.track")}
+                      ariaLabel={t("supplyLists.form.track")}
                       value={form.watch("trackId") ?? ""}
                       onChange={(value) =>
                         form.setValue("trackId", value, {
                           shouldValidate: true,
                         })
                       }
-                      placeholder={t("financeSchedules.form.trackNone")}
+                      placeholder={t("supplyLists.form.trackNone")}
                       options={[
                         {
                           value: "",
-                          label: t("financeSchedules.form.trackNone"),
+                          label: t("supplyLists.form.trackNone"),
                         },
                         ...tracks.map((track) => ({
                           value: track.id,
@@ -546,55 +442,46 @@ export default function FinanceEcheanciersPage() {
 
                 <div className="grid gap-2">
                   <span className="text-sm font-medium text-text-secondary">
-                    {t("financeSchedules.form.installments")}
+                    {t("supplyLists.form.items")}
                   </span>
                   {fields.map((field, index) => (
                     <div
                       key={field.id}
-                      className="grid grid-cols-[70px_1fr_140px_160px_auto] items-end gap-2"
+                      className="grid grid-cols-[70px_1fr_120px_auto] items-end gap-2"
                     >
                       <FormField
-                        label={t("financeSchedules.form.rank")}
+                        label={t("supplyLists.form.rank")}
                         error={
-                          form.formState.errors.installments?.[index]?.rank
+                          form.formState.errors.items?.[index]?.rank?.message
+                        }
+                      >
+                        <FormTextInput
+                          type="number"
+                          min={1}
+                          {...form.register(`items.${index}.rank`)}
+                        />
+                      </FormField>
+                      <FormField
+                        label={t("supplyLists.form.label")}
+                        error={
+                          form.formState.errors.items?.[index]?.label?.message
+                        }
+                      >
+                        <FormTextInput
+                          {...form.register(`items.${index}.label`)}
+                        />
+                      </FormField>
+                      <FormField
+                        label={t("supplyLists.form.quantity")}
+                        error={
+                          form.formState.errors.items?.[index]?.quantity
                             ?.message
                         }
                       >
                         <FormTextInput
                           type="number"
                           min={1}
-                          {...form.register(`installments.${index}.rank`)}
-                        />
-                      </FormField>
-                      <FormField
-                        label={t("financeSchedules.form.label")}
-                        error={
-                          form.formState.errors.installments?.[index]?.label
-                            ?.message
-                        }
-                      >
-                        <FormTextInput
-                          {...form.register(`installments.${index}.label`)}
-                        />
-                      </FormField>
-                      <FormField
-                        label={t("financeSchedules.form.amount")}
-                        error={
-                          form.formState.errors.installments?.[index]?.amount
-                            ?.message
-                        }
-                      >
-                        <FormTextInput
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          {...form.register(`installments.${index}.amount`)}
-                        />
-                      </FormField>
-                      <FormField label={t("financeSchedules.form.dueDate")}>
-                        <FormTextInput
-                          type="date"
-                          {...form.register(`installments.${index}.dueDate`)}
+                          {...form.register(`items.${index}.quantity`)}
                         />
                       </FormField>
                       <Button
@@ -614,12 +501,12 @@ export default function FinanceEcheanciersPage() {
                       append({
                         rank: fields.length + 1,
                         label: "",
-                        amount: 0,
-                        dueDate: "",
+                        quantity: 1,
+                        note: "",
                       })
                     }
                   >
-                    {t("financeSchedules.form.addInstallment")}
+                    {t("supplyLists.form.addItem")}
                   </Button>
                 </div>
 
@@ -632,41 +519,37 @@ export default function FinanceEcheanciersPage() {
               </form>
             </Card>
 
-            <div className="grid gap-3" data-testid="fee-schedules-list">
-              {groupedSchedules.map((schedule) => (
+            <div className="grid gap-3" data-testid="supply-lists-list">
+              {groupedSupplyLists.map((supplyList) => (
                 <Card
-                  key={schedule.id}
-                  title={`${schedule.academicLevel.label}${schedule.track ? ` - ${schedule.track.label}` : ""}`}
-                  subtitle={schedule.schoolYear.label}
+                  key={supplyList.id}
+                  title={`${supplyList.academicLevel.label}${supplyList.track ? ` - ${supplyList.track.label}` : ""}`}
+                  subtitle={supplyList.schoolYear.label}
                   actions={
                     <Button
                       variant="secondary"
-                      onClick={() => onDelete(schedule.id)}
-                      disabled={deletingId === schedule.id}
+                      onClick={() => onDelete(supplyList.id)}
+                      disabled={deletingId === supplyList.id}
                     >
                       {t("common.delete")}
                     </Button>
                   }
                 >
                   <ul className="grid gap-1 text-sm text-text-secondary">
-                    {schedule.installments
+                    {supplyList.items
                       .slice()
                       .sort((a, b) => a.rank - b.rank)
-                      .map((installment) => (
-                        <li key={installment.id}>
-                          {installment.rank}. {installment.label} —{" "}
-                          {installment.amount.toLocaleString()}
-                          {installment.dueDate
-                            ? ` (${new Date(installment.dueDate).toLocaleDateString()})`
-                            : ""}
+                      .map((item) => (
+                        <li key={item.id}>
+                          {item.rank}. {item.label} — x{item.quantity}
                         </li>
                       ))}
                   </ul>
                 </Card>
               ))}
-              {groupedSchedules.length === 0 ? (
+              {groupedSupplyLists.length === 0 ? (
                 <p className="text-sm text-text-secondary">
-                  {t("financeSchedules.empty")}
+                  {t("supplyLists.empty")}
                 </p>
               ) : null}
             </div>

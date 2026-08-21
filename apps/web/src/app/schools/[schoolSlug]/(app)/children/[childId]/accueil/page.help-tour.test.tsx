@@ -98,7 +98,7 @@ describe("ChildAccueilPage — tour et aide", () => {
     expect(useOnboardingTourStore.getState().activeTourId).toBeNull();
   });
 
-  it("enregistre le contenu d'aide (2 sections) au montage", async () => {
+  it("enregistre le contenu d'aide (3 sections) au montage", async () => {
     render(<ChildAccueilPage />);
 
     await waitFor(() => {
@@ -108,6 +108,7 @@ describe("ChildAccueilPage — tour et aide", () => {
     expect(sections.map((section) => section.title)).toEqual([
       "Trois indicateurs",
       "Des blocs résumés",
+      "Fournitures scolaires",
     ]);
   });
 });

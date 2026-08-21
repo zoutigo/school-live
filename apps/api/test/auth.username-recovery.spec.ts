@@ -9,7 +9,7 @@ import { AuthService } from "../src/auth/auth.service";
 function makeService(prismaOverrides: Record<string, unknown> = {}) {
   const prisma = {
     user: {
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn().mockResolvedValue({ id: "user-1" }),
     },
     passwordResetToken: {
@@ -44,7 +44,7 @@ function makeService(prismaOverrides: Record<string, unknown> = {}) {
 describe("AuthService username recovery", () => {
   it("startUsernameRecovery retourne noQuestions si aucune question n'est configurée", async () => {
     const { service, prisma } = makeService();
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue({
       id: "user-1",
       username: "amina42",
       recoveryBirthDate: null,
@@ -60,7 +60,7 @@ describe("AuthService username recovery", () => {
 
   it("startUsernameRecovery lève NotFoundException avec code USER_NOT_FOUND si le username est inconnu", async () => {
     const { service, prisma } = makeService();
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
 
     await expect(service.startUsernameRecovery("ghost")).rejects.toBeInstanceOf(
       NotFoundException,
@@ -76,7 +76,7 @@ describe("AuthService username recovery", () => {
     const answerHash1 = await bcrypt.hash("abena", 10);
     const answerHash2 = await bcrypt.hash("douala", 10);
     const answerHash3 = await bcrypt.hash("basket", 10);
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue({
       id: "user-1",
       username: "amina42",
       recoveryBirthDate: new Date("2005-01-15T00:00:00.000Z"),
@@ -108,7 +108,7 @@ describe("AuthService username recovery", () => {
     const answerHash1 = await bcrypt.hash("abena", 10);
     const answerHash2 = await bcrypt.hash("douala", 10);
     const answerHash3 = await bcrypt.hash("basket", 10);
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue({
       id: "user-1",
       username: "amina42",
       recoveryBirthDate: new Date("2005-01-15T00:00:00.000Z"),
@@ -135,7 +135,7 @@ describe("AuthService username recovery", () => {
 
   it("startUsernameRecovery retourne les questions quand l'utilisateur en a configuré 3", async () => {
     const { service, prisma } = makeService();
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue({
       id: "user-1",
       username: "amina42",
       recoveryBirthDate: new Date("2005-01-15"),
@@ -157,15 +157,15 @@ describe("AuthService username recovery", () => {
 
   it("startUsernameRecovery normalise l'identifiant en minuscules pour la recherche", async () => {
     const { service, prisma } = makeService();
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
 
     await expect(
       service.startUsernameRecovery("GHOST_USER"),
     ).rejects.toBeInstanceOf(NotFoundException);
 
-    expect(prisma.user.findUnique).toHaveBeenCalledWith(
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { username: "ghost_user" },
+        where: { username: { equals: "ghost_user", mode: "insensitive" } },
       }),
     );
   });
@@ -175,7 +175,7 @@ describe("AuthService username recovery", () => {
     const answerHash1 = await bcrypt.hash("abena", 10);
     const answerHash2 = await bcrypt.hash("douala", 10);
     const answerHash3 = await bcrypt.hash("basket", 10);
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue({
       id: "user-1",
       username: "amina42",
       recoveryBirthDate: new Date("2005-01-15T00:00:00.000Z"),
@@ -202,7 +202,7 @@ describe("AuthService username recovery", () => {
 
   it("verifyUsernameRecovery lève ForbiddenException si le username est inconnu", async () => {
     const { service, prisma } = makeService();
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
 
     // L'implémentation masque l'information pour éviter l'énumération des comptes
     await expect(

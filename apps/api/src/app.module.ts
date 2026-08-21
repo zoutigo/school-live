@@ -7,6 +7,7 @@ import { EnrollmentsModule } from "./enrollments/enrollments.module.js";
 import { EvaluationsModule } from "./evaluations/evaluations.module.js";
 import { FeedModule } from "./feed/feed.module.js";
 import { FinanceModule } from "./finance/finance.module.js";
+import { SupplyListsModule } from "./supply-lists/supply-lists.module.js";
 import { HelpFaqsModule } from "./help-faqs/help-faqs.module.js";
 import { HelpGuidesModule } from "./help-guides/help-guides.module.js";
 import { StudentGradesModule } from "./student-grades/student-grades.module.js";
@@ -45,6 +46,7 @@ import { TestsModule } from "./tests/tests.module.js";
     EvaluationsModule,
     FeedModule,
     FinanceModule,
+    SupplyListsModule,
     HelpFaqsModule,
     HelpGuidesModule,
     HomeworkModule,

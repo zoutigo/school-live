@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildMobileCallbackRedirect,
@@ -81,5 +81,43 @@ describe("MobileSsoCallbackClient", () => {
         "scolive://auth/callback?error=GOOGLE_SSO_CALLBACK_FAILED&message=Session+SSO+incomplete",
       );
     });
+  });
+
+  it("affiche un lien de secours si la redirection automatique n'aboutit pas", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    getSessionMock.mockResolvedValue({
+      user: {
+        email: "sso.user@example.test",
+        name: "Sso User",
+        image: "https://example.test/avatar.png",
+        provider: "GOOGLE",
+        providerAccountId: "google-123",
+      },
+    });
+    signOutMock.mockResolvedValue(undefined);
+
+    render(<MobileSsoCallbackClient redirectUri="scolive://auth/callback" />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(replaceMock).toHaveBeenCalled();
+
+    expect(
+      screen.queryByRole("link", { name: /ouvrir l'application scolive/i }),
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1300);
+    });
+
+    expect(
+      screen.getByRole("link", { name: /ouvrir l'application scolive/i }),
+    ).toHaveAttribute(
+      "href",
+      "scolive://auth/callback?provider=GOOGLE&providerAccountId=google-123&email=sso.user%40example.test&firstName=Sso&lastName=User&avatarUrl=https%3A%2F%2Fexample.test%2Favatar.png",
+    );
+
+    vi.useRealTimers();
   });
 });

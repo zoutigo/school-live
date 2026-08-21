@@ -15,6 +15,7 @@ import { Test } from "@nestjs/testing";
 import bcrypt from "bcryptjs";
 import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { AuthService } from "./auth.service.js";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -289,5 +290,98 @@ describe("AuthService.loginWithUsername (contrat)", () => {
     const result = await loginWithUsername("jeanDUPONT", "ValidPass123");
 
     expect(result.schoolSlug).toBeNull();
+  });
+});
+
+// ── AuthService réel : insensibilité à la casse du username ────────────────────
+//
+// Régression : les usernames élèves étaient historiquement générés en casse
+// mixte (ex. "SanagaMARIE"). Le login normalisait la saisie en minuscules puis
+// faisait un findUnique EXACT sur "username", donc ne trouvait jamais le compte
+// tant que la saisie ne reproduisait pas exactement la casse stockée.
+// Ces tests exercent la vraie implémentation d'AuthService.loginWithUsername.
+
+describe("AuthService.loginWithUsername (implémentation réelle, insensibilité à la casse)", () => {
+  let authService: AuthService;
+  let prisma: ReturnType<typeof makeRealPrismaMock>;
+
+  function makeRealPrismaMock() {
+    return {
+      user: {
+        findFirst: jest.fn(),
+      },
+      authRateLimit: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        upsert: jest.fn().mockResolvedValue({ failedAttempts: 0 }),
+        create: jest.fn().mockResolvedValue({}),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      authAuditLog: {
+        create: jest.fn().mockResolvedValue({}),
+      },
+      refreshToken: {
+        create: jest.fn().mockResolvedValue({}),
+      },
+    };
+  }
+
+  beforeEach(() => {
+    prisma = makeRealPrismaMock();
+    authService = new AuthService(
+      prisma as unknown as PrismaService,
+      {
+        signAsync: jest.fn().mockResolvedValue("jwt-token"),
+      } as unknown as JwtService,
+      { get: jest.fn().mockReturnValue(undefined) } as unknown as ConfigService,
+      {} as unknown as MailService,
+    );
+  });
+
+  it("interroge Prisma avec un filtre username insensible à la casse (mode: insensitive)", async () => {
+    prisma.user.findFirst.mockResolvedValue(
+      makePrismaUser({ username: "sanagamarie" }),
+    );
+
+    await authService.loginWithUsername("SanagaMARIE", "ValidPass123");
+
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          username: { equals: "sanagamarie", mode: "insensitive" },
+        },
+      }),
+    );
+  });
+
+  it("connecte l'utilisateur même si la casse saisie diffère de la casse stockée en base", async () => {
+    // Compte stocké en casse mixte (ancien format, avant migration de normalisation)
+    prisma.user.findFirst.mockResolvedValue(
+      makePrismaUser({ username: "SanagaMARIE" }),
+    );
+
+    const result = await authService.loginWithUsername(
+      "sanagamarie",
+      "ValidPass123",
+    );
+
+    expect(result).toHaveProperty("accessToken", "jwt-token");
+  });
+
+  it("rejette un mauvais mot de passe même en cas de correspondance de username insensible à la casse", async () => {
+    prisma.user.findFirst.mockResolvedValue(
+      makePrismaUser({ username: "sanagamarie" }),
+    );
+
+    await expect(
+      authService.loginWithUsername("SANAGAMARIE", "WrongPassword"),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it("rejette si aucun utilisateur ne correspond, quelle que soit la casse", async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      authService.loginWithUsername("Inconnu", "any"),
+    ).rejects.toThrow(UnauthorizedException);
   });
 });

@@ -6,7 +6,7 @@ import {
   within,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import FinanceEcheanciersPage from "./page";
+import SupplyListsPage from "./page";
 import { selectSearchableOption } from "../../test/searchable-select";
 
 const replaceMock = vi.fn();
@@ -42,7 +42,7 @@ function mockFetchBase() {
 
     if (url.endsWith("/api/me")) {
       return jsonResponse({
-        role: "SCHOOL_ACCOUNTANT",
+        role: "SCHOOL_MANAGER",
         schoolSlug: "college-vogt",
       });
     }
@@ -55,45 +55,37 @@ function mockFetchBase() {
     if (url.includes("/admin/tracks")) {
       return jsonResponse([]);
     }
-    if (url.includes("/admin/finance/fee-schedules") && method === "GET") {
+    if (url.includes("/admin/supply-lists") && method === "GET") {
       return jsonResponse([
         {
-          id: "fee-1",
+          id: "supply-1",
           academicLevel: { id: "level-1", label: "CE2", code: "CE2" },
           track: null,
           schoolYear: { id: "sy-1", label: "2025-2026" },
-          installments: [
+          items: [
             {
-              id: "inst-1",
+              id: "item-1",
               rank: 1,
-              label: "1ere echeance",
-              amount: 50000,
-              dueDate: null,
+              label: "Cahier 100 pages",
+              quantity: 3,
+              note: null,
             },
           ],
         },
       ]);
     }
-    if (url.includes("/admin/finance/fee-schedules") && method === "POST") {
-      return jsonResponse({ id: "fee-2" });
+    if (url.includes("/admin/supply-lists") && method === "POST") {
+      return jsonResponse({ id: "supply-2" });
     }
-    if (url.includes("/admin/finance/fee-schedules/") && method === "DELETE") {
+    if (url.includes("/admin/supply-lists/") && method === "DELETE") {
       return jsonResponse({ success: true });
-    }
-    if (url.includes("/admin/finance/settings") && method === "GET") {
-      return jsonResponse({
-        reinscriptionThresholdPolicy: "FIRST_INSTALLMENT",
-      });
-    }
-    if (url.includes("/admin/finance/settings") && method === "PATCH") {
-      return jsonResponse({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
     }
 
     return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
   });
 }
 
-describe("Finance echeanciers page", () => {
+describe("Supply lists page", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
@@ -101,30 +93,30 @@ describe("Finance echeanciers page", () => {
     getCsrfTokenCookieMock.mockReturnValue("csrf-token-test");
   });
 
-  it("charge et affiche les echeanciers existants", async () => {
+  it("charge et affiche les listes de fournitures existantes", async () => {
     mockFetchBase();
-    render(<FinanceEcheanciersPage />);
+    render(<SupplyListsPage />);
 
     expect((await screen.findAllByText("CE2")).length).toBeGreaterThan(0);
     expect(
-      within(screen.getByTestId("fee-schedules-list")).getByText(
-        /1ere echeance/,
+      within(screen.getByTestId("supply-lists-list")).getByText(
+        /Cahier 100 pages/,
       ),
     ).toBeInTheDocument();
   });
 
-  it("cree un nouvel echeancier avec le jeton CSRF", async () => {
+  it("cree une nouvelle liste de fournitures avec le jeton CSRF", async () => {
     const fetchMock = mockFetchBase();
-    render(<FinanceEcheanciersPage />);
+    render(<SupplyListsPage />);
 
     await screen.findAllByText("CE2");
 
     await selectSearchableOption("Niveau", "CE2");
     fireEvent.change(screen.getByLabelText("Libelle"), {
-      target: { value: "1ere echeance" },
+      target: { value: "Stylo bleu" },
     });
-    fireEvent.change(screen.getByLabelText("Montant"), {
-      target: { value: "60000" },
+    fireEvent.change(screen.getByLabelText("Quantite"), {
+      target: { value: "2" },
     });
 
     await waitFor(() =>
@@ -137,7 +129,7 @@ describe("Finance echeanciers page", () => {
     await waitFor(() => {
       const postCall = fetchMock.mock.calls.find(
         ([url, init]) =>
-          String(url).includes("/admin/finance/fee-schedules") &&
+          String(url).includes("/admin/supply-lists") &&
           init?.method === "POST",
       );
       expect(postCall).toBeTruthy();
@@ -149,7 +141,7 @@ describe("Finance echeanciers page", () => {
   it("bloque la suppression si le jeton CSRF est absent", async () => {
     getCsrfTokenCookieMock.mockReturnValue(null);
     mockFetchBase();
-    render(<FinanceEcheanciersPage />);
+    render(<SupplyListsPage />);
 
     await screen.findAllByText("CE2");
     fireEvent.click(screen.getByRole("button", { name: "Supprimer" }));
@@ -157,30 +149,22 @@ describe("Finance echeanciers page", () => {
     await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/"));
   });
 
-  it("charge la politique de seuil courante et permet de la changer", async () => {
+  it("supprime une liste de fournitures avec le jeton CSRF", async () => {
     const fetchMock = mockFetchBase();
-    render(<FinanceEcheanciersPage />);
+    render(<SupplyListsPage />);
 
     await screen.findAllByText("CE2");
-
-    fireEvent.click(screen.getByTestId("reinscription-policy-full-payment"));
+    fireEvent.click(screen.getByRole("button", { name: "Supprimer" }));
 
     await waitFor(() => {
-      const patchCall = fetchMock.mock.calls.find(
+      const deleteCall = fetchMock.mock.calls.find(
         ([url, init]) =>
-          String(url).includes("/admin/finance/settings") &&
-          init?.method === "PATCH",
+          String(url).includes("/admin/supply-lists/supply-1") &&
+          init?.method === "DELETE",
       );
-      expect(patchCall).toBeTruthy();
-      const headers = patchCall?.[1]?.headers as Record<string, string>;
+      expect(deleteCall).toBeTruthy();
+      const headers = deleteCall?.[1]?.headers as Record<string, string>;
       expect(headers["X-CSRF-Token"]).toBe("csrf-token-test");
-      expect(JSON.parse(String(patchCall?.[1]?.body))).toEqual({
-        reinscriptionThresholdPolicy: "FULL_PAYMENT",
-      });
     });
-
-    expect(
-      await screen.findByText("Politique de reinscription mise a jour."),
-    ).toBeInTheDocument();
   });
 });

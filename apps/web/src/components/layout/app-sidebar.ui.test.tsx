@@ -502,6 +502,7 @@ describe("AppSidebar badges", () => {
         feedUnread: 2,
         ticketsNeedingResponse: 0,
         ticketsUnreadReplies: 0,
+        reinscriptionPending: 0,
         children: [],
         teacherClasses: [],
         total: 7,
@@ -529,6 +530,7 @@ describe("AppSidebar badges", () => {
         feedUnread: 0,
         ticketsNeedingResponse: 0,
         ticketsUnreadReplies: 0,
+        reinscriptionPending: 0,
         children: [],
         teacherClasses: [],
         total: 0,
@@ -551,6 +553,7 @@ describe("AppSidebar badges", () => {
         feedUnread: 0,
         ticketsNeedingResponse: 0,
         ticketsUnreadReplies: 0,
+        reinscriptionPending: 0,
         children: [
           {
             studentId: "child-1",
@@ -598,6 +601,7 @@ describe("AppSidebar badges", () => {
             feedUnread: 0,
             ticketsNeedingResponse: 0,
             ticketsUnreadReplies: 0,
+            reinscriptionPending: 0,
             children: [],
             teacherClasses: [
               { classId: "class-1", className: "6eC", evaluationsToGrade: 6 },
@@ -640,6 +644,7 @@ describe("AppSidebar badges", () => {
         feedUnread: 0,
         ticketsNeedingResponse: 2,
         ticketsUnreadReplies: 3,
+        reinscriptionPending: 0,
         children: [],
         teacherClasses: [],
         total: 5,
@@ -661,6 +666,7 @@ describe("AppSidebar badges", () => {
         feedUnread: 0,
         ticketsNeedingResponse: 0,
         ticketsUnreadReplies: 0,
+        reinscriptionPending: 0,
         children: [],
         teacherClasses: [],
         total: 9,

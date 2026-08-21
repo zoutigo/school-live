@@ -4,6 +4,7 @@ import { MailModule } from "../mail/mail.module.js";
 import { MediaClientModule } from "../media-client/media-client.module.js";
 import { NotificationsModule } from "../notifications/notifications.module.js";
 import { SchoolsModule } from "../schools/schools.module.js";
+import { EnrollmentsModule } from "../enrollments/enrollments.module.js";
 import { ManagementController } from "./management.controller.js";
 import { ManagementService } from "./management.service.js";
 
@@ -14,6 +15,7 @@ import { ManagementService } from "./management.service.js";
     MailModule,
     MediaClientModule,
     NotificationsModule,
+    EnrollmentsModule,
   ],
   controllers: [ManagementController],
   providers: [ManagementService],

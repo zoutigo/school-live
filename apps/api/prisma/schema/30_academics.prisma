@@ -36,6 +36,7 @@ model SchoolYear {
   calendarEvents      SchoolCalendarEvent[]
   feeSchedules        FeeSchedule[]
   studentPayments     StudentPayment[]
+  supplyLists         SupplyList[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -60,6 +61,7 @@ model AcademicLevel {
   resources   Resource[]
   termReportsTargetingThisLevel StudentTermReport[] @relation("StudentTermReportNextLevel")
   feeSchedules FeeSchedule[]
+  supplyLists SupplyList[]
   enrollmentsTargetingThisLevel Enrollment[] @relation("EnrollmentAcademicLevel")
   schoolActivations SchoolAcademicLevel[]
 
@@ -108,6 +110,7 @@ model Track {
   resources   Resource[]
   termReportsTargetingThisTrack StudentTermReport[] @relation("StudentTermReportNextTrack")
   feeSchedules FeeSchedule[]
+  supplyLists SupplyList[]
   enrollmentsTargetingThisTrack Enrollment[] @relation("EnrollmentTrack")
 
   @@unique([schoolId, code])

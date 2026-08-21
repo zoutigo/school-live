@@ -1,6 +1,14 @@
 import { ConfigService } from "@nestjs/config";
 import type { ConnectionOptions } from "bullmq";
 
+// Force ioredis to drop and reopen the connection when the server it is
+// talking to reports READONLY (e.g. it was demoted to a replica or
+// recreated). Without this the client keeps retrying commands against the
+// same stale connection forever instead of recovering on its own.
+function reconnectOnError(err: Error): boolean {
+  return err.message.includes("READONLY");
+}
+
 export function buildRedisConnection(
   configService: ConfigService,
 ): ConnectionOptions {
@@ -15,6 +23,7 @@ export function buildRedisConnection(
       password: parsed.password || undefined,
       db: parsed.pathname ? Number(parsed.pathname.slice(1) || "0") : 0,
       maxRetriesPerRequest: null,
+      reconnectOnError,
     };
   }
 
@@ -24,5 +33,6 @@ export function buildRedisConnection(
     password: configService.get<string>("REDIS_PASSWORD") ?? undefined,
     db: Number(configService.get<string>("REDIS_DB") ?? 0),
     maxRetriesPerRequest: null,
+    reconnectOnError,
   };
 }

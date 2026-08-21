@@ -543,6 +543,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "common.help": "Aide",
     "common.remove": "Retirer",
 
+    "financeSchedules.settings.title": "Seuil de reinscription",
+    "financeSchedules.settings.description":
+      "Determine a partir de quel montant verse un eleve promu est considere reinscrit.",
+    "financeSchedules.settings.firstInstallment": "1ere echeance payee",
+    "financeSchedules.settings.fullPayment": "Echeancier paye en totalite",
+    "financeSchedules.settings.success":
+      "Politique de reinscription mise a jour.",
+    "financeSchedules.settings.errors.save":
+      "Impossible de mettre a jour la politique de reinscription.",
     "financeSchedules.title": "Echeanciers de scolarite",
     "financeSchedules.subtitle":
       "Definissez le bareme de frais de scolarite par niveau et filiere pour chaque annee scolaire.",
@@ -600,6 +609,58 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financeSchedules.help.workflow.step3.description":
       "des que le cumul atteint le montant de la 1ere echeance, l'eleve est place en attente d'affectation pour la nouvelle annee.",
 
+    "supplyLists.title": "Fournitures scolaires",
+    "supplyLists.subtitle":
+      "Definissez la liste de fournitures a prevoir par niveau, filiere et annee scolaire.",
+    "supplyLists.errors.load":
+      "Impossible de charger les listes de fournitures.",
+    "supplyLists.errors.network": "Erreur reseau.",
+    "supplyLists.errors.save": "Enregistrement impossible.",
+    "supplyLists.errors.delete": "Suppression impossible.",
+    "supplyLists.success.saved": "Liste de fournitures enregistree.",
+    "supplyLists.form.title": "Nouvelle liste / mise a jour",
+    "supplyLists.form.schoolYear": "Annee scolaire",
+    "supplyLists.form.academicLevel": "Niveau",
+    "supplyLists.form.track": "Filiere",
+    "supplyLists.form.trackNone": "Aucune filiere",
+    "supplyLists.form.items": "Articles",
+    "supplyLists.form.rank": "Rang",
+    "supplyLists.form.label": "Libelle",
+    "supplyLists.form.quantity": "Quantite",
+    "supplyLists.form.addItem": "Ajouter un article",
+    "supplyLists.empty": "Aucune liste de fournitures definie pour le moment.",
+    "supplyLists.help.summary":
+      "ce module definit, pour chaque niveau et filiere, la liste des fournitures que les parents doivent prevoir pour la rentree. Elle est visible par les parents dans l'onglet Fournitures de l'ecran Reinscription, scopee au niveau que leur enfant s'apprete a integrer.",
+    "supplyLists.help.action1.name": "Creer une liste",
+    "supplyLists.help.action1.purpose":
+      "definir les articles a prevoir pour un niveau (et une filiere si besoin) sur une annee scolaire donnee.",
+    "supplyLists.help.action1.howTo":
+      "choisir l'annee, le niveau et la filiere, puis ajouter un ou plusieurs articles (rang, libelle, quantite) avant d'enregistrer.",
+    "supplyLists.help.action1.moduleImpact":
+      "la liste est immediatement visible par les parents concernes dans l'onglet Fournitures de l'ecran Reinscription.",
+    "supplyLists.help.action1.crossModuleImpact":
+      "une nouvelle annee scolaire reprend automatiquement les listes de l'annee precedente : il suffit de les ajuster plutot que de tout ressaisir.",
+    "supplyLists.help.action2.name": "Supprimer une liste",
+    "supplyLists.help.action2.purpose":
+      "retirer une liste qui n'est plus applicable.",
+    "supplyLists.help.action2.howTo":
+      "utiliser le bouton Supprimer sur la fiche de la liste concernee.",
+    "supplyLists.help.action2.moduleImpact":
+      "les parents du niveau concerne ne verront plus aucune liste de fournitures tant qu'une nouvelle n'est pas creee.",
+    "supplyLists.help.action2.crossModuleImpact":
+      "n'a pas d'impact sur les echeanciers de scolarite ni sur la reinscription, qui restent geres separement.",
+    "supplyLists.help.tip1":
+      "La meme liste s'applique a un redoublant et a un promu du meme niveau : la distinction se fait uniquement sur le niveau cible, pas sur la liste.",
+    "supplyLists.help.workflow.title": "De la liste a la rentree",
+    "supplyLists.help.workflow.intro":
+      "voici comment cette liste s'inscrit dans le parcours de reinscription d'un parent.",
+    "supplyLists.help.workflow.step1.title": "1. Definir la liste",
+    "supplyLists.help.workflow.step1.description":
+      "le gestionnaire cree la liste ici, pour chaque niveau et filiere de la prochaine annee scolaire.",
+    "supplyLists.help.workflow.step2.title": "2. Consultation par le parent",
+    "supplyLists.help.workflow.step2.description":
+      "le parent la consulte dans l'onglet Fournitures de l'ecran Reinscription, scopee au niveau que son enfant s'apprete a integrer.",
+
     "financePayments.title": "Paiements",
     "financePayments.subtitle":
       "Recherchez un eleve et enregistrez un paiement de scolarite en especes.",
@@ -617,7 +678,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financePayments.target.schoolYear": "Annee scolaire (reinscription)",
     "financePayments.summary.title": "Situation financiere",
     "financePayments.summary.totalPaid": "Total deja verse",
-    "financePayments.summary.firstInstallment": "Montant de la 1ere echeance",
+    "financePayments.summary.threshold":
+      "Seuil de reinscription (selon la politique de l'ecole)",
     "financePayments.summary.eligible": "Seuil atteint : eleve reinscrit.",
     "financePayments.summary.notEligible":
       "Seuil non atteint : la reinscription n'est pas encore confirmee.",
@@ -1029,6 +1091,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.promotions": "Passages de classe",
     "sidebar.nav.financeSchedules": "Echeanciers",
     "sidebar.nav.financePayments": "Paiements",
+    "sidebar.nav.supplyLists": "Fournitures scolaires",
     "sidebar.nav.users": "Utilisateurs",
     "sidebar.nav.indicators": "Indicateurs",
     "sidebar.nav.testCampaigns": "Campagnes tests",
@@ -1211,6 +1274,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.myClasses": "Mes classes",
     "sidebar.nav.gradesNotebook": "Cahier de notes",
     "sidebar.nav.financialSituation": "Situation financiere",
+    "sidebar.nav.reinscription": "Reinscription",
     "sidebar.nav.onlineShop": "Boutique en ligne",
     "sidebar.nav.documents": "Documents",
     "sidebar.nav.forms": "Formulaire",
@@ -3065,6 +3129,57 @@ export const translations: Record<Locale, Record<string, string>> = {
     "finSituation.payment.add": "Ajouter un mode",
     "finSituation.payment.request": "Demander une modification",
 
+    "reinscriptionWeb.title": "Reinscription",
+    "reinscriptionWeb.subtitle":
+      "{fullName} - reinscription et fournitures scolaires",
+    "reinscriptionWeb.errors.load": "Impossible de charger le porte-monnaie.",
+    "reinscriptionWeb.errors.network": "Erreur reseau.",
+    "reinscriptionWeb.tabs.paiement": "Paiement",
+    "reinscriptionWeb.tabs.fournitures": "Fournitures",
+    "reinscriptionWeb.wallet.balance": "Solde du porte-monnaie",
+    "reinscriptionWeb.wallet.topUpAmount": "Montant a crediter",
+    "reinscriptionWeb.wallet.topUpSubmit": "Crediter",
+    "reinscriptionWeb.wallet.errors.topUp": "Depot impossible.",
+    "reinscriptionWeb.wallet.errors.reinscribe": "Reinscription impossible.",
+    "reinscriptionWeb.wallet.success.topUp": "Porte-monnaie credite.",
+    "reinscriptionWeb.wallet.success.reinscribed":
+      "{firstName} est reinscrit(e) !",
+    "reinscriptionWeb.children.title": "Mes enfants",
+    "reinscriptionWeb.children.required": "Montant restant du :",
+    "reinscriptionWeb.children.payAndReinscribe": "Je paie et je reinscris",
+    "reinscriptionWeb.children.empty": "Aucun enfant rattache a votre compte.",
+    "reinscriptionWeb.children.status.DECISION_PENDING":
+      "En attente de la decision du conseil de classe",
+    "reinscriptionWeb.children.status.NEXT_YEAR_NOT_OPEN":
+      "Decision prise, en attente de l'ouverture de l'annee scolaire suivante par l'ecole",
+    "reinscriptionWeb.children.status.ALREADY_REINSCRIBED": "Deja reinscrit(e)",
+    "reinscriptionWeb.children.status.READY_TO_REINSCRIBE":
+      "Pret(e) a etre reinscrit(e)",
+    "reinscriptionWeb.installments.show": "Voir l'echeancier",
+    "reinscriptionWeb.installments.hide": "Masquer l'echeancier",
+    "reinscriptionWeb.installments.dueDate": "Echeance le",
+    "reinscriptionWeb.installments.error": "Chargement impossible.",
+    "reinscriptionWeb.installments.status.PAID": "Payee",
+    "reinscriptionWeb.installments.status.PARTIAL": "Partielle",
+    "reinscriptionWeb.installments.status.UPCOMING": "A venir",
+    "reinscriptionWeb.installments.status.OVERDUE": "En retard",
+    "reinscriptionWeb.supplies.emptyList":
+      "Aucun enfant eligible pour le moment.",
+    "reinscriptionWeb.supplies.notOpenYet":
+      "La prochaine annee scolaire n'est pas encore ouverte.",
+    "reinscriptionWeb.supplies.empty":
+      "Aucune liste de fournitures definie pour ce niveau pour le moment.",
+    "reinscriptionWeb.help.title": "Aide - Reinscription",
+    "reinscriptionWeb.help.section1Title": "A quoi sert cette page",
+    "reinscriptionWeb.help.section1Body":
+      "Cette page centralise la reinscription de vos enfants promus : paiement du seuil de reinscription et consultation de la liste de fournitures scolaires pour la rentree prochaine.",
+    "reinscriptionWeb.help.section2Title": "Payer et reinscrire",
+    "reinscriptionWeb.help.section2Body":
+      "Creditez votre porte-monnaie, puis touchez « Je paie et je reinscris » pour chaque enfant pret. Ce bouton debite le montant exact du seuil de reinscription (defini par l'ecole) et confirme la reinscription en un seul geste. Vous pouvez aussi consulter l'echeancier detaille (paye/restant par tranche) de chaque enfant.",
+    "reinscriptionWeb.help.section3Title": "Fournitures scolaires",
+    "reinscriptionWeb.help.section3Body":
+      "L'onglet Fournitures affiche, pour chaque enfant, la liste des fournitures a prevoir pour son futur niveau, definie par l'ecole.",
+
     "shop.title": "Boutique en ligne",
     "shop.subtitle": "{fullName} - achats scolaires et reglements rapides",
     "shop.cart.label": "Panier actuel",
@@ -3098,6 +3213,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.help.section2Title": "Des blocs résumés",
     "childAccueil.help.section2Body":
       "Chaque bloc (notes, vie scolaire, accès rapide, dernier message, vie de classe) affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
+    "childAccueil.help.section3Title": "Fournitures scolaires",
+    "childAccueil.help.section3Body":
+      "Quand votre enfant est promu et que l'annee suivante est ouverte, un bloc affiche un apercu de la liste de fournitures a prevoir, avec un lien vers l'ecran Reinscription pour la consulter en entier.",
     "onboardingTour.childHome.kpisTitle": "Trois indicateurs",
     "onboardingTour.childHome.kpisBody":
       "Moyenne générale, messages non lus et vie scolaire, résumés en un coup d'œil.",
@@ -3130,6 +3248,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.quickLink.timetable.hint": "Cours et prochains creneaux",
     "childAccueil.quickLink.homework.label": "Cahier de texte",
     "childAccueil.quickLink.homework.hint": "Travail et consignes",
+    "childAccueil.panel.supplies.title": "Fournitures scolaires",
+    "childAccueil.panel.supplies.action": "Voir la reinscription",
+    "childAccueil.panel.supplies.empty":
+      "Aucune liste de fournitures definie pour le moment.",
     "childAccueil.panel.classFeed.title": "Vie de classe",
     "childAccueil.panel.classFeed.action": "Voir la vie de classe",
     "childAccueil.panel.classFeed.desc1":
@@ -4176,6 +4298,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sso.appleDisabledNoProvider":
       "Connexion Apple desactivee: provider non configure",
     "sso.appleDisabledTemp": "Connexion Apple desactivee temporairement",
+    "sso.mobileCallback.title": "Connexion Google",
+    "sso.mobileCallback.loading": "Retour vers l'application...",
+    "sso.mobileCallback.finalizing":
+      "Nous finalisons votre connexion mobile...",
+    "sso.mobileCallback.manualPrompt":
+      "L'application ne s'est pas ouverte automatiquement.",
+    "sso.mobileCallback.manualAction": "Ouvrir l'application Scolive",
 
     // ChildModulePage shared strings
     "childModule.tab.home": "Accueil",
@@ -4893,6 +5022,21 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.financeParent.reinscribeTitle": "Je paie et je reinscris",
     "onboardingTour.financeParent.reinscribeBody":
       "Ce bouton debite votre porte-monnaie du montant exact de la 1ere echeance de CET enfant et confirme sa reinscription en un seul geste. Un parent avec plusieurs enfants doit cliquer separement pour chacun.",
+    "onboardingTour.reinscriptionParent.walletTitle": "Votre porte-monnaie",
+    "onboardingTour.reinscriptionParent.walletBody":
+      "Creditez ce porte-monnaie a tout moment, meme avant que le conseil de classe n'ait statue. L'argent y reste disponible jusqu'a ce que vous decidiez de l'affecter a un enfant.",
+    "onboardingTour.reinscriptionParent.childrenTitle":
+      "Statut de chaque enfant",
+    "onboardingTour.reinscriptionParent.childrenBody":
+      "Pour chaque enfant : en attente de la decision du conseil de classe, deja reinscrit, ou pret a etre reinscrit avec le montant restant du et l'echeancier detaille affiches.",
+    "onboardingTour.reinscriptionParent.reinscribeTitle":
+      "Je paie et je reinscris",
+    "onboardingTour.reinscriptionParent.reinscribeBody":
+      "Ce bouton debite votre porte-monnaie du montant exact du seuil de reinscription de CET enfant et confirme sa reinscription en un seul geste.",
+    "onboardingTour.reinscriptionParent.suppliesTabTitle":
+      "Fournitures scolaires",
+    "onboardingTour.reinscriptionParent.suppliesTabBody":
+      "Cet onglet affiche la liste des fournitures a prevoir pour la rentree de votre enfant, definie par l'ecole pour son futur niveau.",
     "onboardingTour.healthSchool.tabsTitle": "3 onglets pour s'y retrouver",
     "onboardingTour.healthSchool.tabsBody":
       "Synthèse regroupe les statistiques de l'école ou d'une classe. Cares liste les signalements des parents, du plus récent au plus ancien. Élèves permet de retrouver la fiche santé de chaque élève.",
@@ -5469,6 +5613,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "common.help": "Help",
     "common.remove": "Remove",
 
+    "financeSchedules.settings.title": "Re-enrollment threshold",
+    "financeSchedules.settings.description":
+      "Determines how much a promoted student's family must pay to be considered re-enrolled.",
+    "financeSchedules.settings.firstInstallment": "First installment paid",
+    "financeSchedules.settings.fullPayment": "Full schedule paid",
+    "financeSchedules.settings.success": "Re-enrollment policy updated.",
+    "financeSchedules.settings.errors.save":
+      "Could not update the re-enrollment policy.",
     "financeSchedules.title": "Tuition fee schedules",
     "financeSchedules.subtitle":
       "Define the tuition fee schedule per level and track for each school year.",
@@ -5526,6 +5678,56 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financeSchedules.help.workflow.step3.description":
       "as soon as the cumulative amount reaches the first installment, the student is placed in the class-assignment queue for the new year.",
 
+    "supplyLists.title": "School supplies",
+    "supplyLists.subtitle":
+      "Define the list of supplies to prepare per level, track and school year.",
+    "supplyLists.errors.load": "Unable to load supply lists.",
+    "supplyLists.errors.network": "Network error.",
+    "supplyLists.errors.save": "Unable to save.",
+    "supplyLists.errors.delete": "Unable to delete.",
+    "supplyLists.success.saved": "Supply list saved.",
+    "supplyLists.form.title": "New supply list / update",
+    "supplyLists.form.schoolYear": "School year",
+    "supplyLists.form.academicLevel": "Level",
+    "supplyLists.form.track": "Track",
+    "supplyLists.form.trackNone": "No track",
+    "supplyLists.form.items": "Items",
+    "supplyLists.form.rank": "Rank",
+    "supplyLists.form.label": "Label",
+    "supplyLists.form.quantity": "Quantity",
+    "supplyLists.form.addItem": "Add an item",
+    "supplyLists.empty": "No supply list defined yet.",
+    "supplyLists.help.summary":
+      "this module defines, for each level and track, the list of supplies parents need to prepare for the new school year. It is visible to parents in the Supplies tab of the Re-enrollment screen, scoped to the level their child is about to enter.",
+    "supplyLists.help.action1.name": "Create a list",
+    "supplyLists.help.action1.purpose":
+      "define the items to prepare for a level (and a track if needed) for a given school year.",
+    "supplyLists.help.action1.howTo":
+      "choose the year, level and track, then add one or more items (rank, label, quantity) before saving.",
+    "supplyLists.help.action1.moduleImpact":
+      "the list is immediately visible to the parents concerned in the Supplies tab of the Re-enrollment screen.",
+    "supplyLists.help.action1.crossModuleImpact":
+      "a new school year automatically carries forward the previous year's lists — you only need to adjust them rather than re-entering everything.",
+    "supplyLists.help.action2.name": "Delete a list",
+    "supplyLists.help.action2.purpose": "remove a list that no longer applies.",
+    "supplyLists.help.action2.howTo":
+      "use the Delete button on the relevant list card.",
+    "supplyLists.help.action2.moduleImpact":
+      "parents of the level concerned will no longer see any supply list until a new one is created.",
+    "supplyLists.help.action2.crossModuleImpact":
+      "has no impact on fee schedules or re-enrollment, which remain managed separately.",
+    "supplyLists.help.tip1":
+      "The same list applies to a repeating student and a promoted student of the same level: the distinction is only on the target level, not the list.",
+    "supplyLists.help.workflow.title": "From the list to the new school year",
+    "supplyLists.help.workflow.intro":
+      "here is how this list fits into a parent's re-enrollment journey.",
+    "supplyLists.help.workflow.step1.title": "1. Define the list",
+    "supplyLists.help.workflow.step1.description":
+      "the manager creates the list here, for each level and track of the upcoming school year.",
+    "supplyLists.help.workflow.step2.title": "2. Parent consultation",
+    "supplyLists.help.workflow.step2.description":
+      "the parent views it in the Supplies tab of the Re-enrollment screen, scoped to the level their child is about to enter.",
+
     "financePayments.title": "Payments",
     "financePayments.subtitle":
       "Search for a student and record a cash tuition payment.",
@@ -5543,7 +5745,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financePayments.target.schoolYear": "School year (re-enrollment)",
     "financePayments.summary.title": "Financial status",
     "financePayments.summary.totalPaid": "Total already paid",
-    "financePayments.summary.firstInstallment": "First installment amount",
+    "financePayments.summary.threshold":
+      "Re-enrollment threshold (per school policy)",
     "financePayments.summary.eligible":
       "Threshold reached: student re-enrolled.",
     "financePayments.summary.notEligible":
@@ -5937,6 +6140,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.promotions": "Grade promotion",
     "sidebar.nav.financeSchedules": "Fee schedules",
     "sidebar.nav.financePayments": "Payments",
+    "sidebar.nav.supplyLists": "School supplies",
     "sidebar.nav.users": "Users",
     "sidebar.nav.indicators": "Indicators",
     "sidebar.nav.testCampaigns": "Test campaigns",
@@ -6109,6 +6313,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.myClasses": "My classes",
     "sidebar.nav.gradesNotebook": "Grade book",
     "sidebar.nav.financialSituation": "Financial situation",
+    "sidebar.nav.reinscription": "Re-enrollment",
     "sidebar.nav.onlineShop": "Online store",
     "sidebar.nav.documents": "Documents",
     "sidebar.nav.forms": "Forms",
@@ -7865,6 +8070,57 @@ export const translations: Record<Locale, Record<string, string>> = {
     "finSituation.payment.add": "Add a method",
     "finSituation.payment.request": "Request a change",
 
+    "reinscriptionWeb.title": "Re-enrollment",
+    "reinscriptionWeb.subtitle":
+      "{fullName} - re-enrollment and school supplies",
+    "reinscriptionWeb.errors.load": "Unable to load the wallet.",
+    "reinscriptionWeb.errors.network": "Network error.",
+    "reinscriptionWeb.tabs.paiement": "Payment",
+    "reinscriptionWeb.tabs.fournitures": "Supplies",
+    "reinscriptionWeb.wallet.balance": "Wallet balance",
+    "reinscriptionWeb.wallet.topUpAmount": "Amount to top up",
+    "reinscriptionWeb.wallet.topUpSubmit": "Top up",
+    "reinscriptionWeb.wallet.errors.topUp": "Unable to top up.",
+    "reinscriptionWeb.wallet.errors.reinscribe": "Unable to re-enroll.",
+    "reinscriptionWeb.wallet.success.topUp": "Wallet topped up.",
+    "reinscriptionWeb.wallet.success.reinscribed":
+      "{firstName} is re-enrolled!",
+    "reinscriptionWeb.children.title": "My children",
+    "reinscriptionWeb.children.required": "Remaining amount due:",
+    "reinscriptionWeb.children.payAndReinscribe": "Pay and re-enroll",
+    "reinscriptionWeb.children.empty": "No child linked to your account.",
+    "reinscriptionWeb.children.status.DECISION_PENDING":
+      "Waiting on the class council decision",
+    "reinscriptionWeb.children.status.NEXT_YEAR_NOT_OPEN":
+      "Decision made, waiting for the school to open the next school year",
+    "reinscriptionWeb.children.status.ALREADY_REINSCRIBED":
+      "Already re-enrolled",
+    "reinscriptionWeb.children.status.READY_TO_REINSCRIBE":
+      "Ready to re-enroll",
+    "reinscriptionWeb.installments.show": "View schedule",
+    "reinscriptionWeb.installments.hide": "Hide schedule",
+    "reinscriptionWeb.installments.dueDate": "Due on",
+    "reinscriptionWeb.installments.error": "Unable to load.",
+    "reinscriptionWeb.installments.status.PAID": "Paid",
+    "reinscriptionWeb.installments.status.PARTIAL": "Partial",
+    "reinscriptionWeb.installments.status.UPCOMING": "Upcoming",
+    "reinscriptionWeb.installments.status.OVERDUE": "Overdue",
+    "reinscriptionWeb.supplies.emptyList": "No eligible child yet.",
+    "reinscriptionWeb.supplies.notOpenYet":
+      "The next school year is not open yet.",
+    "reinscriptionWeb.supplies.empty":
+      "No supply list defined for this level yet.",
+    "reinscriptionWeb.help.title": "Help - Re-enrollment",
+    "reinscriptionWeb.help.section1Title": "What this page is for",
+    "reinscriptionWeb.help.section1Body":
+      "This page centralizes the re-enrollment of your promoted children: paying the re-enrollment threshold and viewing the school supply list for the upcoming school year.",
+    "reinscriptionWeb.help.section2Title": "Pay and re-enroll",
+    "reinscriptionWeb.help.section2Body":
+      'Top up your wallet, then tap "Pay and re-enroll" for each ready child. This button debits the exact re-enrollment threshold amount (set by the school) and confirms re-enrollment in one step. You can also view each child\'s detailed schedule (paid/remaining per installment).',
+    "reinscriptionWeb.help.section3Title": "School supplies",
+    "reinscriptionWeb.help.section3Body":
+      "The Supplies tab shows, for each child, the list of supplies to prepare for their upcoming level, defined by the school.",
+
     "shop.title": "Online shop",
     "shop.subtitle": "{fullName} - school purchases and quick payments",
     "shop.cart.label": "Current cart",
@@ -7897,6 +8153,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.help.section2Title": "Summary blocks",
     "childAccueil.help.section2Body":
       "Each block (grades, school life, quick access, last message, class life) shows a preview of the module, with a link to open it in full.",
+    "childAccueil.help.section3Title": "School supplies",
+    "childAccueil.help.section3Body":
+      "When your child is promoted and the next school year is open, a block shows a preview of the supply list to prepare, with a link to the Re-enrollment screen to view it in full.",
     "onboardingTour.childHome.kpisTitle": "Three indicators",
     "onboardingTour.childHome.kpisBody":
       "Overall average, unread messages and school life, summarized at a glance.",
@@ -7928,6 +8187,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.quickLink.timetable.hint": "Classes and upcoming slots",
     "childAccueil.quickLink.homework.label": "Homework diary",
     "childAccueil.quickLink.homework.hint": "Work and instructions",
+    "childAccueil.panel.supplies.title": "School supplies",
+    "childAccueil.panel.supplies.action": "View re-enrollment",
+    "childAccueil.panel.supplies.empty": "No supply list defined yet.",
     "childAccueil.panel.classFeed.title": "Class life",
     "childAccueil.panel.classFeed.action": "View class life",
     "childAccueil.panel.classFeed.desc1":
@@ -8953,6 +9215,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sso.appleDisabledNoProvider":
       "Apple sign-in disabled: provider not configured",
     "sso.appleDisabledTemp": "Apple sign-in temporarily disabled",
+    "sso.mobileCallback.title": "Google sign-in",
+    "sso.mobileCallback.loading": "Returning to the app...",
+    "sso.mobileCallback.finalizing": "Finishing your mobile sign-in...",
+    "sso.mobileCallback.manualPrompt": "The app didn't open automatically.",
+    "sso.mobileCallback.manualAction": "Open the Scolive app",
 
     // ChildModulePage shared strings
     "childModule.tab.home": "Home",
@@ -9632,6 +9899,18 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.financeParent.reinscribeTitle": "Pay and re-enroll",
     "onboardingTour.financeParent.reinscribeBody":
       "This button debits your wallet for the exact amount of THIS child's first installment and confirms their re-enrollment in one step. A parent with several children must click separately for each one.",
+    "onboardingTour.reinscriptionParent.walletTitle": "Your wallet",
+    "onboardingTour.reinscriptionParent.walletBody":
+      "Top up this wallet at any time, even before the class council has decided. The money stays available until you choose to allocate it to a child.",
+    "onboardingTour.reinscriptionParent.childrenTitle": "Each child's status",
+    "onboardingTour.reinscriptionParent.childrenBody":
+      "For each child: waiting on the class council decision, already re-enrolled, or ready to re-enroll with the remaining amount due and the detailed schedule shown.",
+    "onboardingTour.reinscriptionParent.reinscribeTitle": "Pay and re-enroll",
+    "onboardingTour.reinscriptionParent.reinscribeBody":
+      "This button debits your wallet for the exact amount of THIS child's re-enrollment threshold and confirms their re-enrollment in one step.",
+    "onboardingTour.reinscriptionParent.suppliesTabTitle": "School supplies",
+    "onboardingTour.reinscriptionParent.suppliesTabBody":
+      "This tab shows the list of supplies to prepare for your child's new school year, defined by the school for their upcoming level.",
     "onboardingTour.healthSchool.tabsTitle": "3 tabs to find things easily",
     "onboardingTour.healthSchool.tabsBody":
       "Summary groups the school's or a class's statistics. Cares lists parent reports, from most recent to oldest. Students lets you find each student's health profile.",

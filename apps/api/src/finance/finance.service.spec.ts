@@ -33,6 +33,14 @@ const FEE_SCHEDULE = {
 
 const makePrismaMock = () => {
   const prisma: any = {
+    school: {
+      findUniqueOrThrow: jest.fn().mockResolvedValue({
+        reinscriptionThresholdPolicy: "FIRST_INSTALLMENT",
+      }),
+      update: jest.fn().mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      }),
+    },
     student: { findFirst: jest.fn().mockResolvedValue({ id: STUDENT_ID }) },
     schoolYear: {
       findFirst: jest
@@ -373,6 +381,244 @@ describe("FinanceService", () => {
         targetSchoolYearId: TARGET_YEAR_ID,
         requiredAmount: 30000,
       });
+    });
+
+    it("calcule le montant restant du sur la totalite de l'echeancier quand la politique de l'ecole est FULL_PAYMENT", async () => {
+      prisma.school.findUniqueOrThrow.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      prisma.enrollment.findUnique.mockResolvedValue(null);
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 60000 },
+      });
+      const result = await service.getWalletSummary(SCHOOL_ID, "parent-1");
+      // Echeancier total = 50000 + 50000 = 100000, deja paye 60000 -> reste 40000
+      expect(result.children[0]).toMatchObject({
+        status: "READY_TO_REINSCRIBE",
+        requiredAmount: 40000,
+      });
+    });
+  });
+
+  describe("politique de seuil de reinscription (School.reinscriptionThresholdPolicy)", () => {
+    it("recordDirectPayment n'exige que la 1ere echeance quand la politique est FIRST_INSTALLMENT (defaut)", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 50000 },
+      });
+      const result = await service.recordDirectPayment(
+        SCHOOL_ID,
+        {
+          studentId: STUDENT_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          amount: 50000,
+          paidAt: "2026-06-01",
+        },
+        "accountant-1",
+      );
+      expect(result.thresholdAmount).toBe(50000);
+      expect(result.reinscriptionConfirmed).toBe(true);
+    });
+
+    it("recordDirectPayment exige la totalite de l'echeancier quand la politique est FULL_PAYMENT", async () => {
+      prisma.school.findUniqueOrThrow.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 50000 },
+      });
+      const result = await service.recordDirectPayment(
+        SCHOOL_ID,
+        {
+          studentId: STUDENT_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          amount: 50000,
+          paidAt: "2026-06-01",
+        },
+        "accountant-1",
+      );
+      expect(result.thresholdAmount).toBe(100000);
+      expect(result.reinscriptionConfirmed).toBe(false);
+      expect(enrollmentsService.confirmReinscription).not.toHaveBeenCalled();
+    });
+
+    it("payAndReinscribeFromWallet debite la totalite de l'echeancier quand la politique est FULL_PAYMENT", async () => {
+      prisma.school.findUniqueOrThrow.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      prisma.walletTransaction.aggregate
+        .mockResolvedValueOnce({ _sum: { amount: 100000 } }) // TOPUP
+        .mockResolvedValueOnce({ _sum: { amount: 0 } }); // ALLOCATION
+
+      const result = await service.payAndReinscribeFromWallet(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(result).toEqual({
+        requiredAmount: 100000,
+        reinscriptionConfirmed: true,
+      });
+    });
+
+    it("getFinanceSettings retourne la politique courante de l'ecole", async () => {
+      prisma.school.findUniqueOrThrow.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      const result = await service.getFinanceSettings(SCHOOL_ID);
+      expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
+    });
+
+    it("updateFinanceSettings persiste la nouvelle politique", async () => {
+      const result = await service.updateFinanceSettings(SCHOOL_ID, {
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+      });
+      expect(prisma.school.update).toHaveBeenCalledWith({
+        where: { id: SCHOOL_ID },
+        data: { reinscriptionThresholdPolicy: "FULL_PAYMENT" },
+        select: { reinscriptionThresholdPolicy: true },
+      });
+      expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
+    });
+  });
+
+  describe("cascade d'allocation des paiements par echeance", () => {
+    const PAST_DATE = new Date("2020-01-01");
+    const FUTURE_DATE = new Date("2099-01-01");
+
+    const SCHEDULE_WITH_DUE_DATES = {
+      id: "fee-schedule-1",
+      installments: [
+        {
+          id: "inst-1",
+          rank: 1,
+          label: "1ere echeance",
+          amount: 50000,
+          dueDate: PAST_DATE,
+        },
+        {
+          id: "inst-2",
+          rank: 2,
+          label: "2eme echeance",
+          amount: 30000,
+          dueDate: FUTURE_DATE,
+        },
+        {
+          id: "inst-3",
+          rank: 3,
+          label: "3eme echeance",
+          amount: 20000,
+          dueDate: FUTURE_DATE,
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      prisma.feeSchedule.findFirst.mockResolvedValue(SCHEDULE_WITH_DUE_DATES);
+    });
+
+    it("aucun paiement : la 1ere echeance passee est OVERDUE, les suivantes UPCOMING", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 0 },
+      });
+      const result = await service.getStudentInstallmentBreakdown(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+      expect(result.totalAmount).toBe(100000);
+      expect(result.totalPaid).toBe(0);
+      expect(result.totalRemaining).toBe(100000);
+      expect(result.installments).toEqual([
+        expect.objectContaining({
+          id: "inst-1",
+          allocatedAmount: 0,
+          remainingAmount: 50000,
+          status: "OVERDUE",
+        }),
+        expect.objectContaining({
+          id: "inst-2",
+          allocatedAmount: 0,
+          remainingAmount: 30000,
+          status: "UPCOMING",
+        }),
+        expect.objectContaining({
+          id: "inst-3",
+          allocatedAmount: 0,
+          remainingAmount: 20000,
+          status: "UPCOMING",
+        }),
+      ]);
+    });
+
+    it("paiement partiel : consomme la 1ere echeance en priorite avant d'entamer la 2eme", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 60000 },
+      });
+      const result = await service.getStudentInstallmentBreakdown(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+      expect(result.installments).toEqual([
+        expect.objectContaining({
+          id: "inst-1",
+          allocatedAmount: 50000,
+          remainingAmount: 0,
+          status: "PAID",
+        }),
+        expect.objectContaining({
+          id: "inst-2",
+          allocatedAmount: 10000,
+          remainingAmount: 20000,
+          status: "PARTIAL",
+        }),
+        expect.objectContaining({
+          id: "inst-3",
+          allocatedAmount: 0,
+          remainingAmount: 20000,
+          status: "UPCOMING",
+        }),
+      ]);
+    });
+
+    it("paiement integral : toutes les echeances sont PAID", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 100000 },
+      });
+      const result = await service.getStudentInstallmentBreakdown(
+        SCHOOL_ID,
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+      expect(result.totalRemaining).toBe(0);
+      expect(result.installments.every((i) => i.status === "PAID")).toBe(true);
+    });
+
+    it("getMyChildInstallmentBreakdown refuse si l'eleve n'est pas rattache a ce parent", async () => {
+      prisma.parentStudent.findFirst.mockResolvedValue(null);
+      await expect(
+        service.getMyChildInstallmentBreakdown(
+          SCHOOL_ID,
+          "parent-1",
+          STUDENT_ID,
+          TARGET_YEAR_ID,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("getMyChildInstallmentBreakdown delegue a la cascade quand le lien parent existe", async () => {
+      prisma.studentPayment.aggregate.mockResolvedValue({
+        _sum: { amount: 100000 },
+      });
+      const result = await service.getMyChildInstallmentBreakdown(
+        SCHOOL_ID,
+        "parent-1",
+        STUDENT_ID,
+        TARGET_YEAR_ID,
+      );
+      expect(result.totalRemaining).toBe(0);
     });
   });
 });

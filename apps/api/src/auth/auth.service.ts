@@ -213,8 +213,8 @@ export class AuthService {
     const rateLimitKeyHash = this.hashRateLimitKey(normalizedUsername);
     await this.assertNotRateLimited("USERNAME_LOGIN", rateLimitKeyHash);
 
-    const user = await this.prisma.user.findUnique({
-      where: { username: normalizedUsername },
+    const user = await this.prisma.user.findFirst({
+      where: { username: { equals: normalizedUsername, mode: "insensitive" } },
       include: {
         platformRoles: { select: { role: true } },
         phoneCredential: {
@@ -1224,8 +1224,8 @@ export class AuthService {
     newPassword: string,
   ) {
     const normalizedUsername = username.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { username: normalizedUsername },
+    const user = await this.prisma.user.findFirst({
+      where: { username: { equals: normalizedUsername, mode: "insensitive" } },
       include: {
         memberships: {
           include: {
@@ -1557,8 +1557,10 @@ export class AuthService {
 
     if (input.username?.trim()) {
       const normalizedUsername = input.username.trim().toLowerCase();
-      const user = await this.prisma.user.findUnique({
-        where: { username: normalizedUsername },
+      const user = await this.prisma.user.findFirst({
+        where: {
+          username: { equals: normalizedUsername, mode: "insensitive" },
+        },
         include: {
           phoneCredential: {
             select: {
@@ -2725,8 +2727,8 @@ export class AuthService {
 
   async startUsernameRecovery(username: string) {
     const normalizedUsername = username.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { username: normalizedUsername },
+    const user = await this.prisma.user.findFirst({
+      where: { username: { equals: normalizedUsername, mode: "insensitive" } },
       include: {
         memberships: {
           include: {
@@ -2775,8 +2777,8 @@ export class AuthService {
     answers: Array<{ questionKey: RecoveryQuestionKey; answer: string }>;
   }) {
     const normalizedUsername = input.username.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { username: normalizedUsername },
+    const user = await this.prisma.user.findFirst({
+      where: { username: { equals: normalizedUsername, mode: "insensitive" } },
       include: {
         memberships: {
           include: {

@@ -56,7 +56,7 @@ export class StudentManagementService {
 
     let username: string;
     if (proposedUsername) {
-      const normalized = proposedUsername.trim();
+      const normalized = proposedUsername.trim().toLowerCase();
       const existing = await this.prisma.user.findUnique({
         where: { username: normalized },
         select: { id: true },
@@ -223,16 +223,10 @@ export class StudentManagementService {
         .replace(/[̀-ͯ]/g, "")
         .replace(/[^a-zA-Z]/g, "");
 
-    const first = normalizeStr(firstName);
-    // Capitalize first letter, lowercase rest for each word
-    const firstPart = first
-      .split(/\s+/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-      .join("");
+    const firstPart = normalizeStr(firstName);
+    const last = normalizeStr(lastName);
 
-    const last = normalizeStr(lastName).toUpperCase();
-
-    return `${firstPart}${last}`;
+    return `${firstPart}${last}`.toLowerCase();
   }
 
   private async ensureUniqueUsername(base: string): Promise<string> {

@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSession, signOut } from "next-auth/react";
 import { Card } from "../../../components/ui/card";
+import { useTranslation } from "../../../i18n/useTranslation";
+
+const MANUAL_FALLBACK_DELAY_MS = 1200;
 
 type Props = {
   redirectUri?: string;
@@ -67,10 +70,27 @@ function buildErrorRedirect(input: { redirectUri?: string; message: string }) {
 }
 
 export function MobileSsoCallbackClient({ redirectUri, schoolSlug }: Props) {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
+  const [manualUrl, setManualUrl] = useState<string | null>(null);
+  const manualLinkRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+    function attemptRedirect(targetUrl: string) {
+      if (cancelled) return;
+      window.location.replace(targetUrl);
+      // Recent Chrome versions silently drop a script-initiated navigation
+      // to a non-http(s) scheme once the OAuth round-trip has consumed the
+      // original tap's "user activation" window. When that happens the tab
+      // just sits here forever, so we surface a real tappable link (a
+      // genuine click always carries fresh user activation) as a fallback.
+      fallbackTimer = setTimeout(() => {
+        if (!cancelled) setManualUrl(targetUrl);
+      }, MANUAL_FALLBACK_DELAY_MS);
+    }
 
     async function completeMobileSso() {
       try {
@@ -100,7 +120,8 @@ export function MobileSsoCallbackClient({ redirectUri, schoolSlug }: Props) {
         });
 
         await signOut({ redirect: false });
-        window.location.replace(targetUrl);
+        if (cancelled) return;
+        attemptRedirect(targetUrl);
       } catch (cause) {
         const message =
           cause instanceof Error
@@ -109,7 +130,7 @@ export function MobileSsoCallbackClient({ redirectUri, schoolSlug }: Props) {
 
         if (!cancelled) {
           setError(message);
-          window.location.replace(
+          attemptRedirect(
             buildErrorRedirect({
               redirectUri,
               message,
@@ -123,20 +144,44 @@ export function MobileSsoCallbackClient({ redirectUri, schoolSlug }: Props) {
 
     return () => {
       cancelled = true;
+      if (fallbackTimer) clearTimeout(fallbackTimer);
     };
   }, [redirectUri, schoolSlug]);
+
+  useEffect(() => {
+    if (manualUrl) {
+      manualLinkRef.current?.focus();
+    }
+  }, [manualUrl]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-text-primary sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-xl">
-        <Card title="Connexion Google" subtitle="Retour vers l'application...">
+        <Card
+          title={t("sso.mobileCallback.title")}
+          subtitle={t("sso.mobileCallback.loading")}
+        >
           {error ? (
             <p className="text-sm text-notification">{error}</p>
           ) : (
             <p className="text-sm text-text-secondary">
-              Nous finalisons votre connexion mobile...
+              {t("sso.mobileCallback.finalizing")}
             </p>
           )}
+          {manualUrl ? (
+            <div className="mt-4 flex flex-col items-start gap-2">
+              <p className="text-sm text-text-secondary">
+                {t("sso.mobileCallback.manualPrompt")}
+              </p>
+              <a
+                ref={manualLinkRef}
+                href={manualUrl}
+                className="inline-flex items-center justify-center rounded-card bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-dark"
+              >
+                {t("sso.mobileCallback.manualAction")}
+              </a>
+            </div>
+          ) : null}
         </Card>
       </div>
     </div>

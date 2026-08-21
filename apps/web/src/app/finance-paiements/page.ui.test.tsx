@@ -44,7 +44,7 @@ const SUMMARY = {
     ],
   },
   totalPaid: 20000,
-  firstInstallmentAmount: 50000,
+  thresholdAmount: 50000,
   reinscriptionEligible: false,
 };
 

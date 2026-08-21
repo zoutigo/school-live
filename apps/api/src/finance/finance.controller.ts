@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -21,6 +22,7 @@ import { RecordDirectPaymentDto } from "./dto/record-direct-payment.dto.js";
 import { ListFeeSchedulesQueryDto } from "./dto/list-fee-schedules-query.dto.js";
 import { TopUpWalletDto } from "./dto/top-up-wallet.dto.js";
 import { PayAndReinscribeDto } from "./dto/pay-and-reinscribe.dto.js";
+import { UpdateFinanceSettingsDto } from "./dto/update-finance-settings.dto.js";
 
 const FINANCE_ADMIN_ROLES = [
   "SCHOOL_ADMIN",
@@ -35,6 +37,19 @@ const FINANCE_ADMIN_ROLES = [
 @Roles(...FINANCE_ADMIN_ROLES)
 export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
+
+  @Get("settings")
+  getFinanceSettings(@CurrentSchoolId() schoolId: string) {
+    return this.financeService.getFinanceSettings(schoolId);
+  }
+
+  @Patch("settings")
+  updateFinanceSettings(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: UpdateFinanceSettingsDto,
+  ) {
+    return this.financeService.updateFinanceSettings(schoolId, payload);
+  }
 
   @Get("fee-schedules")
   listFeeSchedules(
@@ -94,6 +109,21 @@ export class ParentFinanceController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.financeService.getWalletSummary(schoolId, user.id);
+  }
+
+  @Get("students/:studentId/schedule")
+  getMyChildInstallmentBreakdown(
+    @CurrentSchoolId() schoolId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("studentId") studentId: string,
+    @Query("schoolYearId") schoolYearId: string,
+  ) {
+    return this.financeService.getMyChildInstallmentBreakdown(
+      schoolId,
+      user.id,
+      studentId,
+      schoolYearId,
+    );
   }
 
   @Post("wallet/top-up")

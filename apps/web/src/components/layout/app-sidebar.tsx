@@ -24,6 +24,7 @@ import {
   School,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   UserRound,
   UserSquare2,
   Users,
@@ -100,6 +101,7 @@ function buildItems(
   const schoolBase = schoolSlug ? `/schools/${schoolSlug}` : "/acceuil";
   const messagesUnread = toUnread(badges?.messagesUnread);
   const feedUnread = toUnread(badges?.feedUnread);
+  const reinscriptionPending = toUnread(badges?.reinscriptionPending);
 
   if (
     role === "SUPER_ADMIN" ||
@@ -179,6 +181,12 @@ function buildItems(
         href: "/finance-paiements",
         icon: Wallet,
         matchPrefix: "/finance-paiements",
+      },
+      {
+        label: t("sidebar.nav.supplyLists"),
+        href: "/supply-lists",
+        icon: ShoppingBag,
+        matchPrefix: "/supply-lists",
       },
       {
         label: t("sidebar.nav.users"),
@@ -313,6 +321,12 @@ function buildItems(
         matchPrefix: "/finance-paiements",
       },
       {
+        label: t("sidebar.nav.supplyLists"),
+        href: "/supply-lists",
+        icon: ShoppingBag,
+        matchPrefix: "/supply-lists",
+      },
+      {
         label: t("sidebar.nav.teachers"),
         href: "/teachers",
         icon: GraduationCap,
@@ -427,6 +441,13 @@ function buildItems(
         href: `${schoolBase}/situation-financiere`,
         icon: Wallet,
         matchPrefix: `${schoolBase}/situation-financiere`,
+      },
+      {
+        label: t("sidebar.nav.reinscription"),
+        href: `${schoolBase}/reinscription`,
+        icon: GraduationCap,
+        matchPrefix: `${schoolBase}/reinscription`,
+        unread: reinscriptionPending,
       },
       {
         label: t("sidebar.nav.onlineShop"),
