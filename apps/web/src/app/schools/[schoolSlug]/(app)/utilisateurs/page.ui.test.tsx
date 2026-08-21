@@ -73,6 +73,25 @@ const STUDENT_USER = {
   createdAt: "2024-03-01T10:00:00.000Z",
 };
 
+// Élève promu (compte créé) dont le studentId d'origine diffère du userId —
+// reproduit le cas réel où User.id !== Student.id (bug "Student not found"
+// constaté en production sur l'affectation de parent / la discipline).
+const STUDENT_USER_PROMOTED = {
+  id: "user-promoted-1",
+  studentId: "student-real-1",
+  hasAccount: true,
+  type: "user",
+  firstName: "Sanaga",
+  lastName: "Marie",
+  email: null,
+  phone: null,
+  gender: "F",
+  roles: ["STUDENT"],
+  activationStatus: "ACTIVE",
+  profileCompleted: false,
+  createdAt: "2024-03-05T10:00:00.000Z",
+};
+
 const STUDENT_ONLY = {
   id: "stu-only-1",
   studentId: "stu-only-1",
@@ -148,6 +167,24 @@ const STUDENT_DETAIL = {
       phone: "+237600000002",
     },
   ],
+  staffFunctions: [],
+};
+
+const STUDENT_PROMOTED_DETAIL = {
+  ...STUDENT_USER_PROMOTED,
+  lastLoginAt: null,
+  updatedAt: "2024-03-05T10:00:00.000Z",
+  enrollments: [
+    {
+      id: "enr-3",
+      classId: "class-5b",
+      className: "5ème B",
+      schoolYear: "2025-2026",
+    },
+  ],
+  children: [],
+  teachingClasses: [],
+  studentParents: [],
   staffFunctions: [],
 };
 
@@ -747,6 +784,76 @@ describe("UtilisateursPage", () => {
       expect(body.studentId).toBe(STUDENT_USER.id);
       expect(body.parentUserId).toBe(PARENT_USER.id);
     });
+  });
+
+  it("régression : pour un élève promu, envoie le studentId réel (pas le userId) à /admin/parent-students", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/users?")) {
+          if (url.includes("role=PARENT")) {
+            return jsonRes(makeListResponse([PARENT_USER]));
+          }
+          return jsonRes(makeListResponse([STUDENT_USER_PROMOTED]));
+        }
+        if (url.includes(`/users/${STUDENT_USER_PROMOTED.id}`))
+          return jsonRes(STUDENT_PROMOTED_DETAIL);
+        if (url.includes("/admin/parent-students")) return jsonRes({}, 201);
+        return jsonRes({}, 404);
+      });
+
+    render(<UtilisateursPage />);
+    fireEvent.click(
+      await screen.findByTestId(`user-card-${STUDENT_USER_PROMOTED.id}`),
+    );
+    fireEvent.click(await screen.findByTestId("action-assign-parent"));
+
+    await screen.findByTestId("assign-parent-modal");
+    fireEvent.click(
+      await screen.findByTestId(`assign-parent-user-${PARENT_USER.id}`),
+    );
+    fireEvent.click(screen.getByTestId("assign-parent-submit"));
+
+    await waitFor(() => {
+      const postCalls = fetchMock.mock.calls.filter(
+        (c) =>
+          String(c[0]).includes("/admin/parent-students") &&
+          c[1]?.method === "POST",
+      );
+      expect(postCalls).toHaveLength(1);
+      const body = JSON.parse(postCalls[0][1]?.body as string) as {
+        studentId: string;
+        parentUserId: string;
+      };
+      expect(body.studentId).toBe(STUDENT_USER_PROMOTED.studentId);
+      expect(body.studentId).not.toBe(STUDENT_USER_PROMOTED.id);
+      expect(body.parentUserId).toBe(PARENT_USER.id);
+    });
+  });
+
+  it("régression : le bouton Discipline navigue avec le studentId réel (pas le userId) pour un élève promu", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/users?"))
+        return jsonRes(makeListResponse([STUDENT_USER_PROMOTED]));
+      if (url.includes(`/users/${STUDENT_USER_PROMOTED.id}`))
+        return jsonRes(STUDENT_PROMOTED_DETAIL);
+      return jsonRes({}, 404);
+    });
+
+    render(<UtilisateursPage />);
+    fireEvent.click(
+      await screen.findByTestId(`user-card-${STUDENT_USER_PROMOTED.id}`),
+    );
+    fireEvent.click(await screen.findByTestId("action-student-discipline"));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      `/schools/college-vogt/discipline/${STUDENT_USER_PROMOTED.studentId}`,
+    );
+    expect(pushMock).not.toHaveBeenCalledWith(
+      `/schools/college-vogt/discipline/${STUDENT_USER_PROMOTED.id}`,
+    );
   });
 
   it("affiche un toast de succès après association du parent", async () => {
