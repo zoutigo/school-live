@@ -22,7 +22,10 @@ export class FinanceService {
   async getFinanceSettings(schoolId: string) {
     return this.prisma.school.findUniqueOrThrow({
       where: { id: schoolId },
-      select: { reinscriptionThresholdPolicy: true },
+      select: {
+        reinscriptionThresholdPolicy: true,
+        reinscriptionDeadlineDaysBeforeStart: true,
+      },
     });
   }
 
@@ -34,8 +37,13 @@ export class FinanceService {
       where: { id: schoolId },
       data: {
         reinscriptionThresholdPolicy: payload.reinscriptionThresholdPolicy,
+        reinscriptionDeadlineDaysBeforeStart:
+          payload.reinscriptionDeadlineDaysBeforeStart,
       },
-      select: { reinscriptionThresholdPolicy: true },
+      select: {
+        reinscriptionThresholdPolicy: true,
+        reinscriptionDeadlineDaysBeforeStart: true,
+      },
     });
   }
 
@@ -566,7 +574,7 @@ export class FinanceService {
     return this.prisma.schoolYear.findFirst({
       where: { schoolId, id: { not: activeSchoolYearId } },
       orderBy: { createdAt: "desc" },
-      select: { id: true, label: true },
+      select: { id: true, label: true, startsAt: true },
     });
   }
 
@@ -664,6 +672,7 @@ export class FinanceService {
             status: "ALREADY_REINSCRIBED" as const,
             targetSchoolYearId: nextYear.id,
             targetSchoolYearLabel: nextYear.label,
+            targetSchoolYearStartsAt: nextYear.startsAt ?? null,
             previousClassLabel,
             previousLevelLabel,
             nextAcademicLevelLabel,
@@ -706,6 +715,7 @@ export class FinanceService {
           status: "READY_TO_REINSCRIBE" as const,
           targetSchoolYearId: nextYear.id,
           targetSchoolYearLabel: nextYear.label,
+          targetSchoolYearStartsAt: nextYear.startsAt ?? null,
           requiredAmount,
           previousClassLabel,
           previousLevelLabel,

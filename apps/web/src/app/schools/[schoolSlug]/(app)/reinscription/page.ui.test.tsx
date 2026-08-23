@@ -226,31 +226,22 @@ describe("Reinscription (parent) page", () => {
     expect(await screen.findByText(/Cahier 100 pages/)).toBeInTheDocument();
   });
 
-  it("credite le porte-monnaie avec le jeton CSRF", async () => {
-    const fetchMock = mockFetch({
+  it("affiche le solde du porte-monnaie avec un lien vers Situation financiere pour le recharger", async () => {
+    mockFetch({
       walletId: "wallet-1",
-      balance: 0,
+      balance: 15000,
       transactions: [],
       children: [],
     });
     render(<ReinscriptionPage />);
     await screen.findByText("Mes enfants");
 
-    fireEvent.change(screen.getByLabelText("Montant a crediter"), {
-      target: { value: "10000" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Crediter" }));
-
-    await waitFor(() => {
-      const postCall = fetchMock.mock.calls.find(
-        ([url, init]) =>
-          String(url).includes("/me/finance/wallet/top-up") &&
-          init?.method === "POST",
-      );
-      expect(postCall).toBeTruthy();
-      const headers = postCall?.[1]?.headers as Record<string, string>;
-      expect(headers["X-CSRF-Token"]).toBe("csrf-token-test");
-    });
+    expect(screen.getByTestId("wallet-summary-card")).toBeInTheDocument();
+    const link = screen.getByTestId("wallet-summary-topup-link");
+    expect(link).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/situation-financiere",
+    );
   });
 
   it('clique sur "Je paie et je reinscris" et confirme la reinscription', async () => {

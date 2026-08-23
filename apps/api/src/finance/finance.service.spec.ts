@@ -43,9 +43,11 @@ const makePrismaMock = () => {
     },
     student: { findFirst: jest.fn().mockResolvedValue({ id: STUDENT_ID }) },
     schoolYear: {
-      findFirst: jest
-        .fn()
-        .mockResolvedValue({ id: TARGET_YEAR_ID, label: "2026-2027" }),
+      findFirst: jest.fn().mockResolvedValue({
+        id: TARGET_YEAR_ID,
+        label: "2026-2027",
+        startsAt: new Date("2026-09-02"),
+      }),
     },
     academicLevel: {
       findFirst: jest.fn().mockResolvedValue({ id: LEVEL_ID }),
@@ -393,6 +395,7 @@ describe("FinanceService", () => {
       expect(result.children[0]).toMatchObject({
         status: "READY_TO_REINSCRIBE",
         targetSchoolYearId: TARGET_YEAR_ID,
+        targetSchoolYearStartsAt: new Date("2026-09-02"),
         requiredAmount: 30000,
       });
     });
@@ -605,21 +608,39 @@ describe("FinanceService", () => {
     it("getFinanceSettings retourne la politique courante de l'ecole", async () => {
       prisma.school.findUniqueOrThrow.mockResolvedValue({
         reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 30,
       });
       const result = await service.getFinanceSettings(SCHOOL_ID);
-      expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
+      expect(result).toEqual({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 30,
+      });
     });
 
-    it("updateFinanceSettings persiste la nouvelle politique", async () => {
+    it("updateFinanceSettings persiste la nouvelle politique et le delai par defaut", async () => {
+      prisma.school.update.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 45,
+      });
       const result = await service.updateFinanceSettings(SCHOOL_ID, {
         reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 45,
       });
       expect(prisma.school.update).toHaveBeenCalledWith({
         where: { id: SCHOOL_ID },
-        data: { reinscriptionThresholdPolicy: "FULL_PAYMENT" },
-        select: { reinscriptionThresholdPolicy: true },
+        data: {
+          reinscriptionThresholdPolicy: "FULL_PAYMENT",
+          reinscriptionDeadlineDaysBeforeStart: 45,
+        },
+        select: {
+          reinscriptionThresholdPolicy: true,
+          reinscriptionDeadlineDaysBeforeStart: true,
+        },
       });
-      expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
+      expect(result).toEqual({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 45,
+      });
     });
   });
 

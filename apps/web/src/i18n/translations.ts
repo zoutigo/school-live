@@ -3179,11 +3179,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.tabs.paiement": "Paiement",
     "reinscriptionWeb.tabs.fournitures": "Fournitures",
     "reinscriptionWeb.wallet.balance": "Solde du porte-monnaie",
-    "reinscriptionWeb.wallet.topUpAmount": "Montant a crediter",
-    "reinscriptionWeb.wallet.topUpSubmit": "Crediter",
-    "reinscriptionWeb.wallet.errors.topUp": "Depot impossible.",
+    "reinscriptionWeb.wallet.topUpLink": "Recharger",
     "reinscriptionWeb.wallet.errors.reinscribe": "Reinscription impossible.",
-    "reinscriptionWeb.wallet.success.topUp": "Porte-monnaie credite.",
     "reinscriptionWeb.wallet.success.reinscribed":
       "{firstName} est reinscrit(e) !",
     "reinscriptionWeb.children.title": "Mes enfants",
@@ -3198,6 +3195,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.children.status.READY_TO_REINSCRIBE":
       "Pret(e) a etre reinscrit(e)",
     "reinscriptionWeb.children.dateOfBirth": "Ne(e) le {date}",
+    "reinscriptionWeb.children.schoolYearStart": "Rentree scolaire : {date}",
     "reinscriptionWeb.children.daysLeft": "{count} jour(s) restant(s)",
     "reinscriptionWeb.children.deadlinePassed": "Date limite depassee",
     "reinscriptionWeb.children.insufficientBalance":
@@ -5076,7 +5074,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Ce bouton debite votre porte-monnaie du montant exact de la 1ere echeance de CET enfant et confirme sa reinscription en un seul geste. Un parent avec plusieurs enfants doit cliquer separement pour chacun.",
     "onboardingTour.reinscriptionParent.walletTitle": "Votre porte-monnaie",
     "onboardingTour.reinscriptionParent.walletBody":
-      "Creditez ce porte-monnaie a tout moment, meme avant que le conseil de classe n'ait statue. L'argent y reste disponible jusqu'a ce que vous decidiez de l'affecter a un enfant.",
+      "Voici votre solde disponible. Cliquez sur « Recharger » pour aller crediter votre porte-monnaie depuis Situation financiere.",
     "onboardingTour.reinscriptionParent.childrenTitle":
       "Statut de chaque enfant",
     "onboardingTour.reinscriptionParent.childrenBody":
@@ -8167,11 +8165,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.tabs.paiement": "Payment",
     "reinscriptionWeb.tabs.fournitures": "Supplies",
     "reinscriptionWeb.wallet.balance": "Wallet balance",
-    "reinscriptionWeb.wallet.topUpAmount": "Amount to top up",
-    "reinscriptionWeb.wallet.topUpSubmit": "Top up",
-    "reinscriptionWeb.wallet.errors.topUp": "Unable to top up.",
+    "reinscriptionWeb.wallet.topUpLink": "Top up",
     "reinscriptionWeb.wallet.errors.reinscribe": "Unable to re-enroll.",
-    "reinscriptionWeb.wallet.success.topUp": "Wallet topped up.",
     "reinscriptionWeb.wallet.success.reinscribed":
       "{firstName} is re-enrolled!",
     "reinscriptionWeb.children.title": "My children",
@@ -8187,6 +8182,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.children.status.READY_TO_REINSCRIBE":
       "Ready to re-enroll",
     "reinscriptionWeb.children.dateOfBirth": "Born on {date}",
+    "reinscriptionWeb.children.schoolYearStart": "School year starts: {date}",
     "reinscriptionWeb.children.daysLeft": "{count} day(s) left",
     "reinscriptionWeb.children.deadlinePassed": "Deadline passed",
     "reinscriptionWeb.children.insufficientBalance":
@@ -9999,7 +9995,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "This button debits your wallet for the exact amount of THIS child's first installment and confirms their re-enrollment in one step. A parent with several children must click separately for each one.",
     "onboardingTour.reinscriptionParent.walletTitle": "Your wallet",
     "onboardingTour.reinscriptionParent.walletBody":
-      "Top up this wallet at any time, even before the class council has decided. The money stays available until you choose to allocate it to a child.",
+      'This is your available balance. Click "Top up" to go credit your wallet from Financial situation.',
     "onboardingTour.reinscriptionParent.childrenTitle": "Each child's status",
     "onboardingTour.reinscriptionParent.childrenBody":
       "For each child: previous and new level, re-enrollment deadline, and status (waiting on the class council decision, already re-enrolled, or ready to re-enroll with the remaining amount due and the detailed schedule shown).",
