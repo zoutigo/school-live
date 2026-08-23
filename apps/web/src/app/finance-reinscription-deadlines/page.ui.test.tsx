@@ -89,9 +89,7 @@ describe("Finance reinscription deadlines page", () => {
     render(<FinanceReinscriptionDeadlinesPage />);
 
     expect((await screen.findAllByText("CE2")).length).toBeGreaterThan(0);
-    expect(
-      screen.getByText(/2025-2026 — 15 juil\. 2026/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/2025-2026 — 15 juil\. 2026/)).toBeInTheDocument();
   });
 
   it("cree une nouvelle date limite avec le jeton CSRF", async () => {

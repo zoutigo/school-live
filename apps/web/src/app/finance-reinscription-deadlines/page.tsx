@@ -145,9 +145,7 @@ export default function FinanceReinscriptionDeadlinesPage() {
       const years = (await yearsRes.json()) as SchoolYearRow[];
       setSchoolYears(years);
       setAcademicLevels((await levelsRes.json()) as AcademicLevelRow[]);
-      setDeadlines(
-        (await deadlinesRes.json()) as ReinscriptionDeadlineRow[],
-      );
+      setDeadlines((await deadlinesRes.json()) as ReinscriptionDeadlineRow[]);
 
       if (!form.getValues("schoolYearId")) {
         const active = years.find((y) => y.isActive);

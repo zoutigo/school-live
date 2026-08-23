@@ -223,9 +223,7 @@ describe("Reinscription (parent) page", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("view-supplies-student-1"));
-    expect(
-      await screen.findByText(/Cahier 100 pages/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Cahier 100 pages/)).toBeInTheDocument();
   });
 
   it("credite le porte-monnaie avec le jeton CSRF", async () => {

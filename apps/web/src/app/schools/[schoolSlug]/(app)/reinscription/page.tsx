@@ -600,8 +600,7 @@ export default function ReinscriptionPage() {
                     <div className="grid gap-3">
                       {eligibleChildren.map((child) => {
                         const required = child.requiredAmount ?? 0;
-                        const isReady =
-                          child.status === "READY_TO_REINSCRIBE";
+                        const isReady = child.status === "READY_TO_REINSCRIBE";
                         const isConfirmed =
                           child.status === "ALREADY_REINSCRIBED";
                         const insufficientBalance =

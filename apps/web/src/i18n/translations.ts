@@ -5733,8 +5733,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financeReinscriptionDeadlines.title": "Re-enrollment deadlines",
     "financeReinscriptionDeadlines.subtitle":
       "Define, per level and school year, the deadline by which families must re-enroll their child.",
-    "financeReinscriptionDeadlines.errors.load":
-      "Unable to load deadlines.",
+    "financeReinscriptionDeadlines.errors.load": "Unable to load deadlines.",
     "financeReinscriptionDeadlines.errors.network": "Network error.",
     "financeReinscriptionDeadlines.errors.save": "Unable to save.",
     "financeReinscriptionDeadlines.errors.delete": "Unable to delete.",
@@ -8195,8 +8194,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.children.confirmed.title": "Re-enrollment confirmed!",
     "reinscriptionWeb.children.confirmed.message":
       "Get ready for the new school year by checking the supply list.",
-    "reinscriptionWeb.children.confirmed.viewSupplies":
-      "View the supply list",
+    "reinscriptionWeb.children.confirmed.viewSupplies": "View the supply list",
     "reinscriptionWeb.installments.show": "View schedule",
     "reinscriptionWeb.installments.hide": "Hide schedule",
     "reinscriptionWeb.installments.dueDate": "Due on",
