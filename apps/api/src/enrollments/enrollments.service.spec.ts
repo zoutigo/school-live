@@ -50,6 +50,11 @@ const makePrismaMock = () => ({
     findFirst: jest.fn().mockResolvedValue(null),
     create: jest.fn(),
   },
+  reinscriptionDeadline: {
+    findMany: jest.fn().mockResolvedValue([]),
+    findFirst: jest.fn().mockResolvedValue(null),
+    create: jest.fn(),
+  },
 });
 
 describe("EnrollmentsService", () => {
@@ -397,6 +402,64 @@ describe("EnrollmentsService", () => {
       );
 
       expect(prisma.supplyList.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("provisionReinscriptionDeadlinesForNewYear", () => {
+    it("ne fait rien si annee source et annee cible sont identiques", async () => {
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        SOURCE_YEAR_ID,
+      );
+      expect(prisma.reinscriptionDeadline.findMany).not.toHaveBeenCalled();
+    });
+
+    it("copie chaque deadline de l'annee source vers l'annee cible en decalant la date d'un an", async () => {
+      prisma.reinscriptionDeadline.findMany.mockResolvedValue([
+        {
+          id: "deadline-src-1",
+          academicLevelId: "level-ce2",
+          deadline: new Date("2025-07-15T00:00:00.000Z"),
+        },
+      ]);
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue(null);
+
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.reinscriptionDeadline.create).toHaveBeenCalledWith({
+        data: {
+          schoolId: SCHOOL_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          academicLevelId: "level-ce2",
+          deadline: new Date("2026-07-15T00:00:00.000Z"),
+        },
+      });
+    });
+
+    it("est idempotente : ne recree rien si une deadline existe deja pour ce niveau sur l'annee cible", async () => {
+      prisma.reinscriptionDeadline.findMany.mockResolvedValue([
+        {
+          id: "deadline-src-1",
+          academicLevelId: "level-ce2",
+          deadline: new Date("2025-07-15T00:00:00.000Z"),
+        },
+      ]);
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue({
+        id: "already-there",
+      });
+
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.reinscriptionDeadline.create).not.toHaveBeenCalled();
     });
   });
 });

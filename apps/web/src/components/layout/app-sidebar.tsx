@@ -8,6 +8,7 @@ import {
   BarChart3,
   BookOpen,
   Building2,
+  CalendarClock,
   CalendarDays,
   ClipboardList,
   CreditCard,
@@ -177,6 +178,12 @@ function buildItems(
         matchPrefix: "/finance-echeanciers",
       },
       {
+        label: t("sidebar.nav.financeReinscriptionDeadlines"),
+        href: "/finance-reinscription-deadlines",
+        icon: CalendarClock,
+        matchPrefix: "/finance-reinscription-deadlines",
+      },
+      {
         label: t("sidebar.nav.financePayments"),
         href: "/finance-paiements",
         icon: Wallet,
@@ -313,6 +320,12 @@ function buildItems(
         href: "/finance-echeanciers",
         icon: CreditCard,
         matchPrefix: "/finance-echeanciers",
+      },
+      {
+        label: t("sidebar.nav.financeReinscriptionDeadlines"),
+        href: "/finance-reinscription-deadlines",
+        icon: CalendarClock,
+        matchPrefix: "/finance-reinscription-deadlines",
       },
       {
         label: t("sidebar.nav.financePayments"),

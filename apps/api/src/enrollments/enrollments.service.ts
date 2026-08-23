@@ -131,6 +131,11 @@ export class EnrollmentsService {
       sourceSchoolYearId,
       targetYear.id,
     );
+    await this.provisionReinscriptionDeadlinesForNewYear(
+      schoolId,
+      sourceSchoolYearId,
+      targetYear.id,
+    );
 
     return targetYear;
   }
@@ -251,6 +256,50 @@ export class EnrollmentsService {
               note: item.note,
             })),
           },
+        },
+      });
+    }
+  }
+
+  /**
+   * Meme principe que provisionFeeSchedulesForNewYear, applique aux dates
+   * limites de preinscription par niveau : la date est decalee d'un an
+   * (memes mois/jour), pour que le school admin n'ait pas a la ressaisir
+   * chaque annee. Il peut ensuite l'ajuster pour l'annee cible sans impacter
+   * l'annee source.
+   */
+  async provisionReinscriptionDeadlinesForNewYear(
+    schoolId: string,
+    sourceSchoolYearId: string,
+    targetSchoolYearId: string,
+  ) {
+    if (sourceSchoolYearId === targetSchoolYearId) {
+      return;
+    }
+
+    const sourceDeadlines = await this.prisma.reinscriptionDeadline.findMany({
+      where: { schoolId, schoolYearId: sourceSchoolYearId },
+    });
+
+    for (const source of sourceDeadlines) {
+      const existing = await this.prisma.reinscriptionDeadline.findFirst({
+        where: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId: source.academicLevelId,
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        continue;
+      }
+
+      await this.prisma.reinscriptionDeadline.create({
+        data: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId: source.academicLevelId,
+          deadline: this.shiftDateByOneYear(source.deadline),
         },
       });
     }
