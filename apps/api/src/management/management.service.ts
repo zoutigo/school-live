@@ -3561,6 +3561,7 @@ export class ManagementService {
           academicLevelId: true,
           trackId: true,
           curriculumId: true,
+          referentTeacherUserId: true,
         },
       });
 
@@ -3590,6 +3591,7 @@ export class ManagementService {
             academicLevelId: sourceClass.academicLevelId,
             trackId: sourceClass.trackId,
             curriculumId: sourceClass.curriculumId,
+            referentTeacherUserId: sourceClass.referentTeacherUserId,
           },
           select: { id: true },
         });

@@ -72,6 +72,15 @@ function mockFetchBase() {
     if (url.endsWith("/admin/school-years/active") && method === "PATCH") {
       return jsonResponse({ success: true, activeSchoolYearId: "sy-2026" });
     }
+    if (url.endsWith("/admin/school-years/rollover") && method === "POST") {
+      return jsonResponse({
+        success: true,
+        targetSchoolYear: { id: "sy-2026", label: "2026-2027" },
+        createdClassesCount: 1,
+        createdAssignmentsCount: 0,
+        createdEnrollmentsCount: 0,
+      });
+    }
     if (url.endsWith("/admin/school-years") && method === "GET") {
       return jsonResponse([
         { id: "sy-2025", label: "2025-2026", isActive: true },
@@ -205,6 +214,46 @@ describe("Promotions page", () => {
       expect(headers["X-CSRF-Token"]).toBe("csrf-token-test");
       const body = JSON.parse(String(createCall?.[1]?.body));
       expect(body).toMatchObject({ label: "2027-2028" });
+    });
+  });
+
+  it("duplique les classes vers l'annee cible avec les affectations enseignants par defaut", async () => {
+    const fetchMock = mockFetchBase();
+    render(<PromotionsPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Annees scolaires" }),
+    );
+
+    fireEvent.click(await screen.findByLabelText("Annee source"));
+    fireEvent.click(await screen.findByRole("option", { name: "2025-2026" }));
+
+    fireEvent.click(screen.getByLabelText("Annee cible"));
+    fireEvent.click(await screen.findByRole("option", { name: "2026-2027" }));
+
+    expect(
+      screen.getByLabelText("Dupliquer aussi les affectations d'enseignants"),
+    ).toBeChecked();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Dupliquer les classes" }),
+    );
+
+    await waitFor(() => {
+      const rolloverCall = fetchMock.mock.calls.find(
+        ([url, init]) =>
+          String(url).endsWith("/admin/school-years/rollover") &&
+          init?.method === "POST",
+      );
+      expect(rolloverCall).toBeTruthy();
+      const headers = rolloverCall?.[1]?.headers as Record<string, string>;
+      expect(headers["X-CSRF-Token"]).toBe("csrf-token-test");
+      const body = JSON.parse(String(rolloverCall?.[1]?.body));
+      expect(body).toMatchObject({
+        sourceSchoolYearId: "sy-2025",
+        targetSchoolYearId: "sy-2026",
+        copyAssignments: true,
+      });
     });
   });
 
