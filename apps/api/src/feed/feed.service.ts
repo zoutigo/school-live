@@ -642,6 +642,16 @@ export class FeedService {
         translateFeed(context.locale, "feed.errors.accessDenied"),
       );
     }
+
+    if (
+      context.isParent &&
+      !context.isStaff &&
+      post.audienceScope === FeedAudienceScope.CLASS
+    ) {
+      throw new ForbiddenException(
+        translateFeed(context.locale, "feed.errors.parentClassActionNotAllowed"),
+      );
+    }
   }
 
   private async requireManagePermission(

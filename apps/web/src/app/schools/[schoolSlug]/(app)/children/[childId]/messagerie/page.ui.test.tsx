@@ -90,7 +90,7 @@ describe("ChildMessageriePage — aide parent", () => {
     const sections = usePageHelpStore.getState().entry?.sections ?? [];
     expect(sections.map((section) => section.title)).toEqual([
       "Organiser vos messages",
-      "Ecrire un message",
+      "Consultation uniquement",
     ]);
 
     unmount();
@@ -149,6 +149,33 @@ describe("ChildMessageriePage — rendu", () => {
     expect(
       await screen.findByText("Reunion parents-profs"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Nouveau message")).toBeInTheDocument();
+  });
+
+  it("ne propose aucune action au parent (consultation seule)", async () => {
+    mockFetchDefault({});
+
+    render(<ChildMessageriePage />);
+
+    await screen.findByText("Reunion parents-profs");
+
+    // Pas de composition de nouveau message.
+    expect(screen.queryByText("Nouveau message")).not.toBeInTheDocument();
+    // Pas d'action de tri/lecture sur la ligne du message (marquer lu/non lu).
+    expect(
+      screen.queryByRole("button", { name: /marquer/i }),
+    ).not.toBeInTheDocument();
+    // Pas de repondre/transferer/archiver/supprimer dans le lecteur.
+    expect(
+      screen.queryByRole("button", { name: /repondre/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /transferer/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /archiver/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /supprimer/i }),
+    ).not.toBeInTheDocument();
   });
 });

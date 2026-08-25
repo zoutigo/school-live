@@ -2789,6 +2789,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.help.section2Title": "Ecrire un message",
     "messaging.help.section2Body":
       "Utilisez le champ de recherche pour retrouver un message, et le bouton Nouveau message du panneau des dossiers pour en composer un.",
+    "messaging.help.childReadOnlyTitle": "Consultation uniquement",
+    "messaging.help.childReadOnlyBody":
+      "Depuis le menu de votre enfant, vous pouvez consulter tous les messages mais vous ne pouvez pas en envoyer, y repondre, les transferer, les archiver ni les supprimer. Pour envoyer un message, utilisez votre propre messagerie.",
 
     "onboardingTour.messages.step1Title": "Vos dossiers",
     "onboardingTour.messages.step1Body":
@@ -7815,6 +7818,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.help.section2Title": "Write a message",
     "messaging.help.section2Body":
       "Use the search field to find a message, and the New message button in the folders panel to compose one.",
+    "messaging.help.childReadOnlyTitle": "View only",
+    "messaging.help.childReadOnlyBody":
+      "From your child's menu, you can view every message but you cannot send, reply to, forward, archive, or delete any of them. To send a message, use your own mailbox.",
 
     "onboardingTour.messages.step1Title": "Your folders",
     "onboardingTour.messages.step1Body":

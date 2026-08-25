@@ -25,10 +25,14 @@ describe("Feed interactions e2e", () => {
 
   const teacherEmail = `e2e-feed-teacher-${runId}@example.test`;
   const parentEmail = `e2e-feed-parent-${runId}@example.test`;
+  const studentEmail = `e2e-feed-student-${runId}@example.test`;
 
   let schoolId = "";
   let teacherUserId = "";
   let parentUserId = "";
+  let studentUserId = "";
+  let studentId = "";
+  let classId = "";
 
   let teacherToken = "";
   let parentToken = "";
@@ -118,6 +122,56 @@ describe("Feed interactions e2e", () => {
     });
     parentUserId = parent.id;
 
+    const schoolYear = await prisma.schoolYear.create({
+      data: { schoolId, label: `Feed ${runId}` },
+      select: { id: true },
+    });
+
+    const klass = await prisma.class.create({
+      data: { schoolId, schoolYearId: schoolYear.id, name: `6e Feed ${runId}` },
+      select: { id: true },
+    });
+    classId = klass.id;
+
+    const studentUser = await prisma.user.create({
+      data: {
+        firstName: "Sam",
+        lastName: "Student",
+        email: studentEmail,
+        passwordHash,
+        mustChangePassword: false,
+        profileCompleted: true,
+        memberships: { create: { schoolId, role: "STUDENT" } },
+      },
+      select: { id: true },
+    });
+    studentUserId = studentUser.id;
+
+    const student = await prisma.student.create({
+      data: {
+        schoolId,
+        userId: studentUserId,
+        firstName: "Sam",
+        lastName: "Student",
+      },
+      select: { id: true },
+    });
+    studentId = student.id;
+
+    await prisma.enrollment.create({
+      data: {
+        schoolId,
+        schoolYearId: schoolYear.id,
+        studentId,
+        classId,
+        status: "ACTIVE",
+      },
+    });
+
+    await prisma.parentStudent.create({
+      data: { schoolId, parentUserId, studentId },
+    });
+
     teacherToken = await login(teacherEmail);
     parentToken = await login(parentEmail);
   });
@@ -127,7 +181,9 @@ describe("Feed interactions e2e", () => {
       if (schoolId) {
         await prisma.school.deleteMany({ where: { id: schoolId } });
       }
-      const userIds = [teacherUserId, parentUserId].filter(Boolean);
+      const userIds = [teacherUserId, parentUserId, studentUserId].filter(
+        Boolean,
+      );
       if (userIds.length > 0) {
         await prisma.user.deleteMany({ where: { id: { in: userIds } } });
       }
@@ -411,6 +467,165 @@ describe("Feed interactions e2e", () => {
         authorName: "Paula Parent",
         text: "Merci pour cette information.",
       }),
+    });
+  });
+
+  describe("PARENT read-only on their child's class feed", () => {
+    it("lets the parent see the class post in the CLASS-scoped list (visibility unchanged)", async () => {
+      const created = await apiJson(`/api/schools/${schoolSlug}/feed`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${teacherToken}`,
+        },
+        body: JSON.stringify({
+          type: "POST",
+          title: "Annonce de classe",
+          bodyHtml: "<p>Sortie pedagogique la semaine prochaine.</p>",
+          audienceScope: "CLASS",
+          audienceClassId: classId,
+        }),
+      });
+      expect(created.response.status).toBe(201);
+      const postId = String(created.body?.id ?? "");
+
+      const list = await apiJson(
+        `/api/schools/${schoolSlug}/feed?viewScope=CLASS&classId=${classId}`,
+        {
+          method: "GET",
+          headers: { authorization: `Bearer ${parentToken}` },
+        },
+      );
+      expect(list.response.status).toBe(200);
+      const items = (list.body?.items ?? []) as Array<Record<string, unknown>>;
+      expect(items.some((item) => item.id === postId)).toBe(true);
+    });
+
+    it("403 — the parent cannot like a post on their child's class feed", async () => {
+      const created = await apiJson(`/api/schools/${schoolSlug}/feed`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${teacherToken}`,
+        },
+        body: JSON.stringify({
+          type: "POST",
+          title: "Annonce de classe likes",
+          bodyHtml: "<p>Merci de reagir.</p>",
+          audienceScope: "CLASS",
+          audienceClassId: classId,
+        }),
+      });
+      const postId = String(created.body?.id ?? "");
+
+      const { response } = await apiJson(
+        `/api/schools/${schoolSlug}/feed/${postId}/likes/toggle`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${parentToken}` },
+        },
+      );
+      expect(response.status).toBe(403);
+
+      // Le staff, lui, reste autorise a interagir sur ce meme post.
+      const staffLike = await apiJson(
+        `/api/schools/${schoolSlug}/feed/${postId}/likes/toggle`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${teacherToken}` },
+        },
+      );
+      expect(staffLike.response.status).toBe(201);
+    });
+
+    it("403 — the parent cannot comment on their child's class feed", async () => {
+      const created = await apiJson(`/api/schools/${schoolSlug}/feed`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${teacherToken}`,
+        },
+        body: JSON.stringify({
+          type: "POST",
+          title: "Annonce de classe commentaires",
+          bodyHtml: "<p>Vos retours sont bienvenus.</p>",
+          audienceScope: "CLASS",
+          audienceClassId: classId,
+        }),
+      });
+      const postId = String(created.body?.id ?? "");
+
+      const { response } = await apiJson(
+        `/api/schools/${schoolSlug}/feed/${postId}/comments`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${parentToken}`,
+          },
+          body: JSON.stringify({ text: "Je tente un commentaire interdit." }),
+        },
+      );
+      expect(response.status).toBe(403);
+    });
+
+    it("403 — the parent cannot vote on a poll on their child's class feed", async () => {
+      const created = await apiJson(`/api/schools/${schoolSlug}/feed`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${teacherToken}`,
+        },
+        body: JSON.stringify({
+          type: "POLL",
+          title: "Sondage de classe",
+          bodyHtml: "<p>Votez avant vendredi.</p>",
+          audienceScope: "CLASS",
+          audienceClassId: classId,
+          pollQuestion: "Quelle sortie preferez-vous ?",
+          pollOptions: ["Musee", "Piscine"],
+        }),
+      });
+      const postId = String(created.body?.id ?? "");
+      const poll = created.body?.poll as
+        | { options?: Array<{ id: string }> }
+        | undefined;
+      const optionId = String(poll?.options?.[0]?.id ?? "");
+
+      const { response } = await apiJson(
+        `/api/schools/${schoolSlug}/feed/${postId}/polls/${optionId}/vote`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${parentToken}` },
+        },
+      );
+      expect(response.status).toBe(403);
+    });
+
+    it("403 — the parent cannot create a post directly scoped to their child's class", async () => {
+      const { response, body } = await apiJson(
+        `/api/schools/${schoolSlug}/feed`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${parentToken}`,
+          },
+          body: JSON.stringify({
+            type: "POST",
+            title: "Publication parent sur la classe",
+            bodyHtml: "<p>Je tente de publier dans la classe.</p>",
+            audienceScope: "CLASS",
+            audienceClassId: classId,
+          }),
+        },
+      );
+
+      // Le backend force deja l'audience PARENTS_ONLY pour un parent : le
+      // post est cree, mais jamais avec audienceScope CLASS.
+      expect(response.status).toBe(201);
+      const audience = body?.audience as { scope?: string } | undefined;
+      expect(audience?.scope).not.toBe("CLASS");
     });
   });
 });

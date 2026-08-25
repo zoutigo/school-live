@@ -2,23 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Forward, Reply } from "lucide-react";
 import { Card } from "../../../../../../../../components/ui/card";
 import {
-  archiveSchoolMessage,
-  deleteSchoolMessage,
   getSchoolMessage,
   markSchoolMessageRead,
 } from "../../../../../../../../components/messaging/messaging-api";
 import { MessagingAttachmentPreviewModal } from "../../../../../../../../components/messaging/messaging-attachment-preview-modal";
-import { buildComposeQueryFromMessage } from "../../../../../../../../components/messaging/messaging-compose-logic";
-import { MessagingMessageActions } from "../../../../../../../../components/messaging/messaging-message-actions";
 import { MessagingMessageDetail } from "../../../../../../../../components/messaging/messaging-message-detail";
 import type {
   MessageAttachment,
   MessagingMessage,
 } from "../../../../../../../../components/messaging/types";
-import { ConfirmDialog } from "../../../../../../../../components/ui/confirm-dialog";
 import { useTranslation } from "../../../../../../../../i18n/useTranslation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
@@ -58,8 +52,6 @@ export default function ChildMessagerieMessagePage() {
   const [message, setMessage] = useState<MessagingMessage | null>(null);
   const [previewAttachment, setPreviewAttachment] =
     useState<MessageAttachment | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!schoolSlug) {
@@ -121,73 +113,6 @@ export default function ChildMessagerieMessagePage() {
     }
   }
 
-  async function handleArchiveToggle() {
-    if (!schoolSlug) {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      await archiveSchoolMessage(
-        schoolSlug,
-        messageId,
-        folderParam !== "archive",
-      );
-      window.dispatchEvent(new Event("messaging:updated"));
-      router.push(backUrl);
-    } catch {
-      setError(t("messaging.page.archiveError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!schoolSlug) {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      await deleteSchoolMessage(schoolSlug, messageId);
-      setDeleteConfirmOpen(false);
-      window.dispatchEvent(new Event("messaging:updated"));
-      router.push(backUrl);
-    } catch {
-      setError(t("messaging.page.deleteError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleToggleRead() {
-    if (!schoolSlug || folderParam !== "inbox") {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      const nextRead = message?.unread ? true : false;
-      await markSchoolMessageRead(schoolSlug, messageId, nextRead);
-      setMessage((prev) => (prev ? { ...prev, unread: !nextRead } : prev));
-      window.dispatchEvent(new Event("messaging:updated"));
-    } catch {
-      setError(t("messaging.page.toggleReadError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  function openComposeFromMessage(mode: "reply" | "forward") {
-    if (!message) {
-      return;
-    }
-    const query = buildComposeQueryFromMessage(mode, message, t);
-    router.push(
-      `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
-    );
-  }
-
   const currentChild = useMemo(
     () => children.find((entry) => entry.id === childId) ?? null,
     [children, childId],
@@ -214,44 +139,6 @@ export default function ChildMessagerieMessagePage() {
             message={message}
             onBack={() => router.push(backUrl)}
             onOpenAttachment={setPreviewAttachment}
-            topActions={
-              message ? (
-                <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openComposeFromMessage("reply")}
-                      className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
-                    >
-                      <Reply className="h-4 w-4" />
-                      {t("messaging.detail.reply")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openComposeFromMessage("forward")}
-                      className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
-                    >
-                      <Forward className="h-4 w-4" />
-                      {t("messaging.detail.forward")}
-                    </button>
-                  </div>
-                  <MessagingMessageActions
-                    archivedView={folderParam === "archive"}
-                    busy={actionBusy}
-                    onArchiveToggle={() => void handleArchiveToggle()}
-                    onDelete={() => setDeleteConfirmOpen(true)}
-                    unread={message.unread}
-                    onToggleRead={
-                      folderParam === "inbox"
-                        ? () => {
-                            void handleToggleRead();
-                          }
-                        : undefined
-                    }
-                  />
-                </div>
-              ) : null
-            }
           />
         )}
       </Card>
@@ -259,17 +146,6 @@ export default function ChildMessagerieMessagePage() {
       <MessagingAttachmentPreviewModal
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
-      />
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        title={t("messaging.page.deleteConfirmTitle")}
-        message={t("messaging.page.deleteConfirmMessage")}
-        confirmLabel={t("messaging.page.deleteConfirmAction")}
-        loading={actionBusy}
-        onCancel={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          void handleDelete();
-        }}
       />
     </div>
   );
