@@ -71,6 +71,7 @@ export default function ChildVieDeClassePage() {
             currentClassId={child?.classId ?? undefined}
             hideSectionLabel
             useDemoSeed={false}
+            readOnly
           />
         );
       }}

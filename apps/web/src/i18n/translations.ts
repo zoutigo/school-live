@@ -609,6 +609,47 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financeSchedules.help.workflow.step3.description":
       "des que le cumul atteint le montant de la 1ere echeance, l'eleve est place en attente d'affectation pour la nouvelle annee.",
 
+    "financeReinscriptionDeadlines.title": "Dates limites de reinscription",
+    "financeReinscriptionDeadlines.subtitle":
+      "Definissez, par niveau et par annee scolaire, la date limite avant laquelle les familles doivent reinscrire leur enfant.",
+    "financeReinscriptionDeadlines.errors.load":
+      "Impossible de charger les dates limites.",
+    "financeReinscriptionDeadlines.errors.network": "Erreur reseau.",
+    "financeReinscriptionDeadlines.errors.save": "Enregistrement impossible.",
+    "financeReinscriptionDeadlines.errors.delete": "Suppression impossible.",
+    "financeReinscriptionDeadlines.success.saved": "Date limite enregistree.",
+    "financeReinscriptionDeadlines.form.title":
+      "Nouvelle date limite / mise a jour",
+    "financeReinscriptionDeadlines.form.schoolYear": "Annee scolaire",
+    "financeReinscriptionDeadlines.form.academicLevel": "Niveau",
+    "financeReinscriptionDeadlines.form.deadline": "Date limite",
+    "financeReinscriptionDeadlines.empty":
+      "Aucune date limite definie pour le moment.",
+    "financeReinscriptionDeadlines.help.summary":
+      "ce module definit, par niveau et par annee scolaire, la date limite de reinscription affichee aux parents. Elle est copiee automatiquement (avec un an de decalage) lorsqu'une nouvelle annee scolaire est creee.",
+    "financeReinscriptionDeadlines.help.action1.name":
+      "Definir une date limite",
+    "financeReinscriptionDeadlines.help.action1.purpose":
+      "fixer la date limite de reinscription pour un niveau donne sur une annee scolaire donnee.",
+    "financeReinscriptionDeadlines.help.action1.howTo":
+      "choisir l'annee et le niveau, saisir la date, puis enregistrer.",
+    "financeReinscriptionDeadlines.help.action1.moduleImpact":
+      "la date limite et le compte a rebours associe apparaissent immediatement sur la carte de reinscription du parent.",
+    "financeReinscriptionDeadlines.help.action1.crossModuleImpact":
+      "n'affecte pas le seuil de paiement requis, uniquement l'information de delai communiquee au parent.",
+    "financeReinscriptionDeadlines.help.action2.name":
+      "Supprimer une date limite",
+    "financeReinscriptionDeadlines.help.action2.purpose":
+      "retirer une date limite qui n'est plus applicable.",
+    "financeReinscriptionDeadlines.help.action2.howTo":
+      "utiliser le bouton Supprimer sur la fiche concernee.",
+    "financeReinscriptionDeadlines.help.action2.moduleImpact":
+      "le parent ne voit plus de compte a rebours pour ce niveau tant qu'une nouvelle date n'est pas definie.",
+    "financeReinscriptionDeadlines.help.action2.crossModuleImpact":
+      "sans impact sur les echeanciers de frais deja definis.",
+    "financeReinscriptionDeadlines.help.tip1":
+      "Ces dates sont reprises automatiquement (avec un an de decalage) lors de la creation de l'annee scolaire suivante : ajustez-les plutot que de les ressaisir de zero.",
+
     "supplyLists.title": "Fournitures scolaires",
     "supplyLists.subtitle":
       "Definissez la liste de fournitures a prevoir par niveau, filiere et annee scolaire.",
@@ -1090,6 +1131,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.students": "Eleves",
     "sidebar.nav.promotions": "Passages de classe",
     "sidebar.nav.financeSchedules": "Echeanciers",
+    "sidebar.nav.financeReinscriptionDeadlines": "Dates limites reinscription",
     "sidebar.nav.financePayments": "Paiements",
     "sidebar.nav.supplyLists": "Fournitures scolaires",
     "sidebar.nav.users": "Utilisateurs",
@@ -2747,6 +2789,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.help.section2Title": "Ecrire un message",
     "messaging.help.section2Body":
       "Utilisez le champ de recherche pour retrouver un message, et le bouton Nouveau message du panneau des dossiers pour en composer un.",
+    "messaging.help.childReadOnlyTitle": "Consultation uniquement",
+    "messaging.help.childReadOnlyBody":
+      "Depuis le menu de votre enfant, vous pouvez consulter tous les messages mais vous ne pouvez pas en envoyer, y repondre, les transferer, les archiver ni les supprimer. Pour envoyer un message, utilisez votre propre messagerie.",
 
     "onboardingTour.messages.step1Title": "Vos dossiers",
     "onboardingTour.messages.step1Body":
@@ -3137,11 +3182,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.tabs.paiement": "Paiement",
     "reinscriptionWeb.tabs.fournitures": "Fournitures",
     "reinscriptionWeb.wallet.balance": "Solde du porte-monnaie",
-    "reinscriptionWeb.wallet.topUpAmount": "Montant a crediter",
-    "reinscriptionWeb.wallet.topUpSubmit": "Crediter",
-    "reinscriptionWeb.wallet.errors.topUp": "Depot impossible.",
+    "reinscriptionWeb.wallet.topUpLink": "Recharger",
     "reinscriptionWeb.wallet.errors.reinscribe": "Reinscription impossible.",
-    "reinscriptionWeb.wallet.success.topUp": "Porte-monnaie credite.",
     "reinscriptionWeb.wallet.success.reinscribed":
       "{firstName} est reinscrit(e) !",
     "reinscriptionWeb.children.title": "Mes enfants",
@@ -3155,6 +3197,17 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.children.status.ALREADY_REINSCRIBED": "Deja reinscrit(e)",
     "reinscriptionWeb.children.status.READY_TO_REINSCRIBE":
       "Pret(e) a etre reinscrit(e)",
+    "reinscriptionWeb.children.dateOfBirth": "Ne(e) le {date}",
+    "reinscriptionWeb.children.schoolYearStart": "Rentree scolaire : {date}",
+    "reinscriptionWeb.children.daysLeft": "{count} jour(s) restant(s)",
+    "reinscriptionWeb.children.deadlinePassed": "Date limite depassee",
+    "reinscriptionWeb.children.insufficientBalance":
+      "Solde insuffisant : approvisionnez votre porte-monnaie de {amount} pour reinscrire.",
+    "reinscriptionWeb.children.confirmed.title": "Inscription confirmee !",
+    "reinscriptionWeb.children.confirmed.message":
+      "Preparez la rentree en consultant la liste des fournitures.",
+    "reinscriptionWeb.children.confirmed.viewSupplies":
+      "Voir la liste des fournitures",
     "reinscriptionWeb.installments.show": "Voir l'echeancier",
     "reinscriptionWeb.installments.hide": "Masquer l'echeancier",
     "reinscriptionWeb.installments.dueDate": "Echeance le",
@@ -5024,11 +5077,11 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Ce bouton debite votre porte-monnaie du montant exact de la 1ere echeance de CET enfant et confirme sa reinscription en un seul geste. Un parent avec plusieurs enfants doit cliquer separement pour chacun.",
     "onboardingTour.reinscriptionParent.walletTitle": "Votre porte-monnaie",
     "onboardingTour.reinscriptionParent.walletBody":
-      "Creditez ce porte-monnaie a tout moment, meme avant que le conseil de classe n'ait statue. L'argent y reste disponible jusqu'a ce que vous decidiez de l'affecter a un enfant.",
+      "Voici votre solde disponible. Cliquez sur « Recharger » pour aller crediter votre porte-monnaie depuis Situation financiere.",
     "onboardingTour.reinscriptionParent.childrenTitle":
       "Statut de chaque enfant",
     "onboardingTour.reinscriptionParent.childrenBody":
-      "Pour chaque enfant : en attente de la decision du conseil de classe, deja reinscrit, ou pret a etre reinscrit avec le montant restant du et l'echeancier detaille affiches.",
+      "Pour chaque enfant : ancien et nouveau niveau, date limite de reinscription, et statut (en attente de decision, deja reinscrit, ou pret a etre reinscrit avec le montant restant du et l'echeancier detaille).",
     "onboardingTour.reinscriptionParent.reinscribeTitle":
       "Je paie et je reinscris",
     "onboardingTour.reinscriptionParent.reinscribeBody":
@@ -5678,6 +5731,42 @@ export const translations: Record<Locale, Record<string, string>> = {
     "financeSchedules.help.workflow.step3.description":
       "as soon as the cumulative amount reaches the first installment, the student is placed in the class-assignment queue for the new year.",
 
+    "financeReinscriptionDeadlines.title": "Re-enrollment deadlines",
+    "financeReinscriptionDeadlines.subtitle":
+      "Define, per level and school year, the deadline by which families must re-enroll their child.",
+    "financeReinscriptionDeadlines.errors.load": "Unable to load deadlines.",
+    "financeReinscriptionDeadlines.errors.network": "Network error.",
+    "financeReinscriptionDeadlines.errors.save": "Unable to save.",
+    "financeReinscriptionDeadlines.errors.delete": "Unable to delete.",
+    "financeReinscriptionDeadlines.success.saved": "Deadline saved.",
+    "financeReinscriptionDeadlines.form.title": "New deadline / update",
+    "financeReinscriptionDeadlines.form.schoolYear": "School year",
+    "financeReinscriptionDeadlines.form.academicLevel": "Level",
+    "financeReinscriptionDeadlines.form.deadline": "Deadline",
+    "financeReinscriptionDeadlines.empty": "No deadline defined yet.",
+    "financeReinscriptionDeadlines.help.summary":
+      "this module defines, per level and school year, the re-enrollment deadline shown to parents. It is copied automatically (shifted by one year) whenever a new school year is created.",
+    "financeReinscriptionDeadlines.help.action1.name": "Set a deadline",
+    "financeReinscriptionDeadlines.help.action1.purpose":
+      "set the re-enrollment deadline for a given level on a given school year.",
+    "financeReinscriptionDeadlines.help.action1.howTo":
+      "choose the year and level, enter the date, then save.",
+    "financeReinscriptionDeadlines.help.action1.moduleImpact":
+      "the deadline and its countdown appear immediately on the parent's re-enrollment card.",
+    "financeReinscriptionDeadlines.help.action1.crossModuleImpact":
+      "does not affect the required payment threshold, only the timing information shown to the parent.",
+    "financeReinscriptionDeadlines.help.action2.name": "Delete a deadline",
+    "financeReinscriptionDeadlines.help.action2.purpose":
+      "remove a deadline that no longer applies.",
+    "financeReinscriptionDeadlines.help.action2.howTo":
+      "use the Delete button on the relevant row.",
+    "financeReinscriptionDeadlines.help.action2.moduleImpact":
+      "the parent no longer sees a countdown for this level until a new date is set.",
+    "financeReinscriptionDeadlines.help.action2.crossModuleImpact":
+      "does not affect existing fee schedules.",
+    "financeReinscriptionDeadlines.help.tip1":
+      "These dates are carried forward automatically (shifted by one year) when the next school year is created: adjust them rather than re-entering them from scratch.",
+
     "supplyLists.title": "School supplies",
     "supplyLists.subtitle":
       "Define the list of supplies to prepare per level, track and school year.",
@@ -6139,6 +6228,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "sidebar.nav.students": "Students",
     "sidebar.nav.promotions": "Grade promotion",
     "sidebar.nav.financeSchedules": "Fee schedules",
+    "sidebar.nav.financeReinscriptionDeadlines": "Re-enrollment deadlines",
     "sidebar.nav.financePayments": "Payments",
     "sidebar.nav.supplyLists": "School supplies",
     "sidebar.nav.users": "Users",
@@ -7728,6 +7818,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     "messaging.help.section2Title": "Write a message",
     "messaging.help.section2Body":
       "Use the search field to find a message, and the New message button in the folders panel to compose one.",
+    "messaging.help.childReadOnlyTitle": "View only",
+    "messaging.help.childReadOnlyBody":
+      "From your child's menu, you can view every message but you cannot send, reply to, forward, archive, or delete any of them. To send a message, use your own mailbox.",
 
     "onboardingTour.messages.step1Title": "Your folders",
     "onboardingTour.messages.step1Body":
@@ -8078,11 +8171,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "reinscriptionWeb.tabs.paiement": "Payment",
     "reinscriptionWeb.tabs.fournitures": "Supplies",
     "reinscriptionWeb.wallet.balance": "Wallet balance",
-    "reinscriptionWeb.wallet.topUpAmount": "Amount to top up",
-    "reinscriptionWeb.wallet.topUpSubmit": "Top up",
-    "reinscriptionWeb.wallet.errors.topUp": "Unable to top up.",
+    "reinscriptionWeb.wallet.topUpLink": "Top up",
     "reinscriptionWeb.wallet.errors.reinscribe": "Unable to re-enroll.",
-    "reinscriptionWeb.wallet.success.topUp": "Wallet topped up.",
     "reinscriptionWeb.wallet.success.reinscribed":
       "{firstName} is re-enrolled!",
     "reinscriptionWeb.children.title": "My children",
@@ -8097,6 +8187,16 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Already re-enrolled",
     "reinscriptionWeb.children.status.READY_TO_REINSCRIBE":
       "Ready to re-enroll",
+    "reinscriptionWeb.children.dateOfBirth": "Born on {date}",
+    "reinscriptionWeb.children.schoolYearStart": "School year starts: {date}",
+    "reinscriptionWeb.children.daysLeft": "{count} day(s) left",
+    "reinscriptionWeb.children.deadlinePassed": "Deadline passed",
+    "reinscriptionWeb.children.insufficientBalance":
+      "Insufficient balance: top up your wallet by {amount} to re-enroll.",
+    "reinscriptionWeb.children.confirmed.title": "Re-enrollment confirmed!",
+    "reinscriptionWeb.children.confirmed.message":
+      "Get ready for the new school year by checking the supply list.",
+    "reinscriptionWeb.children.confirmed.viewSupplies": "View the supply list",
     "reinscriptionWeb.installments.show": "View schedule",
     "reinscriptionWeb.installments.hide": "Hide schedule",
     "reinscriptionWeb.installments.dueDate": "Due on",
@@ -9901,10 +10001,10 @@ export const translations: Record<Locale, Record<string, string>> = {
       "This button debits your wallet for the exact amount of THIS child's first installment and confirms their re-enrollment in one step. A parent with several children must click separately for each one.",
     "onboardingTour.reinscriptionParent.walletTitle": "Your wallet",
     "onboardingTour.reinscriptionParent.walletBody":
-      "Top up this wallet at any time, even before the class council has decided. The money stays available until you choose to allocate it to a child.",
+      'This is your available balance. Click "Top up" to go credit your wallet from Financial situation.',
     "onboardingTour.reinscriptionParent.childrenTitle": "Each child's status",
     "onboardingTour.reinscriptionParent.childrenBody":
-      "For each child: waiting on the class council decision, already re-enrolled, or ready to re-enroll with the remaining amount due and the detailed schedule shown.",
+      "For each child: previous and new level, re-enrollment deadline, and status (waiting on the class council decision, already re-enrolled, or ready to re-enroll with the remaining amount due and the detailed schedule shown).",
     "onboardingTour.reinscriptionParent.reinscribeTitle": "Pay and re-enroll",
     "onboardingTour.reinscriptionParent.reinscribeBody":
       "This button debits your wallet for the exact amount of THIS child's re-enrollment threshold and confirms their re-enrollment in one step.",

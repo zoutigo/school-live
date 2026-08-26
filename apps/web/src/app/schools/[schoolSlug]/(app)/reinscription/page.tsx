@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Wallet } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, ChevronRight, Wallet } from "lucide-react";
 import { Button } from "../../../../../components/ui/button";
 import { Card } from "../../../../../components/ui/card";
-import { FormTextInput } from "../../../../../components/ui/form-controls";
-import { FormField } from "../../../../../components/ui/form-field";
 import { OnboardingTarget } from "../../../../../components/onboarding/onboarding-target";
 import { useTranslation } from "../../../../../i18n/useTranslation";
 import { getCsrfTokenCookie } from "../../../../../lib/auth-cookies";
@@ -51,7 +50,12 @@ type WalletTransactionRow = {
 };
 
 type ChildFinanceStatus = {
-  student: { id: string; firstName: string; lastName: string };
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth?: string | null;
+  };
   status:
     | "DECISION_PENDING"
     | "NEXT_YEAR_NOT_OPEN"
@@ -59,7 +63,12 @@ type ChildFinanceStatus = {
     | "READY_TO_REINSCRIBE";
   targetSchoolYearId?: string;
   targetSchoolYearLabel?: string;
+  targetSchoolYearStartsAt?: string | null;
   requiredAmount?: number | null;
+  previousClassLabel?: string | null;
+  previousLevelLabel?: string | null;
+  nextAcademicLevelLabel?: string | null;
+  reinscriptionDeadline?: string | null;
 };
 
 type WalletSummary = {
@@ -126,40 +135,27 @@ function formatDate(value: string | null) {
   }
 }
 
+function initials(firstName: string, lastName: string) {
+  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
+}
+
+function daysUntil(value: string) {
+  const deadline = new Date(value);
+  const now = new Date();
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.ceil(
+    (Date.UTC(deadline.getFullYear(), deadline.getMonth(), deadline.getDate()) -
+      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) /
+      msPerDay,
+  );
+}
+
 const STATUS_TONE: Record<InstallmentStatus, string> = {
   PAID: "bg-emerald-50 text-emerald-700",
   PARTIAL: "bg-amber-50 text-amber-700",
   OVERDUE: "bg-red-50 text-red-700",
   UPCOMING: "bg-background text-text-secondary",
 };
-
-function Badge({
-  tone,
-  children,
-}: {
-  tone: "ok" | "warn" | "neutral";
-  children: string;
-}) {
-  if (tone === "ok") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
-        {children}
-      </span>
-    );
-  }
-  if (tone === "warn") {
-    return (
-      <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
-        {children}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center rounded-full bg-background px-2 py-1 text-xs font-semibold text-text-secondary">
-      {children}
-    </span>
-  );
-}
 
 function InstallmentBreakdown({
   schoolSlug,
@@ -269,8 +265,6 @@ export default function ReinscriptionPage() {
   const [wallet, setWallet] = useState<WalletSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [topUpAmount, setTopUpAmount] = useState("");
-  const [topUpSubmitting, setTopUpSubmitting] = useState(false);
   const [reinscribingStudentId, setReinscribingStudentId] = useState<
     string | null
   >(null);
@@ -362,45 +356,6 @@ export default function ReinscriptionPage() {
         "parent",
         REINSCRIPTION_PARENT_TOUR_STEPS,
       );
-    }
-  }
-
-  async function onTopUp() {
-    const amount = Number(topUpAmount);
-    if (!amount || amount <= 0) return;
-    const csrfToken = getCsrfTokenCookie();
-    if (!csrfToken) {
-      setError(t("common.errors.invalidCsrfSession"));
-      router.replace(`/schools/${schoolSlug}/login`);
-      return;
-    }
-    setTopUpSubmitting(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const response = await fetch(
-        `${API_URL}/schools/${schoolSlug}/me/finance/wallet/top-up`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken,
-          },
-          body: JSON.stringify({ amount }),
-        },
-      );
-      if (!response.ok) {
-        setError(t("reinscriptionWeb.wallet.errors.topUp"));
-        return;
-      }
-      setSuccess(t("reinscriptionWeb.wallet.success.topUp"));
-      setTopUpAmount("");
-      await loadWallet();
-    } catch {
-      setError(t("reinscriptionWeb.errors.network"));
-    } finally {
-      setTopUpSubmitting(false);
     }
   }
 
@@ -537,36 +492,29 @@ export default function ReinscriptionPage() {
             {tab === "paiement" ? (
               <div className="grid gap-4">
                 <OnboardingTarget id={REINSCRIPTION_PARENT_TOUR_TARGETS.wallet}>
-                  <article className="rounded-card border border-border bg-background p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-heading font-semibold text-text-primary">
+                  <article
+                    className="flex items-center gap-3 rounded-card border border-border bg-background p-4"
+                    data-testid="wallet-summary-card"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Wallet className="h-5 w-5 text-primary" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-text-secondary">
                         {t("reinscriptionWeb.wallet.balance")}
                       </p>
-                      <Wallet className="h-4 w-4 text-primary" />
+                      <p className="text-lg font-heading font-bold text-primary">
+                        {wallet ? formatXaf(wallet.balance) : "-"}
+                      </p>
                     </div>
-                    <p className="mt-2 text-lg font-heading font-bold text-primary">
-                      {wallet ? formatXaf(wallet.balance) : "-"}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-end gap-2">
-                      <FormField
-                        label={t("reinscriptionWeb.wallet.topUpAmount")}
-                      >
-                        <FormTextInput
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={topUpAmount}
-                          onChange={(e) => setTopUpAmount(e.target.value)}
-                        />
-                      </FormField>
-                      <Button
-                        type="button"
-                        onClick={onTopUp}
-                        disabled={topUpSubmitting || !topUpAmount}
-                      >
-                        {t("reinscriptionWeb.wallet.topUpSubmit")}
-                      </Button>
-                    </div>
+                    <Link
+                      href={`/schools/${schoolSlug}/situation-financiere`}
+                      className="flex shrink-0 items-center gap-1 text-sm font-semibold text-primary"
+                      data-testid="wallet-summary-topup-link"
+                    >
+                      {t("reinscriptionWeb.wallet.topUpLink")}
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
                   </article>
                 </OnboardingTarget>
 
@@ -578,70 +526,223 @@ export default function ReinscriptionPage() {
                     className="bg-background"
                   >
                     <div className="grid gap-3">
-                      {eligibleChildren.map((child) => (
-                        <article
-                          key={child.student.id}
-                          className="rounded-card border border-border p-3"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-heading font-semibold text-text-primary">
-                              {child.student.firstName} {child.student.lastName}
-                            </p>
-                            <Badge
-                              tone={
-                                child.status === "ALREADY_REINSCRIBED"
-                                  ? "ok"
-                                  : child.status === "READY_TO_REINSCRIBE"
-                                    ? "warn"
-                                    : "neutral"
-                              }
-                            >
-                              {t(
-                                `reinscriptionWeb.children.status.${child.status}`,
-                              )}
-                            </Badge>
-                          </div>
-                          {child.status === "READY_TO_REINSCRIBE" ? (
-                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm text-text-secondary">
-                                {t("reinscriptionWeb.children.required")}{" "}
-                                {formatXaf(child.requiredAmount ?? 0)}
-                                {child.targetSchoolYearLabel
-                                  ? ` (${child.targetSchoolYearLabel})`
-                                  : ""}
+                      {eligibleChildren.map((child) => {
+                        const required = child.requiredAmount ?? 0;
+                        const isReady = child.status === "READY_TO_REINSCRIBE";
+                        const isConfirmed =
+                          child.status === "ALREADY_REINSCRIBED";
+                        const insufficientBalance =
+                          isReady && (!wallet || wallet.balance < required);
+                        const daysLeft = child.reinscriptionDeadline
+                          ? daysUntil(child.reinscriptionDeadline)
+                          : null;
+
+                        const hasPromotion = Boolean(
+                          child.nextAcademicLevelLabel &&
+                          (child.previousLevelLabel ||
+                            child.previousClassLabel),
+                        );
+
+                        return (
+                          <article
+                            key={child.student.id}
+                            className={`rounded-card border p-3 ${
+                              isConfirmed
+                                ? "border-emerald-300 bg-emerald-50"
+                                : isReady
+                                  ? "border-warm-accent"
+                                  : "border-border"
+                            }`}
+                            data-testid={`child-reenrollment-card-${child.student.id}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
+                                {initials(
+                                  child.student.firstName,
+                                  child.student.lastName,
+                                )}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-heading font-semibold text-text-primary">
+                                  {child.student.firstName}{" "}
+                                  {child.student.lastName}
+                                </p>
+                                {hasPromotion ? (
+                                  <p className="truncate text-xs text-text-secondary">
+                                    {child.previousLevelLabel ??
+                                      child.previousClassLabel ??
+                                      "—"}
+                                    {"  →  "}
+                                    {child.nextAcademicLevelLabel}
+                                  </p>
+                                ) : null}
+                              </div>
+                              {isConfirmed ? (
+                                <span className="flex shrink-0 items-center gap-1 rounded-lg bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-800">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  {t(
+                                    "reinscriptionWeb.children.status.ALREADY_REINSCRIBED",
+                                  )}
+                                </span>
+                              ) : null}
+                            </div>
+
+                            {child.student.dateOfBirth ? (
+                              <p className="mt-2 text-xs text-text-secondary">
+                                {t(
+                                  "reinscriptionWeb.children.dateOfBirth",
+                                ).replace(
+                                  "{date}",
+                                  formatDate(child.student.dateOfBirth),
+                                )}
                               </p>
-                              <OnboardingTarget
-                                id={
-                                  REINSCRIPTION_PARENT_TOUR_TARGETS.reinscribe
-                                }
+                            ) : null}
+
+                            {!isConfirmed ? (
+                              <div
+                                className={`mt-2 rounded-card px-3 py-2 text-xs font-semibold ${
+                                  isReady
+                                    ? "bg-amber-100 text-amber-900"
+                                    : "bg-background text-text-secondary"
+                                }`}
                               >
-                                <Button
-                                  type="button"
-                                  onClick={() => onPayAndReinscribe(child)}
-                                  disabled={
-                                    reinscribingStudentId ===
-                                      child.student.id ||
-                                    !wallet ||
-                                    wallet.balance < (child.requiredAmount ?? 0)
+                                {t(
+                                  `reinscriptionWeb.children.status.${child.status}`,
+                                )}
+                              </div>
+                            ) : null}
+
+                            {isReady ? (
+                              <div className="mt-2 grid gap-1 rounded-card border border-warm-border bg-warm-surface p-3">
+                                <p className="text-xs font-semibold text-text-secondary">
+                                  {t("reinscriptionWeb.children.required")}
+                                </p>
+                                <p className="text-lg font-heading font-bold text-text-primary">
+                                  {formatXaf(required)}
+                                  {child.targetSchoolYearLabel
+                                    ? ` · ${child.targetSchoolYearLabel}`
+                                    : ""}
+                                </p>
+
+                                {daysLeft !== null ? (
+                                  <p
+                                    className={`text-xs font-semibold ${
+                                      daysLeft <= 3
+                                        ? "text-red-700"
+                                        : "text-text-secondary"
+                                    }`}
+                                  >
+                                    {daysLeft >= 0
+                                      ? t(
+                                          "reinscriptionWeb.children.daysLeft",
+                                        ).replace("{count}", String(daysLeft))
+                                      : t(
+                                          "reinscriptionWeb.children.deadlinePassed",
+                                        )}
+                                    {" — "}
+                                    {formatDate(child.reinscriptionDeadline!)}
+                                  </p>
+                                ) : null}
+
+                                {child.targetSchoolYearStartsAt ? (
+                                  <p className="text-xs text-text-secondary">
+                                    {t(
+                                      "reinscriptionWeb.children.schoolYearStart",
+                                    ).replace(
+                                      "{date}",
+                                      formatDate(
+                                        child.targetSchoolYearStartsAt,
+                                      ),
+                                    )}
+                                  </p>
+                                ) : null}
+
+                                {insufficientBalance ? (
+                                  <p
+                                    className="mt-1 rounded-card bg-red-50 p-2 text-xs font-semibold text-red-700"
+                                    data-testid={`insufficient-balance-${child.student.id}`}
+                                  >
+                                    {t(
+                                      "reinscriptionWeb.children.insufficientBalance",
+                                    ).replace(
+                                      "{amount}",
+                                      formatXaf(
+                                        required - (wallet?.balance ?? 0),
+                                      ),
+                                    )}
+                                  </p>
+                                ) : null}
+
+                                <OnboardingTarget
+                                  id={
+                                    REINSCRIPTION_PARENT_TOUR_TARGETS.reinscribe
                                   }
-                                  data-testid={`pay-and-reinscribe-${child.student.id}`}
+                                >
+                                  <Button
+                                    type="button"
+                                    onClick={() => onPayAndReinscribe(child)}
+                                    disabled={
+                                      reinscribingStudentId ===
+                                        child.student.id || insufficientBalance
+                                    }
+                                    data-testid={`pay-and-reinscribe-${child.student.id}`}
+                                    className="mt-1 w-full"
+                                  >
+                                    {t(
+                                      "reinscriptionWeb.children.payAndReinscribe",
+                                    )}
+                                  </Button>
+                                </OnboardingTarget>
+                              </div>
+                            ) : null}
+
+                            {isConfirmed ? (
+                              <div className="mt-2 grid gap-1">
+                                <p className="text-sm font-heading font-semibold text-emerald-800">
+                                  {t(
+                                    "reinscriptionWeb.children.confirmed.title",
+                                  )}
+                                </p>
+                                <p className="text-xs text-text-secondary">
+                                  {t(
+                                    "reinscriptionWeb.children.confirmed.message",
+                                  )}
+                                </p>
+                                {child.targetSchoolYearStartsAt ? (
+                                  <p className="text-xs text-text-secondary">
+                                    {t(
+                                      "reinscriptionWeb.children.schoolYearStart",
+                                    ).replace(
+                                      "{date}",
+                                      formatDate(
+                                        child.targetSchoolYearStartsAt,
+                                      ),
+                                    )}
+                                  </p>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => setTab("fournitures")}
+                                  data-testid={`view-supplies-${child.student.id}`}
+                                  className="justify-self-start text-xs font-semibold text-primary"
                                 >
                                   {t(
-                                    "reinscriptionWeb.children.payAndReinscribe",
+                                    "reinscriptionWeb.children.confirmed.viewSupplies",
                                   )}
-                                </Button>
-                              </OnboardingTarget>
-                            </div>
-                          ) : null}
-                          {child.targetSchoolYearId ? (
-                            <InstallmentBreakdown
-                              schoolSlug={schoolSlug}
-                              studentId={child.student.id}
-                              schoolYearId={child.targetSchoolYearId}
-                            />
-                          ) : null}
-                        </article>
-                      ))}
+                                </button>
+                              </div>
+                            ) : null}
+
+                            {child.targetSchoolYearId ? (
+                              <InstallmentBreakdown
+                                schoolSlug={schoolSlug}
+                                studentId={child.student.id}
+                                schoolYearId={child.targetSchoolYearId}
+                              />
+                            ) : null}
+                          </article>
+                        );
+                      })}
                       {eligibleChildren.length === 0 ? (
                         <p className="text-sm text-text-secondary">
                           {t("reinscriptionWeb.children.empty")}

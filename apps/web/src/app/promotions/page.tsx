@@ -95,7 +95,7 @@ export default function PromotionsPage() {
   const [activatingYearId, setActivatingYearId] = useState<string | null>(null);
   const [rolloverSourceId, setRolloverSourceId] = useState("");
   const [rolloverTargetId, setRolloverTargetId] = useState("");
-  const [rolloverCopyAssignments, setRolloverCopyAssignments] = useState(false);
+  const [rolloverCopyAssignments, setRolloverCopyAssignments] = useState(true);
   const [rollingOver, setRollingOver] = useState(false);
 
   function buildAdminPath(currentSchoolSlug: string, segment: string) {

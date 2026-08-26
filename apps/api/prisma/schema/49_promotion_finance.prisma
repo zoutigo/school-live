@@ -39,6 +39,23 @@ model FeeInstallment {
   @@index([feeScheduleId])
 }
 
+model ReinscriptionDeadline {
+  id              String        @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  academicLevelId String
+  deadline        DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear    @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolYearId, academicLevelId])
+  @@index([schoolId])
+  @@index([academicLevelId])
+}
+
 model SupplyList {
   id              String       @id @default(cuid())
   schoolId        String

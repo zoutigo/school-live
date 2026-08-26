@@ -60,6 +60,10 @@ type Props = {
   childFullName: string;
   scopeLabel?: string;
   allowComposer?: boolean;
+  /** Consultation seule : masque publication/commentaire/like/vote/edition,
+   * utilise pour le fil de classe consulte par un parent via le menu d'un
+   * enfant (le parent ne doit pouvoir qu'y lire les publications). */
+  readOnly?: boolean;
   viewerRole?: FeedViewerRole;
   viewScope?: "GENERAL" | "CLASS";
   currentClassId?: string;
@@ -151,6 +155,7 @@ export function FamilyFeedPage({
   childFullName,
   scopeLabel = "la vie scolaire",
   allowComposer = true,
+  readOnly = false,
   viewerRole = "PARENT",
   viewScope = "GENERAL",
   currentClassId,
@@ -160,6 +165,7 @@ export function FamilyFeedPage({
   useDemoSeed = true,
 }: Props) {
   const { t, locale } = useTranslation();
+  const canCompose = allowComposer && !readOnly;
   const editorRef = useRef<RichTextEditorRef | null>(null);
   const editEditorRef = useRef<RichTextEditorRef | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -1028,7 +1034,7 @@ export function FamilyFeedPage({
                     .replace("{childFullName}", childFullName)}
               </h2>
             </div>
-            {allowComposer ? (
+            {canCompose ? (
               <div className="grid gap-2 min-[360px]:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
                 <Button
                   variant={
@@ -1239,7 +1245,7 @@ export function FamilyFeedPage({
         </div>
       </section>
 
-      {allowComposer && openComposerMode ? (
+      {canCompose && openComposerMode ? (
         <section className="rounded-card border border-border bg-surface p-4 shadow-card">
           <div className="grid gap-3">
             <div
@@ -1539,7 +1545,7 @@ export function FamilyFeedPage({
                       <button
                         key={option.id}
                         type="button"
-                        disabled={Boolean(post.poll?.votedOptionId)}
+                        disabled={Boolean(post.poll?.votedOptionId) || readOnly}
                         onClick={() => vote(post.id, option.id)}
                         className={`relative overflow-hidden rounded-card border px-3 py-2 text-left text-sm transition ${
                           selected
@@ -1702,6 +1708,7 @@ export function FamilyFeedPage({
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
+                    disabled={readOnly}
                     onClick={() => toggleLike(post.id)}
                     aria-label={
                       post.likedByViewer
@@ -1718,7 +1725,7 @@ export function FamilyFeedPage({
                       post.likedByViewer
                         ? "border-rose-300 bg-rose-100 text-rose-700"
                         : "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300"
-                    }`}
+                    } ${readOnly ? "cursor-not-allowed opacity-70" : ""}`}
                   >
                     <Heart className="h-3.5 w-3.5" />
                     <span>{post.likesCount}</span>
@@ -1746,22 +1753,24 @@ export function FamilyFeedPage({
                     <MessageCircle className="h-3.5 w-3.5" />
                     <span>{post.comments.length}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleCommentForm(post.id)}
-                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-semibold shadow-sm transition ${
-                      commentFormOpenByPostId[post.id]
-                        ? "border-emerald-300 bg-emerald-100 text-emerald-700"
-                        : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300"
-                    }`}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    {commentFormOpenByPostId[post.id]
-                      ? t("feed.reactions.hideReaction")
-                      : t("feed.reactions.react")}
-                  </button>
+                  {!readOnly ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleCommentForm(post.id)}
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-semibold shadow-sm transition ${
+                        commentFormOpenByPostId[post.id]
+                          ? "border-emerald-300 bg-emerald-100 text-emerald-700"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300"
+                      }`}
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      {commentFormOpenByPostId[post.id]
+                        ? t("feed.reactions.hideReaction")
+                        : t("feed.reactions.react")}
+                    </button>
+                  ) : null}
                 </div>
-                {post.canManage ? (
+                {post.canManage && !readOnly ? (
                   <div className="inline-flex items-center gap-2">
                     <button
                       type="button"
@@ -1812,7 +1821,7 @@ export function FamilyFeedPage({
                 </div>
               ) : null}
 
-              {commentFormOpenByPostId[post.id] ? (
+              {!readOnly && commentFormOpenByPostId[post.id] ? (
                 <div className="grid gap-2">
                   <FormTextarea
                     value={commentInputByPostId[post.id] ?? ""}

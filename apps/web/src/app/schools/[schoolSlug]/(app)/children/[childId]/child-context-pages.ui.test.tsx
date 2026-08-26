@@ -384,5 +384,14 @@ describe("Child context web pages", () => {
         }),
       ).toBe(true);
     });
+
+    // Un parent consulte le fil de classe de son enfant en lecture seule :
+    // aucun bouton de composition ne doit apparaitre.
+    expect(
+      screen.queryByRole("button", { name: "Publier une info" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Realiser un sondage" }),
+    ).not.toBeInTheDocument();
   });
 });

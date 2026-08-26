@@ -23,6 +23,7 @@ const makePrismaMock = () => ({
   },
   studentTermReport: {
     findFirst: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
   },
   enrollment: {
     findUnique: jest.fn(),
@@ -34,6 +35,7 @@ const makePrismaMock = () => ({
   },
   schoolYear: {
     findFirst: jest.fn().mockResolvedValue({ id: TARGET_YEAR_ID }),
+    findUnique: jest.fn().mockResolvedValue({ startsAt: null }),
     upsert: jest
       .fn()
       .mockImplementation(({ create }) =>
@@ -46,6 +48,11 @@ const makePrismaMock = () => ({
     create: jest.fn(),
   },
   supplyList: {
+    findMany: jest.fn().mockResolvedValue([]),
+    findFirst: jest.fn().mockResolvedValue(null),
+    create: jest.fn(),
+  },
+  reinscriptionDeadline: {
     findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn().mockResolvedValue(null),
     create: jest.fn(),
@@ -397,6 +404,141 @@ describe("EnrollmentsService", () => {
       );
 
       expect(prisma.supplyList.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("provisionReinscriptionDeadlinesForNewYear", () => {
+    it("ne fait rien si annee source et annee cible sont identiques", async () => {
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        SOURCE_YEAR_ID,
+      );
+      expect(prisma.reinscriptionDeadline.findMany).not.toHaveBeenCalled();
+    });
+
+    it("copie chaque deadline de l'annee source vers l'annee cible en decalant la date d'un an", async () => {
+      prisma.reinscriptionDeadline.findMany.mockResolvedValue([
+        {
+          id: "deadline-src-1",
+          academicLevelId: "level-ce2",
+          deadline: new Date("2025-07-15T00:00:00.000Z"),
+        },
+      ]);
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue(null);
+
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.reinscriptionDeadline.create).toHaveBeenCalledWith({
+        data: {
+          schoolId: SCHOOL_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          academicLevelId: "level-ce2",
+          deadline: new Date("2026-07-15T00:00:00.000Z"),
+        },
+      });
+    });
+
+    it("est idempotente : ne recree rien si une deadline existe deja pour ce niveau sur l'annee cible", async () => {
+      prisma.reinscriptionDeadline.findMany.mockResolvedValue([
+        {
+          id: "deadline-src-1",
+          academicLevelId: "level-ce2",
+          deadline: new Date("2025-07-15T00:00:00.000Z"),
+        },
+      ]);
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue({
+        id: "already-there",
+      });
+
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.reinscriptionDeadline.create).not.toHaveBeenCalled();
+    });
+
+    it("pose une deadline par defaut pour un niveau utilise a l'annee source mais sans aucune deadline configuree, avant la rentree cible connue", async () => {
+      prisma.reinscriptionDeadline.findMany.mockResolvedValue([]);
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue(null);
+      prisma.studentTermReport.findMany.mockResolvedValue([
+        { nextAcademicLevelId: "level-ce2" },
+      ]);
+      prisma.schoolYear.findUnique.mockResolvedValue({
+        startsAt: new Date("2026-09-15T00:00:00.000Z"),
+      });
+      prisma.school.findUnique.mockResolvedValue({
+        reinscriptionDeadlineDaysBeforeStart: 20,
+      });
+
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.reinscriptionDeadline.create).toHaveBeenCalledWith({
+        data: {
+          schoolId: SCHOOL_ID,
+          schoolYearId: TARGET_YEAR_ID,
+          academicLevelId: "level-ce2",
+          deadline: new Date("2026-08-26T00:00:00.000Z"),
+        },
+      });
+    });
+
+    it("pose une deadline par defaut a N jours a partir d'aujourd'hui quand la rentree cible n'est pas encore connue", async () => {
+      prisma.reinscriptionDeadline.findMany.mockResolvedValue([]);
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue(null);
+      prisma.studentTermReport.findMany.mockResolvedValue([
+        { nextAcademicLevelId: "level-ce2" },
+      ]);
+      prisma.schoolYear.findUnique.mockResolvedValue({ startsAt: null });
+      prisma.school.findUnique.mockResolvedValue({
+        reinscriptionDeadlineDaysBeforeStart: 30,
+      });
+
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.reinscriptionDeadline.create).toHaveBeenCalledTimes(1);
+      const call = prisma.reinscriptionDeadline.create.mock.calls[0][0];
+      expect(call.data.academicLevelId).toBe("level-ce2");
+      const daysFromNow = Math.round(
+        (call.data.deadline.getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+      );
+      expect(daysFromNow).toBe(30);
+    });
+
+    it("ne pose pas de deadline par defaut pour un niveau deja copie depuis l'annee source", async () => {
+      prisma.reinscriptionDeadline.findMany.mockResolvedValue([
+        {
+          id: "deadline-src-1",
+          academicLevelId: "level-ce2",
+          deadline: new Date("2025-07-15T00:00:00.000Z"),
+        },
+      ]);
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue(null);
+      prisma.studentTermReport.findMany.mockResolvedValue([
+        { nextAcademicLevelId: "level-ce2" },
+      ]);
+
+      await service.provisionReinscriptionDeadlinesForNewYear(
+        SCHOOL_ID,
+        SOURCE_YEAR_ID,
+        TARGET_YEAR_ID,
+      );
+
+      expect(prisma.reinscriptionDeadline.create).toHaveBeenCalledTimes(1);
     });
   });
 });

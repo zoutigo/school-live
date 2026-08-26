@@ -37,11 +37,20 @@ const WALLET_ONE_CHILD_READY = {
   transactions: [],
   children: [
     {
-      student: { id: "student-1", firstName: "Remi", lastName: "Ntamack" },
+      student: {
+        id: "student-1",
+        firstName: "Remi",
+        lastName: "Ntamack",
+        dateOfBirth: "2015-04-12",
+      },
       status: "READY_TO_REINSCRIBE",
       targetSchoolYearId: "sy-2026",
       targetSchoolYearLabel: "2026-2027",
       requiredAmount: 30000,
+      previousClassLabel: "CE1-B",
+      previousLevelLabel: "CE1",
+      nextAcademicLevelLabel: "CE2",
+      reinscriptionDeadline: "2099-07-15",
     },
   ],
 };
@@ -157,31 +166,82 @@ describe("Reinscription (parent) page", () => {
     expect(screen.getByText(/Pret\(e\) a etre reinscrit/)).toBeInTheDocument();
   });
 
-  it("credite le porte-monnaie avec le jeton CSRF", async () => {
-    const fetchMock = mockFetch({
+  it("affiche la date de naissance, l'ancien et le nouveau niveau, et le compte a rebours", async () => {
+    mockFetch(WALLET_ONE_CHILD_READY);
+    render(<ReinscriptionPage />);
+
+    await screen.findByText("Remi Ntamack");
+    expect(screen.getByText(/12 avr\. 2015/)).toBeInTheDocument();
+    expect(screen.getByText(/CE1/)).toBeInTheDocument();
+    expect(screen.getByText(/CE2/)).toBeInTheDocument();
+    expect(screen.getByText(/jour\(s\) restant\(s\)/)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("insufficient-balance-student-1"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("affiche un message de solde insuffisant en permanence quand le wallet ne couvre pas le montant requis", async () => {
+    mockFetch({
+      ...WALLET_ONE_CHILD_READY,
+      balance: 1000,
+    });
+    render(<ReinscriptionPage />);
+
+    await screen.findByText("Remi Ntamack");
+    expect(
+      await screen.findByTestId("insufficient-balance-student-1"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("pay-and-reinscribe-student-1")).toBeDisabled();
+  });
+
+  it("recolore la card, masque le CTA et suggere la liste des fournitures une fois reinscrit", async () => {
+    mockFetch({
       walletId: "wallet-1",
       balance: 0,
+      transactions: [],
+      children: [
+        {
+          student: {
+            id: "student-1",
+            firstName: "Remi",
+            lastName: "Ntamack",
+          },
+          status: "ALREADY_REINSCRIBED",
+          targetSchoolYearId: "sy-2026",
+          targetSchoolYearLabel: "2026-2027",
+          previousLevelLabel: "CE1",
+          nextAcademicLevelLabel: "CE2",
+        },
+      ],
+    });
+    render(<ReinscriptionPage />);
+
+    await screen.findByText("Remi Ntamack");
+    expect(screen.getByText("Inscription confirmee !")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("pay-and-reinscribe-student-1"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("view-supplies-student-1"));
+    expect(await screen.findByText(/Cahier 100 pages/)).toBeInTheDocument();
+  });
+
+  it("affiche le solde du porte-monnaie avec un lien vers Situation financiere pour le recharger", async () => {
+    mockFetch({
+      walletId: "wallet-1",
+      balance: 15000,
       transactions: [],
       children: [],
     });
     render(<ReinscriptionPage />);
     await screen.findByText("Mes enfants");
 
-    fireEvent.change(screen.getByLabelText("Montant a crediter"), {
-      target: { value: "10000" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Crediter" }));
-
-    await waitFor(() => {
-      const postCall = fetchMock.mock.calls.find(
-        ([url, init]) =>
-          String(url).includes("/me/finance/wallet/top-up") &&
-          init?.method === "POST",
-      );
-      expect(postCall).toBeTruthy();
-      const headers = postCall?.[1]?.headers as Record<string, string>;
-      expect(headers["X-CSRF-Token"]).toBe("csrf-token-test");
-    });
+    expect(screen.getByTestId("wallet-summary-card")).toBeInTheDocument();
+    const link = screen.getByTestId("wallet-summary-topup-link");
+    expect(link).toHaveAttribute(
+      "href",
+      "/schools/college-vogt/situation-financiere",
+    );
   });
 
   it('clique sur "Je paie et je reinscris" et confirme la reinscription', async () => {

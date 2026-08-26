@@ -11,6 +11,8 @@ const fr: TranslationDict = {
   "feed.errors.invalidPoll": "Sondage invalide.",
   "feed.errors.pollOptionNotFound": "Option de vote introuvable.",
   "feed.errors.accessDenied": "Acces refuse.",
+  "feed.errors.parentClassActionNotAllowed":
+    "Un parent peut consulter le fil de classe de son enfant mais ne peut pas y publier, commenter, reagir ou voter.",
   "feed.errors.manageNotAllowed":
     "Seul l'auteur, un staff/enseignant moderateur, ou le SCHOOL_ADMIN sur un post staff peut modifier ou supprimer cette publication.",
   "feed.errors.studentCanOnlyPostForOwnClass":
@@ -65,6 +67,8 @@ const en: TranslationDict = {
   "feed.errors.invalidPoll": "Invalid poll.",
   "feed.errors.pollOptionNotFound": "Poll option not found.",
   "feed.errors.accessDenied": "Access denied.",
+  "feed.errors.parentClassActionNotAllowed":
+    "A parent can view their child's class feed but cannot post, comment, react, or vote there.",
   "feed.errors.manageNotAllowed":
     "Only the author, a staff/teacher moderator, or the SCHOOL_ADMIN on a staff post can edit or delete this post.",
   "feed.errors.studentCanOnlyPostForOwnClass":

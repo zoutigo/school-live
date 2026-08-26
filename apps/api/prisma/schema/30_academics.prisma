@@ -37,6 +37,7 @@ model SchoolYear {
   feeSchedules        FeeSchedule[]
   studentPayments     StudentPayment[]
   supplyLists         SupplyList[]
+  reinscriptionDeadlines ReinscriptionDeadline[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -62,6 +63,7 @@ model AcademicLevel {
   termReportsTargetingThisLevel StudentTermReport[] @relation("StudentTermReportNextLevel")
   feeSchedules FeeSchedule[]
   supplyLists SupplyList[]
+  reinscriptionDeadlines ReinscriptionDeadline[]
   enrollmentsTargetingThisLevel Enrollment[] @relation("EnrollmentAcademicLevel")
   schoolActivations SchoolAcademicLevel[]
 

@@ -2,35 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import {
-  Archive,
-  ArchiveRestore,
-  FileText,
-  Forward,
-  Inbox,
-  Mail,
-  MailOpen,
-  Reply,
-  Send,
-} from "lucide-react";
+import { Archive, FileText, Inbox, Send } from "lucide-react";
 import { Card } from "../../../../../../../components/ui/card";
 import {
-  archiveSchoolMessage,
-  deleteSchoolMessage,
   getSchoolMessage,
   getSchoolMessagesUnreadCount,
   listSchoolMessages,
   markSchoolMessageRead,
 } from "../../../../../../../components/messaging/messaging-api";
 import { MessagingAttachmentPreviewModal } from "../../../../../../../components/messaging/messaging-attachment-preview-modal";
-import { buildComposeQueryFromMessage } from "../../../../../../../components/messaging/messaging-compose-logic";
-import { MessagingMessageActions } from "../../../../../../../components/messaging/messaging-message-actions";
 import { MessagingFoldersPanel } from "../../../../../../../components/messaging/messaging-folders-panel";
 import { MessagingMessagesList } from "../../../../../../../components/messaging/messaging-messages-list";
 import { MessagingReader } from "../../../../../../../components/messaging/messaging-reader";
 import { MessagingToolbar } from "../../../../../../../components/messaging/messaging-toolbar";
-import { ConfirmDialog } from "../../../../../../../components/ui/confirm-dialog";
-import { ActionIconButton } from "../../../../../../../components/ui/action-icon-button";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
 import type { TranslateFn } from "../../../../../../../i18n/useTranslation";
 import { OnboardingTarget } from "../../../../../../../components/onboarding/onboarding-target";
@@ -113,8 +97,6 @@ export default function ChildMessageriePage() {
     useState<MessagingMessage | null>(null);
   const [previewAttachment, setPreviewAttachment] =
     useState<MessageAttachment | null>(null);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!schoolSlug) {
@@ -303,101 +285,6 @@ export default function ChildMessageriePage() {
     setSelectedMessageId(messageId);
   }
 
-  async function handleArchiveToggle() {
-    if (!schoolSlug || !selectedMessageId) {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      const archiveFlag = folder !== "archive";
-      await archiveSchoolMessage(schoolSlug, selectedMessageId, archiveFlag);
-      setMessages((prev) =>
-        prev.filter((entry) => entry.id !== selectedMessageId),
-      );
-      setSelectedMessageId(null);
-      setSelectedMessage(null);
-      window.dispatchEvent(new Event("messaging:updated"));
-      await loadMessages(schoolSlug, folder, search);
-    } catch {
-      setError(t("messaging.page.archiveError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!schoolSlug || !selectedMessageId) {
-      return;
-    }
-    setActionBusy(true);
-    setError(null);
-    try {
-      await deleteSchoolMessage(schoolSlug, selectedMessageId);
-      setMessages((prev) =>
-        prev.filter((entry) => entry.id !== selectedMessageId),
-      );
-      setSelectedMessageId(null);
-      setSelectedMessage(null);
-      setDeleteConfirmOpen(false);
-      window.dispatchEvent(new Event("messaging:updated"));
-      await loadMessages(schoolSlug, folder, search);
-    } catch {
-      setError(t("messaging.page.deleteError"));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function handleToggleRead(messageId: string, read: boolean) {
-    if (!schoolSlug) {
-      return;
-    }
-    try {
-      await markSchoolMessageRead(schoolSlug, messageId, read);
-      setMessages((prev) =>
-        prev.map((entry) =>
-          entry.id === messageId ? { ...entry, unread: !read } : entry,
-        ),
-      );
-      if (selectedMessageId === messageId) {
-        setSelectedMessage((prev) =>
-          prev ? { ...prev, unread: !read } : prev,
-        );
-      }
-      window.dispatchEvent(new Event("messaging:updated"));
-    } catch {
-      setError(t("messaging.page.toggleReadError"));
-    }
-  }
-
-  async function handleRestoreFromArchive(messageId: string) {
-    if (!schoolSlug) {
-      return;
-    }
-    try {
-      await archiveSchoolMessage(schoolSlug, messageId, false);
-      setMessages((prev) => prev.filter((entry) => entry.id !== messageId));
-      if (selectedMessageId === messageId) {
-        setSelectedMessageId(null);
-        setSelectedMessage(null);
-      }
-      window.dispatchEvent(new Event("messaging:updated"));
-    } catch {
-      setError(t("messaging.page.restoreError"));
-    }
-  }
-
-  function openComposeFromMessage(
-    mode: "reply" | "forward",
-    message: MessagingMessage,
-  ) {
-    const query = buildComposeQueryFromMessage(mode, message, t);
-    router.push(
-      `/schools/${schoolSlug}/messagerie/nouveau?${query.toString()}`,
-    );
-  }
-
   usePageHelp({
     title: t("messaging.help.title"),
     sections: [
@@ -406,8 +293,8 @@ export default function ChildMessageriePage() {
         body: [t("messaging.help.section1Body")],
       },
       {
-        title: t("messaging.help.section2Title"),
-        body: [t("messaging.help.section2Body")],
+        title: t("messaging.help.childReadOnlyTitle"),
+        body: [t("messaging.help.childReadOnlyBody")],
       },
     ],
   });
@@ -450,14 +337,13 @@ export default function ChildMessageriePage() {
                     inboxUnreadCount={inboxUnreadCount}
                     draftsCount={draftsCount}
                     archiveCount={archiveCount}
-                    showComposeButton
-                    onCompose={() =>
-                      router.push(`/schools/${schoolSlug}/messagerie/nouveau`)
-                    }
                   />
                 </OnboardingTarget>
               </div>
               <div className="lg:min-h-0">
+                {/* Consultation seule : un parent qui navigue via le menu
+                    d'un enfant ne peut ni composer, ni repondre/transferer,
+                    ni marquer lu/non lu, ni archiver, ni supprimer. */}
                 <MessagingMessagesList
                   panelLabel={getFolderLabel(folder, t)}
                   folder={folder}
@@ -466,37 +352,6 @@ export default function ChildMessageriePage() {
                   onSelectMessage={handleMessageClick}
                   unreadOnly={unreadOnly}
                   onUnreadOnlyChange={setUnreadOnly}
-                  renderActions={(message) => {
-                    if (folder === "inbox") {
-                      return (
-                        <ActionIconButton
-                          icon={message.unread ? MailOpen : Mail}
-                          label={
-                            message.unread
-                              ? t("messaging.actions.markAsRead")
-                              : t("messaging.actions.markAsUnread")
-                          }
-                          onClick={() =>
-                            void handleToggleRead(message.id, message.unread)
-                          }
-                          variant="neutral"
-                        />
-                      );
-                    }
-                    if (folder === "archive") {
-                      return (
-                        <ActionIconButton
-                          icon={ArchiveRestore}
-                          label={t("messaging.actions.restoreFromArchive")}
-                          onClick={() =>
-                            void handleRestoreFromArchive(message.id)
-                          }
-                          variant="primary"
-                        />
-                      );
-                    }
-                    return null;
-                  }}
                 />
               </div>
               <div className="hidden gap-2 lg:grid lg:min-h-0">
@@ -504,50 +359,6 @@ export default function ChildMessageriePage() {
                   desktopOnly
                   message={selectedMessage}
                   onOpenAttachment={setPreviewAttachment}
-                  topActions={
-                    selectedMessage ? (
-                      <div className="flex w-full flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openComposeFromMessage("reply", selectedMessage)
-                            }
-                            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
-                          >
-                            <Reply className="h-4 w-4" />
-                            {t("messaging.detail.reply")}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openComposeFromMessage("forward", selectedMessage)
-                            }
-                            className="inline-flex items-center gap-2 rounded-card bg-primary px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary/90"
-                          >
-                            <Forward className="h-4 w-4" />
-                            {t("messaging.detail.forward")}
-                          </button>
-                        </div>
-                        <MessagingMessageActions
-                          archivedView={folder === "archive"}
-                          busy={actionBusy}
-                          onArchiveToggle={() => void handleArchiveToggle()}
-                          onDelete={() => setDeleteConfirmOpen(true)}
-                          unread={selectedMessage.unread}
-                          onToggleRead={
-                            folder === "inbox" && selectedMessageId
-                              ? () =>
-                                  void handleToggleRead(
-                                    selectedMessageId,
-                                    selectedMessage.unread,
-                                  )
-                              : undefined
-                          }
-                        />
-                      </div>
-                    ) : undefined
-                  }
                 />
               </div>
             </div>
@@ -563,17 +374,6 @@ export default function ChildMessageriePage() {
       <MessagingAttachmentPreviewModal
         attachment={previewAttachment}
         onClose={() => setPreviewAttachment(null)}
-      />
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        title={t("messaging.page.deleteConfirmTitle")}
-        message={t("messaging.page.deleteConfirmMessage")}
-        confirmLabel={t("messaging.page.deleteConfirmAction")}
-        loading={actionBusy}
-        onCancel={() => setDeleteConfirmOpen(false)}
-        onConfirm={() => {
-          void handleDelete();
-        }}
       />
     </div>
   );

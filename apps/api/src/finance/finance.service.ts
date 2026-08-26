@@ -9,6 +9,8 @@ import type { UpsertFeeScheduleDto } from "./dto/upsert-fee-schedule.dto.js";
 import type { RecordDirectPaymentDto } from "./dto/record-direct-payment.dto.js";
 import type { ListFeeSchedulesQueryDto } from "./dto/list-fee-schedules-query.dto.js";
 import type { UpdateFinanceSettingsDto } from "./dto/update-finance-settings.dto.js";
+import type { UpsertReinscriptionDeadlineDto } from "./dto/upsert-reinscription-deadline.dto.js";
+import type { ListReinscriptionDeadlinesQueryDto } from "./dto/list-reinscription-deadlines-query.dto.js";
 
 @Injectable()
 export class FinanceService {
@@ -20,7 +22,10 @@ export class FinanceService {
   async getFinanceSettings(schoolId: string) {
     return this.prisma.school.findUniqueOrThrow({
       where: { id: schoolId },
-      select: { reinscriptionThresholdPolicy: true },
+      select: {
+        reinscriptionThresholdPolicy: true,
+        reinscriptionDeadlineDaysBeforeStart: true,
+      },
     });
   }
 
@@ -32,8 +37,13 @@ export class FinanceService {
       where: { id: schoolId },
       data: {
         reinscriptionThresholdPolicy: payload.reinscriptionThresholdPolicy,
+        reinscriptionDeadlineDaysBeforeStart:
+          payload.reinscriptionDeadlineDaysBeforeStart,
       },
-      select: { reinscriptionThresholdPolicy: true },
+      select: {
+        reinscriptionThresholdPolicy: true,
+        reinscriptionDeadlineDaysBeforeStart: true,
+      },
     });
   }
 
@@ -140,6 +150,91 @@ export class FinanceService {
       throw new NotFoundException("Echeancier introuvable");
     }
     await this.prisma.feeSchedule.delete({ where: { id: feeSchedule.id } });
+    return { success: true };
+  }
+
+  async listReinscriptionDeadlines(
+    schoolId: string,
+    query: ListReinscriptionDeadlinesQueryDto,
+  ) {
+    return this.prisma.reinscriptionDeadline.findMany({
+      where: {
+        schoolId,
+        schoolYearId: query.schoolYearId,
+        academicLevelId: query.academicLevelId,
+      },
+      include: {
+        academicLevel: { select: { id: true, label: true, code: true } },
+        schoolYear: { select: { id: true, label: true } },
+      },
+      orderBy: [{ schoolYearId: "asc" }, { academicLevelId: "asc" }],
+    });
+  }
+
+  async upsertReinscriptionDeadline(
+    schoolId: string,
+    payload: UpsertReinscriptionDeadlineDto,
+  ) {
+    const schoolYear = await this.prisma.schoolYear.findFirst({
+      where: { id: payload.schoolYearId, schoolId },
+      select: { id: true },
+    });
+    if (!schoolYear) {
+      throw new NotFoundException(
+        "Annee scolaire introuvable pour cette ecole",
+      );
+    }
+
+    const academicLevel = await this.prisma.academicLevel.findFirst({
+      where: {
+        id: payload.academicLevelId,
+        OR: [{ schoolId }, { schoolId: null }],
+      },
+      select: { id: true },
+    });
+    if (!academicLevel) {
+      throw new NotFoundException(
+        "Niveau academique introuvable pour cette ecole",
+      );
+    }
+
+    const existing = await this.prisma.reinscriptionDeadline.findFirst({
+      where: {
+        schoolId,
+        schoolYearId: payload.schoolYearId,
+        academicLevelId: payload.academicLevelId,
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return this.prisma.reinscriptionDeadline.update({
+        where: { id: existing.id },
+        data: { deadline: new Date(payload.deadline) },
+      });
+    }
+
+    return this.prisma.reinscriptionDeadline.create({
+      data: {
+        schoolId,
+        schoolYearId: payload.schoolYearId,
+        academicLevelId: payload.academicLevelId,
+        deadline: new Date(payload.deadline),
+      },
+    });
+  }
+
+  async deleteReinscriptionDeadline(schoolId: string, deadlineId: string) {
+    const deadline = await this.prisma.reinscriptionDeadline.findFirst({
+      where: { id: deadlineId, schoolId },
+      select: { id: true },
+    });
+    if (!deadline) {
+      throw new NotFoundException("Date limite introuvable");
+    }
+    await this.prisma.reinscriptionDeadline.delete({
+      where: { id: deadline.id },
+    });
     return { success: true };
   }
 
@@ -479,7 +574,7 @@ export class FinanceService {
     return this.prisma.schoolYear.findFirst({
       where: { schoolId, id: { not: activeSchoolYearId } },
       orderBy: { createdAt: "desc" },
-      select: { id: true, label: true },
+      select: { id: true, label: true, startsAt: true },
     });
   }
 
@@ -495,7 +590,14 @@ export class FinanceService {
       this.prisma.parentStudent.findMany({
         where: { schoolId, parentUserId },
         select: {
-          student: { select: { id: true, firstName: true, lastName: true } },
+          student: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              dateOfBirth: true,
+            },
+          },
         },
       }),
     ]);
@@ -515,6 +617,28 @@ export class FinanceService {
           };
         }
 
+        const previousEnrollment = await this.prisma.enrollment.findUnique({
+          where: {
+            schoolYearId_studentId: {
+              schoolYearId: decision.sourceSchoolYearId,
+              studentId: student.id,
+            },
+          },
+          select: {
+            class: { select: { name: true } },
+            academicLevel: { select: { label: true } },
+          },
+        });
+        const previousClassLabel = previousEnrollment?.class?.name ?? null;
+        const previousLevelLabel =
+          previousEnrollment?.academicLevel?.label ?? null;
+
+        const nextAcademicLevel = await this.prisma.academicLevel.findUnique({
+          where: { id: decision.nextAcademicLevelId },
+          select: { label: true },
+        });
+        const nextAcademicLevelLabel = nextAcademicLevel?.label ?? null;
+
         const nextYear = await this.resolveLikelyNextSchoolYear(
           schoolId,
           decision.sourceSchoolYearId,
@@ -527,6 +651,9 @@ export class FinanceService {
           return {
             student,
             status: "NEXT_YEAR_NOT_OPEN" as const,
+            previousClassLabel,
+            previousLevelLabel,
+            nextAcademicLevelLabel,
           };
         }
 
@@ -545,6 +672,10 @@ export class FinanceService {
             status: "ALREADY_REINSCRIBED" as const,
             targetSchoolYearId: nextYear.id,
             targetSchoolYearLabel: nextYear.label,
+            targetSchoolYearStartsAt: nextYear.startsAt ?? null,
+            previousClassLabel,
+            previousLevelLabel,
+            nextAcademicLevelLabel,
           };
         }
 
@@ -568,12 +699,28 @@ export class FinanceService {
           // ne peut pas encore reinscrire depuis son wallet.
         }
 
+        const reinscriptionDeadline =
+          await this.prisma.reinscriptionDeadline.findUnique({
+            where: {
+              schoolYearId_academicLevelId: {
+                schoolYearId: nextYear.id,
+                academicLevelId: decision.nextAcademicLevelId,
+              },
+            },
+            select: { deadline: true },
+          });
+
         return {
           student,
           status: "READY_TO_REINSCRIBE" as const,
           targetSchoolYearId: nextYear.id,
           targetSchoolYearLabel: nextYear.label,
+          targetSchoolYearStartsAt: nextYear.startsAt ?? null,
           requiredAmount,
+          previousClassLabel,
+          previousLevelLabel,
+          nextAcademicLevelLabel,
+          reinscriptionDeadline: reinscriptionDeadline?.deadline ?? null,
         };
       }),
     );

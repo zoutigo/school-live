@@ -23,6 +23,8 @@ import { ListFeeSchedulesQueryDto } from "./dto/list-fee-schedules-query.dto.js"
 import { TopUpWalletDto } from "./dto/top-up-wallet.dto.js";
 import { PayAndReinscribeDto } from "./dto/pay-and-reinscribe.dto.js";
 import { UpdateFinanceSettingsDto } from "./dto/update-finance-settings.dto.js";
+import { UpsertReinscriptionDeadlineDto } from "./dto/upsert-reinscription-deadline.dto.js";
+import { ListReinscriptionDeadlinesQueryDto } from "./dto/list-reinscription-deadlines-query.dto.js";
 
 const FINANCE_ADMIN_ROLES = [
   "SCHOOL_ADMIN",
@@ -73,6 +75,33 @@ export class FinanceController {
     @Param("feeScheduleId") feeScheduleId: string,
   ) {
     return this.financeService.deleteFeeSchedule(schoolId, feeScheduleId);
+  }
+
+  @Get("reinscription-deadlines")
+  listReinscriptionDeadlines(
+    @CurrentSchoolId() schoolId: string,
+    @Query() query: ListReinscriptionDeadlinesQueryDto,
+  ) {
+    return this.financeService.listReinscriptionDeadlines(schoolId, query);
+  }
+
+  @Post("reinscription-deadlines")
+  upsertReinscriptionDeadline(
+    @CurrentSchoolId() schoolId: string,
+    @Body() payload: UpsertReinscriptionDeadlineDto,
+  ) {
+    return this.financeService.upsertReinscriptionDeadline(schoolId, payload);
+  }
+
+  @Delete("reinscription-deadlines/:deadlineId")
+  deleteReinscriptionDeadline(
+    @CurrentSchoolId() schoolId: string,
+    @Param("deadlineId") deadlineId: string,
+  ) {
+    return this.financeService.deleteReinscriptionDeadline(
+      schoolId,
+      deadlineId,
+    );
   }
 
   @Get("students/:studentId/summary")

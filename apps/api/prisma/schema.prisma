@@ -355,6 +355,7 @@ model School {
   ownership          String?
   foundedYear        Int?
   reinscriptionThresholdPolicy ReinscriptionThresholdPolicy @default(FIRST_INSTALLMENT)
+  reinscriptionDeadlineDaysBeforeStart Int @default(30)
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   activeSchoolYear   SchoolYear?           @relation("ActiveSchoolYear", fields: [activeSchoolYearId], references: [id], onDelete: SetNull)
@@ -416,6 +417,7 @@ model School {
   usersWithActiveSchool User[]              @relation("UserActiveSchool")
   feeSchedules       FeeSchedule[]
   feeInstallments    FeeInstallment[]
+  reinscriptionDeadlines ReinscriptionDeadline[]
   supplyLists        SupplyList[]
   supplyItems        SupplyItem[]
   wallets            Wallet[]
@@ -866,6 +868,7 @@ model SchoolYear {
   feeSchedules        FeeSchedule[]
   studentPayments     StudentPayment[]
   supplyLists         SupplyList[]
+  reinscriptionDeadlines ReinscriptionDeadline[]
 
   @@unique([schoolId, label])
   @@index([schoolId])
@@ -891,6 +894,7 @@ model AcademicLevel {
   termReportsTargetingThisLevel StudentTermReport[] @relation("StudentTermReportNextLevel")
   feeSchedules FeeSchedule[]
   supplyLists SupplyList[]
+  reinscriptionDeadlines ReinscriptionDeadline[]
   enrollmentsTargetingThisLevel Enrollment[] @relation("EnrollmentAcademicLevel")
   schoolActivations SchoolAcademicLevel[]
 
@@ -1921,6 +1925,23 @@ model FeeInstallment {
   @@unique([feeScheduleId, rank])
   @@index([schoolId])
   @@index([feeScheduleId])
+}
+
+model ReinscriptionDeadline {
+  id              String        @id @default(cuid())
+  schoolId        String
+  schoolYearId    String
+  academicLevelId String
+  deadline        DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear    @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  academicLevel   AcademicLevel @relation(fields: [academicLevelId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolYearId, academicLevelId])
+  @@index([schoolId])
+  @@index([academicLevelId])
 }
 
 model SupplyList {

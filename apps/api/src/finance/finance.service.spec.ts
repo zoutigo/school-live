@@ -43,11 +43,24 @@ const makePrismaMock = () => {
     },
     student: { findFirst: jest.fn().mockResolvedValue({ id: STUDENT_ID }) },
     schoolYear: {
-      findFirst: jest
-        .fn()
-        .mockResolvedValue({ id: TARGET_YEAR_ID, label: "2026-2027" }),
+      findFirst: jest.fn().mockResolvedValue({
+        id: TARGET_YEAR_ID,
+        label: "2026-2027",
+        startsAt: new Date("2026-09-02"),
+      }),
     },
-    academicLevel: { findFirst: jest.fn().mockResolvedValue({ id: LEVEL_ID }) },
+    academicLevel: {
+      findFirst: jest.fn().mockResolvedValue({ id: LEVEL_ID }),
+      findUnique: jest.fn().mockResolvedValue({ label: "CE2" }),
+    },
+    reinscriptionDeadline: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     feeSchedule: {
       findFirst: jest.fn().mockResolvedValue(FEE_SCHEDULE),
       findUniqueOrThrow: jest.fn(),
@@ -357,6 +370,9 @@ describe("FinanceService", () => {
         {
           student: { id: STUDENT_ID, firstName: "Remi", lastName: "Ntamack" },
           status: "NEXT_YEAR_NOT_OPEN",
+          previousClassLabel: null,
+          previousLevelLabel: null,
+          nextAcademicLevelLabel: "CE2",
         },
       ]);
     });
@@ -379,6 +395,7 @@ describe("FinanceService", () => {
       expect(result.children[0]).toMatchObject({
         status: "READY_TO_REINSCRIBE",
         targetSchoolYearId: TARGET_YEAR_ID,
+        targetSchoolYearStartsAt: new Date("2026-09-02"),
         requiredAmount: 30000,
       });
     });
@@ -397,6 +414,132 @@ describe("FinanceService", () => {
         status: "READY_TO_REINSCRIBE",
         requiredAmount: 40000,
       });
+    });
+
+    it("expose l'ancienne classe/niveau, le niveau cible et la deadline pour un enfant pret a etre reinscrit", async () => {
+      prisma.enrollment.findUnique
+        .mockResolvedValueOnce({
+          class: { name: "CE1-B" },
+          academicLevel: { label: "CE1" },
+        })
+        .mockResolvedValueOnce(null);
+      prisma.academicLevel.findUnique.mockResolvedValue({ label: "CE2" });
+      prisma.reinscriptionDeadline.findUnique.mockResolvedValue({
+        deadline: new Date("2026-08-15"),
+      });
+      const result = await service.getWalletSummary(SCHOOL_ID, "parent-1");
+      expect(result.children[0]).toMatchObject({
+        status: "READY_TO_REINSCRIBE",
+        previousClassLabel: "CE1-B",
+        previousLevelLabel: "CE1",
+        nextAcademicLevelLabel: "CE2",
+        reinscriptionDeadline: new Date("2026-08-15"),
+      });
+    });
+
+    it("expose reinscriptionDeadline a null si aucune deadline n'est configuree pour ce niveau/annee", async () => {
+      prisma.enrollment.findUnique.mockResolvedValue(null);
+      prisma.reinscriptionDeadline.findUnique.mockResolvedValue(null);
+      const result = await service.getWalletSummary(SCHOOL_ID, "parent-1");
+      expect(result.children[0]).toMatchObject({
+        status: "READY_TO_REINSCRIBE",
+        reinscriptionDeadline: null,
+      });
+    });
+  });
+
+  describe("reinscription deadlines (admin)", () => {
+    it("liste les deadlines filtrees par ecole/annee/niveau", async () => {
+      prisma.reinscriptionDeadline.findMany.mockResolvedValue([
+        { id: "rd-1", schoolYearId: TARGET_YEAR_ID, academicLevelId: LEVEL_ID },
+      ]);
+      const result = await service.listReinscriptionDeadlines(SCHOOL_ID, {
+        schoolYearId: TARGET_YEAR_ID,
+      });
+      expect(result).toHaveLength(1);
+      expect(prisma.reinscriptionDeadline.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            schoolId: SCHOOL_ID,
+            schoolYearId: TARGET_YEAR_ID,
+          }),
+        }),
+      );
+    });
+
+    it("refuse la creation si l'annee scolaire n'appartient pas a cette ecole", async () => {
+      prisma.schoolYear.findFirst.mockResolvedValue(null);
+      await expect(
+        service.upsertReinscriptionDeadline(SCHOOL_ID, {
+          schoolYearId: "ghost-year",
+          academicLevelId: LEVEL_ID,
+          deadline: "2026-07-15",
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("refuse la creation si le niveau academique n'existe pas pour cette ecole", async () => {
+      prisma.academicLevel.findFirst.mockResolvedValue(null);
+      await expect(
+        service.upsertReinscriptionDeadline(SCHOOL_ID, {
+          schoolYearId: TARGET_YEAR_ID,
+          academicLevelId: "ghost-level",
+          deadline: "2026-07-15",
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("cree une nouvelle deadline si aucune n'existe encore pour ce couple annee/niveau", async () => {
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue(null);
+      prisma.reinscriptionDeadline.create.mockResolvedValue({ id: "rd-new" });
+      const result = await service.upsertReinscriptionDeadline(SCHOOL_ID, {
+        schoolYearId: TARGET_YEAR_ID,
+        academicLevelId: LEVEL_ID,
+        deadline: "2026-07-15",
+      });
+      expect(prisma.reinscriptionDeadline.create).toHaveBeenCalled();
+      expect(prisma.reinscriptionDeadline.update).not.toHaveBeenCalled();
+      expect(result).toEqual({ id: "rd-new" });
+    });
+
+    it("met a jour la deadline existante plutot que d'en recreer une", async () => {
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue({
+        id: "rd-existing",
+      });
+      prisma.reinscriptionDeadline.update.mockResolvedValue({
+        id: "rd-existing",
+      });
+      await service.upsertReinscriptionDeadline(SCHOOL_ID, {
+        schoolYearId: TARGET_YEAR_ID,
+        academicLevelId: LEVEL_ID,
+        deadline: "2026-07-15",
+      });
+      expect(prisma.reinscriptionDeadline.update).toHaveBeenCalledWith({
+        where: { id: "rd-existing" },
+        data: { deadline: new Date("2026-07-15") },
+      });
+      expect(prisma.reinscriptionDeadline.create).not.toHaveBeenCalled();
+    });
+
+    it("refuse la suppression d'une deadline introuvable pour cette ecole", async () => {
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue(null);
+      await expect(
+        service.deleteReinscriptionDeadline(SCHOOL_ID, "ghost-deadline"),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("supprime une deadline existante", async () => {
+      prisma.reinscriptionDeadline.findFirst.mockResolvedValue({
+        id: "rd-existing",
+      });
+      const result = await service.deleteReinscriptionDeadline(
+        SCHOOL_ID,
+        "rd-existing",
+      );
+      expect(prisma.reinscriptionDeadline.delete).toHaveBeenCalledWith({
+        where: { id: "rd-existing" },
+      });
+      expect(result).toEqual({ success: true });
     });
   });
 
@@ -465,21 +608,39 @@ describe("FinanceService", () => {
     it("getFinanceSettings retourne la politique courante de l'ecole", async () => {
       prisma.school.findUniqueOrThrow.mockResolvedValue({
         reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 30,
       });
       const result = await service.getFinanceSettings(SCHOOL_ID);
-      expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
+      expect(result).toEqual({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 30,
+      });
     });
 
-    it("updateFinanceSettings persiste la nouvelle politique", async () => {
+    it("updateFinanceSettings persiste la nouvelle politique et le delai par defaut", async () => {
+      prisma.school.update.mockResolvedValue({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 45,
+      });
       const result = await service.updateFinanceSettings(SCHOOL_ID, {
         reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 45,
       });
       expect(prisma.school.update).toHaveBeenCalledWith({
         where: { id: SCHOOL_ID },
-        data: { reinscriptionThresholdPolicy: "FULL_PAYMENT" },
-        select: { reinscriptionThresholdPolicy: true },
+        data: {
+          reinscriptionThresholdPolicy: "FULL_PAYMENT",
+          reinscriptionDeadlineDaysBeforeStart: 45,
+        },
+        select: {
+          reinscriptionThresholdPolicy: true,
+          reinscriptionDeadlineDaysBeforeStart: true,
+        },
       });
-      expect(result).toEqual({ reinscriptionThresholdPolicy: "FULL_PAYMENT" });
+      expect(result).toEqual({
+        reinscriptionThresholdPolicy: "FULL_PAYMENT",
+        reinscriptionDeadlineDaysBeforeStart: 45,
+      });
     });
   });
 

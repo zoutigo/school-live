@@ -48,6 +48,9 @@ function makeService() {
   const enrollmentsService = {
     provisionFeeSchedulesForNewYear: jest.fn().mockResolvedValue(undefined),
     provisionSupplyListsForNewYear: jest.fn().mockResolvedValue(undefined),
+    provisionReinscriptionDeadlinesForNewYear: jest
+      .fn()
+      .mockResolvedValue(undefined),
   };
   const service = new ManagementService(
     prisma as unknown as PrismaService,
@@ -73,6 +76,9 @@ describe("ManagementService — provisioning des echeanciers a la creation d'ann
     expect(
       enrollmentsService.provisionSupplyListsForNewYear,
     ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, created.id);
+    expect(
+      enrollmentsService.provisionReinscriptionDeadlinesForNewYear,
+    ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, created.id);
   });
 
   it("createSchoolYear ne provisionne rien si l'ecole n'a pas encore d'annee active", async () => {
@@ -83,6 +89,9 @@ describe("ManagementService — provisioning des echeanciers a la creation d'ann
 
     expect(
       enrollmentsService.provisionFeeSchedulesForNewYear,
+    ).not.toHaveBeenCalled();
+    expect(
+      enrollmentsService.provisionReinscriptionDeadlinesForNewYear,
     ).not.toHaveBeenCalled();
   });
 
@@ -99,6 +108,9 @@ describe("ManagementService — provisioning des echeanciers a la creation d'ann
     ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, "target-year");
     expect(
       enrollmentsService.provisionSupplyListsForNewYear,
+    ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, "target-year");
+    expect(
+      enrollmentsService.provisionReinscriptionDeadlinesForNewYear,
     ).toHaveBeenCalledWith(SCHOOL_ID, ACTIVE_YEAR_ID, "target-year");
   });
 });

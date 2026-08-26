@@ -131,6 +131,11 @@ export class EnrollmentsService {
       sourceSchoolYearId,
       targetYear.id,
     );
+    await this.provisionReinscriptionDeadlinesForNewYear(
+      schoolId,
+      sourceSchoolYearId,
+      targetYear.id,
+    );
 
     return targetYear;
   }
@@ -251,6 +256,139 @@ export class EnrollmentsService {
               note: item.note,
             })),
           },
+        },
+      });
+    }
+  }
+
+  /**
+   * Meme principe que provisionFeeSchedulesForNewYear, applique aux dates
+   * limites de preinscription par niveau : la date est decalee d'un an
+   * (memes mois/jour), pour que le school admin n'ait pas a la ressaisir
+   * chaque annee. Il peut ensuite l'ajuster pour l'annee cible sans impacter
+   * l'annee source.
+   */
+  async provisionReinscriptionDeadlinesForNewYear(
+    schoolId: string,
+    sourceSchoolYearId: string,
+    targetSchoolYearId: string,
+  ) {
+    if (sourceSchoolYearId === targetSchoolYearId) {
+      return;
+    }
+
+    const sourceDeadlines = await this.prisma.reinscriptionDeadline.findMany({
+      where: { schoolId, schoolYearId: sourceSchoolYearId },
+    });
+
+    const handledLevelIds = new Set<string>();
+    for (const source of sourceDeadlines) {
+      handledLevelIds.add(source.academicLevelId);
+      const existing = await this.prisma.reinscriptionDeadline.findFirst({
+        where: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId: source.academicLevelId,
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        continue;
+      }
+
+      await this.prisma.reinscriptionDeadline.create({
+        data: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId: source.academicLevelId,
+          deadline: this.shiftDateByOneYear(source.deadline),
+        },
+      });
+    }
+
+    await this.provisionDefaultReinscriptionDeadlines(
+      schoolId,
+      sourceSchoolYearId,
+      targetSchoolYearId,
+      handledLevelIds,
+    );
+  }
+
+  /**
+   * Pour chaque niveau cible vers lequel au moins un eleve a ete promu ou a
+   * redouble (StudentTermReport.nextAcademicLevelId a l'annee source) mais
+   * sans aucune date limite de reinscription configuree sur l'annee cible
+   * (ni deja copiee depuis l'annee source), pose une date limite par defaut
+   * plutot que de laisser le parent sans aucune echeance affichee. La
+   * deadline est toujours keyee sur le niveau CIBLE (celui de l'annee
+   * suivante), pas le niveau actuel de l'eleve : c'est ce que
+   * FinanceService.getWalletSummary interroge pour un enfant pret a etre
+   * reinscrit. Calculee a partir de School.reinscriptionDeadlineDaysBeforeStart
+   * avant la rentree cible (SchoolYear.startsAt) quand elle est connue, sinon
+   * a partir d'aujourd'hui : c'est un filet de securite, l'admin peut
+   * l'ajuster librement ensuite depuis les parametres finance.
+   */
+  private async provisionDefaultReinscriptionDeadlines(
+    schoolId: string,
+    sourceSchoolYearId: string,
+    targetSchoolYearId: string,
+    handledLevelIds: Set<string>,
+  ) {
+    const [school, targetYear, promotedLevels] = await Promise.all([
+      this.prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { reinscriptionDeadlineDaysBeforeStart: true },
+      }),
+      this.prisma.schoolYear.findUnique({
+        where: { id: targetSchoolYearId },
+        select: { startsAt: true },
+      }),
+      this.prisma.studentTermReport.findMany({
+        where: {
+          schoolId,
+          schoolYearId: sourceSchoolYearId,
+          term: "TERM_3",
+          // LEFT n'a jamais de nextAcademicLevelId (mis a null explicitement
+          // dans setTermReportDecision) : filtrer sur ce champ suffit a
+          // exclure les eleves qui quittent l'ecole.
+          nextAcademicLevelId: { not: null },
+        },
+        select: { nextAcademicLevelId: true },
+        distinct: ["nextAcademicLevelId"],
+      }),
+    ]);
+
+    const daysBeforeStart = school?.reinscriptionDeadlineDaysBeforeStart ?? 30;
+    const defaultDeadline = targetYear?.startsAt
+      ? new Date(targetYear.startsAt)
+      : new Date();
+    if (targetYear?.startsAt) {
+      defaultDeadline.setUTCDate(
+        defaultDeadline.getUTCDate() - daysBeforeStart,
+      );
+    } else {
+      defaultDeadline.setUTCDate(
+        defaultDeadline.getUTCDate() + daysBeforeStart,
+      );
+    }
+
+    for (const { nextAcademicLevelId: academicLevelId } of promotedLevels) {
+      if (!academicLevelId || handledLevelIds.has(academicLevelId)) {
+        continue;
+      }
+      const existing = await this.prisma.reinscriptionDeadline.findFirst({
+        where: { schoolId, schoolYearId: targetSchoolYearId, academicLevelId },
+        select: { id: true },
+      });
+      if (existing) {
+        continue;
+      }
+      await this.prisma.reinscriptionDeadline.create({
+        data: {
+          schoolId,
+          schoolYearId: targetSchoolYearId,
+          academicLevelId,
+          deadline: defaultDeadline,
         },
       });
     }
