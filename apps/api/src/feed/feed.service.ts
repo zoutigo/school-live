@@ -649,7 +649,10 @@ export class FeedService {
       post.audienceScope === FeedAudienceScope.CLASS
     ) {
       throw new ForbiddenException(
-        translateFeed(context.locale, "feed.errors.parentClassActionNotAllowed"),
+        translateFeed(
+          context.locale,
+          "feed.errors.parentClassActionNotAllowed",
+        ),
       );
     }
   }
