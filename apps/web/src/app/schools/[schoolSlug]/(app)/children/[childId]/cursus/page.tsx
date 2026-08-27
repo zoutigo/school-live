@@ -16,10 +16,10 @@ type ParentChild = {
   lastName: string;
 };
 
-type CursusTab = "synthese" | "vie-scolaire" | "help";
+type CursusTab = "synthese" | "discipline" | "help";
 type EventTypeFilter = "ALL" | "ABSENCE" | "RETARD" | "SANCTION" | "PUNITION";
 
-type StudentLifeEventRow = {
+type DisciplineEventRow = {
   id: string;
   type: "ABSENCE" | "RETARD" | "SANCTION" | "PUNITION";
   occurredAt: string;
@@ -33,7 +33,7 @@ type CursusGroup = {
   key: string;
   schoolYearLabel: string;
   className: string;
-  events: StudentLifeEventRow[];
+  events: DisciplineEventRow[];
 };
 
 export default function ChildCursusPage() {
@@ -43,7 +43,7 @@ export default function ChildCursusPage() {
   const schoolSlug = params.schoolSlug;
   const childId = params.childId;
   const [children, setChildren] = useState<ParentChild[]>([]);
-  const [lifeEvents, setLifeEvents] = useState<StudentLifeEventRow[]>([]);
+  const [lifeEvents, setLifeEvents] = useState<DisciplineEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<CursusTab>("synthese");
@@ -124,7 +124,7 @@ export default function ChildCursusPage() {
       throw new Error("Failed to load cursus events");
     }
 
-    const payload = (await response.json()) as StudentLifeEventRow[];
+    const payload = (await response.json()) as DisciplineEventRow[];
     setLifeEvents(payload);
   }
 
@@ -289,14 +289,14 @@ export default function ChildCursusPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setTab("vie-scolaire")}
+                onClick={() => setTab("discipline")}
                 className={`rounded-t-card px-4 py-2 text-sm font-heading font-semibold ${
-                  tab === "vie-scolaire"
+                  tab === "discipline"
                     ? "border border-border border-b-surface bg-surface text-primary"
                     : "text-text-secondary"
                 }`}
               >
-                {t("discipline.cursus.tabs.vieScolaire")}
+                {t("discipline.cursus.tabs.discipline")}
               </button>
               <button
                 type="button"
@@ -377,19 +377,19 @@ export default function ChildCursusPage() {
                       },
                       {
                         value: "ABSENCE",
-                        label: t("discipline.vieScolaire.kpi.absences"),
+                        label: t("discipline.disciplineSelf.kpi.absences"),
                       },
                       {
                         value: "RETARD",
-                        label: t("discipline.vieScolaire.kpi.retards"),
+                        label: t("discipline.disciplineSelf.kpi.retards"),
                       },
                       {
                         value: "SANCTION",
-                        label: t("discipline.vieScolaire.kpi.sanctions"),
+                        label: t("discipline.disciplineSelf.kpi.sanctions"),
                       },
                       {
                         value: "PUNITION",
-                        label: t("discipline.vieScolaire.kpi.punitions"),
+                        label: t("discipline.disciplineSelf.kpi.punitions"),
                       },
                     ]}
                   />
@@ -445,7 +445,7 @@ export default function ChildCursusPage() {
                 </div>
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    {t("discipline.vieScolaire.kpi.absences")}
+                    {t("discipline.disciplineSelf.kpi.absences")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {summary.absences}
@@ -453,7 +453,7 @@ export default function ChildCursusPage() {
                 </div>
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    {t("discipline.vieScolaire.kpi.retards")}
+                    {t("discipline.disciplineSelf.kpi.retards")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {summary.retards}
@@ -461,7 +461,7 @@ export default function ChildCursusPage() {
                 </div>
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    {t("discipline.vieScolaire.kpi.sanctions")}
+                    {t("discipline.disciplineSelf.kpi.sanctions")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {summary.sanctions}
@@ -469,7 +469,7 @@ export default function ChildCursusPage() {
                 </div>
                 <div className="rounded-card border border-border bg-background p-4">
                   <p className="text-xs uppercase tracking-wide text-text-secondary">
-                    {t("discipline.vieScolaire.kpi.punitions")}
+                    {t("discipline.disciplineSelf.kpi.punitions")}
                   </p>
                   <p className="mt-2 text-2xl font-heading font-bold text-text-primary">
                     {summary.punitions}
@@ -505,7 +505,7 @@ export default function ChildCursusPage() {
                             </th>
                             <th className="px-2 py-2 font-medium">
                               {t(
-                                "discipline.vieScolaire.absences.columns.comment",
+                                "discipline.disciplineSelf.absences.columns.comment",
                               )}
                             </th>
                           </tr>

@@ -2,11 +2,11 @@
  * Vérifie les pages self (rôle STUDENT) sous /moi/* : elles résolvent leur
  * propre identité (schoolSlug uniquement dans l'URL, pas de childId) via
  * /me + /timetable/me, puis réutilisent les mêmes composants centraux que
- * les pages parent (StudentLifePanel, StudentNotesPage, ChildModulePage).
+ * les pages parent (DisciplinePanel, StudentNotesPage, ChildModulePage).
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import MyVieScolairePage from "./vie-scolaire/page";
+import MyDisciplinePage from "./discipline/page";
 import MyClassLifePage from "./vie-de-classe/page";
 import MyNotesPage from "./notes/page";
 import MyCahierDeTextePage from "./cahier-de-texte/page";
@@ -95,9 +95,9 @@ describe("Pages self /moi/*", () => {
     resetOnboardingTourStore();
   });
 
-  it("moi/vie-scolaire résout sa propre identité et affiche son propre nom", async () => {
+  it("moi/discipline résout sa propre identité et affiche son propre nom", async () => {
     mockSelfFetch();
-    render(<MyVieScolairePage />);
+    render(<MyDisciplinePage />);
 
     await waitFor(() => {
       expect(screen.getByText("Lisa Mbele")).toBeInTheDocument();
@@ -140,7 +140,7 @@ describe("Pages self /moi/*", () => {
   });
 });
 
-describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
+describe("Tour + aide guidée - moi/discipline (élève)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
@@ -150,11 +150,11 @@ describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
 
   it("le tour démarre automatiquement pour un élève", async () => {
     mockSelfFetch();
-    render(<MyVieScolairePage />);
+    render(<MyDisciplinePage />);
 
     await waitFor(() => {
       expect(useOnboardingTourStore.getState().activeTourId).toBe(
-        "vie-scolaire",
+        "discipline-self",
       );
     });
     expect(useOnboardingTourStore.getState().activeRole).toBe("student");
@@ -162,7 +162,7 @@ describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
 
   it("onboardingHelpEnabled=false : pas de tour", async () => {
     mockSelfFetch({ onboardingHelpEnabled: false });
-    render(<MyVieScolairePage />);
+    render(<MyDisciplinePage />);
 
     await waitFor(() => {
       expect(screen.getByText("Lisa Mbele")).toBeInTheDocument();
@@ -173,11 +173,11 @@ describe("Tour + aide guidée - moi/vie-scolaire (élève)", () => {
 
   it("enregistre le contenu d'aide (2 sections) dans le menu latéral", async () => {
     mockSelfFetch({ onboardingHelpEnabled: false });
-    render(<MyVieScolairePage />);
+    render(<MyDisciplinePage />);
 
     await waitFor(() => {
       expect(usePageHelpStore.getState().entry?.title).toBe(
-        "Vie scolaire — Synthèse",
+        "Discipline — Synthèse",
       );
     });
     const sections = usePageHelpStore.getState().entry?.sections ?? [];

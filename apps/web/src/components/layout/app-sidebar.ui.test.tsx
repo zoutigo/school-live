@@ -330,7 +330,7 @@ describe("AppSidebar parent child links", () => {
   });
 
   it("ouvre directement la navigation de l'enfant actif quand l'URL est dans son contexte", async () => {
-    mockPathname = "/schools/college-vogt/children/child-1/vie-scolaire";
+    mockPathname = "/schools/college-vogt/children/child-1/discipline";
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
@@ -377,14 +377,14 @@ describe("AppSidebar parent child links", () => {
     expect(
       screen.queryByRole("navigation", { name: "Menu parent" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Vie scolaire" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Discipline" })).toHaveAttribute(
       "href",
-      "/schools/college-vogt/children/child-1/vie-scolaire",
+      "/schools/college-vogt/children/child-1/discipline",
     );
   });
 
   it("revient au dashboard parent quand on clique sur MON ESPACE FAMILLE depuis le contexte enfant", async () => {
-    mockPathname = "/schools/college-vogt/children/child-1/vie-scolaire";
+    mockPathname = "/schools/college-vogt/children/child-1/discipline";
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url = String(input);
@@ -578,10 +578,10 @@ describe("AppSidebar badges", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "MBELE Lisa" }));
 
-    const vieScolaireLink = await screen.findByRole("link", {
-      name: /Vie scolaire/,
+    const disciplineLink = await screen.findByRole("link", {
+      name: /Discipline/,
     });
-    await waitFor(() => expect(vieScolaireLink).toHaveTextContent("1"));
+    await waitFor(() => expect(disciplineLink).toHaveTextContent("1"));
 
     const notesLink = screen.getByRole("link", { name: /Notes/ });
     await waitFor(() => expect(notesLink).toHaveTextContent("4"));
@@ -811,7 +811,7 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
     );
   });
 
-  it("expose Emploi du temps, Vie scolaire, Vie de classe et Devoirs (ajouts additifs)", async () => {
+  it("expose Emploi du temps, Discipline, Vie de classe et Devoirs (ajouts additifs)", async () => {
     render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
 
     const scheduleLink = await screen.findByRole("link", {
@@ -822,9 +822,9 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
       "/schools/college-vogt/emploi-du-temps",
     );
 
-    expect(screen.getByRole("link", { name: "Vie scolaire" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Discipline" })).toHaveAttribute(
       "href",
-      "/schools/college-vogt/moi/vie-scolaire",
+      "/schools/college-vogt/moi/discipline",
     );
 
     expect(screen.getByRole("link", { name: "Vie de classe" })).toHaveAttribute(

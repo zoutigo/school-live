@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ChildVieScolairePage from "./page";
+import ChildDisciplinePage from "./page";
 import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 import { usePageHelpStore } from "../../../../../../../store/page-help";
-import { VIE_SCOLAIRE_TOUR_ID } from "../../../../../../../components/discipline/vie-scolaire-tour.config";
+import { DISCIPLINE_SELF_TOUR_ID } from "../../../../../../../components/discipline/discipline-tour.config";
 
 const replaceMock = vi.fn();
 
@@ -54,7 +54,7 @@ function mockParentFetch(
   });
 }
 
-describe("children/[childId]/vie-scolaire — aide parent", () => {
+describe("children/[childId]/discipline — aide parent", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     replaceMock.mockReset();
@@ -64,11 +64,11 @@ describe("children/[childId]/vie-scolaire — aide parent", () => {
 
   it("démarre le tour automatiquement pour un parent", async () => {
     mockParentFetch();
-    render(<ChildVieScolairePage />);
+    render(<ChildDisciplinePage />);
 
     await waitFor(() => {
       expect(useOnboardingTourStore.getState().activeTourId).toBe(
-        VIE_SCOLAIRE_TOUR_ID,
+        DISCIPLINE_SELF_TOUR_ID,
       );
     });
     expect(useOnboardingTourStore.getState().activeRole).toBe("parent");
@@ -76,7 +76,7 @@ describe("children/[childId]/vie-scolaire — aide parent", () => {
 
   it("onboardingHelpEnabled=false : pas de tour", async () => {
     mockParentFetch({ onboardingHelpEnabled: false });
-    render(<ChildVieScolairePage />);
+    render(<ChildDisciplinePage />);
 
     await waitFor(() => {
       expect(screen.getByText("Nathan Mbele")).toBeInTheDocument();
@@ -87,11 +87,11 @@ describe("children/[childId]/vie-scolaire — aide parent", () => {
 
   it("enregistre le contenu d'aide (2 sections) dans le menu latéral", async () => {
     mockParentFetch({ onboardingHelpEnabled: false });
-    render(<ChildVieScolairePage />);
+    render(<ChildDisciplinePage />);
 
     await waitFor(() => {
       expect(usePageHelpStore.getState().entry?.title).toBe(
-        "Vie scolaire — Synthèse",
+        "Discipline — Synthèse",
       );
     });
     const sections = usePageHelpStore.getState().entry?.sections ?? [];
@@ -103,7 +103,7 @@ describe("children/[childId]/vie-scolaire — aide parent", () => {
 
   it("redirige vers le dashboard pour un rôle non-parent, sans démarrer le tour", async () => {
     mockParentFetch({ role: "TEACHER" });
-    render(<ChildVieScolairePage />);
+    render(<ChildDisciplinePage />);
 
     await waitFor(() =>
       expect(replaceMock).toHaveBeenCalledWith(

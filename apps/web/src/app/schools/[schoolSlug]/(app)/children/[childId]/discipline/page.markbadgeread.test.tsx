@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ChildVieScolairePage from "./page";
+import ChildDisciplinePage from "./page";
 import { usePageHelpStore } from "../../../../../../../store/page-help";
 
 let paramsMock = { schoolSlug: "college-vogt", childId: "child-1" };
@@ -26,7 +26,7 @@ function createJsonResponse(payload: unknown, status = 200) {
   });
 }
 
-describe("ChildVieScolairePage — badge marqué comme lu", () => {
+describe("ChildDisciplinePage — badge marqué comme lu", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     getCsrfTokenCookieMock.mockReset();
@@ -61,7 +61,7 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
         return createJsonResponse({});
       });
 
-    render(<ChildVieScolairePage />);
+    render(<ChildDisciplinePage />);
 
     await waitFor(() => {
       expect(
@@ -90,7 +90,7 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(async () => createJsonResponse({}));
 
-    render(<ChildVieScolairePage />);
+    render(<ChildDisciplinePage />);
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -121,14 +121,14 @@ describe("ChildVieScolairePage — badge marqué comme lu", () => {
       return createJsonResponse({});
     });
 
-    render(<ChildVieScolairePage />);
+    render(<ChildDisciplinePage />);
 
     await waitFor(() => {
       expect(screen.getByText("Remi Ntamack")).toBeInTheDocument();
     });
 
     expect(usePageHelpStore.getState().entry?.title).toBe(
-      "Vie scolaire — Synthèse",
+      "Discipline — Synthèse",
     );
   });
 });

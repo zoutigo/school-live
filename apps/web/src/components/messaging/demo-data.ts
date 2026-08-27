@@ -45,7 +45,7 @@ export const DEMO_MESSAGES: MessagingMessage[] = [
   {
     id: "m-003",
     folder: "inbox",
-    sender: "Vie scolaire",
+    sender: "Discipline",
     subject: "Sortie Vienne jeudi 26 fevrier",
     preview: "Autorisation parentale a signer avant lundi.",
     createdAt: "ven. 06 fev. 2026 a 07:05",

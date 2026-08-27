@@ -57,25 +57,25 @@ describe("onboardingTour.* translations", () => {
     }
   });
 
-  it("has the vie-scolaire tour steps and student help dialog content in both locales", () => {
+  it("has the discipline-self tour steps and student help dialog content in both locales", () => {
     const requiredKeys = [
-      "onboardingTour.vieScolaire.tabsTitle",
-      "onboardingTour.vieScolaire.tabsBody",
-      "onboardingTour.vieScolaire.kpisTitle",
-      "onboardingTour.vieScolaire.kpisBody",
-      "onboardingTour.vieScolaire.helpToggleTitle",
-      "onboardingTour.vieScolaire.helpToggleBody",
-      "discipline.vieScolaire.help.synthese.title",
-      "discipline.vieScolaire.help.synthese.section1Title",
-      "discipline.vieScolaire.help.synthese.section1Body",
-      "discipline.vieScolaire.help.synthese.section2Title",
-      "discipline.vieScolaire.help.synthese.section2Body",
-      "discipline.vieScolaire.help.absences.title",
-      "discipline.vieScolaire.help.absences.section1Title",
-      "discipline.vieScolaire.help.absences.section1Body",
-      "discipline.vieScolaire.help.sanctions.title",
-      "discipline.vieScolaire.help.sanctions.section1Title",
-      "discipline.vieScolaire.help.sanctions.section1Body",
+      "onboardingTour.disciplineSelf.tabsTitle",
+      "onboardingTour.disciplineSelf.tabsBody",
+      "onboardingTour.disciplineSelf.kpisTitle",
+      "onboardingTour.disciplineSelf.kpisBody",
+      "onboardingTour.disciplineSelf.helpToggleTitle",
+      "onboardingTour.disciplineSelf.helpToggleBody",
+      "discipline.disciplineSelf.help.synthese.title",
+      "discipline.disciplineSelf.help.synthese.section1Title",
+      "discipline.disciplineSelf.help.synthese.section1Body",
+      "discipline.disciplineSelf.help.synthese.section2Title",
+      "discipline.disciplineSelf.help.synthese.section2Body",
+      "discipline.disciplineSelf.help.absences.title",
+      "discipline.disciplineSelf.help.absences.section1Title",
+      "discipline.disciplineSelf.help.absences.section1Body",
+      "discipline.disciplineSelf.help.sanctions.title",
+      "discipline.disciplineSelf.help.sanctions.section1Title",
+      "discipline.disciplineSelf.help.sanctions.section1Body",
     ];
 
     for (const key of requiredKeys) {

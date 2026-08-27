@@ -1053,7 +1053,7 @@ export default function ElevesPage() {
         justified: false,
         comment: "",
       });
-      setSuccess("Evenement vie scolaire enregistre.");
+      setSuccess(t("discipline.success.eventCreated"));
       await loadStudentLifeEvents(schoolSlug, selectedStudentId);
     } catch {
       setError("Erreur reseau.");
@@ -1158,7 +1158,7 @@ export default function ElevesPage() {
         justified: false,
         comment: "",
       });
-      setSuccess("Evenement vie scolaire modifie.");
+      setSuccess(t("discipline.success.eventUpdated"));
       await loadStudentLifeEvents(schoolSlug, selectedStudentId);
     } catch {
       setError("Erreur reseau.");
@@ -1210,7 +1210,7 @@ export default function ElevesPage() {
       if (editingLifeEventId === eventId) {
         setEditingLifeEventId(null);
       }
-      setSuccess("Evenement vie scolaire supprime.");
+      setSuccess(t("discipline.success.eventDeleted"));
       await loadStudentLifeEvents(schoolSlug, selectedStudentId);
     } catch {
       setError("Erreur reseau.");

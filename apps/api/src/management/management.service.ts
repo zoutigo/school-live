@@ -8172,7 +8172,7 @@ export class ManagementService {
 
       await this.pushService.sendStudentLifeEventNotification({
         tokens: pushTokens.map((row) => row.token),
-        title: `Vie scolaire · ${studentFullName}`,
+        title: `Discipline · ${studentFullName}`,
         body: eventTypeLabel,
         data: {
           type: "STUDENT_LIFE_EVENT",

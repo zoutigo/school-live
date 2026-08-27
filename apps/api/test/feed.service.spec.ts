@@ -146,8 +146,8 @@ describe("FeedService permissions + media cleanup on PATCH/DELETE", () => {
   });
 
   it("translates author role labels based on preferredLocale", () => {
-    expect((service as any).roleLabel("fr", "TEACHER")).toBe("Vie scolaire");
-    expect((service as any).roleLabel("en", "TEACHER")).toBe("School life");
+    expect((service as any).roleLabel("fr", "TEACHER")).toBe("Discipline");
+    expect((service as any).roleLabel("en", "TEACHER")).toBe("Discipline");
     expect((service as any).roleLabel("fr", undefined)).toBe("Membre");
     expect((service as any).roleLabel("en", undefined)).toBe("Member");
   });

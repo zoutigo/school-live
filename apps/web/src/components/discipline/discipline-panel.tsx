@@ -8,7 +8,7 @@ import { lifeEventTypeLabel } from "../life-events/life-events-list";
 import { markBadgeRead } from "../layout/badges-api";
 import { useTranslation } from "../../i18n/useTranslation";
 import { usePageHelp } from "../../store/page-help";
-import { VIE_SCOLAIRE_TOUR_TARGETS } from "./vie-scolaire-tour.config";
+import { DISCIPLINE_SELF_TOUR_TARGETS } from "./discipline-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -35,7 +35,7 @@ type SanctionRow = {
   followUpDate: string;
 };
 
-type StudentLifeEventRow = {
+type DisciplineEventRow = {
   id: string;
   type: "ABSENCE" | "RETARD" | "SANCTION" | "PUNITION";
   occurredAt: string;
@@ -117,29 +117,29 @@ const SANCTIONS_FALLBACK: SanctionRow[] = [
   },
 ];
 
-export type StudentLifePanelProps = {
+export type DisciplinePanelProps = {
   schoolSlug: string;
   studentId: string;
   studentLabel: string;
 };
 
 /**
- * Panneau Vie scolaire — composant central partagé (lecture seule).
+ * Panneau Discipline — composant central partagé (lecture seule).
  *
  * Réutilisé par deux points d'entrée fins :
- *  - la page Parent (`children/[childId]/vie-scolaire/page.tsx`), qui résout
+ *  - la page Parent (`children/[childId]/discipline/page.tsx`), qui résout
  *    `studentId` depuis l'enfant sélectionné (et gère la redirection vers le
  *    premier enfant si besoin, hors de ce composant) ;
- *  - la page Élève self (`moi/vie-scolaire/page.tsx`), qui résout sa propre
+ *  - la page Élève self (`moi/discipline/page.tsx`), qui résout sa propre
  *    identité via `/timetable/me` (sans childId).
  */
-export function StudentLifePanel({
+export function DisciplinePanel({
   schoolSlug,
   studentId,
   studentLabel,
-}: StudentLifePanelProps) {
+}: DisciplinePanelProps) {
   const { locale, t } = useTranslation();
-  const [lifeEvents, setLifeEvents] = useState<StudentLifeEventRow[]>([]);
+  const [lifeEvents, setLifeEvents] = useState<DisciplineEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [eventsWarning, setEventsWarning] = useState<string | null>(null);
@@ -148,33 +148,33 @@ export function StudentLifePanel({
   usePageHelp({
     title:
       tab === "synthese"
-        ? t("discipline.vieScolaire.help.synthese.title")
+        ? t("discipline.disciplineSelf.help.synthese.title")
         : tab === "absences"
-          ? t("discipline.vieScolaire.help.absences.title")
-          : t("discipline.vieScolaire.help.sanctions.title"),
+          ? t("discipline.disciplineSelf.help.absences.title")
+          : t("discipline.disciplineSelf.help.sanctions.title"),
     sections:
       tab === "synthese"
         ? [
             {
-              title: t("discipline.vieScolaire.help.synthese.section1Title"),
-              body: [t("discipline.vieScolaire.help.synthese.section1Body")],
+              title: t("discipline.disciplineSelf.help.synthese.section1Title"),
+              body: [t("discipline.disciplineSelf.help.synthese.section1Body")],
             },
             {
-              title: t("discipline.vieScolaire.help.synthese.section2Title"),
-              body: [t("discipline.vieScolaire.help.synthese.section2Body")],
+              title: t("discipline.disciplineSelf.help.synthese.section2Title"),
+              body: [t("discipline.disciplineSelf.help.synthese.section2Body")],
             },
           ]
         : tab === "absences"
           ? [
               {
-                title: t("discipline.vieScolaire.help.absences.section1Title"),
-                body: [t("discipline.vieScolaire.help.absences.section1Body")],
+                title: t("discipline.disciplineSelf.help.absences.section1Title"),
+                body: [t("discipline.disciplineSelf.help.absences.section1Body")],
               },
             ]
           : [
               {
-                title: t("discipline.vieScolaire.help.sanctions.section1Title"),
-                body: [t("discipline.vieScolaire.help.sanctions.section1Body")],
+                title: t("discipline.disciplineSelf.help.sanctions.section1Title"),
+                body: [t("discipline.disciplineSelf.help.sanctions.section1Body")],
               },
             ],
   });
@@ -206,7 +206,7 @@ export function StudentLifePanel({
       await loadLifeEvents(currentSchoolSlug, currentStudentId);
     } catch {
       setLifeEvents([]);
-      setEventsWarning(t("discipline.vieScolaire.eventsWarning"));
+      setEventsWarning(t("discipline.disciplineSelf.eventsWarning"));
     } finally {
       setLoading(false);
     }
@@ -227,7 +227,7 @@ export function StudentLifePanel({
       throw new Error("Failed to load life events");
     }
 
-    const payload = (await response.json()) as StudentLifeEventRow[];
+    const payload = (await response.json()) as DisciplineEventRow[];
     setLifeEvents(payload);
   }
 
@@ -263,7 +263,7 @@ export function StudentLifePanel({
           locale === "en" ? "en-GB" : "fr-FR",
         ),
         reason: entry.reason,
-        by: t("discipline.vieScolaire.equipePedagogique"),
+        by: t("discipline.disciplineSelf.equipePedagogique"),
         comment: entry.comment ?? "",
         followUpDate: "",
       }));
@@ -289,28 +289,28 @@ export function StudentLifePanel({
   const kpis = [
     {
       key: "absences",
-      label: t("discipline.vieScolaire.kpi.absences"),
+      label: t("discipline.disciplineSelf.kpi.absences"),
       value: absences.length,
       icon: Clock3,
       tone: "from-[#3DA5F5] to-[#207FD5]",
     },
     {
       key: "retards",
-      label: t("discipline.vieScolaire.kpi.retards"),
+      label: t("discipline.disciplineSelf.kpi.retards"),
       value: retardsCount,
       icon: AlertTriangle,
       tone: "from-[#FF8A3D] to-[#FF5C2D]",
     },
     {
       key: "sanctions",
-      label: t("discipline.vieScolaire.kpi.sanctions"),
+      label: t("discipline.disciplineSelf.kpi.sanctions"),
       value: sanctionsCount,
       icon: ShieldAlert,
       tone: "from-[#FF3E3E] to-[#C80000]",
     },
     {
       key: "punitions",
-      label: t("discipline.vieScolaire.kpi.punitions"),
+      label: t("discipline.disciplineSelf.kpi.punitions"),
       value: punitionsCount,
       icon: ShieldAlert,
       tone: "from-[#D946EF] to-[#A21CAF]",
@@ -319,7 +319,7 @@ export function StudentLifePanel({
 
   return (
     <div className="grid gap-4">
-      <Card title={t("discipline.vieScolaire.title")} subtitle={studentLabel}>
+      <Card title={t("discipline.disciplineSelf.title")} subtitle={studentLabel}>
         {loading ? (
           <p className="text-sm text-text-secondary">
             {t("discipline.common.loading")}
@@ -332,7 +332,7 @@ export function StudentLifePanel({
               <p className="text-sm text-[#8a6d1d]">{eventsWarning}</p>
             ) : null}
             <OnboardingTarget
-              id={VIE_SCOLAIRE_TOUR_TARGETS.tabs}
+              id={DISCIPLINE_SELF_TOUR_TARGETS.tabs}
               className="flex items-end gap-2 border-b border-border"
             >
               <button
@@ -344,7 +344,7 @@ export function StudentLifePanel({
                     : "text-text-secondary"
                 }`}
               >
-                {t("discipline.vieScolaire.tabs.synthese")}
+                {t("discipline.disciplineSelf.tabs.synthese")}
               </button>
               <button
                 type="button"
@@ -355,7 +355,7 @@ export function StudentLifePanel({
                     : "text-text-secondary"
                 }`}
               >
-                {t("discipline.vieScolaire.tabs.absencesRetards")}
+                {t("discipline.disciplineSelf.tabs.absencesRetards")}
               </button>
               <button
                 type="button"
@@ -366,14 +366,14 @@ export function StudentLifePanel({
                     : "text-text-secondary"
                 }`}
               >
-                {t("discipline.vieScolaire.tabs.sanctionsPunitions")}
+                {t("discipline.disciplineSelf.tabs.sanctionsPunitions")}
               </button>
             </OnboardingTarget>
 
             {tab === "synthese" ? (
               <div className="grid gap-4">
                 <OnboardingTarget
-                  id={VIE_SCOLAIRE_TOUR_TARGETS.kpis}
+                  id={DISCIPLINE_SELF_TOUR_TARGETS.kpis}
                   className="grid gap-3 md:grid-cols-4"
                 >
                   {kpis.map((entry) => {
@@ -404,38 +404,38 @@ export function StudentLifePanel({
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-card border border-border bg-background p-4">
                     <p className="text-sm font-semibold text-text-primary">
-                      {t("discipline.vieScolaire.synthese.lastAbsence")}
+                      {t("discipline.disciplineSelf.synthese.lastAbsence")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {absences[0]?.period ??
-                        t("discipline.vieScolaire.synthese.noData")}
+                        t("discipline.disciplineSelf.synthese.noData")}
                     </p>
                   </div>
                   <div className="rounded-card border border-border bg-background p-4">
                     <p className="text-sm font-semibold text-text-primary">
-                      {t("discipline.vieScolaire.synthese.lastRetard")}
+                      {t("discipline.disciplineSelf.synthese.lastRetard")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {absences.find((entry) => entry.type === "RETARD")
-                        ?.period ?? t("discipline.vieScolaire.synthese.noData")}
+                        ?.period ?? t("discipline.disciplineSelf.synthese.noData")}
                     </p>
                   </div>
                   <div className="rounded-card border border-border bg-background p-4">
                     <p className="text-sm font-semibold text-text-primary">
-                      {t("discipline.vieScolaire.synthese.lastSanction")}
+                      {t("discipline.disciplineSelf.synthese.lastSanction")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {sanctions.find((entry) => entry.type === "SANCTION")
-                        ?.reason ?? t("discipline.vieScolaire.synthese.noData")}
+                        ?.reason ?? t("discipline.disciplineSelf.synthese.noData")}
                     </p>
                   </div>
                   <div className="rounded-card border border-border bg-background p-4">
                     <p className="text-sm font-semibold text-text-primary">
-                      {t("discipline.vieScolaire.synthese.lastPunition")}
+                      {t("discipline.disciplineSelf.synthese.lastPunition")}
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {sanctions.find((entry) => entry.type === "PUNITION")
-                        ?.reason ?? t("discipline.vieScolaire.synthese.noData")}
+                        ?.reason ?? t("discipline.disciplineSelf.synthese.noData")}
                     </p>
                   </div>
                 </div>
@@ -447,26 +447,26 @@ export function StudentLifePanel({
                     <thead>
                       <tr className="bg-primary text-left text-white">
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.vieScolaire.absences.columns.event")}
+                          {t("discipline.disciplineSelf.absences.columns.event")}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.vieScolaire.absences.columns.type")}
+                          {t("discipline.disciplineSelf.absences.columns.type")}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {t(
-                            "discipline.vieScolaire.absences.columns.duration",
+                            "discipline.disciplineSelf.absences.columns.duration",
                           )}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {t(
-                            "discipline.vieScolaire.absences.columns.justified",
+                            "discipline.disciplineSelf.absences.columns.justified",
                           )}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.vieScolaire.absences.columns.reason")}
+                          {t("discipline.disciplineSelf.absences.columns.reason")}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.vieScolaire.absences.columns.comment")}
+                          {t("discipline.disciplineSelf.absences.columns.comment")}
                         </th>
                       </tr>
                     </thead>
@@ -477,7 +477,7 @@ export function StudentLifePanel({
                             className="px-3 py-4 text-sm text-text-secondary"
                             colSpan={6}
                           >
-                            {t("discipline.vieScolaire.absences.empty")}
+                            {t("discipline.disciplineSelf.absences.empty")}
                           </td>
                         </tr>
                       ) : (
@@ -521,7 +521,7 @@ export function StudentLifePanel({
                 <div className="grid gap-3 lg:hidden">
                   {absences.length === 0 ? (
                     <p className="text-sm text-text-secondary">
-                      {t("discipline.vieScolaire.absences.empty")}
+                      {t("discipline.disciplineSelf.absences.empty")}
                     </p>
                   ) : (
                     absences.map((row) => (
@@ -544,21 +544,21 @@ export function StudentLifePanel({
                           </span>
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.vieScolaire.absences.durationPrefix")}{" "}
+                          {t("discipline.disciplineSelf.absences.durationPrefix")}{" "}
                           {row.duration}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.vieScolaire.absences.justifiedPrefix")}{" "}
+                          {t("discipline.disciplineSelf.absences.justifiedPrefix")}{" "}
                           {row.justified
                             ? t("discipline.common.yes")
                             : t("discipline.common.no")}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.vieScolaire.absences.reasonPrefix")}{" "}
+                          {t("discipline.disciplineSelf.absences.reasonPrefix")}{" "}
                           {row.reason}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.vieScolaire.absences.commentPrefix")}{" "}
+                          {t("discipline.disciplineSelf.absences.commentPrefix")}{" "}
                           {row.comment || "-"}
                         </p>
                       </div>
@@ -573,30 +573,30 @@ export function StudentLifePanel({
                     <thead>
                       <tr className="bg-primary text-left text-white">
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.vieScolaire.sanctions.columns.type")}
+                          {t("discipline.disciplineSelf.sanctions.columns.type")}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {t(
-                            "discipline.vieScolaire.sanctions.columns.incident",
+                            "discipline.disciplineSelf.sanctions.columns.incident",
                           )}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.vieScolaire.sanctions.columns.date")}
+                          {t("discipline.disciplineSelf.sanctions.columns.date")}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.vieScolaire.sanctions.columns.reason")}
+                          {t("discipline.disciplineSelf.sanctions.columns.reason")}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.vieScolaire.sanctions.columns.by")}
+                          {t("discipline.disciplineSelf.sanctions.columns.by")}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {t(
-                            "discipline.vieScolaire.sanctions.columns.comment",
+                            "discipline.disciplineSelf.sanctions.columns.comment",
                           )}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {t(
-                            "discipline.vieScolaire.sanctions.columns.executionDate",
+                            "discipline.disciplineSelf.sanctions.columns.executionDate",
                           )}
                         </th>
                       </tr>
@@ -608,7 +608,7 @@ export function StudentLifePanel({
                             className="px-3 py-4 text-sm text-text-secondary"
                             colSpan={7}
                           >
-                            {t("discipline.vieScolaire.sanctions.empty")}
+                            {t("discipline.disciplineSelf.sanctions.empty")}
                           </td>
                         </tr>
                       ) : (
@@ -653,7 +653,7 @@ export function StudentLifePanel({
                 <div className="grid gap-3 lg:hidden">
                   {sanctions.length === 0 ? (
                     <p className="text-sm text-text-secondary">
-                      {t("discipline.vieScolaire.sanctions.empty")}
+                      {t("discipline.disciplineSelf.sanctions.empty")}
                     </p>
                   ) : (
                     sanctions.map((row) => (
@@ -674,24 +674,24 @@ export function StudentLifePanel({
                           {row.label}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.vieScolaire.sanctions.datePrefix")}{" "}
+                          {t("discipline.disciplineSelf.sanctions.datePrefix")}{" "}
                           {row.date}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.vieScolaire.sanctions.reasonPrefix")}{" "}
+                          {t("discipline.disciplineSelf.sanctions.reasonPrefix")}{" "}
                           {row.reason}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.vieScolaire.sanctions.byPrefix")}{" "}
+                          {t("discipline.disciplineSelf.sanctions.byPrefix")}{" "}
                           {row.by}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.vieScolaire.sanctions.commentPrefix")}{" "}
+                          {t("discipline.disciplineSelf.sanctions.commentPrefix")}{" "}
                           {row.comment || "-"}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
                           {t(
-                            "discipline.vieScolaire.sanctions.executionDatePrefix",
+                            "discipline.disciplineSelf.sanctions.executionDatePrefix",
                           )}{" "}
                           {row.followUpDate || "-"}
                         </p>

@@ -10,7 +10,7 @@ export function buildDemoFeed(schoolSlug: string): FeedPost[] {
         id: "u-staff-1",
         fullName: "Aline Roussel",
         civility: "Mme",
-        roleLabel: "Vie scolaire",
+        roleLabel: "Discipline",
         avatarText: "AR",
       },
       title: "Semaine culturelle - programme final",

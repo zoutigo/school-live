@@ -340,7 +340,7 @@ function ChildAccueilDashboard({
                 accent="teal"
               />
               <SummaryStat
-                label={t("discipline.sidebar.vieScolaire")}
+                label={t("discipline.sidebar.discipline")}
                 value={`${events.length}`}
                 hint={
                   unjustifiedCount > 0
@@ -439,9 +439,9 @@ function ChildAccueilDashboard({
             </DashboardPanel>
 
             <DashboardPanel
-              title={t("discipline.sidebar.vieScolaire")}
+              title={t("discipline.sidebar.discipline")}
               icon={<ShieldAlert className="h-4 w-4" />}
-              actionHref={`/schools/${schoolSlug}/children/${childId}/vie-scolaire`}
+              actionHref={`/schools/${schoolSlug}/children/${childId}/discipline`}
               actionLabel={t("discipline.accueil.panel.action")}
             >
               <div className="grid gap-3">
@@ -476,9 +476,9 @@ function ChildAccueilDashboard({
                   href: `/schools/${schoolSlug}/children/${childId}/notes`,
                 },
                 {
-                  label: t("discipline.sidebar.vieScolaire"),
+                  label: t("discipline.sidebar.discipline"),
                   hint: t("discipline.accueil.quickAccess.hint"),
-                  href: `/schools/${schoolSlug}/children/${childId}/vie-scolaire`,
+                  href: `/schools/${schoolSlug}/children/${childId}/discipline`,
                 },
                 {
                   label: t("childAccueil.quickLink.classFeed.label"),
@@ -701,7 +701,7 @@ export default function ChildAccueilPage() {
       subtitle="Synthese quotidienne"
       summary="Vue generale de la journee scolaire de votre enfant."
       bullets={[
-        "Resume des notes, messages, vie scolaire et emploi du temps.",
+        "Resume des notes, messages, discipline et emploi du temps.",
         "Acces rapide vers les modules de detail du menu enfant.",
         "Point d'entree synthétique plutot qu'un fil de contenu.",
       ]}
