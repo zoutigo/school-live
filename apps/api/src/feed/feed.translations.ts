@@ -43,7 +43,7 @@ const fr: TranslationDict = {
   "feed.roles.supervision": "Surveillance",
   "feed.roles.accounting": "Comptabilite",
   "feed.roles.staff": "Staff",
-  "feed.roles.schoolLife": "Vie scolaire",
+  "feed.roles.schoolLife": "Discipline",
   "feed.roles.parents": "Parents",
   "feed.roles.students": "Eleves",
 
@@ -97,7 +97,7 @@ const en: TranslationDict = {
   "feed.roles.supervision": "Supervision",
   "feed.roles.accounting": "Accounting",
   "feed.roles.staff": "Staff",
-  "feed.roles.schoolLife": "School life",
+  "feed.roles.schoolLife": "Discipline",
   "feed.roles.parents": "Parents",
   "feed.roles.students": "Students",
 

@@ -53,7 +53,7 @@ import {
   type ParentChild,
   type ParentDashboardSummaryResponse,
   type RichTeacherDashboard,
-  type StudentLifeEventRow,
+  type DisciplineEventRow,
   type TeacherContextPayload,
 } from "./page-logic";
 
@@ -394,7 +394,7 @@ function ParentDisciplineCard({
             {summaries.map((summary) => (
               <Link
                 key={summary.childId}
-                href={`/schools/${schoolSlug}/children/${summary.childId}/vie-scolaire`}
+                href={`/schools/${schoolSlug}/children/${summary.childId}/discipline`}
                 className="block rounded-[16px] border border-white/80 bg-white/85 p-2.5 shadow-sm ring-1 ring-orange-100/60 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 min-[360px]:rounded-[18px] min-[360px]:p-3 md:rounded-[22px] md:p-4"
               >
                 <div className="flex items-start justify-between gap-2 min-[360px]:gap-3">
@@ -1332,12 +1332,12 @@ export default function DashboardPage() {
                   },
                 );
                 if (!response.ok) {
-                  return { child, events: [] as StudentLifeEventRow[] };
+                  return { child, events: [] as DisciplineEventRow[] };
                 }
-                const events = (await response.json()) as StudentLifeEventRow[];
+                const events = (await response.json()) as DisciplineEventRow[];
                 return { child, events };
               } catch {
-                return { child, events: [] as StudentLifeEventRow[] };
+                return { child, events: [] as DisciplineEventRow[] };
               }
             }),
           ),

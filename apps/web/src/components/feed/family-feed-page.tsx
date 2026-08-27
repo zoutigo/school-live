@@ -153,7 +153,7 @@ function formatAuthorDisplay(author: FeedPost["author"]) {
 export function FamilyFeedPage({
   schoolSlug,
   childFullName,
-  scopeLabel = "la vie scolaire",
+  scopeLabel = "la discipline",
   allowComposer = true,
   readOnly = false,
   viewerRole = "PARENT",

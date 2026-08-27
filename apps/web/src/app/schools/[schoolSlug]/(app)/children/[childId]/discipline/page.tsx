@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { StudentLifePanel } from "../../../../../../../components/discipline/student-life-panel";
+import { DisciplinePanel } from "../../../../../../../components/discipline/discipline-panel";
 import { useTranslation } from "../../../../../../../i18n/useTranslation";
 import { useOnboardingTourStore } from "../../../../../../../store/onboarding-tour";
 import {
-  VIE_SCOLAIRE_TOUR_ID,
-  VIE_SCOLAIRE_TOUR_STEPS,
-} from "../../../../../../../components/discipline/vie-scolaire-tour.config";
+  DISCIPLINE_SELF_TOUR_ID,
+  DISCIPLINE_SELF_TOUR_STEPS,
+} from "../../../../../../../components/discipline/discipline-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
@@ -18,7 +18,7 @@ type ParentChild = {
   lastName: string;
 };
 
-export default function ChildVieScolairePage() {
+export default function ChildDisciplinePage() {
   const { t } = useTranslation();
   const router = useRouter();
   const params = useParams<{ schoolSlug: string; childId: string }>();
@@ -71,7 +71,7 @@ export default function ChildVieScolairePage() {
         !linked.some((entry) => entry.id === currentChildId)
       ) {
         router.replace(
-          `/schools/${currentSchoolSlug}/children/${linked[0].id}/vie-scolaire`,
+          `/schools/${currentSchoolSlug}/children/${linked[0].id}/discipline`,
         );
         return;
       }
@@ -79,13 +79,13 @@ export default function ChildVieScolairePage() {
       const tourStore = useOnboardingTourStore.getState();
       if (
         payload.onboardingHelpEnabled !== false &&
-        !tourStore.isCompleted("parent", VIE_SCOLAIRE_TOUR_ID) &&
+        !tourStore.isCompleted("parent", DISCIPLINE_SELF_TOUR_ID) &&
         !tourStore.activeTourId
       ) {
         tourStore.startTour(
-          VIE_SCOLAIRE_TOUR_ID,
+          DISCIPLINE_SELF_TOUR_ID,
           "parent",
-          VIE_SCOLAIRE_TOUR_STEPS,
+          DISCIPLINE_SELF_TOUR_STEPS,
         );
       }
 
@@ -102,7 +102,7 @@ export default function ChildVieScolairePage() {
 
   const studentLabel = currentChild
     ? `${currentChild.firstName} ${currentChild.lastName}`
-    : t("discipline.vieScolaire.subtitleDefault");
+    : t("discipline.disciplineSelf.subtitleDefault");
 
   if (!ready) {
     return (
@@ -113,7 +113,7 @@ export default function ChildVieScolairePage() {
   }
 
   return (
-    <StudentLifePanel
+    <DisciplinePanel
       schoolSlug={schoolSlug}
       studentId={childId}
       studentLabel={studentLabel}

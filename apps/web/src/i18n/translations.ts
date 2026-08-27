@@ -959,7 +959,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.pageHelp.history.section1Title":
       "Consulter les événements d'un élève",
     "discipline.pageHelp.history.section1Body":
-      "Sélectionnez un élève pour afficher tous ses événements de vie scolaire, du plus récent au plus ancien.",
+      "Sélectionnez un élève pour afficher tous ses événements de discipline, du plus récent au plus ancien.",
 
     "onboardingTour.teacherDiscipline.step1Title": "Deux onglets",
     "onboardingTour.teacherDiscipline.step1Body":
@@ -976,11 +976,11 @@ export const translations: Record<Locale, Record<string, string>> = {
       "ce module permet a l'enseignant de declarer des absences, retards, sanctions et punitions sur ses classes affectees.",
     "discipline.help.record.name": "Saisir",
     "discipline.help.record.purpose":
-      "enregistrer rapidement un evenement de vie scolaire.",
+      "enregistrer rapidement un evenement de discipline.",
     "discipline.help.record.howTo":
       "selectionner l'eleve puis renseigner type, date et motif.",
     "discipline.help.record.moduleImpact":
-      "l'evenement est visible au parent sur Vie scolaire (annee en cours).",
+      "l'evenement est visible au parent sur Discipline (annee en cours).",
     "discipline.help.record.crossModuleImpact":
       "alimente ensuite la page Cursus pour l'historique global.",
     "discipline.help.verify.name": "Verifier",
@@ -1027,81 +1027,82 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.form.cancel": "Annuler",
 
     "discipline.eleves.sectionTitle":
-      "Vie scolaire : absences, retards, sanctions et punitions",
+      "Discipline : absences, retards, sanctions et punitions",
 
     "discipline.empty.studentEvents": "Aucun evenement pour cet eleve.",
-    "discipline.empty.eleves": "Aucun evenement de vie scolaire.",
+    "discipline.empty.eleves": "Aucun evenement de discipline.",
 
     "discipline.delete.title": "Supprimer cet evenement ?",
     "discipline.delete.message":
       'Cette action est irreversible. L\'evenement "{label}" sera supprime definitivement.',
     "discipline.delete.confirm": "Supprimer",
 
-    "discipline.vieScolaire.title": "Vie scolaire",
-    "discipline.vieScolaire.subtitleDefault": "Suivi eleve",
-    "discipline.vieScolaire.eventsWarning":
-      "Les evenements vie scolaire sont temporairement indisponibles. Affichage des donnees de demonstration.",
-    "discipline.vieScolaire.error": "Impossible de charger la vie scolaire.",
-    "discipline.vieScolaire.help.synthese.title": "Vie scolaire — Synthèse",
-    "discipline.vieScolaire.help.synthese.section1Title":
+    "discipline.disciplineSelf.title": "Discipline",
+    "discipline.disciplineSelf.subtitleDefault": "Suivi eleve",
+    "discipline.disciplineSelf.eventsWarning":
+      "Les evenements discipline sont temporairement indisponibles. Affichage des donnees de demonstration.",
+    "discipline.disciplineSelf.error": "Impossible de charger la discipline.",
+    "discipline.disciplineSelf.help.synthese.title": "Discipline — Synthèse",
+    "discipline.disciplineSelf.help.synthese.section1Title":
       "Les compteurs de l'année",
-    "discipline.vieScolaire.help.synthese.section1Body":
+    "discipline.disciplineSelf.help.synthese.section1Body":
       "Les cartes en haut de l'écran totalisent, depuis le début de l'année scolaire, le nombre d'absences, de retards, de sanctions et de punitions. Ces chiffres se mettent à jour automatiquement dès qu'un nouvel événement est enregistré par l'établissement.",
-    "discipline.vieScolaire.help.synthese.section2Title":
+    "discipline.disciplineSelf.help.synthese.section2Title":
       "Filtrer les événements récents",
-    "discipline.vieScolaire.help.synthese.section2Body":
+    "discipline.disciplineSelf.help.synthese.section2Body":
       "Cliquez sur une carte (absences, retards, sanctions ou punitions) pour n'afficher, dans la liste « Événements récents » juste en dessous, que les événements de ce type. Cliquez à nouveau sur la même carte pour revenir à la liste complète sans filtre.",
-    "discipline.vieScolaire.help.absences.title": "Vie scolaire — Absences",
-    "discipline.vieScolaire.help.absences.section1Title":
+    "discipline.disciplineSelf.help.absences.title": "Discipline — Absences",
+    "discipline.disciplineSelf.help.absences.section1Title":
       "L'historique complet des absences et retards",
-    "discipline.vieScolaire.help.absences.section1Body":
+    "discipline.disciplineSelf.help.absences.section1Body":
       "Cet onglet liste, du plus récent au plus ancien, chaque absence et chaque retard enregistrés par l'établissement, avec leur date et leur motif si l'établissement en a précisé un. Cette liste est en lecture seule : elle reflète ce que l'établissement a saisi.",
-    "discipline.vieScolaire.help.sanctions.title": "Vie scolaire — Sanctions",
-    "discipline.vieScolaire.help.sanctions.section1Title":
+    "discipline.disciplineSelf.help.sanctions.title": "Discipline — Sanctions",
+    "discipline.disciplineSelf.help.sanctions.section1Title":
       "L'historique complet des sanctions et punitions",
-    "discipline.vieScolaire.help.sanctions.section1Body":
+    "discipline.disciplineSelf.help.sanctions.section1Body":
       "Cet onglet liste, du plus récent au plus ancien, chaque sanction et chaque punition enregistrées par l'établissement, avec leur date et leur motif. Comme l'onglet Absences, cette liste est en lecture seule.",
-    "discipline.vieScolaire.tabs.synthese": "Synthese",
-    "discipline.vieScolaire.tabs.absencesRetards": "Absences / retards",
-    "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punitions",
-    "discipline.vieScolaire.kpi.absences": "Absences",
-    "discipline.vieScolaire.kpi.retards": "Retards",
-    "discipline.vieScolaire.kpi.sanctions": "Sanctions",
-    "discipline.vieScolaire.kpi.punitions": "Punitions",
-    "discipline.vieScolaire.synthese.lastAbsence": "Derniere absence",
-    "discipline.vieScolaire.synthese.lastRetard": "Dernier retard",
-    "discipline.vieScolaire.synthese.lastSanction": "Derniere sanction",
-    "discipline.vieScolaire.synthese.lastPunition": "Derniere punition",
-    "discipline.vieScolaire.synthese.noData": "Aucune donnee",
-    "discipline.vieScolaire.absences.columns.event": "Absence / retard",
-    "discipline.vieScolaire.absences.columns.type": "Type",
-    "discipline.vieScolaire.absences.columns.duration": "Duree",
-    "discipline.vieScolaire.absences.columns.justified": "Justifie ?",
-    "discipline.vieScolaire.absences.columns.reason": "Motif",
-    "discipline.vieScolaire.absences.columns.comment": "Commentaire",
-    "discipline.vieScolaire.absences.empty":
+    "discipline.disciplineSelf.tabs.synthese": "Synthese",
+    "discipline.disciplineSelf.tabs.absencesRetards": "Absences / retards",
+    "discipline.disciplineSelf.tabs.sanctionsPunitions":
+      "Sanctions / punitions",
+    "discipline.disciplineSelf.kpi.absences": "Absences",
+    "discipline.disciplineSelf.kpi.retards": "Retards",
+    "discipline.disciplineSelf.kpi.sanctions": "Sanctions",
+    "discipline.disciplineSelf.kpi.punitions": "Punitions",
+    "discipline.disciplineSelf.synthese.lastAbsence": "Derniere absence",
+    "discipline.disciplineSelf.synthese.lastRetard": "Dernier retard",
+    "discipline.disciplineSelf.synthese.lastSanction": "Derniere sanction",
+    "discipline.disciplineSelf.synthese.lastPunition": "Derniere punition",
+    "discipline.disciplineSelf.synthese.noData": "Aucune donnee",
+    "discipline.disciplineSelf.absences.columns.event": "Absence / retard",
+    "discipline.disciplineSelf.absences.columns.type": "Type",
+    "discipline.disciplineSelf.absences.columns.duration": "Duree",
+    "discipline.disciplineSelf.absences.columns.justified": "Justifie ?",
+    "discipline.disciplineSelf.absences.columns.reason": "Motif",
+    "discipline.disciplineSelf.absences.columns.comment": "Commentaire",
+    "discipline.disciplineSelf.absences.empty":
       "Aucun evenement sur l'annee active.",
-    "discipline.vieScolaire.absences.durationPrefix": "Duree:",
-    "discipline.vieScolaire.absences.justifiedPrefix": "Justifie:",
-    "discipline.vieScolaire.absences.reasonPrefix": "Motif:",
-    "discipline.vieScolaire.absences.commentPrefix": "Commentaire:",
-    "discipline.vieScolaire.sanctions.columns.type": "Type",
-    "discipline.vieScolaire.sanctions.columns.incident": "Incident",
-    "discipline.vieScolaire.sanctions.columns.date": "Date",
-    "discipline.vieScolaire.sanctions.columns.reason": "Motif",
-    "discipline.vieScolaire.sanctions.columns.by": "Par",
-    "discipline.vieScolaire.sanctions.columns.comment": "Commentaire",
-    "discipline.vieScolaire.sanctions.columns.executionDate":
+    "discipline.disciplineSelf.absences.durationPrefix": "Duree:",
+    "discipline.disciplineSelf.absences.justifiedPrefix": "Justifie:",
+    "discipline.disciplineSelf.absences.reasonPrefix": "Motif:",
+    "discipline.disciplineSelf.absences.commentPrefix": "Commentaire:",
+    "discipline.disciplineSelf.sanctions.columns.type": "Type",
+    "discipline.disciplineSelf.sanctions.columns.incident": "Incident",
+    "discipline.disciplineSelf.sanctions.columns.date": "Date",
+    "discipline.disciplineSelf.sanctions.columns.reason": "Motif",
+    "discipline.disciplineSelf.sanctions.columns.by": "Par",
+    "discipline.disciplineSelf.sanctions.columns.comment": "Commentaire",
+    "discipline.disciplineSelf.sanctions.columns.executionDate":
       "Date de deroulement",
-    "discipline.vieScolaire.sanctions.empty":
+    "discipline.disciplineSelf.sanctions.empty":
       "Aucune sanction/punition sur l'annee active.",
-    "discipline.vieScolaire.sanctions.datePrefix": "Date:",
-    "discipline.vieScolaire.sanctions.reasonPrefix": "Motif:",
-    "discipline.vieScolaire.sanctions.byPrefix": "Par:",
-    "discipline.vieScolaire.sanctions.commentPrefix": "Commentaire:",
-    "discipline.vieScolaire.sanctions.executionDatePrefix":
+    "discipline.disciplineSelf.sanctions.datePrefix": "Date:",
+    "discipline.disciplineSelf.sanctions.reasonPrefix": "Motif:",
+    "discipline.disciplineSelf.sanctions.byPrefix": "Par:",
+    "discipline.disciplineSelf.sanctions.commentPrefix": "Commentaire:",
+    "discipline.disciplineSelf.sanctions.executionDatePrefix":
       "Date de deroulement:",
-    "discipline.vieScolaire.equipePedagogique": "Equipe pedagogique",
+    "discipline.disciplineSelf.equipePedagogique": "Equipe pedagogique",
 
     "discipline.accueil.summaryHint.none": "Aucun point de vigilance",
     "discipline.accueil.summaryHint.unjustified":
@@ -1110,12 +1111,11 @@ export const translations: Record<Locale, Record<string, string>> = {
       "{count} sanction(s) ou punition(s)",
     "discipline.accueil.panel.action": "Voir la synthese",
     "discipline.accueil.panel.noRecentEvent":
-      "Aucun evenement vie scolaire recent.",
+      "Aucun evenement discipline recent.",
     "discipline.accueil.metrics.unjustifiedAbsences": "Absences non justifiees",
     "discipline.accueil.metrics.sanctionsPunitions": "Sanctions / punitions",
     "discipline.accueil.quickAccess.hint": "Absences, retards, sanctions",
 
-    "discipline.sidebar.vieScolaire": "Vie scolaire",
     "discipline.sidebar.discipline": "Discipline",
 
     "timetable.sidebar.emploiDuTemps": "Emploi du temps",
@@ -1374,7 +1374,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.cursus.subtitleDefault": "Historique eleve",
     "discipline.cursus.error": "Impossible de charger le cursus.",
     "discipline.cursus.tabs.synthese": "Synthese",
-    "discipline.cursus.tabs.vieScolaire": "Vie scolaire",
+    "discipline.cursus.tabs.discipline": "Discipline",
     "discipline.cursus.tabs.help": "Aide",
     "discipline.cursus.filters.year": "Annee",
     "discipline.cursus.filters.class": "Classe",
@@ -1387,7 +1387,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.cursus.notDefined.class": "Classe non definie",
     "discipline.cursus.synthese.yearsClasses": "Annees / classes",
     "discipline.cursus.empty":
-      "Aucun evenement vie scolaire sur le cursus pour le moment.",
+      "Aucun evenement discipline sur le cursus pour le moment.",
     "discipline.cursus.help.moduleName": "Cursus",
     "discipline.cursus.help.summary":
       "ce module recapitulera le parcours eleve annee par annee et classe par classe.",
@@ -1395,16 +1395,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.cursus.help.actionPurpose":
       "analyser l'historique global de l'eleve.",
     "discipline.cursus.help.actionHowTo":
-      "ouvrir l'onglet Vie scolaire pour un recap par annee/classe.",
+      "ouvrir l'onglet Discipline pour un recap par annee/classe.",
     "discipline.cursus.help.actionModuleImpact":
       "vue chronologique des evenements du parcours.",
     "discipline.cursus.help.actionCrossModuleImpact":
-      "complete la page Vie scolaire courante qui ne montre que l'annee active.",
+      "complete la page Discipline courante qui ne montre que l'annee active.",
 
-    "discipline.dashboard.cardTitle": "Vie scolaire",
+    "discipline.dashboard.cardTitle": "Suivi disciplinaire",
     "discipline.dashboard.cardEyebrow": "Discipline",
     "discipline.dashboard.empty":
-      "Aucun enfant associe ou aucune donnee de vie scolaire disponible.",
+      "Aucun enfant associe ou aucune donnee de discipline disponible.",
     "discipline.dashboard.stats.absences": "Absences",
     "discipline.dashboard.stats.retards": "Retards",
     "discipline.dashboard.stats.incidents": "Incidents",
@@ -2495,15 +2495,15 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.schoolSettings.step2Title": "Activer un niveau",
     "onboardingTour.schoolSettings.step2Body":
       "La case à cocher active ou désactive un niveau national pour votre école : seuls les niveaux actifs apparaissent ensuite comme cible possible dans l'onglet Décision de Notes. Les niveaux propres à votre école sont toujours actifs. Le champ Ordre (sur vos niveaux propres) détermine quel niveau est proposé automatiquement quand un enseignant enregistre une décision « Promu ».",
-    "onboardingTour.vieScolaire.tabsTitle": "Trois onglets",
-    "onboardingTour.vieScolaire.tabsBody":
+    "onboardingTour.disciplineSelf.tabsTitle": "Trois onglets",
+    "onboardingTour.disciplineSelf.tabsBody":
       "Cliquez sur un onglet pour passer de la synthèse aux absences et retards, puis aux sanctions et punitions.",
-    "onboardingTour.vieScolaire.kpisTitle": "Vos indicateurs",
-    "onboardingTour.vieScolaire.kpisBody":
+    "onboardingTour.disciplineSelf.kpisTitle": "Vos indicateurs",
+    "onboardingTour.disciplineSelf.kpisBody":
       "Ces quatre cartes récapitulent en un coup d'œil vos absences, retards, sanctions et punitions de l'année en cours.",
-    "onboardingTour.vieScolaire.helpToggleTitle":
+    "onboardingTour.disciplineSelf.helpToggleTitle":
       "Une aide toujours disponible",
-    "onboardingTour.vieScolaire.helpToggleBody":
+    "onboardingTour.disciplineSelf.helpToggleBody":
       "Ouvrez le menu, puis « Aide », pour retrouver à tout moment le fonctionnement de cette page.",
     "onboardingTour.parentLanding.step1Title": "Votre menu de navigation",
     "onboardingTour.parentLanding.step1Body":
@@ -2513,7 +2513,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Ce lien ouvre votre messagerie parent, où se trouvent tous vos échanges avec l'école.",
     "onboardingTour.parentLanding.step3Title": "Vos enfants",
     "onboardingTour.parentLanding.step3Body":
-      "Retrouvez ici la liste de vos enfants. Cliquez sur le nom d'un enfant pour ouvrir son espace (notes, emploi du temps, vie scolaire...).",
+      "Retrouvez ici la liste de vos enfants. Cliquez sur le nom d'un enfant pour ouvrir son espace (notes, emploi du temps, discipline...).",
     "onboardingTour.parentLanding.step4Title": "Paramètres de votre compte",
     "onboardingTour.parentLanding.step4Body":
       "Ce lien ouvre les paramètres de votre compte : coordonnées, sécurité et préférences.",
@@ -2524,7 +2524,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "dashboard.parent.help.title": "Votre espace parent",
     "dashboard.parent.help.section1Title": "Vue d'ensemble",
     "dashboard.parent.help.body1":
-      "Ce tableau de bord regroupe l'essentiel : la vie scolaire et les notes de vos enfants, votre compte, et le fil d'actualité de l'école.",
+      "Ce tableau de bord regroupe l'essentiel : la discipline et les notes de vos enfants, votre compte, et le fil d'actualité de l'école.",
     "dashboard.parent.help.section2Title": "Le menu latéral",
     "dashboard.parent.help.body2":
       "Pour tout le reste — messagerie, espace d'un enfant, paramètres du compte — utilisez le menu latéral : sur ordinateur il est toujours visible, sur mobile touchez l'icône menu pour l'ouvrir.",
@@ -3262,16 +3262,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.help.title": "Accueil enfant",
     "childAccueil.help.section1Title": "Trois indicateurs",
     "childAccueil.help.section1Body":
-      "La moyenne générale, les messages non lus et la vie scolaire sont résumés en un coup d'œil en haut de la page.",
+      "La moyenne générale, les messages non lus et la discipline sont résumés en un coup d'œil en haut de la page.",
     "childAccueil.help.section2Title": "Des blocs résumés",
     "childAccueil.help.section2Body":
-      "Chaque bloc (notes, vie scolaire, accès rapide, dernier message, vie de classe) affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
+      "Chaque bloc (notes, discipline, accès rapide, dernier message, vie de classe) affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
     "childAccueil.help.section3Title": "Fournitures scolaires",
     "childAccueil.help.section3Body":
       "Quand votre enfant est promu et que l'annee suivante est ouverte, un bloc affiche un apercu de la liste de fournitures a prevoir, avec un lien vers l'ecran Reinscription pour la consulter en entier.",
     "onboardingTour.childHome.kpisTitle": "Trois indicateurs",
     "onboardingTour.childHome.kpisBody":
-      "Moyenne générale, messages non lus et vie scolaire, résumés en un coup d'œil.",
+      "Moyenne générale, messages non lus et discipline, résumés en un coup d'œil.",
     "onboardingTour.childHome.sectionsTitle": "Des blocs résumés",
     "onboardingTour.childHome.sectionsBody":
       "Chaque bloc affiche un aperçu du module, avec un lien pour l'ouvrir en entier.",
@@ -3485,7 +3485,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     // School portal landing page (pre-login)
     "schoolPortal.subtitle": "Portail etablissement Scolive",
     "schoolPortal.description":
-      "Accedez a votre espace personnel pour suivre la vie scolaire.",
+      "Accedez a votre espace personnel pour suivre la discipline.",
     "schoolPortal.loginButton": "Se connecter",
     "schoolPortal.backHome": "Retour accueil",
 
@@ -5287,7 +5287,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "landing.appShowcase.item1": "Grades",
     "landing.appShowcase.item2": "Homework",
     "landing.appShowcase.item3": "Timetable",
-    "landing.appShowcase.item4": "School life",
+    "landing.appShowcase.item4": "Discipline",
     "landing.appShowcase.item5": "Messaging",
     "landing.features.notes.title": "Grade tracking",
     "landing.features.notes.description":
@@ -5298,7 +5298,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "landing.features.payments.title": "Simplified payments",
     "landing.features.payments.description":
       "Pay for the canteen, outings and school fees online.",
-    "landing.features.schoolLife.title": "School life",
+    "landing.features.schoolLife.title": "Discipline",
     "landing.features.schoolLife.description":
       "Absences, timetable, documents and useful information.",
     "landing.features.eyebrow": "What Scolive changes every day",
@@ -6080,11 +6080,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.help.summary":
       "this module lets the teacher record absences, lateness, sanctions and punishments for their assigned classes.",
     "discipline.help.record.name": "Record",
-    "discipline.help.record.purpose": "quickly record a school life event.",
+    "discipline.help.record.purpose": "quickly record a discipline event.",
     "discipline.help.record.howTo":
       "select the student then fill in the type, date and reason.",
     "discipline.help.record.moduleImpact":
-      "the event is visible to the parent in School life (current year).",
+      "the event is visible to the parent in Discipline (current year).",
     "discipline.help.record.crossModuleImpact":
       "it then feeds the Cursus page for the overall history.",
     "discipline.help.verify.name": "Check",
@@ -6128,78 +6128,82 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.form.cancel": "Cancel",
 
     "discipline.eleves.sectionTitle":
-      "School life: absences, lateness, sanctions and punishments",
+      "Discipline: absences, lateness, sanctions and punishments",
 
     "discipline.empty.studentEvents": "No events for this student.",
-    "discipline.empty.eleves": "No school life events.",
+    "discipline.empty.eleves": "No discipline events.",
 
     "discipline.delete.title": "Delete this event?",
     "discipline.delete.message":
       'This action cannot be undone. The event "{label}" will be permanently deleted.',
     "discipline.delete.confirm": "Delete",
 
-    "discipline.vieScolaire.title": "School life",
-    "discipline.vieScolaire.subtitleDefault": "Student tracking",
-    "discipline.vieScolaire.eventsWarning":
-      "School life events are temporarily unavailable. Showing demo data.",
-    "discipline.vieScolaire.error": "Unable to load school life data.",
-    "discipline.vieScolaire.help.synthese.title": "School life — Summary",
-    "discipline.vieScolaire.help.synthese.section1Title": "The year's counters",
-    "discipline.vieScolaire.help.synthese.section1Body":
+    "discipline.disciplineSelf.title": "Discipline",
+    "discipline.disciplineSelf.subtitleDefault": "Student tracking",
+    "discipline.disciplineSelf.eventsWarning":
+      "Discipline events are temporarily unavailable. Showing demo data.",
+    "discipline.disciplineSelf.error": "Unable to load discipline data.",
+    "discipline.disciplineSelf.help.synthese.title": "Discipline — Summary",
+    "discipline.disciplineSelf.help.synthese.section1Title":
+      "The year's counters",
+    "discipline.disciplineSelf.help.synthese.section1Body":
       "The cards at the top of the screen total, since the start of the school year, the number of absences, lateness, sanctions and punishments. These numbers update automatically as soon as a new event is recorded by the school.",
-    "discipline.vieScolaire.help.synthese.section2Title":
+    "discipline.disciplineSelf.help.synthese.section2Title":
       "Filtering recent events",
-    "discipline.vieScolaire.help.synthese.section2Body":
+    "discipline.disciplineSelf.help.synthese.section2Body":
       'Click a card (absences, lateness, sanctions or punishments) to only show, in the "Recent events" list just below, events of that type. Click the same card again to go back to the full unfiltered list.',
-    "discipline.vieScolaire.help.absences.title": "School life — Absences",
-    "discipline.vieScolaire.help.absences.section1Title":
+    "discipline.disciplineSelf.help.absences.title": "Discipline — Absences",
+    "discipline.disciplineSelf.help.absences.section1Title":
       "The full history of absences and lateness",
-    "discipline.vieScolaire.help.absences.section1Body":
+    "discipline.disciplineSelf.help.absences.section1Body":
       "This tab lists, most recent first, every absence and lateness recorded by the school, with its date and its reason if the school specified one. This list is read-only: it reflects what the school entered.",
-    "discipline.vieScolaire.help.sanctions.title": "School life — Sanctions",
-    "discipline.vieScolaire.help.sanctions.section1Title":
+    "discipline.disciplineSelf.help.sanctions.title": "Discipline — Sanctions",
+    "discipline.disciplineSelf.help.sanctions.section1Title":
       "The full history of sanctions and punishments",
-    "discipline.vieScolaire.help.sanctions.section1Body":
+    "discipline.disciplineSelf.help.sanctions.section1Body":
       "This tab lists, most recent first, every sanction and punishment recorded by the school, with its date and its reason. Like the Absences tab, this list is read-only.",
-    "discipline.vieScolaire.tabs.synthese": "Summary",
-    "discipline.vieScolaire.tabs.absencesRetards": "Absences / lateness",
-    "discipline.vieScolaire.tabs.sanctionsPunitions": "Sanctions / punishments",
-    "discipline.vieScolaire.kpi.absences": "Absences",
-    "discipline.vieScolaire.kpi.retards": "Lateness",
-    "discipline.vieScolaire.kpi.sanctions": "Sanctions",
-    "discipline.vieScolaire.kpi.punitions": "Punishments",
-    "discipline.vieScolaire.synthese.lastAbsence": "Last absence",
-    "discipline.vieScolaire.synthese.lastRetard": "Last lateness",
-    "discipline.vieScolaire.synthese.lastSanction": "Last sanction",
-    "discipline.vieScolaire.synthese.lastPunition": "Last punishment",
-    "discipline.vieScolaire.synthese.noData": "No data",
-    "discipline.vieScolaire.absences.columns.event": "Absence / lateness",
-    "discipline.vieScolaire.absences.columns.type": "Type",
-    "discipline.vieScolaire.absences.columns.duration": "Duration",
-    "discipline.vieScolaire.absences.columns.justified": "Justified?",
-    "discipline.vieScolaire.absences.columns.reason": "Reason",
-    "discipline.vieScolaire.absences.columns.comment": "Comment",
-    "discipline.vieScolaire.absences.empty":
+    "discipline.disciplineSelf.tabs.synthese": "Summary",
+    "discipline.disciplineSelf.tabs.absencesRetards": "Absences / lateness",
+    "discipline.disciplineSelf.tabs.sanctionsPunitions":
+      "Sanctions / punishments",
+    "discipline.disciplineSelf.kpi.absences": "Absences",
+    "discipline.disciplineSelf.kpi.retards": "Lateness",
+    "discipline.disciplineSelf.kpi.sanctions": "Sanctions",
+    "discipline.disciplineSelf.kpi.punitions": "Punishments",
+    "discipline.disciplineSelf.synthese.lastAbsence": "Last absence",
+    "discipline.disciplineSelf.synthese.lastRetard": "Last lateness",
+    "discipline.disciplineSelf.synthese.lastSanction": "Last sanction",
+    "discipline.disciplineSelf.synthese.lastPunition": "Last punishment",
+    "discipline.disciplineSelf.synthese.noData": "No data",
+    "discipline.disciplineSelf.absences.columns.event": "Absence / lateness",
+    "discipline.disciplineSelf.absences.columns.type": "Type",
+    "discipline.disciplineSelf.absences.columns.duration": "Duration",
+    "discipline.disciplineSelf.absences.columns.justified": "Justified?",
+    "discipline.disciplineSelf.absences.columns.reason": "Reason",
+    "discipline.disciplineSelf.absences.columns.comment": "Comment",
+    "discipline.disciplineSelf.absences.empty":
       "No events for the active school year.",
-    "discipline.vieScolaire.absences.durationPrefix": "Duration:",
-    "discipline.vieScolaire.absences.justifiedPrefix": "Justified:",
-    "discipline.vieScolaire.absences.reasonPrefix": "Reason:",
-    "discipline.vieScolaire.absences.commentPrefix": "Comment:",
-    "discipline.vieScolaire.sanctions.columns.type": "Type",
-    "discipline.vieScolaire.sanctions.columns.incident": "Incident",
-    "discipline.vieScolaire.sanctions.columns.date": "Date",
-    "discipline.vieScolaire.sanctions.columns.reason": "Reason",
-    "discipline.vieScolaire.sanctions.columns.by": "By",
-    "discipline.vieScolaire.sanctions.columns.comment": "Comment",
-    "discipline.vieScolaire.sanctions.columns.executionDate": "Execution date",
-    "discipline.vieScolaire.sanctions.empty":
+    "discipline.disciplineSelf.absences.durationPrefix": "Duration:",
+    "discipline.disciplineSelf.absences.justifiedPrefix": "Justified:",
+    "discipline.disciplineSelf.absences.reasonPrefix": "Reason:",
+    "discipline.disciplineSelf.absences.commentPrefix": "Comment:",
+    "discipline.disciplineSelf.sanctions.columns.type": "Type",
+    "discipline.disciplineSelf.sanctions.columns.incident": "Incident",
+    "discipline.disciplineSelf.sanctions.columns.date": "Date",
+    "discipline.disciplineSelf.sanctions.columns.reason": "Reason",
+    "discipline.disciplineSelf.sanctions.columns.by": "By",
+    "discipline.disciplineSelf.sanctions.columns.comment": "Comment",
+    "discipline.disciplineSelf.sanctions.columns.executionDate":
+      "Execution date",
+    "discipline.disciplineSelf.sanctions.empty":
       "No sanctions/punishments for the active school year.",
-    "discipline.vieScolaire.sanctions.datePrefix": "Date:",
-    "discipline.vieScolaire.sanctions.reasonPrefix": "Reason:",
-    "discipline.vieScolaire.sanctions.byPrefix": "By:",
-    "discipline.vieScolaire.sanctions.commentPrefix": "Comment:",
-    "discipline.vieScolaire.sanctions.executionDatePrefix": "Execution date:",
-    "discipline.vieScolaire.equipePedagogique": "Teaching staff",
+    "discipline.disciplineSelf.sanctions.datePrefix": "Date:",
+    "discipline.disciplineSelf.sanctions.reasonPrefix": "Reason:",
+    "discipline.disciplineSelf.sanctions.byPrefix": "By:",
+    "discipline.disciplineSelf.sanctions.commentPrefix": "Comment:",
+    "discipline.disciplineSelf.sanctions.executionDatePrefix":
+      "Execution date:",
+    "discipline.disciplineSelf.equipePedagogique": "Teaching staff",
 
     "discipline.accueil.summaryHint.none": "Nothing to flag",
     "discipline.accueil.summaryHint.unjustified":
@@ -6207,12 +6211,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.accueil.summaryHint.sanctions":
       "{count} sanction(s) or punishment(s)",
     "discipline.accueil.panel.action": "View summary",
-    "discipline.accueil.panel.noRecentEvent": "No recent school life event.",
+    "discipline.accueil.panel.noRecentEvent": "No recent discipline event.",
     "discipline.accueil.metrics.unjustifiedAbsences": "Unjustified absences",
     "discipline.accueil.metrics.sanctionsPunitions": "Sanctions / punishments",
     "discipline.accueil.quickAccess.hint": "Absences, lateness, sanctions",
 
-    "discipline.sidebar.vieScolaire": "School life",
     "discipline.sidebar.discipline": "Discipline",
 
     "timetable.sidebar.emploiDuTemps": "Timetable",
@@ -6461,7 +6464,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.cursus.subtitleDefault": "Student history",
     "discipline.cursus.error": "Unable to load the cursus.",
     "discipline.cursus.tabs.synthese": "Summary",
-    "discipline.cursus.tabs.vieScolaire": "School life",
+    "discipline.cursus.tabs.discipline": "Discipline",
     "discipline.cursus.tabs.help": "Help",
     "discipline.cursus.filters.year": "Year",
     "discipline.cursus.filters.class": "Class",
@@ -6473,7 +6476,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.cursus.notDefined.year": "Year not set",
     "discipline.cursus.notDefined.class": "Class not set",
     "discipline.cursus.synthese.yearsClasses": "Years / classes",
-    "discipline.cursus.empty": "No school life event on the cursus yet.",
+    "discipline.cursus.empty": "No discipline event on the cursus yet.",
     "discipline.cursus.help.moduleName": "Cursus",
     "discipline.cursus.help.summary":
       "this module will summarize the student's path year by year and class by class.",
@@ -6481,16 +6484,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.cursus.help.actionPurpose":
       "analyze the student's overall history.",
     "discipline.cursus.help.actionHowTo":
-      "open the School life tab for a recap by year/class.",
+      "open the Discipline tab for a recap by year/class.",
     "discipline.cursus.help.actionModuleImpact":
       "chronological view of the path's events.",
     "discipline.cursus.help.actionCrossModuleImpact":
-      "complements the current School life page which only shows the active year.",
+      "complements the current Discipline page which only shows the active year.",
 
-    "discipline.dashboard.cardTitle": "School life",
+    "discipline.dashboard.cardTitle": "Discipline tracking",
     "discipline.dashboard.cardEyebrow": "Discipline",
     "discipline.dashboard.empty":
-      "No child linked or no school life data available.",
+      "No child linked or no discipline data available.",
     "discipline.dashboard.stats.absences": "Absences",
     "discipline.dashboard.stats.retards": "Lateness",
     "discipline.dashboard.stats.incidents": "Incidents",
@@ -6509,8 +6512,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.dashboard.detail.retardsThisTerm":
       "{count} late arrival(s) this term.",
 
-    "discipline.mail.subjectCreated": "Scolive - School life event recorded",
-    "discipline.mail.subjectUpdated": "Scolive - School life event updated",
+    "discipline.mail.subjectCreated": "Scolive - Discipline event recorded",
+    "discipline.mail.subjectUpdated": "Scolive - Discipline event updated",
     "discipline.mail.actionCreated": "recorded",
     "discipline.mail.actionUpdated": "updated",
     "discipline.mail.greeting": "Hello {firstName},",
@@ -7531,14 +7534,14 @@ export const translations: Record<Locale, Record<string, string>> = {
     "onboardingTour.schoolSettings.step2Title": "Activate a level",
     "onboardingTour.schoolSettings.step2Body":
       'This checkbox activates or deactivates a national level for your school: only active levels then appear as a possible target in the Decision tab of Notes. Levels created for your school are always active. The Order field (on your own levels) determines which level is automatically suggested when a teacher records a "Promoted" decision.',
-    "onboardingTour.vieScolaire.tabsTitle": "Three tabs",
-    "onboardingTour.vieScolaire.tabsBody":
+    "onboardingTour.disciplineSelf.tabsTitle": "Three tabs",
+    "onboardingTour.disciplineSelf.tabsBody":
       "Click a tab to switch between the summary, absences and lateness, then sanctions and punishments.",
-    "onboardingTour.vieScolaire.kpisTitle": "Your indicators",
-    "onboardingTour.vieScolaire.kpisBody":
+    "onboardingTour.disciplineSelf.kpisTitle": "Your indicators",
+    "onboardingTour.disciplineSelf.kpisBody":
       "These four cards give you an at-a-glance overview of your absences, lateness, sanctions and punishments for the current year.",
-    "onboardingTour.vieScolaire.helpToggleTitle": "Help is always available",
-    "onboardingTour.vieScolaire.helpToggleBody":
+    "onboardingTour.disciplineSelf.helpToggleTitle": "Help is always available",
+    "onboardingTour.disciplineSelf.helpToggleBody":
       "Open the menu, then « Help », to find out how this page works at any time.",
     "onboardingTour.parentLanding.step1Title": "Your navigation menu",
     "onboardingTour.parentLanding.step1Body":
@@ -7548,7 +7551,7 @@ export const translations: Record<Locale, Record<string, string>> = {
       "This link opens your parent messaging, where all your exchanges with the school live.",
     "onboardingTour.parentLanding.step3Title": "Your children",
     "onboardingTour.parentLanding.step3Body":
-      "This is the list of your children. Click a child's name to open their space (grades, timetable, school life...).",
+      "This is the list of your children. Click a child's name to open their space (grades, timetable, discipline...).",
     "onboardingTour.parentLanding.step4Title": "Your account settings",
     "onboardingTour.parentLanding.step4Body":
       "This link opens your account settings: contact details, security and preferences.",
@@ -7559,7 +7562,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "dashboard.parent.help.title": "Your family space",
     "dashboard.parent.help.section1Title": "Overview",
     "dashboard.parent.help.body1":
-      "This dashboard gathers the essentials: your children's school life and grades, your account, and the school's news feed.",
+      "This dashboard gathers the essentials: your children's discipline and grades, your account, and the school's news feed.",
     "dashboard.parent.help.section2Title": "The side menu",
     "dashboard.parent.help.body2":
       "For everything else — messaging, a child's space, account settings — use the side menu: on desktop it's always visible, on mobile tap the menu icon to open it.",
@@ -8249,16 +8252,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "childAccueil.help.title": "Child home",
     "childAccueil.help.section1Title": "Three indicators",
     "childAccueil.help.section1Body":
-      "The overall average, unread messages and school life are summarized at a glance at the top of the page.",
+      "The overall average, unread messages and discipline are summarized at a glance at the top of the page.",
     "childAccueil.help.section2Title": "Summary blocks",
     "childAccueil.help.section2Body":
-      "Each block (grades, school life, quick access, last message, class life) shows a preview of the module, with a link to open it in full.",
+      "Each block (grades, discipline, quick access, last message, class life) shows a preview of the module, with a link to open it in full.",
     "childAccueil.help.section3Title": "School supplies",
     "childAccueil.help.section3Body":
       "When your child is promoted and the next school year is open, a block shows a preview of the supply list to prepare, with a link to the Re-enrollment screen to view it in full.",
     "onboardingTour.childHome.kpisTitle": "Three indicators",
     "onboardingTour.childHome.kpisBody":
-      "Overall average, unread messages and school life, summarized at a glance.",
+      "Overall average, unread messages and discipline, summarized at a glance.",
     "onboardingTour.childHome.sectionsTitle": "Summary blocks",
     "onboardingTour.childHome.sectionsBody":
       "Each block shows a preview of the module, with a link to open it in full.",
@@ -8469,7 +8472,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     // School portal landing page (pre-login)
     "schoolPortal.subtitle": "Scolive school portal",
     "schoolPortal.description":
-      "Access your personal space to follow school life.",
+      "Access your personal space to follow discipline.",
     "schoolPortal.loginButton": "Log in",
     "schoolPortal.backHome": "Back to home",
 
@@ -9555,10 +9558,10 @@ export const translations: Record<Locale, Record<string, string>> = {
     "featuresPage.items.homework.bullet2": "Reminders before the deadline",
     "featuresPage.items.homework.bullet3": "Tracking by subject",
 
-    "featuresPage.items.schoolLife.title": "School life",
+    "featuresPage.items.schoolLife.title": "Discipline",
     "featuresPage.items.schoolLife.description":
       "Absences, lateness, sanctions and commendations tracked fairly and transparently.",
-    "featuresPage.items.schoolLife.bullet1": "School life log",
+    "featuresPage.items.schoolLife.bullet1": "Discipline log",
     "featuresPage.items.schoolLife.bullet2":
       "Automatic notifications to families",
     "featuresPage.items.schoolLife.bullet3": "Disciplinary history",
@@ -9594,7 +9597,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "pricingPage.tiers.school.subtitle":
       "For a single institution, from primary to secondary.",
     "pricingPage.tiers.school.feature1": "Full school management",
-    "pricingPage.tiers.school.feature2": "Grades, timetable and school life",
+    "pricingPage.tiers.school.feature2": "Grades, timetable and discipline",
     "pricingPage.tiers.school.feature3": "Mobile app for families",
     "pricingPage.tiers.school.feature4": "Email support",
 

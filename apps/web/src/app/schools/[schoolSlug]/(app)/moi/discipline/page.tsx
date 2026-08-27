@@ -2,17 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { StudentLifePanel } from "../../../../../../components/discipline/student-life-panel";
+import { DisciplinePanel } from "../../../../../../components/discipline/discipline-panel";
 import { useTranslation } from "../../../../../../i18n/useTranslation";
 import { useOnboardingTourStore } from "../../../../../../store/onboarding-tour";
 import {
-  VIE_SCOLAIRE_TOUR_ID,
-  VIE_SCOLAIRE_TOUR_STEPS,
-} from "../../../../../../components/discipline/vie-scolaire-tour.config";
+  DISCIPLINE_SELF_TOUR_ID,
+  DISCIPLINE_SELF_TOUR_STEPS,
+} from "../../../../../../components/discipline/discipline-tour.config";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
-export default function MyVieScolairePage() {
+export default function MyDisciplinePage() {
   const { t } = useTranslation();
   const router = useRouter();
   const { schoolSlug } = useParams<{ schoolSlug: string }>();
@@ -50,13 +50,13 @@ export default function MyVieScolairePage() {
       const tourStore = useOnboardingTourStore.getState();
       if (
         me.onboardingHelpEnabled !== false &&
-        !tourStore.isCompleted("student", VIE_SCOLAIRE_TOUR_ID) &&
+        !tourStore.isCompleted("student", DISCIPLINE_SELF_TOUR_ID) &&
         !tourStore.activeTourId
       ) {
         tourStore.startTour(
-          VIE_SCOLAIRE_TOUR_ID,
+          DISCIPLINE_SELF_TOUR_ID,
           "student",
-          VIE_SCOLAIRE_TOUR_STEPS,
+          DISCIPLINE_SELF_TOUR_STEPS,
         );
       }
 
@@ -78,7 +78,7 @@ export default function MyVieScolairePage() {
         studentLabel: `${timetable.student.firstName} ${timetable.student.lastName}`,
       });
     } catch {
-      // Silencieux : StudentLifePanel affichera son propre état de chargement
+      // Silencieux : DisciplinePanel affichera son propre état de chargement
       // tant que selfContext reste null.
     }
   }
@@ -92,7 +92,7 @@ export default function MyVieScolairePage() {
   }
 
   return (
-    <StudentLifePanel
+    <DisciplinePanel
       schoolSlug={schoolSlug}
       studentId={selfContext.studentId}
       studentLabel={selfContext.studentLabel}

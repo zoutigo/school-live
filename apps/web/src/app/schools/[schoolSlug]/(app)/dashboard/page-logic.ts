@@ -12,7 +12,7 @@ export type ParentChild = {
   avatarUrl?: string | null;
 };
 
-export type StudentLifeEventRow = {
+export type DisciplineEventRow = {
   id: string;
   type: "ABSENCE" | "RETARD" | "SANCTION" | "PUNITION";
   occurredAt: string;
@@ -140,7 +140,7 @@ function formatAverage(value: number | null, t: TranslateFn) {
 
 export function buildDisciplineSummary(
   child: ParentChild,
-  lifeEvents: StudentLifeEventRow[],
+  lifeEvents: DisciplineEventRow[],
   t: TranslateFn,
 ): ChildDisciplineSummary {
   const absences = lifeEvents.filter((entry) => entry.type === "ABSENCE");

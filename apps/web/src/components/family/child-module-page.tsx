@@ -20,7 +20,7 @@ type ParentChild = {
 
 type TabKey =
   | "accueil"
-  | "vie-scolaire"
+  | "discipline"
   | "vie-de-classe"
   | "notes"
   | "messagerie"
@@ -65,7 +65,7 @@ type Props = {
 
 const TAB_ITEMS: Array<{ key: TabKey; label: string }> = [
   { key: "accueil", label: "Accueil" },
-  { key: "vie-scolaire", label: "Vie scolaire" },
+  { key: "discipline", label: "Discipline" },
   { key: "vie-de-classe", label: "Vie de classe" },
   { key: "notes", label: "Notes" },
   { key: "messagerie", label: "Messagerie" },
@@ -312,8 +312,8 @@ export function ChildModulePage({
               >
                 {item.key === "accueil"
                   ? t("childModule.tab.home")
-                  : item.key === "vie-scolaire"
-                    ? t("discipline.sidebar.vieScolaire")
+                  : item.key === "discipline"
+                    ? t("discipline.sidebar.discipline")
                     : item.key === "vie-de-classe"
                       ? t("childModule.tab.classFeed")
                       : item.key === "notes"
@@ -369,7 +369,7 @@ export function ChildModulePage({
                 moduleImpact:
                   "vous obtenez une vue ciblee par enfant pour ce domaine.",
                 crossModuleImpact:
-                  "la navigation reste coherente avec notes, vie scolaire et communication.",
+                  "la navigation reste coherente avec notes, discipline et communication.",
               },
             ]}
           />

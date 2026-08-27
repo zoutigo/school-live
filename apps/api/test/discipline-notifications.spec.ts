@@ -392,7 +392,7 @@ describe("notifyParentsAboutStudentLifeEvent — via createStudentLifeEvent", ()
     expect(push.sendStudentLifeEventNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         tokens: ["ExponentPushToken[aaa111]", "ExponentPushToken[bbb222]"],
-        title: "Vie scolaire · Aminata Diallo",
+        title: "Discipline · Aminata Diallo",
         body: "Absence",
         data: expect.objectContaining({
           type: "STUDENT_LIFE_EVENT",

@@ -10,7 +10,7 @@ import {
   minuteToTimeLabel,
   type ParentChild,
   type ParentDashboardSummaryResponse,
-  type StudentLifeEventRow,
+  type DisciplineEventRow,
   type TeacherContextPayload,
 } from "./page-logic";
 
@@ -25,7 +25,7 @@ const child: ParentChild = {
 
 describe("parent dashboard card logic", () => {
   it("builds a discipline summary with alert state for unjustified absences", () => {
-    const lifeEvents: StudentLifeEventRow[] = [
+    const lifeEvents: DisciplineEventRow[] = [
       {
         id: "evt-1",
         type: "ABSENCE",
@@ -57,7 +57,7 @@ describe("parent dashboard card logic", () => {
   });
 
   it("builds a discipline summary translated to English", () => {
-    const lifeEvents: StudentLifeEventRow[] = [
+    const lifeEvents: DisciplineEventRow[] = [
       {
         id: "evt-1",
         type: "ABSENCE",

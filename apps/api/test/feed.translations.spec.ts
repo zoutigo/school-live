@@ -31,14 +31,13 @@ const ERROR_KEYS = [
   "feed.errors.missingImageFile",
 ];
 
-// "Administration", "Staff" and "Parents" happen to be spelled identically
-// in French and English, so they are checked separately below.
+// "Administration", "Staff", "Parents" and "Discipline" happen to be spelled
+// identically in French and English, so they are checked separately below.
 const ROLE_KEYS = [
   "feed.roles.member",
   "feed.roles.direction",
   "feed.roles.supervision",
   "feed.roles.accounting",
-  "feed.roles.schoolLife",
   "feed.roles.students",
 ];
 
@@ -46,6 +45,7 @@ const IDENTICAL_ROLE_KEYS = [
   "feed.roles.administration",
   "feed.roles.staff",
   "feed.roles.parents",
+  "feed.roles.schoolLife",
 ];
 
 const AUDIENCE_KEYS = [

@@ -218,7 +218,7 @@ describe("DashboardPage parent cards", () => {
       expect(
         screen.getByRole("heading", { name: "Bienvenue, Robert Ntamack" }),
       ).toBeInTheDocument();
-      expect(screen.getByText("Vie scolaire")).toBeInTheDocument();
+      expect(screen.getByText("Discipline")).toBeInTheDocument();
       expect(screen.getByText("Resultats recents")).toBeInTheDocument();
       expect(screen.getByText("Mon espace parent")).toBeInTheDocument();
     });
@@ -246,7 +246,7 @@ describe("DashboardPage parent cards", () => {
     });
     expect(disciplineLink).toHaveAttribute(
       "href",
-      "/schools/college-vogt/children/student-1/vie-scolaire",
+      "/schools/college-vogt/children/student-1/discipline",
     );
 
     const notesLink = screen.getByRole("link", {

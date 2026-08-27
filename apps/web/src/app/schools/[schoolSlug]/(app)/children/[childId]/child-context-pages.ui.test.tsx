@@ -334,7 +334,7 @@ describe("Child context web pages", () => {
     });
     expect(screen.getByText("Aucun point de vigilance")).toBeInTheDocument();
     expect(
-      screen.getByText("Aucun evenement vie scolaire recent."),
+      screen.getByText("Aucun evenement discipline recent."),
     ).toBeInTheDocument();
   });
 

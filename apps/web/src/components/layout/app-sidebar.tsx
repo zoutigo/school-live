@@ -540,10 +540,10 @@ function buildItems(
       matchPrefix: `${schoolBase}/emploi-du-temps`,
     },
     {
-      label: t("discipline.sidebar.vieScolaire"),
-      href: `${schoolBase}/moi/vie-scolaire`,
+      label: t("discipline.sidebar.discipline"),
+      href: `${schoolBase}/moi/discipline`,
       icon: UserRound,
-      matchPrefix: `${schoolBase}/moi/vie-scolaire`,
+      matchPrefix: `${schoolBase}/moi/discipline`,
     },
     {
       label: t("feed.vieDeClasse.title"),
@@ -601,10 +601,10 @@ function buildParentChildItems(
       matchPrefix: `${base}/accueil`,
     },
     {
-      label: t("discipline.sidebar.vieScolaire"),
-      href: `${base}/vie-scolaire`,
+      label: t("discipline.sidebar.discipline"),
+      href: `${base}/discipline`,
       icon: UserRound,
-      matchPrefix: `${base}/vie-scolaire`,
+      matchPrefix: `${base}/discipline`,
       unread: toUnread(childBadge?.disciplineUnread),
     },
     {
