@@ -167,14 +167,22 @@ export function DisciplinePanel({
         : tab === "absences"
           ? [
               {
-                title: t("discipline.disciplineSelf.help.absences.section1Title"),
-                body: [t("discipline.disciplineSelf.help.absences.section1Body")],
+                title: t(
+                  "discipline.disciplineSelf.help.absences.section1Title",
+                ),
+                body: [
+                  t("discipline.disciplineSelf.help.absences.section1Body"),
+                ],
               },
             ]
           : [
               {
-                title: t("discipline.disciplineSelf.help.sanctions.section1Title"),
-                body: [t("discipline.disciplineSelf.help.sanctions.section1Body")],
+                title: t(
+                  "discipline.disciplineSelf.help.sanctions.section1Title",
+                ),
+                body: [
+                  t("discipline.disciplineSelf.help.sanctions.section1Body"),
+                ],
               },
             ],
   });
@@ -319,7 +327,10 @@ export function DisciplinePanel({
 
   return (
     <div className="grid gap-4">
-      <Card title={t("discipline.disciplineSelf.title")} subtitle={studentLabel}>
+      <Card
+        title={t("discipline.disciplineSelf.title")}
+        subtitle={studentLabel}
+      >
         {loading ? (
           <p className="text-sm text-text-secondary">
             {t("discipline.common.loading")}
@@ -417,7 +428,8 @@ export function DisciplinePanel({
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {absences.find((entry) => entry.type === "RETARD")
-                        ?.period ?? t("discipline.disciplineSelf.synthese.noData")}
+                        ?.period ??
+                        t("discipline.disciplineSelf.synthese.noData")}
                     </p>
                   </div>
                   <div className="rounded-card border border-border bg-background p-4">
@@ -426,7 +438,8 @@ export function DisciplinePanel({
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {sanctions.find((entry) => entry.type === "SANCTION")
-                        ?.reason ?? t("discipline.disciplineSelf.synthese.noData")}
+                        ?.reason ??
+                        t("discipline.disciplineSelf.synthese.noData")}
                     </p>
                   </div>
                   <div className="rounded-card border border-border bg-background p-4">
@@ -435,7 +448,8 @@ export function DisciplinePanel({
                     </p>
                     <p className="mt-2 text-sm text-text-secondary">
                       {sanctions.find((entry) => entry.type === "PUNITION")
-                        ?.reason ?? t("discipline.disciplineSelf.synthese.noData")}
+                        ?.reason ??
+                        t("discipline.disciplineSelf.synthese.noData")}
                     </p>
                   </div>
                 </div>
@@ -447,7 +461,9 @@ export function DisciplinePanel({
                     <thead>
                       <tr className="bg-primary text-left text-white">
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.disciplineSelf.absences.columns.event")}
+                          {t(
+                            "discipline.disciplineSelf.absences.columns.event",
+                          )}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {t("discipline.disciplineSelf.absences.columns.type")}
@@ -463,10 +479,14 @@ export function DisciplinePanel({
                           )}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.disciplineSelf.absences.columns.reason")}
+                          {t(
+                            "discipline.disciplineSelf.absences.columns.reason",
+                          )}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.disciplineSelf.absences.columns.comment")}
+                          {t(
+                            "discipline.disciplineSelf.absences.columns.comment",
+                          )}
                         </th>
                       </tr>
                     </thead>
@@ -544,11 +564,15 @@ export function DisciplinePanel({
                           </span>
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.disciplineSelf.absences.durationPrefix")}{" "}
+                          {t(
+                            "discipline.disciplineSelf.absences.durationPrefix",
+                          )}{" "}
                           {row.duration}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.disciplineSelf.absences.justifiedPrefix")}{" "}
+                          {t(
+                            "discipline.disciplineSelf.absences.justifiedPrefix",
+                          )}{" "}
                           {row.justified
                             ? t("discipline.common.yes")
                             : t("discipline.common.no")}
@@ -558,7 +582,9 @@ export function DisciplinePanel({
                           {row.reason}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.disciplineSelf.absences.commentPrefix")}{" "}
+                          {t(
+                            "discipline.disciplineSelf.absences.commentPrefix",
+                          )}{" "}
                           {row.comment || "-"}
                         </p>
                       </div>
@@ -573,7 +599,9 @@ export function DisciplinePanel({
                     <thead>
                       <tr className="bg-primary text-left text-white">
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.disciplineSelf.sanctions.columns.type")}
+                          {t(
+                            "discipline.disciplineSelf.sanctions.columns.type",
+                          )}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {t(
@@ -581,10 +609,14 @@ export function DisciplinePanel({
                           )}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.disciplineSelf.sanctions.columns.date")}
+                          {t(
+                            "discipline.disciplineSelf.sanctions.columns.date",
+                          )}
                         </th>
                         <th className="px-3 py-2 font-medium">
-                          {t("discipline.disciplineSelf.sanctions.columns.reason")}
+                          {t(
+                            "discipline.disciplineSelf.sanctions.columns.reason",
+                          )}
                         </th>
                         <th className="px-3 py-2 font-medium">
                           {t("discipline.disciplineSelf.sanctions.columns.by")}
@@ -678,7 +710,9 @@ export function DisciplinePanel({
                           {row.date}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.disciplineSelf.sanctions.reasonPrefix")}{" "}
+                          {t(
+                            "discipline.disciplineSelf.sanctions.reasonPrefix",
+                          )}{" "}
                           {row.reason}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
@@ -686,7 +720,9 @@ export function DisciplinePanel({
                           {row.by}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">
-                          {t("discipline.disciplineSelf.sanctions.commentPrefix")}{" "}
+                          {t(
+                            "discipline.disciplineSelf.sanctions.commentPrefix",
+                          )}{" "}
                           {row.comment || "-"}
                         </p>
                         <p className="mt-1 text-sm text-text-secondary">

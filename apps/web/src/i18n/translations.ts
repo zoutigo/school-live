@@ -1063,7 +1063,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Cet onglet liste, du plus récent au plus ancien, chaque sanction et chaque punition enregistrées par l'établissement, avec leur date et leur motif. Comme l'onglet Absences, cette liste est en lecture seule.",
     "discipline.disciplineSelf.tabs.synthese": "Synthese",
     "discipline.disciplineSelf.tabs.absencesRetards": "Absences / retards",
-    "discipline.disciplineSelf.tabs.sanctionsPunitions": "Sanctions / punitions",
+    "discipline.disciplineSelf.tabs.sanctionsPunitions":
+      "Sanctions / punitions",
     "discipline.disciplineSelf.kpi.absences": "Absences",
     "discipline.disciplineSelf.kpi.retards": "Retards",
     "discipline.disciplineSelf.kpi.sanctions": "Sanctions",
@@ -6143,7 +6144,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "Discipline events are temporarily unavailable. Showing demo data.",
     "discipline.disciplineSelf.error": "Unable to load discipline data.",
     "discipline.disciplineSelf.help.synthese.title": "Discipline — Summary",
-    "discipline.disciplineSelf.help.synthese.section1Title": "The year's counters",
+    "discipline.disciplineSelf.help.synthese.section1Title":
+      "The year's counters",
     "discipline.disciplineSelf.help.synthese.section1Body":
       "The cards at the top of the screen total, since the start of the school year, the number of absences, lateness, sanctions and punishments. These numbers update automatically as soon as a new event is recorded by the school.",
     "discipline.disciplineSelf.help.synthese.section2Title":
@@ -6162,7 +6164,8 @@ export const translations: Record<Locale, Record<string, string>> = {
       "This tab lists, most recent first, every sanction and punishment recorded by the school, with its date and its reason. Like the Absences tab, this list is read-only.",
     "discipline.disciplineSelf.tabs.synthese": "Summary",
     "discipline.disciplineSelf.tabs.absencesRetards": "Absences / lateness",
-    "discipline.disciplineSelf.tabs.sanctionsPunitions": "Sanctions / punishments",
+    "discipline.disciplineSelf.tabs.sanctionsPunitions":
+      "Sanctions / punishments",
     "discipline.disciplineSelf.kpi.absences": "Absences",
     "discipline.disciplineSelf.kpi.retards": "Lateness",
     "discipline.disciplineSelf.kpi.sanctions": "Sanctions",
@@ -6190,14 +6193,16 @@ export const translations: Record<Locale, Record<string, string>> = {
     "discipline.disciplineSelf.sanctions.columns.reason": "Reason",
     "discipline.disciplineSelf.sanctions.columns.by": "By",
     "discipline.disciplineSelf.sanctions.columns.comment": "Comment",
-    "discipline.disciplineSelf.sanctions.columns.executionDate": "Execution date",
+    "discipline.disciplineSelf.sanctions.columns.executionDate":
+      "Execution date",
     "discipline.disciplineSelf.sanctions.empty":
       "No sanctions/punishments for the active school year.",
     "discipline.disciplineSelf.sanctions.datePrefix": "Date:",
     "discipline.disciplineSelf.sanctions.reasonPrefix": "Reason:",
     "discipline.disciplineSelf.sanctions.byPrefix": "By:",
     "discipline.disciplineSelf.sanctions.commentPrefix": "Comment:",
-    "discipline.disciplineSelf.sanctions.executionDatePrefix": "Execution date:",
+    "discipline.disciplineSelf.sanctions.executionDatePrefix":
+      "Execution date:",
     "discipline.disciplineSelf.equipePedagogique": "Teaching staff",
 
     "discipline.accueil.summaryHint.none": "Nothing to flag",
