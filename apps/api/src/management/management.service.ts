@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -667,65 +668,104 @@ export class ManagementService {
       );
     }
 
+    const normalizedEmail = parsed.email.toLowerCase();
+    const existingByEmailOrPhone = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: normalizedEmail },
+          ...(parsed.phone ? [{ phone: parsed.phone }] : []),
+        ],
+      },
+      select: { id: true, email: true, phone: true },
+    });
+
+    if (existingByEmailOrPhone) {
+      const conflictField =
+        existingByEmailOrPhone.email === normalizedEmail ? "email" : "phone";
+      throw new ConflictException(
+        conflictField === "email"
+          ? `A user with email "${normalizedEmail}" already exists`
+          : `A user with phone "${parsed.phone}" already exists`,
+      );
+    }
+
     const passwordHash = await bcrypt.hash(parsed.temporaryPassword, 10);
     const isSchoolAccount = normalizedSchoolRoles.length > 0;
 
-    const user = await this.prisma.user.create({
-      data: {
-        firstName: parsed.firstName,
-        lastName: parsed.lastName,
-        email: parsed.email.toLowerCase(),
-        phone: parsed.phone ?? null,
-        avatarUrl: parsed.avatarUrl,
-        isTester: parsed.isTester ?? false,
-        passwordHash,
-        mustChangePassword: true,
-        profileCompleted: false,
-        activationStatus: isSchoolAccount ? "PENDING" : "ACTIVE",
-        platformRoles:
-          normalizedPlatformRoles.length > 0
-            ? {
-                createMany: {
-                  data: normalizedPlatformRoles.map((role) => ({ role })),
+    const user = await (async () => {
+      try {
+        return await this.prisma.user.create({
+          data: {
+            firstName: parsed.firstName,
+            lastName: parsed.lastName,
+            email: normalizedEmail,
+            phone: parsed.phone ?? null,
+            avatarUrl: parsed.avatarUrl,
+            isTester: parsed.isTester ?? false,
+            passwordHash,
+            mustChangePassword: true,
+            profileCompleted: false,
+            activationStatus: isSchoolAccount ? "PENDING" : "ACTIVE",
+            platformRoles:
+              normalizedPlatformRoles.length > 0
+                ? {
+                    createMany: {
+                      data: normalizedPlatformRoles.map((role) => ({ role })),
+                    },
+                  }
+                : undefined,
+            memberships:
+              schoolId && normalizedSchoolRoles.length > 0
+                ? {
+                    createMany: {
+                      data: normalizedSchoolRoles.map((role) => ({
+                        schoolId,
+                        role,
+                      })),
+                    },
+                  }
+                : undefined,
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            avatarUrl: true,
+            isTester: true,
+            activationStatus: true,
+            platformRoles: {
+              select: { role: true },
+            },
+            memberships: {
+              include: {
+                school: {
+                  select: {
+                    slug: true,
+                    name: true,
+                  },
                 },
-              }
-            : undefined,
-        memberships:
-          schoolId && normalizedSchoolRoles.length > 0
-            ? {
-                createMany: {
-                  data: normalizedSchoolRoles.map((role) => ({
-                    schoolId,
-                    role,
-                  })),
-                },
-              }
-            : undefined,
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-        avatarUrl: true,
-        isTester: true,
-        activationStatus: true,
-        platformRoles: {
-          select: { role: true },
-        },
-        memberships: {
-          include: {
-            school: {
-              select: {
-                slug: true,
-                name: true,
               },
             },
           },
-        },
-      },
-    });
+        });
+      } catch (error) {
+        // Filet de sécurité contre une course entre le pré-check ci-dessus et
+        // l'insertion (deux requêtes concurrentes avec le même email) : le
+        // pré-check évite le cas courant (message clair immédiat), ce catch
+        // évite un 500 brut sans message dans le cas rare d'une course.
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === "P2002"
+        ) {
+          throw new ConflictException(
+            `A user with email "${normalizedEmail}" already exists`,
+          );
+        }
+        throw error;
+      }
+    })();
 
     let activationCode: string | null = null;
     if (schoolId && isSchoolAccount) {

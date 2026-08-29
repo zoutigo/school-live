@@ -31,6 +31,7 @@ const makePrismaMock = () => ({
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    delete: jest.fn(),
   },
   evaluationType: {
     findFirst: jest.fn(),
@@ -1083,6 +1084,48 @@ describe("EvaluationsService", () => {
         lastName: "Kamga",
       });
       expect((result as { authorUser?: unknown }).authorUser).toBeUndefined();
+    });
+  });
+
+  // Régression : aucune route DELETE n'existait pour les évaluations —
+  // le bouton "Supprimer" côté client affichait bien une confirmation, mais
+  // la requête échouait ensuite ("Cannot DELETE ...") sans que
+  // l'évaluation ne soit jamais réellement supprimée. Reproduit
+  // manuellement sur émulateur avant correctif.
+  describe("deleteEvaluation", () => {
+    it("supprime l'évaluation accessible et retourne son id", async () => {
+      prisma.evaluation.findFirst.mockResolvedValue(
+        makeEvaluation({ id: "eval-1" }),
+      );
+      prisma.evaluation.delete.mockResolvedValue(
+        makeEvaluation({ id: "eval-1" }),
+      );
+
+      const result = await service.deleteEvaluation(
+        makeUser(),
+        "school-1",
+        "class-1",
+        "eval-1",
+      );
+
+      expect(prisma.evaluation.delete).toHaveBeenCalledWith({
+        where: { id: "eval-1" },
+      });
+      expect(result).toEqual({ success: true, evaluationId: "eval-1" });
+    });
+
+    it("rejette avec NotFoundException si l'évaluation n'existe pas (ou hors périmètre école/classe) et ne tente pas la suppression", async () => {
+      prisma.evaluation.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.deleteEvaluation(
+          makeUser(),
+          "school-1",
+          "class-1",
+          "eval-inconnue",
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.evaluation.delete).not.toHaveBeenCalled();
     });
   });
 });

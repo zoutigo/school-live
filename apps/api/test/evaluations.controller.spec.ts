@@ -8,6 +8,7 @@ describe("EvaluationsController", () => {
     createEvaluation: jest.fn(),
     getEvaluation: jest.fn(),
     updateEvaluation: jest.fn(),
+    deleteEvaluation: jest.fn(),
     upsertScores: jest.fn(),
     listClassTermReports: jest.fn(),
     upsertClassTermReports: jest.fn(),
@@ -54,5 +55,30 @@ describe("EvaluationsController", () => {
     await expect(controller.uploadAttachment(undefined)).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  // Régression : la route DELETE n'existait pas du tout côté controller —
+  // ce test verrouille son câblage vers le service.
+  it("délègue la suppression d'évaluation au service avec les bons paramètres", async () => {
+    const user = { id: "user-1" };
+    evaluationsService.deleteEvaluation.mockResolvedValue({
+      success: true,
+      evaluationId: "eval-1",
+    });
+
+    const result = await controller.deleteEvaluation(
+      user as never,
+      "school-1",
+      "class-1",
+      "eval-1",
+    );
+
+    expect(evaluationsService.deleteEvaluation).toHaveBeenCalledWith(
+      user,
+      "school-1",
+      "class-1",
+      "eval-1",
+    );
+    expect(result).toEqual({ success: true, evaluationId: "eval-1" });
   });
 });
