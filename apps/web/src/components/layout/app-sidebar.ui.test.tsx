@@ -854,4 +854,17 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
       screen.getByRole("link", { name: /Notes.*devoirs|Grades.*homework/i }),
     ).toBeInTheDocument();
   });
+
+  // Régression : le fil d'actualité général était absent du menu élève alors
+  // qu'il existe pour Enseignant et Parent (même route "/fil") — un élève
+  // n'avait donc aucun accès au fil d'actualité de son école depuis son
+  // propre menu (cf. correctif équivalent côté mobile, STUDENT_NAV).
+  it("expose le fil d'actualité général (parité avec Enseignant/Parent)", async () => {
+    render(<AppSidebar role="STUDENT" schoolSlug="college-vogt" />);
+
+    const feedLink = await screen.findByRole("link", {
+      name: "Fil d'actualite",
+    });
+    expect(feedLink).toHaveAttribute("href", "/schools/college-vogt/fil");
+  });
 });

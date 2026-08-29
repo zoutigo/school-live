@@ -516,6 +516,13 @@ function buildItems(
       matchPrefix: `${schoolBase}/dashboard`,
     },
     {
+      label: t("sidebar.nav.newsFeed"),
+      href: `${schoolBase}/fil`,
+      icon: MessageSquare,
+      matchPrefix: `${schoolBase}/fil`,
+      unread: feedUnread,
+    },
+    {
       label: t("sidebar.nav.financialSituation"),
       href: `${schoolBase}/dashboard#finance`,
       icon: Wallet,

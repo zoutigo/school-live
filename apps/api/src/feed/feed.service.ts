@@ -13,6 +13,7 @@ import {
   type Prisma,
 } from "@prisma/client";
 import type { AuthenticatedUser } from "../auth/auth.types.js";
+import { resolveActiveRole } from "../auth/resolve-active-role.util.js";
 import { InlineMediaService } from "../media/inline-media.service.js";
 import { MediaClientService } from "../media-client/media-client.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -720,12 +721,23 @@ export class FeedService {
         .filter((membership) => membership.schoolId === effectiveSchoolId)
         .map((membership) => membership.role),
     );
+    // Un compte peut cumuler plusieurs memberships dans la même école (ex.
+    // PARENT + TEACHER). Seul le rôle actif doit déterminer les pouvoirs de
+    // modération : baser isStaff sur "roles.some(...)" donnait les droits de
+    // modération à un parent qui a par ailleurs un membership TEACHER/staff
+    // dans la même école, même en naviguant en tant que parent (vue enfant) —
+    // reproduit avec un compte réel cumulant PARENT et plusieurs rôles staff.
+    const effectiveRole = resolveActiveRole(
+      user.activeRole,
+      user.platformRoles,
+      Array.from(roles),
+    );
     const isStaff =
       user.platformRoles.includes("SUPER_ADMIN") ||
       user.platformRoles.includes("ADMIN") ||
-      Array.from(roles).some((role) => STAFF_ROLES.has(role));
-    const isParent = roles.has("PARENT");
-    const isStudent = roles.has("STUDENT");
+      (effectiveRole !== null && STAFF_ROLES.has(effectiveRole as SchoolRole));
+    const isParent = effectiveRole === "PARENT";
+    const isStudent = effectiveRole === "STUDENT";
 
     const school = await this.prisma.school.findUnique({
       where: { id: effectiveSchoolId },
