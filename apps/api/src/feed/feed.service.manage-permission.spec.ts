@@ -23,7 +23,9 @@ import type { InlineMediaService } from "../media/inline-media.service.js";
 function makeUser(
   id: string,
   schoolId: string,
-  memberships: Array<{ role: AuthenticatedUser["memberships"][number]["role"] }>,
+  memberships: Array<{
+    role: AuthenticatedUser["memberships"][number]["role"];
+  }>,
   activeRole: AuthenticatedUser["activeRole"] = null,
 ): AuthenticatedUser {
   return {

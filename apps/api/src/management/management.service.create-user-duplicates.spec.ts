@@ -28,7 +28,9 @@ const superAdmin: AuthenticatedUser = {
 function makeService(prisma: Record<string, unknown>) {
   return new ManagementService(
     prisma as unknown as PrismaService,
-    { sendTemporaryPasswordEmail: jest.fn().mockResolvedValue(undefined) } as unknown as MailService,
+    {
+      sendTemporaryPasswordEmail: jest.fn().mockResolvedValue(undefined),
+    } as unknown as MailService,
   );
 }
 
@@ -120,20 +122,20 @@ describe("ManagementService.createUser — doublons email/téléphone", () => {
     expect(prisma.user.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          OR: [
-            { email: "jean.mbarga@example.com" },
-            { phone: "699000000" },
-          ],
+          OR: [{ email: "jean.mbarga@example.com" }, { phone: "699000000" }],
         },
       }),
     );
   });
 
   it("filet de sécurité : traduit une erreur P2002 de course en ConflictException lisible", async () => {
-    const p2002 = new Prisma.PrismaClientKnownRequestError("Unique constraint", {
-      code: "P2002",
-      clientVersion: "test",
-    });
+    const p2002 = new Prisma.PrismaClientKnownRequestError(
+      "Unique constraint",
+      {
+        code: "P2002",
+        clientVersion: "test",
+      },
+    );
     const prisma = {
       user: {
         findFirst: jest.fn().mockResolvedValue(null),

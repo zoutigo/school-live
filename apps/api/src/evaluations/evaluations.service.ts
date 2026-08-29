@@ -610,6 +610,30 @@ export class EvaluationsService {
     };
   }
 
+  async deleteEvaluation(
+    user: AuthenticatedUser,
+    schoolId: string,
+    classId: string,
+    evaluationId: string,
+  ) {
+    const existing = await this.findAccessibleEvaluation(
+      user,
+      schoolId,
+      classId,
+      evaluationId,
+    );
+
+    // Cascades attachments, scores et audit logs (@relation onDelete: Cascade
+    // dans le schéma) — pas de nettoyage média séparé nécessaire, cohérent
+    // avec updateEvaluation qui ne nettoie pas non plus les fichiers
+    // détachés lors d'un remplacement d'attachments.
+    await this.prisma.evaluation.delete({
+      where: { id: existing.id },
+    });
+
+    return { success: true, evaluationId: existing.id };
+  }
+
   async upsertScores(
     user: AuthenticatedUser,
     schoolId: string,

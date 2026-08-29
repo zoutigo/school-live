@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -149,6 +150,28 @@ export class EvaluationsController {
       classId,
       evaluationId,
       payload,
+    );
+  }
+
+  @Delete("schools/:schoolSlug/classes/:classId/evaluations/:evaluationId")
+  @Roles(
+    "TEACHER",
+    "SCHOOL_ADMIN",
+    "SCHOOL_MANAGER",
+    "SUPERVISOR",
+    "SUPER_ADMIN",
+  )
+  deleteEvaluation(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentSchoolId() schoolId: string,
+    @Param("classId") classId: string,
+    @Param("evaluationId") evaluationId: string,
+  ) {
+    return this.evaluationsService.deleteEvaluation(
+      user,
+      schoolId,
+      classId,
+      evaluationId,
     );
   }
 
