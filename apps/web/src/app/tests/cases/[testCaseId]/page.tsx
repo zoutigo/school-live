@@ -164,7 +164,10 @@ export default function TestCaseDetailPage() {
             {t("common.loading")}
           </div>
         ) : errorMessage || !detail ? (
-          <p className="text-sm text-notification" data-testid="test-case-error">
+          <p
+            className="text-sm text-notification"
+            data-testid="test-case-error"
+          >
             {errorMessage ?? t("tests.common.errors.loadGeneric")}
           </p>
         ) : (
@@ -439,7 +442,9 @@ export default function TestCaseDetailPage() {
                                 prev.filter((_, i) => i !== index),
                               )
                             }
-                            aria-label={t("tests.detail.attachments.removeLabel")}
+                            aria-label={t(
+                              "tests.detail.attachments.removeLabel",
+                            )}
                             className="text-text-secondary hover:text-notification"
                           >
                             ✕

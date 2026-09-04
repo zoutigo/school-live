@@ -159,7 +159,9 @@ describe("TestsPage", () => {
     fireEvent.click(screen.getByTestId("tests-tab-toRedo"));
 
     await waitFor(() => {
-      expect(screen.getByTestId("tests-to-redo-card-case-1")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("tests-to-redo-card-case-1"),
+      ).toBeInTheDocument();
     });
   });
 });

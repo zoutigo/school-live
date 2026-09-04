@@ -898,7 +898,9 @@ describe("AppSidebar Tests link for testers", () => {
     render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
 
     await screen.findByRole("link", { name: "Mon compte" });
-    expect(screen.queryByRole("link", { name: "Tests" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Tests" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps the admin Campagnes tests link separate from the tester Tests link for SUPER_ADMIN", async () => {

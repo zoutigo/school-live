@@ -276,7 +276,11 @@ export const testsApi = {
 
   async updateExecution(
     executionId: string,
-    payload: { status: TestExecutionStatus; resultText: string; comment?: string },
+    payload: {
+      status: TestExecutionStatus;
+      resultText: string;
+      comment?: string;
+    },
   ): Promise<TestExecutionDetail> {
     const response = await fetch(`${API_URL}/tests/executions/${executionId}`, {
       method: "PATCH",

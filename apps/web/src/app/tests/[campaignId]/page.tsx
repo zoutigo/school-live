@@ -56,7 +56,10 @@ export default function TestCampaignDetailPage() {
             {t("common.loading")}
           </div>
         ) : errorMessage || !campaign ? (
-          <p className="text-sm text-notification" data-testid="tests-campaign-error">
+          <p
+            className="text-sm text-notification"
+            data-testid="tests-campaign-error"
+          >
             {errorMessage ?? t("tests.common.errors.loadGeneric")}
           </p>
         ) : (

@@ -5,6 +5,9 @@ import type {
 import type { CampaignDisplayStatus } from "../../api/tests.api";
 import type { TranslateFn } from "../../i18n/useTranslation";
 
+export type CampaignsFilter = "ALL" | CampaignDisplayStatus;
+export const ALL_CAMPAIGNS_FILTER: CampaignsFilter = "ALL";
+
 export function statusLabel(t: TranslateFn, value: TestExecutionStatus | null) {
   switch (value) {
     case "PASSED":

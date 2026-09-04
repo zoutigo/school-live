@@ -4,10 +4,12 @@ import {
   sortCampaignsByDisplayStatus,
 } from "./tests.api";
 
-function campaign(overrides: Partial<Parameters<typeof getCampaignDisplayStatus>[0]> & {
-  dueAt?: string | null;
-  assignedToMe?: boolean;
-}) {
+function campaign(
+  overrides: Partial<Parameters<typeof getCampaignDisplayStatus>[0]> & {
+    dueAt?: string | null;
+    assignedToMe?: boolean;
+  },
+) {
   return {
     startsAt: null,
     dueAt: null,

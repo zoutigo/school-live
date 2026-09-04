@@ -11,7 +11,6 @@ import {
   testsApi,
   getCampaignDisplayStatus,
   sortCampaignsByDisplayStatus,
-  type CampaignDisplayStatus,
   type TestCampaignSummary,
   type TestCaseToRedo,
   type TestExecutionRow,
@@ -24,17 +23,17 @@ import {
   TESTS_TOUR_TARGETS,
 } from "../../components/tests/tests-tour.config";
 import {
+  ALL_CAMPAIGNS_FILTER,
   campaignStatusKey,
   formatDate,
   formatDateTime,
   statusLabel,
+  type CampaignsFilter,
 } from "../../components/tests/tests-format";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
 type Tab = "summary" | "campaigns" | "executions" | "toRedo";
-export type CampaignsFilter = "ALL" | CampaignDisplayStatus;
-export const ALL_CAMPAIGNS_FILTER: CampaignsFilter = "ALL";
 
 type Me = { isTester?: boolean };
 
@@ -47,9 +46,8 @@ export default function TestsPage() {
   const [toRedo, setToRedo] = useState<TestCaseToRedo[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [campaignsFilter, setCampaignsFilter] = useState<CampaignsFilter>(
-    ALL_CAMPAIGNS_FILTER,
-  );
+  const [campaignsFilter, setCampaignsFilter] =
+    useState<CampaignsFilter>(ALL_CAMPAIGNS_FILTER);
 
   usePageHelp({
     title: t("tests.help.title"),
@@ -535,7 +533,10 @@ function CampaignsTab({
                 <div className="mt-2 flex items-center justify-between gap-3 text-xs text-text-secondary">
                   <span>
                     {t("tests.campaigns.progressCompact")
-                      .replace("{done}", String(campaign.summary.completedCases))
+                      .replace(
+                        "{done}",
+                        String(campaign.summary.completedCases),
+                      )
                       .replace("{total}", String(campaign.summary.totalCases))}
                     {campaign.dueAt
                       ? ` · ${t("tests.campaigns.dueLabel").replace(
