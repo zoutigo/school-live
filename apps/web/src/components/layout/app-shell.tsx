@@ -26,6 +26,7 @@ type MeResponse = {
   role: Role | null;
   activeRole?: Role | null;
   activeSchoolId?: string | null;
+  isTester?: boolean;
   platformRoles: Array<"SUPER_ADMIN" | "ADMIN" | "SALES" | "SUPPORT">;
   memberships: Array<{
     schoolId: string;
@@ -288,6 +289,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
               <AppSidebar
                 schoolSlug={activeSchoolSlug}
                 role={role}
+                isTester={me?.isTester}
                 onLogoutClick={() => setLogoutConfirmOpen(true)}
               />
             </OnboardingTarget>
@@ -308,6 +310,7 @@ export function AppShell({ schoolSlug, schoolName, children }: Props) {
               <AppSidebar
                 schoolSlug={activeSchoolSlug}
                 role={role}
+                isTester={me?.isTester}
                 onNavigate={() => setMobileOpen(false)}
                 onLogoutClick={() => setLogoutConfirmOpen(true)}
               />

@@ -65,6 +65,10 @@ Règles à ne pas casser :
 - Les erreurs inline sont obligatoires.
 - Réutiliser les helpers et composants de formulaire existants avant d'introduire une nouvelle abstraction locale.
 
+## Tester en conditions réelles
+
+Après toute modification UI significative côté web, utiliser le skill `chrome` pour piloter un navigateur réel et vérifier que la fonctionnalité marche effectivement (pas seulement les tests unitaires/fonctionnels) — golden path et cas limites. Utiliser les identifiants d'un utilisateur existant en base pour se connecter durant ces essais plutôt que d'en créer un nouveau.
+
 ## Internationalisation (i18n)
 
 Le web utilise un système de traduction maison dans `apps/web/src/i18n/` :
