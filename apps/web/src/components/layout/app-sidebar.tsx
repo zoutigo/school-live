@@ -57,6 +57,7 @@ export const SIDEBAR_HELP_TOUR_TARGET = "sidebar-help-target";
 type SidebarProps = {
   schoolSlug?: string | null;
   role: Role;
+  isTester?: boolean;
   onNavigate?: () => void;
   onLogoutClick?: () => void;
 };
@@ -93,6 +94,38 @@ function toUnread(count: number | undefined): number | undefined {
 }
 
 function buildItems(
+  role: Role,
+  schoolSlug: string | null | undefined,
+  t: TranslateFn,
+  badges: UnreadSummary | null,
+  platformMessagesUnread?: number,
+  isTester?: boolean,
+): NavItem[] {
+  const items = buildRoleItems(
+    role,
+    schoolSlug,
+    t,
+    badges,
+    platformMessagesUnread,
+  );
+  if (!isTester) return items;
+
+  const testsItem: NavItem = {
+    label: t("sidebar.nav.tests"),
+    href: "/tests",
+    icon: ClipboardList,
+    matchPrefix: "/tests",
+  };
+  const settingsIndex = items.findIndex((item) => item.href === "/settings");
+  if (settingsIndex === -1) return [...items, testsItem];
+  return [
+    ...items.slice(0, settingsIndex),
+    testsItem,
+    ...items.slice(settingsIndex),
+  ];
+}
+
+function buildRoleItems(
   role: Role,
   schoolSlug: string | null | undefined,
   t: TranslateFn,
@@ -721,6 +754,7 @@ function buildTeacherClassItems(
 export function AppSidebar({
   schoolSlug,
   role,
+  isTester,
   onNavigate,
   onLogoutClick,
 }: SidebarProps) {
@@ -741,6 +775,7 @@ export function AppSidebar({
     t,
     badgeSummary,
     platformMessagesUnread,
+    isTester,
   );
   const ticketsUnread = toUnread(
     (badgeSummary?.ticketsNeedingResponse ?? 0) +

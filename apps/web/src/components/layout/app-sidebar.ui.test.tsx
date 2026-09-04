@@ -868,3 +868,45 @@ describe("AppSidebar STUDENT links — parité avec la vue parent (hors Santé)"
     expect(feedLink).toHaveAttribute("href", "/schools/college-vogt/fil");
   });
 });
+
+describe("AppSidebar Tests link for testers", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockPush.mockReset();
+    mockPathname = "/schools/college-vogt/dashboard";
+    window.localStorage.clear();
+    useLocaleStore.setState({ locale: DEFAULT_LOCALE });
+  });
+
+  it.each([
+    ["SUPER_ADMIN", undefined],
+    ["SCHOOL_ADMIN", "college-vogt"],
+    ["TEACHER", "college-vogt"],
+    ["PARENT", "college-vogt"],
+    ["STUDENT", "college-vogt"],
+  ] as const)(
+    "shows a Tests link pointing to /tests for %s when isTester is true",
+    async (role, schoolSlug) => {
+      render(<AppSidebar role={role} schoolSlug={schoolSlug} isTester />);
+
+      const link = await screen.findByRole("link", { name: "Tests" });
+      expect(link).toHaveAttribute("href", "/tests");
+    },
+  );
+
+  it("does not show a Tests link when isTester is false", async () => {
+    render(<AppSidebar role="PARENT" schoolSlug="college-vogt" />);
+
+    await screen.findByRole("link", { name: "Mon compte" });
+    expect(screen.queryByRole("link", { name: "Tests" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the admin Campagnes tests link separate from the tester Tests link for SUPER_ADMIN", async () => {
+    render(<AppSidebar role="SUPER_ADMIN" isTester />);
+
+    await screen.findByRole("link", { name: "Tests" });
+    expect(
+      screen.getByRole("link", { name: "Campagnes tests" }),
+    ).toHaveAttribute("href", "/admin-tests");
+  });
+});
