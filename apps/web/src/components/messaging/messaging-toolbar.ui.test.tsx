@@ -74,7 +74,11 @@ describe("MessagingToolbar", () => {
     // decorative dropdown backed by local state only, with no API filter
     // behind it — removed rather than left misleading users.
     render(
-      <MessagingToolbar title="Messagerie" search="" onSearchChange={vi.fn()} />,
+      <MessagingToolbar
+        title="Messagerie"
+        search=""
+        onSearchChange={vi.fn()}
+      />,
     );
 
     expect(screen.queryByText("Annee en cours")).not.toBeInTheDocument();

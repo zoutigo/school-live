@@ -409,9 +409,7 @@ describe("Messaging module integration", () => {
     expect(
       screen.getByPlaceholderText("Rechercher un message..."),
     ).toBeInTheDocument();
-    expect(
-      within(toolbar).getByLabelText("Rafraichir"),
-    ).toBeInTheDocument();
+    expect(within(toolbar).getByLabelText("Rafraichir")).toBeInTheDocument();
 
     expect(screen.getByText("Dossiers")).toBeInTheDocument();
     expect(screen.getAllByText("Boite de reception").length).toBeGreaterThan(0);
