@@ -41,7 +41,7 @@ export function PaginationControls({
       : `page ${safePage}/${safeTotalPages}`;
 
   return (
-    <div className="flex items-center justify-between gap-2 text-sm text-text-secondary">
+    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-secondary">
       {compact ? (
         <div className="flex w-full items-center justify-center gap-3 rounded-[16px] border border-warm-border/70 bg-background/70 px-3 py-2">
           <ActionIconButton

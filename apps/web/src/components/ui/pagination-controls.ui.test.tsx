@@ -44,4 +44,18 @@ describe("PaginationControls", () => {
     expect(onPageChange).toHaveBeenNthCalledWith(1, 1);
     expect(onPageChange).toHaveBeenNthCalledWith(2, 3);
   });
+
+  it("wraps the summary and buttons instead of overflowing on narrow viewports", () => {
+    render(
+      <PaginationControls
+        page={1}
+        totalPages={1}
+        totalItems={6}
+        onPageChange={vi.fn()}
+      />,
+    );
+
+    const summary = screen.getByText("6 resultat(s) - page 1/1");
+    expect(summary.parentElement).toHaveClass("flex-wrap");
+  });
 });

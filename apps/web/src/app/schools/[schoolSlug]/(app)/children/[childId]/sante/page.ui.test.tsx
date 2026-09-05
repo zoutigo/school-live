@@ -200,6 +200,39 @@ describe("Child sante page (vue parent)", () => {
     });
   });
 
+  it("les cartes condition et historique restent capables de rétrécir dans une grille étroite (pas d'overflow horizontal)", async () => {
+    mockFetchDefault({
+      conditions: paginated([CONDITION_1]),
+      history: paginated([
+        {
+          kind: "CARE_EVENT",
+          at: CARE_EVENT_1.occurredAt,
+          payload: CARE_EVENT_1,
+        },
+      ]),
+    });
+
+    render(<ChildSantePage />);
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`sante-condition-card-${CONDITION_1.id}`),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByTestId(`sante-condition-card-${CONDITION_1.id}`),
+    ).toHaveClass("min-w-0");
+
+    fireEvent.click(screen.getByTestId("sante-tab-history"));
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`sante-history-card-CARE_EVENT-${CARE_EVENT_1.id}`),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByTestId(`sante-history-card-CARE_EVENT-${CARE_EVENT_1.id}`),
+    ).toHaveClass("min-w-0");
+  });
+
   it("recherche en live avec debounce", async () => {
     let lastConditionsUrl = "";
     mockFetchDefault({

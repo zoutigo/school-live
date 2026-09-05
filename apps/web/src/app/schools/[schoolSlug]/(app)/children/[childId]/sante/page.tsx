@@ -962,7 +962,7 @@ function ConditionsListPanel(props: {
               type="button"
               onClick={() => props.onCardClick(row)}
               data-testid={`sante-condition-card-${row.id}`}
-              className="flex items-center gap-3 rounded-card border border-border bg-background p-3 text-left transition hover:border-teal-600/50"
+              className="flex min-w-0 items-center gap-3 rounded-card border border-border bg-background p-3 text-left transition hover:border-teal-600/50"
             >
               <ConditionTypeIcon type={row.type} />
               <div className="flex-1 min-w-0">
@@ -1365,7 +1365,7 @@ function HistoryListPanel(props: {
               type="button"
               onClick={() => props.onCardClick(item)}
               data-testid={`sante-history-card-${item.kind}-${item.payload.id}`}
-              className="flex items-center gap-3 rounded-card border border-border bg-background p-3 text-left transition hover:border-teal-600/50"
+              className="flex min-w-0 items-center gap-3 rounded-card border border-border bg-background p-3 text-left transition hover:border-teal-600/50"
             >
               <HistoryOriginIcon origin={item.kind} />
               <div className="flex-1 min-w-0">
