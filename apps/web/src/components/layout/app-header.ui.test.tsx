@@ -214,6 +214,35 @@ describe("AppHeader localization", () => {
       screen.getByText("Platform administration dashboard"),
     ).toBeInTheDocument();
   });
+
+  it("shows the generic app name instead of the admin dashboard title for a non-platform role without an active school", () => {
+    // Regression: a PARENT (or TEACHER/STUDENT/school-staff) browsing a
+    // global, non-school-scoped route (e.g. /resources) has no active
+    // schoolSlug on that route, so isSchoolContext is false even though the
+    // viewer is not a platform admin. The header must not claim they are
+    // looking at the "platform administration dashboard" in that case.
+    render(
+      <AppHeader
+        schoolName="Plateforme"
+        isSchoolContext={false}
+        role="PARENT"
+        userInitials="PW"
+        userDisplayName="Pierre Wome"
+        onToggleMenu={vi.fn()}
+        onLogoutClick={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByText("Dashboard d'administration de la plateforme"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Platform administration dashboard"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Scolive" }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("AppHeader help button", () => {

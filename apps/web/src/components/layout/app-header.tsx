@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HelpCircle, LogOut, Menu } from "lucide-react";
 import { Badge } from "../ui/badge";
-import type { Role } from "../../lib/role-view";
+import { isPlatformRole, type Role } from "../../lib/role-view";
 import { useTranslation, type TranslateFn } from "../../i18n/useTranslation";
 import { useAppShellUiStore } from "./app-shell-ui-store";
 import { OnboardingTarget } from "../onboarding/onboarding-target";
@@ -171,7 +171,9 @@ export function AppHeader({
             </>
           ) : (
             <h1 className="font-heading text-base font-semibold text-text-primary">
-              {t("header.adminDashboardTitle")}
+              {isPlatformRole(role)
+                ? t("header.adminDashboardTitle")
+                : "Scolive"}
             </h1>
           )}
         </div>
