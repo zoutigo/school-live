@@ -502,10 +502,10 @@ function buildRoleItems(
         unread: reinscriptionPending,
       },
       {
-        label: t("sidebar.nav.onlineShop"),
-        href: `${schoolBase}/boutique-en-ligne`,
-        icon: CreditCard,
-        matchPrefix: `${schoolBase}/boutique-en-ligne`,
+        label: t("sidebar.nav.resources"),
+        href: "/resources",
+        icon: Library,
+        matchPrefix: "/resources",
       },
       {
         label: t("messaging.nav.title"),
@@ -519,12 +519,6 @@ function buildRoleItems(
         href: `${schoolBase}/documents`,
         icon: FileText,
         matchPrefix: `${schoolBase}/documents`,
-      },
-      {
-        label: t("sidebar.nav.forms"),
-        href: `${schoolBase}/formulaire`,
-        icon: FileText,
-        matchPrefix: `${schoolBase}/formulaire`,
       },
       {
         label: t("sidebar.nav.settings"),
@@ -681,18 +675,6 @@ function buildParentChildItems(
       icon: FileText,
       matchPrefix: `${base}/cahier-de-texte`,
       unread: toUnread(childBadge?.homeworkPending),
-    },
-    {
-      label: t("sidebar.nav.manuals"),
-      href: `${base}/manuels-ressources`,
-      icon: FileText,
-      matchPrefix: `${base}/manuels-ressources`,
-    },
-    {
-      label: t("sidebar.nav.formsSurveys"),
-      href: `${base}/formulaires-sondages`,
-      icon: FileText,
-      matchPrefix: `${base}/formulaires-sondages`,
     },
     {
       label: t("sidebar.nav.curriculum"),
