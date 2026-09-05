@@ -101,7 +101,7 @@ describe("Classes page subject color UI", () => {
       }
 
       if (url.includes("/admin/students")) {
-        return jsonResponse([]);
+        return jsonResponse({ students: [] });
       }
 
       if (url.includes("/admin/teacher-assignments?classId=class-1")) {
@@ -225,7 +225,7 @@ describe("Classes page subject color UI", () => {
         }
 
         if (url.includes("/admin/students")) {
-          return jsonResponse([]);
+          return jsonResponse({ students: [] });
         }
 
         if (url.includes("/admin/teacher-assignments?classId=class-1")) {
@@ -412,7 +412,7 @@ describe("Classes page subject color UI", () => {
         }
 
         if (url.includes("/admin/students")) {
-          return jsonResponse([]);
+          return jsonResponse({ students: [] });
         }
 
         if (url.includes("/admin/teacher-assignments?classId=class-1")) {
@@ -531,7 +531,8 @@ describe("Classes page subject color UI", () => {
         ]);
       if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
         return jsonResponse([]);
-      if (url.includes("/admin/students")) return jsonResponse([]);
+      if (url.includes("/admin/students"))
+        return jsonResponse({ students: [] });
       if (url.includes("/admin/teacher-assignments?classId=class-1"))
         return jsonResponse([]);
       if (url.includes("/admin/classrooms/class-1/subject-overrides"))
@@ -564,6 +565,95 @@ describe("Classes page subject color UI", () => {
     expect(within(hero).getByText("6eB")).toBeInTheDocument();
     expect(within(hero).getByText("MBELE Valery")).toBeInTheDocument();
     expect(within(hero).getByText(/24 \/ 30/)).toBeInTheDocument();
+  });
+
+  it("populates the student assignment select from the paginated /admin/students response without crashing", async () => {
+    // Regression test: /admin/students returns { students, total, page, hasMore },
+    // not a bare array. Casting the raw payload as an array and spreading/mapping it
+    // directly crashed the page with "allStudents is not iterable".
+    vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/api/me")) {
+        return jsonResponse({
+          role: "SCHOOL_ADMIN",
+          schoolSlug: "college-vogt",
+        });
+      }
+      if (
+        url.includes("/admin/classrooms") &&
+        !url.includes("subject-overrides")
+      ) {
+        return jsonResponse([
+          {
+            id: "class-1",
+            schoolId: "school-1",
+            name: "6eB",
+            referentTeacher: null,
+            capacity: 30,
+            schoolYear: { id: "sy-1", label: "2025-2026" },
+            academicLevel: { id: "lvl-1", code: "6EME", label: "6eme" },
+            track: null,
+            curriculum: { id: "cur-1", name: "6EME - TRONC_COMMUN" },
+            _count: { enrollments: 0 },
+          },
+        ]);
+      }
+      if (url.includes("/admin/school-years"))
+        return jsonResponse([
+          { id: "sy-1", label: "2025-2026", isActive: true },
+        ]);
+      if (url.includes("/admin/curriculums") && !url.includes("/subjects"))
+        return jsonResponse([{ id: "cur-1", name: "6EME - TRONC_COMMUN" }]);
+      if (url.includes("/admin/teachers")) return jsonResponse([]);
+      if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
+        return jsonResponse([]);
+      if (url.includes("/admin/students"))
+        return jsonResponse({
+          students: [
+            {
+              id: "student-1",
+              firstName: "Valery",
+              lastName: "MBELE",
+              parentLinks: [],
+              currentEnrollment: null,
+              enrollments: [],
+            },
+          ],
+          total: 1,
+          page: 1,
+          hasMore: false,
+        });
+      if (url.includes("/admin/teacher-assignments?classId=class-1"))
+        return jsonResponse([]);
+      if (url.includes("/admin/classrooms/class-1/subject-overrides"))
+        return jsonResponse([]);
+      if (url.includes("/admin/curriculums/cur-1/subjects"))
+        return jsonResponse([]);
+      if (
+        url.includes("/api/schools/college-vogt/timetable/classes/class-1") &&
+        method === "GET"
+      ) {
+        return jsonResponse({
+          class: {
+            id: "class-1",
+            schoolYearId: "sy-1",
+            academicLevelId: "lvl-1",
+          },
+          slots: [],
+          calendarEvents: [],
+          subjectStyles: [],
+        });
+      }
+      return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
+    });
+
+    render(<ClassesPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Eleves" }));
+    await screen.findByLabelText("Classe");
+
+    await selectSearchableOption("Eleve", "MBELE Valery");
   });
 
   it("keeps class creation submit disabled until the form is valid and submits valid values", async () => {
@@ -611,7 +701,7 @@ describe("Classes page subject color UI", () => {
         }
 
         if (url.includes("/admin/students")) {
-          return jsonResponse([]);
+          return jsonResponse({ students: [] });
         }
 
         return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
@@ -736,7 +826,7 @@ describe("Classes page subject color UI", () => {
         }
 
         if (url.includes("/admin/students")) {
-          return jsonResponse([]);
+          return jsonResponse({ students: [] });
         }
 
         if (url.includes("/admin/teacher-assignments?classId=class-1")) {
@@ -863,7 +953,8 @@ describe("Classes page subject color UI", () => {
           ]);
         if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
           return jsonResponse([]);
-        if (url.includes("/admin/students")) return jsonResponse([]);
+        if (url.includes("/admin/students"))
+          return jsonResponse({ students: [] });
         if (url.includes("/admin/teacher-assignments?classId=class-1"))
           return jsonResponse([]);
         if (url.includes("/admin/classrooms/class-1/subject-overrides"))
@@ -963,16 +1054,18 @@ describe("Classes page subject color UI", () => {
         if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
           return jsonResponse([]);
         if (url.includes("/admin/students"))
-          return jsonResponse([
-            {
-              id: "student-1",
-              firstName: "Lisa",
-              lastName: "MBELE",
-              parentLinks: [],
-              currentEnrollment: null,
-              enrollments: [],
-            },
-          ]);
+          return jsonResponse({
+            students: [
+              {
+                id: "student-1",
+                firstName: "Lisa",
+                lastName: "MBELE",
+                parentLinks: [],
+                currentEnrollment: null,
+                enrollments: [],
+              },
+            ],
+          });
         if (url.includes("/admin/teacher-assignments?classId=class-1"))
           return jsonResponse([]);
         if (url.includes("/admin/classrooms/class-1/subject-overrides"))
@@ -1063,7 +1156,8 @@ describe("Classes page subject color UI", () => {
         if (url.includes("/admin/teachers")) return jsonResponse([]);
         if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
           return jsonResponse([]);
-        if (url.includes("/admin/students")) return jsonResponse([]);
+        if (url.includes("/admin/students"))
+          return jsonResponse({ students: [] });
         return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
       });
 
@@ -1130,7 +1224,8 @@ describe("Classes page subject color UI", () => {
       if (url.includes("/admin/teachers")) return jsonResponse([]);
       if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
         return jsonResponse([]);
-      if (url.includes("/admin/students")) return jsonResponse([]);
+      if (url.includes("/admin/students"))
+        return jsonResponse({ students: [] });
       return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
     });
 
@@ -1236,7 +1331,8 @@ describe("Classes page subject color UI", () => {
       if (url.includes("/admin/teachers")) return jsonResponse([]);
       if (url.includes("/admin/subjects") && !url.includes("/curriculums/"))
         return jsonResponse([]);
-      if (url.includes("/admin/students")) return jsonResponse([]);
+      if (url.includes("/admin/students"))
+        return jsonResponse({ students: [] });
 
       return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
     });

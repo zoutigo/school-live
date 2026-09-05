@@ -894,7 +894,10 @@ describe("DashboardPage role dashboards", () => {
       }
 
       if (url.includes("/admin/students")) {
-        return createJsonResponse([{ id: "s1" }, { id: "s2" }]);
+        return createJsonResponse({
+          students: [{ id: "s1" }, { id: "s2" }],
+          total: 2,
+        });
       }
 
       if (url.includes("/admin/teachers")) {

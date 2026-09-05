@@ -584,19 +584,21 @@ export default function ElevesPage() {
         (await schoolYearsResponse.json()) as SchoolYearRow[];
       const classroomsPayload =
         (await classroomsResponse.json()) as ClassroomRow[];
-      const studentsPayload = (await studentsResponse.json()) as StudentRow[];
+      const studentsPayload = (await studentsResponse.json()) as {
+        students: StudentRow[];
+      };
 
       setSchoolYears(schoolYearsPayload);
       setClassrooms(classroomsPayload);
-      setStudents(studentsPayload);
+      setStudents(studentsPayload.students);
 
       if (!schoolYearFilter && schoolYearsPayload.length > 0) {
         const active = schoolYearsPayload.find((entry) => entry.isActive);
         setSchoolYearFilter(active?.id ?? "");
       }
 
-      if (!selectedStudentId && studentsPayload.length > 0) {
-        setSelectedStudentId(studentsPayload[0].id);
+      if (!selectedStudentId && studentsPayload.students.length > 0) {
+        setSelectedStudentId(studentsPayload.students[0].id);
       }
     } catch {
       setError("Erreur reseau.");

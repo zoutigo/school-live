@@ -106,7 +106,7 @@ describe("Enrollments page forms", () => {
           ]);
         }
         if (url.includes("/admin/students?")) {
-          return jsonResponse([]);
+          return jsonResponse({ students: [] });
         }
 
         return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
@@ -170,21 +170,13 @@ describe("Enrollments page forms", () => {
           ]);
         }
         if (url.includes("/admin/students?")) {
-          return jsonResponse([
-            {
-              id: "student-1",
-              firstName: "Remi",
-              lastName: "Ntamack",
-              currentEnrollment: {
-                id: "enr-1",
-                status: "ACTIVE",
-                isCurrent: true,
-                createdAt: "2026-01-01T00:00:00.000Z",
-                schoolYear: { id: "sy-1", label: "2025-2026" },
-                class: { id: "class-1", name: "6eC" },
-              },
-              enrollments: [
-                {
+          return jsonResponse({
+            students: [
+              {
+                id: "student-1",
+                firstName: "Remi",
+                lastName: "Ntamack",
+                currentEnrollment: {
                   id: "enr-1",
                   status: "ACTIVE",
                   isCurrent: true,
@@ -192,9 +184,19 @@ describe("Enrollments page forms", () => {
                   schoolYear: { id: "sy-1", label: "2025-2026" },
                   class: { id: "class-1", name: "6eC" },
                 },
-              ],
-            },
-          ]);
+                enrollments: [
+                  {
+                    id: "enr-1",
+                    status: "ACTIVE",
+                    isCurrent: true,
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    schoolYear: { id: "sy-1", label: "2025-2026" },
+                    class: { id: "class-1", name: "6eC" },
+                  },
+                ],
+              },
+            ],
+          });
         }
         if (url.includes("/admin/enrollments/status") && method === "PATCH") {
           return jsonResponse({ count: 1 });
@@ -258,7 +260,7 @@ describe("Enrollments page forms", () => {
         return jsonResponse([]);
       }
       if (url.includes("/admin/students?")) {
-        return jsonResponse([]);
+        return jsonResponse({ students: [] });
       }
 
       return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);
@@ -299,7 +301,7 @@ describe("Enrollments page forms", () => {
           ]);
         }
         if (url.includes("/admin/students?")) {
-          return jsonResponse([buildStudentRow()]);
+          return jsonResponse({ students: [buildStudentRow()] });
         }
         if (
           url.includes("/admin/students/student-1/enrollments/enr-1") &&
@@ -364,7 +366,7 @@ describe("Enrollments page forms", () => {
         ]);
       }
       if (url.includes("/admin/students?")) {
-        return jsonResponse([]);
+        return jsonResponse({ students: [] });
       }
 
       return jsonResponse({ message: `Unhandled ${method} ${url}` }, 404);

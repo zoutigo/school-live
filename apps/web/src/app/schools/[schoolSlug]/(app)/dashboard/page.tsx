@@ -1603,7 +1603,7 @@ export default function DashboardPage() {
           ? ((await classesResponse.json()) as Array<unknown>).length
           : 0,
         studentsCount: studentsResponse.ok
-          ? ((await studentsResponse.json()) as Array<unknown>).length
+          ? ((await studentsResponse.json()) as { total: number }).total
           : 0,
         teachersCount: teachersResponse.ok
           ? ((await teachersResponse.json()) as Array<unknown>).length
