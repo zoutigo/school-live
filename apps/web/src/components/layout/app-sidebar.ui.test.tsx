@@ -725,6 +725,17 @@ describe("AppSidebar messaging link for platform roles", () => {
     expect(link.getAttribute("href")).toBe("/schools/college-vogt/notes");
   });
 
+  it("shows an Utilisateurs link pointing to the school users page for SCHOOL_ADMIN", async () => {
+    mockUnreadCount(0);
+
+    render(<AppSidebar role="SCHOOL_ADMIN" schoolSlug="college-vogt" />);
+
+    const link = await screen.findByRole("link", { name: "Utilisateurs" });
+    expect(link.getAttribute("href")).toBe(
+      "/schools/college-vogt/utilisateurs",
+    );
+  });
+
   it("shows a Messagerie link pointing to /messagerie for SUPER_ADMIN", async () => {
     mockUnreadCount(0);
 

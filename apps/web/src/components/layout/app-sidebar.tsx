@@ -385,6 +385,12 @@ function buildRoleItems(
         matchPrefix: `${schoolBase}/dashboard`,
       },
       {
+        label: t("sidebar.nav.users"),
+        href: `${schoolBase}/utilisateurs`,
+        icon: Users,
+        matchPrefix: `${schoolBase}/utilisateurs`,
+      },
+      {
         label: t("sidebar.nav.grades"),
         href: `${schoolBase}/notes`,
         icon: BookOpen,
